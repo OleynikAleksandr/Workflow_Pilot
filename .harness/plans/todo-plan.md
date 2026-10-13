@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 17,
+  "plan_revision": 18,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -372,7 +372,7 @@
     ]
   },
   "baseline_commit": "dcb2703c8a766d9f1cf7030f6fc69a8af1c8e9be",
-  "current_task_id": null,
+  "current_task_id": "T007",
   "context_pack": {
     "documents": [
       {
@@ -1554,7 +1554,7 @@
         "Пользователь открывает папку существующего проекта и создаёт новую сессию без импорта старого app-state; отдельные старые репозитории и реальные проекты не изменяются. Сохраняется безопасный отказ при одновременной работе донора."
       ],
       "expected_commit_message": "refactor: Разделить зависимости Kit и обеспечить продолжение донорских проектов",
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2041,8 +2041,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
-Current Task: нет
-Revision: 17
+Current Task: T007
+Revision: 18
 
 ## Цель
 
@@ -2097,7 +2097,7 @@ Revision: 17
   - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/facade.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/auto-plan.mjs, src/project-auto-plan.mjs, src/project-session-auto-plan.mjs, src/plan-review.mjs, src/review-continuation.mjs, src/parallel-execution.mjs, src/parallel-kit.mjs, src/executor-session.mjs, tests/auto-plan.test.mjs, tests/project-auto-plan.test.mjs, tests/plan-review.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-finalization.test.mjs, tests/electron-smoke.mjs, src/parallel-settings.mjs, src/auto-plan-state.mjs, src/execution-projection.mjs, src/plan-monitor.mjs, src/execution/facade.mjs, src/execution/commands/service.mjs, src/execution/files/adapter.mjs, src/execution/runtime/service.mjs, src/execution/platform/paths.mjs, src/execution/browser/session-runtime.mjs, .dependency-cruiser.cjs, src/automation-send-state.mjs, src/command-activity.mjs, src/control/context/context-session.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/auto-plan-state.mjs, src/control/workflow/automation-send-state.mjs, src/control/workflow/command-activity.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/parallel-settings.mjs, src/control/workflow/plan-monitor.mjs, src/control/workflow/project-auto-plan.mjs, src/control/workflow/project-session-auto-plan.mjs, src/control/workflow/review-continuation.mjs, src/execution/commands/activity-probe.mjs, src/execution/files/project-input-watch.mjs, src/project-input-watch.mjs, tests/control-facade.test.mjs, tests/execution-architecture.test.mjs, docs/modules/workflow-execution.md, docs/architecture/OVERVIEW.md, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: T005
-- [TODO] T007: Разделить зависимости Kit и обеспечить продолжение донорских проектов — Ожидает
+- [IN_PROGRESS] T007: Разделить зависимости Kit и обеспечить продолжение донорских проектов — В работе
   - Git Commit: [PENDING] refactor: Разделить зависимости Kit и обеспечить продолжение донорских проектов
   - Reference: workflow-pilot-migration-0.1.0 / T007 / implementation
   - Файлы: packages/workflow-kit/package.json, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/install.mjs, packages/workflow-kit/src/lib/transaction.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/recovery.mjs, scripts/stage-workflow-kit.mjs, src/control/workflow/coordination.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/projects/service.mjs, src/control/projects/workspace-setup.mjs, src/control/projects/workspace-deletion.mjs, src/control/projects/project-doctor.mjs, src/execution/files/adapter.mjs, tests/migration-compatibility.test.mjs, tests/workflow-kit-upgrade.test.mjs, docs/modules/project-compatibility.md

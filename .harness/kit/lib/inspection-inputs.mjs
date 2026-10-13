@@ -88,7 +88,7 @@ export function inspectionInputs(workspace) {
   for (const name of ['pre-commit', 'commit-msg', 'post-commit', 'pre-push']) files.add(path.join(hookFolder, name));
   files.add(index);
   if (sharedIndex) files.add(path.resolve(root, sharedIndex));
-  for (const name of ['HEAD', 'config.worktree', 'workflow-kit/transaction.json', 'workflow-kit/last-verification.json',
+  for (const name of ['HEAD', 'config.worktree', 'workflow-kit/operation.lock', 'workflow-kit/transaction.json', 'workflow-kit/last-verification.json',
     'workflow-kit/installation.json', 'workflow-kit/recovery.json', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']) files.add(path.join(gitDir, name));
   for (const name of ['config', 'shallow', 'info/grafts', 'info/attributes', 'info/exclude', 'objects/info/alternates']) files.add(path.join(commonDir, name));
   for (const name of ['rebase-merge', 'rebase-apply']) {
@@ -97,6 +97,7 @@ export function inspectionInputs(workspace) {
   files.add(path.join(root, '.harness/runtime/worktrees', hash(index).slice(0, 20), 'hook-acknowledgements.json'));
   const states = [...files].sort().map(file => [file, fileState(file)]);
   const transaction = Boolean(states.find(([file]) => file === path.join(gitDir, 'workflow-kit/transaction.json'))?.[1]);
+  const operation = Boolean(states.find(([file]) => file === path.join(gitDir, 'workflow-kit/operation.lock'))?.[1]);
   // Large native executables use filesystem identity + change time + mode, not
   // just mtime. Replacement, chmod, deletion and in-place writes invalidate readiness.
   const executableState = name => {
@@ -109,5 +110,5 @@ export function inspectionInputs(workspace) {
   if (path.isAbsolute(gitBinary)) executables.push(gitBinary);
   const runtime = [...new Set(executables)].map(executableState);
   return { key: hash(JSON.stringify({ version: 1, kit: VERSION, root, gitDir, commonDir,
-    head: headResult.status === 0 ? headResult.stdout.trim() : null, status, refs, staged, config, states, runtime })), transaction };
+    head: headResult.status === 0 ? headResult.stdout.trim() : null, status, refs, staged, config, states, runtime })), transaction, operation };
 }

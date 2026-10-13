@@ -1,6 +1,6 @@
 import fs from 'node:fs';
-import { assertAssignment, assertAssignmentCommand } from './task-assignment.mjs';
-import { assertReviewPublication, finishReviewPublication, cleanupReview } from './plan-review.mjs';
+import { assertAssignment, assertAssignmentCommand } from './assignment-contract.mjs';
+import { assertReviewPublication, finishReviewPublication, cleanupReview } from './review-state.mjs';
 import {beginTaskFiles,handoffTaskFiles} from './task-files.mjs';
 import path from 'node:path';
 import { VERSION, PLAN, planPath, safePath, CONFIG, MANIFEST, check, readJSON, atomic, json, hash, id, textFile } from './common.mjs';
