@@ -15,19 +15,13 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { WorkspaceSessions, normalizeChatUrl, activeSessionsNewestFirst } from './workspace-session.mjs';
+import { ControlFacade, normalizeChatUrl, activeSessionsNewestFirst, externalClientLine, sessionRuntimeKey,
+  removeProjectSettings, pruneOrphanProjectSettings, belongsToProject, queueProjectStatePurge } from './control/facade.mjs';
 import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './parallel-settings.mjs';
 import { installChatGPTAutoScroll } from './execution/browser/chatgpt-auto-scroll.mjs';
 import { ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS } from './execution/browser/chatgpt-colors.mjs';
 import { ChatColorsWindow } from './chat-colors-window.mjs';
-import { ContextCache } from './context-cache.mjs';
-import { readinessContextKey } from './context-inputs.mjs';
-const contextCache = new ContextCache({ load: workspace => sessionContextRuntime.loadContext(workspace),
-  inputKey: workspace => readinessContextKey(workspaceSetup, workspace), onChange: () => publish() });
-import { SessionPlans } from './session-plans.mjs';
-import { externalClientLine } from './context-session.mjs';
-import { SessionRuntimes } from './session-runtime.mjs';
-import { sessionRuntimeKey } from './session-runtime.mjs';
+
 import { ParallelExecution } from './parallel-execution.mjs';
 import { ParallelKit } from './parallel-kit.mjs';
 import {readCommandActivity,acknowledgeUnknownCommand} from './command-activity.mjs';
@@ -35,18 +29,15 @@ import { ProjectInputWatch, ChildCommandWatches } from './project-input-watch.mj
 import { configureExecutor,executorPageState } from './executor-session.mjs';
 import { projectExecutors } from './execution-projection.mjs';
 import { chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT } from './execution/browser/chatgpt-experience.mjs';
-import { WorkspaceDeletion } from './workspace-deletion.mjs';
-import { removeProjectSettings, pruneOrphanProjectSettings, belongsToProject, queueProjectStatePurge } from './project-state-cleanup.mjs';
+
 import { appendDiagnostic } from './common.mjs';
-import { WorkspaceSetup } from './workspace-setup.mjs';
-import { ProjectDoctor } from './project-doctor.mjs';
+
 import { ChromiumDiagnostics, safeUrl } from './chromium-diagnostics.mjs';
 import { BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates } from './execution/platform/paths.mjs';
 import { WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE } from './execution/runtime/windows.mjs';
 import { CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS } from './execution/runtime/service.mjs';
 import { VpsTunnel, WindowsVpsTunnel } from './execution/runtime/vps.mjs';
 import { ExecutionFacade } from './execution/facade.mjs';
-import { validateContextPacket } from './contracts/context.mjs';
 import { TunnelClipboard } from './tunnel-clipboard.mjs';
 import { StartupReadiness, inspectMacGit, installMacGit, offerMacInstallation } from './startup-readiness.mjs';
 import { startupPlatformOptions, startupSupported } from './startup-platform.mjs';
@@ -62,20 +53,14 @@ const archiveUrl = pathToFileURL(path.join(sourceDir, 'ui/archive.html')).href;
 const { dataDir, partition } = configureDesktopIdentity(app, { smoke });
 const settingsFile = path.join(dataDir, 'settings.json');
 const executionServices = new ExecutionFacade();
-// Context belongs to the project layer; Execution owns only service readiness and physical IO.
-const sessionContextRuntime = {
-  ensure: () => executionServices.ensureServices(),
-  get startupRules() { return runtime?.startupRules ?? []; },
-  async loadContext(workspace) {
-    if (smoke) return runtime.loadContext(workspace);
-    await executionServices.ensureServices();
-    return validateContextPacket(await sessionPlans.loadContext(workspace), workspace);
-  },
-};
+
 const chromiumDiagnosticsFile = path.join(dataDir, 'diagnostics', 'chromium-events.jsonl');
 let parallelExecution = { ...DEFAULT_PARALLEL_SETTINGS };
 let parallelExecutionBook = {};
-const store = new WorkspaceSessions(path.join(dataDir, 'workspaces.json'), { getExecutionSettings: () => parallelExecution });
+const control = new ControlFacade({storageFile:path.join(dataDir, 'workspaces.json'), execution:executionServices,
+  getExecutionSettings:()=>parallelExecution, git:(workspace,args)=>executionKit.git(workspace,['--no-optional-locks',...args])});
+const store = control.projects;
+const deletionHooks = smoke ? {beforeFinish:null} : null;
 const planMonitor = new PlanMonitor({ selected: () => store.selected(),
   inspect: (workspace, sessionId) => store.inspect(workspace, sessionId), onChange: (_info, change) => {
     publish();
@@ -93,7 +78,7 @@ let shellTheme = 'light';
 let hideToolCalls = true;
 const projectAutoPlan=new ProjectAutoPlan({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
   ownsSession:(workspace,id)=>store.snapshot().projects.some(p=>p.workspace===workspace&&p.sessions.some(s=>s.sessionId===id)),onChange:workspace=>{
-  for(const record of liveSessions.records.values()) {
+  for(const record of liveSessions.all()) {
     const project=record.project();
     if((project?.parentWorkspace??project?.workspace)!==workspace)continue;
     record.primaryAutomation?.update();
@@ -133,7 +118,7 @@ const windowsPortableNode = process.platform === 'win32'
       ? path.join(process.resourcesPath, 'windows-node', `node-v${BUNDLED_NODE_VERSION}-win-x64`, 'node.exe')
       : path.join(sourceDir, `../.harness/runtime/windows-node/node-v${BUNDLED_NODE_VERSION}-win-x64/node.exe`))
   : null;
-const workspaceSetup = new WorkspaceSetup({
+const workspaceSetup = control.configureProjects({
   executeNode: executionServices.executeFile, files: executionServices.files,
   resourceDir: app.isPackaged ? path.join(process.resourcesPath, 'resources') : path.join(sourceDir, '../resources'),
   nodeCandidates: windowsPortableNode
@@ -148,32 +133,13 @@ const workspaceSetup = new WorkspaceSetup({
   } : undefined,
   onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; },
 });
-const sessionPlans = new SessionPlans({ setup: workspaceSetup, run: executionServices.executeFile, files: executionServices.files,
-  onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; } });
-store.planService = sessionPlans;
+const sessionPlans = control.plans;
+const {runtime:sessionContextRuntime, cache:contextCache} = control.configureContext({getRuntime:()=>runtime,
+  loadFixture:smoke ? workspace=>runtime.loadContext(workspace) : null, onChange:()=>publish()});
 // Agent time: wall clock while ChatGPT shows its Stop control; each finished request is added to its own session.
 let agentTimer, pageState, conversationRecovery;
 function observeManualConversation(state, record = liveSessions.visible) {
-  const selected = record?.project(), documentId = record?.pageState.current?.documentId;
-  if (!selected || selected.chatUrl || !documentId) return false;
-  if (!record.manualDocumentOwner && /^https:\/\/chatgpt\.com\/(?:work\/?)?$/.test(state.url) && state.userMessageCount === 0) {
-    record.manualDocumentOwner = { documentId, workspace: selected.workspace, sessionId: selected.sessionId, generation: record.epoch, binding: false };
-  }
-  const owner = record.manualDocumentOwner;
-  if (!owner || owner.documentId !== documentId || owner.workspace !== selected.workspace
-      || owner.sessionId !== selected.sessionId || owner.generation !== record.epoch || !state.manualSendRevision) return false;
-  const ownRecovery = selected.attempt?.state === 'sent' || selected.attempt?.sendStartedAtMs;
-  if (ownRecovery) return false;
-  const url = normalizeChatUrl(state.url);
-  record.controller.cancel();
-  if (!url || owner.binding) return true;
-  owner.binding = true;
-  void store.bindChat(owner.workspace, owner.sessionId, url, { manual: true, background: true }).then(() => {
-    if (record.manualDocumentOwner !== owner || record.disposed || record.epoch !== owner.generation) return;
-    liveSessions.tick(record); publish();
-    if(record===liveSessions.visible)void syncSelectedSessionTitle({ force: true, reason: 'manual-chat-bound' });
-  }, error => { if (record.manualDocumentOwner === owner) { owner.binding = false; sessionRuntimeError(record,error); } });
-  return true;
+  return liveSessions.observeManualConversation(state, record);
 }
 const automationSend = new AutomationSendState({save:async checkpoint=>{
   automationCheckpoint=checkpoint;await saveSettings({automationCheckpoint});
@@ -231,7 +197,7 @@ const browserHost = new DesktopBrowserHost(()=>new WebContentsView({webPreferenc
       :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs')}}));
 executionServices.attachBrowser({host:browserHost,ipc:ipcMain});
 const sessionView = record => browserHost.view(record.key);
-const liveSessions = new SessionRuntimes({store,runtime:()=>sessionContextRuntime,contextCache,execution:executionServices,
+const liveSessions = control.attachSessions({
   presentation:{show:id=>browserHost.show(id,window?.contentView),hide:()=>browserHost.hide()},
   onChange:record=>{
     if(record===liveSessions.visible)pageLoading=record.loading;record.primaryAutomation?.update();record.executor?.changed();
@@ -254,8 +220,7 @@ authorizedExecutionKit.read=async workspace=>{
       originSessionId:plan.execution_origin_session_id});
   return facts;
 };
-store.git=(workspace,args)=>executionKit.git(workspace,['--no-optional-locks',...args]);
-const liveRecord=project=>project&&liveSessions.records.get(sessionRuntimeKey(project));
+const liveRecord=project=>project&&liveSessions.find(project);
 async function restoreExecutionPage(project,assignment=null) {
   if(liveRecord(project)?.ready&&(!assignment||liveRecord(project).executor))return project;
   if(!project?.chatUrl||(!project.manualStart&&!project.attempt?.sendStartedAtMs&&!['sent','acknowledged'].includes(project.attempt?.state)))
@@ -352,7 +317,7 @@ let setupState = null;
 let workspaceHealth = null;
 let settingsState = null;
 let doctorState = null;
-const projectDoctor = new ProjectDoctor({ setup: workspaceSetup, ensureServices: () => executionServices.ensureServices() });
+const projectDoctor = control.doctor;
 let archiveState = { deletion: null, notice: null, focusWorkspace: null };
 let deletion;
 const shellBackground = { light: '#f4f6f8', dark: '#1b1d22' };
@@ -382,7 +347,7 @@ function saveSettings(overrides = {}) {
 
 async function prepareProjectRemoval(job) {
   const workspaces=[job.workspace,...(job.related??[]).map(p=>p.workspace)];
-  const records=[...liveSessions.records.values()].filter(r=>workspaces.includes(r.identity?.workspace));
+  const records=[...liveSessions.all()].filter(r=>workspaces.includes(r.identity?.workspace));
   for(const record of records)if(record.pageState.current?.state.busy||record.controller.pending||record.composer.inFlight)
     throw Object.assign(new Error('Остановите работу чатов удаляемого проекта перед удалением.'),{code:'DELETE_PROJECT_BUSY'});
   for(const workspace of workspaces)await execution.suspend(workspace);
@@ -395,7 +360,7 @@ async function prepareProjectRemoval(job) {
   for(const record of records)await record.diagnostics?.stop();
   for(const record of records)if(!liveSessions.release(record))
     throw Object.assign(new Error('Чат ещё занят. Повторите удаление после остановки.'),{code:'DELETE_PROJECT_BUSY'});
-  await store.mutationTail;
+  await store.whenIdle();
   await settingsSaveTail;
 }
 async function cleanupDeletedProject(job) {
@@ -413,7 +378,7 @@ async function cleanupDeletedProject(job) {
 
 async function setChatColors(colors) {
   chatColors = normalizeChatColors(colors);
-  const apply = Promise.all([...liveSessions.records.values()].map(record=>record.colors.set(chatColors)));
+  const apply = Promise.all([...liveSessions.all()].map(record=>record.colors.set(chatColors)));
   const save = saveSettings();
   await Promise.all([apply, save]);
 }
@@ -462,7 +427,7 @@ function snapshot() {
   return { projects: projects.filter(p => !p.archivedAt&&!p.parentWorkspace)
     .map(({ workspace, projectId, name, displayName, selectedSessionId, expanded, sessions }) => ({
     workspace, projectId, name: displayName || name, selectedSessionId, expanded,
-    activity:[...liveSessions.records.values()].some(r=>(r.identity?.workspace===workspace
+    activity:[...liveSessions.all()].some(r=>(r.identity?.workspace===workspace
       ||store.project(r.identity?.workspace)?.parentWorkspace===workspace)&&r.pageState.current?.state.busy)?'working'
       :execution.view(workspace).error||sessions.some(s=>liveRecord({workspace,sessionId:s.sessionId})?.controller.state.error)?'attention':'idle',
     executors:projectExecutors(projects,workspace,execution.view(workspace),liveRecord),
@@ -1093,7 +1058,7 @@ async function startupAction(action) {
 }
 
 function connectController() {
-  for(const record of liveSessions.records.values())record.controller.runtime=sessionContextRuntime;
+  for(const record of liveSessions.all())record.controller.runtime=sessionContextRuntime;
 }
 function selectLiveSession(project=null) {
   const record=liveSessions.ensure(project);
@@ -1207,7 +1172,7 @@ function registerIpc() {
     if(!settingsState)throw Object.assign(new Error('Настройки закрыты. Повторите подтверждение.'),{code:'EXECUTOR_RECORD_CHANGED'});
     const checkBusy=async target=>{
       const workspaces=[target.workspace,target.parentWorkspace];
-      if([...liveSessions.records.values()].some(record=>workspaces.includes(record.identity?.workspace)))
+      if([...liveSessions.all()].some(record=>workspaces.includes(record.identity?.workspace)))
         throw Object.assign(new Error('Исполнитель или родитель ещё открыт в ChatGPT. Завершите работу.'),{code:'DELETE_PROJECT_BUSY'});
       for(const workspace of workspaces){
         const activity=await readCommandActivity(workspace);
@@ -1287,7 +1252,7 @@ function registerIpc() {
     if (input === hideToolCalls) return;
     await saveSettings({ hideToolCalls: input });
     hideToolCalls = input;
-    await Promise.all([...liveSessions.records.values()].map(record=>applyToolCallVisibility(sessionView(record))));
+    await Promise.all([...liveSessions.all()].map(record=>applyToolCallVisibility(sessionView(record))));
   });
   registerAction('pilot:set-chatgpt-channel', async input => {
     if (smoke || typeof runtime?.setChannel !== 'function') throw new Error('Выбор канала ChatGPT недоступен на этой платформе.');
@@ -1581,7 +1546,7 @@ async function createWindow() {
       store, controller, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir,
       chromiumDiagnostics, chromiumDiagnosticsFile, navigate, openArchiveWindow, getArchiveWindow: () => archiveWindow,
       getColorWindow: () => colorEditor.window, chatColorStyles, eventBaseline, runtimeMetrics, pageState, autoPlan,
-      liveSessions,sessionView,deletion,execution,getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}) });
+      liveSessions,sessionView,deletion,deletionHooks,execution,getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}) });
     await chromiumDiagnostics.stop(); chromiumDiagnostics = null;
     window.close(); app.quit();
   } else { const current = store.selected(); if (current && !storageError && !settingsState) void selectWorkspace(current.workspace).catch(report); else void navigate(); }
@@ -1648,7 +1613,7 @@ else {
         : path.join(sourceDir, '../.harness/runtime/windows-payload', WINDOWS_RUNTIME_ARCHIVE);
       windowsBootstrap = new WindowsExecutorBootstrap({ payloadFile, stateDir: runtimeFolder });
     }
-    deletion = new WorkspaceDeletion({ store, git:store.git, journalDir: path.join(dataDir, 'deletions'), protectedPaths: [app.getAppPath(), runtimeFolder], prepare:prepareProjectRemoval, cleanup:cleanupDeletedProject, purgeState:(dir,identities)=>{
+    deletion = control.createDeletion({ beforeFinish:job=>deletionHooks?.beforeFinish?.(job), journalDir: path.join(dataDir, 'deletions'), protectedPaths: [app.getAppPath(), runtimeFolder], prepare:prepareProjectRemoval, cleanup:cleanupDeletedProject, purgeState:(dir,identities)=>{
       settingsSaveTail=queueProjectStatePurge(settingsSaveTail,dir,identities);return settingsSaveTail;
     } });
     if (!storageError) {

@@ -212,7 +212,7 @@ async function verifyUninterruptedRequest(dataDir) {
   }
 }
 
-export async function run({ app, window, sidebar, store, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, execution }) {
+export async function run({ app, window, sidebar, store, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, deletionHooks, execution }) {
   // Test actions follow the visible page; production controllers retain their own page.
   const currentObject=key=>new Proxy({}, {
     get:(_target,property)=>{const value=getLive()[key][property];return typeof value==='function'?value.bind(getLive()[key]):value;},
@@ -1024,13 +1024,13 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   assert.ok(history.snapshot().projects[0].sessions.find(session => session.sessionId === second.sessionId).archivedAt);
   assert.equal(history.snapshot().projects[0].expanded, true);
   // A saved chat and its fresh plan open while full readiness is deliberately held.
-  await waitFor(() => controller.contextCache.pending.size === 0, 'settle before navigation races', snapshot);
+  await waitFor(() => !controller.contextCache.isPending(), 'settle before navigation races', snapshot);
   const realReady = workspaceSetup.ready.bind(workspaceSetup), readiness = [];
   const readyResult = await realReady(workspace), loadsBeforeNavigation = packetLoads;
   // Hold only the opening checks; background context freshness still uses real inputs.
-  const cache=controller.contextCache,realInputKey=cache.inputKey;
-  cache.inputKey=workspace=>readinessContextKey({ready:realReady},workspace);
-  workspaceSetup.ready = () => new Promise((resolve, reject) => readiness.push({ resolve, reject }));
+  const holdOpeningReadiness = (workspace,options) => options?.retain
+    ? realReady(workspace,options) : new Promise((resolve,reject)=>readiness.push({resolve,reject}));
+  workspaceSetup.ready = holdOpeningReadiness;
   const choose = sessionId => sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)}, ${JSON.stringify(sessionId)})`);
   await choose(first.sessionId); await choose(fourth.sessionId); await choose(first.sessionId);
   await waitFor(() => !snapshot().pageLoading, 'saved chat before readiness', snapshot);
@@ -1051,7 +1051,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   assert.equal(snapshot().pageLoading, false); assert.equal(controller.active?.sessionId,first.sessionId);
   assert.equal(reopenedLoads,0);browser.loadURL = loadURL;
   await waitFor(() => snapshot().context.phase === 'delivered', 'attach after both prerequisites', snapshot);
-  workspaceSetup.ready = () => new Promise((resolve, reject) => readiness.push({ resolve, reject }));
+  workspaceSetup.ready = holdOpeningReadiness;
   await choose(first.sessionId); await sidebar.executeJavaScript('window.webPilot.openSettings()');
   const healthBeforeLateResult = snapshot().workspaceHealth;
   readiness.at(-1).reject(new Error('obsolete after settings'));
@@ -1059,7 +1059,6 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   assert.equal(controller.active,null,'failed readiness cancels delivery without changing the displayed settings'); assert.deepEqual(snapshot().workspaceHealth, healthBeforeLateResult);
   assert.equal(snapshot().startupError, null);
   workspaceSetup.ready = realReady;
-  cache.inputKey=realInputKey;
   await browser.executeJavaScript('window.fixtureResumeMarker = 29');
   await sidebar.executeJavaScript('window.webPilot.closeSettings()');
   await waitFor(() => snapshot().context.phase === 'delivered', 'return after navigation races', snapshot);
@@ -1673,7 +1672,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   await autoPlan.recover();
   assert.equal(autoPlan.view().enabled, false, 'disabled choice remains off after reconstruction');
   // Doctor scenarios begin after prior background recovery work has settled.
-  await waitFor(() => controller.contextCache.pending.size === 0, 'background preparation before Doctor', snapshot);
+  await waitFor(() => !controller.contextCache.isPending(), 'background preparation before Doctor', snapshot);
   // Doctor operates on the isolated fixture only; the real workspace is never damaged.
   const doctorManifest = path.join(workspace, '.harness/kit-manifest.json');
   const staleManifest = JSON.parse(await fs.readFile(doctorManifest, 'utf8'));
@@ -1712,7 +1711,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   await sidebar.executeJavaScript('document.getElementById("doctor-open").click()');
   await waitFor(() => !snapshot().settings && !snapshot().setup && ['delivered','stale'].includes(snapshot().context.phase), 'repaired session opens', snapshot);
   assert.equal(store.selected().sessionId, doctorSession);
-  await waitFor(() => controller.contextCache.pending.size === 0, 'background preparation before repeat Doctor', snapshot);
+  await waitFor(() => !controller.contextCache.isPending(), 'background preparation before repeat Doctor', snapshot);
   await sidebar.executeJavaScript('window.webPilot.openSettings()');
   await sidebar.executeJavaScript('window.webPilot.runDoctor(' + JSON.stringify(workspace) + ')');
   assert.equal(snapshot().doctor.repaired, false, 'repeat repair is idempotent');
@@ -1721,7 +1720,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   await sidebar.executeJavaScript('window.webPilot.continueDoctor("open")');
   await waitFor(() => ['delivered','stale'].includes(snapshot().context.phase), 'doctor opens existing session', snapshot);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), beforeDoctorRefresh);
-  await waitFor(() => controller.contextCache.pending.size === 0, 'background preparation before new Work', snapshot);
+  await waitFor(() => !controller.contextCache.isPending(), 'background preparation before new Work', snapshot);
   await sidebar.executeJavaScript('window.webPilot.openSettings()');
   const beforeDoctorNew = store.snapshot().projects.find(p => p.workspace === workspace).sessions.length;
   await sidebar.executeJavaScript('window.webPilot.continueDoctor("work")');
@@ -1805,7 +1804,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   assert.equal(packetLoads, loadsBeforeManualReopen);
   const parallelFixture=await import('./parallel-execution-smoke-fixture.cjs');
   await parallelFixture.default.run({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow});
-  await verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour:auxE});
+  await verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,deletionHooks,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour:auxE});
   const result = { ordinaryManualSend: true, manualRecoverySend: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, directFirstWork: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
     singleActivePlanScreenshot, mode: 'isolated-fixture', electron: process.versions.electron, chromium: process.versions.chrome,
     views: window.contentView.children.length, secureRemote: true, sidebarIpc: true, archiveRestore: true, archiveRestart: true, deleteCancel: true, localDeletion: true, cloudChatPreserved: true, workspaceCreation: true, workspaceValidation: true, cancelPreservesSession: true, startupMessages: 4, canonicalPacketLoads: packetLoads, recoveryCache: true, operationProgress: true, progressScreenshot: path.join(dataDir, 'progress-ui.png'),
@@ -1815,7 +1814,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   console.log(JSON.stringify(result));
 }
 
-async function verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour}) {
+async function verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,deletionHooks,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour}) {
   assert.ok(path.basename(dataDir).startsWith('workflow-pilot-smoke-'),'recovery tests never use the real profile');
   const removed=await makeAux('Архив после прерывания','recovery-t005');
   const replaced=await makeAux('Архив с новым владельцем','replacement-t005');
@@ -1826,8 +1825,8 @@ async function verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,
   await archive.executeJavaScript('window.webPilotArchive.cancelDelete()'); // refresh the newly seeded archives through real IPC
   const row=item=>`[...document.querySelectorAll('[data-workspace]')].find(el=>el.dataset.workspace===${JSON.stringify(item.workspace)})`;
   const confirmAndInterrupt=async item=>{
-    const realFinish=deletion.finish;
-    deletion.finish=async()=>{throw Error('fixture interruption after durable confirmed journal');};
+    const realFinish=deletionHooks.beforeFinish;
+    deletionHooks.beforeFinish=async()=>{throw Error('fixture interruption after durable confirmed journal');};
     try {
       await waitFor(()=>archive.executeJavaScript('!!('+row(item)+')'),'new archived fixture listed',snapshot);
       await archive.executeJavaScript('('+row(item)+').click()');
@@ -1842,7 +1841,7 @@ async function verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,
       })()`);
       await waitFor(()=>archive.executeJavaScript('document.getElementById("notice").textContent.includes("fixture interruption")'),
         'interrupted deletion reported by archive',snapshot);
-    }finally{deletion.finish=realFinish;}
+    }finally{deletionHooks.beforeFinish=realFinish;}
     assert.equal(deletion.isPending(item.workspace),true);
     const journals=await Promise.all((await fs.readdir(deletion.journalDir)).map(async name=>
       JSON.parse(await fs.readFile(path.join(deletion.journalDir,name),'utf8'))));
@@ -1890,9 +1889,11 @@ async function verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,
       assignmentId,taskId:'T005',parentScopeId:'fixture-scope',parentWorkspace:parent.workspace,
       parentProjectId:parent.projectId,executionOriginSessionId:parentRecord.sessions[0].sessionId}]};
   await fs.mkdir(path.dirname(path.dirname(orphanPath)),{recursive:true}); // hashed group itself is absent
-  store.data.projects=store.data.projects.filter(p=>p.workspace!==parent.workspace);
-  store.data.projects.push(orphan);
-  await store.save();await fs.rm(parent.workspace,{recursive:true});await store.load();
+  await store.whenIdle();
+  const saved = JSON.parse(await fs.readFile(store.file,'utf8'));
+  saved.projects=saved.projects.filter(p=>p.workspace!==parent.workspace);
+  saved.projects.push(orphan);
+  await fs.writeFile(store.file,JSON.stringify(saved));await fs.rm(parent.workspace,{recursive:true});await store.load();
   assert.equal(store.project(orphanPath)?.ownershipState,'recovery');
   assert.equal(snapshot().executorRecovery.filter(p=>p.workspace===orphanPath).length,1);
   assert.equal(snapshot().projects.some(p=>p.workspace===orphanPath),false,'orphans only appear in recovery');

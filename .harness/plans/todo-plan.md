@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 13,
+  "plan_revision": 15,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -319,7 +319,13 @@
       "src/execution/browser/chatgpt-title.mjs",
       "src/execution/browser/chatgpt-tool-filter.mjs",
       "src/execution/browser/page-state-bridge.mjs",
-      "src/frontend/desktop/browser-host.mjs"
+      "src/frontend/desktop/browser-host.mjs",
+      "src/control/projects/project-state-cleanup.mjs",
+      "src/control/projects/workspace-readiness.mjs",
+      "src/control/sessions/agent-timer.mjs",
+      "src/control/sessions/session-plans.mjs",
+      "src/execution/files/diagnostics.mjs",
+      "tests/control-facade.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -1257,10 +1263,32 @@
         "tests/workspace-session.test.mjs",
         "tests/session-plans.test.mjs",
         "tests/context-session.test.mjs",
-        "tests/context-cache.test.mjs"
+        "tests/context-cache.test.mjs",
+        ".dependency-cruiser.cjs",
+        "src/agent-timer.mjs",
+        "src/common.mjs",
+        "src/control/projects/project-state-cleanup.mjs",
+        "src/control/projects/workspace-readiness.mjs",
+        "src/control/sessions/agent-timer.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/conversation-recovery.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/files/adapter.mjs",
+        "src/execution/files/diagnostics.mjs",
+        "src/project-doctor.mjs",
+        "src/project-state-cleanup.mjs",
+        "src/session-runtime.mjs",
+        "src/workspace-deletion.mjs",
+        "src/workspace-readiness.mjs",
+        "src/workspace-setup.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/execution-architecture.test.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs"
       ],
       "documentation_paths": [
-        "docs/modules/control.md"
+        "docs/modules/control.md",
+        "docs/architecture/OVERVIEW.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -1274,13 +1302,58 @@
         "При restart и частичном сбое сохраняется точная принадлежность; нет повторного полного контекста в прежний чат и повторного Send после UNKNOWN; базовый пользовательский сценарий и его ошибки проверены."
       ],
       "expected_commit_message": "refactor: Выделить Control проектов, сессий и контекста",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T005",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/control.md",
+        "src/agent-timer.mjs",
+        "src/common.mjs",
+        "src/context-cache.mjs",
+        "src/context-inputs.mjs",
+        "src/context-session.mjs",
+        "src/contracts/control.mjs",
+        "src/contracts/errors.mjs",
+        "src/control/context/context-cache.mjs",
+        "src/control/context/context-inputs.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/context/service.mjs",
+        "src/control/facade.mjs",
+        "src/control/projects/project-doctor.mjs",
+        "src/control/projects/project-state-cleanup.mjs",
+        "src/control/projects/service.mjs",
+        "src/control/projects/workspace-deletion.mjs",
+        "src/control/projects/workspace-readiness.mjs",
+        "src/control/projects/workspace-setup.mjs",
+        "src/control/sessions/agent-timer.mjs",
+        "src/control/sessions/conversation-recovery.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/conversation-recovery.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/files/adapter.mjs",
+        "src/execution/files/diagnostics.mjs",
+        "src/main.mjs",
+        "src/project-doctor.mjs",
+        "src/project-state-cleanup.mjs",
+        "src/session-plans.mjs",
+        "src/session-runtime.mjs",
+        "src/workspace-deletion.mjs",
+        "src/workspace-readiness.mjs",
+        "src/workspace-session.mjs",
+        "src/workspace-setup.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/execution-architecture.test.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs"
+      ]
     },
     {
       "id": "T006",
@@ -1888,7 +1961,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 13
+Revision: 15
 
 ## Цель
 
@@ -1931,10 +2004,10 @@ Revision: 13
   - Файлы: src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/session-runtime.mjs, src/conversation-recovery.mjs, src/chatgpt-dom.mjs, src/chatgpt-composer.mjs, src/chatgpt-experience.mjs, src/chatgpt-page-observer.mjs, scripts/stage-page-observer.mjs, tests/chatgpt-dom.test.mjs, tests/chatgpt-composer.test.mjs, tests/page-state.test.mjs, tests/session-runtime.test.mjs, tests/conversation-recovery.test.mjs, src/page-state.mjs, src/page-state-bridge.mjs, src/chatgpt-auto-scroll.mjs, src/chatgpt-colors.mjs, src/chatgpt-title.mjs, src/chatgpt-tool-filter.mjs, src/automation-send-state.mjs, src/agent-timer.mjs, .dependency-cruiser.cjs, scripts/check-installed-release.mjs, scripts/probe-chatgpt-file-paste.mjs, src/browser-startup.mjs, src/context-session.mjs, src/contracts/browser.mjs, src/execution/browser/browser-startup.mjs, src/execution/browser/chatgpt-auto-scroll.mjs, src/execution/browser/chatgpt-colors.mjs, src/execution/browser/chatgpt-title.mjs, src/execution/browser/chatgpt-tool-filter.mjs, src/execution/browser/page-state-bridge.mjs, src/execution/facade.mjs, src/frontend/desktop/browser-host.mjs, src/workspace-session.mjs, tests/auto-plan-restart-fixture.cjs, tests/browser-startup.test.mjs, tests/chatgpt-auto-scroll.test.mjs, tests/chatgpt-colors.test.mjs, tests/chatgpt-title.test.mjs, tests/chatgpt-tool-filter.test.mjs, tests/context-session.test.mjs, tests/electron-smoke.mjs, tests/execution-architecture.test.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/modules/browser.md, docs/architecture/OVERVIEW.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Выделить Control проектов, сессий и контекста — Ожидает
-  - Git Commit: [PENDING] refactor: Выделить Control проектов, сессий и контекста
+- [DONE] T005: Выделить Control проектов, сессий и контекста — Завершено
+  - Git Commit: [DONE] refactor: Выделить Control проектов, сессий и контекста
   - Reference: workflow-pilot-migration-0.1.0 / T005 / implementation
-  - Файлы: src/control/projects/service.mjs, src/control/projects/workspace-setup.mjs, src/control/projects/workspace-deletion.mjs, src/control/projects/project-doctor.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/control/sessions/conversation-recovery.mjs, src/control/context/service.mjs, src/control/context/context-session.mjs, src/control/context/context-inputs.mjs, src/control/context/context-cache.mjs, src/control/facade.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/workspace-session.mjs, src/session-plans.mjs, src/context-session.mjs, src/context-inputs.mjs, src/context-cache.mjs, tests/workspace-session.test.mjs, tests/session-plans.test.mjs, tests/context-session.test.mjs, tests/context-cache.test.mjs, docs/modules/control.md
+  - Файлы: src/control/projects/service.mjs, src/control/projects/workspace-setup.mjs, src/control/projects/workspace-deletion.mjs, src/control/projects/project-doctor.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/control/sessions/conversation-recovery.mjs, src/control/context/service.mjs, src/control/context/context-session.mjs, src/control/context/context-inputs.mjs, src/control/context/context-cache.mjs, src/control/facade.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/workspace-session.mjs, src/session-plans.mjs, src/context-session.mjs, src/context-inputs.mjs, src/context-cache.mjs, tests/workspace-session.test.mjs, tests/session-plans.test.mjs, tests/context-session.test.mjs, tests/context-cache.test.mjs, .dependency-cruiser.cjs, src/agent-timer.mjs, src/common.mjs, src/control/projects/project-state-cleanup.mjs, src/control/projects/workspace-readiness.mjs, src/control/sessions/agent-timer.mjs, src/control/sessions/session-plans.mjs, src/conversation-recovery.mjs, src/execution/facade.mjs, src/execution/files/adapter.mjs, src/execution/files/diagnostics.mjs, src/project-doctor.mjs, src/project-state-cleanup.mjs, src/session-runtime.mjs, src/workspace-deletion.mjs, src/workspace-readiness.mjs, src/workspace-setup.mjs, tests/control-facade.test.mjs, tests/electron-smoke.mjs, tests/execution-architecture.test.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/modules/control.md, docs/architecture/OVERVIEW.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
 - [TODO] T006: Перенести координацию AutoPlan, Review и исполнителей в Control — Ожидает

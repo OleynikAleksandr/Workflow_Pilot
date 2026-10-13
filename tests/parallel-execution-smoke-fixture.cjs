@@ -66,7 +66,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const run=async(...args)=>JSON.parse((await execute(node,[script,...args],{env:workspaceSetup.environment,maxBuffer:4*1024*1024,timeout:120000})).stdout);
   const git=async(root,...args)=>(await execute('git',['-C',root,...args],{env:workspaceSetup.environment,encoding:'utf8'})).stdout.trim();
   const ipc=(name,...args)=>sidebar.executeJavaScript('window.webPilot.'+name+'('+args.map(a=>JSON.stringify(a)).join(',')+')');
-  const wait=(predicate,name)=>waitFor(predicate,'parallel: '+name,()=>({...snapshot(),parallelRuntimes:[...liveSessions.records.values()]
+  const wait=(predicate,name)=>waitFor(predicate,'parallel: '+name,()=>({...snapshot(),parallelRuntimes:[...liveSessions.all()]
     .filter(r=>r.identity?.assignmentId).map(r=>({identity:r.identity,ready:r.ready,loading:r.loading,
       phase:r.controller.state.phase,error:r.controller.state.error,runtimeError:r.error,url:sessionView(r).webContents.getURL()}))}));
   const stageSnapshot=()=>sidebar.executeJavaScript(`(()=>{
@@ -90,7 +90,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   await ipc('closeSettings');await selectWorkspace(root);
   await wait(()=>store.selected()?.workspace===root&&snapshot().context.phase==='delivered','main context delivery');
   const origin=store.selected();assert.deepEqual(origin.executionSnapshot,{parallel_allowed:true,max_workers:2});
-  const record=(workspace,id)=>[...liveSessions.records.values()].find(r=>r.identity?.workspace===workspace&&(!id||r.identity.sessionId===id));
+  const record=(workspace,id)=>[...liveSessions.all()].find(r=>r.identity?.workspace===workspace&&(!id||r.identity.sessionId===id));
   const main=record(root,origin.sessionId);
   await sessionView(main).webContents.executeJavaScript('window.fixtureAssistant("Планировщик готов")');
   const clickAuto=()=>sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").click()');

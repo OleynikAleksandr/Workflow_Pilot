@@ -25,4 +25,10 @@ test('architecture gate rejects a real Execution to Control import and a new cyc
   await check();
   await write('session-runtime.mjs', "import './execution/a.mjs';");
   await assert.rejects(check(), error => error.code === 1 && /session-coordination-uses-browser-port/.test(error.stdout + error.stderr));
+  await write('session-runtime.mjs', 'export const migrated = true;');
+  await write('control/private.mjs', "import fs from 'node:fs/promises'; export const read = fs.readFile;");
+  await assert.rejects(check(), error => error.code === 1 && /control-does-not-perform-physical-io/.test(error.stdout + error.stderr));
+  await write('control/private.mjs', 'export const state = {};');
+  await write('main.mjs', "import './control/private.mjs';");
+  await assert.rejects(check(), error => error.code === 1 && /main-uses-control-facade/.test(error.stdout + error.stderr));
 });

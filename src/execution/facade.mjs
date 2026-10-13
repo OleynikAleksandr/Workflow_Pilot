@@ -3,6 +3,10 @@ import { desktopFiles } from './files/adapter.mjs';
 import { RuntimeError } from '../contracts/errors.mjs';
 import { BrowserSessions } from './browser/session-runtime.mjs';
 export { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from './browser/chatgpt-experience.mjs';
+export { desktopFiles, exists } from './files/adapter.mjs';
+export { executeFile } from './commands/service.mjs';
+export { diagnosticFiles, queueDiagnosticFile } from './files/diagnostics.mjs';
+export { executableCandidateAllowed, nodeExecutableCandidates } from './platform/paths.mjs';
 
 // A desktop instance owns these adapters; no plan/session/store is accepted here.
 export class ExecutionFacade {

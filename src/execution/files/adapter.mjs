@@ -19,6 +19,19 @@ const absolute = file => {
   return file;
 };
 export class FileAdapter {
+  access(file, mode) { return fs.access(absolute(file), mode); }
+  readFile(file, options) { return fs.readFile(absolute(file), options); }
+  writeFile(file, data, options) { return fs.writeFile(absolute(file), data, options); }
+  appendFile(file, data, options) { return fs.appendFile(absolute(file), data, options); }
+  rename(from, to) { return fs.rename(absolute(from), absolute(to)); }
+  realpath(file) { return fs.realpath(absolute(file)); }
+  lstat(file, options) { return fs.lstat(absolute(file), options); }
+  stat(file, options) { return fs.stat(absolute(file), options); }
+  readdir(file, options) { return fs.readdir(absolute(file), options); }
+  mkdir(file, options) { return fs.mkdir(absolute(file), options); }
+  rm(file, options) { return fs.rm(absolute(file), options); }
+  rmdir(file, options) { return fs.rmdir(absolute(file), options); }
+  unlink(file) { return fs.unlink(absolute(file)); }
   readText(file) { return fs.readFile(absolute(file), 'utf8'); }
   async readJson(file) { return JSON.parse(await this.readText(file)); }
   canonicalPath(file) { return fs.realpath(absolute(file)); }

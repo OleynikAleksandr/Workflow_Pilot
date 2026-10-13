@@ -1,0 +1,75 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { ControlFacade } from '../src/control/facade.mjs';
+import { ContextSession } from '../src/control/context/context-session.mjs';
+import { sessionStore } from '../src/control/sessions/service.mjs';
+
+async function fixture(t) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(),'workflow-pilot-control-'));
+  t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const file = path.join(root,'profile','sessions.json');
+  const create = () => new ControlFacade({storageFile:file,execution:{}});
+  const project = async name => {
+    const folder = path.join(root,name);
+    await fs.mkdir(path.join(folder,'.harness/plans'),{recursive:true});
+    await fs.mkdir(path.join(folder,'scripts'));
+    await fs.writeFile(path.join(folder,'scripts/workflow.mjs'),'// fixture');
+    const plan = {schema_version:1,project_id:name,project_name:name,plan_revision:1,
+      scope_id:'scope',execution_scope_status:'ACTIVE',delivery_status:'IN_PROGRESS',current_task_id:null,
+      tasks:[{id:'T001',title:'Task',implementation_status:'TODO',commit_status:'PENDING'}]};
+    await fs.writeFile(path.join(folder,'.harness/plans/todo-plan.md'),
+      '<!-- workflow-state:begin -->\n```json\n'+JSON.stringify(plan)+'\n```\n<!-- workflow-state:end -->');
+    return folder;
+  };
+  return {root,file,create,project};
+}
+
+test('Control facade restores exact Chat/Work ownership and detached snapshots',async t=>{
+  const f=await fixture(t), control=f.create(), store=control.projects;
+  await store.load();
+  const first=await store.select(await f.project('First'));
+  const planFile=path.join(first.workspace,'.harness/plans/todo-plan.md'), before=await fs.readFile(planFile,'utf8');
+  await store.bindChat(first.workspace,first.sessionId,'https://chatgpt.com/c/aaaaaaaa',{manual:true});
+  const work=await store.newSession(first.workspace,'work');
+  assert.equal(work.experience,'work');
+  const neighbour=await store.select(await f.project('Neighbour'));
+  const scoped=sessionStore(store,first);
+  await scoped.updateSession(first.workspace,first.sessionId,{attempt:{state:'unknown',requestId:'request-one'}});
+  assert.equal(store.selected().workspace,neighbour.workspace);
+  assert.throws(()=>scoped.updateSession(neighbour.workspace,neighbour.sessionId,{}),{code:'SESSION_CHANGED'});
+  const snapshot=store.snapshot();snapshot.projects.length=0;
+  assert.equal(store.snapshot().projects.length,2);
+  for(const key of ['data','mutationTail','save','activeRecord','planService','git'])assert.equal(store[key],undefined,key);
+  const restarted=f.create().projects;await restarted.load();
+  const restored=await restarted.selectSession(first.workspace,first.sessionId);
+  assert.equal(restored.chatUrl,'https://chatgpt.com/c/aaaaaaaa');
+  assert.equal(restored.attempt.state,'unknown');
+  assert.equal(restarted.project(first.workspace,work.sessionId).experience,'work');
+  assert.equal(await fs.readFile(planFile,'utf8'),before,'Kit plan is never copied or changed by logical sessions');
+  await assert.rejects(restarted.bindChat(first.workspace,first.sessionId,'https://chatgpt.com/c/bbbbbbbb'),{code:'CHAT_CHANGED'});
+  let deliveries=0;
+  const controller=new ContextSession({store:sessionStore(restarted,restored),runtime:{},
+    composer:{getURL:()=>restored.chatUrl,deliver:async()=>{deliveries++;}}});
+  controller.attach(restored);
+  assert.equal(await controller.resumePreparation(),false);
+  assert.equal(deliveries,0,'UNKNOWN cannot replay context through the restored facade');
+  controller.cancel();
+});
+
+test('failed Control save rolls back ownership and restart retains the last durable session',async t=>{
+  const f=await fixture(t), store=f.create().projects;
+  const first=await store.select(await f.project('First'));
+  const rename=fs.rename;
+  fs.rename=async(from,to)=>{if(to===f.file)throw Object.assign(new Error('fixture write failure'),{code:'EIO'});return rename(from,to);};
+  try { await assert.rejects(store.newSession(first.workspace,'work'),{code:'EIO'}); }
+  finally { fs.rename=rename; }
+  assert.equal(store.selected().sessionId,first.sessionId);
+  assert.equal(store.snapshot().projects[0].sessions.length,1);
+  const restarted=f.create().projects;await restarted.load();
+  assert.equal(restarted.selected().sessionId,first.sessionId);
+  assert.equal(restarted.snapshot().projects[0].sessions.length,1);
+  assert.deepEqual(await fs.readdir(path.dirname(f.file)),['sessions.json']);
+});
