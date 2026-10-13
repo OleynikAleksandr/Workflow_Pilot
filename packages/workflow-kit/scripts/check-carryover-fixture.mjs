@@ -1,0 +1,131 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {execFileSync, spawnSync} from 'node:child_process';
+import {installer, plan as planApi} from '@webpilot/workflow-kit';
+import {validateDocumentationCommit} from '@webpilot/workflow-kit/lib/validate';
+
+const root = fs.mkdtempSync(path.join(os.tmpdir(),'workflow-carryover-'));
+const git = (...args) => execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
+function cli(args, expected=true, env={}) {
+  const r=spawnSync(process.execPath,[path.join(root,'scripts/workflow.mjs'),...args],
+    {cwd:root,encoding:'utf8',env:{...process.env,...env}});
+  const value=JSON.parse(r.stdout);
+  assert.equal(value.ok,expected,JSON.stringify(value));
+  return value;
+}
+function input(name,value) {
+  const file=path.join(root,'.harness/runtime',name+'.json');
+  fs.writeFileSync(file,JSON.stringify(value));return file;
+}
+try {
+  git('init','-b','main');git('config','user.name','Workflow Test');git('config','user.email','test@example.invalid');
+  fs.mkdirSync(path.join(root,'docs/planning'),{recursive:true});
+  fs.writeFileSync(path.join(root,'docs/planning/fixture.md'),'# Carryover fixture\n');
+  fs.writeFileSync(path.join(root,'README.md'),'# Fixture\n');
+  git('add','README.md','docs/planning/fixture.md');git('commit','-m','fixture');
+  installer.install({project:root,mode:'existing'});
+  const initialConfig=JSON.parse(fs.readFileSync(path.join(root,'.harness/workflow.json'),'utf8'));
+  initialConfig.checks=[{id:'must-not-run',kind:'test',executable:process.execPath,args:['-e','process.exit(9)'],required:true,timeout_ms:10000}];
+  cli(['config:apply','--input',input('initial-config',initialConfig)]);
+  const docs=(files,expected=true)=>cli(['docs:commit','--files',JSON.stringify(files),'--message','docs: fixture'],expected);
+  fs.mkdirSync(path.join(root,'packages/example'),{recursive:true});
+  fs.writeFileSync(path.join(root,'packages/example/README.md'),'# Package\n');
+  docs(['packages/example/README.md']);
+  assert.match(git('log','-1','--format=%B'),/Workflow-Role: documentation/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'.git/workflow-kit/last-verification.json'),'utf8')).checks,[]);
+  const agents=fs.readFileSync(path.join(root,'AGENTS.md'),'utf8');
+  fs.writeFileSync(path.join(root,'AGENTS.md'),agents+'\nProject constraint.\n');docs(['AGENTS.md']);
+  const goodAgents=fs.readFileSync(path.join(root,'AGENTS.md'),'utf8');
+  const badAgents=goodAgents.replace('<!-- workflow-kit:begin -->','<!-- workflow-kit:begin -->changed');
+  fs.writeFileSync(path.join(root,'AGENTS.md'),badAgents);git('add','AGENTS.md');
+  fs.writeFileSync(path.join(root,'AGENTS.md'),goodAgents);
+  assert.throws(()=>validateDocumentationCommit(root,['AGENTS.md'],planApi.readPlan(root)),{code:'MODIFIED_INTEGRATION'},'bad index cannot hide behind a valid worktree');
+  git('add','AGENTS.md');fs.writeFileSync(path.join(root,'AGENTS.md'),badAgents);
+  assert.doesNotThrow(()=>validateDocumentationCommit(root,['AGENTS.md'],planApi.readPlan(root)),'validation reads the good index, not the changed worktree');
+  fs.writeFileSync(path.join(root,'AGENTS.md'),goodAgents.replace('<!-- workflow-kit:begin -->','<!-- workflow-kit:begin -->changed'));
+  assert.equal(docs(['AGENTS.md'],false).code,'COMMIT_FAILED');
+  assert.match(fs.readFileSync(path.join(root,'AGENTS.md'),'utf8'),/begin -->changed/,'failed commit keeps edits');
+  fs.writeFileSync(path.join(root,'AGENTS.md'),goodAgents);
+  fs.writeFileSync(path.join(root,'large.md'),'я'.repeat(14001));
+  const large=docs(['large.md'],false);
+  assert.equal(large.code,'COMMIT_FAILED');assert.match(JSON.stringify(large),/28002.*28000/);
+  assert.equal(fs.statSync(path.join(root,'large.md')).size,28002);
+  fs.writeFileSync(path.join(root,'large.md'),'я'.repeat(14000));docs(['large.md']);
+  fs.unlinkSync(path.join(root,'large.md'));docs(['large.md']);
+  assert.equal(docs(['.harness/kit/WORKFLOW.md'],false).code,'DOCUMENTATION_PATHS');
+  cli(['plan:create','--input',input('plan',{id:'source',spec:'docs/planning/fixture.md',objective:'Carryover fixture',
+    tasks:[{id:'T001',title:'Completed',files:['README.md']},
+      {id:'T002',title:'Remaining one',files:['README.md'],dependencies:['T001'],acceptance:['Keep criteria']},
+      {id:'T003',title:'Remaining two',files:['README.md'],dependencies:['T002']} ]})]);
+  const payload=input('transfer',{scope:'source',id:'next',approval_note:'User explicitly requests carryover.'});
+  fs.appendFileSync(path.join(root,'packages/example/README.md'),'Idle ACTIVE\n');docs(['packages/example/README.md']);
+  cli(['task:start','T001']);
+  assert.equal(docs(['README.md'],false).code,'TASK_ACTIVE');
+  fs.appendFileSync(path.join(root,'README.md'),'Task work before service commit\n');
+  const config=JSON.parse(fs.readFileSync(path.join(root,'.harness/workflow.json'),'utf8'));
+  config.budget.document_bytes=28000;
+  cli(['config:apply','--input',input('config',config)]);
+  assert.match(git('log','-1','--format=%B'),/Workflow-Role: plan-adjustment/);
+  let rev=planApi.readPlan(root).plan_revision;
+  assert.equal(cli(['plan:carryover','--input',payload,'--expected-revision',String(rev)],false).code,'TASK_ALREADY_ACTIVE');
+  fs.appendFileSync(path.join(root,'README.md'),'Done T001\n');cli(['commit','--task','T001']);
+  assert.ok(planApi.readPlan(root).tasks[0].actual_files.includes('README.md'));
+  const taskSha=git('rev-parse','HEAD');
+  const evidence=JSON.parse(fs.readFileSync(path.join(root,'.git/workflow-kit/verification/by-commit',taskSha+'.json'),'utf8'));
+  assert.equal(evidence.commit,taskSha);cli(['validate']);
+  const before=planApi.readPlan(root);
+  rev=before.plan_revision;
+  const beforeText=fs.readFileSync(path.join(root,'.harness/plans/todo-plan.md'),'utf8');
+  const args=['plan:carryover','--input',payload,'--expected-revision',String(rev)];
+  const archive=path.join(root,'.harness/plans/archive/source.md');
+  const beforeHead=git('rev-parse','HEAD');
+  assert.equal(cli([...args.slice(0,-1),String(rev-1)],false).code,'REVISION_CHANGED');
+  const unauthorized=input('unauthorized',{scope:'source',id:'next',approval_note:''});
+  assert.equal(cli(['plan:carryover','--input',unauthorized,'--expected-revision',String(rev)],false).code,'USER_CLOSE_REQUIRED');
+  fs.appendFileSync(path.join(root,'README.md'),'Foreign edit\n');
+  assert.equal(cli(args,false).code,'DIRTY_WORKTREE');
+  fs.writeFileSync(path.join(root,'README.md'),git('show','HEAD:README.md')+'\n');
+  fs.mkdirSync(path.dirname(archive),{recursive:true});fs.writeFileSync(archive,'Existing unrelated archive\n');
+  assert.equal(cli(args,false).code,'DIRTY_WORKTREE');assert.equal(fs.readFileSync(archive,'utf8'),'Existing unrelated archive\n');
+  fs.unlinkSync(archive);
+  assert.equal(git('rev-parse','HEAD'),beforeHead);
+  assert.equal(fs.readFileSync(path.join(root,'.harness/plans/todo-plan.md'),'utf8'),beforeText);
+  git('update-index','--refresh'); // Restored test bytes also need a refreshed Git stat cache.
+  assert.equal(git('status','--porcelain'),'');
+  assert.equal(cli(args,false,{WORKFLOW_TEST_FAILPOINT:'prepared'}).code,'TEST_INTERRUPTION');
+  const repair=cli(['repair','--dry-run']);cli(['repair','--apply',repair.repair_id]);
+  assert.equal(git('rev-list','--count',beforeHead+'..HEAD'),'1','carryover uses one commit');
+  assert.equal(fs.existsSync(archive),false,'carryover creates no archive copy');
+  assert.equal(git('show',beforeHead+':.harness/plans/todo-plan.md')+'\n',beforeText,'Git preserves the exact source');
+  const after=planApi.readPlan(root);
+  assert.deepEqual(after.tasks.map(t=>t.id),['T002','T003']);
+  assert.deepEqual(after.tasks[0].acceptance_criteria,before.tasks[1].acceptance_criteria);
+  assert.deepEqual(after.tasks[0].verification_ids,before.tasks[1].verification_ids);
+  assert.deepEqual(after.tasks[0].documentation_paths,before.tasks[1].documentation_paths);
+  assert.deepEqual(after.tasks[0].dependencies,[]);
+  assert.deepEqual(after.tasks[1].dependencies,['T002']);
+  assert.deepEqual(after.context_pack,before.context_pack);
+  assert.deepEqual(after.carryover.completed_dependencies.T002,['T001']);
+  assert.ok(after.tasks.every(t=>t.implementation_status==='TODO' && t.commit_ref.scope_id==='next'));
+  const transferredHead=git('rev-parse','HEAD');
+  assert.equal(cli(args).already_transferred,true);assert.equal(git('rev-parse','HEAD'),transferredHead);
+  assert.equal(cli(['archive','--scope','next','--approval-note','Explicit close request'],false).code,'SCOPE_UNFINISHED');
+  cli(['validate']);assert.equal(git('status','--porcelain'),'');
+  cli(['task:start','T002']);fs.appendFileSync(path.join(root,'README.md'),'Done T002\n');cli(['commit','--task','T002']);
+  const second=input('second',{scope:'next',id:'last',approval_note:'Second explicit carryover request.'});
+  const secondArgs=['plan:carryover','--input',second,'--expected-revision',String(planApi.readPlan(root).plan_revision)];
+  assert.equal(cli(secondArgs,false,{WORKFLOW_TEST_FAILPOINT:'committed'}).code,'TEST_INTERRUPTION');
+  const finish=cli(['repair','--dry-run']);cli(['repair','--apply',finish.repair_id]);
+  assert.equal(cli(secondArgs).already_transferred,true);
+  assert.deepEqual(planApi.readPlan(root).tasks.map(t=>t.id),['T003']);
+  cli(['task:start','T003']);fs.appendFileSync(path.join(root,'README.md'),'Done T003\n');cli(['commit','--task','T003']);
+  const closedHead=git('rev-parse','HEAD');
+  cli(['archive','--scope','last','--approval-note','Explicit user close request']);
+  assert.equal(planApi.readPlan(root).execution_scope_status,'NONE');
+  assert.equal(fs.existsSync(path.join(root,'.harness/plans/archive/last.md')),false);
+  assert.equal(planApi.parsePlan(git('show',closedHead+':.harness/plans/todo-plan.md')+'\n').scope_id,'last');
+  cli(['validate']);assert.equal(git('status','--porcelain'),'');
+  console.log(JSON.stringify({ok:true,carryover:true,gitHistory:true,dependencies:true,guards:true,crashRecovery:true,idempotent:true}));
+} finally {fs.rmSync(root,{recursive:true,force:true});}

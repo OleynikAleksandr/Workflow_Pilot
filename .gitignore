@@ -6,3 +6,14 @@
 node_modules/
 dist/
 # workflow-kit:end
+
+# Workflow Pilot generated files and local runtime
+/Workflow Pilot.app/
+/.workflow-pilot-install-*/
+/resources/workflow-kit/
+/resources/chatgpt-page-observer-preload.cjs
+/windows-app/
+__pycache__/
+*.py[cod]
+.DS_Store
+*.log

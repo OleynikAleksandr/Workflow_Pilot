@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workflow plan v1",
+  "description": "One current plan; history remains in Git. DOCS is generated only for delivery rounds; completed records retain their positions. Cross-field, dependency, scope and projection invariants are enforced by lib/plan.mjs and lib/validate.mjs.",
+  "type": "object",
+  "allOf": [
+    {
+      "if": {"anyOf": [{"required": ["parallel_allowed"]}, {"required": ["max_workers"]}, {"required": ["execution_strategy"]}, {"required": ["execution_reason"]}]},
+      "then": {
+        "required": ["parallel_allowed", "max_workers", "execution_strategy", "execution_reason"],
+        "properties": {"tasks": {"items": {"required": ["parallel_safe"]}}}
+      },
+      "else": {"properties": {"tasks": {"items": {"not": {"required": ["parallel_safe"]}}}}}
+    },
+    {
+      "if": {"required": ["execution_strategy"], "properties": {"execution_strategy": {"const": "parallel"}}},
+      "then": {
+        "properties": {
+          "parallel_allowed": {"const": true}, "max_workers": {"minimum": 2},
+          "tasks": {"items": {
+            "if": {"properties": {"commit_status": {"const": "DONE"}}},
+            "then": {"properties": {"commit_ref": {"properties": {"role": {"const": "integration"}}}}},
+            "else": {"properties": {"commit_ref": {"properties": {"role": {"const": "implementation"}}}}}
+          }}
+        }
+      },
+      "else": {"properties": {"tasks": {"items": {"properties": {"commit_ref": {"properties": {"role": {"const": "implementation"}}}}}}}}
+    }
+  ],
+  "$defs": {
+    "context_pack": {
+      "type": "object",
+      "properties": {
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "required"],
+            "properties": {
+              "path": {"type": "string", "minLength": 1},
+              "required": {"type": "boolean"},
+              "revision": {"type": "string", "pattern": "^(WORKTREE|[a-f0-9]{40}|[a-f0-9]{64})$", "default": "WORKTREE"},
+              "heading_path": {"type": "array", "items": {"type": "string"}, "description": "Legacy metadata; recovery reads the whole document."}
+            }
+          }
+        },
+        "dependency_task_ids": {"type": "array", "items": {"type": "string"}, "description": "Legacy metadata; recovery never embeds diffs."}
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "plan_revision",
+    "project_id",
+    "project_name",
+    "scope_id",
+    "execution_scope_status",
+    "delivery_status",
+    "objective",
+    "acceptance_criteria",
+    "approved_scope",
+    "baseline_commit",
+    "current_task_id",
+    "context_pack",
+    "tasks",
+    "blocked_reason",
+    "user_decisions"
+  ],
+  "properties": {
+    "assignment": {
+      "type": "object",
+      "required": ["id","parent_scope_id","parent_task_id","parent_root","worktree","branch","base_commit","external_dependencies"],
+      "properties": {
+        "id": {"type":"string","pattern":"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+        "parent_scope_id": {"type":"string","minLength":1},
+        "parent_task_id": {"type":"string","minLength":1},
+        "parent_root": {"type":"string","minLength":1},
+        "worktree": {"type":"string","minLength":1},
+        "branch": {"type":"string","minLength":1},
+        "base_commit": {"type":"string","pattern":"^([a-f0-9]{40}|[a-f0-9]{64})$"},
+        "external_dependencies": {"type":"array","items":{"type":"object","required":["task_id","commit"],"properties":{"task_id":{"type":"string"},"commit":{"type":"string","pattern":"^([a-f0-9]{40}|[a-f0-9]{64})$"}}}
+      }
+    },
+    "parallel_allowed": {"type": "boolean"},
+    "max_workers": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+    "execution_strategy": {"enum": ["sequential", "parallel"]},
+    "execution_origin_session_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$"},
+    "execution_reason": {"type": "string", "pattern": "\\S"},
+    "context_pack": {"$ref": "#/$defs/context_pack"},
+    "schema_version": {
+      "const": 1
+    },
+    "plan_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "execution_scope_status": {
+      "enum": [
+        "NONE",
+        "ACTIVE",
+        "BLOCKED"
+      ]
+    },
+    "delivery_status": {
+      "enum": [
+        "IN_PROGRESS",
+        "READY_FOR_ACCEPTANCE"
+      ]
+    },
+    "objective": {
+      "type": "string"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "why",
+          "implementation_status",
+          "commit_status",
+          "functional_paths",
+          "documentation_paths",
+          "dependencies",
+          "acceptance_criteria",
+          "verification_ids",
+          "expected_commit_message",
+          "commit_ref"
+        ],
+        "properties": {
+          "parallel_safe": {"type": "boolean", "description": "False means exclusive worker execution in a parallel plan, not execution by the planner."},
+          "context_pack": {"$ref": "#/$defs/context_pack"},
+          "commit_ref": {
+            "type": "object",
+            "required": ["scope_id", "task_id", "role"],
+            "properties": {
+              "role": {"enum": ["implementation", "integration"]},
+              "operation_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+              "source_commit": {"type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"},
+              "iteration": {"type": "integer", "minimum": 1}
+            },
+            "if": {"properties": {"role": {"const": "integration"}}},
+            "then": {"required": ["operation_id", "source_commit"]},
+            "else": {"not": {"anyOf": [{"required": ["operation_id"]}, {"required": ["source_commit"]}]}}
+          },
+          "verification_kind": {
+            "enum": [
+              "code",
+              "package",
+              "installed"
+            ]
+          }
+        }
+      }
+    },
+    "user_decisions": {
+      "type": "array"
+    }
+  }
+}

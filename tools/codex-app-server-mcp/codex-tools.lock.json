@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "repository": "openai/codex",
+  "codex_version": "0.162.1",
+  "tag": "rust-v0.162.1",
+  "verified_with_github_at": "2026-10-10T08:20:47.583Z",
+  "files": [
+    {
+      "path": "codex-rs/core/src/tools/handlers/shell_spec.rs",
+      "sha256": "f63500f061206cec364f3f994fe4e5a8c18bb205b0f8f25bae83afe123505247"
+    },
+    {
+      "path": "codex-rs/core/src/tools/handlers/view_image_spec.rs",
+      "sha256": "a54cb2ee992c34f6993c993c8efd16d5b91aa49bff8c5737bb4ffb64e977d413"
+    },
+    {
+      "path": "codex-rs/core/assets/tools/apply_patch.lark",
+      "sha256": "d6367f4826ed608c424b0a308f3d6163527df63c22513d089b91863552f8bfeb"
+    }
+  ]
+}

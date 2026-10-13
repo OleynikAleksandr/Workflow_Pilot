@@ -1,0 +1,33 @@
+{
+  "repository": "https://github.com/OleynikAleksandr/Project-Web-Pilot",
+  "archives": [
+    {
+      "ref": "v0.6.102",
+      "commit": "bf3eef7655f993afb46310001ea9992d0e46ff46",
+      "version": "1.6.3",
+      "file": "kit-1.6.3.tar.gz",
+      "sha256": "e07fe15ea2594c010fa720ca3798c47593f9eb7a8024980a83814dc1bea641c8"
+    },
+    {
+      "ref": "ab6d3d99e5da577d45bfc3b78575f201817948b0",
+      "commit": "ab6d3d99e5da577d45bfc3b78575f201817948b0",
+      "version": "1.5.6",
+      "file": "kit-1.5.6.tar.gz",
+      "sha256": "fa7b2c4a0fa4857900f61bc7bd997b5799601888085267ebf890e45181450095"
+    },
+    {
+      "ref": "db9945ac81a530d14d84e92e60b2c850f9ef8ff6",
+      "commit": "db9945ac81a530d14d84e92e60b2c850f9ef8ff6",
+      "version": "1.6.4",
+      "file": "kit-1.6.4.tar.gz",
+      "sha256": "d4c342dbfb0fc5a082fa2dd81fdb9f5cf80f59554fbcc0280dcda94fa6a3cc1b"
+    },
+    {
+      "ref": "v0.6.105",
+      "commit": "834bfc39b344d8d3f9d9c9da1321e9a8ce0fc88d",
+      "version": "1.7.0",
+      "file": "kit-1.7.0.tar.gz",
+      "sha256": "0fb46f8c3760a9689f8d63c2f1b6855137c05dbc8d2a0357c478fe8951791d70"
+    }
+  ]
+}

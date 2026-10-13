@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Workflow Pilot</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#243346;background:#f4f6f8;font-synthesis:none;--teal:#087e80;--muted:#708092;--line:#e1e7ed}
+    *{box-sizing:border-box}body{margin:0;height:100vh;overflow:hidden;font-size:13px}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.5}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #55bbc0;outline-offset:3px}
+    .shell{height:100%;display:flex;flex-direction:column;padding:26px 20px 16px;border-right:1px solid var(--line);gap:22px}.brand{display:flex;align-items:center;gap:11px}.logo{width:37px;height:37px;border-radius:12px;color:#fff;background:#163f4a;display:grid;place-items:center;font-size:19px;font-weight:750;box-shadow:0 5px 12px #153f4a16}.brand strong{display:block;font-size:19px;letter-spacing:-.5px}.brand span{display:block;font-size:10px;font-weight:650;letter-spacing:1.5px;color:var(--muted);margin-top:3px}.heading{display:flex;justify-content:space-between;align-items:center}.eyebrow{font-size:10px;letter-spacing:1.15px;font-weight:700;color:var(--muted);text-transform:uppercase}.icon-button{border:0;background:transparent;color:var(--muted);padding:5px;border-radius:6px}.icon-button:hover{background:#e8edf2;color:#25384b}
+    .primary{width:100%;border:0;border-radius:10px;background:var(--teal);color:#fff;padding:12px 8px;font-weight:600;box-shadow:0 3px 8px #087e8015;transition:background .15s}.primary:hover{background:#066c6e}.projects{display:flex;flex-direction:column;gap:5px;margin-top:12px;max-height:34vh;overflow:auto}.project{width:100%;text-align:left;border:1px solid transparent;background:transparent;border-radius:9px;padding:11px 12px;color:#334559}.project:hover{background:#eaf0f3}.project.active{background:#fff;border-color:#d6e2e5;box-shadow:0 2px 5px #1a3c4a04}.project strong{display:block;font-size:12px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project small{display:block;margin-top:4px;color:var(--muted);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.empty{padding:20px 8px 8px;color:var(--muted);line-height:1.6;font-size:12px;text-align:center}
+    .path{font-size:10px;color:var(--muted);line-height:1.5;overflow-wrap:anywhere}.plan-card{padding:14px}.plan-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.plan-head .eyebrow{margin:0}.agent-time{flex-shrink:0;font-size:11px;line-height:1.4;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}.agent-time[data-running=true]{color:var(--teal);font-weight:650}.plan-status{font-size:12px;font-weight:650;line-height:1.45;margin:8px 0 10px;color:#334e63}.plan-status[data-state=awaiting-acceptance]{color:#087e80}.plan-status[data-state=blocked]{color:#a86835}.plan-status[data-state=closed]{color:#627789}.plan-note{font-size:10px;line-height:1.5;color:var(--muted);margin:-3px 0 10px}.plan-reason{font-size:10px;line-height:1.5;color:#a86835;margin:0 0 9px}.plan-tasks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}.plan-task{display:grid;grid-template-columns:24px minmax(0,1fr);gap:7px;align-items:start;padding:7px 6px;border-radius:8px}.plan-task[data-status=current]{background:#e8f3f2}.plan-task-state{width:22px;height:22px;display:grid;place-items:center;font-size:15px;font-weight:750;line-height:1;color:#8b99a5}.plan-task[data-status=done] .plan-task-state{color:#0b978a}.plan-task[data-status=current] .plan-task-state{color:#087e80}.plan-task strong{display:block;font-size:11px;line-height:1.4;font-weight:600;color:#3c5367;overflow-wrap:anywhere}.plan-task small{display:block;margin-top:2px;font-size:9px;line-height:1.35;color:var(--muted)}.card{border:1px solid #dae4e9;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 3px 8px #27394803}.card-head{display:flex;gap:7px;align-items:center;min-height:30px}.context-toggle{width:28px;height:28px;display:grid;place-items:center;flex-shrink:0;padding:0;border:0;border-radius:7px;background:transparent;color:#80909d}.context-toggle:hover{background:#edf2f4}.context-toggle::before{content:"";width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:11px solid currentColor;transform-origin:42% 50%;transition:transform .12s}.context-toggle[aria-expanded=true]::before{transform:rotate(90deg)}.card[data-tone=working] .context-toggle{color:#daa044}.card[data-tone=success] .context-toggle{color:#0b978a}.card[data-tone=error] .context-toggle{color:#c65a52}.card h3{font-size:12px;margin:0;line-height:1.45}.description{font-size:11px;color:var(--muted);line-height:1.6;margin:10px 0 13px}.step{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:7px 0;font-size:10px;border-top:1px solid #edf1f4}.step span{color:var(--muted)}.step b{font-weight:550;text-align:right;color:#536a7b}.step b[data-ready=true]{color:var(--teal)}#vps-status[data-ready=true]{color:var(--teal)}.actions{display:flex;flex-direction:column;gap:7px;margin-top:12px}.secondary{border:1px solid #d6e0e6;border-radius:8px;background:#fff;color:#3e556b;padding:9px 8px;font-size:11px;font-weight:550}.secondary:hover{background:#f0f6f7;border-color:#a9c7ce}
+    .scroll{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:18px;padding:0 1px 2px}.footer{border-top:1px solid var(--line);padding-top:13px;color:var(--muted);font-size:10px}.footer-line{display:flex;justify-content:space-between;align-items:center;gap:6px}summary{cursor:pointer;user-select:none;font-size:10px;color:#61778b;padding:4px 0}details{margin-top:11px}details p{line-height:1.55;overflow-wrap:anywhere;font-size:10px;margin:7px 0}details button{margin-top:4px;width:100%;font-size:10px}.badge{font-size:9px;border:1px solid #d5e2e5;border-radius:5px;padding:3px 5px;color:#597d82}.error-banner{padding:10px;border:1px solid #edcdc8;border-radius:8px;background:#fff6f3;color:#9b4e40;line-height:1.5;font-size:11px} [hidden]{display:none!important}
+    .projects,.sessions{list-style:none;padding:0}.projects{margin-bottom:0}.workspace-row{display:flex;align-items:stretch;gap:2px}.workspace-row .project{min-width:0;flex:1;padding:10px 8px}.expand-project{flex-shrink:0;width:34px;min-height:34px;padding:0;border:0;border-radius:7px;background:transparent;color:#728697;display:grid;place-items:center}.expand-project::before{content:"";width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:12px solid currentColor;transition:transform .12s;transform-origin:42% 50%}.expand-project[aria-expanded=true]::before{transform:rotate(90deg)}.expand-project:hover{background:#e4ecef;color:var(--teal)}.sessions{margin:5px 0 7px 12px;padding-left:14px;border-left:1px solid #d7e2e7;display:flex;flex-direction:column;gap:3px}.session{display:block;width:100%;text-align:left;border:.5px solid transparent;border-radius:8px;padding:9px 10px;background:transparent;color:#52687b}.session:hover{background:#e9f0f3}.session.active{background:#e4f1f0;border-color:#bddad7;color:#135c61}.session-experience{flex-shrink:0;border:1px solid #cad9de;border-radius:5px;padding:2px 5px;font-size:8px;line-height:1.2;color:#5e7a87;background:#f7fafb}.session-experience[data-experience=work]{border-color:#9dc9c5;color:#15706c;background:#eaf6f4}.session-row{display:flex;align-items:stretch;gap:2px}.session-row>.session{flex:1;min-width:0}.session-menu-button{width:24px;flex-shrink:0;align-self:center;font-size:16px}.session-menu{padding:2px 0 5px 5px}.session-menu button{width:100%;text-align:left;font-size:10px}.session small{display:block;font-size:9px;margin-top:4px;color:#778b9a;line-height:1.5}.project small{white-space:normal}.session small .pending{color:#af8038}.setup h2{font-size:17px;margin:0 0 8px;line-height:1.4}.setup label{display:block;font-size:11px;font-weight:600;margin:15px 0 7px}.setup input{display:block;width:100%;padding:10px 11px;border:1px solid #cedae1;border-radius:8px;background:#fff;color:#243346}.setup form .primary{margin-top:16px}.setup form .secondary{width:100%;margin-top:5px}.setup-path{font-size:11px;line-height:1.6;background:#e9eff3;border-radius:8px;padding:10px;overflow-wrap:anywhere}.setup-checks,.setup-issues,.setup-file-list{list-style:none;padding:0;margin:12px 0}.setup-checks li{font-size:11px;padding:6px 0;color:#b37e3d}.setup-checks li[data-ok=true]{color:#087e80}.setup-issues li{font-size:11px;line-height:1.55;padding:10px;border:1px solid #edcdc8;background:#fff6f3;border-radius:8px;margin:7px 0;overflow-wrap:anywhere}.setup-issues strong,.setup-issues span{display:block}.setup-issues strong{margin-bottom:4px;color:#8a453b}.setup-notes{font-size:11px;white-space:pre-line;line-height:1.6;color:#6b7684}.setup-file-list{max-height:180px;overflow:auto;font-size:10px;line-height:1.65;overflow-wrap:anywhere}.setup-file-list li{padding:4px 0;border-bottom:1px solid #e0e7ec}.text-button{border:0;background:transparent;color:#627a8c;font-size:11px;padding:9px}.health{font-size:10px;line-height:1.5;color:#087e80;margin:9px 0 0}.notice{font-size:10px;line-height:1.55;white-space:pre-line;color:#81909e;margin:7px 0 0}.notice:empty,.health:empty{display:none}
+    .footer-controls{display:flex;align-items:flex-start;gap:6px;margin-top:10px}.footer-controls>details{flex:1;min-width:0;margin-top:0}.settings-button{width:30px;height:30px;flex-shrink:0;display:grid;place-items:center;margin-top:-3px}.settings-button svg{width:18px;height:18px}.settings-button[aria-pressed=true]{color:var(--teal);background:#e0eeed}.project-menu-button{align-self:center;flex-shrink:0;font-size:18px;width:25px}.project-menu{padding:3px 5px 6px 25px}.project-menu button{width:100%;text-align:left;font-size:11px}.project-menu .menu-separator{height:1px;background:var(--line);margin:5px 2px}.session-choice{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0 5px}.session-choice button[aria-pressed=true]{border-color:#78aaa9;background:#e4f2f1;color:#17676a}.settings-section{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:16px}.theme-choice{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0 8px}.theme-choice .secondary{margin:0}.theme-choice button[aria-pressed=true]{border-color:#78aaa9;background:#e4f2f1;color:#17676a}.settings-help{font-size:10px;line-height:1.55;color:var(--muted);margin:0}
+    :root[data-theme=dark]{color-scheme:dark;color:#e7edf4;background:#1b1d22;--teal:#53bbb7;--muted:#9aa8b6;--line:#343b45}
+    :root[data-theme=dark] .logo{background:#284d58;box-shadow:none}:root[data-theme=dark] .icon-button:hover{background:#2a3037;color:#eef3f8}:root[data-theme=dark] .project{color:#d4dde7}:root[data-theme=dark] .project:hover{background:#252b32}:root[data-theme=dark] .project.active{background:#22272e;border-color:#3a444e;box-shadow:none}:root[data-theme=dark] .plan{color:#aebac6}:root[data-theme=dark] .card{border-color:#363e48;background:#22272d;box-shadow:none}:root[data-theme=dark] .step{border-color:#323943}:root[data-theme=dark] .step b{color:#b5c1cd}:root[data-theme=dark] .secondary{border-color:#414b56;background:#252b32;color:#d7e1ea}:root[data-theme=dark] .secondary:hover{background:#303840;border-color:#58727b}:root[data-theme=dark] summary{color:#a3b1bf}:root[data-theme=dark] .badge{border-color:#3f4b55;color:#9fc2c4}:root[data-theme=dark] .error-banner,:root[data-theme=dark] .setup-issues li{border-color:#66453f;background:#2b2221;color:#e2a39a}:root[data-theme=dark] .expand-project{color:#9aa9b7}:root[data-theme=dark] .expand-project:hover{background:#293139}:root[data-theme=dark] .sessions{border-color:#3a444d}:root[data-theme=dark] .session{color:#b8c5d1}:root[data-theme=dark] .session:hover{background:#252d34}:root[data-theme=dark] .session.active{background:#203536;border-color:#356061;color:#7fd0cb}:root[data-theme=dark] .session small{color:#91a1af}:root[data-theme=dark] .session-experience{border-color:#44515c;background:#252c32;color:#aab9c5}:root[data-theme=dark] .session-experience[data-experience=work]{border-color:#4b817e;background:#203536;color:#82cec8}:root[data-theme=dark] .setup input{border-color:#424c56;background:#20252b;color:#e8eef4}:root[data-theme=dark] .setup-path{background:#252b32}:root[data-theme=dark] .setup-notes{color:#aab4bf}:root[data-theme=dark] .setup-file-list li{border-color:#343b44}:root[data-theme=dark] .text-button{color:#a6b7c5}:root[data-theme=dark] .notice{color:#9eabb8}:root[data-theme=dark] .settings-button[aria-pressed=true]{background:#243638}:root[data-theme=dark] .theme-choice button[aria-pressed=true]{border-color:#4c8f8b;background:#213737;color:#8bd5d0}:root[data-theme=dark] .plan-status{color:#d6e0e9}:root[data-theme=dark] .plan-status[data-state=awaiting-acceptance]{color:#7fd0cb}:root[data-theme=dark] .plan-status[data-state=blocked]{color:#d3a06f}:root[data-theme=dark] .plan-task[data-status=current]{background:#203536}:root[data-theme=dark] .plan-task strong{color:#d0dbe5}:root[data-theme=dark] .plan-task[data-status=done] .plan-task-state{color:#70c9c2}:root[data-theme=dark] .plan-task[data-status=current] .plan-task-state{color:#7fd0cb}:root[data-theme=dark]
+    .sidebar-splitter{position:fixed;z-index:100;top:0;right:0;width:7px;height:100vh;cursor:col-resize;touch-action:none;background:transparent}.sidebar-splitter::after{content:"";position:absolute;top:0;bottom:0;right:0;width:1px;background:var(--line);transition:background .12s,width .12s}.sidebar-splitter:hover::after,.sidebar-splitter.dragging::after,.sidebar-splitter:focus-visible::after{width:3px;background:var(--teal)}
+.rename-dialog{border:0;padding:0;border-radius:14px;background:#fff;color:#243346;width:min(360px,calc(100vw - 32px));box-shadow:0 18px 60px #0006}.rename-dialog::backdrop{background:#0e172080}.rename-dialog-card{padding:18px}.rename-dialog-card h2{font-size:16px;margin:0 0 14px}.rename-dialog-card label{display:block;font-size:11px;font-weight:600;margin:0 0 7px}.rename-dialog-card input{display:block;width:100%;padding:10px 11px;border:1px solid #cedae1;border-radius:8px;background:#fff;color:#243346}.rename-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.rename-dialog-actions button{width:auto;min-width:88px}:root[data-theme=dark] .rename-dialog{background:#22272d;color:#e7edf4}:root[data-theme=dark] .rename-dialog-card input{border-color:#424c56;background:#20252b;color:#e8eef4}
+    @media(max-height:760px){.shell{padding-top:18px;gap:15px}.scroll{gap:13px}.projects{max-height:29vh}.empty{padding-top:13px}.card{padding:12px}.description{margin:8px 0}.step{padding:6px 0}}
+    .operation-progress{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#eaf4f3;color:#276d6b;font-size:11px;line-height:1.4;flex-shrink:0}.operation-progress[hidden]{display:none}.operation-spinner{width:15px;height:15px;flex-shrink:0;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:operation-spin .8s linear infinite}.operation-label{flex:1;min-width:0;overflow-wrap:anywhere}.operation-elapsed{font-size:10px;white-space:nowrap;opacity:.75;font-variant-numeric:tabular-nums}@keyframes operation-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.operation-spinner{animation:none}}:root[data-theme=dark] .operation-progress{background:#203536;color:#8ad0c8}
+      /* Compact project tree, approved scope-015. */
+    :root{--tree-panel:#e8edf2;--tree-hover:#dde6eb;--tree-selected:#deefed;--tree-accent:#087e80;--tree-text:#334559;--tree-branch:#9aadb9;--tree-guide:color-mix(in srgb,var(--tree-accent) 72%,var(--tree-branch));--tree-thumb:#758c9d;--tree-track:#dce5ec;--tree-row-height:80px}
+    :root[data-theme=dark]{--tree-panel:#242a32;--tree-hover:#2b333d;--tree-selected:#203a3b;--tree-accent:#7fd3ce;--tree-text:#c9d3dd;--tree-branch:#485460;--tree-thumb:#8da0b1;--tree-track:#29343f}
+    #active-projects{flex-shrink:0;min-width:0}#active-projects [hidden]{display:none!important}
+    .tree-icon{width:18px;height:18px;flex-shrink:0;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+    .projects-toolbar{margin-bottom:16px;gap:8px}.project-actions{margin:0;position:relative;min-width:0}
+    .project-actions>summary{list-style:none;display:flex;align-items:center;gap:10px;font-size:20px;font-weight:600;color:inherit;border-radius:8px;padding:6px 9px;margin-left:-9px;min-height:40px}.project-actions>summary::-webkit-details-marker{display:none}
+    .project-actions>summary:hover,.project-actions[open]>summary{background:var(--tree-panel)}.project-actions>summary .tree-icon{color:var(--muted);transition:transform .16s}.project-actions[open]>summary .tree-icon{transform:rotate(180deg)}
+    #active-projects .icon-button{width:34px;height:34px;display:grid;place-items:center;flex-shrink:0;padding:0;color:var(--muted)}#active-projects .icon-button:hover,#active-projects .icon-button[aria-expanded=true]{background:var(--tree-hover);color:inherit}
+    .project-actions-menu,.project-menu[popover],.session-menu[popover]{padding:6px;border:1px solid var(--tree-branch);border-radius:11px;background:var(--tree-panel);color:inherit;box-shadow:0 12px 30px #0004}
+    .project-actions-menu{position:absolute;z-index:150;left:-8px;top:calc(100% + 6px);width:272px;max-width:calc(100vw - 40px)}
+    .project-actions-menu button,.project-menu[popover] button,.session-menu[popover] button{display:flex;align-items:center;gap:10px;text-align:left;width:100%;min-height:40px;padding:9px 10px;margin:0;border:0;border-radius:6px;font-size:12px;font-weight:500;color:inherit;background:transparent;box-shadow:none}
+    .project-actions-menu button:hover,.project-menu[popover] button:hover,.session-menu[popover] button:hover{background:var(--tree-hover)}
+    .project-menu[popover],.session-menu[popover]{position:fixed;inset:auto;margin:0;width:236px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto}
+    .project-menu[popover]:not(:popover-open),.session-menu[popover]:not(:popover-open){display:none}.project-menu[popover]:popover-open,.session-menu[popover]:popover-open{display:flex;flex-direction:column;gap:0}.menu-separator{height:1px;flex-shrink:0;background:var(--tree-branch);margin:5px 6px}
+    #projects{list-style:none;padding:0;margin:0;gap:10px;max-height:58vh;overflow:auto;overscroll-behavior-y:contain}.workspace-tree{min-width:0}
+    #projects .workspace-row{position:relative;display:flex;align-items:center;gap:0;min-height:64px;padding-right:6px;background:var(--tree-panel);border-radius:10px}
+    #projects .workspace-row:has(.expand-project[aria-expanded=true])::after{content:"";position:absolute;width:.5px;left:25.5px;top:calc(50% + 13px);bottom:0;background:var(--tree-guide);pointer-events:none}
+    #projects .expand-project{border:0;background:transparent;width:51px;align-self:stretch;flex:0 0 51px;display:grid;place-items:center;padding:0;border-radius:10px;color:var(--tree-guide)}
+    #projects .expand-project::before{display:none}#projects .expand-project .tree-icon{width:20px;height:20px;stroke-width:.5;transition:transform .16s}#projects .expand-project[aria-expanded=true] .tree-icon{transform:rotate(90deg)}#projects .expand-project:hover{background:var(--tree-hover)}
+    #projects .project{min-width:0;flex:1;display:flex;align-items:center;gap:12px;align-self:stretch;padding:12px 5px 12px 0;border:0;border-radius:8px;background:transparent;box-shadow:none;color:inherit}
+    #projects .project:hover{background:var(--tree-hover)}#projects .project>.tree-icon{width:21px;height:21px;color:var(--muted)}#projects .project[aria-expanded=true]>.tree-icon{color:var(--tree-accent)}
+    .project-copy{min-width:0}#projects .project strong{font-size:16px;font-weight:650;white-space:normal;overflow-wrap:anywhere;line-height:1.35}#projects .project small{font-size:12px;margin-top:2px;line-height:1.4}
+    #projects .sessions{list-style:none;display:block;margin:0;padding:0 10px 0 0;border:0;max-height:calc(3 * var(--tree-row-height));overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:auto;overscroll-behavior-y:contain}
+    #projects .sessions::-webkit-scrollbar{width:14px}#projects .sessions::-webkit-scrollbar-track{background:var(--tree-track);border-radius:7px}#projects .sessions::-webkit-scrollbar-thumb{background:var(--tree-thumb);border:3px solid var(--tree-track);border-radius:7px;min-height:36px}
+    #projects .sessions>li{position:relative;display:flex;align-items:stretch;height:var(--tree-row-height);padding:3px 0 3px 49px}
+    #projects .sessions>li::before{content:"";position:absolute;left:25.5px;width:.5px;top:0;bottom:0;background:var(--tree-guide)}#projects .sessions>li::after{content:"";position:absolute;left:25.5px;top:50%;width:23.5px;height:.5px;background:var(--tree-guide)}#projects .sessions>li:last-child::before{width:23.5px;height:50%;bottom:auto;background:transparent;border-left:.5px solid var(--tree-guide);border-bottom:.5px solid var(--tree-guide);border-bottom-left-radius:6px}#projects .sessions>li:last-child::after{display:none}
+    #projects .session-row{position:relative;display:flex;align-items:center;gap:1px;flex:1;min-width:0;border:.5px solid transparent;border-radius:8px;padding-right:4px}#projects .session-row:hover{background:var(--tree-panel)}#projects .session-row:has(.session.active){background:var(--tree-selected);border-color:var(--tree-guide)}
+    #projects .session{display:flex;align-items:center;gap:12px;min-width:0;flex:1;padding:10px 9px 10px 14px;text-align:left;border:0;border-radius:8px;background:transparent;height:100%;color:var(--tree-text)}
+    .session-copy{min-width:0;flex:1}#projects .session strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;white-space:normal;overflow-wrap:anywhere;font-size:14px;font-weight:500;line-height:1.4}#projects .session.active strong{color:var(--tree-accent)}#projects .session small{display:block;margin-top:4px;font-size:12px;line-height:1.4;color:var(--muted);white-space:normal}
+    #projects .session-experience{font-size:11px;line-height:20px;padding:0 7px;border:0;border-radius:5px;background:var(--tree-panel);color:var(--muted);flex:0 0 auto}#projects .session-experience[data-experience=work]{color:var(--tree-accent);background:var(--tree-selected)}
+    @media(max-width:600px){:root{--tree-row-height:104px}#projects .session strong{-webkit-line-clamp:3}}
+    @media(max-width:430px){:root{--tree-row-height:144px}.project-actions>summary{font-size:18px}#projects .project{gap:9px}#projects .project strong{font-size:15px}#projects .session{flex-wrap:wrap;align-content:center;gap:6px;padding-right:4px}.session-copy{flex-basis:100%}}
+    @media(prefers-reduced-motion:reduce){#projects .tree-icon,.project-actions .tree-icon{transition:none}}
+
+    #doctor-workspace{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--tree-panel);color:var(--tree-text);font:inherit}
+    #doctor-panel button{white-space:normal;overflow-wrap:anywhere}#doctor-path{overflow-wrap:anywhere;font-size:12px}
+    #doctor-results{padding-left:0;list-style:none}#doctor-results li{margin:8px 0;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+    #doctor-results li[data-kind=issue]{color:#ac594b}:root[data-theme=dark] #doctor-results li[data-kind=issue]{color:#e2a093}#doctor-results li[data-kind=ok],#doctor-results li[data-kind=repair]{color:var(--teal)}#doctor-panel .actions{flex-direction:row;flex-wrap:wrap}#doctor-actions button{flex:1 1 110px}
+
+    .own-plan-title{font-size:13px;line-height:1.45;margin:10px 0 4px;overflow-wrap:anywhere}
+
+    .startup-panel h2{font-size:23px;line-height:1.2;margin:0 0 10px;letter-spacing:-.6px}
+    .startup-intro{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 20px}
+    .startup-step{border-top:1px solid var(--line);padding:16px 0}
+    .startup-step h3{display:flex;align-items:center;gap:8px;font-size:13px;margin:0 0 8px}
+    .startup-number{display:grid;place-items:center;width:23px;height:23px;flex-shrink:0;border-radius:50%;background:#087e8019;color:var(--teal);font-size:11px}
+    .startup-step p,.startup-instructions{font-size:11px;line-height:1.65;color:var(--muted)}
+    .startup-status{margin:5px 0 8px}
+    .startup-step .secondary,.startup-step .primary{width:100%;margin:6px 0;font-size:11px}
+    .startup-instructions{padding-left:18px;margin:12px 0}
+    .startup-instructions li{padding-left:2px;margin:12px 0}
+    .startup-step summary{font-size:11px}
+  .plan-toggles{display:flex;gap:6px;flex-wrap:wrap}.plan-toggles button{flex:1}
+  #auto-plan-toggle[aria-pressed=true],#plan-review-toggle[aria-pressed=true]{background:#087c45;border-color:#087c45;color:#fff}
+  #auto-plan-toggle[aria-pressed=true]:hover,#plan-review-toggle[aria-pressed=true]:hover{background:#066538}
+  #plan-review-message{display:flex;align-items:flex-start;gap:6px}
+  #plan-review-message[hidden],#plan-review-indicator[hidden]{display:none}
+  #plan-review-indicator{display:inline-grid;place-items:center;flex:0 0 12px;width:12px;height:12px;margin-top:2px;font-size:12px;font-weight:700;line-height:1}
+  #plan-review-indicator[data-state=working]{box-sizing:border-box;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:review-spin 1s linear infinite}
+  #plan-review-indicator[data-state=success]{color:#087c45}
+  #plan-review-indicator[data-state=attention]{background:#946000;color:white;border-radius:50%}
+  :root[data-theme=dark] #plan-review-indicator[data-state=success]{color:#77d6a5}
+  @keyframes review-spin{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){#plan-review-indicator[data-state=working]{animation:none}}
+    .executor-group{margin:8px 10px 12px 28px;border-left:1px solid var(--tree-guide);padding-left:12px}.executor-group>summary{font-size:12px;color:var(--muted);cursor:pointer;overflow-wrap:anywhere}.executor-list{list-style:none;padding:0;margin:7px 0;display:grid;gap:6px}.executor-row{display:grid;gap:4px;width:100%;padding:10px;text-align:left;border:1px solid var(--tree-guide);border-radius:8px;background:var(--tree-panel);color:var(--tree-text);overflow-wrap:anywhere}.executor-row strong{font-size:13px}.executor-row span{font-size:11px;line-height:1.5}.executor-row[aria-current=page]{background:var(--tree-selected);border-color:var(--tree-accent)}.executor-status{font-weight:600}.executor-row [data-executor-time]{font-variant-numeric:tabular-nums;color:var(--muted)}
+    .brand .brand-title{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1}
+    .brand #prototype-version{font-size:11px;letter-spacing:0;white-space:nowrap;margin:0}
+    .brand .settings-button{width:40px;height:40px;margin:0}
+    .brand .settings-button svg{width:27px;height:27px}
+    #project-search{box-sizing:border-box;width:100%;min-width:0;padding:9px;border:1px solid var(--tree-branch);border-radius:7px;background:var(--tree-panel);color:inherit}
+    #project-options{max-height:35vh;overflow:auto;margin:6px 0}
+    #project-options button{display:block;overflow-wrap:anywhere}
+    #project-options button[aria-current=page]{background:var(--tree-hover);font-weight:650}
+    #project-options small{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+    #session-notice{font-size:11px;line-height:1.5;padding:10px;margin-top:8px;border:1px solid var(--tree-branch);border-radius:8px;overflow-wrap:anywhere}
+    #session-notice p{margin:4px 0 8px}
+    .plan-task-id{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+    .plan-task-mode{color:var(--muted)}.plan-task-status{font-weight:600}
+    .execution-stages{list-style:none;margin:0;padding:0;display:grid;gap:5px;min-width:0}
+    #execution-actions{min-width:0;max-width:100%;overflow-wrap:anywhere}
+    #execution-message,#command-issues{min-width:0;max-width:100%;overflow-wrap:anywhere}
+    .execution-stages li{min-width:0;padding:7px 9px;border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:7px;background:var(--tree-panel);overflow-wrap:anywhere}
+    .execution-stages strong{display:block;font-size:11px;line-height:1.4;color:var(--tree-text)}
+    .execution-stages span{display:block;margin-top:2px;font-size:10px;line-height:1.55;color:var(--muted)}
+    .execution-stages li[data-status=done],.execution-stages li[data-status=ready],.execution-stages li[data-status=sent]{border-left-color:var(--teal)}
+    .execution-stages li[data-status=blocked],.execution-stages li[data-status=unknown]{border-left-color:#b67232}
+    .execution-next-action{margin:3px 0 0;padding:8px 9px;border:1px solid var(--line);border-radius:7px;font-size:11px;line-height:1.6;overflow-wrap:anywhere;color:var(--tree-text)}
+    .execution-next-action[data-attention=true]{border-color:#b67232}
+    :root[data-theme=dark] .execution-stages li[data-status=blocked],:root[data-theme=dark] .execution-stages li[data-status=unknown]{border-left-color:#dfac74}
+    :root[data-theme=dark] .execution-next-action[data-attention=true]{border-color:#dfac74}
+  </style>
+</head>
+<body>
+<!-- Icons: Lucide. ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+—-
+
+The following Lucide icons are derived from the Feather project:
+
+airplay, alert-circle, alert-octagon, alert-triangle, aperture, arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down, arrow-left-circle, arrow-left, arrow-right-circle, arrow-right, arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar, cast, check, chevron-down, chevron-left, chevron-right, chevron-up, chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard, clock, code, columns, command, compass, corner-down-left, corner-down-right, corner-left-down, corner-left-up, corner-right-down, corner-right-up, corner-up-left, corner-up-right, crosshair, database, divide-circle, divide-square, dollar-sign, download, external-link, feather, frown, hash, headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link, loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2, minus-circle, minus-square, minus, monitor, moon, more-horizontal, more-vertical, move, music, navigation-2, navigation, octagon, pause-circle, percent, plus-circle, plus-square, plus, power, radio, rss, search, server, share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet, target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle, x-octagon, x-square, x, zoom-in, zoom-out
+
+The MIT License (MIT) (for the icons listed above)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+ -->
+<svg width="0" height="0" aria-hidden="true" style="position:absolute;pointer-events:none"><defs><symbol id="tree-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="tree-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="tree-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+<symbol id="tree-folder-open" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="tree-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+<symbol id="tree-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+<symbol id="tree-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+<symbol id="tree-list-chevrons-up-down" viewBox="0 0 24 24"><path d="M3 5h8"/><path d="M3 12h8"/><path d="M3 19h8"/><path d="m15 8 3-3 3 3"/><path d="m15 16 3 3 3-3"/></symbol></defs></svg>
+  <main class="shell">
+    <header class="brand"><div class="logo" aria-hidden="true">W</div><div class="brand-title"><strong>Web Pilot</strong><span id="prototype-version"></span></div><button id="open-settings" class="icon-button settings-button" title="Настройки и архив проектов" aria-label="Настройки и архив проектов" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.6 2.3-2 .9L4.3 5.5 2.5 8.6l1.7 1.6-.2 2.2-1.6 1.8L4.3 18l2.2-.6 1.8 1.1.7 2.5h4l.7-2.5 1.8-1.1 2.2.6 1.9-3.8-1.6-1.8-.2-2.2 1.7-1.6-1.8-3.1-2.1.7-2-.9L13 3Z"/><circle cx="11" cy="12" r="3.2"/></svg></button></header>
+    <div id="operation-progress" class="operation-progress" role="status" aria-live="polite" hidden></div>
+    <section id="active-projects" aria-label="Проекты">
+      <div class="heading projects-toolbar">
+        <details class="project-actions" id="project-actions">
+          <summary>Ваши проекты <svg class="tree-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#tree-chevron-down"/></svg></summary>
+          <div class="project-actions-menu">
+            <input id="project-search" type="search" placeholder="Найти проект" aria-label="Найти проект" aria-controls="project-options" autocomplete="off">
+            <div id="project-options" aria-label="Выбор проекта"></div>
+            <p id="project-search-empty" class="description" hidden>Проекты не найдены</p>
+            <div class="menu-separator" aria-hidden="true"></div>
+            <button id="create-workspace"><svg class="tree-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#tree-plus"/></svg><span>Создать проект</span></button>
+            <button id="add-workspace"><svg class="tree-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#tree-folder-open"/></svg><span>Открыть папку проекта</span></button>
+            <div class="menu-separator" aria-hidden="true"></div>
+            <button id="reload-chat"><svg class="tree-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#tree-refresh-cw"/></svg><span>Обновить ChatGPT</span></button>
+            <button id="project-archive">Архив проектов…</button>
+          </div>
+        </details>
+        <button id="toggle-projects" class="icon-button" title="Свернуть все проекты" aria-label="Свернуть все проекты"><svg class="tree-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#tree-list-chevrons-up-down"/></svg></button>
+      </div>
+      <ul id="projects" class="projects" aria-label="Workspace и сессии"><li class="empty">Выберите проект, чтобы начать<br>работу с его контекстом.</li></ul>
+      <section id="session-notice" aria-live="polite" hidden>
+        <strong id="session-notice-title"></strong><p id="session-notice-detail"></p>
+        <div class="actions">
+          <button id="retry-context" class="secondary" hidden>Повторить подготовку</button>
+          <button id="observe-context" class="secondary" hidden>Проверить статус</button>
+          <button id="new-context-session" class="secondary" hidden>Новая сессия</button>
+          <button id="return-chat" class="secondary" hidden>Вернуться к чату проекта</button>
+        </div>
+      </section>
+    </section>
+    <div class="scroll">
+      <div id="error-banner" class="error-banner" role="alert" hidden></div>
+      <section id="startup-panel" class="startup-panel" aria-labelledby="startup-title" hidden>
+        <p class="eyebrow">Первое знакомство</p>
+        <h2 id="startup-title">Начнём работу</h2>
+        <p class="startup-intro">Мы поможем войти в ChatGPT и подготовим компьютер для ваших проектов.</p>
+        <p id="startup-error" class="error-banner" role="alert" hidden></p>
+        <section class="startup-step" id="startup-account-step">
+          <h3><span class="startup-number">1</span> <span id="startup-account-title">Открытие ChatGPT</span></h3>
+          <p id="startup-account-status" class="startup-status" role="status"></p>
+          <div id="startup-account-body">
+            <p id="startup-account-instructions" hidden>Есть аккаунт? Нажмите «Войти» на странице справа. Нет аккаунта? Выберите там «Зарегистрироваться» / «Sign up» и следуйте шагам OpenAI.</p>
+            <p>Вход или создание аккаунта выполняются в этом окне после открытия сайта. Отдельно устанавливать ChatGPT не нужно.</p>
+            <div class="actions"><button id="startup-open-chat" class="primary" data-startup="chat">Открыть сайт ChatGPT</button><button id="startup-signup" class="secondary" data-startup="signup" hidden>У меня ещё нет аккаунта</button><button id="startup-copy-diagnostics" class="secondary" data-startup="copy-diagnostics" hidden>Скопировать диагностику</button></div>
+            <p id="startup-diagnostics-copied" class="startup-status" role="status" hidden>Диагностика скопирована. Вставьте её в сообщение разработчику.</p>
+            <p id="startup-signup-help" hidden>На странице справа выберите «Sign up» / «Зарегистрироваться». Создайте аккаунт, подтвердите почту, если это потребуется, и завершите вход. Затем нажмите «Проверить вход» ниже.</p>
+            <button id="startup-account-check" class="text-button" data-startup="check" hidden>Проверить вход и продолжить</button>
+          </div>
+        </section>
+        <section class="startup-step">
+          <h3><span class="startup-number">2</span> Подготовка компьютера</h3>
+          <p id="startup-components-status" class="startup-status" role="status"></p>
+          <div id="startup-components-body">
+            <p id="startup-components-help"></p>
+            <button id="startup-install-git" class="primary" data-startup="install-git" hidden>Установить компонент Apple</button>
+            <button class="secondary" data-startup="check" data-runtime-action>Проверить и продолжить</button>
+          </div>
+        </section>
+        <section class="startup-step">
+          <h3><span class="startup-number">3</span> Подключение к файлам</h3>
+          <p id="startup-tunnel-status" class="startup-status" role="status"></p>
+          <div id="startup-tunnel-body">
+            <p>Нужно личное защищённое подключение между ChatGPT и этим компьютером. Оно называется туннелем. Для нового компьютера создайте отдельное подключение.</p>
+            <p id="startup-tunnel-progress" class="startup-status" role="status"></p>
+            <ol class="startup-instructions">
+              <li id="startup-tunnel-create" value="1">
+                <strong>ID туннеля — шаг 1 из 2</strong>
+                <p>На сайте OpenAI Platform войдите в свой аккаунт или завершите регистрацию. В разделе Tunnels создайте туннель и свяжите его со своим пространством ChatGPT.</p>
+                <button class="secondary" data-startup="tunnels">Открыть Tunnels в OpenAI Platform ↗</button>
+                <p>Нажмите <strong>Copy tunnel ID</strong> рядом с созданным туннелем. Можно выделить ID, начинающийся с <code>tunnel_</code>, и скопировать: <strong>Command+C на Mac</strong> или <strong>Ctrl+C в Windows</strong>.</p>
+                <p>Вернитесь в Web Pilot. Он примет ID и откроет шаг API key. Если шаг не переключился, нажмите «Вставить ID туннеля». В открывшемся системном окне вставьте ID: <strong>Command+V на Mac</strong> / <strong>Ctrl+V в Windows</strong>, затем подтвердите ввод.</p>
+                <button class="secondary" data-startup="paste-tunnel-id" data-runtime-action>Вставить ID туннеля</button>
+              </li>
+              <li id="startup-tunnel-key" value="2" hidden>
+                <strong>Личный API key — шаг 2 из 2</strong>
+                <p>ID уже сохранён для этого шага. Теперь создайте секретный ключ OpenAI: он начинается с <code>sk-</code> и разрешает подключение к вашему туннелю.</p>
+                <button class="secondary" data-startup="keys">Открыть API keys в OpenAI Platform ↗</button>
+                <p>На открывшейся странице выберите ту же организацию, что и для туннеля. Нажмите <strong>Create new secret key</strong> («Создать новый секретный ключ»), задайте имя, например <strong>Web Pilot</strong>, выберите проект, если сайт его запрашивает, и подтвердите создание ключа.</p>
+                <p>В появившемся окне нажмите <strong>Copy</strong> и скопируйте <strong>весь секретный ключ sk-…</strong>. Здесь нужен сам ключ, а не его имя или ID туннеля. Если полное значение уже недоступно, создайте новый ключ.</p>
+                <p>Вернитесь в Web Pilot: он получит скопированный ключ и начнёт подключение. Если этого не произошло, нажмите <strong>«Ввести API key»</strong> ниже и вставьте ключ в открывшееся защищённое поле: <strong>Command+V на Mac</strong> / <strong>Ctrl+V в Windows</strong>. Подтвердите ввод. ID туннеля повторно вводить не нужно.</p>
+                <p>Для работы вашему аккаунту нужны права <strong>Tunnels: Read + Use</strong> в организации туннеля. Если доступа нет, их выдаёт владелец организации или администратор.</p>
+              </li>
+            </ol>
+            <div id="startup-tunnel-input" hidden><p id="startup-tunnel-input-help" class="settings-help">Ключ сохраняется в защищённом хранилище этого компьютера. Ввод открывается отдельным системным окном.</p><button class="secondary" data-startup="configure-tunnel" data-runtime-action>Ввести API key</button></div>
+            <details><summary>Нет раздела Tunnels или доступа?</summary><p>Проверьте выбранную организацию OpenAI. Для создания нужны права Tunnels Read + Manage, для использования — Read + Use. Доступ к developer mode в ChatGPT проверяется отдельно; в управляемом пространстве его выдаёт администратор.</p><button class="secondary" data-startup="help">Официальная инструкция ↗</button></details>
+          </div>
+        </section>
+        <section class="startup-step">
+          <h3><span class="startup-number">4</span> Подключение в ChatGPT</h3>
+          <div id="startup-plugin-body" hidden>
+            <p>Туннель готов. Теперь добавьте подключение к этому компьютеру в ChatGPT — оно не появляется автоматически.</p>
+            <ol>
+              <li>Откройте <strong>Plugins в основном сайдбаре ChatGPT</strong>. Список Plugins в настройках показывает уже установленные подключения.</li>
+              <li>Нажмите <strong>«+»</strong>, укажите имя <strong id="startup-plugin-name">Workflow Pilot Local Mac</strong> и описание «Доступ к проектам на этом компьютере».</li>
+              <li>Выберите <strong>Connection: Tunnel</strong> и туннель этого компьютера. Для этого локального подключения выберите <strong>No authentication</strong> и создайте подключение.</li>
+              <li>Дождитесь списка инструментов. Если он не появился, проверьте выбранный туннель и его связь с вашим пространством ChatGPT.</li>
+            </ol>
+            <p>Если подключение к этому компьютеру уже есть, повторно добавлять его не нужно. Проверьте его туннель и список инструментов; одно название не подтверждает доступ.</p>
+            <button class="secondary" data-startup="plugins">Открыть Plugins в ChatGPT</button>
+            <p id="startup-plugin-platform" hidden>Для этой Windows используйте подключение «Workflow Pilot Local Windows» и туннель этого компьютера. Если раньше вы уже создали «Codex Local Windows MCP» с этим же туннелем, новое подключение не нужно: откройте прежнее и обновите в нём список инструментов (Refresh). Подключение Mac остаётся отдельным. Windows-подключение нужно проверить, даже если служба туннеля уже работает.</p>
+            <div id="startup-plugin-permissions">
+              <h4>Разрешения MCP</h4>
+              <p>После создания подключения откройте в ChatGPT <strong>Settings → Plugins → ваше подключение → Permissions</strong>. Выберите имя, которое вы задали для этого компьютера.</p>
+              <ul>
+                <li><strong>Always ask</strong> — спрашивать перед чтением и изменениями.</li>
+                <li><strong>Allow read actions</strong> — читать без подтверждения, спрашивать перед изменениями.</li>
+                <li><strong>Allow low-risk actions</strong> — автоматически разрешать действия низкого риска; действия с чувствительными данными могут быть отклонены. Это режим по умолчанию.</li>
+                <li><strong>Allow all actions</strong> — читать и выполнять действия без повторных запросов подтверждения.</li>
+              </ul>
+              <p>Для удобной работы агента без постоянных подтверждений можно выбрать <strong>Allow all actions</strong>. Агент сможет в том числе изменять файлы через это MCP без отдельного вопроса. Режим выбираете вы; изменить его можно здесь же в любой момент.</p>
+              <p class="settings-help">Эта настройка управляет подтверждениями. Права самого подключения и ограничения ChatGPT сохраняются.</p>
+            </div>
+            <details id="startup-plugin-help"><summary>Нет кнопки «+» или подключение не работает?</summary><p>В ChatGPT откройте Settings → Security and login → Developer mode. Доступ зависит от настроек аккаунта и пространства. После изменения подключения обновите его список инструментов через Refresh.</p></details>
+          </div>
+          <p id="startup-plugin-wait" class="startup-status">После настройки туннеля.</p>
+        </section>
+        <section class="startup-step">
+          <h3><span class="startup-number">5</span> Первый проект</h3>
+          <div id="startup-project-body">
+            <p>После добавления подключения создайте новый проект или выберите существующую папку. В новом чате откройте меню инструментов и добавьте подключение к этому компьютеру.</p>
+            <p>Попросите агента прочитать и изменить тестовый файл в папке проекта. Если он видит только подключение другого компьютера, выберите нужное подключение и начните новый чат с ним.</p>
+            <div class="actions"><button id="startup-continue" class="primary" data-startup="continue">Создать новый проект</button>
+            <button id="startup-existing" class="secondary" data-startup="existing">Добавить существующую папку</button></div>
+            <p class="settings-help">Мы проверим выбранную папку и покажем, что нужно добавить для работы с проектом.</p>
+            <p class="settings-help">Готовность туннеля и передача контекста ещё не подтверждают доступ агента к файлам. Результат проверяется по сохранённому файлу.</p>
+          </div>
+          <p id="startup-project-wait" class="startup-status">Завершите предыдущие шаги.</p>
+        </section>
+      </section>
+      <section id="workspace-health" class="notice" aria-live="polite" hidden>
+        <span id="workspace-health-message"></span>
+        <div id="workspace-health-actions" class="actions" hidden>
+          <button id="workspace-health-retry" class="secondary">Повторить проверку</button>
+          <button id="workspace-health-doctor" class="secondary">Доктор проекта</button>
+        </div>
+      </section>
+      <section id="settings-panel" class="setup" hidden>
+        <div class="heading"><h2>Настройки</h2><button id="close-settings" class="icon-button" title="Вернуться к проектам" aria-label="Закрыть настройки">✕</button></div>
+        <section class="settings-section" aria-label="Подключение">
+          <h3 id="host-platform-label">На вашем Mac</h3>
+          <p id="connection-detail" class="description"></p><p id="session-detail" class="description"></p>
+          <button id="open-startup" class="secondary" hidden>Начальная настройка</button>
+        </section>
+        <section id="executor-recovery" class="settings-section" aria-label="Восстановление исполнителей" aria-live="polite" hidden>
+          <h3>Восстановление исполнителей</h3>
+          <p class="settings-help">Если папки родителя и исполнителя уже удалены, можно убрать конкретную устаревшую запись после подтверждения. Облачные чаты ChatGPT сохраняются.</p>
+          <div id="executor-recovery-items"></div>
+        </section>
+        <section class="settings-section" aria-labelledby="parallel-settings-title">
+          <h3 id="parallel-settings-title">Параллельное выполнение</h3>
+          <label style="display:flex;align-items:center;gap:8px"><input id="parallel-allowed" type="checkbox" style="width:auto;margin:0">Разрешить параллельное выполнение</label>
+          <div id="parallel-options" hidden>
+            <label for="parallel-max-workers">Максимум одновременно работающих исполнителей</label>
+            <input id="parallel-max-workers" type="number" min="1" max="9007199254740991" step="1" value="2" inputmode="numeric" aria-describedby="parallel-settings-help parallel-settings-error">
+          </div>
+          <p id="parallel-settings-help" class="settings-help">Применяется только к новым сессиям. Агент определит, полезно ли выполнять задачи параллельно.</p>
+          <p id="parallel-settings-error" class="settings-help" role="alert" hidden></p>
+        </section>
+        <section id="doctor-panel" class="settings-section" aria-label="Доктор проекта">
+          <p class="eyebrow">Доктор проекта</p>
+          <label for="doctor-workspace">Проект для проверки</label><select id="doctor-workspace"></select>
+          <p id="doctor-path" class="path"></p>
+          <p id="doctor-status" class="description" role="status" aria-live="polite"></p>
+          <button id="doctor-run" type="button" class="primary">Проверить и исправить</button>
+          <ul id="doctor-results" class="setup-checks" aria-label="Результат проверки"></ul>
+          <p id="doctor-backup-note" class="settings-help" hidden></p>
+          <button id="doctor-backup" type="button" class="secondary" hidden>Открыть резервную копию</button>
+          <button id="doctor-review" type="button" class="secondary" hidden>Открыть проверку папки</button>
+          <div id="doctor-actions" class="actions" hidden>
+            <button id="doctor-open" type="button" class="primary">Открыть сессию</button>
+            <button id="doctor-chat" type="button" class="secondary">Новый Chat</button>
+            <button id="doctor-work" type="button" class="secondary">Новый Work</button>
+          </div>
+        </section>
+        <div class="settings-section">
+          <p class="eyebrow">Оформление</p>
+          <div class="theme-choice" role="group" aria-label="Тема оболочки Web Pilot"><button id="theme-light" type="button" class="secondary" aria-pressed="true">Светлая</button><button id="theme-dark" type="button" class="secondary" aria-pressed="false">Тёмная</button></div>
+          <p class="settings-help">Меняет левый сайдбар и верхнюю панель Workflow Pilot.</p>
+          <button id="open-chat-colors" type="button" class="secondary" style="width:100%;margin-top:12px">Цвета чата…</button>
+          <p class="settings-help">Фон чата, плашка сообщений и цвета текста. Изменения сразу видны в чате.</p>
+          <p class="eyebrow" style="margin-top:16px">Интерфейс ChatGPT</p>
+          <div class="theme-choice" role="group" aria-label="Отображение вызовов инструментов"><button id="tool-calls-hide" type="button" class="secondary" aria-pressed="true">Скрывать</button><button id="tool-calls-show" type="button" class="secondary" aria-pressed="false">Показывать</button></div>
+          <p class="settings-help">Скрывает служебные карточки вызовов инструментов в диалоге. Сами инструменты и MCP продолжают работать.</p>
+        </div>
+        <div id="local-runtime-section" class="settings-section" hidden>
+          <p id="local-runtime-title" class="eyebrow">Локальные инструменты</p>
+          <p id="local-runtime-status" class="description" role="status" aria-live="polite"></p>
+          <p id="local-runtime-help" class="settings-help"></p>
+        </div>
+        <div id="chatgpt-channel-section" class="settings-section" hidden>
+          <p class="eyebrow">Подключение ChatGPT</p>
+          <div class="theme-choice" role="group" aria-label="Канал ChatGPT к локальному MCP">
+            <button id="chatgpt-channel-secure" type="button" class="secondary" aria-pressed="true">Secure MCP Tunnel</button>
+            <button id="chatgpt-channel-vps" type="button" class="secondary" aria-pressed="false">VPS</button>
+          </div>
+          <p id="chatgpt-channel-status" class="description" role="status" aria-live="polite"></p>
+          <p id="chatgpt-channel-hint" class="settings-help"></p>
+          <p id="vps-status" class="description" data-ready="false"></p>
+          <div id="vps-connector" class="actions" hidden>
+            <p class="path">Адрес коннектора: <span id="vps-connector-url"></span></p>
+            <button id="vps-connector-copy" type="button" class="secondary">Скопировать адрес коннектора</button>
+          </div>
+          <div class="actions"><button id="chatgpt-channel-refresh" type="button" class="secondary">Проверить</button></div>
+          <p class="settings-help">Secure MCP Tunnel — туннель OpenAI. VPS — собственный сервер: ChatGPT подключается коннектором на адрес сервера, tunnel-client не запускается. Туннель VPS работает при любом выборе: через него подключается Claude. Полный адрес коннектора только копируется и нигде не сохраняется.</p>
+        </div>
+        <p class="eyebrow">Архив проектов</p>
+        <p class="description">Архив сохраняет папку проекта и все его сессии.</p>
+      </section>
+      <section id="setup-panel" class="setup" aria-live="polite" hidden>
+        <h2 id="setup-title">Новый проект</h2><p id="setup-intro" class="description"></p>
+        <form id="setup-form">
+          <button id="setup-parent-button" type="button" class="secondary">Выбрать расположение папки для проектов</button><p id="setup-parent" class="path" hidden></p>
+          <label id="setup-name-label" for="setup-name" hidden>Имя проекта</label><input id="setup-name" autocomplete="off" maxlength="120" placeholder="Мой проект" required hidden disabled>
+          <button id="setup-preview" type="submit" class="primary" hidden>Продолжить</button>
+        </form>
+        <p id="setup-path" class="setup-path" hidden></p>
+        <ul id="setup-checks" class="setup-checks"></ul><ul id="setup-issues" class="setup-issues"></ul>
+        <p id="setup-error" class="error-banner" role="alert" hidden></p>
+        <p id="setup-notes" class="setup-notes" hidden></p>
+        <details id="setup-files" hidden><summary id="setup-file-summary"></summary><ul id="setup-file-list" class="setup-file-list"></ul></details>
+        <div id="setup-experience" hidden><p class="eyebrow">Первая сессия проекта</p><div class="session-choice" role="group" aria-label="Тип первой сессии"><button id="setup-experience-chat" type="button" class="secondary">Chat</button><button id="setup-experience-work" type="button" class="secondary">Work</button></div><p class="settings-help">Нажмите Chat или Work — проект будет создан и сразу откроется первая сессия. Chat — обычный разговор, Work — рабочий режим ChatGPT. Модель выбирается внутри ChatGPT.</p></div>
+        <div class="actions"><button id="setup-apply" class="primary" hidden>Создать и открыть</button><button id="setup-doctor" type="button" class="primary" hidden>Доктор проекта</button><button id="setup-refresh" class="secondary" hidden>Проверить ещё раз</button><button id="setup-cancel" class="text-button">Отмена</button></div>
+      </section>
+      <section id="workspace-details" hidden>
+        <section id="assignment-card" class="card" aria-live="polite" hidden>
+          <p class="eyebrow">Назначение исполнителя</p>
+          <h3 id="assignment-title"></h3>
+          <p id="assignment-status" class="description" role="status"></p>
+        </section>
+        <section id="plan-card" class="card plan-card" aria-live="polite">
+          <div class="plan-head"><p class="eyebrow">Текущий план проекта</p><span id="agent-time" class="agent-time" role="timer" hidden></span></div>
+          <h3 id="plan-title" class="own-plan-title"></h3>
+          <p id="plan-status" class="plan-status"></p>
+          <p id="plan-note" class="plan-note" hidden></p>
+          <p id="plan-reason" class="plan-reason" hidden></p>
+          <ul id="plan-tasks" class="plan-tasks" aria-label="Микрозадачи плана"></ul>
+          <div id="execution-actions" class="actions" hidden>
+            <p id="execution-message" class="description" role="status"></p>
+            <ol id="execution-stages" class="execution-stages" aria-label="Проверяемые этапы завершения"></ol>
+            <p id="execution-next-action" class="execution-next-action" role="status"></p>
+            <div id="command-issues"></div>
+          </div>
+          <div class="actions">
+            <div class="plan-toggles">
+              <button id="auto-plan-toggle" class="secondary" type="button" aria-pressed="false">Включить автовыполнение</button>
+              <button id="plan-review-toggle" class="secondary" type="button" aria-pressed="false" title="Ревью нового плана через Claude CLI: включение разрешает передать рецензенту документы задачи. Независимо от автовыполнения.">Review</button>
+            </div>
+            <p id="auto-plan-message" class="description" role="status" hidden></p>
+            <p id="plan-review-message" class="description" role="status" hidden><span id="plan-review-indicator" aria-hidden="true" hidden></span><span id="plan-review-text"></span></p>
+          </div>
+        </section>
+      </section>
+      <section id="conversation-recovery" class="card" role="status" aria-live="polite" hidden>
+        <h3>Связь с ChatGPT</h3>
+        <p id="conversation-recovery-message" class="description"></p>
+        <p id="conversation-recovery-explanation" class="description">Перезагружается текущая страница чата. Новый чат не создаётся, сообщение повторно не отправляется.</p>
+        <button id="reconnect-chat" class="secondary" aria-describedby="conversation-recovery-message conversation-recovery-explanation">Перезагрузить страницу чата</button>
+      </section>
+    </div>
+    <div id="sidebar-splitter" class="sidebar-splitter" role="separator" aria-orientation="vertical" aria-label="Изменить ширину панели проектов" tabindex="0"></div>
+  </main>
+  <dialog id="rename-dialog" class="rename-dialog" aria-labelledby="rename-dialog-title">
+    <div class="rename-dialog-card">
+      <h2 id="rename-dialog-title">Переименовать</h2>
+      <label id="rename-dialog-label" for="rename-dialog-input">Новое название</label>
+      <input id="rename-dialog-input" type="text" autocomplete="off" maxlength="80" required>
+      <div class="rename-dialog-actions">
+        <button id="rename-dialog-cancel" type="button" class="secondary">Отмена</button>
+        <button id="rename-dialog-save" type="button" class="primary">Сохранить</button>
+      </div>
+    </div>
+  </dialog>
+  <script type="module" src="./sidebar.mjs"></script>
+  <script type="module" src="./startup.mjs"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Workflow Pilot uses the microphone only when you enable voice input in ChatGPT.</string>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>Workflow Pilot shares your location with ChatGPT only when ChatGPT requests it while the app is in use.</string>
+  <key>NSLocationUsageDescription</key>
+  <string>Workflow Pilot shares your location with ChatGPT only when ChatGPT requests it while the app is in use.</string>
+</dict>
+</plist>
