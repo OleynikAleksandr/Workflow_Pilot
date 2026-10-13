@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "^(startup|resume|clear|compact)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel)/scripts/workflow\" hook session-start",
+            "commandWindows": "powershell.exe -NoLogo -NoProfile -NonInteractive -Command \"$ErrorActionPreference = 'Stop'; [Console]::InputEncoding = [Text.UTF8Encoding]::new($false); [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); $OutputEncoding = [Text.UTF8Encoding]::new($false); $d = [IO.DirectoryInfo]::new((Get-Location).Path); while ($null -ne $d -and -not (Test-Path -LiteralPath (Join-Path $d.FullName '.harness/kit/cli.mjs'))) { $d = $d.Parent }; if ($null -eq $d) { throw 'Workflow project not found' }; $node = Join-Path $d.FullName '.harness/runtime/node.exe'; if (-not (Test-Path -LiteralPath $node)) { throw 'Workflow Node runtime is missing' }; $payload = [Console]::In.ReadToEnd(); $payload | & $node (Join-Path $d.FullName '.harness/kit/cli.mjs') hook session-start; exit $LASTEXITCODE\"",
+            "timeout": 20,
+            "additionalContextLimit": 0,
+            "statusMessage": "Восстановление текущего плана проекта"
+          }
+        ]
+      }
+    ]
+  }
+}

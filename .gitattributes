@@ -1,0 +1,5 @@
+
+# workflow-kit:begin
+/.harness/** -text
+/scripts/workflow* -text
+# workflow-kit:end

@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+root=$(git rev-parse --show-toplevel)
+for candidate in "$root/.harness/runtime/node" "$root/.harness/runtime/node.exe" /opt/homebrew/bin/node /usr/local/bin/node "$(command -v node || true)"; do
+  if [ -n "$candidate" ] && [ -x "$candidate" ] && "$candidate" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)' 2>/dev/null; then
+    exec "$candidate" "$root/scripts/workflow.mjs" "$@"
+  fi
+done
+printf '%s\n' 'Требуется Node.js 22+. Откройте проект в Project Workflow Kit для диагностики.' >&2
+exit 1

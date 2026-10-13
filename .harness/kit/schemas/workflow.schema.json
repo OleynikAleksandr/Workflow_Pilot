@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workflow configuration v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "profile",
+    "stack",
+    "checks",
+    "budget",
+    "documentation"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "profile": {
+      "enum": [
+        "DISCOVERY",
+        "DEVELOPMENT"
+      ]
+    },
+    "stack": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "executable",
+          "args",
+          "required",
+          "timeout_ms"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "executable": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600000
+          },
+          "stage": {
+            "enum": [
+              "commit",
+              "push"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "syntax",
+              "test",
+              "package",
+              "installed"
+            ]
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "hard_bytes"
+      ],
+      "properties": {
+        "document_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 28000
+        },
+        "soft_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hard_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hard_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        }
+      }
+    },
+    "documentation": {
+      "type": "object",
+      "required": [
+        "mappings"
+      ]
+    }
+  }
+}
