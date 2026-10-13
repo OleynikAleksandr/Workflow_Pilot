@@ -1,6 +1,4 @@
 // Temporary migration scope: main/root modules remain until T004–T008; bridges disappear in T011.
-// Only these existing Kit modules may take part in a cycle. T007 removes/reviews this exception.
-const kitCycle = '^packages/workflow-kit/src/lib/(transaction|task-integration|validate|task-assignment|actions|plan-review|recovery)\\.mjs$';
 module.exports = {
   forbidden: [
     { name: 'session-coordination-uses-browser-port', severity: 'error',
@@ -29,7 +27,7 @@ module.exports = {
       to: { path: '^src/(auto-plan|project-auto-plan|project-session-auto-plan|plan-review|review-continuation|automation-send-state|auto-plan-state|plan-monitor|parallel-execution|parallel-kit|executor-session|command-activity|project-input-watch|execution-projection|parallel-settings)\\.mjs$' } },
     { name: 'control-does-not-use-root-bridges', severity: 'error',
       from: { path: '^src/control/' }, to: { path: '^src/[^/]+\\.mjs$' } },
-    { name: 'no-new-cycles', severity: 'error', from: {}, to: { circular: true, via: { pathNot: kitCycle } } },
+    { name: 'no-new-cycles', severity: 'error', from: {}, to: { circular: true } },
     { name: 'no-unresolved-imports', severity: 'error', from: {}, to: { couldNotResolve: true } },
   ],
   options: {

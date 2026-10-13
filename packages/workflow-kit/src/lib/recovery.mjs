@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { reviewSummary } from './plan-review.mjs';
+import { reviewSummary } from './review-state.mjs';
 import path from 'node:path';
 import { VERSION, planPath, CONFIG, check, contextPath, textFile, atomic, json, hash, id, errorResult } from './common.mjs';
 import { validate, documentByteLimit, resolveReferences } from './validate.mjs';

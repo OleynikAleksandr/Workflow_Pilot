@@ -5,8 +5,8 @@ import { git, run, repoRoot, head, allChanges, identityReady, localPath, ensureI
 import { listPlans, preflightPlanMigration, migrateLegacyPlans } from './session-plans.mjs';
 import { status } from './actions.mjs';
 import { readPlan, emptyPlan, writePlan, projectContextPaths } from './plan.mjs';
-import { journal } from './validate.mjs';
-import { commitCandidate, locked } from './transaction.mjs';
+import { journal, locked } from './transaction-state.mjs';
+import { commitCandidate } from './transaction.mjs';
 import { payload, hooksDirectory, hookContent, installationManifest, HOOK_COMMAND, BLOCK_START, BLOCK_END, MD_START, MD_END } from './installation-files.mjs';
 import { prepareRuntime, launcherCommand, windows } from './platform.mjs';
 import { inspectionInputs } from './inspection-inputs.mjs';
@@ -14,7 +14,7 @@ import { inspectionInputs } from './inspection-inputs.mjs';
 const hookNames = ['pre-commit', 'commit-msg', 'post-commit', 'pre-push'];
 const hookName = entry => path.posix.basename(entry.path.replaceAll('\\', '/'));
 // Versions this installer upgrades in place. Consumers (Web Pilot Workspace Setup) read the same list.
-export const upgradeFrom = new Set(['1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.4.2', '1.4.3', '1.4.4', '1.4.5', '1.4.6', '1.4.7', '1.4.8', '1.4.9', '1.4.10', '1.4.11', '1.4.12', '1.4.13', '1.5.0', '1.5.1', '1.5.2', '1.5.3', '1.5.4', '1.5.5', '1.5.6', '1.6.0', '1.6.1', '1.6.2', '1.6.3', '1.6.4', '1.7.0', '1.7.1']);
+export const upgradeFrom = new Set(['1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.4.2', '1.4.3', '1.4.4', '1.4.5', '1.4.6', '1.4.7', '1.4.8', '1.4.9', '1.4.10', '1.4.11', '1.4.12', '1.4.13', '1.5.0', '1.5.1', '1.5.2', '1.5.3', '1.5.4', '1.5.5', '1.5.6', '1.6.0', '1.6.1', '1.6.2', '1.6.3', '1.6.4', '1.7.0', '1.7.1', '1.7.2']);
 function migrateNonePlanForContinuity(root) {
   const file = path.join(root, PLAN);
   if (!fs.existsSync(file)) return false;
@@ -126,6 +126,7 @@ function stableInspection(opts, diagnostics) {
     }
     preview.inspection_key = after.key;
     preview.transaction_pending = after.transaction;
+    preview.operation_pending = after.operation;
     return { preview, doctor: diagnosed ?? { ...publicPreview(preview), diagnostics: [] } };
   }
 }
@@ -179,6 +180,7 @@ function upgradeInstallation(root, preview) {
   return locked(root, () => {
     const old = readJSON(path.join(root, MANIFEST));
     check(upgradeFrom.has(old.version), 'UNSUPPORTED_MIGRATION', 'Версия установки изменилась после preview.');
+    check(!journal(root), 'TRANSACTION_PENDING', 'Сначала завершите незавершённую транзакцию прежним Kit. Runtime не изменён.');
     // Worktree contracts pin their inherited runtime. Never migrate a live
     // assignment or merge journal as a side effect of upgrading its parent.
     check(!fs.existsSync(localPath(root,'assignment.json'))&&!fs.existsSync(localPath(root,'integration.json')),

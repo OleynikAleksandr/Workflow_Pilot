@@ -68,6 +68,10 @@ function inspectProject(opts) {
   }
   result.checks.push({ label: 'Файлы комплекта и документы', ok: !result.issues.length });
   if (result.issues.length) return result; // Never execute a damaged installation.
+  if (p.transaction_pending || p.operation_pending) {
+    result.issues.push({ path: 'Workflow Kit', reason: 'Другая операция или незавершённая транзакция удерживает проект. Завершите её в прежнем клиенте и повторите проверку.' });
+    return result;
+  }
   if (p.upgradeable) {
     result.checks.push({ label: `Workflow Kit ${p.version} → ${VERSION}`, ok: true });
     result.action = 'upgrade'; result.warnings.push('Совместимый runtime будет обновлён; активный plan и пользовательские документы сохранятся.');

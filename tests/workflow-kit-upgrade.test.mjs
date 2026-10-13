@@ -81,7 +81,7 @@ test('released 1.6.3 review survives upgrade and adopts author positions without
   assert.equal(fs.existsSync(path.join(project,spec)),true);
 });
 
-for(const [version,revision] of [['1.5.6','ab6d3d99e5da577d45bfc3b78575f201817948b0'],['1.6.4','db9945ac81a530d14d84e92e60b2c850f9ef8ff6']])
+for(const [version,revision] of [['1.5.6','ab6d3d99e5da577d45bfc3b78575f201817948b0'],['1.6.4','db9945ac81a530d14d84e92e60b2c850f9ef8ff6'],['1.7.2','workflow-pilot-kit-1.7.2-baseline']])
 test('real '+version+' task start survives kit-update and new-runtime task commit', t => {
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'kit-156-transition-'));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));

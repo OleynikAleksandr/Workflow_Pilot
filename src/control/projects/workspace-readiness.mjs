@@ -46,7 +46,7 @@ export class WorkspaceReadiness {
         this.assertCurrent(job);
         const before = await this.fingerprint(workspace);
         this.assertCurrent(job);
-        if (before.transaction) throw fail('READINESS_BUSY', 'Ожидается завершение транзакции проекта. Повторите проверку.');
+        if (before.transaction || before.operation) throw fail('READINESS_BUSY', 'Ожидается завершение операции или транзакции проекта. Повторите проверку.');
         const cached = this.cache.get(workspace);
         if (cached?.key === before.key) {
           this.cache.delete(workspace); this.cache.set(workspace, cached);
@@ -58,7 +58,7 @@ export class WorkspaceReadiness {
         catch(error){if(error.code==='CONCURRENT_CHANGE'&&attempt===0)continue;throw error;}
         const after = await this.fingerprint(workspace);
         this.assertCurrent(job);
-        if (before.key !== after.key || after.transaction || (result.inputKey && result.inputKey !== after.key)) continue;
+        if (before.key !== after.key || after.transaction || after.operation || (result.inputKey && result.inputKey !== after.key)) continue;
         if (result.ready) {
           this.cache.set(workspace, { key: after.key, result: copy(result) });
           while (this.cache.size > this.maxEntries) this.cache.delete(this.cache.keys().next().value);
