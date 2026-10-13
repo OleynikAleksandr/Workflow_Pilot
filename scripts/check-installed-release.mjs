@@ -135,8 +135,9 @@ for (const resources of [targets[0], targets[3]]) {
 
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'web-pilot-installed-observer-'));
 try {
-  for (const file of ['page-state.mjs','page-state-bridge.mjs','chatgpt-dom.mjs','chatgpt-composer.mjs','auto-plan.mjs'])
-    await fs.writeFile(path.join(temporary, file), extractFile(path.join(targets[0], 'app.asar'), 'src/' + file));
+  for (const file of ['page-state.mjs','page-state-bridge.mjs','chatgpt-dom.mjs','chatgpt-composer.mjs'])
+    await fs.writeFile(path.join(temporary, file), extractFile(path.join(targets[0], 'app.asar'), 'src/execution/browser/' + file));
+  await fs.writeFile(path.join(temporary, 'auto-plan.mjs'), extractFile(path.join(targets[0], 'app.asar'), 'src/auto-plan.mjs'));
   await fs.writeFile(path.join(temporary, 'progress.mjs'), extractFile(path.join(targets[0], 'app.asar'), 'src/ui/progress.mjs'));
   const installedAuto = await import(pathToFileURL(path.join(temporary, 'auto-plan.mjs')).href);
   assert.equal(installedAuto.CONTINUE_TEXT, 'Продолжай');

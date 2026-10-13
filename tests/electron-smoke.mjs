@@ -1,12 +1,12 @@
 import { ChatGPTComposer } from '../src/chatgpt-composer.mjs';
 import { PlanReviewClient } from '../src/plan-review.mjs';
-import { autoScrollPageScript } from '../src/chatgpt-auto-scroll.mjs';
+import { autoScrollPageScript } from '../src/execution/browser/chatgpt-auto-scroll.mjs';
 import { VERSION as BUNDLED_KIT_VERSION } from '@webpilot/workflow-kit/lib/common';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import http from 'node:http';
-import { openStartupPage } from '../src/browser-startup.mjs';
+import { openStartupPage } from '../src/execution/browser/browser-startup.mjs';
 import { readinessContextKey } from '../src/context-inputs.mjs';
 import { TunnelClipboard } from '../src/tunnel-clipboard.mjs';
 import { StartupNetworkTrace } from '../src/startup-network-trace.mjs';
@@ -16,7 +16,7 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { nativeTheme, clipboard, BrowserWindow, dialog } from 'electron';
-import { ChatColors } from '../src/chatgpt-colors.mjs';
+import { ChatColors } from '../src/execution/browser/chatgpt-colors.mjs';
 import { readWorkspace, WorkspaceSessions } from '../src/workspace-session.mjs';
 import { createScope, startTask } from '@webpilot/workflow-kit/lib/actions';
 import { withSessionPlan } from '@webpilot/workflow-kit/lib/session-plans';
@@ -212,7 +212,7 @@ async function verifyUninterruptedRequest(dataDir) {
   }
 }
 
-export async function run({ app, window, sidebar, store, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, deletion, execution }) {
+export async function run({ app, window, sidebar, store, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, execution }) {
   // Test actions follow the visible page; production controllers retain their own page.
   const currentObject=key=>new Proxy({}, {
     get:(_target,property)=>{const value=getLive()[key][property];return typeof value==='function'?value.bind(getLive()[key]):value;},
@@ -470,7 +470,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   if (manualDeliveryArmed) ChatGPTComposer.prototype.deliver = async function(options) {
     await controller.composer.inspect({action:'attach',attachments:options.attachments,requestId:options.requestId});
     await controller.composer.inspect({ action: 'fill', text: options.text, requestId: options.requestId });
-    const ready=await controller.composer.waitForSendReady(options,0,()=>true);
+    const ready=await this.waitForSendReady(options,0,()=>true);
     assert.equal(ready.attachmentsReady,true,'manual Send waits for every uploaded file');
     return { state: 'deferred', reason: 'DRAFT_CHANGED' };
   };
@@ -535,11 +535,12 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   await new Promise(resolve => setTimeout(resolve, 1700));
   const originalTick = controller.tick.bind(controller); let pageTicks = 0;
   controller.tick = (...args) => { pageTicks++; return originalTick(...args); };
-  const listeners = [...pageState.listeners]; pageState.listeners.clear();
+  const { ipcMain: observerIpc } = await import('electron');
+  const listeners = observerIpc.listeners('pilot:page-observation'); observerIpc.removeAllListeners('pilot:page-observation');
   await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent='aa'");
   await new Promise(resolve => setTimeout(resolve, 1800));
   assert.equal(pageTicks, 0, 'shared pulse never compensates for suppressed DOM signals');
-  for (const listener of listeners) pageState.subscribe(listener);
+  for (const listener of listeners) observerIpc.on('pilot:page-observation', listener);
   await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent='bb'");
   await waitFor(() => pageTicks > 0, 'equal-length draft change signals controller', snapshot);
   const previousRevision = pageState.current.state.draftRevision;
@@ -797,8 +798,8 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   const largeView = new BrowserWindow({ show: false, webPreferences: {
     partition: 'workflow-pilot-smoke', sandbox: true, contextIsolation: true, nodeIntegration: false,
     preload: path.join(app.getAppPath(), 'resources/chatgpt-page-observer-preload.cjs') } });
-  const { PageStateSource } = await import('../src/page-state.mjs');
-  const { connectPageState } = await import('../src/page-state-bridge.mjs');
+  const { PageStateSource } = await import('../src/execution/browser/page-state.mjs');
+  const { connectPageState } = await import('../src/execution/browser/page-state-bridge.mjs');
   const { ipcMain } = await import('electron');
   const largeSource = new PageStateSource();
   const disconnect = connectPageState(largeView.webContents, ipcMain, largeSource);
@@ -877,14 +878,14 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
   const second = store.selected();
   const firstRuntime=liveSessions.ensure(first),secondRuntime=liveSessions.ensure(second);
-  assert.notEqual(firstRuntime.view.webContents.id,secondRuntime.view.webContents.id);
+  assert.notEqual(sessionView(firstRuntime).webContents.id,sessionView(secondRuntime).webContents.id);
   const firstDocument=firstRuntime.pageState.current.documentId;
-  await firstRuntime.view.webContents.executeJavaScript("window.fixtureBackgroundMarker=17; document.getElementById('prompt-textarea').textContent='background draft'");
+  await sessionView(firstRuntime).webContents.executeJavaScript("window.fixtureBackgroundMarker=17; document.getElementById('prompt-textarea').textContent='background draft'");
   await waitFor(()=>firstRuntime.pageState.current.state.draftPresent,'hidden page continues to report its own state',snapshot);
   assert.equal(secondRuntime.pageState.current.state.draftPresent,false,'hidden page does not alter selected page state');
   assert.equal(firstRuntime.pageState.current.documentId,firstDocument);
   assert.equal(firstRuntime.controller.active.sessionId,first.sessionId);
-  await firstRuntime.view.webContents.executeJavaScript("document.getElementById('prompt-textarea').textContent=''");
+  await sessionView(firstRuntime).webContents.executeJavaScript("document.getElementById('prompt-textarea').textContent=''");
   assert.equal(second.attempt.packet.session_id, undefined);
   assert.equal(second.attempt.packet.plan_id, null);
   assert.equal(second.attempt.packet.contextSha256, first.attempt.packet.contextSha256);
@@ -1803,7 +1804,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
   assert.equal(packetLoads, loadsBeforeManualReopen);
   const parallelFixture=await import('./parallel-execution-smoke-fixture.cjs');
-  await parallelFixture.default.run({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,dataDir,waitFor,getArchiveWindow});
+  await parallelFixture.default.run({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow});
   await verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour:auxE});
   const result = { ordinaryManualSend: true, manualRecoverySend: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, directFirstWork: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
     singleActivePlanScreenshot, mode: 'isolated-fixture', electron: process.versions.electron, chromium: process.versions.chrome,

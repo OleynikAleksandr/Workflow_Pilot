@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {JSDOM} from 'jsdom';
-import {toolFilterScript} from '../src/chatgpt-tool-filter.mjs';
+import {toolFilterScript} from '../src/execution/browser/chatgpt-tool-filter.mjs';
 const setup = html => new JSDOM(html,{runScripts:'outside-only',pretendToBeVisual:true});
 test('new activity is hidden and restored without hiding answer, user content or permission controls',()=>{
  const d=setup(`<div class="group/activity-header" id="activity" style="display:inline-flex"><button aria-expanded="false" aria-labelledby="label"></button><span id="label">Прочитан файл</span><svg></svg></div>

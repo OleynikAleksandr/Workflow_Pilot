@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chatGPTDOMScript } from '../src/chatgpt-dom.mjs';
+import { chatGPTDOMScript } from '../src/execution/browser/chatgpt-dom.mjs';
 
 // Shared verbatim by Node checks and the generated browser-console probe.
 export function makeProbeFiles() {

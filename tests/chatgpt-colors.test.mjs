@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { JSDOM } from 'jsdom';
-import { ChatColors, normalizeChatColors, validateColorChange, chatColorsCSS, composerCapsuleScript, COMPOSER_CAPSULE_ATTR, COMPOSER_INNER_ATTR } from '../src/chatgpt-colors.mjs';
+import { ChatColors, normalizeChatColors, validateColorChange, chatColorsCSS, composerCapsuleScript, COMPOSER_CAPSULE_ATTR, COMPOSER_INNER_ATTR } from '../src/execution/browser/chatgpt-colors.mjs';
 const turn = () => new Promise(resolve => setImmediate(resolve));
 class Contents extends EventEmitter {
   constructor() { super(); this.url = 'https://chatgpt.com/c/fixture'; this.sheets = new Map(); this.serial = 0; this.scripts = []; }

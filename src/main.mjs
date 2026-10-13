@@ -5,10 +5,9 @@ import { PlanReviewClient } from './plan-review.mjs';
 import { ReviewContinuation } from './review-continuation.mjs';
 import { AutomationSendState } from './automation-send-state.mjs';
 import { readAutoPlanState, reviewBlocksExecution } from './auto-plan-state.mjs';
-import { connectPageState } from './page-state-bridge.mjs';
 import { PlanMonitor } from './plan-monitor.mjs';
-import { chatGPTTitleScript } from './chatgpt-title.mjs';
-import { toolFilterScript } from './chatgpt-tool-filter.mjs';
+import { chatGPTTitleScript } from './execution/browser/chatgpt-title.mjs';
+import { toolFilterScript } from './execution/browser/chatgpt-tool-filter.mjs';
 import { app, BaseWindow, BrowserWindow, WebContentsView, Menu, session, ipcMain, dialog, nativeTheme, clipboard, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -18,8 +17,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WorkspaceSessions, normalizeChatUrl, activeSessionsNewestFirst } from './workspace-session.mjs';
 import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './parallel-settings.mjs';
-import { installChatGPTAutoScroll } from './chatgpt-auto-scroll.mjs';
-import { ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS } from './chatgpt-colors.mjs';
+import { installChatGPTAutoScroll } from './execution/browser/chatgpt-auto-scroll.mjs';
+import { ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS } from './execution/browser/chatgpt-colors.mjs';
 import { ChatColorsWindow } from './chat-colors-window.mjs';
 import { ContextCache } from './context-cache.mjs';
 import { readinessContextKey } from './context-inputs.mjs';
@@ -35,14 +34,13 @@ import {readCommandActivity,acknowledgeUnknownCommand} from './command-activity.
 import { ProjectInputWatch, ChildCommandWatches } from './project-input-watch.mjs';
 import { configureExecutor,executorPageState } from './executor-session.mjs';
 import { projectExecutors } from './execution-projection.mjs';
-import { chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT } from './chatgpt-experience.mjs';
+import { chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT } from './execution/browser/chatgpt-experience.mjs';
 import { WorkspaceDeletion } from './workspace-deletion.mjs';
 import { removeProjectSettings, pruneOrphanProjectSettings, belongsToProject, queueProjectStatePurge } from './project-state-cleanup.mjs';
 import { appendDiagnostic } from './common.mjs';
 import { WorkspaceSetup } from './workspace-setup.mjs';
 import { ProjectDoctor } from './project-doctor.mjs';
 import { ChromiumDiagnostics, safeUrl } from './chromium-diagnostics.mjs';
-import { openStartupPage } from './browser-startup.mjs';
 import { BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates } from './execution/platform/paths.mjs';
 import { WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE } from './execution/runtime/windows.mjs';
 import { CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS } from './execution/runtime/service.mjs';
@@ -53,6 +51,7 @@ import { TunnelClipboard } from './tunnel-clipboard.mjs';
 import { StartupReadiness, inspectMacGit, installMacGit, offerMacInstallation } from './startup-readiness.mjs';
 import { startupPlatformOptions, startupSupported } from './startup-platform.mjs';
 import { configureDesktopIdentity } from './frontend/desktop/bootstrap.mjs';
+import { DesktopBrowserHost } from './frontend/desktop/browser-host.mjs';
 
 const eventBaseline = !app.isPackaged && process.argv.includes('--event-runtime-baseline');
 const eventRuntimeChecker = !app.isPackaged && process.argv.includes('--event-runtime-checker');
@@ -227,10 +226,13 @@ function sessionRuntimeError(record,error) {
   record.error=publicError(error);
   if(record===liveSessions.visible&&!settingsState&&!setupState)report(error);else publish();
 }
-const liveSessions = new SessionRuntimes({store,runtime:()=>sessionContextRuntime,contextCache,ipc:ipcMain,connectPageState,
-  createView:()=>new WebContentsView({webPreferences:{...remotePreferences(),backgroundThrottling:false,
+const browserHost = new DesktopBrowserHost(()=>new WebContentsView({webPreferences:{...remotePreferences(),backgroundThrottling:false,
     preload:app.isPackaged?path.join(process.resourcesPath,'resources/chatgpt-page-observer-preload.cjs')
-      :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs')}}),
+      :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs')}}));
+executionServices.attachBrowser({host:browserHost,ipc:ipcMain});
+const sessionView = record => browserHost.view(record.key);
+const liveSessions = new SessionRuntimes({store,runtime:()=>sessionContextRuntime,contextCache,execution:executionServices,
+  presentation:{show:id=>browserHost.show(id,window?.contentView),hide:()=>browserHost.hide()},
   onChange:record=>{
     if(record===liveSessions.visible)pageLoading=record.loading;record.primaryAutomation?.update();record.executor?.changed();
     if(record.identity&&!record.identity.assignmentId&&execution.unwatch.has(record.identity.workspace)) {
@@ -824,11 +826,11 @@ async function navigate(project = store.selected(), { refresh = false, generatio
   }, 15000);
   waiting.unref?.();
   try {
-    const alreadyOpen = !refresh && !entryUrl && record.view.webContents.getURL() === target;
+    const alreadyOpen = !refresh && !entryUrl && record.composer.getURL() === target;
     if (!alreadyOpen) {
-      const firstOpening = !project && !record.view.webContents.getURL();
+      const firstOpening = !project && !record.composer.getURL();
       pageLoading=true;
-      if (firstOpening) await openStartupPage(record.view.webContents, target, {
+      if (firstOpening) await record.browser.navigate(target, { startup:true,
         isCurrent: () => navigationCurrent(ownNavigation),
       });
       else await liveSessions.navigate(record,target,{reload:refresh||!!entryUrl,freshDraft});
@@ -1097,17 +1099,17 @@ function selectLiveSession(project=null) {
   const record=liveSessions.ensure(project);
   if(project?.planExecution?.execution_strategy==='parallel')execution.observe(project.workspace);
   const changed=liveSessions.visible!==record;
-  browser=record.view;controller=record.controller;pageState=record.pageState;
+  browser=sessionView(record);controller=record.controller;pageState=record.pageState;
   agentTimer=record.timer;conversationRecovery=record.recovery;
   chromiumDiagnostics=record.diagnostics;chatColorStyles=record.colors;pageLoading=record.loading;
-  liveSessions.show(record,window?.contentView);layout();
+  liveSessions.show(record);layout();
   if(changed)applyObservedPage(record.pageState.current??{reset:true},record);
   return record;
 }
 function decorateSessionRuntime(record) {
   configurePrimary(record);
   record.controller.canSendContext=project=>!project.assignmentId||projectAutoPlan.enabled(project.parentWorkspace,project.parentScopeId);
-  const contents=record.view.webContents, handlers=[];
+  const contents=sessionView(record).webContents, handlers=[];
   const on=(event,fn)=>{contents.on(event,fn);handlers.push([event,fn]);};
   if(eventBaseline) {
     const execute=contents.executeJavaScript.bind(contents);
@@ -1121,14 +1123,14 @@ function decorateSessionRuntime(record) {
     startupNetwork:!smoke&&!record.identity&&store.snapshot().projects.length===0});
   void record.diagnostics.start({appVersion:app.getVersion(),platform:process.platform,electron:process.versions.electron,
     chromium:process.versions.chrome,fixture:smoke}).catch(()=>{});
-  record.composer.onDiagnostic=({event,...fields})=>record.diagnostics.log.record('composer',event,{sessionId:record.identity?.sessionId??null,...fields});
+  record.browser.setDiagnostic(({event,...fields})=>record.diagnostics.log.record('composer',event,{sessionId:record.identity?.sessionId??null,...fields}));
   on('page-title-updated',()=>{if(record===liveSessions.visible)rememberSessionTitle();});
   on('did-start-navigation',(event,_url,inPlace,mainFrame)=>{
     if(record===liveSessions.visible&&(event.isMainFrame??mainFrame)&&!(event.isSameDocument??inPlace)&&startupActive)
       startupFlow?.beginPage(navigationId);
   });
   on('did-navigate-in-page',()=>{
-    void applyToolCallVisibility(record.view);void installChatGPTAutoScroll(contents);
+    void applyToolCallVisibility(sessionView(record));void installChatGPTAutoScroll(contents);
     if(record===liveSessions.visible)void syncSelectedSessionTitle({reason:'session-navigated'});
   });
   on('did-finish-load',()=>{
@@ -1137,7 +1139,7 @@ function decorateSessionRuntime(record) {
       if(startupActive){startupFlow?.finishPage(navigationId);void refreshStartupAccount();}
       attachController(record.project());
     }
-    void applyToolCallVisibility(record.view);void installChatGPTAutoScroll(contents,{forceFollow:true});publish();
+    void applyToolCallVisibility(sessionView(record));void installChatGPTAutoScroll(contents,{forceFollow:true});publish();
   });
   return ()=>{
     for(const [event,fn] of handlers)contents.removeListener(event,fn);
@@ -1285,7 +1287,7 @@ function registerIpc() {
     if (input === hideToolCalls) return;
     await saveSettings({ hideToolCalls: input });
     hideToolCalls = input;
-    await Promise.all([...liveSessions.records.values()].map(record=>applyToolCallVisibility(record.view)));
+    await Promise.all([...liveSessions.records.values()].map(record=>applyToolCallVisibility(sessionView(record))));
   });
   registerAction('pilot:set-chatgpt-channel', async input => {
     if (smoke || typeof runtime?.setChannel !== 'function') throw new Error('Выбор канала ChatGPT недоступен на этой платформе.');
@@ -1579,7 +1581,7 @@ async function createWindow() {
       store, controller, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir,
       chromiumDiagnostics, chromiumDiagnosticsFile, navigate, openArchiveWindow, getArchiveWindow: () => archiveWindow,
       getColorWindow: () => colorEditor.window, chatColorStyles, eventBaseline, runtimeMetrics, pageState, autoPlan,
-      liveSessions,deletion,execution,getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}) });
+      liveSessions,sessionView,deletion,execution,getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}) });
     await chromiumDiagnostics.stop(); chromiumDiagnostics = null;
     window.close(); app.quit();
   } else { const current = store.selected(); if (current && !storageError && !settingsState) void selectWorkspace(current.workspace).catch(report); else void navigate(); }

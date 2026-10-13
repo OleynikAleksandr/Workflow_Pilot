@@ -1,4 +1,4 @@
-import { normalizeChatUrl } from './workspace-session.mjs';
+import { normalizeChatUrl } from '../../contracts/browser.mjs';
 
 function normalizeTitle(value) {
   if (typeof value !== 'string') throw new TypeError('TITLE_INVALID');

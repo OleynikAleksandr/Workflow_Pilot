@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { normalizeChatUrl, conversationUrlCompatibleWithExperience } from './workspace-session.mjs';
 import { CONTEXT_PROTOCOL, validateContextPacket } from './mcp-runtime.mjs';
-import { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from './chatgpt-experience.mjs';
+import { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from './execution/facade.mjs';
 import { validateParallelSettings } from './parallel-settings.mjs';
 
 export function sessionExecutionMessage(project) {
@@ -138,8 +138,8 @@ export class ContextSession {
   }
 
   atExpectedChat(project, attempt = project.attempt) {
-    if (!this.composer.contents?.getURL) return true;
-    const current = this.composer.contents.getURL();
+    if (!this.composer.getURL) return true;
+    const current = this.composer.getURL();
     const url = normalizeChatUrl(current);
     if (project.chatUrl) return project.chatUrl === url;
     if (!url) return (!!attempt?.sendStartedAtMs && isPendingChatGPTConversation(current))

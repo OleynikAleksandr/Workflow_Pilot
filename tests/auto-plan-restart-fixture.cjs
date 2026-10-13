@@ -12,9 +12,9 @@ app.whenReady().then(async () => {
   const root = path.resolve(__dirname, '..');
   const { AutoPlan } = await import(pathToFileURL(path.join(root, 'src/auto-plan.mjs')));
   const { readAutoPlanState } = await import(pathToFileURL(path.join(root, 'src/auto-plan-state.mjs')));
-  const { PageStateSource } = await import(pathToFileURL(path.join(root, 'src/page-state.mjs')));
-  const { connectPageState } = await import(pathToFileURL(path.join(root, 'src/page-state-bridge.mjs')));
-  const { ChatGPTComposer } = await import(pathToFileURL(path.join(root, 'src/chatgpt-composer.mjs')));
+  const { PageStateSource } = await import(pathToFileURL(path.join(root, 'src/execution/browser/page-state.mjs')));
+  const { connectPageState } = await import(pathToFileURL(path.join(root, 'src/execution/browser/page-state-bridge.mjs')));
+  const { ChatGPTComposer } = await import(pathToFileURL(path.join(root, 'src/execution/browser/chatgpt-composer.mjs')));
   const settings = JSON.parse(await fs.readFile(settingsFile, 'utf8'));
   const identity=JSON.parse(selectedKey),project=settings.projectAutoPlan?.[identity[0]];
   settings.autoPlanEnabled=project?.enabled===true;settings.autoPlanCheckpoint=project?.sessions?.[identity[1]]?.autoPlanCheckpoint;

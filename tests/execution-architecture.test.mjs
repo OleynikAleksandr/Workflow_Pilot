@@ -23,4 +23,6 @@ test('architecture gate rejects a real Execution to Control import and a new cyc
   await assert.rejects(check(), error => error.code === 1 && /no-new-cycles/.test(error.stdout + error.stderr));
   await write('execution/b.mjs', 'export const independent = true;');
   await check();
+  await write('session-runtime.mjs', "import './execution/a.mjs';");
+  await assert.rejects(check(), error => error.code === 1 && /session-coordination-uses-browser-port/.test(error.stdout + error.stderr));
 });

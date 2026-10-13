@@ -41,7 +41,7 @@ function controllerFixture({ savedAttempt=null, chatUrl=project.chatUrl }={}){
   const runtime={ensure:async()=>({}),loadContext:async()=>{loads++;return packet();}};
   const composer={inspect:async options=>({...inspection,
     ...(options?.action==='select-experience'?{action: (inspection.experience??store.project().experience)===options.expectedExperience
-      ?'experience-confirmed':'experience-selecting'}:{})}),contents:{getURL:()=>inspection.url},deliver:async options=>{
+      ?'experience-confirmed':'experience-selecting'}:{})}),getURL:()=>inspection.url,deliver:async options=>{
     assert.equal(saved.attempt.state,'prepared');assert.equal(options.attachments.map(p=>p.text).join('\n\n'),packet().context);
     assert.deepEqual(options.attachments.map(p=>p.name),packet().parts.map(p=>`context-testrequ-${String(p.index).padStart(2,'0')}-of-${p.total}.md`));assert.ok(!options.text.includes(packet().context));
     if(!options.canContinue())return {state:'cancelled'};
@@ -213,7 +213,7 @@ test('unbound Work session accepts Work entrypoint before recovery', async()=>{
   f.store.selected=()=>({...structuredClone(f.saved),experience:'work'});
   f.store.project=()=>({...structuredClone(f.saved),experience:'work'});
   f.inspection.url='https://chatgpt.com/work/';
-  f.composer.contents.getURL=()=>f.inspection.url;
+  f.composer.getURL=()=>f.inspection.url;
   f.composer.deliver=async options=>{ assert.equal(options.canContinue(),true); return {state:'deferred',reason:'SEND_UNAVAILABLE'}; };
   f.controller.attach({...f.saved,experience:'work'});
   await f.controller.tick();
@@ -228,7 +228,7 @@ test('Work session keeps provenance when ChatGPT moves from /work/ to shared /c/
   f.store.selected=()=>({...structuredClone(f.saved),experience:'work'});
   f.store.project=()=>({...structuredClone(f.saved),experience:'work'});
   f.inspection.url='https://chatgpt.com/work/';
-  f.composer.contents.getURL=()=>f.inspection.url;
+  f.composer.getURL=()=>f.inspection.url;
   f.composer.deliver=async options=>{
     assert.equal(options.canContinue(),true);
     await options.onBeforeFill?.();

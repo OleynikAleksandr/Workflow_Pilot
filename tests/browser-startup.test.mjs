@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { openStartupPage } from '../src/browser-startup.mjs';
+import { openStartupPage } from '../src/execution/browser/browser-startup.mjs';
 
 const url = 'https://chatgpt.com/';
 function fixture(load) {

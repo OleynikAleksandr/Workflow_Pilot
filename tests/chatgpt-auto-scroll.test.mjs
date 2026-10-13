@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { autoScrollPageScript, installChatGPTAutoScroll } from '../src/chatgpt-auto-scroll.mjs';
+import { autoScrollPageScript, installChatGPTAutoScroll } from '../src/execution/browser/chatgpt-auto-scroll.mjs';
 
 const waitFrames = window => new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve))));
 

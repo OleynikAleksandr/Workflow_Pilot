@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { chatGPTTitleScript, conversationIdFromChatUrl } from '../src/chatgpt-title.mjs';
+import { chatGPTTitleScript, conversationIdFromChatUrl } from '../src/execution/browser/chatgpt-title.mjs';
 
 const response = (status, data) => ({
   ok: status >= 200 && status < 300,

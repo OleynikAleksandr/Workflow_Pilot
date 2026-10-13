@@ -61,14 +61,14 @@ module.exports.startFixtureWriter=async function(worktree,nodeExecutable=process
   }catch(error){await stop();throw error;}
 };
 
-module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,dataDir,waitFor,getArchiveWindow}) {
+module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow}) {
   const node=await workspaceSetup.node(),script=path.resolve(__dirname,'../packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs');
   const run=async(...args)=>JSON.parse((await execute(node,[script,...args],{env:workspaceSetup.environment,maxBuffer:4*1024*1024,timeout:120000})).stdout);
   const git=async(root,...args)=>(await execute('git',['-C',root,...args],{env:workspaceSetup.environment,encoding:'utf8'})).stdout.trim();
   const ipc=(name,...args)=>sidebar.executeJavaScript('window.webPilot.'+name+'('+args.map(a=>JSON.stringify(a)).join(',')+')');
   const wait=(predicate,name)=>waitFor(predicate,'parallel: '+name,()=>({...snapshot(),parallelRuntimes:[...liveSessions.records.values()]
     .filter(r=>r.identity?.assignmentId).map(r=>({identity:r.identity,ready:r.ready,loading:r.loading,
-      phase:r.controller.state.phase,error:r.controller.state.error,runtimeError:r.error,url:r.view.webContents.getURL()}))}));
+      phase:r.controller.state.phase,error:r.controller.state.error,runtimeError:r.error,url:sessionView(r).webContents.getURL()}))}));
   const stageSnapshot=()=>sidebar.executeJavaScript(`(()=>{
     const root=document.getElementById('execution-actions'),list=document.getElementById('execution-stages');
     return {hidden:root.hidden,stages:Object.fromEntries([...list.querySelectorAll('li')].map(el=>[
@@ -92,7 +92,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const origin=store.selected();assert.deepEqual(origin.executionSnapshot,{parallel_allowed:true,max_workers:2});
   const record=(workspace,id)=>[...liveSessions.records.values()].find(r=>r.identity?.workspace===workspace&&(!id||r.identity.sessionId===id));
   const main=record(root,origin.sessionId);
-  await main.view.webContents.executeJavaScript('window.fixtureAssistant("Планировщик готов")');
+  await sessionView(main).webContents.executeJavaScript('window.fixtureAssistant("Планировщик готов")');
   const clickAuto=()=>sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").click()');
   const buttonReady=()=>sidebar.executeJavaScript('!document.getElementById("auto-plan-toggle").disabled');
   await wait(buttonReady,'empty-project button ready');await clickAuto();
@@ -113,14 +113,14 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   await wait(()=>sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").getAttribute("aria-pressed")==="true"&&document.getElementById("plan-review-toggle").getAttribute("aria-pressed")==="false"'),'first project independent buttons');
   await wait(buttonReady,'cancel pre-plan button ready');await clickAuto();
   await wait(()=>snapshot().autoPlan.enabled===false,'button cancels pre-plan ON');
-  await main.view.webContents.executeJavaScript('const h=document.createElement("button");h.id="preplan-held";h.dataset.testid="stop-button";document.body.append(h)');
+  await sessionView(main).webContents.executeJavaScript('const h=document.createElement("button");h.id="preplan-held";h.dataset.testid="stop-button";document.body.append(h)');
   await wait(()=>main.pageState.current?.state.busy,'main held before publication');
   await wait(buttonReady,'arm pre-plan button ready');await clickAuto();
   await wait(()=>snapshot().autoPlan.enabled===true,'button arms first publication');
   await run('--plan',root,origin.sessionId);
   const base=await git(root,'rev-parse','HEAD');
   await run('--legacy-start',root);
-  await main.view.webContents.executeJavaScript('document.getElementById("preplan-held")?.remove()');
+  await sessionView(main).webContents.executeJavaScript('document.getElementById("preplan-held")?.remove()');
   await wait(()=>main.pageState.current?.state.lastMessageRole==='assistant','main observed pause');
   await ipc('openSettings');await ipc('setParallelExecution',{parallel_allowed:false,max_workers:1});await ipc('closeSettings');
   assert.deepEqual(store.project(root,origin.sessionId).executionSnapshot,{parallel_allowed:true,max_workers:2});
@@ -137,8 +137,8 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
     assert.equal(await fs.stat(path.join(item.worktree,'node_modules')).then(s=>s.isDirectory()),true);
     assert.deepEqual(store.project(item.worktree).executionSnapshot,origin.executionSnapshot);
   }
-  const hold=record=>record.view.webContents.executeJavaScript('if(!document.getElementById("parallel-held")){const b=document.createElement("button");b.id="parallel-held";b.dataset.testid="stop-button";b.setAttribute("aria-label","Stop generating");document.body.append(b);}window.parallelMarker=71;');
-  const finish=record=>record.view.webContents.executeJavaScript('document.getElementById("parallel-held")?.remove();window.fixtureAssistant("Задача завершена")');
+  const hold=record=>sessionView(record).webContents.executeJavaScript('if(!document.getElementById("parallel-held")){const b=document.createElement("button");b.id="parallel-held";b.dataset.testid="stop-button";b.setAttribute("aria-label","Stop generating");document.body.append(b);}window.parallelMarker=71;');
+  const finish=record=>sessionView(record).webContents.executeJavaScript('document.getElementById("parallel-held")?.remove();window.fixtureAssistant("Задача завершена")');
   await hold(first);await hold(second);
   await wait(()=>first.pageState.current?.state.busy&&second.pageState.current?.state.busy,'both workers busy');
   await ipc('setAutoPlan',false);
@@ -146,7 +146,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   await ipc('selectSession',b.worktree,store.project(b.worktree).sessionId);
   assert.equal(first.pageState.current.state.busy,true);
   await ipc('selectSession',a.worktree,store.project(a.worktree).sessionId);
-  assert.equal(await first.view.webContents.executeJavaScript('window.parallelMarker'),71);
+  assert.equal(await sessionView(first).webContents.executeJavaScript('window.parallelMarker'),71);
   await wait(()=>sidebar.executeJavaScript('document.getElementById("plan-card").hidden&&!document.getElementById("assignment-card").hidden'),'executor shows only assignment');
   assert.equal(await sidebar.executeJavaScript('document.getElementById("correct-integration")'),null);
   await ipc('selectSession',root,origin.sessionId);
@@ -165,15 +165,15 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   assert.equal(snapshot().execution.planView.completed,0);
   assert.equal(second.pageState.current.state.busy,true,'independent worker keeps its page during main conflict');
   const operation=snapshot().execution.integration.operation_id;
-  const before=await main.view.webContents.executeJavaScript('window.fixtureMessages.length');
+  const before=await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.length');
   assert.equal(snapshot().execution.correctionStatus,null,'OFF does not request correction');
   await ipc('setAutoPlan',true);
   await wait(()=>snapshot().execution.correctionStatus==='sent','AutoPlan requests correction without an extra button');
-  await wait(async()=>await main.view.webContents.executeJavaScript('window.fixtureMessages.length')===before+1,'correction in exact main chat');
-  const message=await main.view.webContents.executeJavaScript('window.fixtureMessages.at(-1).text');
+  await wait(async()=>await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.length')===before+1,'correction in exact main chat');
+  const message=await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.at(-1).text');
   assert.ok(message.includes(root)&&message.includes(operation)&&message.includes('integration:continue'));
   await ipc('setAutoPlan',false);
-  assert.equal(await main.view.webContents.executeJavaScript('window.fixtureMessages.length'),before+1,'no duplicate correction');
+  assert.equal(await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.length'),before+1,'no duplicate correction');
   await run('--correct',root,operation);await finish(main);
   await wait(()=>snapshot().execution.assignments.find(x=>x.id===a.id)?.status==='INTEGRATED','corrected merge proof');
   await finish(second);
@@ -190,7 +190,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   await wait(()=>record(c.worktree)?.controller.state.phase==='delivered','dependent context delivered');
   const third=record(c.worktree);await hold(third);await run('--complete',c.worktree);await finish(third);
   await wait(()=>snapshot().execution.finalizationStatus==='sent','last READY hands completion to main');
-  const finalMessage=await main.view.webContents.executeJavaScript('window.fixtureMessages.at(-1).text');
+  const finalMessage=await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.at(-1).text');
   assert.ok(finalMessage.includes(root)&&finalMessage.includes('integration:start/continue'));
   const ready=await plans.call(root,'assignment:status',['--id',c.id]);
   await hold(main);
@@ -237,7 +237,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   await selectWorkspace(root);
   await wait(()=>store.selected()?.workspace===root&&snapshot().context.phase==='delivered','recreated main context');
   const newOrigin=store.selected();assert.notEqual(newOrigin.projectId,oldProjectId);assert.equal(snapshot().autoPlan.enabled,false);
-  const newMain=record(root,newOrigin.sessionId);await newMain.view.webContents.executeJavaScript('window.fixtureAssistant("Новый план готов")');
+  const newMain=record(root,newOrigin.sessionId);await sessionView(newMain).webContents.executeJavaScript('window.fixtureAssistant("Новый план готов")');
   await run('--plan-five',root,newOrigin.sessionId);
   await wait(()=>snapshot().selected?.scopeId==='parallel-fixture','same scope republished');
   assert.equal(snapshot().autoPlan.enabled,false);assert.equal(snapshot().execution.assignments.length,0);
@@ -269,7 +269,7 @@ const httpPreview=await require('./protected-preview-fixture.cjs').start(root,pa
     await wait(()=>record(last.worktree)?.controller.state.phase==='delivered','final task delivered');
     for(const file of ['FOUNDATION.md','TOOL-A.md','TOOL-B.md','TOOL-C.md'])
       assert.match(await fs.readFile(path.join(last.worktree,file),'utf8'),/worker-/);
-    const beforeFinal=await newMain.view.webContents.executeJavaScript('window.fixtureMessages.length');
+    const beforeFinal=await sessionView(newMain).webContents.executeJavaScript('window.fixtureMessages.length');
     await hold(record(last.worktree));
     await run('--complete',last.worktree);
     const lastSource=await plans.call(root,'assignment:status',['--id',last.id]);
@@ -302,9 +302,9 @@ const httpPreview=await require('./protected-preview-fixture.cjs').start(root,pa
       }
       await ipc('setTheme','light');
       assert.equal(snapshot().execution.finalizationStatus==='sent',false,'diagnostic does not transfer final ownership');
-      assert.equal(await newMain.view.webContents.executeJavaScript('window.fixtureMessages.length'),beforeFinal+1,
+      assert.equal(await sessionView(newMain).webContents.executeJavaScript('window.fixtureMessages.length'),beforeFinal+1,
         'one diagnostic Send while writable command is active');
-      const diagnosticText=await newMain.view.webContents.executeJavaScript('window.fixtureMessages.at(-1).text');
+      const diagnosticText=await sessionView(newMain).webContents.executeJavaScript('window.fixtureMessages.at(-1).text');
       assert.match(diagnosticText,/ЗАПРЕЩЕНО выполнять integration:start\/continue/);
       assert.equal(snapshot().execution.planView.completed,4,'last task not integrated');
       assert.equal(await git(root,'rev-parse','HEAD'),headBeforeLast,'main unchanged while writer lives');
@@ -331,14 +331,14 @@ const httpPreview=await require('./protected-preview-fixture.cjs').start(root,pa
     const validation=await plans.call(root,'validate');assert.equal(Object.keys(validation.resolved).length,5);
     if(httpPreview)assert.match(await (await fetch(httpPreview.url+'/RESULT.md')).text(),/worker-e/);
     const report='Пять задач проверены в общем main. '+root+(httpPreview?' · '+httpPreview.url:'')+'. TEST FIXTURE; приёмку выполняет пользователь.';
-    await newMain.view.webContents.executeJavaScript('document.getElementById("parallel-held")?.remove();window.fixtureAssistant('+JSON.stringify(report)+')');
+    await sessionView(newMain).webContents.executeJavaScript('document.getElementById("parallel-held")?.remove();window.fixtureAssistant('+JSON.stringify(report)+')');
     await wait(()=>snapshot().execution.finalizationStatus==='reply-observed'&&!snapshot().autoPlan.enabled,'one final report and completion OFF');
     const completedStages=await stageSnapshot();
     assert.equal(completedStages.stages.reply.status,'done');
     assert.match(completedStages.action,/приёмка пользователя/);
-    assert.equal(await newMain.view.webContents.executeJavaScript('window.fixtureMessages.length'),beforeFinal+2);
+    assert.equal(await sessionView(newMain).webContents.executeJavaScript('window.fixtureMessages.length'),beforeFinal+2);
     await ipc('selectSession',otherRoot,store.project(otherRoot).sessionId);await ipc('selectSession',root,newOrigin.sessionId);
-    assert.equal(await newMain.view.webContents.executeJavaScript('window.fixtureMessages.length'),beforeFinal+2,'project switching cannot repeat diagnostic or final handoff');
+    assert.equal(await sessionView(newMain).webContents.executeJavaScript('window.fixtureMessages.length'),beforeFinal+2,'project switching cannot repeat diagnostic or final handoff');
     // A live read-only httpPreview blocks deletion. Stopping its exact session permits a new confirmation.
     await ipc('archiveProject',root);await ipc('openArchive',root);
     await wait(()=>getArchiveWindow()&&!getArchiveWindow().isDestroyed(),'five-task archive ready');

@@ -58,6 +58,7 @@ export class PageStateSource {
     this.version = 0;
     this.listeners = new Set();
     this.retired = new Set();
+    this.closed = false;
   }
 
   reset() {
@@ -71,6 +72,7 @@ export class PageStateSource {
   }
 
   accept(raw) {
+    if (this.closed) return { accepted: false, reason: 'closed' };
     const message = normalizePageObservation(raw);
     if (this.retired.has(message.documentId)) return { accepted: false, reason: 'retired-document' };
     if (this.current && this.current.documentId !== message.documentId) return { accepted: false, reason: 'unexpected-document' };
@@ -87,12 +89,13 @@ export class PageStateSource {
   }
 
   subscribe(listener) {
+    if (this.closed) return () => {};
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
   waitForChange(afterVersion, { timeoutMs = 12000, canContinue = () => true } = {}) {
-    if (!canContinue()) return Promise.resolve({ changed: false, cancelled: true, version: this.version, state: this.current?.state ?? null });
+    if (this.closed || !canContinue()) return Promise.resolve({ changed: false, cancelled: true, version: this.version, state: this.current?.state ?? null });
     if (this.version !== afterVersion) return Promise.resolve({ changed: true, version: this.version, state: this.current?.state ?? null });
     return new Promise(resolve => {
       let done = false;
@@ -104,7 +107,7 @@ export class PageStateSource {
         resolve(result);
       };
       const unsubscribe = this.subscribe(event => {
-        if (!canContinue()) finish({ changed: false, cancelled: true, version: this.version, state: this.current?.state ?? null });
+        if (this.closed || !canContinue()) finish({ changed: false, cancelled: true, version: this.version, state: this.current?.state ?? null });
         else if (event.version !== afterVersion) finish({ changed: true, version: this.version, state: this.current?.state ?? null });
       });
       const timer = this.schedule(() => finish({ changed: false, timeout: true, version: this.version, state: this.current?.state ?? null }), timeoutMs);
@@ -116,5 +119,12 @@ export class PageStateSource {
     for (const listener of [...this.listeners]) {
       try { listener(event); } catch {}
     }
+  }
+
+  dispose() {
+    if (this.closed) return;
+    this.closed = true;
+    this.reset(); // Wake waiters before dropping listeners; no timeout survives release.
+    this.listeners.clear();
   }
 }

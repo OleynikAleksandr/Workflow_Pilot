@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { JSDOM } from 'jsdom';
 import { chatGPTDOMScript } from '../src/chatgpt-dom.mjs';
-import { installPageObserver } from '../src/chatgpt-page-observer.mjs';
-import { PageStateSource, PAGE_STATE_CHANNEL, normalizePageObservation } from '../src/page-state.mjs';
-import { connectPageState } from '../src/page-state-bridge.mjs';
+import { installPageObserver } from '../src/execution/browser/chatgpt-page-observer.mjs';
+import { PageStateSource, PAGE_STATE_CHANNEL, normalizePageObservation } from '../src/execution/browser/page-state.mjs';
+import { connectPageState } from '../src/execution/browser/page-state-bridge.mjs';
 
 const turn = () => new Promise(resolve => setImmediate(resolve));
 

@@ -3,6 +3,9 @@
 const kitCycle = '^packages/workflow-kit/src/lib/(transaction|task-integration|validate|task-assignment|actions|plan-review|recovery)\\.mjs$';
 module.exports = {
   forbidden: [
+    { name: 'session-coordination-uses-browser-port', severity: 'error',
+      from: { path: '^src/(session-runtime|context-session)\\.mjs$' },
+      to: { path: '(^|/)electron($|/)|^src/(execution/(?!facade\\.mjs$)|frontend/)' } },
     { name: 'execution-does-not-import-product', severity: 'error',
       from: { path: '^src/execution/' },
       to: { path: '^(src/(?!execution/|contracts/)|packages/workflow-kit/)' } },

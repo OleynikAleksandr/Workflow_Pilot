@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 11,
+  "plan_revision": 13,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -311,7 +311,15 @@
       "src/execution/runtime/vps.mjs",
       "src/execution/runtime/windows.mjs",
       "tests/execution-architecture.test.mjs",
-      "tests/execution-facade.test.mjs"
+      "tests/execution-facade.test.mjs",
+      "src/contracts/browser.mjs",
+      "src/execution/browser/browser-startup.mjs",
+      "src/execution/browser/chatgpt-auto-scroll.mjs",
+      "src/execution/browser/chatgpt-colors.mjs",
+      "src/execution/browser/chatgpt-title.mjs",
+      "src/execution/browser/chatgpt-tool-filter.mjs",
+      "src/execution/browser/page-state-bridge.mjs",
+      "src/frontend/desktop/browser-host.mjs"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -1114,10 +1122,36 @@
         "src/chatgpt-title.mjs",
         "src/chatgpt-tool-filter.mjs",
         "src/automation-send-state.mjs",
-        "src/agent-timer.mjs"
+        "src/agent-timer.mjs",
+        ".dependency-cruiser.cjs",
+        "scripts/check-installed-release.mjs",
+        "scripts/probe-chatgpt-file-paste.mjs",
+        "src/browser-startup.mjs",
+        "src/context-session.mjs",
+        "src/contracts/browser.mjs",
+        "src/execution/browser/browser-startup.mjs",
+        "src/execution/browser/chatgpt-auto-scroll.mjs",
+        "src/execution/browser/chatgpt-colors.mjs",
+        "src/execution/browser/chatgpt-title.mjs",
+        "src/execution/browser/chatgpt-tool-filter.mjs",
+        "src/execution/browser/page-state-bridge.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/desktop/browser-host.mjs",
+        "src/workspace-session.mjs",
+        "tests/auto-plan-restart-fixture.cjs",
+        "tests/browser-startup.test.mjs",
+        "tests/chatgpt-auto-scroll.test.mjs",
+        "tests/chatgpt-colors.test.mjs",
+        "tests/chatgpt-title.test.mjs",
+        "tests/chatgpt-tool-filter.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/execution-architecture.test.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs"
       ],
       "documentation_paths": [
-        "docs/modules/browser.md"
+        "docs/modules/browser.md",
+        "docs/architecture/OVERVIEW.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -1131,13 +1165,64 @@
         "Стадированный observer и пути preload/ресурсов корректны; базовый сценарий продолжает работать, удалён заменённый мост данного блока."
       ],
       "expected_commit_message": "refactor: Выделить браузерный модуль Execution",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T004",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/browser.md",
+        "scripts/check-installed-release.mjs",
+        "scripts/probe-chatgpt-file-paste.mjs",
+        "scripts/stage-page-observer.mjs",
+        "src/browser-startup.mjs",
+        "src/chatgpt-auto-scroll.mjs",
+        "src/chatgpt-colors.mjs",
+        "src/chatgpt-composer.mjs",
+        "src/chatgpt-dom.mjs",
+        "src/chatgpt-experience.mjs",
+        "src/chatgpt-page-observer.mjs",
+        "src/chatgpt-title.mjs",
+        "src/chatgpt-tool-filter.mjs",
+        "src/context-session.mjs",
+        "src/contracts/browser.mjs",
+        "src/execution/browser/browser-startup.mjs",
+        "src/execution/browser/chatgpt-auto-scroll.mjs",
+        "src/execution/browser/chatgpt-colors.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-experience.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/chatgpt-title.mjs",
+        "src/execution/browser/chatgpt-tool-filter.mjs",
+        "src/execution/browser/page-state-bridge.mjs",
+        "src/execution/browser/page-state.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/desktop/browser-host.mjs",
+        "src/main.mjs",
+        "src/page-state-bridge.mjs",
+        "src/page-state.mjs",
+        "src/session-runtime.mjs",
+        "src/workspace-session.mjs",
+        "tests/auto-plan-restart-fixture.cjs",
+        "tests/browser-startup.test.mjs",
+        "tests/chatgpt-auto-scroll.test.mjs",
+        "tests/chatgpt-colors.test.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/chatgpt-title.test.mjs",
+        "tests/chatgpt-tool-filter.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/execution-architecture.test.mjs",
+        "tests/page-state.test.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs",
+        "tests/session-runtime.test.mjs"
+      ]
     },
     {
       "id": "T005",
@@ -1803,7 +1888,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 11
+Revision: 13
 
 ## Цель
 
@@ -1840,10 +1925,10 @@ Revision: 11
   - Файлы: src/execution/facade.mjs, src/execution/commands/service.mjs, src/execution/files/adapter.mjs, src/execution/runtime/service.mjs, src/execution/platform/paths.mjs, src/execution/browser/session-runtime.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/platform.mjs, src/mac-runtime-switch.mjs, src/windows-runtime.mjs, src/vps-tunnel.mjs, tools/codex-app-server-mcp/control.py, tools/codex-app-server-mcp/server.py, tools/codex-app-server-mcp/app_server_client.py, tools/codex-app-server-mcp/codex-tools.lock.json, tools/codex-app-server-mcp/requirements.txt, tools/codex-app-server-mcp/windows_desktop.py, tools/codex-app-server-mcp/linux_desktop.py, resources/runtime-control/windows-control.py, resources/runtime-control/linux-control.py, package.json, package-lock.json, .dependency-cruiser.cjs, tests/command-activity.test.mjs, tests/mcp-runtime.test.mjs, tests/mac-runtime-switch.test.mjs, tests/windows-runtime.test.mjs, tests/vps-tunnel.test.mjs, src/mcp-runtime.mjs, scripts/release-all.mjs, scripts/prepare-windows-toolchain.mjs, scripts/prepare-mac-toolchain.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-page-observer.mjs, src/common.mjs, src/contracts/context.mjs, src/execution/files/zip-archive.mjs, src/execution/runtime/mcp-client.mjs, src/execution/runtime/tunnel-setup.mjs, src/execution/runtime/vps-config.mjs, src/execution/runtime/vps.mjs, src/execution/runtime/windows.mjs, src/parallel-kit.mjs, src/session-plans.mjs, src/tunnel-setup.mjs, src/workspace-setup.mjs, src/zip-archive.mjs, tests/codex-app-server-mcp.test.mjs, tests/execution-architecture.test.mjs, tests/execution-facade.test.mjs, docs/modules/execution.md, docs/architecture/OVERVIEW.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T004: Выделить браузерный модуль Execution — Ожидает
-  - Git Commit: [PENDING] refactor: Выделить браузерный модуль Execution
+- [DONE] T004: Выделить браузерный модуль Execution — Завершено
+  - Git Commit: [DONE] refactor: Выделить браузерный модуль Execution
   - Reference: workflow-pilot-migration-0.1.0 / T004 / implementation
-  - Файлы: src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/session-runtime.mjs, src/conversation-recovery.mjs, src/chatgpt-dom.mjs, src/chatgpt-composer.mjs, src/chatgpt-experience.mjs, src/chatgpt-page-observer.mjs, scripts/stage-page-observer.mjs, tests/chatgpt-dom.test.mjs, tests/chatgpt-composer.test.mjs, tests/page-state.test.mjs, tests/session-runtime.test.mjs, tests/conversation-recovery.test.mjs, src/page-state.mjs, src/page-state-bridge.mjs, src/chatgpt-auto-scroll.mjs, src/chatgpt-colors.mjs, src/chatgpt-title.mjs, src/chatgpt-tool-filter.mjs, src/automation-send-state.mjs, src/agent-timer.mjs, docs/modules/browser.md
+  - Файлы: src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/session-runtime.mjs, src/conversation-recovery.mjs, src/chatgpt-dom.mjs, src/chatgpt-composer.mjs, src/chatgpt-experience.mjs, src/chatgpt-page-observer.mjs, scripts/stage-page-observer.mjs, tests/chatgpt-dom.test.mjs, tests/chatgpt-composer.test.mjs, tests/page-state.test.mjs, tests/session-runtime.test.mjs, tests/conversation-recovery.test.mjs, src/page-state.mjs, src/page-state-bridge.mjs, src/chatgpt-auto-scroll.mjs, src/chatgpt-colors.mjs, src/chatgpt-title.mjs, src/chatgpt-tool-filter.mjs, src/automation-send-state.mjs, src/agent-timer.mjs, .dependency-cruiser.cjs, scripts/check-installed-release.mjs, scripts/probe-chatgpt-file-paste.mjs, src/browser-startup.mjs, src/context-session.mjs, src/contracts/browser.mjs, src/execution/browser/browser-startup.mjs, src/execution/browser/chatgpt-auto-scroll.mjs, src/execution/browser/chatgpt-colors.mjs, src/execution/browser/chatgpt-title.mjs, src/execution/browser/chatgpt-tool-filter.mjs, src/execution/browser/page-state-bridge.mjs, src/execution/facade.mjs, src/frontend/desktop/browser-host.mjs, src/workspace-session.mjs, tests/auto-plan-restart-fixture.cjs, tests/browser-startup.test.mjs, tests/chatgpt-auto-scroll.test.mjs, tests/chatgpt-colors.test.mjs, tests/chatgpt-title.test.mjs, tests/chatgpt-tool-filter.test.mjs, tests/context-session.test.mjs, tests/electron-smoke.mjs, tests/execution-architecture.test.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/modules/browser.md, docs/architecture/OVERVIEW.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Выделить Control проектов, сессий и контекста — Ожидает

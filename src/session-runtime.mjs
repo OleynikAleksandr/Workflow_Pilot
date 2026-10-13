@@ -1,6 +1,4 @@
-import { PageStateSource } from './page-state.mjs';
 import { ContextSession } from './context-session.mjs';
-import { ChatGPTComposer } from './chatgpt-composer.mjs';
 import { AgentTimer } from './agent-timer.mjs';
 import { ConversationRecovery } from './conversation-recovery.mjs';
 
@@ -22,25 +20,26 @@ export function sessionStore(store, identity) {
   };
 }
 
-// Owns pages and their work. A host only presents a page; hiding it does not stop it.
+// Product coordination only. Execution owns pages; Desktop presents them by key.
 export class SessionRuntimes {
-  constructor({store,runtime,contextCache,createView,connectPageState,ipc,onChange=()=>{},onPage=()=>{},
-    decorate=()=>()=>{},onError=()=>{},onChatBound=()=>{},createComposer=(contents,options)=>new ChatGPTComposer(contents,options)}) {
-    Object.assign(this,{store,runtime,contextCache,createView,connectPageState,ipc,onChange,onPage,decorate,onError,onChatBound,createComposer});
-    this.records=new Map();this.visible=null;this.host=null;
+  constructor({store,runtime,contextCache,execution,presentation,onChange=()=>{},onPage=()=>{},
+    decorate=()=>()=>{},onError=()=>{},onChatBound=()=>{}}) {
+    Object.assign(this,{store,runtime,contextCache,execution,presentation,onChange,onPage,decorate,onError,onChatBound});
+    this.records=new Map();this.visible=null;
   }
   ensure(project=null) {
     const key=sessionRuntimeKey(project), existing=this.records.get(key);
     if(existing)return existing;
     const identity=project?Object.freeze({workspace:project.workspace,sessionId:project.sessionId,
       assignmentId:project.assignmentId??null,taskId:project.taskId??null}):null;
-    const record={key,identity,view:this.createView(),pageState:new PageStateSource(),loading:false,ready:false,
-      epoch:0,readinessEpoch:0,disposed:false,manualDocumentOwner:null,lastStopObservation:null,error:null,cleanups:[]};
+    const browser=this.execution.openBrowserSession(key);
+    const record={key,identity,browser,pageState:browser.pageState,ready:false,
+      get loading(){return browser.snapshot().loading;},get epoch(){return browser.snapshot().epoch;},
+      readinessEpoch:0,disposed:false,manualDocumentOwner:null,lastStopObservation:null,error:null,cleanups:[]};
     this.records.set(key,record);
-    const contents=record.view.webContents;
     record.project=()=>identity?this.store.project(identity.workspace,identity.sessionId):null;
     const scopedStore=identity?sessionStore(this.store,identity):this.store;
-    record.composer=this.createComposer(contents,{pageState:record.pageState});
+    record.composer=browser.composer;
     record.controller=new ContextSession({store:scopedStore,runtime:this.runtime(),contextCache:this.contextCache,
       composer:record.composer,onChange:()=>this.onChange(record),onChatBound:()=>this.onChatBound(record)});
     record.controller.onIdle=()=>this.onChange(record);
@@ -58,7 +57,6 @@ export class SessionRuntimes {
         if(!record.pageState.current)await record.pageState.waitForChange(record.pageState.version,{timeoutMs:5000,canContinue:current});
         return current()&&record.pageState.current?.state.url===project.chatUrl&&!record.pageState.current.state.connectionError;
       },onChange:()=>this.onChange(record)});
-    const on=(event,handler)=>{contents.on(event,handler);record.cleanups.push(()=>contents.removeListener(event,handler));};
     record.cleanups.push(record.pageState.subscribe(event=>{
       if(record.disposed)return;
       if(event.reset){record.manualDocumentOwner=null;record.lastStopObservation=null;record.timer.finish();}
@@ -73,19 +71,16 @@ export class SessionRuntimes {
       this.onPage(record,event);
       if(!event.reset&&record.ready&&!record.loading)this.tick(record);
     }));
-    record.cleanups.push(this.connectPageState(contents,this.ipc,record.pageState,{onFailure:code=>{
-      record.controller.cancel();record.error={code,message:'Наблюдатель ChatGPT недоступен. Повторите открытие страницы.'};
-      this.onError(record,Object.assign(new Error(record.error.message),{code}));
-    }}));
-    on('did-start-navigation',(event,_url,inPlace,mainFrame)=>{
-      if((event.isMainFrame??mainFrame)&&!(event.isSameDocument??inPlace)){record.loading=true;record.controller.cancel();}
-    });
-    on('did-finish-load',()=>{record.loading=false;this.tick(record);this.onChange(record);});
-    on('did-navigate-in-page',()=>{this.tick(record);this.onChange(record);});
-    on('render-process-gone',()=>{
-      record.loading=false;record.ready=false;record.epoch++;record.controller.cancel();
-      this.onError(record,Object.assign(new Error('Страница ChatGPT закрылась. Повторите открытие страницы.'),{code:'RENDER_PROCESS_GONE'}));
-    });
+    record.cleanups.push(browser.subscribe(event=>{
+      if(record.disposed)return;
+      if(event.type==='navigation-start')record.controller.cancel();
+      if(event.type==='loaded'||event.type==='navigated'){this.tick(record);this.onChange(record);}
+      if(event.type==='crashed')record.ready=false;
+      if(event.error){
+        record.controller.cancel();record.error=event.error;
+        this.onError(record,Object.assign(new Error(event.error.message),{code:event.error.code}));
+      }
+    }));
     const cleanup=this.decorate(record);if(typeof cleanup==='function')record.cleanups.push(cleanup);
     return record;
   }
@@ -99,35 +94,28 @@ export class SessionRuntimes {
     }
     void record.controller.tick();
   }
-  show(record,host) {
+  show(record) {
     if(record.disposed||this.records.get(record.key)!==record)throw new Error('SESSION_RUNTIME_RELEASED');
-    if(this.visible===record&&this.host===host)return;
-    this.hide();this.visible=record;this.host=host;
-    if(host)host.addChildView(record.view);
-    record.view.setVisible?.(true);
+    this.visible=record;this.presentation.show(record.key);
   }
   hide() {
-    if(this.visible){this.visible.view.setVisible?.(false);this.host?.removeChildView(this.visible.view);}
-    this.visible=null;this.host=null;
+    this.presentation.hide();this.visible=null;
   }
   async navigate(record,url,{reload=false,freshDraft=false}={}) {
     if(record.disposed)throw new Error('SESSION_RUNTIME_RELEASED');
-    const contents=record.view.webContents;
-    if(!reload&&contents.getURL()===url){this.tick(record,{freshDraft});return record;}
-    const epoch=++record.epoch;record.loading=true;record.error=null;record.freshDraft=freshDraft;record.controller.cancel();
-    try {
-      await contents.loadURL(url);
-      if(record.disposed||epoch!==record.epoch)return null;
-      record.loading=false;this.tick(record,{freshDraft});return record;
-    }catch(error){if(!record.disposed&&epoch===record.epoch){record.loading=false;this.onError(record,error);}throw error;}
+    if(!reload&&record.composer.getURL()===url){this.tick(record,{freshDraft});return record;}
+    record.error=null;record.freshDraft=freshDraft;record.controller.cancel();
+    const result=await record.browser.navigate(url,{reload});
+    if(!result||record.disposed)return null;
+    this.tick(record,{freshDraft});return record;
   }
   release(record,{force=false}={}) {
     if(!record||record.disposed)return false;
     if(!force&&(record.pageState.current?.state.busy||record.controller.pending||record.composer.inFlight))return false;
     if(this.visible===record)this.hide();
-    record.disposed=true;record.epoch++;record.controller.cancel();record.recovery.reset();record.timer.finish();
+    record.disposed=true;record.controller.cancel();record.recovery.reset();record.timer.finish();
     for(const cleanup of record.cleanups.splice(0).reverse())cleanup();
-    if(!record.view.webContents.isDestroyed())record.view.webContents.close({waitForBeforeUnload:false});
+    record.browser.release();
     this.records.delete(record.key);return true;
   }
   dispose() {for(const record of [...this.records.values()])this.release(record,{force:true});}

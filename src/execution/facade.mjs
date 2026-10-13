@@ -1,15 +1,26 @@
 import { desktopCommands } from './commands/service.mjs';
 import { desktopFiles } from './files/adapter.mjs';
 import { RuntimeError } from '../contracts/errors.mjs';
+import { BrowserSessions } from './browser/session-runtime.mjs';
+export { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from './browser/chatgpt-experience.mjs';
 
 // A desktop instance owns these adapters; no plan/session/store is accepted here.
 export class ExecutionFacade {
+  #browser = null;
   constructor({ commands = desktopCommands, files = desktopFiles } = {}) {
     this.commands = commands; this.files = files; this.runtime = null;
   }
   attachRuntime(runtime) {
     if (this.runtime && this.runtime !== runtime) throw new RuntimeError('EXECUTION_OWNER_CONFLICT', 'Runtime уже имеет владельца.');
     this.runtime = runtime;
+  }
+  attachBrowser(options) {
+    if (this.#browser) throw new RuntimeError('EXECUTION_OWNER_CONFLICT', 'Browser уже имеет владельца.');
+    this.#browser = new BrowserSessions(options);
+  }
+  openBrowserSession(id) {
+    if (!this.#browser) throw new RuntimeError('EXECUTION_NOT_READY', 'Browser ещё не подключён.');
+    return this.#browser.open(id);
   }
   services() {
     if (!this.runtime) throw new RuntimeError('EXECUTION_NOT_READY', 'Runtime ещё не подключён.');
@@ -32,5 +43,5 @@ export class ExecutionFacade {
   get channel() { return this.services().channel; }
   get lastStatus() { return this.runtime?.lastStatus ? structuredClone(this.runtime.lastStatus) : null; }
   // Login services survive closing the desktop. Only its own transient workers are disposed.
-  dispose() { return this.commands.dispose(); }
+  dispose() { this.#browser?.dispose(); return this.commands.dispose(); }
 }

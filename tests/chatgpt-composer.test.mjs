@@ -1,10 +1,48 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { PageStateSource } from '../src/page-state.mjs';
+import { PageStateSource } from '../src/execution/browser/page-state.mjs';
 import { chatGPTDOMScript } from '../src/chatgpt-dom.mjs';
-import { installPageObserver } from '../src/chatgpt-page-observer.mjs';
+import { installPageObserver } from '../src/execution/browser/chatgpt-page-observer.mjs';
 import { ChatGPTComposer, pageOperation, pageScript } from '../src/chatgpt-composer.mjs';
+import { EventEmitter } from 'node:events';
+import { ExecutionFacade } from '../src/execution/facade.mjs';
+import { DesktopBrowserHost } from '../src/frontend/desktop/browser-host.mjs';
+
+function executionFixture(f, t) {
+  const contents=Object.assign(new EventEmitter(),f.view);
+  let closed=false;
+  contents.isDestroyed=()=>closed;contents.close=()=>{closed=true;};
+  const host=new DesktopBrowserHost(()=>({webContents:contents}));
+  const execution=new ExecutionFacade();
+  execution.attachBrowser({host,ipc:new EventEmitter(),createComposer:(page,{pageState})=>{
+    f.composer.contents=page;f.composer.pageState=pageState;return f.composer;
+  }});
+  t.after(()=>{execution.dispose();f.dom.window.close();});
+  return execution.openBrowserSession('fixture-page');
+}
+
+test('Execution ingress uploads every part and sends once without exposing Chromium',async t=>{
+  const f=attachmentFixture(),port=executionFixture(f,t);
+  assert.equal(port.composer.contents,undefined);assert.equal(port.pageState.accept,undefined);
+  assert.equal((await port.composer.deliver(f.request)).state,'sent');
+  assert.equal((await port.composer.deliver(f.request)).state,'sent');
+  assert.equal(f.pastes(),1);assert.equal(f.sends(),1);assert.equal(f.received.length,7);
+  for(const file of f.received)assert.equal(await file.text(),'я'.repeat(14000));
+});
+
+test('Execution ingress retains UNKNOWN and never repeats a dispatched Send',async t=>{
+  const f=fixture(),execute=f.view.executeJavaScript;
+  f.view.executeJavaScript=async script=>{
+    const value=await execute(script);
+    if(value.action==='clicked')throw Error('lost response after dispatch');
+    return value;
+  };
+  const port=executionFixture(f,t),request={requestId:'boundary-request',text:'Start boundary-request'};
+  assert.equal((await port.composer.deliver(request)).state,'unknown');
+  assert.equal((await port.composer.deliver(request)).state,'unknown');
+  assert.equal(f.sends(),1);
+});
 
 function attachmentFixture({partial=false,uploading=false,renamed=false}={}) {
   const f=fixture(),w=f.dom.window;

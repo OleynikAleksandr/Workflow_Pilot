@@ -4,6 +4,8 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { validateParallelSettings } from './parallel-settings.mjs';
 import {plannedExecution} from './execution-projection.mjs';
+import { normalizeChatUrl } from './contracts/browser.mjs';
+export { normalizeChatUrl } from './contracts/browser.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const executeGit=promisify(execFile);
@@ -45,17 +47,6 @@ export function activeSessionsNewestFirst(sessions) {
     .filter(({ session }) => !session.archivedAt)
     .sort((a, b) => b.session.createdAt - a.session.createdAt || b.index - a.index)
     .map(({ session }) => session);
-}
-
-export function normalizeChatUrl(input) {
-  if (typeof input !== 'string') return null;
-  try {
-    const url = new URL(input);
-    if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.port || url.username || url.password) return null;
-    // Chat and Work conversations may have different prefixes; bind only an actual conversation ID.
-    const match = url.pathname.match(/^\/(?:c|work\/c|work|g\/[a-zA-Z0-9_-]+\/c)\/([a-zA-Z0-9_-]{8,})\/?$/);
-    return match ? url.origin + url.pathname.replace(/\/$/, '') : null;
-  } catch { return null; }
 }
 
 export function conversationExperience(input) {
