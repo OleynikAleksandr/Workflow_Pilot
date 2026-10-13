@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { normalizeChatUrl, conversationUrlCompatibleWithExperience } from '../sessions/workspace-session.mjs';
 import { CONTEXT_PROTOCOL, validateContextPacket } from '../../contracts/context.mjs';
 import { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from '../../execution/facade.mjs';
-import { validateParallelSettings } from '../../parallel-settings.mjs';
+import { validateParallelSettings } from '../workflow/parallel-settings.mjs';
 
 export function sessionExecutionMessage(project) {
   const settings = validateParallelSettings(project.executionSnapshot);

@@ -31,4 +31,7 @@ test('architecture gate rejects a real Execution to Control import and a new cyc
   await write('control/private.mjs', 'export const state = {};');
   await write('main.mjs', "import './control/private.mjs';");
   await assert.rejects(check(), error => error.code === 1 && /main-uses-control-facade/.test(error.stdout + error.stderr));
+  await write('auto-plan.mjs', 'export const legacy = true;');
+  await write('main.mjs', "import './auto-plan.mjs';");
+  await assert.rejects(check(), error => error.code === 1 && /main-workflow-uses-control-facade/.test(error.stdout + error.stderr));
 });

@@ -4,7 +4,7 @@
 
 Workflow Pilot — самостоятельное настольное приложение для управления проектами и работой с агентами через ChatGPT Web. Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot.
 
-Перенесена база 0.1.0 с собственной identity и неизменённым установленным Kit 1.7.2. ExecutionFacade обслуживает команды, stdin, файлы, службы и браузерные сессии. Execution/browser владеет страницами, observer и отправкой; Desktop размещает страницы через host. ControlFacade подключён к main: Control владеет проектами, логическими сессиями, привязками и подготовкой recovery; хранилище и внутренние Map не доступны клиенту. AutoPlan/Review и Frontend ещё мигрируют из прежней раскладки. Первый общий выпуск: macOS arm64, Windows x64, Ubuntu 24.04 LTS x64 (X11); Linux и полный комплект ещё в работе. Донор Project Web Pilot 0.6.115 заморожен.
+Перенесена база 0.1.0 с собственной identity и неизменённым установленным Kit 1.7.2. ExecutionFacade обслуживает команды, stdin, файлы, службы и браузерные сессии. Execution/browser владеет страницами, observer и отправкой; Desktop размещает страницы через host. ControlFacade подключён к main: Control владеет проектами, логическими сессиями, привязками, recovery и координацией AutoPlan/Review/parallel. Frontend ещё мигрирует из прежней раскладки. Первый общий выпуск: macOS arm64, Windows x64, Ubuntu 24.04 LTS x64 (X11); Linux и полный комплект ещё в работе. Донор Project Web Pilot 0.6.115 заморожен.
 
 ## Планируемое устройство
 

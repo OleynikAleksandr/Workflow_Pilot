@@ -4,6 +4,10 @@ import { ProjectDoctor } from './projects/project-doctor.mjs';
 import { SessionPlans } from './sessions/session-plans.mjs';
 import { SessionRuntimes } from './sessions/service.mjs';
 import { ContextService } from './context/service.mjs';
+import { createWorkflowCoordination } from './workflow/coordination.mjs';
+export { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './workflow/parallel-settings.mjs';
+export { readCommandActivity, acknowledgeUnknownCommand } from './workflow/command-activity.mjs';
+export { projectExecutors } from './workflow/execution-projection.mjs';
 
 export { normalizeChatUrl, activeSessionsNewestFirst } from './sessions/workspace-session.mjs';
 export { sessionRuntimeKey } from './sessions/service.mjs';
@@ -16,6 +20,7 @@ export class ControlFacade {
   #setup;
   #plans;
   #sessions;
+  #workflow;
   constructor({storageFile, execution, ...options}) {
     this.#execution = execution;
     this.projects = Object.freeze(new ProjectsService(storageFile, options));
@@ -57,4 +62,9 @@ export class ControlFacade {
     });
   }
   createDeletion(options) { return this.projects.createDeletion(options); }
+  configureWorkflow(options) {
+    if(this.#workflow)throw new Error('CONTROL_WORKFLOW_ALREADY_CONFIGURED');
+    this.#workflow=createWorkflowCoordination({...options,store:this.projects,setup:this.setup,plans:this.plans});
+    return this.#workflow;
+  }
 }

@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createReadStream } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { RuntimeError } from '../../contracts/errors.mjs';
 
@@ -19,6 +19,7 @@ const absolute = file => {
   return file;
 };
 export class FileAdapter {
+  existsSync(file) { return existsSync(absolute(file)); }
   access(file, mode) { return fs.access(absolute(file), mode); }
   readFile(file, options) { return fs.readFile(absolute(file), options); }
   writeFile(file, data, options) { return fs.writeFile(absolute(file), data, options); }

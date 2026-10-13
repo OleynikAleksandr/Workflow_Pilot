@@ -1,11 +1,3 @@
-import { ProjectAutoPlan } from './project-auto-plan.mjs';
-import { configureProjectAutoPlan } from './project-session-auto-plan.mjs';
-import { AutoPlan } from './auto-plan.mjs';
-import { PlanReviewClient } from './plan-review.mjs';
-import { ReviewContinuation } from './review-continuation.mjs';
-import { AutomationSendState } from './automation-send-state.mjs';
-import { readAutoPlanState, reviewBlocksExecution } from './auto-plan-state.mjs';
-import { PlanMonitor } from './plan-monitor.mjs';
 import { chatGPTTitleScript } from './execution/browser/chatgpt-title.mjs';
 import { toolFilterScript } from './execution/browser/chatgpt-tool-filter.mjs';
 import { app, BaseWindow, BrowserWindow, WebContentsView, Menu, session, ipcMain, dialog, nativeTheme, clipboard, shell } from 'electron';
@@ -16,18 +8,12 @@ import os from 'node:os';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ControlFacade, normalizeChatUrl, activeSessionsNewestFirst, externalClientLine, sessionRuntimeKey,
-  removeProjectSettings, pruneOrphanProjectSettings, belongsToProject, queueProjectStatePurge } from './control/facade.mjs';
-import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './parallel-settings.mjs';
+  pruneOrphanProjectSettings, queueProjectStatePurge, DEFAULT_PARALLEL_SETTINGS, validateParallelSettings,
+  readCommandActivity, acknowledgeUnknownCommand, projectExecutors } from './control/facade.mjs';
 import { installChatGPTAutoScroll } from './execution/browser/chatgpt-auto-scroll.mjs';
 import { ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS } from './execution/browser/chatgpt-colors.mjs';
 import { ChatColorsWindow } from './chat-colors-window.mjs';
 
-import { ParallelExecution } from './parallel-execution.mjs';
-import { ParallelKit } from './parallel-kit.mjs';
-import {readCommandActivity,acknowledgeUnknownCommand} from './command-activity.mjs';
-import { ProjectInputWatch, ChildCommandWatches } from './project-input-watch.mjs';
-import { configureExecutor,executorPageState } from './executor-session.mjs';
-import { projectExecutors } from './execution-projection.mjs';
 import { chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT } from './execution/browser/chatgpt-experience.mjs';
 
 import { appendDiagnostic } from './common.mjs';
@@ -56,37 +42,16 @@ const executionServices = new ExecutionFacade();
 
 const chromiumDiagnosticsFile = path.join(dataDir, 'diagnostics', 'chromium-events.jsonl');
 let parallelExecution = { ...DEFAULT_PARALLEL_SETTINGS };
-let parallelExecutionBook = {};
 const control = new ControlFacade({storageFile:path.join(dataDir, 'workspaces.json'), execution:executionServices,
   getExecutionSettings:()=>parallelExecution, git:(workspace,args)=>executionKit.git(workspace,['--no-optional-locks',...args])});
 const store = control.projects;
 const deletionHooks = smoke ? {beforeFinish:null} : null;
-const planMonitor = new PlanMonitor({ selected: () => store.selected(),
-  inspect: (workspace, sessionId) => store.inspect(workspace, sessionId), onChange: (_info, change) => {
-    publish();
-    if (change?.semanticChanged || change?.recovered) void autoPlan.planChanged().catch(report);
-    if (change?.semanticChanged && !pageLoading && !setupState && !settingsState) void controller?.tick();
-  }, onInputsChanged: () => {
-    planReview.refresh();
-    if (!pageLoading && !setupState && !settingsState) controller?.projectChanged();
-  }, onError: () => publish() });
 // State of the Codex App Server executor, the local MCP backend of both systems.
 const runtimeFolder = defaultRuntimeFolder(os.homedir(), process.platform);
 let chatgptChannel = CHATGPT_CHANNEL_SECURE;
 let appServerRuntime = null, runtimeSwitcher = null, runtimeActivation = null, vpsTunnel = null;
 let shellTheme = 'light';
 let hideToolCalls = true;
-const projectAutoPlan=new ProjectAutoPlan({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
-  ownsSession:(workspace,id)=>store.snapshot().projects.some(p=>p.workspace===workspace&&p.sessions.some(s=>s.sessionId===id)),onChange:workspace=>{
-  for(const record of liveSessions.all()) {
-    const project=record.project();
-    if((project?.parentWorkspace??project?.workspace)!==workspace)continue;
-    record.primaryAutomation?.update();
-    if(record.executor){record.executor.setEnabled(projectAutoPlan.enabled(workspace,project.parentScopeId));record.controller.signal();}
-  }
-  void saveSettings().catch(report);void execution.signal(workspace);publish();
-}});
-let reviewCheckpoint = null, automationCheckpoint = null;
 let chatColors = normalizeChatColors();
 let chatColorStyles, colorEditor;
 let settingsSaveTail = Promise.resolve();
@@ -133,7 +98,6 @@ const workspaceSetup = control.configureProjects({
   } : undefined,
   onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; },
 });
-const sessionPlans = control.plans;
 const {runtime:sessionContextRuntime, cache:contextCache} = control.configureContext({getRuntime:()=>runtime,
   loadFixture:smoke ? workspace=>runtime.loadContext(workspace) : null, onChange:()=>publish()});
 // Agent time: wall clock while ChatGPT shows its Stop control; each finished request is added to its own session.
@@ -141,52 +105,21 @@ let agentTimer, pageState, conversationRecovery;
 function observeManualConversation(state, record = liveSessions.visible) {
   return liveSessions.observeManualConversation(state, record);
 }
-const automationSend = new AutomationSendState({save:async checkpoint=>{
-  automationCheckpoint=checkpoint;await saveSettings({automationCheckpoint});
-}});
-function sendAutomation(text,canContinue,onBeforeSend,flow) {
-  const sender=liveSessions.visible?.primaryAutomation?.automation??automationSend;
-  return sender.send({selected:flow.selected(),page:flow.page,ready:canContinue,kind:flow===autoPlan?'plan':'review',
-    perform:()=>controller.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})});
-}
-const emptyAutoPlan=new AutoPlan({selected:()=>null,inspectPlan:async()=>({}),send:async()=>({})});
-const autoPlan=new Proxy({}, {
-  get:(_target,key)=>{const flow=liveSessions.visible?.primaryAutomation?.flow??emptyAutoPlan,value=flow[key];return typeof value==='function'?value.bind(flow):value;},
-  set:(_target,key,value)=>{(liveSessions.visible?.primaryAutomation?.flow??emptyAutoPlan)[key]=value;return true;}
-});
-function configurePrimary(record) {
-  return configureProjectAutoPlan(record,{store,authorization:projectAutoPlan,
-    inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
-    log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});
-}
-const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>publish()});
-const reviewContinuation=new ReviewContinuation({selected:()=>store.selected(),client:planReview,
-  send:sendAutomation,onChange:()=>publish(),
-  available:()=>!!controller && !controller.composer.inFlight && !pageLoading && !setupState && !settingsState
-    && workspaceHealth?.ready && workspaceHealth.workspace===store.selected()?.workspace,
-  saveCheckpoint:async checkpoint=>{reviewCheckpoint=checkpoint;await saveSettings({reviewCheckpoint});}});
+const workflow = control.configureWorkflow({getController:()=>controller,
+  contextAvailable:()=>!pageLoading&&!setupState&&!settingsState,
+  available:()=>!!controller&&!controller.composer.inFlight&&!pageLoading&&!setupState&&!settingsState
+    &&workspaceHealth?.ready&&workspaceHealth.workspace===store.selected()?.workspace,
+  onChange:()=>publish(),report,save:overrides=>saveSettings(overrides)});
+const {projectAutoPlan,autoPlan,planMonitor,planReview,reviewContinuation,execution,executionKit}=workflow;
+const configurePrimary=record=>workflow.configurePrimary(record);
 function applyObservedPage(event, record = liveSessions.visible) {
   if(!record||record.disposed)return;
-  const visible=record===liveSessions.visible;
-  if(visible) {
-    automationSend.observe(record.project(),event);
-    if(!event.reset)observeStartupAccount(event.state);
-    if(!record.identity?.assignmentId) reviewContinuation.observe(event);
-  }
+  if(record===liveSessions.visible&&!event.reset)observeStartupAccount(event.state);
   if(!event.reset) {
     record.diagnostics?.observePage(event.state);
     if(!record.loading)observeManualConversation(event.state,record);
   }
-  record.primaryAutomation?.observe(event);
-  record.executor?.observe(event);
-  const safety=JSON.stringify([event.documentId,event.state?.url,event.state?.busy,event.state?.lastMessageRole,event.state?.connectionError,
-    event.state?.draftPresent,event.state?.editorAvailable,event.state?.writable,event.state?.turnId,event.state?.userTurnId,
-    event.state?.assistantRevision,event.state?.userMessagesRevision,event.state?.manualInputRevision,
-    event.state?.manualStopRevision,event.state?.manualSendRevision]);
-  if(record.identity&&!record.identity.assignmentId&&execution.unwatch.has(record.identity.workspace)&&record.executionSafety!==safety) {
-    record.executionSafety=safety;void execution.signal(record.identity.workspace);
-  }
-  publish();
+  workflow.observePage(event,record);
 }
 function sessionRuntimeError(record,error) {
   record.error=publicError(error);
@@ -200,119 +133,13 @@ const sessionView = record => browserHost.view(record.key);
 const liveSessions = control.attachSessions({
   presentation:{show:id=>browserHost.show(id,window?.contentView),hide:()=>browserHost.hide()},
   onChange:record=>{
-    if(record===liveSessions.visible)pageLoading=record.loading;record.primaryAutomation?.update();record.executor?.changed();
-    if(record.identity&&!record.identity.assignmentId&&execution.unwatch.has(record.identity.workspace)) {
-      const stopped=executorPageState(record).stopped;
-      if(record.executionStopped!==stopped){record.executionStopped=stopped;void execution.signal(record.identity.workspace);}
-    }
+    if(record===liveSessions.visible)pageLoading=record.loading;workflow.sessionChanged(record);
     publish();
   },
   onChatBound:record=>{if(record===liveSessions.visible)void syncSelectedSessionTitle({force:true,reason:'chat-bound'});},
   onPage:(record,event)=>applyObservedPage(event,record),onError:sessionRuntimeError,decorate:decorateSessionRuntime});
-const executionKit=new ParallelKit({plans:sessionPlans,setup:workspaceSetup});
-// The parallel queue has the authoritative Kit confirmation; per-chat plan
-// projections must not bind a pre-plan ON while review/transaction is pending.
-const authorizedExecutionKit=Object.create(executionKit);
-authorizedExecutionKit.read=async workspace=>{
-  const facts=await executionKit.read(workspace),plan=facts.plan;
-  if(plan.execution_strategy==='parallel'&&facts.confirmed&&plan.execution_scope_status==='ACTIVE')
-    projectAutoPlan.sync(workspace,plan.scope_id,{confirmed:true,planRevision:plan.plan_revision,
-      originSessionId:plan.execution_origin_session_id});
-  return facts;
-};
+workflow.attachSessions(liveSessions);
 const liveRecord=project=>project&&liveSessions.find(project);
-async function restoreExecutionPage(project,assignment=null) {
-  if(liveRecord(project)?.ready&&(!assignment||liveRecord(project).executor))return project;
-  if(!project?.chatUrl||(!project.manualStart&&!project.attempt?.sendStartedAtMs&&!['sent','acknowledged'].includes(project.attempt?.state)))
-    throw Object.assign(new Error('Сохранённый адрес и отправка не подтверждены. Откройте соответствующий чат и проверьте его; автоматического Send нет.'),{code:'EXECUTOR_CHAT_UNKNOWN'});
-  const record=liveSessions.ensure(project);
-  if(assignment)configureExecutor(record,{store,enabled:projectAutoPlan.enabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
-    inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
-    signal:()=>{void execution.signal(project.parentWorkspace);},
-    log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});
-  if(!record.ready){record.ready=true;await liveSessions.navigate(record,project.chatUrl);}
-  return project;
-}
-const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelExecutionBook,
-  isEnabled:(workspace,scope)=>projectAutoPlan.enabled(workspace,scope),
-  canFinalize:(workspace,scope)=>projectAutoPlan.finalizationAllowed(workspace,scope),
-  onComplete:(workspace,scope)=>projectAutoPlan.sync(workspace,scope,{complete:true,confirmed:true}),
-  origin:(workspace,id)=>store.project(workspace,id),
-  save:async book=>{parallelExecutionBook=book;await saveSettings({parallelExecutionBook:book});},
-  onChange:()=>{
-    for(const [workspace,watcher] of execution.unwatch){
-      watcher.refreshAssignments?.();
-    }
-    for(const state of execution.states.values())for(const assignment of state.assignments??[])if(assignment.status==='INTEGRATED') {
-      const record=liveRecord(store.project(assignment.worktree));
-      if(record){record.integrated=true;record.executor?.clock.observe('done');}
-    }
-    publish();
-  },
-  watch:(workspace,signal)=>{
-    const onError=error=>{if(error)execution.publish(workspace,{phase:'attention',error});};
-    const watcher=new ProjectInputWatch({workspace,onSignal:signal,onError});
-    const children=new ChildCommandWatches({onSignal:signal,onError});
-    const refreshAssignments=()=>{
-      const state=execution.view(workspace),origin=store.project(workspace,state.originSessionId);
-      // No worktree path from an unconfirmed/foreign assignment is watched.
-      children.update((state.assignments??[]).filter(a=>{
-        if(a.status==='INTEGRATED'||a.status==='UNKNOWN'||!a.worktree||!origin)return false;
-        const child=store.project(a.worktree);
-        return child?.assignmentId===a.id&&child.parentWorkspace===workspace
-          &&child.parentProjectId===origin.projectId&&child.parentScopeId===state.scopeId
-          &&child.executionOriginSessionId===origin.sessionId&&!child.archivedAt;
-      }).map(a=>a.worktree));
-    };
-    watcher.update(['.harness/runtime/command-activity/']);
-    const stop=()=>{watcher.close();children.close();};
-    stop.update=paths=>{watcher.update(['.harness/runtime/command-activity/',...(paths??[])]);refreshAssignments();};
-    stop.refreshAssignments=refreshAssignments;return stop;
-  },
-  mainState:origin=>{
-    const record=liveRecord(origin),page=record?.pageState.current;
-    return {...executorPageState(record),documentId:page?.documentId??null,
-      lastMessageRole:page?.state?.lastMessageRole??null,
-      userMessagesRevision:page?.state?.userMessagesRevision??null,
-      manualInputRevision:page?.state?.manualInputRevision??0,
-      manualStopRevision:page?.state?.manualStopRevision??0};
-  },
-  workerState:(assignment,entry)=>executorPageState(liveRecord(store.project(assignment.worktree,entry?.sessionId))),
-  restoreOrigin:origin=>restoreExecutionPage(origin),
-  restoreWorker:async(assignment,origin,entry,recovery)=>{
-    if(!assignment.worktree)return null;
-    const project=store.project(assignment.worktree,entry?.sessionId);
-    if(!project) {
-      if(entry?.sessionId||entry?.phase==='opening'||['RUNNING','READY_FOR_INTEGRATION'].includes(assignment.status))
-        throw Object.assign(new Error('Не найдена сохранённая сессия назначения. Проверьте worktree и чат; новая сессия автоматически не создаётся.'),{code:'EXECUTOR_SESSION_MISSING'});
-      return null;
-    }
-    if(project.assignmentId!==assignment.id||project.taskId!==assignment.parent_task_id||project.parentScopeId!==assignment.parent_scope_id
-      ||project.executionOriginSessionId!==origin.sessionId||project.parentWorkspace!==origin.workspace||project.parentProjectId!==origin.projectId||project.archivedAt||project.sessionArchivedAt)
-      throw Object.assign(new Error('Сессия не соответствует назначению Kit. Откройте её для проверки.'),{code:'EXECUTOR_SESSION_MISMATCH'});
-    const restored=await restoreExecutionPage(project,assignment);
-    if(recovery)await liveRecord(restored)?.controller.resumePreparation();
-    return restored;
-  },
-  openWorker:async(assignment,origin)=>{
-    const project=await store.ensureExecutor(assignment,origin),record=liveSessions.ensure(project);
-    configureExecutor(record,{store,enabled:projectAutoPlan.enabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
-      inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
-      signal:()=>{void execution.signal(origin.workspace);},
-      log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});
-    record.ready=true;
-    await liveSessions.navigate(record,project.chatUrl??chatGPTEntrypoint(project.experience),{freshDraft:!project.attempt&&!project.chatUrl});
-    publish();return project;
-  },
-  sendCorrection:(origin,text,canContinue,onBeforeSend)=>sendExecutionMessage(origin,text,canContinue,onBeforeSend,'correction'),
-  sendDiagnostic:(origin,text,canContinue,onBeforeSend)=>sendExecutionMessage(origin,text,canContinue,onBeforeSend,'diagnostic'),
-  sendFinalization:(origin,text,canContinue,onBeforeSend)=>sendExecutionMessage(origin,text,canContinue,onBeforeSend,'finalization')});
-function sendExecutionMessage(origin,text,canContinue,onBeforeSend,kind) {
-  const record=liveRecord(origin),sender=record?.primaryAutomation?.automation;
-  if(!sender)return Promise.resolve({state:'cancelled',reason:'PAGE_NOT_READY'});
-  return sender.send({selected:origin,page:record.pageState.current?.state,kind,ready:canContinue,
-    perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})});
-}
 let setupState = null;
 let workspaceHealth = null;
 let settingsState = null;
@@ -337,7 +164,7 @@ async function applyToolCallVisibility(view = browser) {
 }
 
 function saveSettings(overrides = {}) {
-  const settings = { chatgptChannel, shellTheme, hideToolCalls, sidebarWidth, chatColors, projectsParent, projectAutoPlan:projectAutoPlan.snapshot(), reviewCheckpoint, automationCheckpoint, parallelExecution, parallelExecutionBook, ...overrides };
+  const settings = { chatgptChannel, shellTheme, hideToolCalls, sidebarWidth, chatColors, projectsParent, ...workflow.snapshot(), parallelExecution, ...overrides };
   const operation = settingsSaveTail.catch(() => {}).then(async () => {
     await executionServices.writeJson(settingsFile, settings);
   });
@@ -365,12 +192,7 @@ async function prepareProjectRemoval(job) {
 }
 async function cleanupDeletedProject(job) {
   const identities=[{workspace:job.workspace,projectId:job.projectId,sessionIds:job.sessionIds??[]},...(job.related??[])];
-  const cleaned=removeProjectSettings({projectAutoPlan:projectAutoPlan.snapshot(),parallelExecutionBook,reviewCheckpoint,automationCheckpoint},identities);
-  projectAutoPlan.book=cleaned.projectAutoPlan;parallelExecutionBook=cleaned.parallelExecutionBook;execution.book=parallelExecutionBook;
-  reviewCheckpoint=cleaned.reviewCheckpoint;automationCheckpoint=cleaned.automationCheckpoint;
-  execution.forget(identities.map(p=>p.workspace));
-  for(const book of [automationSend.entries,automationSend.cycles,reviewContinuation.flow.checkpoints,reviewContinuation.flow.cycles,reviewContinuation.stops])
-    for(const [key,value] of book)if(belongsToProject([key,value],identities))book.delete(key);
+  workflow.cleanup(identities);
   contextCache.clear();workspaceSetup.invalidateReadiness();
   if(identities.some(p=>p.workspace===workspaceHealth?.workspace))workspaceHealth=null;
   await saveSettings();
@@ -442,7 +264,7 @@ function snapshot() {
     conversationRecovery: conversationRecovery?.view() ?? { phase: 'idle', message: '', canRetry: false },
     autoPlan: {...(liveSessions.visible?.executor?.flow.view()??autoPlan.view()),
       enabled:projectAutoPlan.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
-    planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.flow.state.message,indicator:'attention'}: {})},
+    planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
     contextPreparation: { busy: selected ? contextCache.isBuilding(selected.workspace) : false },
     runtimeFolder, platform: process.platform,
@@ -1114,29 +936,7 @@ function decorateSessionRuntime(record) {
 
 function registerIpc() {
   ipcMain.handle('pilot:get-state', event => { assertLocalSender(event); return snapshot(); });
-  registerAction('pilot:auto-plan', async enabled => {
-    const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
-    const project=selected?.parentWorkspace?store.project(workspace):selected;
-    const info=project&&await readAutoPlanState(project,workspaceSetup.environment);
-    let verified=info?.confirmed===true;
-    if(info?.scopeId&&info.planExecution?.execution_strategy==='parallel'){
-      const kit=await executionKit.read(workspace);
-      verified=kit.confirmed&&kit.plan.project_id===info.projectId
-        &&kit.plan.scope_id===info.scopeId&&kit.plan.plan_revision===info.planRevision;
-    }
-    const scope=verified?info.scopeId:null;
-    const done=verified&&info.planView?.tasks?.length>0&&info.planView.tasks.every(t=>t.status==='done');
-    projectAutoPlan.sync(workspace,scope,{confirmed:verified,complete:done,
-      planRevision:info?.planRevision,originSessionId:info?.planExecution?.execution_origin_session_id});
-    const current=projectAutoPlan.state(workspace);
-    if(scope&&current?.scopeId!==scope&&enabled===true)
-      throw new Error('План изменился во время переключения AutoPlan. Обновите состояние проекта.');
-    // Completion is an automatic OFF, never misrecord it as a manual OFF.
-    if(!(done&&enabled===true))projectAutoPlan.set(workspace,
-      scope&&current?.scopeId!==scope?current.scopeId:scope,enabled===true,project?.sessionId);
-    if(workspace)execution.observe(workspace);
-    await saveSettings();
-  });
+  registerAction('pilot:auto-plan', enabled => workflow.setAutoPlan(enabled));
   registerAction('pilot:plan-review', input => planReview.setEnabled(input));
   registerAction('pilot:acknowledge-command', async input => {
     const selected=store.selected(),root=selected?.parentWorkspace??selected?.workspace;
@@ -1178,11 +978,11 @@ function registerIpc() {
         const activity=await readCommandActivity(workspace);
         if(activity.deletionBlocked)throw Object.assign(new Error('Исход команды не подтверждён. Очистка запрещена.'),{code:'DELETE_PROJECT_BUSY'});
       }
-      const ledgers=Object.values(parallelExecutionBook);
+      const ledgers=execution.ledgers();
       if(ledgers.some(ledger=>Object.values(ledger?.assignments??{}).some(entry=>entry.worktree===target.workspace
         && entry.phase!=='integrated'&&entry.integration!=='done')))
         throw Object.assign(new Error('Назначение исполнителя ещё активно или имеет UNKNOWN-состояние.'),{code:'DELETE_PROJECT_BUSY'});
-      if([...execution.states.values()].some(state=>(state.assignments??[]).some(entry=>
+      if(execution.allStates().some(state=>(state.assignments??[]).some(entry=>
         entry.worktree===target.workspace&&entry.status!=='INTEGRATED')))
         throw Object.assign(new Error('Исполнение не завершено. Проверьте состояние назначения.'),{code:'DELETE_PROJECT_BUSY'});
     };
@@ -1574,35 +1374,26 @@ else {
       fixture = await import('../tests/electron-smoke.mjs');
       await fixture.prepareStartup({ dataDir });
     }
+    let restoredWorkflow = {};
     try {
       const settings = await executionServices.readJson(settingsFile);
       if (CHATGPT_CHANNELS.includes(settings.chatgptChannel)) chatgptChannel = settings.chatgptChannel;
       if (['light', 'dark'].includes(settings.shellTheme)) shellTheme = settings.shellTheme;
       if (typeof settings.hideToolCalls === 'boolean') hideToolCalls = settings.hideToolCalls;
       parallelExecution = validateParallelSettings(settings.parallelExecution);
-      if(settings.parallelExecutionBook&&typeof settings.parallelExecutionBook==='object'&&!Array.isArray(settings.parallelExecutionBook))
-        parallelExecutionBook=settings.parallelExecutionBook;
-      const restored=new ProjectAutoPlan({saved:settings.projectAutoPlan});projectAutoPlan.book=restored.snapshot();
-      reviewCheckpoint = settings.reviewCheckpoint ?? null;
-      automationCheckpoint = settings.automationCheckpoint ?? null;
+      restoredWorkflow = settings;
       chatColors = normalizeChatColors(settings.chatColors);
       if (Number.isFinite(settings.sidebarWidth)) sidebarWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.round(settings.sidebarWidth));
       if (typeof settings.projectsParent === 'string' && path.isAbsolute(settings.projectsParent)) projectsParent = settings.projectsParent;
     } catch (error) { if (error.code !== 'ENOENT') startupError = { code: 'SETTINGS_INVALID', message: 'Не удалось прочитать локальные настройки Web Pilot. Проверьте настройки подключения.' }; }
-    emptyAutoPlan.restore(false);
-    execution.book=parallelExecutionBook;
-    automationSend.restore(automationCheckpoint);
-    reviewContinuation.restore(reviewCheckpoint);
+    workflow.restore(restoredWorkflow);
     applyShellTheme(shellTheme);
     try { await store.load(); } catch (error) { startupError = publicError(error); storageError = true; }
     if(!storageError) {
-      const before={projectAutoPlan:projectAutoPlan.snapshot(),parallelExecutionBook,reviewCheckpoint,automationCheckpoint};
+      const before=workflow.snapshot();
       const cleaned=pruneOrphanProjectSettings(before,store.snapshot().projects);
       if(JSON.stringify(before)!==JSON.stringify(cleaned)) {
-        projectAutoPlan.book=cleaned.projectAutoPlan;parallelExecutionBook=cleaned.parallelExecutionBook;execution.book=parallelExecutionBook;
-        reviewCheckpoint=cleaned.reviewCheckpoint;automationCheckpoint=cleaned.automationCheckpoint;
-        automationSend.entries.clear();automationSend.cycles.clear();automationSend.restore(automationCheckpoint);
-        reviewContinuation.stops.clear();reviewContinuation.restore(reviewCheckpoint);await saveSettings();
+        workflow.restore(cleaned);await saveSettings();
       }
     }
     if (!smoke && app.isPackaged && process.platform === 'darwin' && !storageError
@@ -1631,14 +1422,7 @@ else {
     });
     installMenu();
     await createWindow();
-    if(!storageError&&!smoke)for(const [workspace,state] of Object.entries(projectAutoPlan.book))if(state.enabled) {
-      const project=store.project(workspace,state.sessionId);
-      if(project?.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt)void restoreExecutionPage(project).catch(report);
-    }
-    if(!storageError&&!smoke)for(const project of store.snapshot().projects)if(!project.parentWorkspace&&!project.archivedAt
-      &&(project.sessions.some(s=>s.executionSnapshot?.parallel_allowed)||Object.values(parallelExecutionBook).some(b=>b?.workspace===project.workspace))) {
-      execution.observe(project.workspace);void execution.signal(project.workspace);
-    }
+    if(!storageError&&!smoke)workflow.restoreBackground();
   }).catch(error => {
     console.error('Workflow Pilot:', smoke ? (error.stack || error) : error.message);
     if (!smoke) dialog.showErrorBox('Workflow Pilot', error.message);

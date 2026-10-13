@@ -1,7 +1,15 @@
-# Workflow execution — текущая база
+# Workflow execution — координация в Control
 
-AutoPlan, Review и parallel coordinator перенесены без изменения продуктового алгоритма. Новый профиль не наследует сохранённые пользовательские настройки донора. Одна current plan на checkout/worktree, исходная адресация review recipient и execution origin сохраняется.
+T006 переносит AutoPlan, ProjectAutoPlan, ReviewContinuation, PlanReviewClient, ParallelExecution/Kit, исполнителей, подтверждение плана и его проекции в src/control/workflow. Алгоритмы базы 0.6.115 сохранены: sequential работает в основном checkout, parallel использует отдельные worktree; новый оркестратор и отложенная ротация 0.6.113/114 не включены.
+
+ControlFacade создаёт coordination: она владеет разрешениями проектов, журналами отправок, восстановлением основных и назначенных сессий, адресными подписками и допуском интеграции. main вызывает операции переключения/восстановления и получает снимки. Книги назначений, состояния очередей и Map подписок наружу не передаются; очищается только явно адресованный проект. Desktop ещё содержит отображение и настройки платформы до T008. Совместимый AutoPlan-порт для текущей видимой сессии сохранён для Desktop и donor smoke.
+
+Execution предоставляет процессы, физический IO, проверку жизни процесса/загрузки ОС и файловые наблюдатели. Наблюдатели сохраняют ограниченный список входов и перевешивание при замене inode; новых фоновых опросов нет. Control обращается к ExecutionFacade. Kit остаётся единственным владельцем изменений плана, назначений и транзакций; его Review API и CLI используются без второй копии плана.
+
+execution_origin_session_id выбирается из подтверждённого parallel-плана и сверяется со снимком max_workers основной сессии. recipient_session_id остаётся самостоятельным адресом Review; получатель сверяется повторно по сохранённому состоянию непосредственно перед Send. OFF, Stop, draft, неподтверждённые writer-команды и UNKNOWN сохраняют прежние блокировки. Готовый source не доказывает merge safe: диагностическое поручение, последовательная интеграция и финальная передача имеют отдельные сохранённые этапы без повторного Send.
 
 Новые worktree и quarantine используют .workflow-pilot-worktrees и .workflow-pilot-delete-. Донорские проекты открываются по исходному формату Kit; перенос регистра локальных проектов не выполняется. Два приложения не должны исполнять один план одновременно.
 
-packages/workflow-kit остаётся базовой 1.7.2; resources/workflow-kit генерируется staging. Installed .harness/kit нового проекта не заменён копированием. Перенос coordinator — T006, устранение циклов Kit и compatibility fixture — T007. Будущая оркестрация описана в ../planning/orchestrated-execution-next.md и сейчас не включается.
+packages/workflow-kit остаётся базовой 1.7.2; resources/workflow-kit генерируется staging. Installed .harness/kit нового проекта не заменён копированием. Корневые re-export обслуживают ещё не перенесённых потребителей и тесты до T011. Архитектурная проверка запрещает обход ControlFacade из main, импорты корневых мостов и физическое IO из Control. Устранение циклов Kit и compatibility fixture — T007.
+
+Проверки: прежние F01–F20/A01–A06, Review recipient/restart/final-send, тесты ControlFacade для отделённых снимков, сохранения UNKNOWN/origin и адресной очистки; полный unit-all, изолированный electron-smoke, kit-check и architecture. Реальные службы, модельные агенты и профиль пользователя в fixtures не используются. Будущая оркестрация описана в ../planning/orchestrated-execution-next.md и сейчас не включается.

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 15,
+  "plan_revision": 17,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -325,7 +325,19 @@
       "src/control/sessions/agent-timer.mjs",
       "src/control/sessions/session-plans.mjs",
       "src/execution/files/diagnostics.mjs",
-      "tests/control-facade.test.mjs"
+      "tests/control-facade.test.mjs",
+      "src/control/workflow/auto-plan-state.mjs",
+      "src/control/workflow/automation-send-state.mjs",
+      "src/control/workflow/command-activity.mjs",
+      "src/control/workflow/execution-projection.mjs",
+      "src/control/workflow/executor-session.mjs",
+      "src/control/workflow/parallel-settings.mjs",
+      "src/control/workflow/plan-monitor.mjs",
+      "src/control/workflow/project-auto-plan.mjs",
+      "src/control/workflow/project-session-auto-plan.mjs",
+      "src/control/workflow/review-continuation.mjs",
+      "src/execution/commands/activity-probe.mjs",
+      "src/execution/files/project-input-watch.mjs"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -1397,10 +1409,32 @@
         "src/execution/files/adapter.mjs",
         "src/execution/runtime/service.mjs",
         "src/execution/platform/paths.mjs",
-        "src/execution/browser/session-runtime.mjs"
+        "src/execution/browser/session-runtime.mjs",
+        ".dependency-cruiser.cjs",
+        "src/automation-send-state.mjs",
+        "src/command-activity.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/auto-plan-state.mjs",
+        "src/control/workflow/automation-send-state.mjs",
+        "src/control/workflow/command-activity.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/parallel-settings.mjs",
+        "src/control/workflow/plan-monitor.mjs",
+        "src/control/workflow/project-auto-plan.mjs",
+        "src/control/workflow/project-session-auto-plan.mjs",
+        "src/control/workflow/review-continuation.mjs",
+        "src/execution/commands/activity-probe.mjs",
+        "src/execution/files/project-input-watch.mjs",
+        "src/project-input-watch.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/execution-architecture.test.mjs"
       ],
       "documentation_paths": [
-        "docs/modules/workflow-execution.md"
+        "docs/modules/workflow-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/control.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -1415,13 +1449,60 @@
         "Проходят donor F01–F20/A01–A06 по применимым базовым сценариям: source ready ≠ merge safe, writer/UNKNOWN, диагностическое поручение, последовательная интеграция, final handoff без повтора. Отложенные 0.6.113/114 не возвращены."
       ],
       "expected_commit_message": "refactor: Перенести координацию AutoPlan, Review и исполнителей в Control",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T006",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/control.md",
+        "docs/modules/workflow-execution.md",
+        "src/auto-plan-state.mjs",
+        "src/auto-plan.mjs",
+        "src/automation-send-state.mjs",
+        "src/command-activity.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/facade.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/auto-plan-state.mjs",
+        "src/control/workflow/auto-plan.mjs",
+        "src/control/workflow/automation-send-state.mjs",
+        "src/control/workflow/command-activity.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/workflow/parallel-settings.mjs",
+        "src/control/workflow/plan-monitor.mjs",
+        "src/control/workflow/plan-review.mjs",
+        "src/control/workflow/project-auto-plan.mjs",
+        "src/control/workflow/project-session-auto-plan.mjs",
+        "src/control/workflow/review-continuation.mjs",
+        "src/execution-projection.mjs",
+        "src/execution/commands/activity-probe.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/files/adapter.mjs",
+        "src/execution/files/project-input-watch.mjs",
+        "src/executor-session.mjs",
+        "src/main.mjs",
+        "src/parallel-execution.mjs",
+        "src/parallel-kit.mjs",
+        "src/parallel-settings.mjs",
+        "src/plan-monitor.mjs",
+        "src/plan-review.mjs",
+        "src/project-auto-plan.mjs",
+        "src/project-input-watch.mjs",
+        "src/project-session-auto-plan.mjs",
+        "src/review-continuation.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/execution-architecture.test.mjs"
+      ]
     },
     {
       "id": "T007",
@@ -1961,7 +2042,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 15
+Revision: 17
 
 ## Цель
 
@@ -2010,10 +2091,10 @@ Revision: 15
   - Файлы: src/control/projects/service.mjs, src/control/projects/workspace-setup.mjs, src/control/projects/workspace-deletion.mjs, src/control/projects/project-doctor.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/control/sessions/conversation-recovery.mjs, src/control/context/service.mjs, src/control/context/context-session.mjs, src/control/context/context-inputs.mjs, src/control/context/context-cache.mjs, src/control/facade.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/workspace-session.mjs, src/session-plans.mjs, src/context-session.mjs, src/context-inputs.mjs, src/context-cache.mjs, tests/workspace-session.test.mjs, tests/session-plans.test.mjs, tests/context-session.test.mjs, tests/context-cache.test.mjs, .dependency-cruiser.cjs, src/agent-timer.mjs, src/common.mjs, src/control/projects/project-state-cleanup.mjs, src/control/projects/workspace-readiness.mjs, src/control/sessions/agent-timer.mjs, src/control/sessions/session-plans.mjs, src/conversation-recovery.mjs, src/execution/facade.mjs, src/execution/files/adapter.mjs, src/execution/files/diagnostics.mjs, src/project-doctor.mjs, src/project-state-cleanup.mjs, src/session-runtime.mjs, src/workspace-deletion.mjs, src/workspace-readiness.mjs, src/workspace-setup.mjs, tests/control-facade.test.mjs, tests/electron-smoke.mjs, tests/execution-architecture.test.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/modules/control.md, docs/architecture/OVERVIEW.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [TODO] T006: Перенести координацию AutoPlan, Review и исполнителей в Control — Ожидает
-  - Git Commit: [PENDING] refactor: Перенести координацию AutoPlan, Review и исполнителей в Control
+- [DONE] T006: Перенести координацию AutoPlan, Review и исполнителей в Control — Завершено
+  - Git Commit: [DONE] refactor: Перенести координацию AutoPlan, Review и исполнителей в Control
   - Reference: workflow-pilot-migration-0.1.0 / T006 / implementation
-  - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/facade.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/auto-plan.mjs, src/project-auto-plan.mjs, src/project-session-auto-plan.mjs, src/plan-review.mjs, src/review-continuation.mjs, src/parallel-execution.mjs, src/parallel-kit.mjs, src/executor-session.mjs, tests/auto-plan.test.mjs, tests/project-auto-plan.test.mjs, tests/plan-review.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-finalization.test.mjs, tests/electron-smoke.mjs, src/parallel-settings.mjs, src/auto-plan-state.mjs, src/execution-projection.mjs, src/plan-monitor.mjs, src/execution/facade.mjs, src/execution/commands/service.mjs, src/execution/files/adapter.mjs, src/execution/runtime/service.mjs, src/execution/platform/paths.mjs, src/execution/browser/session-runtime.mjs, docs/modules/workflow-execution.md
+  - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/facade.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/auto-plan.mjs, src/project-auto-plan.mjs, src/project-session-auto-plan.mjs, src/plan-review.mjs, src/review-continuation.mjs, src/parallel-execution.mjs, src/parallel-kit.mjs, src/executor-session.mjs, tests/auto-plan.test.mjs, tests/project-auto-plan.test.mjs, tests/plan-review.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-finalization.test.mjs, tests/electron-smoke.mjs, src/parallel-settings.mjs, src/auto-plan-state.mjs, src/execution-projection.mjs, src/plan-monitor.mjs, src/execution/facade.mjs, src/execution/commands/service.mjs, src/execution/files/adapter.mjs, src/execution/runtime/service.mjs, src/execution/platform/paths.mjs, src/execution/browser/session-runtime.mjs, .dependency-cruiser.cjs, src/automation-send-state.mjs, src/command-activity.mjs, src/control/context/context-session.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/auto-plan-state.mjs, src/control/workflow/automation-send-state.mjs, src/control/workflow/command-activity.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/parallel-settings.mjs, src/control/workflow/plan-monitor.mjs, src/control/workflow/project-auto-plan.mjs, src/control/workflow/project-session-auto-plan.mjs, src/control/workflow/review-continuation.mjs, src/execution/commands/activity-probe.mjs, src/execution/files/project-input-watch.mjs, src/project-input-watch.mjs, tests/control-facade.test.mjs, tests/execution-architecture.test.mjs, docs/modules/workflow-execution.md, docs/architecture/OVERVIEW.md, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: T005
 - [TODO] T007: Разделить зависимости Kit и обеспечить продолжение донорских проектов — Ожидает

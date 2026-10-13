@@ -73,3 +73,39 @@ test('failed Control save rolls back ownership and restart retains the last dura
   assert.equal(restarted.snapshot().projects[0].sessions.length,1);
   assert.deepEqual(await fs.readdir(path.dirname(f.file)),['sessions.json']);
 });
+
+test('workflow facade restores delivery ledgers and purges only the addressed project',async t=>{
+  const f=await fixture(t),control=f.create(),store=control.projects;
+  const first=await store.select(await f.project('First'));
+  const neighbour=await store.select(await f.project('Neighbour'));
+  control.configureProjects({});
+  const workflow=control.configureWorkflow({getController:()=>null,available:()=>false,contextAvailable:()=>false,
+    onChange:()=>{},report:()=>{},save:async()=>{}});
+  workflow.attachSessions({all:()=>[],find:()=>null,visible:null});
+  t.after(()=>{workflow.autoPlan.dispose();workflow.execution.dispose();workflow.planMonitor.close();
+    workflow.planReview.dispose();workflow.reviewContinuation.dispose();});
+  const permissions=Object.fromEntries([first,neighbour].map(p=>[p.workspace,{projectId:p.projectId,scopeId:'scope',
+    enabled:true,sessionId:p.sessionId,sessions:{}}]));
+  const ledgers=Object.fromEntries([first,neighbour].map(p=>[JSON.stringify([p.workspace,'scope']),{
+    workspace:p.workspace,scope:'scope',originSessionId:p.sessionId,assignments:{},corrections:{},finalization:{status:'unknown'}}]));
+  const saved={projectAutoPlan:permissions,parallelExecutionBook:ledgers,reviewCheckpoint:{version:3,entries:[],cycles:[]}};
+  workflow.restore(saved);
+  saved.projectAutoPlan[first.workspace].enabled=false;
+  assert.equal(workflow.projectAutoPlan.enabled(first.workspace,'scope'),true);
+  const detached=workflow.snapshot();detached.parallelExecutionBook={};detached.projectAutoPlan[first.workspace].enabled=false;
+  assert.equal(workflow.execution.ledgers().length,2);
+  assert.equal(workflow.projectAutoPlan.enabled(first.workspace,'scope'),true);
+  assert.equal(workflow.execution.ledgers().every(entry=>entry.finalization.status==='unknown'),true);
+  for(const key of ['states','unwatch','queues','book'])assert.equal(workflow.execution[key],undefined);
+  assert.equal(workflow.projectAutoPlan.book,undefined);
+  assert.equal(workflow.reviewContinuation.stops,undefined);
+  workflow.execution.publish(neighbour.workspace,{assignments:[{id:'foreign',status:'UNKNOWN'}]});
+  workflow.execution.view(neighbour.workspace).assignments.length=0;
+  assert.equal(workflow.execution.view(neighbour.workspace).assignments.length,1);
+  workflow.cleanup([{workspace:first.workspace,projectId:first.projectId,sessionIds:[first.sessionId]}]);
+  assert.equal(workflow.projectAutoPlan.enabled(first.workspace,'scope'),false);
+  assert.equal(workflow.projectAutoPlan.enabled(neighbour.workspace,'scope'),true);
+  assert.deepEqual(workflow.execution.ledgers().map(entry=>entry.workspace),[neighbour.workspace]);
+  assert.equal(workflow.execution.ledgers()[0].originSessionId,neighbour.sessionId);
+  assert.equal(store.selected().sessionId,neighbour.sessionId);
+});

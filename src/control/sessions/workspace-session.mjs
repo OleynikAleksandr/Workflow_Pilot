@@ -1,8 +1,8 @@
 import { exists, diagnosticFiles, desktopFiles as fs, executeFile as executeGit } from '../../execution/facade.mjs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { validateParallelSettings } from '../../parallel-settings.mjs';
-import {plannedExecution} from '../../execution-projection.mjs';
+import { validateParallelSettings } from '../workflow/parallel-settings.mjs';
+import {plannedExecution} from '../workflow/execution-projection.mjs';
 import { normalizeChatUrl } from '../../contracts/browser.mjs';
 export { normalizeChatUrl } from '../../contracts/browser.mjs';
 export const workspaceGit=async(workspace,args)=>(await executeGit('git',['--no-optional-locks','-C',workspace,...args],

@@ -1929,13 +1929,13 @@ async function verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,
     assert.equal(confirmation.length,1,'a present folder never reaches the confirmation dialog');
     assert.ok(store.project(orphanPath));
     await fs.rm(orphanPath,{recursive:true});
-    execution.states.set(parent.workspace,{assignments:[{worktree:orphanPath,status:'UNKNOWN'}]});
+    execution.publish(parent.workspace,{assignments:[{worktree:orphanPath,status:'UNKNOWN'}]});
     await click();
     await waitFor(()=>confirmation.length===2,'UNKNOWN command confirmation requested',snapshot);
     await waitFor(()=>sidebar.executeJavaScript('document.getElementById("error-banner").textContent.includes("Исполнение не завершено")'),
       'UNKNOWN command blocks cleanup',snapshot);
     assert.ok(store.project(orphanPath));
-    execution.states.delete(parent.workspace);
+    execution.publish(parent.workspace,{assignments:[]});
     const mismatch=await sidebar.executeJavaScript(`window.webPilot.clearOrphanExecutor({workspace:${JSON.stringify(orphanPath)},projectId:"wrong-project-id"})`);
     assert.equal(mismatch.ok,false,'replacement project ID must not be removed');
     await click();
@@ -1946,5 +1946,5 @@ async function verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,
     assert.equal(restarted.project(parent.workspace),null);
     assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),cloudCount,'remote conversation fixture remains untouched');
     assert.ok(store.project(neighbour.workspace),'unrelated archived project survives');
-  }finally{dialog.showMessageBox=nativeDialog;execution.states.delete(parent.workspace);}
+  }finally{dialog.showMessageBox=nativeDialog;execution.publish(parent.workspace,{assignments:[]});}
 }
