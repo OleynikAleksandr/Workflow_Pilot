@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 39,
+  "plan_revision": 41,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2621,13 +2621,16 @@
         "Корневой release-manifest.json совпадает побайтово с manifest staging и Downloads, vendor Windows asset включён и проверен по закреплённому SHA."
       ],
       "expected_commit_message": "release: Собрать общий выпуск Workflow Pilot 0.1.0",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T012-BUILD",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T013",
@@ -2726,7 +2729,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 39
+Revision: 41
 
 ## Цель
 
@@ -2841,8 +2844,8 @@ Revision: 39
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012-RELEASE
-- [TODO] T012-BUILD: Собрать общий выпуск Workflow Pilot 0.1.0 — Ожидает
-  - Git Commit: [PENDING] release: Собрать общий выпуск Workflow Pilot 0.1.0
+- [DONE] T012-BUILD: Собрать общий выпуск Workflow Pilot 0.1.0 — Завершено
+  - Git Commit: [DONE] release: Собрать общий выпуск Workflow Pilot 0.1.0
   - Reference: workflow-pilot-migration-0.1.0 / T012-BUILD / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
