@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 21,
+  "plan_revision": 23,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -372,7 +372,12 @@
       "src/frontend/desktop/ui/project-doctor.mjs",
       "src/frontend/desktop/ui/settings-panel.mjs",
       "src/frontend/desktop/ui/workspace-setup.mjs",
-      "tests/desktop-boundaries.test.mjs"
+      "tests/desktop-boundaries.test.mjs",
+      "src/execution/platform/linux/toolchain.mjs",
+      "tests/fixtures/linux-platform.py",
+      "tools/codex-app-server-mcp/linux_runtime.py",
+      "tools/codex-app-server-mcp/requirements-linux.in",
+      "tools/codex-app-server-mcp/requirements-linux.lock"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -1910,10 +1915,27 @@
         "src/execution/browser/page-state.mjs",
         "src/contracts/control.mjs",
         "src/contracts/execution.mjs",
-        "src/contracts/errors.mjs"
+        "src/contracts/errors.mjs",
+        "src/control/startup/platform.mjs",
+        "src/control/startup/readiness.mjs",
+        "src/execution/platform/linux/toolchain.mjs",
+        "src/execution/platform/paths.mjs",
+        "src/execution/runtime/vps.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/ui/settings-panel.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/fixtures/linux-platform.py",
+        "tests/settings-chatgpt-channel.test.mjs",
+        "tests/startup-platform.test.mjs",
+        "tools/codex-app-server-mcp/linux_runtime.py",
+        "tools/codex-app-server-mcp/requirements-linux.in",
+        "tools/codex-app-server-mcp/requirements-linux.lock",
+        "tools/codex-app-server-mcp/tunnel_prompt.py"
       ],
       "documentation_paths": [
-        "docs/modules/linux.md"
+        "docs/modules/linux.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/first-run-onboarding.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -1928,13 +1950,47 @@
         "Проверены ошибки отсутствующих компонентов, Unicode/пробелы, executable bits, register case и restart. Fixtures на Mac отделены от native Linux; живую VM проверяет пользователь позднее. VPS пользователя не переоборудован в desktop."
       ],
       "expected_commit_message": "refactor: Реализовать Linux runtime и первый запуск Ubuntu x64",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T009",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/first-run-onboarding.md",
+        "docs/modules/linux.md",
+        "scripts/prepare-linux-toolchain.mjs",
+        "src/control/startup/platform.mjs",
+        "src/control/startup/readiness.mjs",
+        "src/execution/platform/linux/runtime.mjs",
+        "src/execution/platform/linux/services.mjs",
+        "src/execution/platform/linux/startup.mjs",
+        "src/execution/platform/linux/toolchain.mjs",
+        "src/execution/platform/paths.mjs",
+        "src/execution/runtime/service.mjs",
+        "src/execution/runtime/vps.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/bootstrap.mjs",
+        "src/frontend/desktop/ui/settings-panel.mjs",
+        "src/frontend/desktop/ui/startup.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/fixtures/linux-platform.py",
+        "tests/linux-runtime.test.mjs",
+        "tests/linux-startup.test.mjs",
+        "tests/settings-chatgpt-channel.test.mjs",
+        "tests/startup-platform.test.mjs",
+        "tools/codex-app-server-mcp/app_server_client.py",
+        "tools/codex-app-server-mcp/control.py",
+        "tools/codex-app-server-mcp/linux_desktop.py",
+        "tools/codex-app-server-mcp/linux_runtime.py",
+        "tools/codex-app-server-mcp/requirements-linux.in",
+        "tools/codex-app-server-mcp/requirements-linux.lock",
+        "tools/codex-app-server-mcp/requirements.txt",
+        "tools/codex-app-server-mcp/server.py",
+        "tools/codex-app-server-mcp/tunnel_prompt.py"
+      ]
     },
     {
       "id": "T010",
@@ -2260,7 +2316,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 21
+Revision: 23
 
 ## Цель
 
@@ -2327,10 +2383,10 @@ Revision: 21
   - Файлы: src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ipc.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/service.mjs, src/control/context/service.mjs, src/control/workflow/coordination.mjs, src/execution/facade.mjs, src/execution/commands/service.mjs, src/execution/files/adapter.mjs, src/execution/runtime/service.mjs, src/execution/platform/paths.mjs, src/execution/browser/session-runtime.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/preload.cjs, src/ui/index.html, src/ui/sidebar.mjs, src/ui/startup.mjs, src/ui/settings-panel.mjs, resources/mac-permissions.plist, resources/workspace-setup-worker.mjs, resources/runtime-control/windows-control.py, tests/sidebar.test.mjs, tests/startup-ui.test.mjs, tests/workspace-setup.test.mjs, tests/project-doctor.test.mjs, tests/workspace-deletion.test.mjs, tests/project-state-cleanup.test.mjs, src/workspace-setup.mjs, src/project-doctor.mjs, src/workspace-deletion.mjs, src/project-state-cleanup.mjs, src/startup-readiness.mjs, src/startup-platform.mjs, src/browser-startup.mjs, src/tunnel-setup.mjs, src/tunnel-clipboard.mjs, src/archive-preload.cjs, package.json, .dependency-cruiser.cjs, scripts/check-installed-release.mjs, src/chat-colors-preload.cjs, src/chat-colors-window.mjs, src/chromium-diagnostics.mjs, src/contracts/chat-colors.mjs, src/contracts/desktop.mjs, src/contracts/parallel-settings.mjs, src/contracts/tunnel.mjs, src/contracts/workflow-view.mjs, src/control/projects/lifecycle.mjs, src/control/settings/service.mjs, src/control/startup/platform.mjs, src/control/startup/public-state.mjs, src/control/startup/readiness.mjs, src/control/startup/tunnel-clipboard.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/parallel-settings.mjs, src/execution/browser/chatgpt-colors.mjs, src/execution/browser/diagnostics.mjs, src/execution/browser/startup-network-trace.mjs, src/execution/platform/mac-setup.mjs, src/execution/runtime/tunnel-setup.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/archive-preload.cjs, src/frontend/desktop/chat-colors-preload.cjs, src/frontend/desktop/chat-colors-window.mjs, src/frontend/desktop/mac-installation.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/chat-colors.html, src/frontend/desktop/ui/chat-colors.mjs, src/frontend/desktop/ui/progress.mjs, src/frontend/desktop/ui/project-doctor.mjs, src/frontend/desktop/ui/settings-panel.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/startup-network-trace.mjs, src/ui/archive.html, src/ui/archive.mjs, src/ui/chat-colors.html, src/ui/chat-colors.mjs, src/ui/progress.mjs, src/ui/project-doctor.mjs, src/ui/workspace-setup.mjs, tests/desktop-boundaries.test.mjs, tests/parallel-execution-ui.test.mjs, tests/progress.test.mjs, tests/project-doctor-ui.test.mjs, tests/release-all.test.mjs, tests/settings-chatgpt-channel.test.mjs, tests/settings-parallel-execution.test.mjs, tests/startup-readiness.test.mjs, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/project-lifecycle.md, docs/architecture/OVERVIEW.md, docs/modules/control.md, docs/planning/migration-0.1.0.md, docs/planning/migration-platforms.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
-- [TODO] T009: Реализовать Linux runtime и первый запуск Ubuntu x64 — Ожидает
-  - Git Commit: [PENDING] refactor: Реализовать Linux runtime и первый запуск Ubuntu x64
+- [DONE] T009: Реализовать Linux runtime и первый запуск Ubuntu x64 — Завершено
+  - Git Commit: [DONE] refactor: Реализовать Linux runtime и первый запуск Ubuntu x64
   - Reference: workflow-pilot-migration-0.1.0 / T009 / implementation
-  - Файлы: src/execution/platform/linux/runtime.mjs, src/execution/platform/linux/startup.mjs, src/execution/platform/linux/services.mjs, src/execution/runtime/service.mjs, src/execution/runtime/mcp-runtime.mjs, src/execution/runtime/vps-tunnel.mjs, src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ipc.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/service.mjs, src/control/context/service.mjs, src/control/workflow/coordination.mjs, tools/codex-app-server-mcp/control.py, tools/codex-app-server-mcp/server.py, tools/codex-app-server-mcp/app_server_client.py, tools/codex-app-server-mcp/codex-tools.lock.json, tools/codex-app-server-mcp/requirements.txt, tools/codex-app-server-mcp/windows_desktop.py, tools/codex-app-server-mcp/linux_desktop.py, resources/runtime-control/windows-control.py, resources/runtime-control/linux-control.py, scripts/prepare-linux-toolchain.mjs, tests/linux-runtime.test.mjs, tests/linux-startup.test.mjs, src/execution/commands/service.mjs, src/execution/commands/command-activity.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, docs/modules/linux.md
+  - Файлы: src/execution/platform/linux/runtime.mjs, src/execution/platform/linux/startup.mjs, src/execution/platform/linux/services.mjs, src/execution/runtime/service.mjs, src/execution/runtime/mcp-runtime.mjs, src/execution/runtime/vps-tunnel.mjs, src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ipc.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/service.mjs, src/control/context/service.mjs, src/control/workflow/coordination.mjs, tools/codex-app-server-mcp/control.py, tools/codex-app-server-mcp/server.py, tools/codex-app-server-mcp/app_server_client.py, tools/codex-app-server-mcp/codex-tools.lock.json, tools/codex-app-server-mcp/requirements.txt, tools/codex-app-server-mcp/windows_desktop.py, tools/codex-app-server-mcp/linux_desktop.py, resources/runtime-control/windows-control.py, resources/runtime-control/linux-control.py, scripts/prepare-linux-toolchain.mjs, tests/linux-runtime.test.mjs, tests/linux-startup.test.mjs, src/execution/commands/service.mjs, src/execution/commands/command-activity.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/control/startup/platform.mjs, src/control/startup/readiness.mjs, src/execution/platform/linux/toolchain.mjs, src/execution/platform/paths.mjs, src/execution/runtime/vps.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/settings-panel.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/linux-platform.py, tests/settings-chatgpt-channel.test.mjs, tests/startup-platform.test.mjs, tools/codex-app-server-mcp/linux_runtime.py, tools/codex-app-server-mcp/requirements-linux.in, tools/codex-app-server-mcp/requirements-linux.lock, tools/codex-app-server-mcp/tunnel_prompt.py, docs/modules/linux.md, docs/architecture/OVERVIEW.md, docs/modules/first-run-onboarding.md
   - Параллельность: исключительное выполнение
   - Зависимости: T008
 - [TODO] T010: Подготовить единую поставку трёх платформ — Ожидает

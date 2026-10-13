@@ -218,16 +218,21 @@ export class VpsTunnel {
 // Windows has no LaunchAgent: control.py of the executor keeps the same ssh forward with a small supervisor
 // process, starts it at sign-in and restarts it after a drop. Everything else — the alias in ~/.ssh/config,
 // the RemoteForward conflict, the connector address — is read exactly as on macOS.
-export class WindowsVpsTunnel extends VpsTunnel {
+export class ProcessVpsTunnel extends VpsTunnel {
   // control(args) runs one vps-* command of control.py and returns its JSON.
-  constructor({ control, homeDir = os.homedir(), environment = process.env, ...options } = {}) {
+  constructor({ control, homeDir = os.homedir(), environment = process.env, platform='win32', ...options } = {}) {
     super({ homeDir, ...options });
     if (typeof control !== 'function') throw new TypeError('WindowsVpsTunnel requires control');
     this.control = control;
     const systemRoot = Object.entries(environment).find(([key]) => key.toLowerCase() === 'systemroot')?.[1] || 'C:\\Windows';
     // The OpenSSH client that ships with Windows; without it the server counts as not configured.
-    this.ssh = path.join(systemRoot, 'System32', 'OpenSSH', 'ssh.exe');
-    this.spawnOptions = { windowsHide: true };
+    this.ssh = platform==='linux'?'/usr/bin/ssh':path.join(systemRoot, 'System32', 'OpenSSH', 'ssh.exe');
+    this.spawnOptions = platform==='linux'?{}:{ windowsHide: true };
+    if(platform==='linux') {
+      const base=typeof environment.XDG_CONFIG_HOME==='string'&&path.isAbsolute(environment.XDG_CONFIG_HOME)?environment.XDG_CONFIG_HOME:path.join(homeDir,'.config');
+      this.routeFile=path.join(base,'workflow-pilot/vps/route.json');
+      this.urlFile=path.join(base,'workflow-pilot/vps/mcp-url');
+    }
   }
 
   async observe() {
@@ -269,3 +274,4 @@ export class WindowsVpsTunnel extends VpsTunnel {
     return this.status(mcpUrl);
   }
 }
+export { ProcessVpsTunnel as WindowsVpsTunnel };

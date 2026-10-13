@@ -43,10 +43,12 @@ function fixture(platform = 'win32') {
   const flow = new StartupReadiness({ ...startupPlatformOptions(input), onChange: s => updates.push(s) });
   return { flow, calls, updates, input, fail: value => { failPreparation = value; } };
 }
-test('real startup selection enables Windows and macOS while fixture mode is isolated', () => {
+test('real startup selection enables Windows, macOS and Linux while fixture mode is isolated', () => {
   assert.equal(startupSupported('win32'), true);
   assert.equal(startupSupported('darwin'), true);
-  assert.equal(startupSupported('linux'), false);
+  assert.equal(startupSupported('linux'), true);
+  assert.equal(startupSupported('linux', true), false);
+  assert.equal(startupSupported('freebsd'), false);
   assert.equal(startupSupported('win32', true), false);
 });
 test('clean Windows unpacks the components of the package before Git, then activates the executor like macOS, without Apple', async () => {

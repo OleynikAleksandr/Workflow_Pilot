@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, readFile, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, mkdir, rm, realpath } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import path from 'node:path';
@@ -1657,7 +1657,7 @@ print(json.dumps(out, ensure_ascii=False))
   assert.equal(out.summary_description, 'Short status text used in the desktop notification if the watchdog fires.');
   if (out.view.pillow) {
     assert.deepEqual(out.view.size, [1600, 8]); assert.equal(out.view.mime, 'image/png');
-    assert.equal(out.view.meta.source, path.join(root, 'wide.png'));
+    assert.equal(out.view.meta.source, await realpath(path.join(root, 'wide.png')));
     assert.equal(out.view.small_untouched, true, 'an image within the limit is returned as it is');
     assert.equal(out.view.broken, 'Image format is not supported');
   } else assert.match(out.view.error, /^Image resize is unavailable: Pillow is missing/);

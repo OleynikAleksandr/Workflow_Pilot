@@ -11,8 +11,11 @@ import { defaultRuntimeFolder } from '../platform/paths.mjs';
 // The only local MCP backend: the Codex App Server executor. Its MCP server names the system it runs on.
 export const MAC_RUNTIME_LABEL = 'Workflow Pilot Local Mac';
 export const WINDOWS_RUNTIME_LABEL = 'Workflow Pilot Local Windows';
+export const LINUX_RUNTIME_LABEL = 'Workflow Pilot Local Linux';
 export function runtimeLabel(platform = process.platform) {
-  return platform === 'win32' ? WINDOWS_RUNTIME_LABEL : MAC_RUNTIME_LABEL;
+  const label={darwin:MAC_RUNTIME_LABEL,win32:WINDOWS_RUNTIME_LABEL,linux:LINUX_RUNTIME_LABEL}[platform];
+  if(!label)throw new RuntimeError('RUNTIME_PLATFORM_UNSUPPORTED','Неподдерживаемая платформа.');
+  return label;
 }
 export const APP_SERVER_LAUNCH_AGENT = 'com.oleynik.WorkflowPilotCodexExecutor';
 // The local runtime retired in 0.6.91. These names exist only to remove what earlier versions installed.
@@ -141,7 +144,7 @@ export class CodexAppServerRuntime {
     };
   }
 
-  #system() { return this.windows ? 'WINDOWS' : 'MAC'; }
+  #system() { return {win32:'WINDOWS',darwin:'MAC',linux:'LINUX'}[this.platform]; }
   // Windows: no console window flashes behind the app.
   #hidden() { return this.windows ? { windowsHide: true } : {}; }
 
@@ -151,6 +154,7 @@ export class CodexAppServerRuntime {
     const control = path.join(this.installedSource, 'control.py');
     // Idempotent and fast once done; its own errors carry the codes the first-run wizard explains.
     if (this.bootstrap) await this.bootstrap.ensure();
+    if(this.platform==='linux'&&this.bootstrap)this.environment={...this.environment,...await this.bootstrap.workflowEnvironment()};
     let output;
     try {
       output = await this.execute(this.python, ['-B', control, ...args],
@@ -159,7 +163,7 @@ export class CodexAppServerRuntime {
       let report = null;
       try { report = JSON.parse(error.stdout || error.stderr); } catch { /* bounded public error */ }
       if (report?.code === 'CODEX_NOT_FOUND') {
-        const message = this.windows ? WINDOWS_CODEX_NOT_FOUND_MESSAGE : CODEX_NOT_FOUND_MESSAGE;
+        const message = this.platform==='linux'?'Не запускается комплектный Codex Linux. Проверьте целостность архива Workflow Pilot.':this.windows ? WINDOWS_CODEX_NOT_FOUND_MESSAGE : CODEX_NOT_FOUND_MESSAGE;
         throw Object.assign(new RuntimeError(this.#system() + '_CODEX_NOT_FOUND', message), { publicMessage: message });
       }
       throw new RuntimeError(code, report?.error ?? fallback);
@@ -201,7 +205,7 @@ export class CodexAppServerRuntime {
 
   // Windows: the SSH forward of the user's server is kept by control.py; macOS keeps it with a LaunchAgent.
   async vpsControl(args) {
-    if (!this.windows || !['vps-status', 'vps-apply', 'vps-stop'].includes(args?.[0])) {
+    if ((!this.windows&&this.platform!=='linux') || !['vps-status', 'vps-apply', 'vps-stop'].includes(args?.[0])) {
       throw new RuntimeError('RUNTIME_ACTION_DENIED', 'Эта операция не поддерживается оболочкой.');
     }
     if (!await exists(path.join(this.installedSource, 'control.py'))) await this.syncSource();

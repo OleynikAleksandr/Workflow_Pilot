@@ -6,13 +6,14 @@ export function createStartupView({ document, api }) {
     current = state;
     const s = state?.startup;
     const windows = (s?.platform ?? state?.platform) === 'win32';
-    $('host-platform-label').textContent = windows ? 'На вашем Windows PC' : 'На вашем Mac';
+    const linux = (s?.platform ?? state?.platform) === 'linux';
+    $('host-platform-label').textContent = linux?'На вашем Ubuntu PC':windows ? 'На вашем Windows PC' : 'На вашем Mac';
     panel.hidden = !s?.active || !!state.setup || !!state.settings;
     $('open-startup').hidden = !s;
     if (!s) return;
     const logged = s.account === 'signed-in', loginVisible = s.page === 'loaded' && s.account === 'signed-out';
     const local = s.node && s.git && s.runtime, ready = local && s.tunnel;
-    const waitingApple = !windows && !s.git && (!!s.gitInstallationRequested || s.phase === 'git-installing');
+    const waitingApple = !windows && !linux && !s.git && (!!s.gitInstallationRequested || s.phase === 'git-installing');
     const opening = ['loading', 'slow'].includes(s.page);
     const retry = ['slow', 'failed'].includes(s.page), unknown = s.page === 'loaded' && !logged && !loginVisible;
     const errors = {
@@ -43,9 +44,11 @@ export function createStartupView({ document, api }) {
     $('startup-open-chat').textContent = opening ? 'Открываем ChatGPT…' : retry || unknown ? 'Повторить открытие' : 'Открыть сайт ChatGPT';
     $('startup-copy-diagnostics').hidden = s.page === 'idle';
     $('startup-diagnostics-copied').hidden = !copied;
-    $('startup-components-status').textContent = local ? 'Компоненты готовы' : waitingApple ? 'Ожидаем завершения установки Apple' : s.phase === 'error' ? 'Подготовка остановлена' : s.busy ? 'Проверяем и подготавливаем…' : !s.node ? 'Проверяем комплект приложения' : windows ? 'Нужна подготовка компонентов Windows' : !s.git ? 'Нужен компонент Apple' : 'Компонент Apple установлен';
+    $('startup-components-status').textContent = local ? 'Компоненты готовы' : waitingApple ? 'Ожидаем завершения установки Apple' : s.phase === 'error' ? 'Подготовка остановлена' : s.busy ? 'Проверяем и подготавливаем…' : !s.node ? 'Проверяем комплект приложения' : linux?'Нужна подготовка компонентов Ubuntu':windows ? 'Нужна подготовка компонентов Windows' : !s.git ? 'Нужен компонент Apple' : 'Компонент Apple установлен';
     $('startup-components-body').hidden = !logged || local;
-    $('startup-components-help').textContent = windows
+    $('startup-components-help').textContent = linux
+      ? 'Нужна Ubuntu 24.04 LTS x64, сеанс «Ubuntu on Xorg» и обычный пользователь. Установите git, openssh-client и zenity через менеджер пакетов Ubuntu. Нажмите «Проверить и продолжить»: Workflow Pilot подготовит комплектные Node, Python, Codex и туннель. В первый раз нужен интернет. Wayland пока не поддерживается.'
+      : windows
       ? (s.busy
         ? 'Распаковываем комплектные компоненты Windows в ваш профиль, готовим Python и запускаем локальный MCP. В первый раз нужен интернет. Оставьте Web Pilot открытым; результат появится здесь.'
         : 'Нажмите «Проверить и продолжить». Web Pilot подготовит комплектные Python и Git и запустит локальный MCP. На компьютере должен быть установлен Codex CLI. Приложение нужно запускать из полностью распакованной папки ZIP. Уже готовые компоненты сохранятся.')
@@ -56,9 +59,9 @@ export function createStartupView({ document, api }) {
       : (s.busy
         ? 'Загружаем и проверяем необходимые локальные компоненты. Время зависит от скорости загрузки и компьютера. Оставьте Web Pilot открытым; результат появится здесь.'
         : 'Нажмите «Проверить и продолжить». Web Pilot проверит установленные компоненты и подготовит недостающие. Повторно устанавливать уже готовый компонент Apple не нужно.');
-    $('startup-install-git').hidden = windows || !!s.git || waitingApple;
+    $('startup-install-git').hidden = windows || linux || !!s.git || waitingApple;
     $('startup-plugin-platform').hidden = !windows;
-    $('startup-plugin-name').textContent = windows ? 'Workflow Pilot Local Windows' : 'Workflow Pilot Local Mac';
+    $('startup-plugin-name').textContent = linux?'Workflow Pilot Local Linux':windows ? 'Workflow Pilot Local Windows' : 'Workflow Pilot Local Mac';
     $('startup-plugin-body').hidden = !logged || !ready;
     $('startup-plugin-wait').hidden = logged && ready;
     $('startup-tunnel-status').textContent = s.tunnel ? 'Служба подключения работает' : !local ? 'После подготовки компьютера' : 'Нужна однократная настройка';
@@ -84,7 +87,7 @@ export function createStartupView({ document, api }) {
         || (s.busy && ['check', 'install-git', 'paste-tunnel-id', 'configure-tunnel', 'continue', 'existing'].includes(action))
         || (action === 'configure-tunnel' && (tunnelStep !== 'key' || !s.clipboard?.hasTunnelId))
         || (action === 'paste-tunnel-id' && tunnelStep !== 'tunnel')
-        || (action === 'install-git' && (windows || !!s.git || waitingApple));
+        || (action === 'install-git' && (windows || linux || !!s.git || waitingApple));
     }
     $('startup-continue').disabled ||= !logged || !ready;
     $('startup-existing').disabled ||= !logged || !ready;

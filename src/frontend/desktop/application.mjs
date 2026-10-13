@@ -12,6 +12,7 @@ import { DesktopIpc } from './ipc.mjs';
 
 export function startDesktopApplication({electron,sourceDir,desktopDir,dataDir,partition,smoke,eventBaseline,eventRuntimeChecker,executionServices,createControl,dependencies}) {
 const {app,BaseWindow,BrowserWindow,WebContentsView,Menu,session,ipcMain,dialog,nativeTheme,clipboard,shell}=electron;
+const {LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode}=dependencies;
 const {ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel}=dependencies;
 const sidebarUrl = pathToFileURL(path.join(desktopDir, 'ui/index.html')).href;
 const archiveUrl = pathToFileURL(path.join(desktopDir, 'ui/archive.html')).href;
@@ -30,6 +31,7 @@ const deletionHooks = smoke ? {beforeFinish:null} : null;
 // State of the Codex App Server executor, the local MCP backend of both systems.
 const runtimeFolder = defaultRuntimeFolder(os.homedir(), process.platform);
 let appServerRuntime = null, runtimeSwitcher = null, runtimeActivation = null, vpsTunnel = null;
+let linuxBootstrap = null;
 let chatColorStyles, colorEditor;
 const SIDEBAR_MIN_WIDTH = 312;
 const BROWSER_MIN_WIDTH = 600;
@@ -64,12 +66,12 @@ const workspaceSetup = control.configureProjects({
     ? [windowsPortableNode, ...nodeExecutableCandidates({ platform: 'win32', environment: process.env, electron: true })]
     : process.platform === 'darwin'
       ? [bundledMacNode(app.isPackaged ? process.resourcesPath : path.join(sourceDir, '../.harness/runtime')), ...nodeExecutableCandidates()]
-      : undefined,
+      : process.platform==='linux'?[bundledLinuxNode(app.isPackaged?process.resourcesPath:path.join(sourceDir,'../.harness/runtime')),...nodeExecutableCandidates()]:undefined,
   // Workflow Kit needs only the Git of the package: the tools are unpacked without starting any service.
   prepareEnvironment: process.platform === 'win32' && !smoke ? async () => {
     await windowsBootstrap.ensureTools();
     return windowsBootstrap.workflowEnvironment();
-  } : undefined,
+  } : process.platform==='linux'&&!smoke ? async()=>linuxBootstrap.workflowEnvironment() : undefined,
   onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; },
 });
 const {runtime:sessionContextRuntime, cache:contextCache} = control.configureContext({getRuntime:()=>runtime,
@@ -673,7 +675,7 @@ function ensureRuntimeSwitcher() {
   const windows = process.platform === 'win32';
   appServerRuntime ??= new CodexAppServerRuntime({
     sourceDir: appServerSourceFolder(), stateDir: runtimeFolder, execute: executionServices.executeFile,
-    ...(windows
+    ...(process.platform==='linux'?{bootstrap:linuxBootstrap}:windows
       // Windows has no system Python: the tools of the package and the private Python are prepared first.
       ? { bootstrap: windowsBootstrap }
       // The bundled uv builds the executor's Python on a Mac that has only the system one.
@@ -681,8 +683,10 @@ function ensureRuntimeSwitcher() {
   });
   // The forward of the user's own server: a LaunchAgent on macOS, a supervisor of control.py on Windows.
   if (process.platform === 'darwin') vpsTunnel ??= new VpsTunnel();
-  else if (windows) vpsTunnel ??= new WindowsVpsTunnel({ control: args => appServerRuntime.vpsControl(args) });
-  runtimeSwitcher ??= new MacRuntimeSwitcher({ appServerRuntime, vpsTunnel, execute: executionServices.executeFile });
+  else if (windows||process.platform==='linux') vpsTunnel ??= new WindowsVpsTunnel({platform:process.platform, control: args => appServerRuntime.vpsControl(args) });
+  runtimeSwitcher ??= process.platform==='linux'
+    ? new LinuxRuntimeSwitcher({appServerRuntime,vpsTunnel,bootstrap:linuxBootstrap,services:new LinuxServices({run:executionServices.executeFile})})
+    : new MacRuntimeSwitcher({ appServerRuntime, vpsTunnel, execute: executionServices.executeFile });
   return runtimeSwitcher;
 }
 
@@ -693,6 +697,7 @@ function activateRuntime() {
   runtimeActivation ??= (async () => {
     const result = await ensureRuntimeSwitcher().activate(runtime, { chatgptChannel:preferences.chatgptChannel });
     if (process.platform === 'win32') workspaceSetup.setRuntimeEnvironment(await windowsBootstrap.workflowEnvironment());
+    if (process.platform === 'linux') workspaceSetup.setRuntimeEnvironment(await linuxBootstrap.workflowEnvironment());
     contextCache.clear();
     return result.status;
   })().catch(error => { runtimeActivation = null; throw error; });
@@ -704,7 +709,7 @@ function createStartupFlow() {
   startupActive = store.snapshot().projects.length === 0;
   const startup = control.configureStartup({readiness:{
     ...startupPlatformOptions({ platform: process.platform, setup: workspaceSetup,
-      bootstrap: appServerRuntime, components: windowsBootstrap,
+      bootstrap: appServerRuntime, components: linuxBootstrap??windowsBootstrap,
       ensureRuntime: activateRuntime, control: (command, options) => {
         if (command === 'status') return executionServices.inspectServices();
         if (command === 'start') return options?.mcpOnly ? executionServices.startMcpOnly() : executionServices.ensureServices();
@@ -1256,6 +1261,8 @@ else {
         : path.join(sourceDir, '../.harness/runtime/windows-payload', WINDOWS_RUNTIME_ARCHIVE);
       windowsBootstrap = new WindowsExecutorBootstrap({ payloadFile, stateDir: runtimeFolder });
     }
+    if(process.platform==='linux')linuxBootstrap=new LinuxExecutorBootstrap({stateDir:runtimeFolder,
+      payloadDir:path.join(app.isPackaged?process.resourcesPath:path.join(sourceDir,'../.harness/runtime'),'linux-tools')});
     deletion = control.createDeletion({ beforeFinish:job=>deletionHooks?.beforeFinish?.(job), journalDir: path.join(dataDir, 'deletions'), protectedPaths: [app.getAppPath(), runtimeFolder], prepare:prepareProjectRemoval, cleanup:cleanupDeletedProject, purgeState:(dir,identities)=>{
       return preferences.purge(dir,identities);
     } });

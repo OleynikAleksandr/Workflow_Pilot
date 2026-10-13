@@ -105,13 +105,16 @@ def sniff_image_mime(header: bytes) -> str | None:
 
 def server_name(platform: str = sys.platform) -> str:
     """One executor on both systems; the MCP server is named after the computer it runs on."""
-    return "Workflow Pilot Local Windows" if platform == "win32" else "Workflow Pilot Local Mac"
+    return {'win32': 'Workflow Pilot Local Windows', 'darwin': 'Workflow Pilot Local Mac', 'linux': 'Workflow Pilot Local Linux'}[platform]
 
 
 def default_state_dir(platform: str = sys.platform, environ: dict[str, str] | None = None) -> Path:
     environ = os.environ if environ is None else environ
     if platform == "win32":
         return Path(environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "WorkflowPilotCodexExecutor"
+    if platform == 'linux':
+        from linux_runtime import state_directory
+        return state_directory(environ)
     return Path.home() / "Library/Application Support/WorkflowPilotCodexExecutor"
 
 SENSITIVE_NAMES = {
@@ -307,14 +310,14 @@ class LocalFacade:
         }
 
     def _apply_patch_available(self) -> bool:
-        if self.platform == "win32":
+        if self.platform in ("win32", "linux"):
             # On Windows the patch is applied by the Codex executable itself (see apply_patch).
             return os.path.isfile(str(self.client.binary.path))
         probe = self._command(["/usr/bin/which", "apply_patch"], timeout_ms=10_000)
         return bool(probe["ok"] and probe["stdout"].strip())
 
     def status(self, repository: str = "") -> dict[str, Any]:
-        system = "Windows" if self.platform == "win32" else "macOS"
+        system = {'win32': 'Windows', 'darwin': 'macOS', 'linux': 'Linux'}[self.platform]
         data = {
             "executor": self.client.status(),
             "filesystem_scope": f"local {system} filesystem with current user permissions",
@@ -382,7 +385,7 @@ class LocalFacade:
         if not patch.lstrip().startswith("*** Begin Patch"):
             raise ValueError("patch must start with *** Begin Patch")
         cwd = self._command_workdir(workdir)
-        if self.platform == "win32":
+        if self.platform in ("win32", "linux"):
             return self._apply_patch_direct(data, cwd)
         started = self.client.start_command(
             ["apply_patch"],
@@ -454,7 +457,7 @@ class LocalFacade:
             raise ValueError(f"Image type check failed: {exc}") from None
         if mime is None:
             raise ValueError("File is not an image")
-        if self.platform == "win32":
+        if self.platform in ("win32", "linux"):
             data, image_format = self._resize_image_windows(target, mime)
             return [{"source": str(target), "bytes": len(data)}, Image(data=data, format=image_format)]
         suffix = target.suffix if 0 < len(target.suffix) <= 16 else ".image"
@@ -552,7 +555,7 @@ class LocalFacade:
         requested = shell.strip() if isinstance(shell, str) else ""
         if not requested:
             environment = getattr(self.client, "environment", {})
-            requested = str(environment.get("SHELL") or os.environ.get("SHELL") or "/bin/zsh")
+            requested = str(environment.get("SHELL") or os.environ.get("SHELL") or ('/bin/bash' if self.platform == 'linux' else "/bin/zsh"))
         if "/" not in requested:
             requested = shutil.which(requested) or f"/bin/{requested}"
         path = Path(requested).expanduser()
@@ -737,6 +740,11 @@ class LocalFacade:
 
     def _desktop(self) -> Any:
         """Windows observation module; created on first use so that macOS never loads it."""
+        if self.platform == 'linux':
+            if getattr(self, '_linux_desktop', None) is None:
+                from linux_desktop import LinuxDesktop
+                self._linux_desktop = LinuxDesktop()
+            return self._linux_desktop
         if self._windows_desktop is None:
             from windows_desktop import WindowsDesktop
             self._windows_desktop = WindowsDesktop()
@@ -769,7 +777,7 @@ class LocalFacade:
     def computer_list_windows(self, title_contains: str = "", max_results: int = 200) -> dict[str, Any]:
         windows_system = self.platform == "win32"
         try:
-            windows = self._desktop().list_windows() if windows_system else self._mac_windows()
+            windows = self._desktop().list_windows() if self.platform in ('win32', 'linux') else self._mac_windows()
         except OSError as exc:
             raise ValueError(f"Window list is unavailable: {exc}") from None
         needle = title_contains.lower().strip()
@@ -782,7 +790,10 @@ class LocalFacade:
             if len(rows) >= limit:
                 break
         data: dict[str, Any] = {"windows": rows, "backend": "Win32 window list" if windows_system else "CoreGraphics window list"}
-        if not windows_system and windows and all(w.get("title") is None for w in windows):
+        if self.platform == 'linux':
+            data['backend'] = 'X11 window list'
+            data['note'] = 'Window capture reads the drawable; obscured areas depend on the X server. Wayland is unsupported.'
+        if self.platform == 'darwin' and windows and all(w.get("title") is None for w in windows):
             # macOS hides window names from a process without Screen Recording permission.
             data["note"] = "Window titles are hidden: grant Screen Recording permission to Workflow Pilot."
         return data
@@ -804,7 +815,7 @@ class LocalFacade:
 
     def computer_capture_screen(self, x: int | None = None, y: int | None = None, width: int | None = None, height: int | None = None, max_dimension: int = 1600, include_cursor: bool = True) -> Any:
         region = None not in (x, y, width, height)
-        if self.platform == "win32":
+        if self.platform in ("win32", "linux"):
             try:
                 # As on macOS, a region is used only when all four values are given.
                 png = self._desktop().capture_screen(*((x, y, width, height) if region else (None, None, None, None)),
@@ -821,7 +832,7 @@ class LocalFacade:
     def computer_capture_window(self, window_id: int, max_dimension: int = 1600) -> Any:
         if isinstance(window_id, bool) or not isinstance(window_id, int) or window_id <= 0:
             raise ValueError("window_id must be a positive integer from computer_list_windows")
-        if self.platform == "win32":
+        if self.platform in ("win32", "linux"):
             try:
                 png = self._desktop().capture_window(window_id, int(max_dimension))
             except OSError as exc:
@@ -857,6 +868,11 @@ class TurnWatchdog:
     def _notify(self, title: str, message: str) -> bool:
         if self.facade.platform == "win32":
             return self._notify_windows(title, message)
+        if self.facade.platform == 'linux':
+            try:
+                return bool(self.facade._command(['/usr/bin/notify-send', '--', title[:80], message[:240]], write=True, timeout_ms=5000)['ok'])
+            except Exception:
+                return False
         script = 'on run argv\n display notification (item 2 of argv) with title (item 1 of argv)\nend run'
         try:
             result = self.facade._command(["/usr/bin/osascript", "-e", script, title[:80], message[:240]], write=True, timeout_ms=5000)

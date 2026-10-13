@@ -15,7 +15,8 @@ export function defaultRuntimeFolder(homeDir, platform = process.platform, envir
     const local = environment?.LOCALAPPDATA;
     return api.join(typeof local === 'string' && api.isAbsolute(local) ? local : api.join(homeDir, 'AppData', 'Local'), 'WorkflowPilotCodexExecutor');
   }
-  return api.join(homeDir, '.local', 'state', 'WorkflowPilotCodexExecutor');
+  const state=environment?.XDG_STATE_HOME;
+  return api.join(typeof state==='string'&&api.isAbsolute(state)?state:api.join(homeDir,'.local','state'), 'WorkflowPilotCodexExecutor');
 }
 
 // State of the bridge that Web Pilot ran on Windows before 0.6.96: read once to stop it and to carry its tunnel over.
@@ -58,4 +59,7 @@ export function executableCandidateAllowed(value, platform = process.platform) {
 
 export function bundledMacNode(resourcesPath) {
   return path.posix.join(resourcesPath, 'mac-tools', 'node', 'bin', 'node');
+}
+export function bundledLinuxNode(resourcesPath) {
+  return path.posix.join(resourcesPath,'linux-tools','node',`node-v${BUNDLED_NODE_VERSION}-linux-x64`,'bin','node');
 }

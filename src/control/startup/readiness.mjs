@@ -45,14 +45,14 @@ export class StartupReadiness {
   async probe({ prepare = false } = {}) {
     this.stopGitWatch();
     this.publish({ phase: 'checking', runtime: false, tunnel: false });
-    const node = await this.probeNode().then(() => true, () => false);
+    const node = await this.probeNode().then(() => true, error => {if(this.platform==='linux')throw error;return false;});
     if (node && prepare && this.prepareComponents && this.live) {
       this.publish({ node, phase: 'preparing-components' });
       await this.prepareComponents();
     }
     if (!this.live) return false;
     // Windows errors need their specific retry message; macOS absence is an install step.
-    const git = this.platform === 'win32' ? await this.probeGit() : await this.probeGit().catch(() => false);
+    const git = ['win32','linux'].includes(this.platform) ? await this.probeGit() : await this.probeGit().catch(() => false);
     if (!this.live) return false;
     this.publish({ node, git, ...(git ? { gitInstallationRequested: false } : {}) });
     if (!node) { this.publish({ phase: 'package', error: this.platform === 'win32'

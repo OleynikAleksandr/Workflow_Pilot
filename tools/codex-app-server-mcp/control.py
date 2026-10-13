@@ -29,6 +29,9 @@ except ImportError:  # Windows: the lifecycle lock uses msvcrt instead
     fcntl = None
 
 IS_WINDOWS = sys.platform == "win32"
+IS_LINUX = sys.platform == "linux"
+if IS_LINUX:
+    import linux_runtime
 ROOT = Path(__file__).resolve().parent
 
 
@@ -38,6 +41,7 @@ def _local_app_data() -> Path:
 
 STATE = Path(os.environ.get("WORKFLOW_PILOT_CODEX_EXECUTOR_STATE_DIR") or (
     _local_app_data() / "WorkflowPilotCodexExecutor" if IS_WINDOWS
+    else linux_runtime.state_directory() if IS_LINUX
     else Path.home() / "Library/Application Support/WorkflowPilotCodexExecutor"))
 PRIVATE = STATE / "private"
 RUNTIME = STATE / "runtime"
@@ -59,7 +63,7 @@ PROFILE = PROFILE_DIR / f"{PROFILE_NAME}.yaml"
 # Windows keeps the key encrypted for the current user (DPAPI); macOS keeps a 0600 file.
 KEY_FILE = PRIVATE / ("tunnel-key.dpapi" if IS_WINDOWS else "tunnel-key")
 SELECTOR_FILE = PRIVATE / "selector.json"
-MCP_SERVER_NAME = "Workflow Pilot Local Windows" if IS_WINDOWS else "Workflow Pilot Local Mac"
+MCP_SERVER_NAME = "Workflow Pilot Local Windows" if IS_WINDOWS else "Workflow Pilot Local Linux" if IS_LINUX else "Workflow Pilot Local Mac"
 # Preferred loopback ports. When another program holds one, a free port is chosen and kept in
 # PORTS_FILE, so the selector, the tunnel profile and the VPS forward follow the actual address.
 PREFERRED_MCP_PORT = int(os.environ.get("WORKFLOW_PILOT_CODEX_EXECUTOR_PORT", "18852"))
@@ -242,6 +246,14 @@ def environment() -> dict[str, str]:
     env["WORKFLOW_PILOT_CODEX_EXECUTOR_STATE_DIR"] = str(STATE)
     env["WORKFLOW_PILOT_CODEX_EXECUTOR_PORT"] = str(mcp_port())
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    if IS_LINUX:
+        tools = linux_runtime.tool_locations(TOOLS_DIR)
+        env['PATH'] = os.pathsep.join([str(VENV / 'bin'), *dict.fromkeys(str(p.parent) for p in tools.values()),
+                                     '/usr/bin', '/bin', env.get('PATH', '')])
+        env['CODEX_APP_SERVER_BIN'] = str(tools['codex'])
+        env['WORKFLOW_PILOT_UV'] = str(tools['uv'])
+        env['NO_PROXY'] = ','.join(filter(None, [env.get('NO_PROXY', ''), '127.0.0.1', 'localhost']))
+        return env
     if IS_WINDOWS:
         env["PYTHONUTF8"] = "1"
         prefixes = [str(PYTHON.parent)]
@@ -276,6 +288,12 @@ def download(url: str) -> bytes:
 
 def install_tunnel_client() -> str:
     RUNTIME.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if IS_LINUX:
+        client = linux_runtime.tool_locations(TOOLS_DIR)['tunnel_client']
+        # Keep the established runtime path used by status and start_tunnel.
+        shutil.copyfile(client, TUNNEL_CLIENT)
+        TUNNEL_CLIENT.chmod(0o755)
+        return subprocess.check_output([str(TUNNEL_CLIENT), '--version'], text=True, timeout=10).strip()
     if IS_WINDOWS:
         # The pinned archive of the package is the only source on Windows: nothing is copied or downloaded.
         client = tool_locations()["tunnel_client"]
@@ -323,7 +341,7 @@ def require_codex() -> dict[str, str]:
     saved = os.environ.get("PATH")
     os.environ["PATH"] = environment()["PATH"]
     try:
-        binary = discover_codex_binary()
+        binary = discover_codex_binary(explicit=environment().get('CODEX_APP_SERVER_BIN')) if IS_LINUX else discover_codex_binary()
     except AppServerError:
         raise CodexNotFound("Codex is not installed: install the Codex CLI or the ChatGPT app and check again") from None
     finally:
@@ -360,14 +378,14 @@ def _setup_windows_python(uv: str | None) -> None:
 
 
 def _requirements_digest() -> str:
-    return hashlib.sha256((ROOT / "requirements.txt").read_bytes()).hexdigest()
+    return hashlib.sha256((ROOT / ("requirements-linux.lock" if IS_LINUX else "requirements.txt")).read_bytes()).hexdigest()
 
 
 def setup_complete() -> bool:
     """False until setup has finished for the packages this version pins."""
     if not PYTHON.is_file() or not TUNNEL_CLIENT.is_file():
         return False
-    if not IS_WINDOWS:
+    if not IS_WINDOWS and not IS_LINUX:
         return True
     try:
         return json.loads(SETUP_FILE.read_text(encoding="utf-8")).get("requirements_sha256") == _requirements_digest()
@@ -376,12 +394,14 @@ def setup_complete() -> bool:
 
 
 def setup() -> dict[str, object]:
-    if sys.platform not in ("darwin", "win32"):
-        raise RuntimeError("This runtime supports macOS and Windows only")
+    if sys.platform not in ("darwin", "win32", "linux"):
+        raise RuntimeError("Unsupported runtime platform")
     codex = require_codex()
     RUNTIME.mkdir(parents=True, exist_ok=True, mode=0o700)
     uv = find_uv()
-    if IS_WINDOWS:
+    if IS_LINUX:
+        linux_runtime.setup_python(ROOT, RUNTIME, VENV, PYTHON)
+    elif IS_WINDOWS:
         _setup_windows_python(uv)
     else:
         if not PYTHON.is_file():
@@ -394,7 +414,7 @@ def setup() -> dict[str, object]:
         subprocess.run([*installer, "-r", str(ROOT / "requirements.txt")], check=True, stdout=sys.stderr)
     version = install_tunnel_client()
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if IS_WINDOWS:
+    if IS_WINDOWS or IS_LINUX:
         private_write(SETUP_FILE, json.dumps({"requirements_sha256": _requirements_digest()}, indent=2) + "\n")
     return {
         "installed": True,
@@ -613,6 +633,8 @@ def selector_public() -> dict[str, object] | None:
 def pid_identity(pid: object) -> str | dict[str, object] | None:
     if not isinstance(pid, int) or pid <= 1:
         return None
+    if IS_LINUX:
+        return linux_runtime.pid_identity(pid)
     if IS_WINDOWS:
         import psutil
         try:
@@ -904,7 +926,7 @@ def selector_start() -> dict[str, object]:
         "mcp_url": target,
         "mcp": backend.get("mcp"),
     }
-    if IS_WINDOWS and _vps_record() is not None:
+    if (IS_WINDOWS and _vps_record() is not None) or (IS_LINUX and _vps_config_file().is_file()):
         # The forward of the user's server runs with either channel, as the LaunchAgent does on macOS.
         # Its failure must not undo the start of the MCP and of the tunnel.
         try:
@@ -914,9 +936,14 @@ def selector_start() -> dict[str, object]:
     return stable
 
 
+def _vps_config_file() -> Path:
+    base = linux_runtime.xdg_path('XDG_CONFIG_HOME', Path.home() / '.config') if IS_LINUX else Path.home() / '.config'
+    return Path(os.environ.get('WORKFLOW_PILOT_VPS_CONFIG') or base / 'workflow-pilot/vps/route.json')
+
+
 def vps_config() -> dict[str, object]:
     """Explicit product route, shared with desktop Execution. Server configuration is external."""
-    file = Path(os.environ.get('WORKFLOW_PILOT_VPS_CONFIG') or Path.home() / '.config/workflow-pilot/vps/route.json')
+    file = _vps_config_file()
     route = json.loads(file.read_text(encoding='utf-8'))
     host, port = route.get('ssh_host'), route.get('remote_port')
     if (route.get('schema_version') != 1 or route.get('product') != 'workflow-pilot'
@@ -929,7 +956,7 @@ def vps_config() -> dict[str, object]:
 def vps_ssh_argv(port: int) -> list[str]:
     """Only the explicitly configured product loopback route leads to the local MCP."""
     route = vps_config()
-    ssh = Path(os.environ.get("SystemRoot") or r"C:\Windows") / "System32" / "OpenSSH" / "ssh.exe"
+    ssh = Path('/usr/bin/ssh') if IS_LINUX else Path(os.environ.get("SystemRoot") or r"C:\Windows") / "System32" / "OpenSSH" / "ssh.exe"
     return [str(ssh), "-N", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
             "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=3",
             "-R", f"127.0.0.1:{route['remote_port']}:127.0.0.1:{port}", route['ssh_host']]
@@ -961,7 +988,7 @@ def _vps_last_error() -> dict[str, str] | None:
 
 
 def _require_windows_vps() -> None:
-    if not IS_WINDOWS:
+    if not IS_WINDOWS and not IS_LINUX:
         raise RuntimeError("The VPS tunnel is kept by a LaunchAgent of Workflow Pilot on this system")
 
 
@@ -969,7 +996,10 @@ def vps_status() -> dict[str, object]:
     _require_windows_vps()
     supervisor = managed_process("vps")
     ssh_pid = None
-    if supervisor["owned"]:
+    if supervisor["owned"] and IS_LINUX:
+        child = managed_process('vps-ssh')
+        ssh_pid = child['pid'] if child['owned'] else None
+    elif supervisor["owned"]:
         import psutil
         try:
             ssh_pid = next((child.pid for child in psutil.Process(int(supervisor["pid"])).children(recursive=True)
@@ -1027,9 +1057,15 @@ def vps_supervise(popen=subprocess.Popen, sleep=time.sleep, rounds: int | None =
             pass
         with VPS_LOG.open("ab") as log:
             try:
-                popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=log, cwd=str(STATE), **_hidden()).wait()
+                child = popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=log, cwd=str(STATE), **_hidden())
+                if IS_LINUX:
+                    private_write(STATE / 'vps-ssh.pid.json', json.dumps({'pid': child.pid, 'identity': pid_identity(child.pid)}))
+                child.wait()
             except OSError as error:
                 log.write(f"ssh could not be started: {error}\n".encode("utf-8", errors="replace"))
+            finally:
+                if IS_LINUX:
+                    (STATE / 'vps-ssh.pid.json').unlink(missing_ok=True)
         sleep(max(1.0, VPS_RESTART_SECONDS - (time.monotonic() - started)))
         if rounds is not None:
             rounds -= 1

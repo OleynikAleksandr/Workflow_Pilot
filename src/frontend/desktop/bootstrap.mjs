@@ -1,4 +1,7 @@
 import fs from 'node:fs';
+import { LinuxExecutorBootstrap, LinuxRuntimeSwitcher } from '../../execution/platform/linux/runtime.mjs';
+import { LinuxServices } from '../../execution/platform/linux/services.mjs';
+import { bundledLinuxNode } from '../../execution/platform/paths.mjs';
 import { chatGPTTitleScript } from '../../execution/browser/chatgpt-title.mjs';
 import { toolFilterScript } from '../../execution/browser/chatgpt-tool-filter.mjs';
 import { installChatGPTAutoScroll } from '../../execution/browser/chatgpt-auto-scroll.mjs';
@@ -46,6 +49,6 @@ export async function startDesktop(electron) {
     sourceDir:fileURLToPath(new URL('../../',import.meta.url)),
     desktopDir:fileURLToPath(new URL('./',import.meta.url)),executionServices,
     createControl:options=>new ControlFacade({...options,execution:executionServices}),
-    dependencies:{ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel},
+    dependencies:{LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode,ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel},
   });
 }

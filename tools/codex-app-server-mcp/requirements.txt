@@ -1,4 +1,6 @@
 mcp==1.28.1
-# Windows only: image resize for view_image (macOS uses sips).
-pillow==11.3.0 ; sys_platform == "win32"
+# Image resize on Windows/Linux (macOS uses sips). Linux installs its hashed lock.
+pillow==11.3.0 ; sys_platform == "win32" or sys_platform == "linux"
 psutil==7.2.2 ; sys_platform == "win32"
+mss==10.1.0 ; sys_platform == "linux"
+python-xlib==0.33 ; sys_platform == "linux"

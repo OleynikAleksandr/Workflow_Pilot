@@ -120,6 +120,10 @@ test('Windows shows the same two sections: local tools and the ChatGPT channel w
   for (const id of ['windows-runtime-section', 'configure-windows-tunnel', 'refresh-windows-runtime'])
     assert.equal(f.$(id), null, 'nothing of the previous Windows runtime is left in the settings: ' + id);
   f.view.render({ ...state({ platform: 'linux' }), localRuntime: null }, false);
+  assert.equal(f.$('local-runtime-section').hidden, false);
+  assert.equal(f.$('chatgpt-channel-section').hidden, false);
+  assert.match(f.$('local-runtime-status').textContent,/Workflow Pilot Local Linux/);
+  f.view.render({ ...state({ platform: 'freebsd' }), localRuntime: null }, false);
   assert.equal(f.$('local-runtime-section').hidden, true);
   assert.equal(f.$('chatgpt-channel-section').hidden, true);
 });

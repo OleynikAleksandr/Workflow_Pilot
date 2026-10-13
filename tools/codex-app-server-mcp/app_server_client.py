@@ -164,7 +164,8 @@ def discover_codex_binary(
         from_path = which("codex")
         if from_path:
             candidates.append(from_path)
-        candidates.append("/Applications/ChatGPT.app/Contents/Resources/codex")
+        if platform == 'darwin':
+            candidates.append("/Applications/ChatGPT.app/Contents/Resources/codex")
 
     seen: set[str] = set()
     for candidate in candidates:

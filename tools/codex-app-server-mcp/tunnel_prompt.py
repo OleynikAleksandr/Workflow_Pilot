@@ -97,8 +97,27 @@ def mac_prompt(message, hidden=False):
     return result.stdout.strip()
 
 
+def linux_prompt(message, hidden=False, run=None):
+    # zenity reads the secret from the user; neither the secret nor shell code is
+    # supplied in argv. A cancelled dialog leaves the existing configuration intact.
+    try:
+        result = (run or subprocess.run)(['/usr/bin/zenity', '--entry', '--title=Workflow Pilot',
+            '--text=' + message, *(['--hide-text'] if hidden else [])],
+            capture_output=True, text=True, timeout=900)
+        if result.returncode == 1:
+            raise Cancelled()
+        if result.returncode:
+            raise PromptFailure()
+        return result.stdout.strip()
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise PromptFailure() from error
+
+
 def prompt(message, hidden=False):
-    return (windows_prompt if sys.platform == 'win32' else mac_prompt)(message, hidden=hidden)
+    method = {'win32': windows_prompt, 'darwin': mac_prompt, 'linux': linux_prompt}.get(sys.platform)
+    if method is None:
+        raise PromptFailure()
+    return method(message, hidden=hidden)
 
 
 class TunnelIdError(ValueError):
@@ -142,8 +161,8 @@ def configure(control, ask=prompt, supplied=None):
     return {'configured': True}
 
 def main():
-    if sys.platform not in ('darwin', 'win32'):
-        raise RuntimeError('Нативная настройка доступна только на macOS и Windows.')
+    if sys.platform not in ('darwin', 'win32', 'linux'):
+        raise RuntimeError('Неподдерживаемая платформа настройки.')
     supplied = read_input(sys.stdin) if sys.argv[1:] == ['--stdin'] else None
     try:
         if sys.argv[1:] == ['--tunnel-id']:
@@ -161,7 +180,7 @@ if __name__ == '__main__':
         main()
     except Exception as error:
         # Never surface captured native dialog stdout, keys, or command arguments.
-        system = 'WINDOWS' if sys.platform == 'win32' else 'MAC'
+        system = {'win32': 'WINDOWS', 'darwin': 'MAC', 'linux': 'LINUX'}.get(sys.platform, 'UNSUPPORTED')
         code = ('TUNNEL_ID_INVALID' if isinstance(error, TunnelIdError) else
                 'TUNNEL_PROMPT_FAILED' if isinstance(error, PromptFailure) else
                 'TUNNEL_INVALID_DATA' if isinstance(error, ValueError) else

@@ -1,6 +1,6 @@
 // Platform wiring is shared by the real app and first-run integration fixtures.
 export function startupSupported(platform, fixture = false) {
-  return !fixture && ['darwin', 'win32'].includes(platform);
+  return !fixture && ['darwin', 'win32', 'linux'].includes(platform);
 }
 
 // bootstrap is the executor runtime of both systems. components exists only on Windows: the tools and the
@@ -8,17 +8,19 @@ export function startupSupported(platform, fixture = false) {
 export function startupPlatformOptions({ platform, setup, bootstrap, components = null, ensureRuntime, control, inspectGit, installGit }) {
   if (!startupSupported(platform)) throw new Error('Unsupported startup platform');
   const windows = platform === 'win32';
+  const linux = platform === 'linux';
   if (windows && !components) throw new Error('Windows startup requires the components of the package');
+  if (linux && !components) throw new Error('Linux startup requires the components of the package');
   return {
     platform,
-    probeNode: () => setup.node(),
-    prepareComponents: windows ? () => components.ensure() : undefined,
+    probeNode: async () => {if(linux)await components.inspectHost({environment:components.environment});return setup.node();},
+    prepareComponents: windows||linux ? () => components.ensure() : undefined,
     probeGit: windows ? async () => {
       if (!(await components.inspect()).toolsReady) return false;
       setup.setRuntimeEnvironment(await components.workflowEnvironment());
       return true;
-    } : inspectGit,
-    installGit: windows ? async () => { throw new Error('Windows components are prepared automatically'); } : installGit,
+    } : linux ? async()=>{await components.inspectHost({environment:components.environment});setup.setRuntimeEnvironment(await components.workflowEnvironment());return true;} : inspectGit,
+    installGit: windows||linux ? async () => { throw new Error('Use the platform preparation instructions'); } : installGit,
     inspectRuntime: async () => {
       const current = await bootstrap.inspect();
       if (current.installed) return control('status');

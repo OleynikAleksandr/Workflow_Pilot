@@ -1,0 +1,5 @@
+# Ubuntu 24.04 x64, CPython 3.13.9. Compile with pinned uv 0.9.13.
+mcp==1.28.1
+pillow==11.3.0
+mss==10.1.0
+python-xlib==0.33

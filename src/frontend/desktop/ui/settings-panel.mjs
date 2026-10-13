@@ -65,12 +65,12 @@ export function settingsPanelView(action) {
     parallelLimit.disabled = pending || !parallel.parallel_allowed;
     if (document.activeElement !== parallelLimit) parallelLimit.value = String(parallel.max_workers);
     // One pair of sections for both systems: the same executor, the same services, the same two channels.
-    const isMac = state.platform === 'darwin', isWindows = state.platform === 'win32';
-    const supported = isMac || isWindows, system = isWindows ? 'Windows' : 'macOS';
+    const isMac = state.platform === 'darwin', isWindows = state.platform === 'win32', isLinux=state.platform==='linux';
+    const supported = isMac || isWindows || isLinux, system = isLinux?'Ubuntu':isWindows ? 'Windows' : 'macOS';
     $('local-runtime-section').hidden = !supported;
     $('chatgpt-channel-section').hidden = !supported;
     if (supported) {
-      const localRuntime = state.localRuntime ?? { label: `Workflow Pilot Local ${isWindows ? 'Windows' : 'Mac'}`, service: null };
+      const localRuntime = state.localRuntime ?? { label: `Workflow Pilot Local ${isLinux?'Linux':isWindows ? 'Windows' : 'Mac'}`, service: null };
       const service = localRuntime.service;
       const viaVps = localRuntime.chatgptChannel === 'vps';
       const ready = !!service?.mcpReady && !!service?.tunnelReady && !!service?.tunnelConfigured;
