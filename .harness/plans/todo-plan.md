@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 32,
+  "plan_revision": 34,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2496,8 +2496,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "DOCS-2",
@@ -2518,7 +2518,11 @@
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/release.md"
+      ]
     },
     {
       "id": "T012-RELEASE",
@@ -2648,7 +2652,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 32
+Revision: 34
 
 ## Цель
 
@@ -2745,8 +2749,8 @@ Revision: 32
   - Файлы: package.json, scripts/copy-linux-toolchain.mjs, tests/release-linux.test.mjs, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T011, DOCS
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS-2 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
