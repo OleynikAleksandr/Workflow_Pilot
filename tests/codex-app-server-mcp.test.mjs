@@ -1851,6 +1851,15 @@ out["autostart_off"] = [control.configure_autostart(False), control.configure_au
                         control.AUTOSTART_VALUE in registry[("HKCU", control.AUTOSTART_KEY)]]
 
 # The forward of the user's own server (the VPS channel): a supervisor instead of the macOS LaunchAgent.
+route_file = root / 'workflow-pilot-vps-route.json'
+route_file.write_text(json.dumps({'schema_version': 1, 'product': 'workflow-pilot', 'ssh_host': 'workflow-pilot-vps', 'remote_port': 18842}))
+os.environ['WORKFLOW_PILOT_VPS_CONFIG'] = str(route_file)
+for host, port in [('vps-mcp-tunnel', 18842), ('workflow-pilot-vps', 17842)]:
+    route_file.write_text(json.dumps({'schema_version': 1, 'product': 'workflow-pilot', 'ssh_host': host, 'remote_port': port}))
+    assert 'VPS_ROUTE_INVALID' in attempt(control.vps_config)
+route_file.write_text(json.dumps({'schema_version': 1, 'product': 'workflow-pilot', 'ssh_host': 'workflow-pilot-vps-test', 'remote_port': 19842}))
+assert control.vps_ssh_argv(18852)[-2:] == ['127.0.0.1:19842:127.0.0.1:18852', 'workflow-pilot-vps-test']
+route_file.write_text(json.dumps({'schema_version': 1, 'product': 'workflow-pilot', 'ssh_host': 'workflow-pilot-vps', 'remote_port': 18842}))
 out["vps_initial"] = control.vps_status()
 out["vps_bad_port"] = [attempt(lambda: control.vps_apply(80)), attempt(lambda: control.vps_apply(True))]
 vps_launches, next_pid = [], [6000]
@@ -2036,15 +2045,15 @@ print(json.dumps(out, ensure_ascii=False))
 
   const vps = out.vps, forward = port => [vps.ssh, '-N', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes', '-o', 'ServerAliveInterval=30',
     '-o', 'ServerAliveCountMax=3', '-R', `127.0.0.1:18842:127.0.0.1:${port}`, 'workflow-pilot-vps'];
-  assert.deepEqual(out.vps_initial, { vps: { supervised: false, running: false, pid: null, forward_port: null, last_error: null } });
+  assert.deepEqual(out.vps_initial, { vps: { supervised: false, running: false, pid: null, forward_port: null, last_error: null, owned: true, ssh_host: null, remote_port: null } });
   for (const error of out.vps_bad_port) assert.match(error, /A valid local MCP port is required/);
-  assert.deepEqual(vps.applied, { vps: { supervised: true, running: true, pid: 6001, forward_port: 17852, last_error: null } });
+  assert.deepEqual(vps.applied, { vps: { supervised: true, running: true, pid: 6001, forward_port: 17852, last_error: null, owned: true, ssh_host: 'workflow-pilot-vps', remote_port: 18842 } });
   assert.deepEqual(vps.same, vps.applied);
   assert.equal(vps.launches_for_same_port, 1, 'the same port and the same control.py keep the running supervisor');
   assert.deepEqual(vps.launch, [[vps.python, '-B', vps.control, 'vps-supervise'], { creationflags: 0x08000000 | 0x00000200, cwd: state }]);
-  assert.deepEqual(vps.login, { supervised: true, running: true, pid: 6001, forward_port: 17852, last_error: null },
+  assert.deepEqual(vps.login, { supervised: true, running: true, pid: 6001, forward_port: 17852, last_error: null, owned: true, ssh_host: 'workflow-pilot-vps', remote_port: 18842 },
     'sign-in keeps the forward up with either channel, as the LaunchAgent does on macOS');
-  assert.deepEqual(vps.moved, { vps: { supervised: true, running: true, pid: 6011, forward_port: 17842, last_error: null } });
+  assert.deepEqual(vps.moved, { vps: { supervised: true, running: true, pid: 6011, forward_port: 17842, last_error: null, owned: true, ssh_host: 'workflow-pilot-vps', remote_port: 18842 } });
   assert.equal(vps.launches, 2, 'another MCP port restarts the supervisor');
   assert.deepEqual([vps.record_port, vps.record_digest], [17842, 64]);
   assert.equal(vps.refused.vps.running, false, 'the supervisor without a living ssh is not a working forward');
@@ -2058,7 +2067,7 @@ print(json.dumps(out, ensure_ascii=False))
   for (const pause of vps.sleeps) assert.ok(pause > 14 && pause <= 15, 'at most one start in 15 seconds');
   assert.deepEqual(vps.log_tail, ['ssh: connect to host vps port 22: Connection refused', 'ssh: connect to host vps port 22: Connection refused', 'ssh could not be started: ssh.exe']);
   assert.deepEqual(vps.stopped, { services: [{ service: 'vps', stopped: true }], vps: { supervised: false, running: false, pid: null, forward_port: null,
-    last_error: vps.stopped.vps.last_error } });
+    last_error: vps.stopped.vps.last_error, owned: true, ssh_host: null, remote_port: null } });
   assert.equal(vps.record_after_stop, false, 'a removed server is not dialled again at sign-in');
   assert.deepEqual(vps.stop_events.filter(([action]) => action === 'terminate').map(([, pid]) => pid), [6000, 6001, 6010], 'ssh ends with its supervisor');
   assert.equal(vps.login_without_vps, false);

@@ -1,21 +1,20 @@
 import { fail } from './common.mjs';
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { executeFile as execute } from './execution/commands/service.mjs';
+import { desktopFiles } from './execution/files/adapter.mjs';
 import { randomUUID } from 'node:crypto';
 import { executableCandidateAllowed, nodeExecutableCandidates } from './platform.mjs';
 import { WorkspaceReadiness } from './workspace-readiness.mjs';
-const execute = promisify(execFile);
 
 export class WorkspaceSetup {
   constructor({ resourceDir = fileURLToPath(new URL('../resources/', import.meta.url)), nodeCandidates,
-    environment = process.env, platform = process.platform, executeNode = execute, prepareEnvironment,
+    environment = process.env, platform = process.platform, executeNode = execute, files = desktopFiles, prepareEnvironment,
     onWorkerStart = () => {} } = {}) {
     this.resourceDir = resourceDir;
     this.platform = platform;
     this.executeNode = executeNode;
+    this.files = files;
     this.onWorkerStart = onWorkerStart;
     this.prepareEnvironment = prepareEnvironment;
     this.nodeCandidates = nodeCandidates ?? nodeExecutableCandidates({
@@ -106,20 +105,19 @@ export class WorkspaceSetup {
     if (this.prepareEnvironment) this.setRuntimeEnvironment(await this.prepareEnvironment());
     const node = await this.node();
     this.onWorkerStart('workspace-setup');
-    const child = execFile(node, [path.join(this.resourceDir, 'workspace-setup-worker.mjs')],
-      { env: this.environment, timeout: 120000, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8',
-        ...(this.platform === 'win32' ? { windowsHide: true } : {}) });
-    const result = await new Promise((resolve, reject) => {
-      let stdout = '', stderr = '';
-      child.stdout.on('data', chunk => { stdout += chunk; }); child.stderr.on('data', chunk => { stderr += chunk; });
-      child.on('error', reject);
-      child.on('close', code => {
-        let data; try { data = JSON.parse(stdout); } catch { reject(fail('SETUP_FAILED', 'Проверка папки не завершилась: ' + (stderr.trim().slice(-500) || `код ${code}`))); return; }
-        if (!data.ok) reject(fail(data.code ?? 'SETUP_FAILED', data.message)); else resolve(data);
-      });
-      child.stdin.on('error', () => {});
-      child.stdin.end(JSON.stringify(input));
-    });
+    let output;
+    try {
+      output = await this.executeNode(node, [path.join(this.resourceDir, 'workspace-setup-worker.mjs')],
+        { env: this.environment, timeout: 120000, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8', windowsHide: true },
+        JSON.stringify(input));
+    } catch (error) {
+      if (!error.stdout) throw error;
+      output = error;
+    }
+    let result;
+    try { result = JSON.parse(output.stdout); }
+    catch { throw fail('SETUP_FAILED', 'Проверка папки не завершилась: ' + (String(output.stderr ?? '').trim().slice(-500) || 'неполный ответ')); }
+    if (!result.ok) throw fail(result.code ?? 'SETUP_FAILED', result.message);
     return result;
   }
   async preview({ mode, workspace, parent, name } = {}) {
@@ -127,7 +125,7 @@ export class WorkspaceSetup {
     if (mode === 'new') {
       if (typeof name !== 'string' || !name.trim() || name !== name.trim() || name.length > 120 || /[\/\\\r\n\0]/.test(name) || ['.', '..'].includes(name) || name.startsWith('.')) throw fail('PROJECT_NAME', 'Укажите обычное имя новой папки без слешей и переносов строк.');
       if (typeof parent !== 'string' || !path.isAbsolute(parent)) throw fail('PARENT_REQUIRED', 'Выберите папку, в которой создать проект.');
-      const canonicalParent = await fs.realpath(parent);
+      const canonicalParent = await this.files.canonicalPath(parent);
       workspace = path.join(canonicalParent, name);
     }
     if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) throw fail('PROJECT_PATH', 'Выберите папку проекта.');
@@ -149,7 +147,7 @@ export class WorkspaceSetup {
   clear() { this.tickets.clear(); }
   async ready(workspace,options) {
     if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) throw fail('PROJECT_PATH', 'Выберите папку проекта.');
-    return this.readiness.check(await fs.realpath(workspace),options);
+    return this.readiness.check(await this.files.canonicalPath(workspace),options);
   }
   invalidateReadiness(workspace = null) { this.readiness.clear(workspace); }
 }

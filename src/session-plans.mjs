@@ -1,15 +1,13 @@
 import { fail } from './common.mjs';
-import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { executeFile as execute } from './execution/commands/service.mjs';
+import { desktopFiles } from './execution/files/adapter.mjs';
 import { randomUUID } from 'node:crypto';
 import { WorkspaceSetup } from './workspace-setup.mjs';
-const execute = promisify(execFile);
 
 export class SessionPlans {
-  constructor({ setup = new WorkspaceSetup(), run = execute, onWorkerStart = () => {} } = {}) {
-    Object.assign(this, { setup, run, onWorkerStart });
+  constructor({ setup = new WorkspaceSetup(), run = execute, files = desktopFiles, onWorkerStart = () => {} } = {}) {
+    Object.assign(this, { setup, run, files, onWorkerStart });
   }
   async call(workspace, command, args = [], input = null, { timeout = 120000 } = {}) {
     if (!path.isAbsolute(workspace)) throw fail('WORKSPACE_REQUIRED', 'Нужна абсолютная папка проекта.');
@@ -18,9 +16,8 @@ export class SessionPlans {
     try {
       if (input) {
         const directory = path.join(workspace, '.harness/runtime/session-plans');
-        await fs.mkdir(directory, { recursive: true });
         inputFile = path.join(directory, randomUUID() + '.json');
-        await fs.writeFile(inputFile, JSON.stringify(input), { mode: 0o600, flag: 'wx' });
+        await this.files.writeJson(inputFile, input, { exclusive: true });
         args = [...args, '--input', inputFile];
       }
       let stdout;
@@ -34,14 +31,14 @@ export class SessionPlans {
       try { result = JSON.parse(stdout); } catch { throw fail('PLAN_COMMAND_FAILED', 'Workflow Kit вернул неполный ответ.'); }
       if (!result.ok) throw fail(result.code ?? 'PLAN_COMMAND_FAILED', result.message ?? 'Команда плана не выполнена.');
       return result;
-    } finally { if (inputFile) await fs.unlink(inputFile).catch(() => {}); }
+    } finally { if (inputFile) await this.files.removeFile(inputFile).catch(() => {}); }
   }
   async loadContext(workspace) {
     try {
       return await this.call(workspace, 'recover', ['--format', 'packet']);
     } catch (error) {
       if (error.code !== 'SESSION_REQUIRED') throw error;
-      const text = await fs.readFile(path.join(workspace, '.harness/plans/todo-plan.md'), 'utf8');
+      const text = await this.files.readText(path.join(workspace, '.harness/plans/todo-plan.md'));
       const raw = text.match(/<!-- workflow-state:begin -->\s*```json\s*([\s\S]*?)```/)?.[1];
       let plan;
       try { plan = JSON.parse(raw ?? ''); } catch { throw fail('WORKFLOW_PLAN_INVALID', 'Не удалось прочитать current plan для совместимости со старым Workflow Kit.'); }

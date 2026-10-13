@@ -23,7 +23,7 @@ import { ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS } 
 import { ChatColorsWindow } from './chat-colors-window.mjs';
 import { ContextCache } from './context-cache.mjs';
 import { readinessContextKey } from './context-inputs.mjs';
-const contextCache = new ContextCache({ load: workspace => runtime.loadContext(workspace),
+const contextCache = new ContextCache({ load: workspace => sessionContextRuntime.loadContext(workspace),
   inputKey: workspace => readinessContextKey(workspaceSetup, workspace), onChange: () => publish() });
 import { SessionPlans } from './session-plans.mjs';
 import { externalClientLine } from './context-session.mjs';
@@ -43,10 +43,12 @@ import { WorkspaceSetup } from './workspace-setup.mjs';
 import { ProjectDoctor } from './project-doctor.mjs';
 import { ChromiumDiagnostics, safeUrl } from './chromium-diagnostics.mjs';
 import { openStartupPage } from './browser-startup.mjs';
-import { BUNDLED_NODE_VERSION, defaultRuntimeFolder, legacyWindowsStateFolder, bundledMacNode, nodeExecutableCandidates } from './platform.mjs';
-import { WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE } from './windows-runtime.mjs';
-import { CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS } from './mac-runtime-switch.mjs';
-import { VpsTunnel, WindowsVpsTunnel } from './vps-tunnel.mjs';
+import { BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates } from './execution/platform/paths.mjs';
+import { WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE } from './execution/runtime/windows.mjs';
+import { CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS } from './execution/runtime/service.mjs';
+import { VpsTunnel, WindowsVpsTunnel } from './execution/runtime/vps.mjs';
+import { ExecutionFacade } from './execution/facade.mjs';
+import { validateContextPacket } from './contracts/context.mjs';
 import { TunnelClipboard } from './tunnel-clipboard.mjs';
 import { StartupReadiness, inspectMacGit, installMacGit, offerMacInstallation } from './startup-readiness.mjs';
 import { startupPlatformOptions, startupSupported } from './startup-platform.mjs';
@@ -60,6 +62,17 @@ const sidebarUrl = pathToFileURL(path.join(sourceDir, 'ui/index.html')).href;
 const archiveUrl = pathToFileURL(path.join(sourceDir, 'ui/archive.html')).href;
 const { dataDir, partition } = configureDesktopIdentity(app, { smoke });
 const settingsFile = path.join(dataDir, 'settings.json');
+const executionServices = new ExecutionFacade();
+// Context belongs to the project layer; Execution owns only service readiness and physical IO.
+const sessionContextRuntime = {
+  ensure: () => executionServices.ensureServices(),
+  get startupRules() { return runtime?.startupRules ?? []; },
+  async loadContext(workspace) {
+    if (smoke) return runtime.loadContext(workspace);
+    await executionServices.ensureServices();
+    return validateContextPacket(await sessionPlans.loadContext(workspace), workspace);
+  },
+};
 const chromiumDiagnosticsFile = path.join(dataDir, 'diagnostics', 'chromium-events.jsonl');
 let parallelExecution = { ...DEFAULT_PARALLEL_SETTINGS };
 let parallelExecutionBook = {};
@@ -75,10 +88,6 @@ const planMonitor = new PlanMonitor({ selected: () => store.selected(),
   }, onError: () => publish() });
 // State of the Codex App Server executor, the local MCP backend of both systems.
 const runtimeFolder = defaultRuntimeFolder(os.homedir(), process.platform);
-// What the runtime before the executor left behind (macOS before 0.6.91, Windows before 0.6.96) is removed once;
-// until then the folders that earlier versions recorded in the settings are remembered.
-const legacyRetiredSetting = process.platform === 'win32' ? 'legacyWindowsRuntimeRetired' : 'legacyMacRuntimeRetired';
-let legacyRuntimeRetired = false, legacyRuntimeRoots = [];
 let chatgptChannel = CHATGPT_CHANNEL_SECURE;
 let appServerRuntime = null, runtimeSwitcher = null, runtimeActivation = null, vpsTunnel = null;
 let shellTheme = 'light';
@@ -126,6 +135,7 @@ const windowsPortableNode = process.platform === 'win32'
       : path.join(sourceDir, `../.harness/runtime/windows-node/node-v${BUNDLED_NODE_VERSION}-win-x64/node.exe`))
   : null;
 const workspaceSetup = new WorkspaceSetup({
+  executeNode: executionServices.executeFile, files: executionServices.files,
   resourceDir: app.isPackaged ? path.join(process.resourcesPath, 'resources') : path.join(sourceDir, '../resources'),
   nodeCandidates: windowsPortableNode
     ? [windowsPortableNode, ...nodeExecutableCandidates({ platform: 'win32', environment: process.env, electron: true })]
@@ -139,7 +149,7 @@ const workspaceSetup = new WorkspaceSetup({
   } : undefined,
   onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; },
 });
-const sessionPlans = new SessionPlans({ setup: workspaceSetup,
+const sessionPlans = new SessionPlans({ setup: workspaceSetup, run: executionServices.executeFile, files: executionServices.files,
   onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; } });
 store.planService = sessionPlans;
 // Agent time: wall clock while ChatGPT shows its Stop control; each finished request is added to its own session.
@@ -217,7 +227,7 @@ function sessionRuntimeError(record,error) {
   record.error=publicError(error);
   if(record===liveSessions.visible&&!settingsState&&!setupState)report(error);else publish();
 }
-const liveSessions = new SessionRuntimes({store,runtime:()=>runtime,contextCache,ipc:ipcMain,connectPageState,
+const liveSessions = new SessionRuntimes({store,runtime:()=>sessionContextRuntime,contextCache,ipc:ipcMain,connectPageState,
   createView:()=>new WebContentsView({webPreferences:{...remotePreferences(),backgroundThrottling:false,
     preload:app.isPackaged?path.join(process.resourcesPath,'resources/chatgpt-page-observer-preload.cjs')
       :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs')}}),
@@ -340,7 +350,7 @@ let setupState = null;
 let workspaceHealth = null;
 let settingsState = null;
 let doctorState = null;
-const projectDoctor = new ProjectDoctor({ setup: workspaceSetup, ensureServices: () => runtime.ensure() });
+const projectDoctor = new ProjectDoctor({ setup: workspaceSetup, ensureServices: () => executionServices.ensureServices() });
 let archiveState = { deletion: null, notice: null, focusWorkspace: null };
 let deletion;
 const shellBackground = { light: '#f4f6f8', dark: '#1b1d22' };
@@ -360,16 +370,9 @@ async function applyToolCallVisibility(view = browser) {
 }
 
 function saveSettings(overrides = {}) {
-  // macRuntimeMode is no longer read: it only lets 0.6.90 open on the same backend after a rollback.
-  const platformSettings = {
-    ...(process.platform === 'darwin' ? { macRuntimeMode: 'app-server' } : {}),
-    [legacyRetiredSetting]: legacyRuntimeRetired, ...(legacyRuntimeRetired ? {} : { legacyRuntimeRoots }),
-  };
-  const settings = { ...platformSettings, chatgptChannel, shellTheme, hideToolCalls, sidebarWidth, chatColors, projectsParent, projectAutoPlan:projectAutoPlan.snapshot(), reviewCheckpoint, automationCheckpoint, parallelExecution, parallelExecutionBook, ...overrides };
+  const settings = { chatgptChannel, shellTheme, hideToolCalls, sidebarWidth, chatColors, projectsParent, projectAutoPlan:projectAutoPlan.snapshot(), reviewCheckpoint, automationCheckpoint, parallelExecution, parallelExecutionBook, ...overrides };
   const operation = settingsSaveTail.catch(() => {}).then(async () => {
-    await fsp.mkdir(dataDir, { recursive: true, mode: 0o700 });
-    await fsp.writeFile(settingsFile + '.tmp', JSON.stringify(settings, null, 2) + '\n', { mode: 0o600 });
-    await fsp.rename(settingsFile + '.tmp', settingsFile);
+    await executionServices.writeJson(settingsFile, settings);
   });
   settingsSaveTail = operation;
   return operation;
@@ -872,7 +875,7 @@ async function reviewWorkspace(workspace, openReady = false, { generation = null
   const ownNavigation = generation ?? nextNavigation();
   if (!navigationCurrent(ownNavigation)) return false;
   pageLoading = false; startupError = null;
-  const canonical = await fsp.realpath(workspace).catch(() => workspace);
+  const canonical = await executionServices.canonicalPath(workspace).catch(() => workspace);
   if (!navigationCurrent(ownNavigation)) return false;
   if (store.project(canonical)?.archivedAt) { await openArchiveWindow(canonical); publish(); return false; }
   settingsState = null; deletion.clear();
@@ -899,7 +902,7 @@ async function openConnectedSession(input, sessionId = null, { latest = false, r
   workspaceHealth = { workspace: input, sessionId, generation, phase: 'checking', ready: false }; publish();
   try {
     if (typeof input !== 'string' || !path.isAbsolute(input)) throw new Error('Выберите папку проекта.');
-    const workspace = await fsp.realpath(input);
+    const workspace = await executionServices.canonicalPath(input);
     if (!current()) return null;
     const record = store.snapshot().projects.find(p => p.workspace === workspace);
     if (record?.archivedAt) { pageLoading = false; workspaceHealth = null; await openArchiveWindow(workspace); return null; }
@@ -967,7 +970,7 @@ function ensureRuntimeSwitcher() {
   if (smoke) return null;
   const windows = process.platform === 'win32';
   appServerRuntime ??= new CodexAppServerRuntime({
-    sourceDir: appServerSourceFolder(), sessionPlans, stateDir: runtimeFolder,
+    sourceDir: appServerSourceFolder(), stateDir: runtimeFolder, execute: executionServices.executeFile,
     ...(windows
       // Windows has no system Python: the tools of the package and the private Python are prepared first.
       ? { bootstrap: windowsBootstrap }
@@ -977,10 +980,7 @@ function ensureRuntimeSwitcher() {
   // The forward of the user's own server: a LaunchAgent on macOS, a supervisor of control.py on Windows.
   if (process.platform === 'darwin') vpsTunnel ??= new VpsTunnel();
   else if (windows) vpsTunnel ??= new WindowsVpsTunnel({ control: args => appServerRuntime.vpsControl(args) });
-  runtimeSwitcher ??= new MacRuntimeSwitcher({ appServerRuntime, vpsTunnel,
-    legacyWindows: windows ? { legacyStateDir: legacyWindowsStateFolder(),
-      controlFile: path.join(app.isPackaged ? path.join(process.resourcesPath, 'resources') : path.join(sourceDir, '../resources'),
-        'runtime-control', 'windows-control.py') } : null });
+  runtimeSwitcher ??= new MacRuntimeSwitcher({ appServerRuntime, vpsTunnel, execute: executionServices.executeFile });
   return runtimeSwitcher;
 }
 
@@ -989,10 +989,7 @@ function ensureRuntimeSwitcher() {
 function activateRuntime() {
   if (smoke) return Promise.resolve(null);
   runtimeActivation ??= (async () => {
-    const result = await ensureRuntimeSwitcher().activate(runtime, { chatgptChannel,
-      // A new product never retires another application's services or imports its tunnel.
-      retireLegacy: null });
-    if (result.legacyRetired) { legacyRuntimeRetired = true; await saveSettings(); }
+    const result = await ensureRuntimeSwitcher().activate(runtime, { chatgptChannel });
     if (process.platform === 'win32') workspaceSetup.setRuntimeEnvironment(await windowsBootstrap.workflowEnvironment());
     contextCache.clear();
     return result.status;
@@ -1006,7 +1003,11 @@ function createStartupFlow() {
   startupFlow = new StartupReadiness({
     ...startupPlatformOptions({ platform: process.platform, setup: workspaceSetup,
       bootstrap: appServerRuntime, components: windowsBootstrap,
-      ensureRuntime: activateRuntime, control: (...args) => runtime.control(...args),
+      ensureRuntime: activateRuntime, control: (command, options) => {
+        if (command === 'status') return executionServices.inspectServices();
+        if (command === 'start') return options?.mcpOnly ? executionServices.startMcpOnly() : executionServices.ensureServices();
+        throw new Error('Неизвестная операция готовности служб.');
+      },
       inspectGit: () => inspectMacGit(), installGit: () => installMacGit() }),
     onChange: publish,
   });
@@ -1090,7 +1091,7 @@ async function startupAction(action) {
 }
 
 function connectController() {
-  for(const record of liveSessions.records.values())record.controller.runtime=runtime;
+  for(const record of liveSessions.records.values())record.controller.runtime=sessionContextRuntime;
 }
 function selectLiveSession(project=null) {
   const record=liveSessions.ensure(project);
@@ -1291,7 +1292,7 @@ function registerIpc() {
     if (!CHATGPT_CHANNELS.includes(input)) throw new Error('Неизвестный канал ChatGPT.');
     if (input === chatgptChannel && runtime.channel === input) return { channel: chatgptChannel };
     try {
-      return { channel: input, status: await runtime.setChannel(input) };
+      return { channel: input, status: await executionServices.selectChannel(input) };
     } finally {
       // The selector may already hold the new channel even if starting it failed.
       if (runtime.channel !== chatgptChannel) { chatgptChannel = runtime.channel; await saveSettings({ chatgptChannel }); }
@@ -1299,7 +1300,7 @@ function registerIpc() {
   });
   registerAction('pilot:refresh-chatgpt-channel', async () => {
     if (smoke || typeof runtime?.setChannel !== 'function') throw new Error('Проверка канала ChatGPT недоступна на этой платформе.');
-    await runtime.control('status');
+    await executionServices.inspectServices();
   });
   registerAction('pilot:copy-vps-connector-url', async () => {
     ensureRuntimeSwitcher();
@@ -1537,6 +1538,7 @@ async function createWindow() {
       if (eventRuntimeCheckerTimer !== null) clearInterval(eventRuntimeCheckerTimer);
       eventRuntimeCheckerTimer = null; liveSessions.dispose(); contextCache.clear(); workspaceSetup.invalidateReadiness();
       chromiumDiagnostics = null;
+      void executionServices.dispose().catch(report);
     } finally {
       // Auth/help popups and hidden auxiliary windows must not keep the UI alive.
       // Independent MCP/tunnel processes are deliberately not stopped here.
@@ -1555,12 +1557,14 @@ async function createWindow() {
     runtime = await fixture.createRuntime({ browser: browser.webContents, session: session.fromPartition(partition), dataDir });
   } else {
     runtime = ensureRuntimeSwitcher().createRuntime(chatgptChannel, activateRuntime);
+    executionServices.attachRuntime(runtime);
     // Installed services are brought up before the window is ready, as before. A computer where they are not
     // installed yet is left to the first-run wizard, which shows progress. A failure here is shown in the
     // sidebar and the next use of the services tries again: it must never keep the app from opening.
     if (await appServerRuntime.prepared() && (process.platform !== 'darwin' || await inspectMacGit()))
       await activateRuntime().catch(error => { startupError = publicError(error); });
   }
+  if (smoke) executionServices.attachRuntime(runtime);
   connectController();
   createStartupFlow();
   registerIpc();
@@ -1604,12 +1608,7 @@ else {
       await fixture.prepareStartup({ dataDir });
     }
     try {
-      const settings = JSON.parse(await fsp.readFile(settingsFile, 'utf8'));
-      // Settings of earlier versions name the folder of the retired runtime; it is only cleaned up now.
-      legacyRuntimeRetired = settings[legacyRetiredSetting] === true;
-      legacyRuntimeRoots = [...new Set([...(Array.isArray(settings.legacyRuntimeRoots) ? settings.legacyRuntimeRoots : []),
-        settings.runtimeFolder, settings.runtimeRegistration?.folder]
-        .filter(folder => typeof folder === 'string' && path.isAbsolute(folder)))].slice(0, 8);
+      const settings = await executionServices.readJson(settingsFile);
       if (CHATGPT_CHANNELS.includes(settings.chatgptChannel)) chatgptChannel = settings.chatgptChannel;
       if (['light', 'dark'].includes(settings.shellTheme)) shellTheme = settings.shellTheme;
       if (typeof settings.hideToolCalls === 'boolean') hideToolCalls = settings.hideToolCalls;

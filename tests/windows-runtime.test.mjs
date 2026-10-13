@@ -266,7 +266,7 @@ test('Windows components unpack from the real pinned archive', { timeout: 120_00
   assert.equal(JSON.parse(await fs.readFile(paths.marker, 'utf8')).archive_sha256, WINDOWS_RUNTIME_SHA256);
 });
 
-test('the bridge of earlier versions is stopped by its own lifecycle script and only the copy in the app data is removed', async t => {
+test('Windows donor bridge, key, registry and copies are never taken over', async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'web-pilot-win-legacy-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const dataDir = path.join(root, 'Roaming', 'Workflow Pilot'), installed = path.join(dataDir, 'runtime', 'Windows-Codex-Local');
@@ -296,27 +296,13 @@ test('the bridge of earlier versions is stopped by its own lifecycle script and 
   const options = { dataDir, runtimeRoots: [chosen, empty, chosen, 'relative', null], legacyStateDir, controlFile: '/app/resources/runtime-control/windows-control.py',
     execute, environment: { SystemRoot: '/Windows', Path: 'C:\\x' } };
 
-  stopFails = chosen;
-  await assert.rejects(retireLegacyWindowsRuntime(options), /exit 1/);
-  assert.equal(await present(installed), true, 'nothing is removed while a bridge may still be running');
-  calls.length = 0; stopFails = null; regFails = true;
-  const result = await retireLegacyWindowsRuntime(options);
-  assert.deepEqual(result, { stopped: [installed, chosen, recorded], removed: installed });
-  const stops = calls.filter(([, args]) => args.at(-1) === 'stop');
-  assert.deepEqual(stops.map(([file, args, settings]) => [file, args, settings.cwd, settings.env.WORKFLOW_PILOT_RUNTIME_ROOT, settings.env.PYTHONUTF8, settings.windowsHide]),
-    [installed, chosen, recorded].map(folder => [python(folder), ['-B', options.controlFile, 'stop'], folder, folder, '1', true]),
-    'every folder is stopped with its own Python; a folder without one cannot be running');
-  const reg = calls.find(([, args]) => args[0] === 'delete');
-  assert.deepEqual([reg[0], reg[1]], [path.join('/Windows', 'System32', 'reg.exe'),
-    ['delete', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run', '/v', 'WorkflowPilotMCP', '/f']], 'the old start at sign-in is removed; a missing value is not an error');
-  for (const gone of [installed, path.join(dataDir, 'runtime', 'windows-runtime.json'), path.join(dataDir, 'runtime', '.windows-runtime-staging')])
-    assert.equal(await present(gone), false, gone);
-  for (const kept of [python(chosen), python(recorded), empty, path.join(legacyStateDir, 'private', 'tunnel-key.dpapi'), path.join(dataDir, 'settings.json')])
-    assert.equal(await present(kept), true, 'folders of the user and the old tunnel key stay: ' + kept);
-  calls.length = 0;
-  assert.deepEqual((await retireLegacyWindowsRuntime({ ...options, runtimeRoots: [], legacyStateDir: null })).stopped, [], 'a second run finds nothing to stop');
-  await assert.rejects(retireLegacyWindowsRuntime({ ...options, dataDir: 'relative' }), TypeError);
-  await assert.rejects(retireLegacyWindowsRuntime({ ...options, controlFile: undefined }), TypeError);
+  await assert.rejects(retireLegacyWindowsRuntime(options), { code: 'LEGACY_RUNTIME_FORBIDDEN' });
+  assert.deepEqual(calls, []);
+  for (const folder of [installed, chosen, recorded]) assert.equal(await fs.readFile(python(folder), 'utf8'), 'python');
+  assert.equal(await fs.readFile(path.join(legacyStateDir, 'private', 'tunnel-key.dpapi'), 'utf8'), 'old key');
+  for (const file of [path.join(dataDir, 'runtime', 'windows-runtime.json'), path.join(dataDir, 'settings.json')])
+    assert.equal(await fs.readFile(file, 'utf8'), '{}');
+  assert.equal(await present(path.join(dataDir, 'runtime', '.windows-runtime-staging')), true);
 });
 
 test('SHA-256 verification uses the canonical digest contract', async t => {
@@ -333,7 +319,7 @@ test('nothing patches or starts the previous Windows bridge any more: the archiv
   for (const gone of ['patchWindowsBridgeSource', 'patchWindowsSkillSource', 'WINDOWS_REMOVED_TOOLS', 'WINDOWS_CONTEXT_PACKET_SOURCE',
     'WINDOWS_SKILL_DESKTOP_SECTION', 'WindowsRuntimeBootstrap', 'configureWindowsTunnel', 'windowsSetupInvocation', 'windowsExpandInvocation'])
     assert.equal(gone in windowsRuntime, false, gone);
-  const source = await fs.readFile(new URL('../src/windows-runtime.mjs', import.meta.url), 'utf8');
+  const source = await fs.readFile(new URL('../src/execution/runtime/windows.mjs', import.meta.url), 'utf8');
   for (const text of ['bridge_mcp.py', 'setup.ps1', 'context_packet', 'Expand-Archive', 'workflow_context_recover', 'computer_click'])
     assert.equal(source.includes(text), false, text);
   assert.equal(windowsRuntime.WINDOWS_RUNTIME_ARCHIVE, 'Windows-Codex-Local-2026-09-10.zip', 'the pinned archive keeps its name');

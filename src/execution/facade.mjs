@@ -1,0 +1,36 @@
+import { desktopCommands } from './commands/service.mjs';
+import { desktopFiles } from './files/adapter.mjs';
+import { RuntimeError } from '../contracts/errors.mjs';
+
+// A desktop instance owns these adapters; no plan/session/store is accepted here.
+export class ExecutionFacade {
+  constructor({ commands = desktopCommands, files = desktopFiles } = {}) {
+    this.commands = commands; this.files = files; this.runtime = null;
+  }
+  attachRuntime(runtime) {
+    if (this.runtime && this.runtime !== runtime) throw new RuntimeError('EXECUTION_OWNER_CONFLICT', 'Runtime уже имеет владельца.');
+    this.runtime = runtime;
+  }
+  services() {
+    if (!this.runtime) throw new RuntimeError('EXECUTION_NOT_READY', 'Runtime ещё не подключён.');
+    return this.runtime;
+  }
+  runCommand(file, args, options) { return this.commands.start(file, args, options); }
+  writeCommandInput(id, text, options) { return this.commands.writeInput(id, text, options); }
+  waitCommand(id, yieldMs) { return this.commands.wait(id, yieldMs); }
+  stopCommand(id) { return this.commands.cancel(id); }
+  commandSnapshot(id) { return this.commands.snapshot(id); }
+  executeFile = (...args) => this.commands.executeFile(...args);
+  readText(file) { return this.files.readText(file); }
+  readJson(file) { return this.files.readJson(file); }
+  writeJson(file, value, options) { return this.files.writeJson(file, value, options); }
+  canonicalPath(file) { return this.files.canonicalPath(file); }
+  ensureServices() { return this.services().ensure(); }
+  inspectServices() { return this.services().control('status'); }
+  startMcpOnly() { return this.services().control('start', { mcpOnly: true }); }
+  selectChannel(channel) { return this.services().setChannel(channel); }
+  get channel() { return this.services().channel; }
+  get lastStatus() { return this.runtime?.lastStatus ? structuredClone(this.runtime.lastStatus) : null; }
+  // Login services survive closing the desktop. Only its own transient workers are disposed.
+  dispose() { return this.commands.dispose(); }
+}

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 9,
+  "plan_revision": 11,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -302,7 +302,16 @@
       "tests/workflow-kit-source.test.mjs",
       "tests/workspace-readiness.test.mjs",
       "tools/codex-app-server-mcp/tunnel_prompt.py",
-      "tools/codex-app-server-mcp/windows_notify.ps1"
+      "tools/codex-app-server-mcp/windows_notify.ps1",
+      "src/contracts/context.mjs",
+      "src/execution/files/zip-archive.mjs",
+      "src/execution/runtime/mcp-client.mjs",
+      "src/execution/runtime/tunnel-setup.mjs",
+      "src/execution/runtime/vps-config.mjs",
+      "src/execution/runtime/vps.mjs",
+      "src/execution/runtime/windows.mjs",
+      "tests/execution-architecture.test.mjs",
+      "tests/execution-facade.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -985,10 +994,27 @@
         "scripts/prepare-windows-toolchain.mjs",
         "scripts/prepare-mac-toolchain.mjs",
         "scripts/stage-workflow-kit.mjs",
-        "scripts/stage-page-observer.mjs"
+        "scripts/stage-page-observer.mjs",
+        "src/common.mjs",
+        "src/contracts/context.mjs",
+        "src/execution/files/zip-archive.mjs",
+        "src/execution/runtime/mcp-client.mjs",
+        "src/execution/runtime/tunnel-setup.mjs",
+        "src/execution/runtime/vps-config.mjs",
+        "src/execution/runtime/vps.mjs",
+        "src/execution/runtime/windows.mjs",
+        "src/parallel-kit.mjs",
+        "src/session-plans.mjs",
+        "src/tunnel-setup.mjs",
+        "src/workspace-setup.mjs",
+        "src/zip-archive.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/execution-architecture.test.mjs",
+        "tests/execution-facade.test.mjs"
       ],
       "documentation_paths": [
-        "docs/modules/execution.md"
+        "docs/modules/execution.md",
+        "docs/architecture/OVERVIEW.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -1002,13 +1028,53 @@
         "На готовом анализаторе настроен npm run check:architecture; правило уже проверяет выделенную границу, временные legacy-исключения конкретны и удаляются T011. Переключены потребители, проверки через пользовательские/IPC входы не заменены внутренними вызовами."
       ],
       "expected_commit_message": "refactor: Выделить Execution для команд, файлов и служб",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T003",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/execution.md",
+        "package-lock.json",
+        "package.json",
+        "src/common.mjs",
+        "src/contracts/context.mjs",
+        "src/contracts/errors.mjs",
+        "src/contracts/execution.mjs",
+        "src/execution/commands/service.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/files/adapter.mjs",
+        "src/execution/files/zip-archive.mjs",
+        "src/execution/platform/paths.mjs",
+        "src/execution/runtime/mcp-client.mjs",
+        "src/execution/runtime/service.mjs",
+        "src/execution/runtime/tunnel-setup.mjs",
+        "src/execution/runtime/vps-config.mjs",
+        "src/execution/runtime/vps.mjs",
+        "src/execution/runtime/windows.mjs",
+        "src/mac-runtime-switch.mjs",
+        "src/main.mjs",
+        "src/mcp-runtime.mjs",
+        "src/parallel-kit.mjs",
+        "src/platform.mjs",
+        "src/session-plans.mjs",
+        "src/tunnel-setup.mjs",
+        "src/vps-tunnel.mjs",
+        "src/windows-runtime.mjs",
+        "src/workspace-setup.mjs",
+        "src/zip-archive.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/execution-architecture.test.mjs",
+        "tests/execution-facade.test.mjs",
+        "tests/mac-runtime-switch.test.mjs",
+        "tests/vps-tunnel.test.mjs",
+        "tests/windows-runtime.test.mjs",
+        "tools/codex-app-server-mcp/control.py"
+      ]
     },
     {
       "id": "T004",
@@ -1737,7 +1803,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 9
+Revision: 11
 
 ## Цель
 
@@ -1768,10 +1834,10 @@ Revision: 9
   - Файлы: package.json, package-lock.json, .gitignore, src/main.mjs, src/common.mjs, src/platform.mjs, src/control/facade.mjs, src/execution/facade.mjs, src/frontend/desktop/bootstrap.mjs, scripts/release-all.mjs, scripts/prepare-windows-toolchain.mjs, scripts/prepare-mac-toolchain.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-page-observer.mjs, resources/mac-permissions.plist, resources/workspace-setup-worker.mjs, resources/runtime-control/windows-control.py, tools/codex-app-server-mcp/control.py, tools/codex-app-server-mcp/server.py, tools/codex-app-server-mcp/app_server_client.py, tools/codex-app-server-mcp/codex-tools.lock.json, tools/codex-app-server-mcp/requirements.txt, tools/codex-app-server-mcp/windows_desktop.py, tools/codex-app-server-mcp/linux_desktop.py, packages/workflow-kit/package.json, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/install.mjs, packages/workflow-kit/src/lib/transaction.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/recovery.mjs, tests/workspace-session.test.mjs, tests/session-runtime.test.mjs, tests/parallel-execution.test.mjs, tests/project-auto-plan.test.mjs, tests/electron-smoke.mjs, tests/codex-app-server-mcp.test.mjs, LICENSE, .node-version, BUILD_WINDOWS.cmd, RUN_WINDOWS.cmd, packages/workflow-kit/LICENSE, packages/workflow-kit/index.mjs, packages/workflow-kit/scripts/check-carryover-fixture.mjs, packages/workflow-kit/scripts/check-consumer-contract.mjs, packages/workflow-kit/scripts/check-document-fixture.mjs, packages/workflow-kit/scripts/check-package.mjs, packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, packages/workflow-kit/scripts/check-task-handoff-fixture.mjs, packages/workflow-kit/scripts/check-task-integration-fixture.mjs, packages/workflow-kit/src/examples/verify-package.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/extend-plan.mjs, packages/workflow-kit/src/lib/git-hooks.mjs, packages/workflow-kit/src/lib/git.mjs, packages/workflow-kit/src/lib/inspection-inputs.mjs, packages/workflow-kit/src/lib/installation-files.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/platform.mjs, packages/workflow-kit/src/lib/project-facts.mjs, packages/workflow-kit/src/lib/session-plans.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/task-files.mjs, packages/workflow-kit/src/lib/task-handoff.mjs, packages/workflow-kit/src/lib/task-update.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/schemas/workflow.schema.json, resources/project-doctor-worker.mjs, resources/project-doctor/core.mjs, resources/project-doctor/files.mjs, scripts/check-codex-tools.mjs, scripts/check-github-release.mjs, scripts/check-installed-release.mjs, scripts/check-mac-screen-capture.mjs, scripts/check-mac-signature.mjs, scripts/check-workflow-kit-archive.mjs, scripts/check-workflow-kit-dependency.mjs, scripts/check-workflow-kit-staging.mjs, scripts/probe-chatgpt-file-paste.mjs, scripts/release-mac.mjs, scripts/sign-mac-bundle.mjs, scripts/verify-windows-package.mjs, src/agent-timer.mjs, src/archive-preload.cjs, src/auto-plan-state.mjs, src/auto-plan.mjs, src/automation-send-state.mjs, src/browser-startup.mjs, src/chat-colors-preload.cjs, src/chat-colors-window.mjs, src/chatgpt-auto-scroll.mjs, src/chatgpt-colors.mjs, src/chatgpt-composer.mjs, src/chatgpt-dom.mjs, src/chatgpt-experience.mjs, src/chatgpt-page-observer.mjs, src/chatgpt-title.mjs, src/chatgpt-tool-filter.mjs, src/chromium-diagnostics.mjs, src/command-activity.mjs, src/context-cache.mjs, src/context-inputs.mjs, src/context-session.mjs, src/conversation-recovery.mjs, src/execution-projection.mjs, src/executor-session.mjs, src/mac-runtime-switch.mjs, src/mcp-runtime.mjs, src/page-state-bridge.mjs, src/page-state.mjs, src/parallel-execution.mjs, src/parallel-kit.mjs, src/parallel-settings.mjs, src/plan-monitor.mjs, src/plan-review.mjs, src/preload.cjs, src/project-auto-plan.mjs, src/project-doctor.mjs, src/project-input-watch.mjs, src/project-session-auto-plan.mjs, src/project-state-cleanup.mjs, src/review-continuation.mjs, src/session-plans.mjs, src/session-runtime.mjs, src/startup-network-trace.mjs, src/startup-platform.mjs, src/startup-readiness.mjs, src/tunnel-clipboard.mjs, src/tunnel-setup.mjs, src/ui/archive.html, src/ui/archive.mjs, src/ui/chat-colors.html, src/ui/chat-colors.mjs, src/ui/index.html, src/ui/progress.mjs, src/ui/project-doctor.mjs, src/ui/settings-panel.mjs, src/ui/sidebar.mjs, src/ui/startup.mjs, src/ui/workspace-setup.mjs, src/vps-tunnel.mjs, src/windows-runtime.mjs, src/workspace-deletion.mjs, src/workspace-readiness.mjs, src/workspace-session.mjs, src/workspace-setup.mjs, src/zip-archive.mjs, tests/agent-timer.test.mjs, tests/auto-plan-restart-fixture.cjs, tests/auto-plan.test.mjs, tests/automation-send-state.test.mjs, tests/browser-startup.test.mjs, tests/chatgpt-auto-scroll.test.mjs, tests/chatgpt-colors.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-dom.test.mjs, tests/chatgpt-experience.test.mjs, tests/chatgpt-file-paste-probe.test.mjs, tests/chatgpt-title.test.mjs, tests/chatgpt-tool-filter.test.mjs, tests/check-codex-tools.test.mjs, tests/chromium-diagnostics.test.mjs, tests/command-activity.test.mjs, tests/common.test.mjs, tests/context-cache.test.mjs, tests/context-session.test.mjs, tests/conversation-recovery.test.mjs, tests/event-runtime-baseline.mjs, tests/fixtures/released-kit/kit-1.5.6.tar.gz, tests/fixtures/released-kit/kit-1.6.3.tar.gz, tests/fixtures/released-kit/kit-1.6.4.tar.gz, tests/fixtures/released-kit/kit-1.7.0.tar.gz, tests/fixtures/released-kit/manifest.json, tests/installed-observer-fixture.cjs, tests/mac-runtime-switch.test.mjs, tests/mac-toolchain.test.mjs, tests/mcp-runtime.test.mjs, tests/page-state.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-execution-ui.test.mjs, tests/parallel-finalization.test.mjs, tests/plan-monitor.test.mjs, tests/plan-review.test.mjs, tests/product-identity.test.mjs, tests/progress.test.mjs, tests/project-doctor-ui.test.mjs, tests/project-doctor.test.mjs, tests/project-input-watch.test.mjs, tests/project-state-cleanup.test.mjs, tests/prosemirror-composer-fixture.mjs, tests/protected-preview-fixture.cjs, tests/release-all.test.mjs, tests/release-mac.test.mjs, tests/session-opening-performance.test.mjs, tests/session-plans.test.mjs, tests/settings-chatgpt-channel.test.mjs, tests/settings-parallel-execution.test.mjs, tests/sidebar.test.mjs, tests/sign-mac-bundle.test.mjs, tests/startup-network-trace.test.mjs, tests/startup-platform.test.mjs, tests/startup-readiness.test.mjs, tests/startup-ui.test.mjs, tests/tunnel-clipboard.test.mjs, tests/tunnel-id-prompt.test.mjs, tests/tunnel-id-runtime.test.mjs, tests/tunnel-prompt.test.mjs, tests/vps-tunnel.test.mjs, tests/windows-autostart.test.mjs, tests/windows-runtime.test.mjs, tests/workflow-kit-recovery.test.mjs, tests/workflow-kit-source.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/workspace-deletion.test.mjs, tests/workspace-readiness.test.mjs, tests/workspace-setup.test.mjs, tools/codex-app-server-mcp/tunnel_prompt.py, tools/codex-app-server-mcp/windows_notify.ps1, AGENTS.md, docs/modules/control.md, docs/modules/execution.md, docs/modules/browser.md, docs/modules/workflow-execution.md, docs/modules/desktop.md, PROVENANCE.md, README.md, docs/architecture/OVERVIEW.md, docs/planning/migration-0.1.0.md, docs/planning/migration-platforms.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/examples/PACKAGING.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/CONTINUE.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/STAGES.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Выделить Execution для команд, файлов и служб — Ожидает
-  - Git Commit: [PENDING] refactor: Выделить Execution для команд, файлов и служб
+- [DONE] T003: Выделить Execution для команд, файлов и служб — Завершено
+  - Git Commit: [DONE] refactor: Выделить Execution для команд, файлов и служб
   - Reference: workflow-pilot-migration-0.1.0 / T003 / implementation
-  - Файлы: src/execution/facade.mjs, src/execution/commands/service.mjs, src/execution/files/adapter.mjs, src/execution/runtime/service.mjs, src/execution/platform/paths.mjs, src/execution/browser/session-runtime.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/platform.mjs, src/mac-runtime-switch.mjs, src/windows-runtime.mjs, src/vps-tunnel.mjs, tools/codex-app-server-mcp/control.py, tools/codex-app-server-mcp/server.py, tools/codex-app-server-mcp/app_server_client.py, tools/codex-app-server-mcp/codex-tools.lock.json, tools/codex-app-server-mcp/requirements.txt, tools/codex-app-server-mcp/windows_desktop.py, tools/codex-app-server-mcp/linux_desktop.py, resources/runtime-control/windows-control.py, resources/runtime-control/linux-control.py, package.json, package-lock.json, .dependency-cruiser.cjs, tests/command-activity.test.mjs, tests/mcp-runtime.test.mjs, tests/mac-runtime-switch.test.mjs, tests/windows-runtime.test.mjs, tests/vps-tunnel.test.mjs, src/mcp-runtime.mjs, scripts/release-all.mjs, scripts/prepare-windows-toolchain.mjs, scripts/prepare-mac-toolchain.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-page-observer.mjs, docs/modules/execution.md
+  - Файлы: src/execution/facade.mjs, src/execution/commands/service.mjs, src/execution/files/adapter.mjs, src/execution/runtime/service.mjs, src/execution/platform/paths.mjs, src/execution/browser/session-runtime.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/main.mjs, src/platform.mjs, src/mac-runtime-switch.mjs, src/windows-runtime.mjs, src/vps-tunnel.mjs, tools/codex-app-server-mcp/control.py, tools/codex-app-server-mcp/server.py, tools/codex-app-server-mcp/app_server_client.py, tools/codex-app-server-mcp/codex-tools.lock.json, tools/codex-app-server-mcp/requirements.txt, tools/codex-app-server-mcp/windows_desktop.py, tools/codex-app-server-mcp/linux_desktop.py, resources/runtime-control/windows-control.py, resources/runtime-control/linux-control.py, package.json, package-lock.json, .dependency-cruiser.cjs, tests/command-activity.test.mjs, tests/mcp-runtime.test.mjs, tests/mac-runtime-switch.test.mjs, tests/windows-runtime.test.mjs, tests/vps-tunnel.test.mjs, src/mcp-runtime.mjs, scripts/release-all.mjs, scripts/prepare-windows-toolchain.mjs, scripts/prepare-mac-toolchain.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-page-observer.mjs, src/common.mjs, src/contracts/context.mjs, src/execution/files/zip-archive.mjs, src/execution/runtime/mcp-client.mjs, src/execution/runtime/tunnel-setup.mjs, src/execution/runtime/vps-config.mjs, src/execution/runtime/vps.mjs, src/execution/runtime/windows.mjs, src/parallel-kit.mjs, src/session-plans.mjs, src/tunnel-setup.mjs, src/workspace-setup.mjs, src/zip-archive.mjs, tests/codex-app-server-mcp.test.mjs, tests/execution-architecture.test.mjs, tests/execution-facade.test.mjs, docs/modules/execution.md, docs/architecture/OVERVIEW.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
 - [TODO] T004: Выделить браузерный модуль Execution — Ожидает

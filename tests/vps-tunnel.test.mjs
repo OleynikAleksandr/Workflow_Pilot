@@ -8,8 +8,17 @@ import { VpsTunnel, WindowsVpsTunnel, VPS_TUNNEL_LABEL, loopbackMcpPort, maskCon
 
 const SECRET = 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-xyz';
 
+async function configureRoute(home) {
+  const folder = path.join(home, '.config/workflow-pilot/vps');
+  await fs.mkdir(folder, { recursive: true });
+  await fs.writeFile(path.join(folder, 'route.json'), JSON.stringify({ schema_version: 1, product: 'workflow-pilot',
+    ssh_host: 'workflow-pilot-vps', remote_port: 18842 }));
+  await fs.writeFile(path.join(folder, 'mcp-url'), `https://vps.example/mcp/${SECRET}/mcp\n`);
+}
+
 async function fixture(t, { sshConfig = 'hostname 31.70.155.58\nuser mcptunnel\n', bootstrapFailures = 0 } = {}) {
   const home = await mkdtemp(path.join(tmpdir(), 'web-pilot-vps-'));
+  await configureRoute(home);
   t.after(() => fs.rm(home, { recursive: true, force: true }));
   const calls = [];
   const agent = { loaded: false, pid: null, nextPid: 4100 };
@@ -128,9 +137,43 @@ test('apply rejects a non-loopback MCP address', async t => {
   assert.equal(f.calls.length, 0);
 });
 
+test('VPS requires an explicit product route and rejects donor mappings before launching', async t => {
+  const f = await fixture(t);
+  const routeFile = path.join(f.home, '.config/workflow-pilot/vps/route.json');
+  await fs.unlink(routeFile);
+  assert.equal((await f.tunnel.apply('http://127.0.0.1:18852/mcp')).configured, false);
+  assert.deepEqual(f.calls, []);
+  for (const route of [
+    { ssh_host: 'vps-mcp-tunnel', remote_port: 18842 },
+    { ssh_host: 'workflow-pilot-vps', remote_port: 17842 },
+  ]) {
+    await fs.writeFile(routeFile, JSON.stringify({ schema_version: 1, product: 'workflow-pilot', ...route }));
+    await assert.rejects(f.tunnel.apply('http://127.0.0.1:18852/mcp'), { code: 'VPS_ROUTE_INVALID' });
+    assert.deepEqual(f.calls, []);
+  }
+  await fs.writeFile(routeFile, JSON.stringify({ schema_version: 1, product: 'workflow-pilot', ssh_host: 'workflow-pilot-vps-test', remote_port: 19842 }));
+  assert.equal((await f.tunnel.apply('http://127.0.0.1:18852/mcp')).ready, true);
+  const plist = await fs.readFile(f.tunnel.plistFile, 'utf8');
+  assert.ok(plist.includes('127.0.0.1:19842:127.0.0.1:18852'));
+  assert.ok(plist.includes('<string>workflow-pilot-vps-test</string>'));
+});
+
+test('VPS refuses to overwrite a foreign service even at the product label', async t => {
+  const f = await fixture(t);
+  await fs.mkdir(path.dirname(f.tunnel.plistFile), { recursive: true });
+  await fs.writeFile(f.tunnel.plistFile, '<foreign-service>');
+  f.agent.loaded = true; f.agent.pid = 8100;
+  await assert.rejects(f.tunnel.apply('http://127.0.0.1:18852/mcp'), { code: 'VPS_OWNER_CONFLICT' });
+  assert.equal(await fs.readFile(f.tunnel.plistFile, 'utf8'), '<foreign-service>');
+  assert.equal(f.calls.some(call => /bootout|bootstrap/.test(call)), false);
+  const status = await f.tunnel.status('http://127.0.0.1:18852/mcp');
+  assert.equal(status.ready, false); assert.equal(status.conflict, true); assert.equal(status.owned, false);
+});
+
 // Windows: the same forward, kept by control.py of the executor instead of a LaunchAgent.
 async function windowsFixture(t, { sshConfig = 'hostname 31.70.155.58\r\nuser mcptunnel\r\n', sshSurvives = true } = {}) {
   const home = await mkdtemp(path.join(tmpdir(), 'web-pilot-vps-win-'));
+  await configureRoute(home);
   t.after(() => fs.rm(home, { recursive: true, force: true }));
   const calls = [], service = { supervised: false, running: false, pid: null, forward_port: null, last_error: null, nextPid: 5200 };
   const state = { sshConfig };
@@ -152,7 +195,7 @@ async function windowsFixture(t, { sshConfig = 'hostname 31.70.155.58\r\nuser mc
     } else if (args[0] === 'vps-stop') Object.assign(service, { supervised: false, running: false, pid: null, forward_port: null });
     else if (args[0] !== 'vps-status') throw new Error('unexpected control command');
     const { nextPid, ...vps } = service;
-    return { ok: true, vps };
+    return { ok: true, vps: { ...vps, ssh_host: 'workflow-pilot-vps', remote_port: 18842 } };
   };
   const tunnel = new WindowsVpsTunnel({ control, homeDir: home, environment: { SystemRoot: 'D:\\Windows' }, execute, sleep: async () => {}, settleMs: 0, startTimeoutMs: 20 });
   return { home, calls, service, state, tunnel };

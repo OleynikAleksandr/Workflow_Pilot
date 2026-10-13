@@ -1,14 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { executeFile } from './execution/commands/service.mjs';
 import { createHash } from 'node:crypto';
 import { parsePlan } from '@webpilot/workflow-kit/lib/plan';
 import { readReview } from '@webpilot/workflow-kit/lib/plan-review';
 import { reviewBlocksExecution } from './auto-plan-state.mjs';
 import {readCommandActivity} from './command-activity.mjs';
 
-const execute=promisify(execFile),planFile='.harness/plans/todo-plan.md';
+const planFile='.harness/plans/todo-plan.md';
 export function projectVerifiedPlan(plan,resolved) {
   const projected=structuredClone(plan);
   for(const task of projected.tasks)if(task.commit_status==='DONE'&&!resolved?.[task.id]?.sha) {
@@ -19,10 +18,10 @@ export function projectVerifiedPlan(plan,resolved) {
 const exists=async file=>{try{await fs.access(file);return true;}catch(e){if(e.code==='ENOENT')return false;throw e;}};
 // All potentially long Kit/Git work stays outside Electron's main event loop.
 export class ParallelKit {
-  constructor({plans,setup}) {Object.assign(this,{plans,setup});}
+  constructor({plans,setup,execute=plans?.run??executeFile}) {Object.assign(this,{plans,setup,execute});}
   async git(workspace,args) {
     await this.setup.node();
-    return (await execute(this.setup.environment.WORKFLOW_GIT_BIN||'git',['-C',workspace,...args],
+    return (await this.execute(this.setup.environment.WORKFLOW_GIT_BIN||'git',['-C',workspace,...args],
       {env:this.setup.environment,windowsHide:true,encoding:'utf8',timeout:10000,maxBuffer:4*1024*1024})).stdout.trim();
   }
   async projectIdentity(workspace,commit) {

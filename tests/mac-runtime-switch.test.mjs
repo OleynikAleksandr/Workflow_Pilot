@@ -170,9 +170,9 @@ test('the services are prepared lazily, once the runtime is really used', async 
   assert.equal(prepared, 0, 'a status question installs nothing');
   await runtime.ensure();
   await runtime.control('start', { mcpOnly: true });
-  await runtime.loadContext('/Projects/Мой проект');
+  assert.equal(runtime.loadContext, undefined, 'context belongs to the project layer, not Execution');
   await runtime.setChannel(CHATGPT_CHANNEL_SECURE);
-  assert.equal(prepared, 4, 'each use asks the idempotent preparation');
+  assert.equal(prepared, 3, 'each service use asks the idempotent preparation');
   const failing = f.switcher.createRuntime(CHATGPT_CHANNEL_SECURE,
     async () => { throw Object.assign(new Error(CODEX_NOT_FOUND_MESSAGE), { code: 'MAC_CODEX_NOT_FOUND' }); });
   f.events.length = 0;
@@ -357,43 +357,22 @@ test('the executor runtime adds its tool rules to the start message and no longe
   assert.equal(selected.startupRules, EXECUTOR_TOOL_RULES);
   assert.equal(selected.contextDelivery, undefined);
   assert.equal(selected.setActiveWorkspace, undefined);
-  const source = await fs.readFile(new URL('../src/mac-runtime-switch.mjs', import.meta.url), 'utf8');
+  const source = await fs.readFile(new URL('../src/execution/runtime/service.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /active-workspace|workflow_context_recover/);
   assert.match(source, /requiredTools: EXECUTOR_REQUIRED_TOOLS/);
 });
 
-test('only processes named exactly by a retired runtime folder are stopped', async t => {
-  const root = await temporary(t, 'web-pilot-runtime-legacy-processes-');
-  const legacy = path.join(root, 'home', 'VSCODE', 'Codex Local Mac', 'mac-codex-local');
-  const other = path.join(root, 'elsewhere', 'mac-codex-local');
-  const executor = path.join(root, 'state', 'runtime', 'tunnel-client');
-  const bridge = folder => `${path.join(folder, '.venv', 'bin', 'python3')} -B ${path.join(folder, 'mcp', 'bridge_mcp.py')} --config /tmp/bridge.json --port 17842`;
-  const tunnel = folder => `${path.join(folder, 'tools', 'tunnel-client')} run --profile mac-local --profile-dir /tmp/profile`;
+test('Execution exposes no donor process enumeration or signalling operation', async t => {
+  const root = await temporary(t, 'workflow-pilot-no-donor-signals-');
   let readings = 0;
-  const f = fixture(root, { processTable: () => {
-    readings++;
-    return [
-      `    1 /sbin/launchd`,
-      ` 4201 ${bridge(legacy)}`,
-      ` 4202 /usr/bin/python3 -m http.server 17843`,
-      ` 4203 ${tunnel(legacy)}`,
-      ` 4204 ${executor} run --profile codex-executor --profile-dir /tmp/profile`,
-      ` 4205 ${tunnel(other)}`,
-      // A PID reused between the two readings is never signalled.
-      ` 4206 ${readings === 1 ? bridge(legacy) : '/usr/bin/vim notes.txt'}`,
-      ` 4207 /bin/cat ${path.join(legacy, 'mcp', 'bridge_mcp.py')}`,
-    ].join('\n') + '\n';
-  } });
-  assert.deepEqual(await f.switcher.stopLegacyProcesses([legacy]), [4201, 4203]);
-  assert.deepEqual(f.events, ['kill:-TERM -4201', 'kill:-TERM -4203']);
-  assert.equal(readings, 2);
-  f.events.length = 0; readings = 0;
-  assert.deepEqual(await f.switcher.stopLegacyProcesses([path.join(root, 'nothing-here')]), []);
-  assert.equal(readings, 1, 'no candidates: no second reading and no signals');
+  const f = fixture(root, { processTable: () => { readings++; throw new Error('must not enumerate donor'); } });
+  assert.equal(f.switcher.stopLegacyProcesses, undefined);
+  await assert.rejects(f.switcher.retireLegacyRuntime({ dataDir: root }), { code: 'LEGACY_RUNTIME_FORBIDDEN' });
+  assert.equal(readings, 0);
   assert.deepEqual(f.events, []);
 });
 
-test('one-time cleanup removes what Web Pilot installed and keeps the folders of the user', async t => {
+test('legacy retirement fails before any service or donor file can be touched', async t => {
   const root = await temporary(t, 'web-pilot-runtime-legacy-cleanup-');
   const home = path.join(root, 'home'), dataDir = path.join(root, 'data');
   const installed = path.join(dataDir, 'runtime', 'Codex-Local-Mac');
@@ -409,29 +388,20 @@ test('one-time cleanup removes what Web Pilot installed and keeps the folders of
   const f = fixture(root, { processTable: () => ` 5101 ${customTunnel}\n` });
 
   const runtime = f.switcher.createRuntime(CHATGPT_CHANNEL_SECURE);
-  const result = await f.switcher.activate(runtime, { retireLegacy: { dataDir, runtimeRoots: [custom, 'relative/ignored', null] } });
-  assert.equal(result.legacyRetired, true);
-  assert.deepEqual(f.events.slice(0, 5), [
-    'app.sync',
-    'launchctl.disable:gui/123/' + APP_SERVER_LAUNCH_AGENT,
-    'kill:-TERM -5101',
-    'launchctl.bootout:gui/123/' + LEGACY_LAUNCH_AGENT,
-    'app.stop',
-  ]);
-  for (const removed of [installed, path.join(dataDir, 'runtime', 'mac-runtime.json'), path.join(dataDir, 'runtime', '.mac-runtime-staging'), plist])
-    assert.equal(await exists(removed), false, removed);
-  for (const kept of [path.join(dataDir, 'settings.json'), path.join(userFolder, 'control.py'), oldKey, path.join(custom, 'control.py')])
-    assert.equal(await exists(kept), true, kept);
-  await assert.rejects(f.switcher.retireLegacyRuntime({ dataDir: 'relative' }), TypeError);
+  await assert.rejects(f.switcher.activate(runtime, { retireLegacy: { dataDir, runtimeRoots: [custom] } }),
+    { code: 'LEGACY_RUNTIME_FORBIDDEN' });
+  assert.deepEqual(f.events, []);
+  for (const file of files) assert.equal(await fs.readFile(file, 'utf8'), 'fixture\n', file);
+  assert.equal(runtime.activated, false);
 });
 
-test('a cleanup that cannot run never blocks the backend and is tried again', async t => {
+test('normal activation leaves legacy folders unchanged without a cleanup request', async t => {
   const root = await temporary(t, 'web-pilot-runtime-legacy-retry-');
   const dataDir = path.join(root, 'data');
   await fs.mkdir(path.join(dataDir, 'runtime', 'Codex-Local-Mac'), { recursive: true });
   const f = fixture(root); // ps is not available here
   const runtime = f.switcher.createRuntime(CHATGPT_CHANNEL_SECURE);
-  const result = await f.switcher.activate(runtime, { retireLegacy: { dataDir } });
+  const result = await f.switcher.activate(runtime);
   assert.equal(result.legacyRetired, false);
   assert.equal(result.status.tunnel.ready, true);
   assert.equal(runtime.activated, true);
@@ -529,7 +499,7 @@ test('Windows: the executor runs control.py with its private Python after the co
   await assert.rejects(mac.vpsControl(['vps-status']), { code: 'RUNTIME_ACTION_DENIED' }, 'macOS keeps the forward with its own LaunchAgent');
 });
 
-test('Windows activation: no LaunchAgent, the previous bridge is retired first, start at sign-in is written after the services are up', async t => {
+test('Windows activation: only product services start; donor bridge and registry remain unchanged', async t => {
   const root = await temporary(t, 'web-pilot-win-activate-');
   const f = fixture(root);
   f.appServerRuntime.platform = 'win32';
@@ -543,21 +513,21 @@ test('Windows activation: no LaunchAgent, the previous bridge is retired first, 
   await fs.mkdir(path.join(old, '.venv', 'Scripts'), { recursive: true });
   await fs.writeFile(path.join(old, '.venv', 'Scripts', 'python.exe'), 'python');
   const runtime = switcher.createRuntime(CHATGPT_CHANNEL_SECURE);
-  const result = await switcher.activate(runtime, { retireLegacy: { dataDir, runtimeRoots: [] } });
-  assert.equal(result.legacyRetired, true);
+  const result = await switcher.activate(runtime);
+  assert.equal(result.legacyRetired, false);
   assert.equal(runtime.activated, true);
   assert.equal(result.status.tunnel.ready, true);
-  assert.deepEqual(f.events, ['exec.python.exe', 'exec.reg.exe', 'app.stop', 'app.configure-selector', 'app.channel:secure-tunnel',
-    'app.ensureMcpOnly', 'app.start:tunnel-only', 'app.autostart:true'], 'the old bridge stops before the tunnel is carried over and started');
-  assert.deepEqual(executed, [['python.exe', '-B'], ['reg.exe', 'delete']]);
-  assert.equal(await exists(old), false);
+  assert.deepEqual(f.events, ['app.stop', 'app.configure-selector', 'app.channel:secure-tunnel',
+    'app.ensureMcpOnly', 'app.start:tunnel-only', 'app.autostart:true'], 'only product services are addressed');
+  assert.deepEqual(executed, []);
+  assert.equal(await exists(old), true);
   assert.equal(await exists(path.join(root, 'LaunchAgents')), false, 'nothing of macOS is installed');
 
-  // A failed start leaves an earlier sign-in entry alone; a failed cleanup is retried and never blocks the start.
+  // A failed start leaves an earlier sign-in entry alone; there is no donor cleanup.
   f.events.length = 0;
   f.appServerRuntime.ensureMcpOnly = async () => { throw Object.assign(new Error('no Codex'), { code: 'WINDOWS_CODEX_NOT_FOUND' }); };
   await assert.rejects(switcher.activate(switcher.createRuntime(CHATGPT_CHANNEL_SECURE)), { code: 'WINDOWS_CODEX_NOT_FOUND' });
   assert.deepEqual(f.events, ['app.stop', 'app.configure-selector', 'app.channel:secure-tunnel']);
   const noLegacy = new MacRuntimeSwitcher({ appServerRuntime: fixture(root).appServerRuntime, platform: 'win32', execute: async () => ({ stdout: '' }) });
-  await assert.rejects(noLegacy.retireLegacyRuntime({ dataDir }), TypeError);
+  await assert.rejects(noLegacy.retireLegacyRuntime({ dataDir }), { code: 'LEGACY_RUNTIME_FORBIDDEN' });
 });

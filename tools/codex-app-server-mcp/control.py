@@ -86,6 +86,7 @@ AUTOSTART_LOG = STATE / "autostart.log"
 # with a LaunchAgent that Workflow Pilot installs; here a small supervisor process plays that role.
 VPS_SSH_HOST = "workflow-pilot-vps"
 VPS_REMOTE_PORT = 18842
+TUNNEL_CLIENT_VERSION = 'v0.0.14'
 VPS_RESTART_SECONDS = 15
 VPS_FILE = STATE / "vps.json"
 VPS_LOG = STATE / "vps-tunnel.log"
@@ -273,21 +274,6 @@ def download(url: str) -> bytes:
         return response.read()
 
 
-def _working_tunnel_candidate() -> Path | None:
-    explicit = os.environ.get("WORKFLOW_PILOT_CODEX_TUNNEL_CLIENT")
-    candidates = [Path(explicit).expanduser() if explicit else None]
-    from_path = shutil.which("tunnel-client")
-    if from_path:
-        candidates.append(Path(from_path))
-    for candidate in candidates:
-        if candidate is None or not candidate.is_file() or not os.access(candidate, os.X_OK):
-            continue
-        result = subprocess.run([str(candidate), "--version"], capture_output=True, text=True, timeout=10, **_hidden())
-        if result.returncode == 0:
-            return candidate
-    return None
-
-
 def install_tunnel_client() -> str:
     RUNTIME.mkdir(parents=True, exist_ok=True, mode=0o700)
     if IS_WINDOWS:
@@ -301,13 +287,10 @@ def install_tunnel_client() -> str:
         if result.returncode == 0:
             return result.stdout.strip()
 
-    existing = _working_tunnel_candidate()
-    if existing is not None:
-        shutil.copy2(existing, TUNNEL_CLIENT)
-        TUNNEL_CLIENT.chmod(0o755)
-        return subprocess.check_output([str(TUNNEL_CLIENT), "--version"], text=True, timeout=10, **_hidden()).strip()
-
-    release = json.loads(download("https://api.github.com/repos/openai/tunnel-client/releases/latest"))
+    # Never copy a running application's runtime or resolve a moving latest release.
+    release = json.loads(download(f"https://api.github.com/repos/openai/tunnel-client/releases/tags/{TUNNEL_CLIENT_VERSION}"))
+    if release.get('tag_name') != TUNNEL_CLIENT_VERSION:
+        raise RuntimeError('Unexpected tunnel-client release')
     arch = {"arm64": "arm64", "x86_64": "amd64"}.get(platform.machine())
     if arch is None:
         raise RuntimeError("Unsupported macOS architecture")
@@ -569,20 +552,8 @@ def write_selector(mcp_url: str, channel: str) -> None:
 
 
 def adopt_legacy_tunnel() -> bool:
-    """Carry the tunnel of the retired local runtime over once; its key is never printed."""
-    if PROFILE.is_file() and KEY_FILE.is_file():
-        return False
-    legacy_profile = LEGACY_LOCAL_STATE / "private" / "tunnel-profile" / LEGACY_PROFILE_NAME
-    legacy_key = LEGACY_LOCAL_STATE / "private" / KEY_FILE.name
-    if not legacy_profile.is_file() or not legacy_key.is_file():
-        return False
-    try:
-        tunnel_id = json.loads(legacy_profile.read_text(encoding="utf-8"))["control_plane"]["tunnel_id"]
-        configure_tunnel(str(tunnel_id), read_tunnel_key(legacy_key))
-    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError, RuntimeError):
-        # A damaged legacy configuration is not carried over: the tunnel is entered again in the wizard.
-        return False
-    return True
+    """Compatibility response only: no donor files, profiles or keys are read."""
+    return False
 
 
 def configure_selector() -> dict[str, object]:
@@ -943,12 +914,25 @@ def selector_start() -> dict[str, object]:
     return stable
 
 
+def vps_config() -> dict[str, object]:
+    """Explicit product route, shared with desktop Execution. Server configuration is external."""
+    file = Path(os.environ.get('WORKFLOW_PILOT_VPS_CONFIG') or Path.home() / '.config/workflow-pilot/vps/route.json')
+    route = json.loads(file.read_text(encoding='utf-8'))
+    host, port = route.get('ssh_host'), route.get('remote_port')
+    if (route.get('schema_version') != 1 or route.get('product') != 'workflow-pilot'
+            or not isinstance(host, str) or not re.fullmatch(r'workflow-pilot-vps(?:-[A-Za-z0-9_-]+)?', host)
+            or not isinstance(port, int) or isinstance(port, bool) or not 1024 <= port <= 65535 or port == 17842):
+        raise RuntimeError('VPS_ROUTE_INVALID: a separate Workflow Pilot alias and loopback port are required')
+    return {'ssh_host': host, 'remote_port': port}
+
+
 def vps_ssh_argv(port: int) -> list[str]:
-    """The same forward as the macOS LaunchAgent: the server's loopback port 17842 leads to the local MCP."""
+    """Only the explicitly configured product loopback route leads to the local MCP."""
+    route = vps_config()
     ssh = Path(os.environ.get("SystemRoot") or r"C:\Windows") / "System32" / "OpenSSH" / "ssh.exe"
     return [str(ssh), "-N", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
             "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=3",
-            "-R", f"127.0.0.1:{VPS_REMOTE_PORT}:127.0.0.1:{port}", VPS_SSH_HOST]
+            "-R", f"127.0.0.1:{route['remote_port']}:127.0.0.1:{port}", route['ssh_host']]
 
 
 def _vps_record() -> dict[str, object] | None:
@@ -995,6 +979,9 @@ def vps_status() -> dict[str, object]:
     record = _vps_record()
     # "running" is ssh itself: with ExitOnForwardFailure a refused forward ends it within seconds.
     return {"vps": {"supervised": bool(supervisor["owned"]), "running": ssh_pid is not None, "pid": ssh_pid,
+                    "owned": not supervisor['running'] or bool(supervisor['owned']),
+                    "ssh_host": record.get('ssh_host') if record else None,
+                    "remote_port": record.get('remote_port') if record else None,
                     "forward_port": record["forward_port"] if record else None, "last_error": _vps_last_error()}}
 
 
@@ -1006,7 +993,7 @@ def vps_apply(port: int) -> dict[str, object]:
     supervisor = managed_process("vps")
     if supervisor["running"] and not supervisor["owned"]:
         raise RuntimeError("Recorded VPS tunnel PID belongs to another process")
-    wanted = {"forward_port": port, "control_sha256": hashlib.sha256((ROOT / "control.py").read_bytes()).hexdigest()}
+    wanted = {"forward_port": port, **vps_config(), "control_sha256": hashlib.sha256((ROOT / "control.py").read_bytes()).hexdigest()}
     if supervisor["owned"] and _vps_record() == wanted:
         return vps_status()
     if supervisor["owned"]:
