@@ -1,8 +1,155 @@
 {
   "schema_version": 1,
-  "profile": "DISCOVERY",
-  "stack": null,
-  "checks": [],
+  "profile": "DEVELOPMENT",
+  "stack": "Electron 44.5.1 / Node 24.21.0 / JS ES modules / Workflow Kit donor 1.7.2 / Codex App Server",
+  "checks": [
+    {
+      "id": "unit-all",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "npm",
+      "args": [
+        "test"
+      ],
+      "evidence": "Полная перенесённая Node suite; адаптация путей/identity не ослабляет assertions."
+    },
+    {
+      "id": "electron-smoke",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "npm",
+      "args": [
+        "run",
+        "smoke"
+      ],
+      "evidence": "Изолированный Electron TEST FIXTURE без реальных служб/модельных запросов; не заменяет живую проверку."
+    },
+    {
+      "id": "kit-check",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "npm",
+      "args": [
+        "run",
+        "check",
+        "--prefix",
+        "packages/workflow-kit"
+      ],
+      "evidence": "Контракт Kit, assignments/integration/recovery/review, installer и совместимость проектов."
+    },
+    {
+      "id": "executor-channel",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 180000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/codex-app-server-mcp.test.mjs"
+      ],
+      "evidence": "Настоящий Codex App Server без модельных ходов, каталог и контракты инструментов; временный workspace."
+    },
+    {
+      "id": "codex-tools-live",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 180000,
+      "executable": "npm",
+      "args": [
+        "run",
+        "check:codex-tools"
+      ],
+      "evidence": "Закреплённые версии/определения инструментов Codex сверены; без команд модели."
+    },
+    {
+      "id": "architecture",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 180000,
+      "executable": "npm",
+      "args": [
+        "run",
+        "check:architecture"
+      ],
+      "evidence": "Нужный npm script создаётся в T003 на готовом анализаторе зависимостей; проверяет фасады, import boundaries и циклы; окончательный режим в T011."
+    },
+    {
+      "id": "migration-compatibility",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/migration-compatibility.test.mjs"
+      ],
+      "evidence": "Создаётся T007: проекты донора Kit 1.7.2, NONE/ACTIVE/DONE, upgrade/recovery/продолжение без сброса, чужая транзакция/assignment."
+    },
+    {
+      "id": "linux-platform",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/linux-runtime.test.mjs",
+        "tests/linux-startup.test.mjs"
+      ],
+      "evidence": "Создаются T009: Linux process/service/file/startup adapters и ошибки. На Mac это fixture, не native Linux."
+    },
+    {
+      "id": "release-tooling",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/release-all.test.mjs",
+        "tests/release-mac.test.mjs",
+        "tests/release-linux.test.mjs"
+      ],
+      "evidence": "T010: матрица трёх ОС на fixtures, состав/исходники/manifest/установка/отказ; production build не выполняется."
+    },
+    {
+      "id": "three-platform-release",
+      "kind": "package",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "npm",
+      "args": [
+        "run",
+        "build"
+      ],
+      "evidence": "T012: единственный общий цикл 0.1.0 после DOCS; macOS arm64 + Windows x64 + Linux x64, sourceCommit, lock-файлы, полный manifest и все assets. Неполный комплект — отказ."
+    },
+    {
+      "id": "release-installed",
+      "kind": "installed",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "scripts/check-installed-release.mjs"
+      ],
+      "evidence": "T013: готовая macOS 0.1.0 в корне нового проекта и /Applications/Workflow Pilot.app; sourceCommit/состав/подпись, без пересборки и без изменения донора."
+    },
+    {
+      "id": "github-release",
+      "kind": "package",
+      "required": false,
+      "timeout_ms": 180000,
+      "executable": "node",
+      "args": [
+        "scripts/check-github-release.mjs"
+      ],
+      "evidence": "T014: новый GitHub repo, remote main, v0.1.0 на sourceCommit, полный набор assets по size/digest, без пересборки."
+    }
+  ],
   "budget": {
     "document_bytes": 28000,
     "hard_bytes": 180000
