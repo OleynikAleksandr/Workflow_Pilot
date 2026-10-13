@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 2,
+  "plan_revision": 3,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": null,
@@ -42,7 +42,7 @@ Execution Scope Status: NONE
 Delivery Status: IN_PROGRESS
 Scope: не создан
 Current Task: нет
-Revision: 2
+Revision: 3
 
 ## Цель
 
