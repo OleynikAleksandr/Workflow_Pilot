@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 34,
+  "plan_revision": 37,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2526,12 +2526,80 @@
     },
     {
       "id": "T012-RELEASE",
-      "title": "Собрать общий выпуск Workflow Pilot 0.1.0",
-      "why": "Собрать общий выпуск Workflow Pilot 0.1.0",
+      "title": "Проверять штатные ресурсы Electron macOS в общем выпуске",
+      "why": "Production gate ошибочно отклоняет штатные локализации и иконку закреплённого Electron.",
       "dependencies": [
         "T012",
         "DOCS",
         "DOCS-2"
+      ],
+      "parallel_safe": false,
+      "functional_paths": [
+        "scripts/release-package.mjs",
+        "tests/release-all.test.mjs",
+        "tests/release-linux.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/release.md"
+      ],
+      "verification_ids": [
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Языковые ресурсы и иконка macOS сверяются по точному составу и содержимому с закреплённым Electron; неизвестные и повреждённые ресурсы отклоняются.",
+        "Fixtures подтверждают штатный macOS layout и отказ при повреждении/пропаже/лишней локализации.",
+        "Проверки поставки проходят; T012-BUILD создаёт полный комплект после DOCS из новой исходной базы."
+      ],
+      "expected_commit_message": "fix: сверять штатные ресурсы Electron macOS",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T012-RELEASE",
+        "role": "implementation"
+      },
+      "actual_files": [
+        "scripts/release-package.mjs",
+        "tests/release-all.test.mjs",
+        "tests/release-linux.test.mjs"
+      ]
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T012-RELEASE"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/release.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T012-BUILD",
+      "title": "Собрать общий выпуск Workflow Pilot 0.1.0",
+      "why": "Собрать общий выпуск Workflow Pilot 0.1.0",
+      "dependencies": [
+        "T012-RELEASE",
+        "DOCS-2",
+        "DOCS-3"
       ],
       "parallel_safe": false,
       "functional_paths": [
@@ -2553,7 +2621,7 @@
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
-        "task_id": "T012-RELEASE",
+        "task_id": "T012-BUILD",
         "role": "implementation"
       }
     },
@@ -2562,9 +2630,10 @@
       "title": "Установить готовый macOS выпуск рядом с донором",
       "why": "Установить готовый macOS выпуск рядом с донором",
       "dependencies": [
-        "T012-RELEASE",
+        "T012-BUILD",
         "DOCS",
-        "DOCS-2"
+        "DOCS-2",
+        "DOCS-3"
       ],
       "parallel_safe": false,
       "functional_paths": [
@@ -2597,7 +2666,8 @@
       "dependencies": [
         "T013",
         "DOCS",
-        "DOCS-2"
+        "DOCS-2",
+        "DOCS-3"
       ],
       "parallel_safe": false,
       "functional_paths": [
@@ -2652,7 +2722,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 34
+Revision: 37
 
 ## Цель
 
@@ -2755,24 +2825,36 @@ Revision: 34
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012
-- [TODO] T012-RELEASE: Собрать общий выпуск Workflow Pilot 0.1.0 — Ожидает
-  - Git Commit: [PENDING] release: Собрать общий выпуск Workflow Pilot 0.1.0
+- [DONE] T012-RELEASE: Проверять штатные ресурсы Electron macOS в общем выпуске — Завершено
+  - Git Commit: [DONE] fix: сверять штатные ресурсы Electron macOS
   - Reference: workflow-pilot-migration-0.1.0 / T012-RELEASE / implementation
-  - Файлы: release-manifest.json
+  - Файлы: scripts/release-package.mjs, tests/release-all.test.mjs, tests/release-linux.test.mjs, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012, DOCS, DOCS-2
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-migration-0.1.0 / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T012-RELEASE
+- [TODO] T012-BUILD: Собрать общий выпуск Workflow Pilot 0.1.0 — Ожидает
+  - Git Commit: [PENDING] release: Собрать общий выпуск Workflow Pilot 0.1.0
+  - Reference: workflow-pilot-migration-0.1.0 / T012-BUILD / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: T012-RELEASE, DOCS-2, DOCS-3
 - [TODO] T013: Установить готовый macOS выпуск рядом с донором — Ожидает
   - Git Commit: [PENDING] release: Установить готовый macOS выпуск рядом с донором
   - Reference: workflow-pilot-migration-0.1.0 / T013 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T012-RELEASE, DOCS, DOCS-2
+  - Зависимости: T012-BUILD, DOCS, DOCS-2, DOCS-3
 - [TODO] T014: Опубликовать и сверить полный GitHub Release — Ожидает
   - Git Commit: [PENDING] release: Опубликовать и сверить полный GitHub Release
   - Reference: workflow-pilot-migration-0.1.0 / T014 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T013, DOCS, DOCS-2
+  - Зависимости: T013, DOCS, DOCS-2, DOCS-3
 
 ## Context Pack For This Cycle
 

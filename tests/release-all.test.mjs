@@ -31,6 +31,26 @@ async function fixture(t) {
   await createPackage(input, path.join(resources, 'app.asar'));
   return { root, input, resources, version: '1.0.0' };
 }
+test('macOS accepts only matching resources from pinned Electron and rejects missing, corrupt or extra locales',async t=>{
+  const f=await fixture(t),resources=path.join(f.root,'Workflow Pilot.app/Contents/Resources');
+  await fs.cp(f.resources,resources,{recursive:true});
+  const upstream=path.join(f.root,'node_modules/electron/dist/Electron.app/Contents/Resources');
+  for(const base of [upstream,resources]) {
+    await fs.mkdir(path.join(base,'en.lproj'),{recursive:true});
+    await fs.writeFile(path.join(base,'en.lproj/locale.pak'),'pinned locale');
+    await fs.writeFile(path.join(base,'electron.icns'),'pinned icon');
+  }
+  await fs.writeFile(path.join(upstream,'default_app.asar'),'excluded upstream sample');
+  await verifyPackagedSources({...f,resources});
+  await fs.writeFile(path.join(resources,'en.lproj/locale.pak'),'damaged');
+  await assert.rejects(verifyPackagedSources({...f,resources}),/Electron resource mismatch/);
+  await fs.writeFile(path.join(resources,'en.lproj/locale.pak'),'pinned locale');
+  await fs.mkdir(path.join(resources,'foreign.lproj'));
+  await assert.rejects(verifyPackagedSources({...f,resources}),/Unexpected package resources/);
+  await fs.rmdir(path.join(resources,'foreign.lproj'));
+  await fs.rm(path.join(resources,'electron.icns'));
+  await assert.rejects(verifyPackagedSources({...f,resources}),{code:'ENOENT'});
+});
 test('release refuses mismatched versions, omitted helper and stale source despite a valid asar', async t => {
   const f = await fixture(t);
   const proof = await verifyPackagedSources(f);

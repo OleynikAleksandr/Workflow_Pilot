@@ -9,6 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { extractFile, listPackage, statFile, uncache } from '@electron/asar';
 import { macDirectoryIdentity } from './check-mac-signature.mjs';
 import { WINDOWS_RUNTIME_ARCHIVE, WINDOWS_RUNTIME_SHA256 } from '../src/execution/runtime/windows.mjs';
+import { packageInventory } from './release-archive.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 // The release records HEAD as its source commit, so everything it packages must already be committed.
@@ -59,6 +60,22 @@ export async function sourceSnapshot(root) {
 export async function verifyPackagedSources({ root, resources, version, sources }) {
   sources ??= await sourceSnapshot(root);
   const allowed=new Set(['app.asar','resources','codex-app-server-mcp','mac-tools','windows-payload','windows-node','linux-tools']);
+  if(path.basename(resources)==='Resources'&&path.basename(path.dirname(resources))==='Contents') {
+    const upstream=path.join(root,'node_modules/electron/dist/Electron.app/Contents/Resources');
+    for(const name of await fs.readdir(upstream)) {
+      if(name==='default_app.asar')continue;
+      if(name!=='electron.icns'&&!/^[\w-]+\.lproj$/.test(name))throw new Error('Unexpected Electron resource: '+name);
+      const source=path.join(upstream,name),target=path.join(resources,name);
+      const expected=await fs.lstat(source),actual=await fs.lstat(target);
+      if(expected.isSymbolicLink()||actual.isSymbolicLink()||expected.isDirectory()!==actual.isDirectory())
+        throw new Error('Electron resource type mismatch: '+name);
+      const matches=expected.isDirectory()
+        ?isDeepStrictEqual(await packageInventory(source),await packageInventory(target))
+        :expected.isFile()&&actual.isFile()&&await sha256File(source)===await sha256File(target);
+      if(!matches)throw new Error('Electron resource mismatch: '+name);
+      allowed.add(name);
+    }
+  }
   for(const entry of await fs.readdir(resources))if(!allowed.has(entry))throw new Error('Unexpected package resources: '+entry);
   const asar = path.join(resources, 'app.asar');
   uncache(asar);

@@ -74,6 +74,13 @@ test('all three layouts reject missing observer/worker, stale Kit and external r
   const f=await packageFixture(t);
   for(const row of RELEASE_MATRIX) {
     const resources=path.join(f.root,'layout',row.id,row.resources);await fs.cp(f.resources,resources,{recursive:true});
+    if(row.id==='mac') {
+      const upstream=path.join(f.root,'node_modules/electron/dist/Electron.app/Contents/Resources');
+      for(const base of [upstream,resources]) {
+        await write(base,'en.lproj/locale.pak','pinned Electron locale');
+        await write(base,'electron.icns','pinned Electron icon');
+      }
+    }
     const options={...f,resources};
     await verifyPackagedSources(options);
     for(const file of ['resources/chatgpt-page-observer-preload.cjs','resources/workspace-setup-worker.mjs','resources/workflow-kit/cli.mjs']) {
