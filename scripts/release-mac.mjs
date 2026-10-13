@@ -2,11 +2,11 @@ import { sha256File } from '../src/common.mjs';
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { extractFile, uncache } from '@electron/asar';
 import { verifyMacSignature } from './check-mac-signature.mjs';
+import { createVerifiedArchive } from './release-archive.mjs';
 
 const APP = 'Workflow Pilot.app';
 // Spotlight skips `.noindex` folders, so helper apps inside backups are not listed as applications.
@@ -62,6 +62,7 @@ export async function installMacBundle({ source, target, backupRoot, version, ve
   const expected = await inspectSignedBundle(source, version, verifySignature);
   const previous = await existingStat(target);
   if (previous) await inspectBundle(target);
+  if(path.basename(target)!==APP)throw new Error('Target must use Workflow Pilot identity');
   await fs.mkdir(path.dirname(target), { recursive: true });
   const stage = await fs.mkdtemp(path.join(path.dirname(target), '.workflow-pilot-install-'));
   const stagedApp = path.join(stage, APP);
@@ -108,54 +109,17 @@ export async function installMacBundle({ source, target, backupRoot, version, ve
   return result;
 }
 
-export async function publishMacRelease({ root, deliveryDirectory, verifySignature = verifyMacSignature } = {}) {
-  root = path.resolve(root ?? fileURLToPath(new URL('..', import.meta.url)));
-  if (process.platform !== 'darwin') throw new Error('macOS release requires macOS');
-  const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
-  if (!/^\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/.test(version)) throw new Error('Invalid release version');
-  const runtime = path.join(root, '.harness/runtime');
-  await fs.mkdir(runtime, { recursive: true });
-  const lock = path.join(runtime, 'mac-release.lock');
-  await fs.mkdir(lock); // Refuse a concurrent publisher; never delete another process's lock.
-  let zipStage;
-  try {
-    const source = path.join(runtime, 'build/Workflow Pilot-darwin-arm64', APP);
-    const expected = await inspectSignedBundle(source, version, verifySignature);
-    const release = path.join(runtime, 'releases', version);
-    await fs.mkdir(release, { recursive: true });
-    const name = 'Workflow-Pilot-' + version + '-macOS-arm64.zip';
-    zipStage = await fs.mkdtemp(path.join(release, '.mac-zip-'));
-    const stagedZip = path.join(zipStage, name);
-    run('/usr/bin/ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', source, stagedZip]);
-    run('/usr/bin/unzip', ['-tq', stagedZip]);
-    const zipCheck = path.join(zipStage, 'verified');
-    run('/usr/bin/ditto', ['-x', '-k', stagedZip, zipCheck]);
-    sameBundle(await inspectSignedBundle(path.join(zipCheck, APP), version, verifySignature), expected);
-    const installation = await installMacBundle({
-      source, target: path.join(root, APP),
-      backupRoot: path.join(runtime, BACKUP_FOLDER), version, verifySignature,
-    });
-    sameBundle({
-      version: installation.version, asarSha256: installation.asarSha256, plistSha256: installation.plistSha256, signature: installation.signature,
-    }, expected);
-    const zip = path.join(release, name);
-    await fs.rename(stagedZip, zip);
-    const sha256 = await sha256File(zip);
-    const checksum = sha256 + '  ' + name + '\n';
-    await fs.writeFile(zip + '.sha256', checksum);
-    const delivery = deliveryDirectory ?? path.join(os.homedir(), 'Downloads', 'WorkflowPilot-' + version);
-    await fs.mkdir(delivery, { recursive: true });
-    await fs.copyFile(zip, path.join(delivery, name));
-    await fs.writeFile(path.join(delivery, name + '.sha256'), checksum);
-    const receipt = { version, installation, zip, sha256, size: (await fs.stat(zip)).size, delivery, zipIntegrity: true };
-    await fs.writeFile(path.join(release, 'mac-release.json'), JSON.stringify(receipt, null, 2) + '\n');
-    return receipt;
-  } finally {
-    if (zipStage) await fs.rm(zipStage, { recursive: true, force: true });
-    await fs.rmdir(lock);
-  }
+// Packaging is deliberately separate from installMacBundle: a failed later
+// platform must not have installed or delivered an earlier partial release.
+export async function publishMacRelease({root,directory,verifySignature=verifyMacSignature}={}) {
+  root=path.resolve(root??fileURLToPath(new URL('..',import.meta.url)));
+  const {version}=JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8'));
+  const source=path.join(root,'.harness/runtime/build/Workflow Pilot-darwin-arm64',APP);
+  const proof=await inspectSignedBundle(source,version,verifySignature);
+  directory??=path.join(root,'.harness/runtime/mac-package',version);
+  const zip=path.join(directory,'Workflow-Pilot-'+version+'-macOS-arm64.zip');
+  await createVerifiedArchive({source,archive:zip});
+  return {version,zip,sha256:await sha256File(zip),size:(await fs.stat(zip)).size,proof};
 }
-
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  console.log(JSON.stringify(await publishMacRelease(), null, 2));
-}
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))
+  publishMacRelease().then(r=>console.log(JSON.stringify(r,null,2))).catch(e=>{console.error(e.message);process.exitCode=1;});

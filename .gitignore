@@ -12,6 +12,7 @@ dist/
 /.workflow-pilot-install-*/
 /resources/workflow-kit/
 /resources/chatgpt-page-observer-preload.cjs
+/resources/vendor-notices/
 /windows-app/
 __pycache__/
 *.py[cod]

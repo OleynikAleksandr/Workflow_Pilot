@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 23,
+  "plan_revision": 25,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -377,7 +377,10 @@
       "tests/fixtures/linux-platform.py",
       "tools/codex-app-server-mcp/linux_runtime.py",
       "tools/codex-app-server-mcp/requirements-linux.in",
-      "tools/codex-app-server-mcp/requirements-linux.lock"
+      "tools/codex-app-server-mcp/requirements-linux.lock",
+      "scripts/release-archive.mjs",
+      "scripts/release-package.mjs",
+      "scripts/stage-vendor-notices.mjs"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -408,7 +411,8 @@
       "packages/workflow-kit/src/templates/PROTOTYPE.md",
       "packages/workflow-kit/src/templates/SPEC.md",
       "packages/workflow-kit/src/templates/STAGES.md",
-      "tests/fixtures/released-kit/README.md"
+      "tests/fixtures/released-kit/README.md",
+      "resources/THIRD-PARTY.md"
     ]
   },
   "baseline_commit": "dcb2703c8a766d9f1cf7030f6fc69a8af1c8e9be",
@@ -2024,10 +2028,16 @@
         "src/execution/platform/linux/runtime.mjs",
         "src/execution/runtime/service.mjs",
         "src/execution/runtime/mcp-runtime.mjs",
-        "src/execution/runtime/vps-tunnel.mjs"
+        "src/execution/runtime/vps-tunnel.mjs",
+        ".gitignore",
+        "scripts/release-archive.mjs",
+        "scripts/release-package.mjs",
+        "scripts/stage-vendor-notices.mjs"
       ],
       "documentation_paths": [
-        "docs/modules/release.md"
+        "docs/modules/release.md",
+        "docs/architecture/OVERVIEW.md",
+        "resources/THIRD-PARTY.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -2042,13 +2052,34 @@
         "Корневой release-manifest.json — tracked byte-copy manifest комплекта, не входит в source snapshot; T012 создаёт её, T013/T014 только сверяют digest с staging/Downloads/asset, статусы операций сохраняются в evidence Kit без изменения manifest."
       ],
       "expected_commit_message": "refactor: Подготовить единую поставку трёх платформ",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T010",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        ".gitignore",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/release.md",
+        "package.json",
+        "resources/THIRD-PARTY.md",
+        "scripts/check-github-release.mjs",
+        "scripts/check-installed-release.mjs",
+        "scripts/check-mac-signature.mjs",
+        "scripts/release-all.mjs",
+        "scripts/release-archive.mjs",
+        "scripts/release-linux.mjs",
+        "scripts/release-mac.mjs",
+        "scripts/release-package.mjs",
+        "scripts/stage-vendor-notices.mjs",
+        "scripts/verify-linux-package.mjs",
+        "scripts/verify-windows-package.mjs",
+        "tests/release-all.test.mjs",
+        "tests/release-linux.test.mjs",
+        "tests/release-mac.test.mjs"
+      ]
     },
     {
       "id": "T011",
@@ -2182,7 +2213,8 @@
         "packages/workflow-kit/src/templates/PROTOTYPE.md",
         "packages/workflow-kit/src/templates/SPEC.md",
         "packages/workflow-kit/src/templates/STAGES.md",
-        "tests/fixtures/released-kit/README.md"
+        "tests/fixtures/released-kit/README.md",
+        "resources/THIRD-PARTY.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -2316,7 +2348,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 23
+Revision: 25
 
 ## Цель
 
@@ -2389,10 +2421,10 @@ Revision: 23
   - Файлы: src/execution/platform/linux/runtime.mjs, src/execution/platform/linux/startup.mjs, src/execution/platform/linux/services.mjs, src/execution/runtime/service.mjs, src/execution/runtime/mcp-runtime.mjs, src/execution/runtime/vps-tunnel.mjs, src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ipc.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/service.mjs, src/control/context/service.mjs, src/control/workflow/coordination.mjs, tools/codex-app-server-mcp/control.py, tools/codex-app-server-mcp/server.py, tools/codex-app-server-mcp/app_server_client.py, tools/codex-app-server-mcp/codex-tools.lock.json, tools/codex-app-server-mcp/requirements.txt, tools/codex-app-server-mcp/windows_desktop.py, tools/codex-app-server-mcp/linux_desktop.py, resources/runtime-control/windows-control.py, resources/runtime-control/linux-control.py, scripts/prepare-linux-toolchain.mjs, tests/linux-runtime.test.mjs, tests/linux-startup.test.mjs, src/execution/commands/service.mjs, src/execution/commands/command-activity.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/contracts/control.mjs, src/contracts/execution.mjs, src/contracts/errors.mjs, src/control/startup/platform.mjs, src/control/startup/readiness.mjs, src/execution/platform/linux/toolchain.mjs, src/execution/platform/paths.mjs, src/execution/runtime/vps.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/settings-panel.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/linux-platform.py, tests/settings-chatgpt-channel.test.mjs, tests/startup-platform.test.mjs, tools/codex-app-server-mcp/linux_runtime.py, tools/codex-app-server-mcp/requirements-linux.in, tools/codex-app-server-mcp/requirements-linux.lock, tools/codex-app-server-mcp/tunnel_prompt.py, docs/modules/linux.md, docs/architecture/OVERVIEW.md, docs/modules/first-run-onboarding.md
   - Параллельность: исключительное выполнение
   - Зависимости: T008
-- [TODO] T010: Подготовить единую поставку трёх платформ — Ожидает
-  - Git Commit: [PENDING] refactor: Подготовить единую поставку трёх платформ
+- [DONE] T010: Подготовить единую поставку трёх платформ — Завершено
+  - Git Commit: [DONE] refactor: Подготовить единую поставку трёх платформ
   - Reference: workflow-pilot-migration-0.1.0 / T010 / implementation
-  - Файлы: package.json, package-lock.json, scripts/release-all.mjs, scripts/release-mac.mjs, scripts/release-linux.mjs, scripts/prepare-linux-toolchain.mjs, scripts/verify-linux-package.mjs, scripts/check-installed-release.mjs, scripts/check-github-release.mjs, scripts/sign-mac-bundle.mjs, tests/release-all.test.mjs, tests/release-mac.test.mjs, tests/release-linux.test.mjs, scripts/prepare-windows-toolchain.mjs, scripts/verify-windows-package.mjs, scripts/prepare-mac-toolchain.mjs, scripts/check-mac-signature.mjs, src/execution/platform/paths.mjs, src/execution/platform/mac-runtime.mjs, src/execution/platform/windows-runtime.mjs, src/execution/platform/linux/runtime.mjs, src/execution/runtime/service.mjs, src/execution/runtime/mcp-runtime.mjs, src/execution/runtime/vps-tunnel.mjs, docs/modules/release.md
+  - Файлы: package.json, package-lock.json, scripts/release-all.mjs, scripts/release-mac.mjs, scripts/release-linux.mjs, scripts/prepare-linux-toolchain.mjs, scripts/verify-linux-package.mjs, scripts/check-installed-release.mjs, scripts/check-github-release.mjs, scripts/sign-mac-bundle.mjs, tests/release-all.test.mjs, tests/release-mac.test.mjs, tests/release-linux.test.mjs, scripts/prepare-windows-toolchain.mjs, scripts/verify-windows-package.mjs, scripts/prepare-mac-toolchain.mjs, scripts/check-mac-signature.mjs, src/execution/platform/paths.mjs, src/execution/platform/mac-runtime.mjs, src/execution/platform/windows-runtime.mjs, src/execution/platform/linux/runtime.mjs, src/execution/runtime/service.mjs, src/execution/runtime/mcp-runtime.mjs, src/execution/runtime/vps-tunnel.mjs, .gitignore, scripts/release-archive.mjs, scripts/release-package.mjs, scripts/stage-vendor-notices.mjs, docs/modules/release.md, docs/architecture/OVERVIEW.md, resources/THIRD-PARTY.md
   - Параллельность: исключительное выполнение
   - Зависимости: T009
 - [TODO] T011: Проверить общий результат и удалить временные мосты — Ожидает
@@ -2404,7 +2436,7 @@ Revision: 23
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/migration-0.1.0.md, docs/planning/migration-platforms.md, docs/planning/orchestrated-execution-next.md, AGENTS.md, docs/modules/execution.md, docs/modules/browser.md, docs/modules/control.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/project-lifecycle.md, docs/modules/linux.md, docs/modules/release.md, PROVENANCE.md, README.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/examples/PACKAGING.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/CONTINUE.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/STAGES.md, tests/fixtures/released-kit/README.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/migration-0.1.0.md, docs/planning/migration-platforms.md, docs/planning/orchestrated-execution-next.md, AGENTS.md, docs/modules/execution.md, docs/modules/browser.md, docs/modules/control.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/project-lifecycle.md, docs/modules/linux.md, docs/modules/release.md, PROVENANCE.md, README.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/examples/PACKAGING.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/CONTINUE.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/STAGES.md, tests/fixtures/released-kit/README.md, resources/THIRD-PARTY.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011
 - [TODO] T012: Собрать общий выпуск Workflow Pilot 0.1.0 — Ожидает

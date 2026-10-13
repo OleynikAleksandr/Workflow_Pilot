@@ -1,0 +1,51 @@
+# Единая поставка Workflow Pilot
+
+Инструменты T010 готовы; production-сборка, подпись, установка и push здесь не выполнялись. Общий выпуск выполняет T012 после DOCS. Проверки T010 используют временные fixtures, не реальные приложения/службы. Живая приёмка macOS, Windows и Ubuntu остаётся за пользователем.
+
+## Матрица и состав
+
+`npm run build` последовательно запускает macOS arm64, Windows x64 и Linux x64. Используются существующие Electron Packager, ASAR, системные ditto/tar. Linux-бинарники на Mac не запускаются. Ошибка/неизвестный исход платформы останавливает сборку; отдельный успешный пакет не считается выпуском.
+
+Семь assets версии 0.1.0:
+
+- Workflow-Pilot-0.1.0-macOS-arm64.zip
+- Workflow-Pilot-0.1.0-Windows-x64.zip
+- Workflow-Pilot-0.1.0-Linux-x64.tar.gz
+- Windows-Codex-Local-2026-09-10.zip
+- SHA256SUMS.txt
+- INSTALL.txt
+- release-manifest.json
+
+Матрица задаётся в `scripts/release-package.mjs`; имена вычисляются из версии. Историческое имя Windows vendor-архива сохраняется намеренно. Его единственный сетевой источник — закреплённый asset v0.6.115 репозитория Project-Web-Pilot, SHA-256 `1f041488ad97d8abf1984fd3521afb8abe15f50b8df3d3e11f1cc4248e019d98`. Допускается только проверенный собственный cache/явно указанный файл с тем же digest. Donor runtime, latest и будущий Release нового проекта не используются. Из архива используются только vendor-компоненты и notices.
+
+## Сборка и доказательства
+
+Исходники, scripts, package/lock и packages/workflow-kit должны быть закоммичены. Сборка фиксирует HEAD, снимок исходников и хеши locks, затем повторно проверяет их перед завершением. Generated Kit/observer/notices подготавливаются из закреплённых источников. Версии приложения, Node/Electron, Kit и sourceCommit общие для трёх пакетов.
+
+Проверка пакетов сравнивает исходники и точный набор src, runtime package.json, обе копии Kit (ASAR dependency и внешний runtime), Python executor, HTML, preload, workers и observer. Запрещены вложенные .app, лишние корневые файлы, неожиданные внешние ресурсы и runtime/secret-пути. Подготовленные toolchain и упакованные копии сверяются. Windows проверяет PE и pinned vendor/Node; Linux — ELF x64, executable bits, payload hashes и файлы Electron. Каждый ZIP/tar.gz распаковывается во временный каталог и сравнивается со staging по содержимому, правам и внутренним симлинкам; выходящие за пакет ссылки запрещены.
+
+Все архивы создаются во временном каталоге собственного `.harness/runtime`. Комплект получает окончательный путь `.harness/runtime/releases/<version>` только после полной проверки. Downloads заполняется через проверенный временный каталог и rename. Ошибка копирования не оставляет частично заполненную папку доставки. Существующий комплект не смешивается с новой сборкой; совпадающий sourceCommit/snapshot позволяет повторить доставку без пересборки. Неизвестный исход с оставшимся lock требует проверки, а не автоматического повторного запуска.
+
+Лицензии сохраняются внутри исходных payload. `stage-vendor-notices.mjs` добавляет проверенные SHA-256 тексты uv/Codex и LGPL/source archive python-xlib; ссылки и расположение остальных notices перечислены в `resources/THIRD-PARTY.md`. Лицензия приложения не подменяет лицензии компонентов.
+
+## Manifest
+
+Manifest schemaVersion 2 содержит version/sourceCommit, source snapshot, locks, Electron/Node/Kit, macOS signature, три платформы OS/arch, размеры/SHA-256 архивов, vendor-архив и записи INSTALL/SHA256SUMS. Native/VM/clean-install флаги остаются false до фактической отдельной приёмки; fixture не повышает их.
+
+T012 создаёт корневой tracked `release-manifest.json` побайтовым копированием manifest комплекта. Он исключён из source snapshot и собственного хеша, чтобы не возникало циклического digest. SHA256SUMS перечисляет три пакета и vendor; manifest содержит hashes SHA256SUMS и INSTALL. Digest самого manifest сверяют между staging, Downloads, корнем и GitHub asset.
+
+T013/T014 не изменяют manifest. Проверки выводят отдельное evidence для Kit; поздняя установка/публикация/живая приёмка не переписывает исторический состав выпуска.
+
+## Подпись и установка
+
+Сертификат нового продукта выбирается явно: WORKFLOW_PILOT_MAC_SIGNING_IDENTITY либо собственный `.harness/runtime/mac-signing.json`, точный SHA-1 Apple Development. Автовыбора из Keychain нет; конфигурация донора не копируется. Это локальная development-подпись без notarization, не обещание отсутствия Gatekeeper на другом Mac.
+
+`build:mac` подготавливает, упаковывает и подписывает только staging. `release-mac.mjs` создаёт отдельный проверенный ZIP без установки/доставки общего комплекта. После готового общего выпуска T013 вызывает `node scripts/check-installed-release.mjs --install`, затем тот же script без аргументов проверяет установленное.
+
+Устанавливаются только собственные `Workflow Pilot.app` в корне проекта и `/Applications`. Готовые Contents копируются без пересборки/переподписи. Внешний каталог существующего приложения сохраняет identity; старая Contents хранится в одном backup-slot на цель. Ошибка проверки новой копии возвращает старую Contents. Symlink, чужая identity или посторонние файлы цели дают отказ. Обновление двух копий последовательное: успешная первая копия не отменяется из-за отказа второй; повторное действие использует тот же готовый комплект. Preflight записывается перед установкой, включая случай, когда своего приложения ещё нет.
+
+## GitHub и приёмка
+
+T014 публикует в OleynikAleksandr/Workflow_Pilot штатным fast-forward процессом: draft → загрузка семи assets → сверка → публикация. Проверяющий script сам ничего не публикует. Он проверяет собственный origin, remote main == local HEAD, tag v<version> == manifest.sourceCommit, отсутствие draft/prerelease и все размеры/digest. Main может включать более поздние delivery-коммиты; тег остаётся на исходниках сборки.
+
+Fixtures проверяют нормальный комплект, пропавшую платформу, повреждение архива, ошибку копирования, несовпадающий manifest, UNKNOWN, ресурсы трёх layouts, ELF/права/Unicode/симлинки, явную подпись, rollback и неизменность manifest при проверке GitHub. Native Linux/Windows и чистая VM не объявляются проверенными. Ubuntu требует X11 и штатный sandbox; root/Wayland/обход sandbox не являются способом запуска.

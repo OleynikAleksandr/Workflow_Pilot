@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { sha256File } from '../src/common.mjs';
 import { releaseAssetNames } from './release-all.mjs';
+import { verifyReleaseDirectory } from './release-package.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const REPOSITORY = 'OleynikAleksandr/Workflow_Pilot';
@@ -20,8 +21,8 @@ function exec(command, args, options = {}) {
   }).trim();
 }
 
-function remoteRef(ref) {
-  const output = exec('git', ['ls-remote', 'origin', ref, ref + '^{}']);
+function remoteRef(ref, root = ROOT) {
+  const output = exec('git', ['ls-remote', 'origin', ref, ref + '^{}'], {cwd:root});
   const rows = output.split('\n').filter(Boolean).map(line => line.split(/\s+/));
   if (!rows.length) throw new Error('Remote ref missing: ' + ref);
   const peeled = rows.find(([, name]) => name === ref + '^{}');
@@ -50,7 +51,7 @@ async function githubApi(pathname) {
       'Authorization': 'Bearer ' + githubToken(),
       'Accept': 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'Project-Web-Pilot-release-check',
+      'User-Agent': 'Workflow-Pilot-release-check',
     },
   });
   const text = await response.text();
@@ -73,24 +74,30 @@ async function expectedAssets(delivery, version) {
   return result;
 }
 
-export async function verifyGitHubRelease({ root = ROOT } = {}) {
+export async function verifyGitHubRelease({ root = ROOT, deliveryDirectory,
+  execute = (command,args)=>exec(command,args,{cwd:root}), api = githubApi, ref = name=>remoteRef(name,root),
+  verify = verifyReleaseDirectory } = {}) {
   root = path.resolve(root);
   const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
   const tag = 'v' + version;
-  const delivery = path.join(os.homedir(), 'Downloads', 'WorkflowPilot-' + version);
-  const manifest = JSON.parse(await fs.readFile(path.join(delivery, 'release-manifest.json'), 'utf8'));
+  const delivery = deliveryDirectory ?? path.join(os.homedir(), 'Downloads', 'WorkflowPilot-' + version);
+  const {manifest,manifestSha256} = await verify(delivery,{version,root,canonical:true});
+  const staging = await verify(path.join(root,'.harness/runtime/releases',version),{version,root,canonical:true});
+  assert.equal(staging.manifestSha256,manifestSha256);
   assert.equal(manifest.version, version);
   assert.match(manifest.sourceCommit ?? '', /^[0-9a-f]{40}$/);
 
   const expected = await expectedAssets(delivery, version);
-  const localHead = exec('git', ['rev-parse', 'HEAD']);
-  const remoteMain = remoteRef('refs/heads/main');
+  const origin = execute('git',['remote','get-url','origin']).trim();
+  assert.ok(['https://github.com/'+REPOSITORY+'.git','https://github.com/'+REPOSITORY,'git@github.com:'+REPOSITORY+'.git'].includes(origin),'Unexpected release repository');
+  const localHead = execute('git', ['rev-parse', 'HEAD']);
+  const remoteMain = ref('refs/heads/main');
   assert.equal(remoteMain, localHead, 'origin/main must match local HEAD when GitHub verification runs');
 
-  const remoteTag = remoteRef('refs/tags/' + tag);
+  const remoteTag = ref('refs/tags/' + tag);
   assert.equal(remoteTag, manifest.sourceCommit, 'release tag must point to release-manifest.sourceCommit');
 
-  const release = await githubApi(`/repos/${REPOSITORY}/releases/tags/${tag}`);
+  const release = await api('/repos/'+REPOSITORY+'/releases/tags/'+tag);
   assert.equal(release.tag_name, tag);
   assert.equal(release.draft, false);
   assert.equal(release.prerelease, false);
@@ -110,6 +117,7 @@ export async function verifyGitHubRelease({ root = ROOT } = {}) {
     version,
     tag,
     sourceCommit: manifest.sourceCommit,
+    manifestSha256,
     localHead,
     remoteMain,
     assets: wanted,

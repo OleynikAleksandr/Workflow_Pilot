@@ -61,7 +61,7 @@ test('release snapshots detect a changed external helper and rejects nested macO
 test('paired build is sequential and propagates failure before the next platform', async () => {
   const calls = [];
   await buildPlatforms('/fixture', async (command, args, cwd) => { calls.push([command, args[1], cwd]); });
-  assert.deepEqual(calls, [['npm', 'build:mac', '/fixture'], ['npm', 'build:win', '/fixture']]);
+  assert.deepEqual(calls, [['npm', 'build:mac', '/fixture'], ['npm', 'build:win', '/fixture'], ['npm','build:linux','/fixture']]);
   const failed = [];
   await assert.rejects(buildPlatforms('/fixture', async (_, args) => { failed.push(args[1]); throw new Error('fixture failure'); }), /fixture failure/);
   assert.deepEqual(failed, ['build:mac']);
@@ -92,7 +92,7 @@ test('release refuses a package that carries anything but the application', asyn
 
 test('packager ignore of both platforms lets through only the application roots', async () => {
   const { scripts } = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8'));
-  for (const name of ['build:mac:package', 'build:win:package']) {
+  for (const name of ['build:mac:package', 'build:win:package', 'build:linux:package']) {
     const match = scripts[name].match(/--ignore="([^"]+)"/);
     assert.ok(match, name + ' has --ignore');
     // npm hands the script to sh, where "\\." inside double quotes becomes "\.".
@@ -108,9 +108,9 @@ test('packager ignore of both platforms lets through only the application roots'
   }
 });
 
-test('a release has six files: both packages, the pinned Windows runtime and three records', () => {
+test('a release has seven files: three packages, pinned vendor archive and three records', () => {
   assert.deepEqual(releaseAssetNames('1.2.3'), ['Workflow-Pilot-1.2.3-macOS-arm64.zip', 'Workflow-Pilot-1.2.3-Windows-x64.zip',
-    'Windows-Codex-Local-2026-09-10.zip', 'SHA256SUMS.txt', 'INSTALL.txt', 'release-manifest.json']);
+    'Workflow-Pilot-1.2.3-Linux-x64.tar.gz', 'Windows-Codex-Local-2026-09-10.zip', 'SHA256SUMS.txt', 'INSTALL.txt', 'release-manifest.json']);
 });
 
 test('paired release refuses uncommitted packaged sources but ignores the plan and documents', async t => {

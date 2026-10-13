@@ -35,14 +35,27 @@ function marker(app) {
   return extractFile(archive, 'marker.txt').toString();
 }
 
+async function packageAndInstall(root,directory) {
+  const receipt=await publishMacRelease({root,directory,verifySignature});
+  const installation=await installMacBundle({
+    source:path.join(root,'.harness/runtime/build/Workflow Pilot-darwin-arm64/Workflow Pilot.app'),
+    target:path.join(root,'Workflow Pilot.app'),version:receipt.version,
+    backupRoot:path.join(root,'.harness/runtime/release-backups.noindex'),verifySignature});
+  return {...receipt,installation};
+}
+
 test('two releases keep the permanent app identity, back up old contents and publish a separate ZIP', mac, async t => {
   const root = await fixture(t), delivery = path.join(root, 'downloads');
   await bundle(root, '1.0.0', 'first');
-  const first = await publishMacRelease({ root, deliveryDirectory: delivery, verifySignature });
+  const packaged=await publishMacRelease({root,verifySignature});
+  await assert.rejects(fs.stat(path.join(root,'Workflow Pilot.app')),{code:'ENOENT'});
+  await assert.rejects(fs.stat(delivery),{code:'ENOENT'});
+  assert.ok((await fs.stat(packaged.zip)).size>0);
+  const first = await packageAndInstall(root,delivery);
   const original = await fs.stat(first.installation.target);
   await fs.writeFile(path.join(first.installation.target, 'Contents/obsolete.txt'), 'old file');
   await bundle(root, '1.0.1', 'second');
-  const second = await publishMacRelease({ root, deliveryDirectory: delivery, verifySignature });
+  const second = await packageAndInstall(root,delivery);
   const updated = await fs.stat(second.installation.target);
   assert.equal(updated.ino, original.ino);
   assert.equal(updated.dev, original.dev);
@@ -54,13 +67,13 @@ test('two releases keep the permanent app identity, back up old contents and pub
   execFileSync('/usr/bin/ditto', ['-x', '-k', second.zip, extracted]);
   assert.equal(marker(path.join(extracted, 'Workflow Pilot.app')), 'second');
   assert.ok((await fs.stat(path.join(delivery, path.basename(second.zip)))).size > 0);
-  assert.equal((await fs.readFile(second.zip + '.sha256', 'utf8')).split(' ')[0], second.sha256);
+  assert.match(second.sha256,/^[a-f0-9]{64}$/);
   assert.ok(!second.zip.startsWith(second.installation.target + path.sep));
   // Backups: one slot per target outside Spotlight; the next release replaces it with the then-previous version.
   const backupRoot = path.dirname(second.installation.backup);
   assert.equal(path.basename(backupRoot), 'release-backups.noindex');
   const thirdSource = await bundle(root, '1.0.2', 'third');
-  const third = await publishMacRelease({ root, deliveryDirectory: delivery, verifySignature });
+  const third = await packageAndInstall(root,delivery);
   assert.equal(third.installation.backup, second.installation.backup, 'the same target keeps one slot');
   assert.equal(marker(third.installation.backup), 'second');
   assert.equal(third.installation.backupError, undefined);

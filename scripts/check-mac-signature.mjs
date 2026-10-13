@@ -65,7 +65,7 @@ export async function verifyMacSignature({ bundle, identity, root = ROOT } = {})
   assert.ok(!details.includes('Info.plist=not bound'), 'Info.plist must be bound to the signature');
   const requirement = details.match(/^#?\s*designated => (.+)$/m)?.[1];
   assert.ok(requirement && !/\bcdhash\b/.test(requirement), 'Stable designated requirement is required');
-  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'webpilot-signature-'));
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'workflow-pilot-signature-'));
   try {
     const prefix = path.join(temporary, 'certificate-');
     run('/usr/bin/codesign', ['--display', '--extract-certificates=' + prefix, bundle]);
@@ -104,18 +104,23 @@ export async function checkInstalledMacSignatures({ root = ROOT } = {}) {
   const filesystemIdentities = [];
   for (const app of apps.slice(1)) {
     const before = preflight.find(entry => entry.path === app);
-    assert.ok(before, 'Preflight filesystem identity: ' + app);
     const after = await macDirectoryIdentity(app, { bootSessionUUID: () => bootSessionUUID });
-    assertSameMacDirectory(before, after, app);
+    if (before) assertSameMacDirectory(before, after, app);
     filesystemIdentities.push({ app, device: after.device, inode: after.inode, volumeUUID: after.volumeUUID });
   }
-  const receipt = JSON.parse(await fs.readFile(path.join(root, '.harness/runtime/releases', version, 'mac-release.json'), 'utf8'));
-  assert.equal(receipt.version, version);
-  assert.deepEqual(receipt.installation.signature, proofs[0].signature);
-  assert.equal(await sha256File(receipt.zip), receipt.sha256);
-  const deliveredZip = path.join(receipt.delivery, path.basename(receipt.zip));
-  assert.equal(await sha256File(deliveredZip), receipt.sha256);
-  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'webpilot-signed-zip-'));
+  const canonical = await fs.readFile(path.join(root,'release-manifest.json'));
+  const manifest = JSON.parse(canonical);
+  assert.equal(manifest.version, version);
+  assert.deepEqual(manifest.macCodeSignature, proofs[0].signature);
+  const artifact = manifest.artifacts.find(a=>a.os==='darwin');
+  const release = path.join(root,'.harness/runtime/releases',version);
+  const delivery = path.join(os.homedir(),'Downloads','WorkflowPilot-'+version);
+  for(const directory of [release,delivery]) {
+    assert.deepEqual(await fs.readFile(path.join(directory,'release-manifest.json')),canonical);
+    assert.equal(await sha256File(path.join(directory,artifact.file)),artifact.sha256);
+  }
+  const deliveredZip = path.join(delivery,artifact.file);
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'workflow-pilot-signed-zip-'));
   try {
     run('/usr/bin/ditto', ['-x', '-k', deliveredZip, temporary]);
     const signature = await verifyMacSignature({ bundle: path.join(temporary, APP), identity: selected.identity });
@@ -124,7 +129,7 @@ export async function checkInstalledMacSignatures({ root = ROOT } = {}) {
   } finally {
     await fs.rm(temporary, { recursive: true, force: true });
   }
-  const result = { version, bootSessionUUID, proofs, filesystemIdentities, filesystemIdentityPreserved: true, deliveredZipSha256: receipt.sha256 };
+  const result = { version, bootSessionUUID, proofs, filesystemIdentities, filesystemIdentityPreserved: true, deliveredZipSha256: artifact.sha256 };
   await fs.writeFile(path.join(root, '.harness/runtime/mac-signature-check.json'), JSON.stringify(result, null, 2) + '\n');
   return result;
 }

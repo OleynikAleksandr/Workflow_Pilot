@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { WINDOWS_RUNTIME_ARCHIVE, WINDOWS_RUNTIME_SHA256, WINDOWS_VENDOR_TOOLS } from '../src/windows-runtime.mjs';
 import { fileReader, zipEntries, zipEntryData } from '../src/zip-archive.mjs';
 import { NODE_ARCHIVE, NODE_FOLDER, NODE_SHA256 } from './prepare-windows-toolchain.mjs';
-import { verifyPackagedSources } from './release-all.mjs';
+import { verifyPackagedSources } from './release-package.mjs';
 import { verifyWorkflowKitRuntime } from './stage-workflow-kit.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,8 +46,8 @@ async function requirePe(file, label) {
   } finally { await handle.close(); }
 }
 
-export async function verifyWindowsPackage(packageDir = path.join(ROOT, '.harness', 'runtime', 'build', 'Workflow Pilot-win32-x64')) {
-  const { version } = JSON.parse(await fs.readFile(path.join(ROOT, 'package.json'), 'utf8'));
+export async function verifyWindowsPackage(packageDir = path.join(ROOT, '.harness', 'runtime', 'build', 'Workflow Pilot-win32-x64'), {root=ROOT}={}) {
+  const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
   const resources = path.join(packageDir, 'resources');
   const executable = path.join(packageDir, 'Workflow Pilot.exe');
   const appAsar = path.join(resources, 'app.asar');
@@ -68,7 +68,7 @@ export async function verifyWindowsPackage(packageDir = path.join(ROOT, '.harnes
   // Only stops the bridge that Web Pilot ran before 0.6.96; the executor has its own control.py.
   await requireFile(path.join(resources, 'resources/runtime-control/windows-control.py'), 'lifecycle script of the previous Windows bridge');
   if (fsSync.existsSync(path.join(resources, 'resources/runtime-control/windows-first-run.py'))) throw new Error('The worker of the previous Windows bridge is still in the package');
-  const sourceProof = await verifyPackagedSources({ root: ROOT, resources, version });
+  const sourceProof = await verifyPackagedSources({ root, resources, version });
   await requirePe(executable, 'Workflow Pilot.exe');
   await requirePe(nodeExe, 'portable node.exe');
   // The packaged Workflow Kit must be the package source of this repository, file for file.
