@@ -4,7 +4,9 @@
 
 ## Компоненты и подготовка
 
-`scripts/prepare-linux-toolchain.mjs` получает шесть официальных архивов, сверяет SHA-256 до распаковки и создаёт `.harness/runtime/linux-tools/manifest.json`. Версии, URL и digest находятся в `execution/platform/linux/toolchain.mjs`: Node 24.21.0, Python 3.13.9, uv 0.9.13, Codex 0.162.1, rg 15.2.0, tunnel-client 0.0.14. Архивы и лицензии сохраняются в payload; Linux-бинарники при подготовке на Mac не запускаются. Полная упаковка/проверка поставки относится к T010.
+Electron 44.5.1 Linux x64 закреплён вместе с остальными платформами; проверенный SHA-256 официального ZIP: `5bcd217611d6843ececd6c9e9c1fcd1da3ab066c43d8b1a9e4b44689a1fba6f5`. Версии не заменяются latest при недоступности asset. Git — системный Ubuntu noble 2.43.x с актуальной security revision из подписанного apt; фактическая версия фиксируется runtime, статическая сборка Git не создаётся. UTM x64 на ARM отмечается как эмуляция, ARM64 VM не подходит.
+
+`scripts/prepare-linux-toolchain.mjs` получает шесть официальных архивов, сверяет SHA-256 до распаковки и создаёт `.harness/runtime/linux-tools/manifest.json`. Версии, URL и digest находятся в `execution/platform/linux/toolchain.mjs`: Node 24.21.0, Python 3.13.9, uv 0.9.13, Codex 0.162.1, rg 15.2.0, tunnel-client 0.0.14. Архивы и лицензии сохраняются в payload; Linux-бинарники при подготовке на Mac не запускаются. Инструменты общей упаковки реализованы и проверены fixtures; production-сборка выполняется в delivery-задаче после DOCS.
 
 Мастер проверяет системные Python 3, Git, OpenSSH client, zenity и доступность systemd --user. Git/openssh-client/zenity устанавливает пользователь через Ubuntu; приложение не выполняет sudo. Bootstrap проверяет платформу, manifest, точный регистр ключей, границы путей, executable bits и хеш каждого файла, затем копирует комплект в собственный runtime. Виртуальная среда использует комплектный Python; `requirements-linux.lock` фиксирует транзитивные версии и hashes, uv принимает только бинарные wheels. Подмена Python автоматической загрузкой запрещена. Исходный список — `requirements-linux.in`; lock получен uv 0.9.13 для Python 3.13/x86_64-unknown-linux-gnu.
 

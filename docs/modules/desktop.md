@@ -1,5 +1,7 @@
 # Desktop
 
+Identity: package workflow-pilot, product Workflow Pilot, bundle com.oleynik.WorkflowPilot. Свои userData/browser/runtime/службы обязательны. Старые профили, cookies, app-state и подпись не импортируются. Формат существующих session ID и внешние DOM-контракты сохраняются; имена каталогов/служб нового продукта — собственные.
+
 `npm start` входит через `src/main.mjs`. `frontend/desktop/bootstrap.mjs` устанавливает собственные userData/sessionData, отказывает при symlink профиля и собирает Control, Execution и зависимости оболочки. `application.mjs` размещает Chromium и sidebar в одном основном окне, обрабатывает нативные диалоги и публикует снимки для renderer. Архив и редактор цветов сохраняют отдельные вспомогательные окна.
 
 UI, preload, IPC и вспомогательные окна расположены в `src/frontend/desktop/`. Старые копии UI/preload удалены. Renderer импортирует только локальный UI и contracts. Desktop обращается к Control через фасад; конкретные реализации Execution подключает bootstrap. Architecture gate запрещает обход этих границ и корневые re-export внутри Frontend.

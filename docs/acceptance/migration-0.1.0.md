@@ -1,10 +1,22 @@
 # Приёмка архитектурного переноса 0.1.0
 
-T011, 13.10.2026. Это матрица автоматической проверки нового проекта, не native-приёмка трёх ОС. Авторитетные pass/fail каждого прогона и проверенный commit сохраняет Workflow Kit: `git rev-parse --git-path workflow-kit/last-verification.json`. DONE T011 означает PASS всех девяти обязательных gates: unit-all, electron-smoke, kit-check, executor-channel, codex-tools-live, architecture, migration-compatibility, linux-platform, release-tooling. FAILED блокирует фиксацию задачи. Production build, подпись, установка и публикация здесь не выполняются.
+T011 завершена 13.10.2026 на коммите `1f734caff5144f97fe7ebd4b0ff46f30db660402`. Ниже сохранены фактические результаты её девяти gates, сверенные с evidence Kit перед DOCS. Файл `git rev-parse --git-path workflow-kit/last-verification.json` содержит последнюю операцию и впоследствии заменяется; он не является вечной ссылкой на T011. Это автоматическая проверка нового проекта, не native-приёмка трёх ОС. Production build, подпись, установка и публикация ещё не выполнены.
+
+| Проверка T011 | Результат |
+| --- | --- |
+| unit-all | PASS: 820 успешно, 0 ошибок, 1 пропуск |
+| electron-smoke | PASS: скрытые изолированные Electron fixtures |
+| kit-check | PASS: все пакетные и lifecycle fixtures |
+| executor-channel | PASS: 21 тест, без пропусков и модельных ходов |
+| codex-tools-live | PASS: версия и закреплённые определения инструментов |
+| architecture | PASS: 183 модуля / 708 зависимостей, 0 нарушений и циклов |
+| migration-compatibility | PASS: 4 теста формата 1.7.2 |
+| linux-platform | PASS: 11 fixtures на Mac, не native Linux |
+| release-tooling | PASS: 23 теста, не production-сборка |
 
 ## Матрица сценариев
 
-Файлы ниже находятся в tests/. PASS применим только после успешного соответствующего gate T011; fixture не доказывает работу пользовательского аккаунта или VM.
+Файлы ниже находятся в tests/. Автоматическая часть всех строк — PASS по соответствующим gates T011; fixture не доказывает работу пользовательского аккаунта или VM.
 
 | Сценарий | Автоматическое доказательство | Ручная часть |
 | --- | --- | --- |

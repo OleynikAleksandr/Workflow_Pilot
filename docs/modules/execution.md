@@ -4,7 +4,7 @@
 
 Execution не владеет проектом, current plan, привязкой чата, Review или AutoPlan. Он выполняет физические операции и возвращает подтверждённый результат. Подготовка recovery осталась в SessionPlans/вызывающем слое; runtime больше не принимает sessionPlans и не имеет loadContext.
 
-`src/execution/facade.mjs` — граница desktop. Bootstrap создаёт один ExecutionFacade, передаёт executeFile/files в WorkspaceSetup и SessionPlans и присоединяет выбранный runtime. ParallelKit использует тот же исполнитель SessionPlans. Создание/открытие проекта, context worker, настройки, проверка/выбор канала через прежние IPC теперь используют эти операции. Пользовательская семантика AutoPlan/Review/sequential/parallel не меняется.
+`src/execution/facade.mjs` — граница физических операций для Control. Bootstrap создаёт один ExecutionFacade, передаёт executeFile/files в WorkspaceSetup и SessionPlans и присоединяет выбранный runtime. ParallelKit использует тот же исполнитель SessionPlans. Создание/открытие проекта, context worker, настройки, проверка/выбор канала через прежние IPC теперь используют эти операции. Пользовательская семантика AutoPlan/Review/sequential/parallel не меняется.
 
 | Реализация | Владелец |
 | --- | --- |
@@ -17,7 +17,7 @@ Execution не владеет проектом, current plan, привязкой
 | platform/paths.mjs | пути/Node discovery для выбранной платформы |
 | tools/codex-app-server-mcp | Python-исполнитель команд модели через Codex App Server, без модельных ходов |
 
-Классы runtime сохранили исторические имена CodexAppServerRuntime, MacSelectedRuntime и MacRuntimeSwitcher для совместимости. Старые корневые файлы runtime/platform/mcp/tunnel/ZIP — только re-export мосты; их потребители и удаление мостов завершаются T011. Linux runtime и screen/window adapter — T009; browser/session-runtime — T004. Пустые файлы будущих фасадов не создаются.
+Классы runtime сохранили исторические имена CodexAppServerRuntime, MacSelectedRuntime и MacRuntimeSwitcher для совместимости. Временные корневые runtime/platform/mcp/tunnel/ZIP мосты удалены; потребители используют текущие модули. [Linux runtime](linux.md) и screen/window adapter реализованы; [browser/session-runtime](browser.md) владеет техническими страницами.
 
 ## Контракт команд и файлов
 
@@ -37,7 +37,7 @@ Desktop dispose запрещает новые команды, останавли
 
 Свои state: WorkflowPilotCodexExecutor, env WORKFLOW_PILOT_*, MCP/tunnel preferred порты 18852/18853 с проверкой владельца и исходным подбором свободного порта. macOS label com.oleynik.WorkflowPilotCodexExecutor; Windows — собственный Run entry. Перед копированием/управлением runtime отвергаются symlink state/source/runtime/private. Новый продукт не принимает retireLegacy; совместимые retirement exports только возвращают LEGACY_RUNTIME_FORBIDDEN. adopt_legacy_tunnel всегда False без чтения ключей.
 
-macOS tunnel-client закреплён на v0.0.14, официальный GitHub tag и SHA256SUMS проверяются перед распаковкой; поиска latest и копирования чужого PATH/runtime нет. Проверены Darwin arm64 и amd64 assets. Основной arm64 ZIP: SHA-256 b540493c5bdbcdbb755700c8e2e16597e28b1569e425007e0f73111047bd6a64. Windows vendor asset/digest прежние, извлекаются только vendor tools. Поставка notices/общие locks уточняются T010; Linux закреплён отдельно в платформенной спецификации.
+macOS tunnel-client закреплён на v0.0.14, официальный GitHub tag и SHA256SUMS проверяются перед распаковкой; поиска latest и копирования чужого PATH/runtime нет. Проверены Darwin arm64 и amd64 assets. Основной arm64 ZIP: SHA-256 b540493c5bdbcdbb755700c8e2e16597e28b1569e425007e0f73111047bd6a64. Windows vendor asset/digest прежние, извлекаются только vendor tools. Поставка notices и locks описана в [контракте выпуска](release.md); версии и SHA Linux закреплены в src/execution/platform/linux/toolchain.mjs.
 
 ## VPS: явная локальная настройка
 
@@ -54,10 +54,10 @@ macOS tunnel-client закреплён на v0.0.14, официальный GitH
 
 Secure Tunnel и VPS остаются переключаемыми. Ошибка VPS не ломает Secure Tunnel; переключение на неподготовленный VPS отклоняется. Никаких догадок об общем 17842 или перенастройки сервера.
 
-## Проверки и временные границы
+## Проверки и границы
 
 `npm run check:architecture` использует dependency-cruiser 18.6.0 (официальные правила: https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md). Проверяются Execution→product, Control→Frontend/Electron, доступ к Execution через facade, leaf contracts, разрешимость импортов и новые циклы. Отдельный fixture намеренно вводит запрещённый импорт и цикл и требует отказа анализатора.
 
-Временные исключения конкретны: сборка зависимостей остаётся в main до T008; root-модули мигрируют T004–T008; перечисленные в .dependency-cruiser.cjs семь модулей Kit имеют донорские циклы до T007. Generated resources/workflow-kit и установленный .harness/kit не анализируются повторно: проверяется canonical packages/workflow-kit/src. T011 убирает переходные мосты и оставшиеся исключения; исключение не разрешает новый цикл с иным модулем.
+Единственная точка композиции — frontend/desktop/bootstrap.mjs; main только запускает её. Циклы запрещены во всём графе без исключений. Generated resources/workflow-kit, observer и установленный .harness/kit не анализируются повторно: проверяются canonical источники, staging и фактический состав пакетов. Удалённый legacy Windows lifecycle-файл в пакете запрещён.
 
-Гейты T003: unit-all, executor-channel, architecture. Дополнительно Electron smoke проверяет прежние IPC/project→session→context после переключения потребителей. Новые тесты проверяют stdin/точный ID/cancel/UNKNOWN, private IO, runtime symlink, явный VPS route/конфликт и отсутствие вмешательства в донора. Все fixtures изолированы; Python-среда .harness/runtime/test-python, без реальных служб/модельных вызовов. Живые UI/Windows/Linux проверки выполняет пользователь отдельно.
+Гейты: unit-all, executor-channel, architecture. Дополнительно Electron smoke проверяет прежние IPC/project→session→context после переключения потребителей. Новые тесты проверяют stdin/точный ID/cancel/UNKNOWN, private IO, runtime symlink, явный VPS route/конфликт и отсутствие вмешательства в донора. Все fixtures изолированы; Python-среда .harness/runtime/test-python, без реальных служб/модельных вызовов. Живые UI/Windows/Linux проверки выполняет пользователь отдельно.

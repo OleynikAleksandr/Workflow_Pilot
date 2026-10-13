@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 27,
+  "plan_revision": 29,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -423,12 +423,12 @@
       {
         "path": "docs/planning/migration-0.1.0.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "1f734caff5144f97fe7ebd4b0ff46f30db660402"
       },
       {
         "path": "docs/planning/migration-platforms.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "1f734caff5144f97fe7ebd4b0ff46f30db660402"
       },
       {
         "path": "docs/planning/orchestrated-execution-next.md",
@@ -2367,8 +2367,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "DOCS",
@@ -2430,7 +2430,27 @@
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "AGENTS.md",
+        "PROVENANCE.md",
+        "README.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/browser.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/execution.md",
+        "docs/modules/linux.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/migration-0.1.0.md",
+        "docs/planning/migration-platforms.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "tests/fixtures/released-kit/README.md"
+      ]
     },
     {
       "id": "T012",
@@ -2557,7 +2577,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 27
+Revision: 29
 
 ## Цель
 
@@ -2642,8 +2662,8 @@ Revision: 27
   - Файлы: src/main.mjs, src/common.mjs, src/platform.mjs, src/control/facade.mjs, src/execution/facade.mjs, src/frontend/desktop/bootstrap.mjs, resources/mac-permissions.plist, resources/workspace-setup-worker.mjs, resources/runtime-control/windows-control.py, scripts/release-all.mjs, scripts/prepare-windows-toolchain.mjs, scripts/prepare-mac-toolchain.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-page-observer.mjs, tools/codex-app-server-mcp/control.py, tools/codex-app-server-mcp/server.py, tools/codex-app-server-mcp/app_server_client.py, tools/codex-app-server-mcp/codex-tools.lock.json, tools/codex-app-server-mcp/requirements.txt, tools/codex-app-server-mcp/windows_desktop.py, tools/codex-app-server-mcp/linux_desktop.py, packages/workflow-kit/package.json, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/install.mjs, packages/workflow-kit/src/lib/transaction.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/recovery.mjs, tests/electron-smoke.mjs, tests/parallel-execution.test.mjs, tests/migration-compatibility.test.mjs, tests/linux-runtime.test.mjs, tests/linux-startup.test.mjs, .dependency-cruiser.cjs, scripts/check-github-release.mjs, scripts/check-mac-screen-capture.mjs, scripts/check-mac-signature.mjs, scripts/release-archive.mjs, scripts/release-linux.mjs, scripts/release-mac.mjs, scripts/release-package.mjs, scripts/stage-vendor-notices.mjs, scripts/verify-windows-package.mjs, src/agent-timer.mjs, src/auto-plan-state.mjs, src/auto-plan.mjs, src/automation-send-state.mjs, src/chromium-diagnostics.mjs, src/command-activity.mjs, src/context-cache.mjs, src/context-inputs.mjs, src/context-session.mjs, src/conversation-recovery.mjs, src/execution-projection.mjs, src/execution/platform/paths.mjs, src/executor-session.mjs, src/mac-runtime-switch.mjs, src/mcp-runtime.mjs, src/parallel-execution.mjs, src/parallel-kit.mjs, src/parallel-settings.mjs, src/plan-monitor.mjs, src/plan-review.mjs, src/project-auto-plan.mjs, src/project-doctor.mjs, src/project-input-watch.mjs, src/project-session-auto-plan.mjs, src/project-state-cleanup.mjs, src/review-continuation.mjs, src/session-plans.mjs, src/session-runtime.mjs, src/startup-network-trace.mjs, src/startup-platform.mjs, src/startup-readiness.mjs, src/tunnel-clipboard.mjs, src/tunnel-setup.mjs, src/vps-tunnel.mjs, src/windows-runtime.mjs, src/workspace-deletion.mjs, src/workspace-readiness.mjs, src/workspace-session.mjs, src/workspace-setup.mjs, src/zip-archive.mjs, tests/agent-timer.test.mjs, tests/auto-plan-restart-fixture.cjs, tests/auto-plan.test.mjs, tests/automation-send-state.test.mjs, tests/chatgpt-experience.test.mjs, tests/chromium-diagnostics.test.mjs, tests/command-activity.test.mjs, tests/common.test.mjs, tests/context-cache.test.mjs, tests/context-session.test.mjs, tests/conversation-recovery.test.mjs, tests/execution-architecture.test.mjs, tests/installed-observer-fixture.cjs, tests/mac-runtime-switch.test.mjs, tests/mac-toolchain.test.mjs, tests/mcp-runtime.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-execution-ui.test.mjs, tests/parallel-finalization.test.mjs, tests/plan-monitor.test.mjs, tests/plan-review.test.mjs, tests/product-identity.test.mjs, tests/project-auto-plan.test.mjs, tests/project-doctor-ui.test.mjs, tests/project-doctor.test.mjs, tests/project-input-watch.test.mjs, tests/project-state-cleanup.test.mjs, tests/release-linux.test.mjs, tests/session-opening-performance.test.mjs, tests/session-plans.test.mjs, tests/session-runtime.test.mjs, tests/settings-parallel-execution.test.mjs, tests/sidebar.test.mjs, tests/startup-network-trace.test.mjs, tests/startup-platform.test.mjs, tests/startup-readiness.test.mjs, tests/startup-ui.test.mjs, tests/tunnel-clipboard.test.mjs, tests/tunnel-id-runtime.test.mjs, tests/vps-tunnel.test.mjs, tests/windows-autostart.test.mjs, tests/windows-runtime.test.mjs, tests/workspace-deletion.test.mjs, tests/workspace-readiness.test.mjs, tests/workspace-session.test.mjs, tests/workspace-setup.test.mjs, docs/planning/migration-0.1.0.md, docs/planning/migration-platforms.md, docs/acceptance/migration-0.1.0.md
   - Параллельность: исключительное выполнение
   - Зависимости: T010
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/migration-0.1.0.md, docs/planning/migration-platforms.md, docs/planning/orchestrated-execution-next.md, AGENTS.md, docs/modules/execution.md, docs/modules/browser.md, docs/modules/control.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/project-lifecycle.md, docs/modules/linux.md, docs/modules/release.md, PROVENANCE.md, README.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/examples/PACKAGING.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/CONTINUE.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/STAGES.md, tests/fixtures/released-kit/README.md, resources/THIRD-PARTY.md, docs/acceptance/migration-0.1.0.md
   - Параллельность: исключительное выполнение
