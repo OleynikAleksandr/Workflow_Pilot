@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { WorkspaceReadiness } from '../src/workspace-readiness.mjs';
-import { WorkspaceSetup } from '../src/workspace-setup.mjs';
+import { WorkspaceReadiness } from '../src/control/projects/workspace-readiness.mjs';
+import { WorkspaceSetup } from '../src/control/projects/workspace-setup.mjs';
 
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 const state = (key = 'a') => ({ key, transaction: false });

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
-import { executionFinalStages } from '../src/execution-projection.mjs';
+import { executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 
 test('project picker searches, marks current/background work, keeps one parent and supports keyboard escape',async t=>{
   const f=await fixture(t),base=f.state,other={workspace:'/other',name:'Другой',activity:'working',expanded:true,sessions:[{sessionId:'other-chat',createdAt:1000,title:'Другой чат'}]};

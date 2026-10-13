@@ -7,7 +7,7 @@ function pathApi(platform) {
 }
 
 // Where the Codex App Server executor, the only local MCP backend, keeps its files. control.py of the
-// executor computes the same folder when it starts at sign-in without Web Pilot.
+// executor computes the same folder when it starts at sign-in without Workflow Pilot.
 export function defaultRuntimeFolder(homeDir, platform = process.platform, environment = process.env) {
   const api = pathApi(platform);
   if (platform === 'darwin') return api.join(homeDir, 'Library', 'Application Support', 'WorkflowPilotCodexExecutor');
@@ -17,12 +17,6 @@ export function defaultRuntimeFolder(homeDir, platform = process.platform, envir
   }
   const state=environment?.XDG_STATE_HOME;
   return api.join(typeof state==='string'&&api.isAbsolute(state)?state:api.join(homeDir,'.local','state'), 'WorkflowPilotCodexExecutor');
-}
-
-// State of the bridge that Web Pilot ran on Windows before 0.6.96: read once to stop it and to carry its tunnel over.
-export function legacyWindowsStateFolder(environment = process.env) {
-  const local = environment?.LOCALAPPDATA;
-  return typeof local === 'string' && path.win32.isAbsolute(local) ? path.win32.join(local, 'CodexLocalWindows') : null;
 }
 
 export function isAbsolutePlatformPath(value, platform = process.platform) {

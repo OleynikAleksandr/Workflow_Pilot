@@ -79,7 +79,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
       theme:document.documentElement.dataset.theme,
       focusable:document.getElementById('auto-plan-toggle').tabIndex>=0};})()`);
   const root=(await run('--create',path.join(dataDir+'-projects','parallel-e2e'))).root;
-  const {SessionPlans}=await import('../src/session-plans.mjs');
+  const {SessionPlans}=await import('../src/control/sessions/session-plans.mjs');
   const plans=new SessionPlans({setup:workspaceSetup});
   const config=JSON.parse(await fs.readFile(path.join(root,'.harness/workflow.json'),'utf8'));
   config.checks.find(check=>check.id==='dependency').executable='node';
@@ -228,7 +228,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   assert.equal(settingsAfter.projectAutoPlan[root],undefined);
   assert.equal(Object.values(settingsAfter.parallelExecutionBook).some(b=>b.workspace===root),false);
   assert.deepEqual(settingsAfter.projectAutoPlan[otherRoot],otherBefore);
-  const {belongsToProject}=await import('../src/project-state-cleanup.mjs');
+  const {belongsToProject}=await import('../src/control/projects/project-state-cleanup.mjs');
   assert.equal(belongsToProject(settingsAfter,[{workspace:root,projectId:oldProjectId,sessionIds:[origin.sessionId]}]),false);
   getArchiveWindow().close();
   // Same folder name and same scope, different identity: no inherited grant or old assignment.
@@ -322,7 +322,7 @@ const httpPreview=await require('./protected-preview-fixture.cjs').start(root,pa
     assert.equal(sentStages.stages.final.status,'sent');assert.equal(sentStages.stages.reply.status,'waiting');
     if(httpPreview) {
       assert.match(await (await fetch(httpPreview.url+'/RESULT.md')).text(),/worker-e/,'protected main preview reflects verified integration');
-      const {readCommandActivity}=await import('../src/command-activity.mjs');
+      const {readCommandActivity}=await import('../src/control/workflow/command-activity.mjs');
       const activity=await readCommandActivity(root);
       assert.equal(activity.commandActive,false);assert.equal(activity.deletionBlocked,true);
       assert.ok(activity.commands.some(c=>c.readOnly));

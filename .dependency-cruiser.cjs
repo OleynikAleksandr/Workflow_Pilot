@@ -1,4 +1,4 @@
-// Temporary migration scope: main/root modules remain until T004–T008; bridges disappear in T011.
+// Product boundaries. Only desktop/bootstrap composes Execution and Control.
 module.exports = {
   forbidden: [
     { name: 'renderer-only-local-ui-and-contracts', severity: 'error',
@@ -7,9 +7,6 @@ module.exports = {
       from: { path: '^src/frontend/' }, to: { path: '^src/control/(?!facade\\.mjs$)' } },
     { name: 'desktop-without-root-bridges', severity: 'error',
       from: { path: '^src/frontend/' }, to: { path: '^src/[^/]+\\.mjs$' } },
-    { name: 'session-coordination-uses-browser-port', severity: 'error',
-      from: { path: '^src/(session-runtime|context-session)\\.mjs$' },
-      to: { path: '(^|/)electron($|/)|^src/(execution/(?!facade\\.mjs$)|frontend/)' } },
     { name: 'execution-does-not-import-product', severity: 'error',
       from: { path: '^src/execution/' },
       to: { path: '^(src/(?!execution/|contracts/)|packages/workflow-kit/)' } },
@@ -23,20 +20,18 @@ module.exports = {
       from: { path: '^src/control/' }, to: { path: '^src/execution/(?!facade\\.mjs$)' } },
     { name: 'control-does-not-perform-physical-io', severity: 'error',
       from: { path: '^src/control/' }, to: { path: '^(node:)?(fs|child_process)(/|$)' } },
-    { name: 'main-uses-control-facade', severity: 'error',
+    { name: 'main-only-starts-desktop', severity: 'error',
       from: { path: '^src/main\\.mjs$' },
-      to: { path: '^src/(control/(?!facade\\.mjs$)|(workspace-session|workspace-setup|workspace-deletion|project-doctor|project-state-cleanup|session-plans|session-runtime|context-session|context-cache|context-inputs|conversation-recovery)\\.mjs$)' } },
+      to: { pathNot: '^(electron|node_modules/electron/index\\.js|src/frontend/desktop/bootstrap\\.mjs)$' } },
     { name: 'frontend-uses-contracts-not-execution', severity: 'error',
       from: { path: '^src/frontend/', pathNot: '^src/frontend/desktop/bootstrap\\.mjs$' }, to: { path: '^src/execution/' } },
-    { name: 'main-workflow-uses-control-facade', severity: 'error',
-      from: { path: '^src/main\\.mjs$' },
-      to: { path: '^src/(auto-plan|project-auto-plan|project-session-auto-plan|plan-review|review-continuation|automation-send-state|auto-plan-state|plan-monitor|parallel-execution|parallel-kit|executor-session|command-activity|project-input-watch|execution-projection|parallel-settings)\\.mjs$' } },
     { name: 'control-does-not-use-root-bridges', severity: 'error',
       from: { path: '^src/control/' }, to: { path: '^src/[^/]+\\.mjs$' } },
     { name: 'no-new-cycles', severity: 'error', from: {}, to: { circular: true } },
     { name: 'no-unresolved-imports', severity: 'error', from: {}, to: { couldNotResolve: true } },
   ],
   options: {
+    // Installer copies and the generated observer are verified by staging/package gates.
     doNotFollow: { path: '^(node_modules|resources/workflow-kit|\\.harness/kit)(/|$)' },
     exclude: { path: '^(resources/workflow-kit/|resources/chatgpt-page-observer-preload\\.cjs$|\\.harness/kit/)' },
     enhancedResolveOptions: { exportsFields: ['exports'], conditionNames: ['import', 'node', 'default'] },

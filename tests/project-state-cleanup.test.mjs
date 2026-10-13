@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import {belongsToProject,removeProjectSettings,purgeProjectStateFiles,queueProjectStatePurge} from '../src/project-state-cleanup.mjs';
+import {belongsToProject,removeProjectSettings,purgeProjectStateFiles,queueProjectStatePurge} from '../src/control/projects/project-state-cleanup.mjs';
 
 test('project cleanup removes exact nested delivery owners, preserves neighbours and does not change input',()=>{
   const ids=[{workspace:'/projects/a',projectId:'id-a',sessionIds:['session-a']}];
@@ -58,7 +58,7 @@ test('durable cleanup includes settings migration copies, interrupted writes and
 });
 
 test('startup drops orphan state and delivery keys but retains archived projects and UNKNOWN for existing identities',async()=>{
- const {pruneOrphanProjectSettings}=await import('../src/project-state-cleanup.mjs');
+ const {pruneOrphanProjectSettings}=await import('../src/control/projects/project-state-cleanup.mjs');
  const saved={projectAutoPlan:{'/gone':{enabled:true},'/kept':{enabled:true,projectId:'kept'}},parallelExecutionBook:{a:{workspace:'/gone'},b:{workspace:'/kept',projectId:'kept',assignments:{a:{phase:'unknown'}}}},
   reviewCheckpoint:{entries:[{key:JSON.stringify(['/gone','s'])},{key:JSON.stringify(['/kept','old'])},{key:JSON.stringify(['/kept','s'])}]}};
  const next=pruneOrphanProjectSettings(saved,[{workspace:'/kept',projectId:'kept',archivedAt:1,sessions:[{sessionId:'s'}]}]);
@@ -66,7 +66,7 @@ test('startup drops orphan state and delivery keys but retains archived projects
 });
 
 test('stale permission never removes a current project UNKNOWN execution ledger',async()=>{
- const {pruneOrphanProjectSettings}=await import('../src/project-state-cleanup.mjs');
+ const {pruneOrphanProjectSettings}=await import('../src/control/projects/project-state-cleanup.mjs');
  const saved={projectAutoPlan:{'/a':{projectId:'old'}},parallelExecutionBook:{live:{workspace:'/a',projectId:'new',assignments:{reserved:{phase:'unknown'}}}}};
  const result=pruneOrphanProjectSettings(saved,[{workspace:'/a',projectId:'new',sessions:[]}]);
  assert.deepEqual(result.projectAutoPlan,{});assert.equal(result.parallelExecutionBook.live.assignments.reserved.phase,'unknown');
@@ -87,8 +87,8 @@ test('purge waits for the active settings writer and preserves its neighbour upd
 });
 
 test('cleanup removes a diagnostic session across rotation and preserves concurrent neighbour writes',async t=>{
-  const {DiagnosticJsonl}=await import('../src/chromium-diagnostics.mjs');
-  const {appendDiagnostic,queueDiagnosticFile}=await import('../src/common.mjs');
+  const {DiagnosticJsonl}=await import('../src/execution/browser/diagnostics.mjs');
+  const {appendDiagnostic,queueDiagnosticFile}=await import('../src/execution/files/diagnostics.mjs');
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'diagnostic-cleanup-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
   const file=path.join(dir,'diagnostics/chromium-events.jsonl');
   const log=new DiagnosticJsonl(file,{sessionId:'technical',owner:()=>({sessionId:'deleted-chat'})});await log.init();

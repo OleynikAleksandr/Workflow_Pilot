@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sha256File } from '../src/common.mjs';
+import { sha256File } from '../src/execution/files/adapter.mjs';
 const ROOT=fileURLToPath(new URL('..',import.meta.url));
 const uv=(version,name,sha256)=>({file:'uv-'+version+'-'+name+'.txt',url:'https://raw.githubusercontent.com/astral-sh/uv/'+version+'/LICENSE-'+name,sha256});
 export const NOTICE_ASSETS=[

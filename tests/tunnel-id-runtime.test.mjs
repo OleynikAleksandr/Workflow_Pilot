@@ -1,11 +1,11 @@
-import { TUNNEL_ID_PATTERN } from '../src/tunnel-setup.mjs';
+import { TUNNEL_ID_PATTERN } from '../src/execution/runtime/tunnel-setup.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CodexAppServerRuntime } from '../src/mac-runtime-switch.mjs';
+import { CodexAppServerRuntime } from '../src/execution/runtime/service.mjs';
 const identity = 'tunnel_fixture1234567890123456';
 for (const platform of ['mac', 'windows']) test(`${platform}: ID dialog facade validates non-secret output and sanitizes failures`, async t => {
   let output = { tunnel_id: identity }, failure;
@@ -40,7 +40,6 @@ for (const platform of ['mac', 'windows']) test(`${platform}: ID dialog facade v
 
 test('tunnel ID grammar matches every standalone Python runtime', async () => {
   const files = [
-    'resources/runtime-control/windows-control.py',
     'tools/codex-app-server-mcp/control.py',
     'tools/codex-app-server-mcp/tunnel_prompt.py',
   ];

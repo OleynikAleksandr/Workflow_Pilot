@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { settingsPanelView } from '../src/frontend/desktop/ui/settings-panel.mjs';
-import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from '../src/parallel-settings.mjs';
-import { startupMessage } from '../src/context-session.mjs';
+import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from '../src/control/workflow/parallel-settings.mjs';
+import { startupMessage } from '../src/control/context/context-session.mjs';
 
 test('execution settings reject malformed limits and return an independent snapshot', () => {
   assert.deepEqual(validateParallelSettings(), { parallel_allowed:false, max_workers:2 });

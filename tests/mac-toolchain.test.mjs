@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { prepareMacNode, NODE_ARCHIVE } from '../scripts/prepare-mac-toolchain.mjs';
-import { bundledMacNode } from '../src/platform.mjs';
+import { bundledMacNode } from '../src/execution/platform/paths.mjs';
 
 test('Mac Node is resolved inside resources, including spaces', () => {
   assert.equal(bundledMacNode('/Applications/Workflow Pilot.app/Contents/Resources'), '/Applications/Workflow Pilot.app/Contents/Resources/mac-tools/node/bin/node');

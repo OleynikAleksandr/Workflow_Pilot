@@ -22,7 +22,7 @@ test('experience classifier accepts only matching chatgpt.com routes', () => {
 
 test('optimistic WEB URLs are pending only on the exact HTTPS ChatGPT origin', async () => {
   const { isPendingChatGPTConversation } = await import('../src/chatgpt-experience.mjs');
-  const { normalizeChatUrl } = await import('../src/workspace-session.mjs');
+  const { normalizeChatUrl } = await import('../src/control/sessions/workspace-session.mjs');
   const route = '/c/WEB:12345678-1234-1234-1234-123456789abc';
   for (const path of [route, route.replace(':', '%3A')]) {
     assert.equal(isPendingChatGPTConversation('https://chatgpt.com' + path), true);

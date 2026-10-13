@@ -1,10 +1,10 @@
-import { sha256File } from '../src/common.mjs';
+import { sha256File } from '../src/execution/files/adapter.mjs';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WINDOWS_RUNTIME_ARCHIVE, WINDOWS_RUNTIME_SHA256, WINDOWS_VENDOR_TOOLS } from '../src/windows-runtime.mjs';
-import { fileReader, zipEntries, zipEntryData } from '../src/zip-archive.mjs';
+import { WINDOWS_RUNTIME_ARCHIVE, WINDOWS_RUNTIME_SHA256, WINDOWS_VENDOR_TOOLS } from '../src/execution/runtime/windows.mjs';
+import { fileReader, zipEntries, zipEntryData } from '../src/execution/files/zip-archive.mjs';
 import { NODE_ARCHIVE, NODE_FOLDER, NODE_SHA256 } from './prepare-windows-toolchain.mjs';
 import { verifyPackagedSources } from './release-package.mjs';
 import { verifyWorkflowKitRuntime } from './stage-workflow-kit.mjs';
@@ -66,7 +66,7 @@ export async function verifyWindowsPackage(packageDir = path.join(ROOT, '.harnes
   await requireFile(setupWorker, 'workspace setup worker');
   for (const file of WINDOWS_EXECUTOR_FILES) await requireFile(path.join(resources, 'codex-app-server-mcp', file), 'Codex App Server executor: ' + file);
   // Only stops the bridge that Web Pilot ran before 0.6.96; the executor has its own control.py.
-  await requireFile(path.join(resources, 'resources/runtime-control/windows-control.py'), 'lifecycle script of the previous Windows bridge');
+  if (fsSync.existsSync(path.join(resources, 'resources/runtime-control/windows-control.py'))) throw new Error('The lifecycle script of the previous Windows bridge is still in the package');
   if (fsSync.existsSync(path.join(resources, 'resources/runtime-control/windows-first-run.py'))) throw new Error('The worker of the previous Windows bridge is still in the package');
   const sourceProof = await verifyPackagedSources({ root, resources, version });
   await requirePe(executable, 'Workflow Pilot.exe');

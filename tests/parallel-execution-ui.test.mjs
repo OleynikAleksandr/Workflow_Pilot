@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
-import { executorStatus,projectExecutors,projectExecutionPlan,integrationProblem,executionFinalStages } from '../src/execution-projection.mjs';
+import { executorStatus,projectExecutors,projectExecutionPlan,integrationProblem,executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 
 test('F20: worker source and HTTP preview never equal verified main or a final reply',()=>{
   const assignment={id:'a',status:'READY_FOR_INTEGRATION',source_commit:'sha',worktree:'/worktree',commandActive:true,

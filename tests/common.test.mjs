@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { exists, sha256File, appendDiagnostic, diagnosticFiles } from '../src/common.mjs';
+import { exists, sha256File } from '../src/execution/files/adapter.mjs';
+import { appendDiagnostic, diagnosticFiles } from '../src/execution/files/diagnostics.mjs';
 
 test('file probes preserve strict cleanup errors and streamed hashes reject missing files', async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pilot-common-'));

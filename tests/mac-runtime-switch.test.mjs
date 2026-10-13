@@ -6,7 +6,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { CodexAppServerRuntime, MacRuntimeSwitcher, MacSelectedRuntime, MAC_RUNTIME_LABEL, WINDOWS_RUNTIME_LABEL, runtimeLabel,
   CODEX_NOT_FOUND_MESSAGE, WINDOWS_CODEX_NOT_FOUND_MESSAGE, EXECUTOR_TOOL_RULES,
-  LEGACY_LAUNCH_AGENT, APP_SERVER_LAUNCH_AGENT, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNEL_VPS } from '../src/mac-runtime-switch.mjs';
+  LEGACY_LAUNCH_AGENT, APP_SERVER_LAUNCH_AGENT, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNEL_VPS } from '../src/execution/runtime/service.mjs';
 
 const MCP_URL = 'http://127.0.0.1:27852/mcp';
 const TUNNEL_UI = 'http://127.0.0.1:27853/ui';

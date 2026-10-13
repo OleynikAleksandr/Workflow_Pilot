@@ -5,8 +5,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { WorkspaceSetup } from '../src/workspace-setup.mjs';
-import { nodeExecutableCandidates } from '../src/platform.mjs';
+import { WorkspaceSetup } from '../src/control/projects/workspace-setup.mjs';
+import { nodeExecutableCandidates } from '../src/execution/platform/paths.mjs';
 import { VERSION } from '@webpilot/workflow-kit/lib/common';
 import { fileURLToPath } from 'node:url';
 import { sessionPlanView } from '@webpilot/workflow-kit/lib/session-plans';
@@ -516,7 +516,7 @@ test('worker Node accepts only supported Node 24 releases on macOS and Windows',
 });
 
 test('selected absolute Node is available to nested Kit checks with a Finder-like PATH', async t => {
-  const { SessionPlans } = await import('../src/session-plans.mjs');
+  const { SessionPlans } = await import('../src/control/sessions/session-plans.mjs');
   const { parent } = await fixture(t);
   const setup = new WorkspaceSetup({ nodeCandidates: [process.execPath], environment: { ...environment, PATH: '/usr/bin:/bin' } });
   const preview = await setup.preview({ mode: 'new', parent, name: 'Minimal PATH' });

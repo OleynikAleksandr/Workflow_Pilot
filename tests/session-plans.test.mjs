@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { emptyPlan, renderPlan, readPlan, writePlan } from '@webpilot/workflow-kit/lib/plan';
 import { sessionPlanView, selectPlan, withSessionPlan, ownedPlanPath } from '@webpilot/workflow-kit/lib/session-plans';
-import { WorkspaceSetup } from '../src/workspace-setup.mjs';
+import { WorkspaceSetup } from '../src/control/projects/workspace-setup.mjs';
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'single-active-plan-'));
@@ -73,7 +73,7 @@ test('Web Pilot fast projection reads only current todo-plan and never executes 
   const marker = path.join(root, 'executed');
   fs.writeFileSync(path.join(root, '.harness/kit/lib/session-plans.mjs'),
     `import fs from 'node:fs'; fs.writeFileSync(${JSON.stringify(marker)}, 'bad'); throw new Error('untrusted facade');`);
-  const { readWorkspace } = await import('../src/workspace-session.mjs');
+  const { readWorkspace } = await import('../src/control/sessions/workspace-session.mjs');
   const a = await readWorkspace(root, 'session-a');
   const b = await readWorkspace(root, 'session-b');
   const c = await readWorkspace(root, 'session-new');

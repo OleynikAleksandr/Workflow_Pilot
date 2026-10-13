@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { contextServiceMetadata, contextTelemetry, DiagnosticJsonl, payloadMetadata, safeUrl } from '../src/chromium-diagnostics.mjs';
+import { contextServiceMetadata, contextTelemetry, DiagnosticJsonl, payloadMetadata, safeUrl } from '../src/execution/browser/diagnostics.mjs';
 
 test('safeUrl keeps endpoint shape but strips query values, fragments and long identifiers', () => {
   const result = safeUrl('https://chatgpt.com/backend-api/conversation/123e4567-e89b-42d3-a456-426614174000?token=SUPER_SECRET&mode=compact#private');
@@ -205,7 +205,7 @@ test('DiagnosticJsonl writes valid JSONL and rotates bounded files', async () =>
 });
 
 import { EventEmitter } from 'node:events';
-import { ChromiumDiagnostics } from '../src/chromium-diagnostics.mjs';
+import { ChromiumDiagnostics } from '../src/execution/browser/diagnostics.mjs';
 
 async function startupDiagnostics(t, { pendingDebugger = false } = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'web-pilot-early-diagnostics-'));

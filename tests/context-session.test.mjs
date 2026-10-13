@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { ContextCache } from '../src/context-cache.mjs';
-import { ContextSession, externalClientLine, packetMatchesProject, startupMessage } from '../src/context-session.mjs';
-import * as contextSessionModule from '../src/context-session.mjs';
-import { EXECUTOR_TOOL_RULES } from '../src/mac-runtime-switch.mjs';
+import { ContextCache } from '../src/control/context/context-cache.mjs';
+import { ContextSession, externalClientLine, packetMatchesProject, startupMessage } from '../src/control/context/context-session.mjs';
+import * as contextSessionModule from '../src/control/context/context-session.mjs';
+import { EXECUTOR_TOOL_RULES } from '../src/execution/runtime/service.mjs';
 
 const project={workspace:'/Projects/Мой проект',projectId:'id-1',name:'Мой проект',planRevision:7,scopeId:'scope-1',
   scopeStatus:'ACTIVE',deliveryStatus:'IN_PROGRESS',nextTaskId:'T001',nextTaskTitle:'Read',sessionId:'session-1', experience:'chat',

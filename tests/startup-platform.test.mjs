@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { StartupReadiness } from '../src/startup-readiness.mjs';
-import { startupPlatformOptions, startupSupported } from '../src/startup-platform.mjs';
+import { StartupReadiness } from '../src/control/startup/readiness.mjs';
+import { startupPlatformOptions, startupSupported } from '../src/control/startup/platform.mjs';
 function fixture(platform = 'win32') {
   const calls = [], updates = [];
   let installed = false, componentsReady = false, failPreparation = false;

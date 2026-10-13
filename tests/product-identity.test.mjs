@@ -4,9 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { configureDesktopIdentity } from '../src/frontend/desktop/bootstrap.mjs';
-import { defaultRuntimeFolder } from '../src/platform.mjs';
-import { VPS_TUNNEL_LABEL, VPS_SSH_HOST, VPS_REMOTE_PORT } from '../src/vps-tunnel.mjs';
-import { APP_SERVER_LAUNCH_AGENT } from '../src/mac-runtime-switch.mjs';
+import { defaultRuntimeFolder } from '../src/execution/platform/paths.mjs';
+import { VPS_TUNNEL_LABEL, VPS_SSH_HOST, VPS_REMOTE_PORT } from '../src/execution/runtime/vps.mjs';
+import { APP_SERVER_LAUNCH_AGENT } from '../src/execution/runtime/service.mjs';
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-pilot-identity-'));

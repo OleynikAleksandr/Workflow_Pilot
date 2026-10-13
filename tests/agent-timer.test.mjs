@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AgentTimer, ExecutorTimer, AGENT_IDLE_GRACE_MS } from '../src/agent-timer.mjs';
+import { AgentTimer, ExecutorTimer, AGENT_IDLE_GRACE_MS } from '../src/control/sessions/agent-timer.mjs';
 
 test('executor clock separates observed work and waiting, checkpoints live intervals and excludes closed-app time',()=>{
   let now=1000,callback;const saved=[],cancelled=[];

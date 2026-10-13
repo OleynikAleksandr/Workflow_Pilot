@@ -63,23 +63,13 @@ VPS (SSH, 13.10.2026): Ubuntu 24.04.5 LTS x86_64, проект `/Users/oleksandr
 
 Старый проект: выбор папки → inspect Kit → сохранённые plan/история → новая локальная сессия → recovery один раз → незавершённая задача. Не импортировать чаты/профиль/список проектов. Чужие execution/transaction/assignment дают диагностируемый отказ без сброса/переприсвоения. База Kit 1.7.2; менять только новый packages/workflow-kit. Изменение owned-файлов требует новой версии и штатного upgrade с сохранением ACTIVE/DONE/identity. resources/workflow-kit генерируется, .harness/kit меняет installer; массовые обновления реальных проектов запрещены.
 
-## Результаты T001 — сверка до копирования, 13.10.2026
+## Проверенные входы и завершение переноса
 
-HEAD/чистота/identity подтверждены до копирования. Корневой и Kit LICENSE — MIT, Copyright 2026 Oleksandr Oliinyk; устаревшее package.json `UNLICENSED` исправить в T002, сохранив авторство/provenance и отдельные лицензии компонентов.
+Динамические входы сохраняются независимо от статического графа: main → Desktop bootstrap → application и скрытый tests/electron-smoke.mjs; оба preload и HTML окна/архива; staged observer; автономные workspace-setup-worker/project-doctor-worker с отдельным Node/cwd; process.resourcesPath и платформенные payload. Три публичных DOM/composer/experience экспорта и pageScript остаются для Web Pilot Sidebar.
 
-Обязательные динамические входы:
-- main → tests/electron-smoke.mjs: сохранить --smoke и динамический entrypoint после переноса.
-- preload.cjs, archive-preload.cjs, ui/index.html, ui/archive.html: перенос вместе с BrowserWindow/webPreferences/file URL, включая packaged-пути.
-- stage-page-observer.mjs → resources/chatgpt-page-observer-preload.cjs: staging до запуска/проверки, observer включён в пакет.
-- resources/workspace-setup-worker.mjs и project-doctor-worker.mjs: отдельные Node execFile, cwd/ресурсы/standalone-импорты без dev checkout.
-- DOM/composer/experience/pageScript: внешние экспорты Web Pilot Sidebar сохранять независимо от внутреннего графа.
-- process.resourcesPath, platform.mjs, windows-runtime.mjs: packaged payload/scripts проверять отдельно от dev-запуска.
+T007 разделил циклы Kit по журналу транзакций, чистым evidence/schema и вызывающим сценариям Review/actions; T011 проверяет весь граф dependency-cruiser без исключений циклов. Исходник Kit — packages/workflow-kit 1.7.3, копии создаёт installer/staging. Изменение owned-файлов требует новой версии.
 
-Пять групп проверок новой копии T002 и интеграции T011 (T001 их не запускает): npm test → node --test tests/*.test.mjs со staging Kit/observer; npm run smoke → Electron --smoke; npm --prefix packages/workflow-kit run check → check-package и consumer-contract/runtime/carryover/plan-review/parallel-plan/task-handoff/task-assignment/task-integration/parallel-execution/previous-upgrade fixtures; node --test tests/codex-app-server-mcp.test.mjs; npm run check:codex-tools → scripts/check-codex-tools.mjs.
-
-Подтверждённые циклы: transaction → task-integration/task-assignment/validate; task-integration/task-assignment → transaction/validate; validate → task-integration/task-assignment; actions → plan-review/recovery, plan-review → actions, recovery → plan-review. T007 выделяет IO журнала и чистые evidence/schema, связывает review/actions в вызывающем сценарии; без динамического import для маскировки циклов и смены CLI/гарантий. Проверка — существующие fixtures и направленные import-правила.
-
-Адаптировать через platform/identity, проверяя владельца: ~/Library/launchd control.py, PROJECT_WEB_PILOT env/markers, Windows vendor install-state/process.resourcesPath, общий VPS alias/службу/17842. Глобальная замена строк недостаточна. Linux control.py/setup/startupSupported отвергают Linux, tunnel loader формирует darwin-имя: работы T009, не повод копировать службы донора.
+T011 удаляет временные корневые re-export мосты после переключения scripts/tests и динамического restart fixture. Старый Windows lifecycle bridge не поставляется и не используется для захвата служб. Совместимость форматов старых проектов и отказы legacy takeover сохраняются. Доказательства, матрица сценариев и первая ручная проверка — [приёмка T011](../acceptance/migration-0.1.0.md).
 
 ## Платформы, проверки и поставка
 

@@ -6,7 +6,7 @@ import { createHash, X509Certificate } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolveMacSigning } from './sign-mac-bundle.mjs';
-import { sha256File } from '../src/common.mjs';
+import { sha256File } from '../src/execution/files/adapter.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const APP = 'Workflow Pilot.app';

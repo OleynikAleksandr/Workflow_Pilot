@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TunnelClipboard } from '../src/tunnel-clipboard.mjs';
+import { TunnelClipboard } from '../src/control/startup/tunnel-clipboard.mjs';
 const id = 'tunnel_fixture1234567890123456', key = 'sk-fixture-private-1234567890';
 function fixture(options = {}) {
   let text = '', reads = 0; const calls = [], states = [];

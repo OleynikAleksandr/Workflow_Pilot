@@ -8,12 +8,12 @@ import { execFileSync } from 'node:child_process';
 import { install } from '@webpilot/workflow-kit/lib/installer';
 import { createScope } from '@webpilot/workflow-kit/lib/actions';
 import { withSessionPlan } from '@webpilot/workflow-kit/lib/session-plans';
-import { WorkspaceSetup } from '../src/workspace-setup.mjs';
-import { SessionPlans } from '../src/session-plans.mjs';
-import { readWorkspace } from '../src/workspace-session.mjs';
-import { ContextCache } from '../src/context-cache.mjs';
-import { readinessContextKey } from '../src/context-inputs.mjs';
-import { ContextSession } from '../src/context-session.mjs';
+import { WorkspaceSetup } from '../src/control/projects/workspace-setup.mjs';
+import { SessionPlans } from '../src/control/sessions/session-plans.mjs';
+import { readWorkspace } from '../src/control/sessions/workspace-session.mjs';
+import { ContextCache } from '../src/control/context/context-cache.mjs';
+import { readinessContextKey } from '../src/control/context/context-inputs.mjs';
+import { ContextSession } from '../src/control/context/context-session.mjs';
 
 test('production readiness and canonical recovery block insertion after real input mutations', async t => {
   for (const kind of ['document', 'index', 'HEAD', 'plan', 'transaction']) await t.test(kind, async t => {

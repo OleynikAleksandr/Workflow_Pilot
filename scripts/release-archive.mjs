@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify, isDeepStrictEqual } from 'node:util';
-import { sha256File } from '../src/common.mjs';
+import { sha256File } from '../src/execution/files/adapter.mjs';
 const execute=promisify(execFile);
 
 export async function packageInventory(root) {

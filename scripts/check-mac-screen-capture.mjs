@@ -4,7 +4,7 @@ import os from 'node:os';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sha256File } from '../src/common.mjs';
+import { sha256File } from '../src/execution/files/adapter.mjs';
 import { verifyMacSignature, macBootSessionUUID } from './check-mac-signature.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ConversationRecovery } from '../src/conversation-recovery.mjs';
+import { ConversationRecovery } from '../src/control/sessions/conversation-recovery.mjs';
 
 test('restart preserves one-shot reload, manual Stop and rate pause for the same conversation only',async()=>{
   const project={workspace:'/one',sessionId:'one',chatUrl:'https://chatgpt.com/c/conversation-one',attempt:{state:'sent'}};

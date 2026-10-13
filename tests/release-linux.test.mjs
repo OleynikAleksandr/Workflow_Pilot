@@ -8,7 +8,6 @@ import { createPackage } from '@electron/asar';
 import { getRuntimeRoot } from '@webpilot/workflow-kit';
 import { verifyLinuxPackage, requireElfX64 } from '../scripts/verify-linux-package.mjs';
 import { createVerifiedArchive, packageInventory } from '../scripts/release-archive.mjs';
-import { releaseLinux } from '../scripts/release-linux.mjs';
 import { LINUX_ASSETS } from '../src/execution/platform/linux/toolchain.mjs';
 import { RELEASE_MATRIX, sourceSnapshot, verifyPackagedSources, artifactRecord, releaseAssetNames, verifyReleaseDirectory } from '../scripts/release-package.mjs';
 import { publishReleaseSet, buildPlatforms } from '../scripts/release-all.mjs';
@@ -60,7 +59,9 @@ async function packageFixture(t) {
 test('Linux package validates ELF, Kit, HTML/preload/workers/observer and tar bytes/modes without running Linux',async t=>{
   const f=await packageFixture(t),proof=await verifyLinuxPackage(f.folder,f);
   assert.equal(proof.nativeLinuxTested,false);
-  const result=await releaseLinux({...f,directory:path.join(f.root,'out')});
+  const archive=path.join(f.root,'out','Workflow-Pilot-0.1.0-Linux-x64.tar.gz');
+  const archiveProof=await createVerifiedArchive({source:f.folder,archive,format:'tar.gz'});
+  const result=await artifactRecord(archive,{asarSha256:proof.asarSha256,packageFiles:archiveProof.files});
   assert.equal(result.file,'Workflow-Pilot-0.1.0-Linux-x64.tar.gz');
   assert(result.bytes>0);assert.match(result.sha256,/^[a-f0-9]{64}$/);
   const executable=path.join(f.folder,'Workflow Pilot');await fs.chmod(executable,0o644);
@@ -172,7 +173,7 @@ test('GitHub verification checks own origin, all seven digests, tag and immutabl
 });
 test('build tools use own identity and frozen Windows vendor provenance, never legacy state or force-push',async()=>{
   assert.equal(WINDOWS_RUNTIME_URL,'https://github.com/OleynikAleksandr/Project-Web-Pilot/releases/download/v0.6.115/'+WINDOWS_RUNTIME_ARCHIVE);
-  for(const name of ['release-all','release-mac','release-linux','check-installed-release','check-github-release','sign-mac-bundle','prepare-windows-toolchain']) {
+  for(const name of ['release-all','release-mac','check-installed-release','check-github-release','sign-mac-bundle','prepare-windows-toolchain']) {
     const source=await fs.readFile(new URL('../scripts/'+name+'.mjs',import.meta.url),'utf8');
     assert.doesNotMatch(source,/WEB_PILOT_|\.web-pilot-|force-with-lease|releases\/latest|\/Applications\/Project Web Pilot/);
   }

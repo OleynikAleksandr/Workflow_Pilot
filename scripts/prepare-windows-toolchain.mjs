@@ -1,11 +1,11 @@
-import { sha256File } from '../src/common.mjs';
+import { sha256File } from '../src/execution/files/adapter.mjs';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
-import { BUNDLED_NODE_VERSION } from '../src/platform.mjs';
+import { BUNDLED_NODE_VERSION } from '../src/execution/platform/paths.mjs';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
-import { WINDOWS_RUNTIME_ARCHIVE, WINDOWS_RUNTIME_SHA256 } from '../src/windows-runtime.mjs';
+import { WINDOWS_RUNTIME_ARCHIVE, WINDOWS_RUNTIME_SHA256 } from '../src/execution/runtime/windows.mjs';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);

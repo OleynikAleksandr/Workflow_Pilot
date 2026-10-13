@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { ContextCache } from '../src/context-cache.mjs';
-import { readinessContextKey } from '../src/context-inputs.mjs';
+import { ContextCache } from '../src/control/context/context-cache.mjs';
+import { readinessContextKey } from '../src/control/context/context-inputs.mjs';
 
 function packet(workspace, context = 'полный пакет') {
   return { delivery_protocol: 'inline-context-v1', ack_required: false, status: 'ready', completeness: 'COMPLETE',

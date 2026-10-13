@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { LocalMcpClient, validateEndpoint, validateContextPacket } from '../src/mcp-runtime.mjs';
-import { defaultRuntimeFolder } from '../src/platform.mjs';
+import { LocalMcpClient, validateEndpoint } from '../src/execution/runtime/mcp-client.mjs';
+import { validateContextPacket } from '../src/contracts/context.mjs';
+import { defaultRuntimeFolder } from '../src/execution/platform/paths.mjs';
 
 const ready = { mcp: { running: true, owned: true, ready: true },
   tunnel: { running: true, owned: true, ready: true, configured: true }, mcp_url: 'http://127.0.0.1:17842/mcp' };

@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom';
 import { projectDoctorView } from '../src/frontend/desktop/ui/project-doctor.mjs';
 import { workspaceSetupView } from '../src/frontend/desktop/ui/workspace-setup.mjs';
 import { settingsPanelView } from '../src/frontend/desktop/ui/settings-panel.mjs';
-import { ProjectDoctor } from '../src/project-doctor.mjs';
+import { ProjectDoctor } from '../src/control/projects/project-doctor.mjs';
 async function fixture(t, factory=projectDoctorView) {
   const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/desktop/ui/index.html',import.meta.url),'utf8'));
   const before=globalThis.document;globalThis.document=dom.window.document;

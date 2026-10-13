@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sha256File } from '../src/common.mjs';
+import { sha256File } from '../src/execution/files/adapter.mjs';
 import { WINDOWS_RUNTIME_ARCHIVE, WINDOWS_RUNTIME_SHA256 } from '../src/execution/runtime/windows.mjs';
 import { stageWorkflowKit, verifyWorkflowKitRuntime } from './stage-workflow-kit.mjs';
 import { verifyMacSignature } from './check-mac-signature.mjs';

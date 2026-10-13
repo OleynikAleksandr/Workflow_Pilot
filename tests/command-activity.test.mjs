@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {readCommandActivity,acknowledgeUnknownCommand,currentBootIdentity} from '../src/command-activity.mjs';
+import {readCommandActivity,acknowledgeUnknownCommand,currentBootIdentity} from '../src/control/workflow/command-activity.mjs';
 
 async function fixture(t) {
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'command-witness-'));

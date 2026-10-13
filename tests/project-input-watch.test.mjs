@@ -4,9 +4,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { EventEmitter } from 'node:events';
-import { ProjectInputWatch } from '../src/project-input-watch.mjs';
-import { PlanMonitor } from '../src/plan-monitor.mjs';
-import { readWorkspace } from '../src/workspace-session.mjs';
+import { ProjectInputWatch } from '../src/execution/files/project-input-watch.mjs';
+import { PlanMonitor } from '../src/control/workflow/plan-monitor.mjs';
+import { readWorkspace } from '../src/control/sessions/workspace-session.mjs';
 
 const settle = async () => { for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve)); };
 const idle = async monitor => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { summarizeStartupNetwork, StartupNetworkTrace } from '../src/startup-network-trace.mjs';
+import { summarizeStartupNetwork, StartupNetworkTrace } from '../src/execution/browser/startup-network-trace.mjs';
 const constants = { logEventTypes: { URL_REQUEST_START_JOB: 1, BIND: 2, TCP_CONNECT: 3, SSL_CONNECT: 4,
   HTTP_TRANSACTION_SEND_REQUEST_HEADERS: 5, HTTP_TRANSACTION_READ_RESPONSE_HEADERS: 6, HOST_RESOLVER_MANAGER_REQUEST: 7 } };
 const event = (type, id, time, params = {}, phase = 0) => ({ type, source: { id }, time: String(time), params, phase });

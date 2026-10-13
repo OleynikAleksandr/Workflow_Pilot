@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ParallelExecution,finalSourceState} from '../src/parallel-execution.mjs';
-import {ProjectAutoPlan} from '../src/project-auto-plan.mjs';
-import {AutomationSendState} from '../src/automation-send-state.mjs';
+import {ParallelExecution,finalSourceState} from '../src/control/workflow/parallel-execution.mjs';
+import {ProjectAutoPlan} from '../src/control/workflow/project-auto-plan.mjs';
+import {AutomationSendState} from '../src/control/workflow/automation-send-state.mjs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,8 +13,8 @@ import {createAssignment,setupAssignment,assignmentStatus} from '../packages/wor
 import {readPlan} from '../packages/workflow-kit/src/lib/plan.mjs';
 import {integrationStatus,startIntegration} from '../packages/workflow-kit/src/lib/task-integration.mjs';
 import {validate} from '../packages/workflow-kit/src/lib/validate.mjs';
-import {ParallelKit} from '../src/parallel-kit.mjs';
-import {readCommandActivity} from '../src/command-activity.mjs';
+import {ParallelKit} from '../src/control/workflow/parallel-kit.mjs';
+import {readCommandActivity} from '../src/control/workflow/command-activity.mjs';
 
 const {startFixtureWriter}=createRequire(import.meta.url)('./parallel-execution-smoke-fixture.cjs');
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {AutomationSendState} from '../src/automation-send-state.mjs';
+import {AutomationSendState} from '../src/control/workflow/automation-send-state.mjs';
 
 const selected={workspace:'/main',sessionId:'origin',chatUrl:'https://chatgpt.com/c/main',scopeId:'scope'};
 const send=(gate,turnId,perform=async()=>({state:'sent'}))=>gate.send({selected,page:{turnId},

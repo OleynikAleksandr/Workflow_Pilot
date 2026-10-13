@@ -8,7 +8,7 @@ import { install } from '@webpilot/workflow-kit/lib/installer';
 import { VERSION } from '@webpilot/workflow-kit/lib/common';
 import { inspectProject, repairProject } from '../resources/project-doctor/core.mjs';
 import { backupAndWrite, readFile } from '../resources/project-doctor/files.mjs';
-import { WorkspaceSetup } from '../src/workspace-setup.mjs';
+import { WorkspaceSetup } from '../src/control/projects/workspace-setup.mjs';
 import { gitPath } from '@webpilot/workflow-kit/lib/git';
 const env = { ...process.env, GIT_AUTHOR_NAME: 'Doctor Test', GIT_AUTHOR_EMAIL: 'doctor@example.invalid', GIT_COMMITTER_NAME: 'Doctor Test', GIT_COMMITTER_EMAIL: 'doctor@example.invalid' };
 function fixture(t) {

@@ -5,9 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import { WorkspaceSessions, WorkspaceError } from '../src/workspace-session.mjs';
-import { WorkspaceDeletion } from '../src/workspace-deletion.mjs';
-import { purgeProjectStateFiles } from '../src/project-state-cleanup.mjs';
+import { WorkspaceSessions, WorkspaceError } from '../src/control/sessions/workspace-session.mjs';
+import { WorkspaceDeletion } from '../src/control/projects/workspace-deletion.mjs';
+import { purgeProjectStateFiles } from '../src/control/projects/project-state-cleanup.mjs';
 
 async function boundChild(store,a,id) {
   const {createHash}=await import('node:crypto'),git=(cwd,...args)=>execFileSync('git',['-C',cwd,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();

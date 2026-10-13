@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ParallelExecution,executionOrigin,availableTasks } from '../src/parallel-execution.mjs';
-import { startupMessage } from '../src/context-session.mjs';
-import { executorPageState } from '../src/executor-session.mjs';
+import { ParallelExecution,executionOrigin,availableTasks } from '../src/control/workflow/parallel-execution.mjs';
+import { startupMessage } from '../src/control/context/context-session.mjs';
+import { executorPageState } from '../src/control/workflow/executor-session.mjs';
 
 const task=(id,dependencies=[])=>({id,title:id,dependencies,parallel_safe:true,implementation_status:'TODO',commit_status:'PENDING',
   functional_paths:['src/'+id+'.mjs'],documentation_paths:[]});

@@ -22,44 +22,24 @@ Onboarding сохраняет ChatGPT login/регистрацию, компон
 
 Вход, системные подтверждения, UI/VM проверяет пользователь; агент ими не управляет. Fixtures не ставят реальные службы. На каждой ОС проверить Unicode/пробелы, executable bits, регистр, отписки, restart.
 
-## Решения T001 по зависимостям, 13.10.2026
+## Закреплённые зависимости и ограничения
 
-Официальные assets/SHASUMS ниже проверены без запуска Linux-бинарников на Mac. Сборщик проверяет SHA-256 до распаковки, создаёт собственные runtime/lock/manifest; замена отсутствующего asset на latest запрещена.
+T001 (13.10.2026) сверил официальные assets, SHA-256 и лицензии; T009 загрузил шесть Linux-архивов и проверил их digest на Mac без запуска Linux-бинарников. Канонические URL/digest: `src/execution/platform/linux/toolchain.mjs`; Node 24.21.0, Codex 0.162.1, uv 0.9.13, CPython 3.13.9/build 20251120, rg 15.2.0, tunnel-client 0.0.14. Electron 44.5.1 Linux x64: SHA-256 `5bcd217611d6843ececd6c9e9c1fcd1da3ab066c43d8b1a9e4b44689a1fba6f5`. Latest и подмена отсутствующего asset запрещены; изменения версий требуют обоснования. Locks Codex и Python сохранены.
 
-| Компонент Linux x64 | Закреплённая поставка и SHA-256 |
+Windows vendor выше проверен: 86 242 347 байт, SHA совпал, CRC PASS, 34 записи. Извлекаются только четыре vendor ZIP: uv 0.12.12, tunnel-client 0.0.14, rg 15.2.0, MinGit 2.55.0.windows.5. Старые installer/server не запускаются. Официальные notices/source поставляет `stage-vendor-notices.mjs`; лицензии компонентов и происхождение описаны в [THIRD-PARTY](../../resources/THIRD-PARTY.md). Лицензия приложения MIT не заменяет лицензии vendor.
+
+Linux Git — системный Ubuntu noble 2.43.x из подписанного apt, с фактической security revision в runtime manifest; T001 видел 1:2.43.0-1ubuntu7.3. Пользователь устанавливает Git/openssh-client/zenity; приложение не выполняет sudo. X11: mss 10.1.0, python-xlib 0.33 (заменяемый LGPLv2+ модуль с source archive), Pillow 11.3.0; mcp 1.28.1. Прямые и транзитивные Python wheels закреплены в requirements-linux.lock. Политика установки, XDG, systemd/user, отказ root/Wayland и ограничения GetImage — [Linux](../modules/linux.md).
+
+VPS Ubuntu/glibc 2.39 использовался только для чтения доступности зависимостей; Xorg/Xwayland отсутствовали, ничего не устанавливалось. Это не desktop-проверка. Для Electron на VM отдельно проверяются loader/библиотеки GTK/NSS/GBM/ALSA/X11, sandbox и графический сеанс. UTM x64 ещё не создана/не проверена пользователем.
+
+| Наблюдение | Статус и решение |
 | --- | --- |
-| Electron 44.5.1 | [electron-v44.5.1-linux-x64.zip](https://github.com/electron/electron/releases/download/v44.5.1/electron-v44.5.1-linux-x64.zip); `5bcd217611d6843ececd6c9e9c1fcd1da3ab066c43d8b1a9e4b44689a1fba6f5` |
-| Node 24.21.0 | [node-v24.21.0-linux-x64.tar.xz](https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz); `fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6` из официального [SHASUMS256.txt](https://nodejs.org/dist/v24.21.0/SHASUMS256.txt) |
-| Codex App Server 0.162.1 | [codex-x86_64-unknown-linux-musl.tar.gz](https://github.com/openai/codex/releases/download/rust-v0.162.1/codex-x86_64-unknown-linux-musl.tar.gz); `86f268d81b898f3e144c5ecff2ad2fda2c5802e042d6195b72538fe0fa125057`; сохранить donor codex-tools.lock.json и его spec hashes |
-| uv 0.9.13 | [uv-x86_64-unknown-linux-gnu.tar.gz](https://github.com/astral-sh/uv/releases/download/0.9.13/uv-x86_64-unknown-linux-gnu.tar.gz); `c45a44144bf23a2182e143227b4ad0bbe41a2bb7161a637c02e968906af53fd1` |
-| CPython 3.13.9 / build 20251120 | [install_only_stripped, x86_64 GNU](https://github.com/astral-sh/python-build-standalone/releases/download/20251120/cpython-3.13.9%2B20251120-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz); `1bc9a94ab2425fb6ae58e45f69cab61647759b57895649701390822d976fa923` |
-| ripgrep 15.2.0 | [ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz](https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz); `33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c` |
-| tunnel-client v0.0.14 | [tunnel-client-v0.0.14-linux-amd64.zip](https://github.com/openai/tunnel-client/releases/download/v0.0.14/tunnel-client-v0.0.14-linux-amd64.zip); `15bd17e805cad39d412199115bb9e10a978dd35258a114cdf25dd2ae6681c7d3` |
-| Git | Системный Ubuntu noble Git 2.43.x из подписанного apt-репозитория; проверенная версия VPS `1:2.43.0-1ubuntu7.3`. Не создавать собственную статическую сборку и не замораживать security revision. В runtime manifest записывать фактическую версию; installer диагностирует отсутствие Git/openssh-client и предлагает явную установку системных пакетов |
-
-Версии: Electron/Node/Codex прежние, uv как macOS toolchain 0.9.13. Python донор закреплял только до 3.13; Linux patch/build взят из [каталога uv 0.9.13](https://github.com/astral-sh/uv/blob/0.9.13/crates/uv-python/download-metadata.json), URL HTTP 200; обычный x86_64, не v2/v3/v4/free-threaded. rg 15.2.0/tunnel v0.0.14 совпадают с Windows vendor; latest v0.0.16 не использовать. T003/T009 заменяют незакреплённый macOS tunnel latest явной платформенной версией/именем архива.
-
-Windows asset проверен в новом .harness/runtime/t001: 86 242 347 байт, SHA-256 совпал с release digest, CRC PASS. 34 записи, четыре вложенных ZIP (EXE не в корне), байты сверены с vendor/manifest.json: uv 0.12.12, tunnel v0.0.14, rg 15.2.0, MinGit v2.55.0.windows.5. Найдены uv.exe, tunnel-client.exe/cloudflared.exe, rg.exe, cmd/git.exe. Donor installer/server не запускались; извлекать только vendor payload/notices.
-
-Лицензии: donor MIT; bundled LICENSE/NOTICE/Chromium notices Electron, Node, CPython и их компонентов; upstream/third-party notices Codex/tunnel-client; uv MIT/Apache-2.0; rg MIT/Unlicense; Git GPL/лицензии компонентов MinGit (сохранить LICENSE.txt/share/licenses). В Windows uv ZIP лицензий нет: добавить из тега 0.12.12, Linux uv — 0.9.13. T010 проверяет notices/source ссылки/архивы, T012 включает их с payload. Лицензия приложения не покрывает весь vendor.
-
-### Linux X11 и реальные ограничения
-
-Библиотеки: mss 10.1.0 — экран, python-xlib 0.33 — X11-дерево/EWMH/drawable GetImage, Pillow 11.3.0 — кодирование. [Исходник xlib](https://github.com/python-xlib/python-xlib/blob/0.33/Xlib/xobject/drawable.py) реализует query_tree/get_image; старая справка «not implemented» не контракт. Вводом/фокусом не управлять. Window capture читает drawable, не прямоугольник экрана. BadMatch/BadWindow, недоступное/свёрнутое окно, несовместимый формат — явные ошибки; ограничения перекрытых областей фиксировать, полный захват не обещать.
-
-На [PyPI](https://pypi.org/) проверены mcp 1.28.1 (MIT, Python >=3.10), mss 10.1.0 (MIT, >=3.9), xlib 0.33 (LGPLv2+), Pillow 11.3.0 (MIT-CMU, >=3.9): portable wheels первых трёх, cp313 manylinux x86_64 Pillow, без пользовательской компиляции прямых зависимостей. T009 фиксирует транзитивные зависимости/hashes в Linux lock. Xlib — заменяемый модуль с лицензией/source archive. Marker Pillow win32 расширить на Linux; psutil 7.2.2 остаётся Windows, Linux использует штатные process API.
-
-VPS подтвердил Ubuntu glibc 2.39, Git 2.43.0 и apt libx11-6/libxext6/libxcb1/libnss3/libgtk-3-0t64/libgbm1/libasound2t64; полноту зависимостей проверяют loader/startup T009/T012 на desktop VM. Xorg/Xwayland не найдены, ничего не устанавливалось. Capture требует X11/DISPLAY/разрешённый XAUTHORITY; отсутствие доступа и Wayland — unsupported, не пустой успех. User-служба после login получает графическое окружение, GUI runtime не root.
-
-UTM x64 VM ещё не создана/не проверена пользователем. Assets доступны, но Linux не доказан до T009 (setup/control/startup, XDG/services, проверенный native payload, screen/window adapter), T010/T012 (упаковка/notices) и живой проверки.
-
-| Наблюдение | Baseline или регрессия; решение |
-| --- | --- |
-| 0.6.115 повторяет 0.6.112; исправления 0.6.113/0.6.114 отсутствуют | Известная база; не возвращать изменения молча и не считать их отсутствие регрессией |
-| Донор отвергает Linux, формирует darwin tunnel URL, использует ~/Library | Ограничение базы, но незавершённый обязательный scope нового 0.1.0; реализовать в T009 до выпуска |
-| Новый VPS route ещё не выделен, 17842 занят донорским каналом | Ожидаемое setup-required; запрещено считать готовым или захватывать канал; Secure Tunnel остаётся рабочим путём |
-| Не открывается старый проект, теряется recovery/AutoPlan/Review, ломается динамический ресурс | Регрессия; исправить и повторить соответствующую проверку до поставки |
-| Wayland, ARM64 Linux, чистая установка, пользовательская UTM проверка | Вне заявленной платформы либо pending-приёмка; не маркировать PASS по unit fixture |
+| 0.6.115 повторяет 0.6.112 без 0.6.113/114 | Известная база, изменения молча не возвращаются |
+| Донор не поддерживал Linux | Реализация T009, fixtures PASS отдельно от pending native VM |
+| Новый VPS route не выделен, 17842 занят донором | Ожидаемое setup-required, свой Secure Tunnel; донор не захватывается |
+| Потеря старого проекта/recovery/AutoPlan/Review/ресурса | Блокирующая регрессия, исправление до поставки |
+| Wayland / Linux ARM64 | Вне поддержки 0.1.0 |
+| Native Windows/Linux и clean-install | Pending пользовательской приёмки |
 
 ## Проверки и приёмка
 

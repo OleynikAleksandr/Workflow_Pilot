@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { VpsTunnel, WindowsVpsTunnel, VPS_TUNNEL_LABEL, loopbackMcpPort, maskConnectorUrl } from '../src/vps-tunnel.mjs';
+import { VpsTunnel, WindowsVpsTunnel, VPS_TUNNEL_LABEL, loopbackMcpPort, maskConnectorUrl } from '../src/execution/runtime/vps.mjs';
 
 const SECRET = 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-xyz';
 

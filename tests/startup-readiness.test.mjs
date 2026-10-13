@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { StartupReadiness, inspectMacGit, installMacGit } from '../src/startup-readiness.mjs';
+import { StartupReadiness } from '../src/control/startup/readiness.mjs';
+import { inspectMacGit, installMacGit } from '../src/execution/platform/mac-setup.mjs';
 const service = { mcp: { ready: true }, tunnel: { configured: true, ready: true } };
 function fixture(overrides = {}) {
   const calls = [], updates = [];
@@ -64,7 +65,7 @@ test('raw runtime errors never leak commands or secrets into public state', asyn
   assert.doesNotMatch(JSON.stringify(f.flow.snapshot()), /sk-example-value/);
 });
 
-import { offerMacInstallation } from '../src/startup-readiness.mjs';
+import { offerMacInstallation } from '../src/frontend/desktop/mac-installation.mjs';
 test('existing profile and installation cancellation never move the app', async () => {
   let moved = 0, prompted = 0;
   const app = { isInApplicationsFolder: () => false, moveToApplicationsFolder: () => { moved++; return true; } };
@@ -220,7 +221,7 @@ test('automatic credentials stay out of readiness state and success still requir
 
 
 test('failed automatic tunnel retains working MCP, captured ID and a usable next attempt', async t => {
-  const { TunnelClipboard } = await import('../src/tunnel-clipboard.mjs');
+  const { TunnelClipboard } = await import('../src/control/startup/tunnel-clipboard.mjs');
   const { createStartupView } = await import('../src/frontend/desktop/ui/startup.mjs');
   const { JSDOM } = await import('jsdom');
   const fs = await import('node:fs/promises');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PlanMonitor } from '../src/plan-monitor.mjs';
+import { PlanMonitor } from '../src/control/workflow/plan-monitor.mjs';
 const selected = { workspace: '/project', projectId: 'p', sessionId: 's' };
 const info = (revision, s = selected) => ({ workspace: s.workspace, projectId: s.projectId,
   inspectedSessionId: s.sessionId, scopeId: 'plan', planRevision: revision, planView: { completed: revision } });

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AutoPlan, CONTINUE_TEXT, CONTINUE_MESSAGE_BYTES, continueMessage } from '../src/auto-plan.mjs';
-import { readAutoPlanState } from '../src/auto-plan-state.mjs';
+import { AutoPlan, CONTINUE_TEXT, CONTINUE_MESSAGE_BYTES, continueMessage } from '../src/control/workflow/auto-plan.mjs';
+import { readAutoPlanState } from '../src/control/workflow/auto-plan-state.mjs';
 import { ChatGPTComposer } from '../src/chatgpt-composer.mjs';
-import { PlanMonitor } from '../src/plan-monitor.mjs';
+import { PlanMonitor } from '../src/control/workflow/plan-monitor.mjs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -480,7 +480,7 @@ test('checkpoint save failing before Composer permits a later event to retry the
 });
 test('fresh Node processes retain ON/OFF, sent and sending checkpoints, including earlier pauses', () => {
   const owner = JSON.stringify(['/project', 'chat', 'scope', 'https://chatgpt.com/c/abcdefgh']);
-  const moduleUrl = new URL('../src/auto-plan.mjs', import.meta.url).href;
+  const moduleUrl = new URL('../src/control/workflow/auto-plan.mjs', import.meta.url).href;
   const program = [
     'import { AutoPlan } from ' + JSON.stringify(moduleUrl) + ';',
     'const input = JSON.parse(process.argv[1]);',
@@ -628,7 +628,7 @@ test('a next task that changed after the text was prepared is not sent; the next
 });
 
 test('the ledger of answered pauses keeps the newest entries of each conversation', async () => {
-  const { pruneLedger, LEDGER_PER_CONVERSATION } = await import('../src/auto-plan.mjs');
+  const { pruneLedger, LEDGER_PER_CONVERSATION } = await import('../src/control/workflow/auto-plan.mjs');
   const entries = new Map();
   for (let i = 0; i < 50; i++) entries.set(JSON.stringify(['a', 't' + i]), { key: 'a', turnId: 't' + i, status: 'sent' });
   entries.set(JSON.stringify(['b', 'only']), { key: 'b', turnId: 'only', status: 'sent' });
@@ -644,7 +644,7 @@ test('A03/A06: executor-style and Review disables are programmatic, not MANUAL_O
  const f=fixture({busy:true});await f.flow.start();
  f.flow.disable();assert.equal(f.flow.view().reason,'AUTHORIZATION_OFF');
  await f.flow.start();f.flow.disable({manual:true});assert.equal(f.flow.view().reason,'MANUAL_OFF');
- const {ReviewContinuation}=await import('../src/review-continuation.mjs');
+ const {ReviewContinuation}=await import('../src/control/workflow/review-continuation.mjs');
  const selected={workspace:'/review',sessionId:'chat',chatUrl:'https://chatgpt.com/c/chat'};
  const client={workspace:'/review',state:{enabled:true,stage:'PREPARED',run_id:'run',recipient_session_id:'chat',generation:1},refresh(){}};
  const review=new ReviewContinuation({selected:()=>selected,client,available:()=>false,saveCheckpoint:async()=>{}});

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PlanReviewClient } from '../src/plan-review.mjs';
-import { AutomationSendState } from '../src/automation-send-state.mjs';
-import { ReviewContinuation } from '../src/review-continuation.mjs';
+import { PlanReviewClient } from '../src/control/workflow/plan-review.mjs';
+import { AutomationSendState } from '../src/control/workflow/automation-send-state.mjs';
+import { ReviewContinuation } from '../src/control/workflow/review-continuation.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import { once, EventEmitter } from 'node:events';
 import { install } from '@webpilot/workflow-kit/lib/installer';
 import { setReviewEnabled, readReview } from '@webpilot/workflow-kit/lib/plan-review';
 import { runReview, REVIEW_MODEL } from '@webpilot/workflow-kit/lib/claude-review';
-import { startupMessage } from '../src/context-session.mjs';
+import { startupMessage } from '../src/control/context/context-session.mjs';
 
 test('startup ID through normal prepare and simulated Claude round routes pauses and restart only to its recipient',async t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'review-routing-'));
@@ -216,7 +216,7 @@ test('Review continuation at NONE targets its recipient, asks once and respects 
 });
 
 test('AutoPlan waits for confirmed reviewed publication, OFF and unrelated active plans remain ordinary',async()=>{
-  const {reviewBlocksExecution}=await import('../src/auto-plan-state.mjs');
+  const {reviewBlocksExecution}=await import('../src/control/workflow/auto-plan-state.mjs');
   for(const enabled of [false,true])for(const stage of ['PUBLISHING','PUBLISHED','NEEDS_USER']){
     const s={enabled,stage,scope_id:'new'};
     assert.equal(!!reviewBlocksExecution(s,'new'),enabled && stage!=='PUBLISHED');

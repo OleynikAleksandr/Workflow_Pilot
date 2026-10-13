@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ProjectAutoPlan } from '../src/project-auto-plan.mjs';
+import { ProjectAutoPlan } from '../src/control/workflow/project-auto-plan.mjs';
 
 test('project permission is OFF by default and never migrates legacy global ON',()=>{
  const a=new ProjectAutoPlan({saved:{autoPlanEnabled:true,autoPlanCheckpoint:{}}});
@@ -31,7 +31,7 @@ test('restart preserves only the same unfinished scope and independent per-chat 
 });
 
 test('two main chats continue independently while hidden; completion and OFF affect only their project',async t=>{
- const {configureProjectAutoPlan}=await import('../src/project-session-auto-plan.mjs');
+ const {configureProjectAutoPlan}=await import('../src/control/workflow/project-session-auto-plan.mjs');
  const fs=await import('node:fs/promises'),os=await import('node:os'),path=await import('node:path');
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'project-auto-flows-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
  const auth=new ProjectAutoPlan(),projects=new Map(),plans=new Map(),records=[],sends=[];
@@ -148,7 +148,7 @@ test('A04/A05: a new archived-plan epoch may restart revision numbers without re
 });
 
 test('A01/A02/A04/A06: two main monitors in one project send only from plan origin despite stale/error, then OFF',async t=>{
- const {configureProjectAutoPlan}=await import('../src/project-session-auto-plan.mjs');
+ const {configureProjectAutoPlan}=await import('../src/control/workflow/project-session-auto-plan.mjs');
  const fs=await import('node:fs/promises'),os=await import('node:os'),path=await import('node:path');
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'two-main-autoplan-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
  const records=[],sends=[];let failA=false,staleA=false,review=false;

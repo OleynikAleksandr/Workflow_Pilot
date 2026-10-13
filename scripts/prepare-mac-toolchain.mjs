@@ -1,7 +1,7 @@
-import { sha256File } from '../src/common.mjs';
+import { sha256File } from '../src/execution/files/adapter.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { BUNDLED_NODE_VERSION } from '../src/platform.mjs';
+import { BUNDLED_NODE_VERSION } from '../src/execution/platform/paths.mjs';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

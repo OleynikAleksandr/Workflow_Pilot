@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ParallelExecution } from '../src/parallel-execution.mjs';
-import { ParallelKit,projectVerifiedPlan } from '../src/parallel-kit.mjs';
+import { ParallelExecution } from '../src/control/workflow/parallel-execution.mjs';
+import { ParallelKit,projectVerifiedPlan } from '../src/control/workflow/parallel-kit.mjs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {emptyPlan,renderPlan} from '@webpilot/workflow-kit/lib/plan';
-import {ChildCommandWatches} from '../src/project-input-watch.mjs';
-import {readCommandActivity} from '../src/command-activity.mjs';
+import {ChildCommandWatches} from '../src/execution/files/project-input-watch.mjs';
+import {readCommandActivity} from '../src/control/workflow/command-activity.mjs';
 
 test('a staged integration candidate never projects DONE before its Git commit is proven',()=>{
   const plan={tasks:[{id:'A',commit_status:'DONE',implementation_status:'DONE'},{id:'B',commit_status:'DONE',implementation_status:'DONE'}]};

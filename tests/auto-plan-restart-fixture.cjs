@@ -10,8 +10,8 @@ app.setPath('userData', profile);
 const deadline = setTimeout(() => { console.error('AutoPlan restart fixture timed out', mode); app.exit(1); }, 15000);
 app.whenReady().then(async () => {
   const root = path.resolve(__dirname, '..');
-  const { AutoPlan } = await import(pathToFileURL(path.join(root, 'src/auto-plan.mjs')));
-  const { readAutoPlanState } = await import(pathToFileURL(path.join(root, 'src/auto-plan-state.mjs')));
+  const { AutoPlan } = await import(pathToFileURL(path.join(root, 'src/control/workflow/auto-plan.mjs')));
+  const { readAutoPlanState } = await import(pathToFileURL(path.join(root, 'src/control/workflow/auto-plan-state.mjs')));
   const { PageStateSource } = await import(pathToFileURL(path.join(root, 'src/execution/browser/page-state.mjs')));
   const { connectPageState } = await import(pathToFileURL(path.join(root, 'src/execution/browser/page-state-bridge.mjs')));
   const { ChatGPTComposer } = await import(pathToFileURL(path.join(root, 'src/execution/browser/chatgpt-composer.mjs')));

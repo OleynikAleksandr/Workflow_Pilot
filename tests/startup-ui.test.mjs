@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
-import { TunnelClipboard } from '../src/tunnel-clipboard.mjs';
-import { StartupReadiness } from '../src/startup-readiness.mjs';
+import { TunnelClipboard } from '../src/control/startup/tunnel-clipboard.mjs';
+import { StartupReadiness } from '../src/control/startup/readiness.mjs';
 import { createStartupView } from '../src/frontend/desktop/ui/startup.mjs';
 async function fixture(t, startup = {}) {
   const html = await fs.readFile(new URL('../src/frontend/desktop/ui/index.html', import.meta.url), 'utf8');
