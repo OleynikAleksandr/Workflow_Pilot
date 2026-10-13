@@ -8,6 +8,7 @@ import { createPackage } from '@electron/asar';
 import { getRuntimeRoot } from '@webpilot/workflow-kit';
 import { verifyLinuxPackage, requireElfX64 } from '../scripts/verify-linux-package.mjs';
 import { createVerifiedArchive, packageInventory } from '../scripts/release-archive.mjs';
+import { copyLinuxToolchain } from '../scripts/copy-linux-toolchain.mjs';
 import { LINUX_ASSETS } from '../src/execution/platform/linux/toolchain.mjs';
 import { RELEASE_MATRIX, sourceSnapshot, verifyPackagedSources, artifactRecord, releaseAssetNames, verifyReleaseDirectory } from '../scripts/release-package.mjs';
 import { publishReleaseSet, buildPlatforms } from '../scripts/release-all.mjs';
@@ -85,6 +86,26 @@ test('all three layouts reject missing observer/worker, stale Kit and external r
   }
   await write(f.input,'src/.env','TOKEN=secret');await createPackage(f.input,path.join(f.resources,'app.asar'));
   await assert.rejects(verifyPackagedSources(f),/Runtime or secret|fileset mismatch/);
+});
+test('Linux toolchain preserves relocatable links instead of fs.cp absolute source links',async t=>{
+  const root=await temporary(t),source=path.join(root,'.harness/runtime/linux-tools');
+  const resources=path.join(root,'.harness/runtime/build/Workflow Pilot-linux-x64/resources');
+  await write(source,'python/bin/python3.13','fixture',0o755);
+  await fs.symlink('python3.13',path.join(source,'python/bin/python3'));
+  await fs.mkdir(resources,{recursive:true});
+  const broken=path.join(resources,'linux-tools');
+  await fs.cp(source,broken,{recursive:true});
+  await assert.rejects(packageInventory(broken),/escapes/);
+  const expected=await packageInventory(source);
+  const result=await copyLinuxToolchain({root});
+  assert.deepEqual(await packageInventory(result.destination),expected);
+  assert.equal(await fs.readlink(path.join(result.destination,'python/bin/python3')),'python3.13');
+  await fs.rm(source,{recursive:true});
+  assert.equal(await fs.readFile(path.join(result.destination,'python/bin/python3'),'utf8'),'fixture');
+  await createVerifiedArchive({source:result.destination,archive:path.join(root,'relocated.tar.gz'),format:'tar.gz'});
+  await write(source,'tool','fixture');await fs.symlink('/etc/hosts',path.join(source,'foreign'));
+  await assert.rejects(copyLinuxToolchain({root}),/escapes/);
+  assert.deepEqual(await packageInventory(result.destination),expected);
 });
 test('archive copying preserves executable bits and internal links; escaping links are refused',async t=>{
   const root=await temporary(t),source=path.join(root,'Пакет с пробелами');

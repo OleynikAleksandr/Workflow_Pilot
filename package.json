@@ -23,7 +23,7 @@
     "prebuild:linux": "npm run stage:workflow-kit && npm run stage:page-observer && npm run stage:vendor-notices",
     "build:linux": "npm run prepare:linux && npm run build:linux:package && npm run verify:linux",
     "prepare:linux": "node scripts/prepare-linux-toolchain.mjs",
-    "build:linux:package": "electron-packager . \"Workflow Pilot\" --platform=linux --arch=x64 --out=.harness/runtime/build --overwrite --asar --extra-resource=resources --extra-resource=tools/codex-app-server-mcp --extra-resource=.harness/runtime/linux-tools --ignore=\"^/(?!(src|node_modules)(/|$)|(package\\.json|LICENSE)$)\"",
+    "build:linux:package": "electron-packager . \"Workflow Pilot\" --platform=linux --arch=x64 --out=.harness/runtime/build --overwrite --asar --extra-resource=resources --extra-resource=tools/codex-app-server-mcp --ignore=\"^/(?!(src|node_modules)(/|$)|(package\\.json|LICENSE)$)\" && node scripts/copy-linux-toolchain.mjs",
     "verify:linux": "node scripts/verify-linux-package.mjs",
     "prebuild:win": "npm run stage:workflow-kit && npm run stage:page-observer && npm run stage:vendor-notices",
     "build:win": "npm run prepare:win && npm run build:win:package && npm run verify:win",
