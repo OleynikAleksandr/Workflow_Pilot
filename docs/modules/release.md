@@ -1,6 +1,6 @@
 # Единая поставка Workflow Pilot
 
-Инструменты общей поставки реализованы и проверены в T011. Первый production-цикл обнаружил преобразование относительных ссылок Linux toolchain в ссылки на build-host; проверка остановила выпуск. Исправление T012 проверено 24 тестами release-tooling. Общий выпуск выполняет T012-RELEASE после повторной DOCS из новой базы. Установка и push выполняются отдельно; живая приёмка macOS, Windows и Ubuntu остаётся за пользователем.
+Инструменты общей поставки реализованы и проверены в T011. Production-проверки обнаружили преобразование ссылок Linux toolchain в пути build-host и ошибочный отказ на штатных ресурсах Electron macOS; неполный выпуск не доставлялся. Оба исправления проверены 25 тестами release-tooling и диагностикой подготовленных пакетов всех трёх ОС. Общий выпуск выполняет T012-BUILD после повторной DOCS из новой базы. Установка и push выполняются отдельно; живая приёмка macOS, Windows и Ubuntu остаётся за пользователем.
 
 ## Матрица и состав
 
@@ -34,11 +34,13 @@ URL vendor: https://github.com/OleynikAleksandr/Project-Web-Pilot/releases/downl
 
 Linux toolchain копирует `scripts/copy-linux-toolchain.mjs` после Electron Packager, до проверки пакета. Штатный `extraResource` Packager 20.3 использует `fs.cp` без `verbatimSymlinks` и превращает относительные ссылки в абсолютные пути источника. Отдельный шаг сохраняет текст ссылок, проверяет SHA-256/права/состав до и после копирования и отклоняет выходящие за пакет ссылки. Fixture проверяет работу ссылки после удаления исходной папки и распаковку tar.gz; удаление проверок ссылок не допускается.
 
+Штатные macOS `*.lproj` и `electron.icns` разрешены только при совпадении с ресурсами закреплённого `node_modules/electron/dist/Electron.app`: проверяются имена, типы и содержимое. Пропавшие, повреждённые и дополнительные локализации отклоняются. Upstream `default_app.asar` в готовое приложение не включается. Общая проверка используется и при последующей установке готового комплекта.
+
 ## Manifest
 
 Manifest schemaVersion 2 содержит version/sourceCommit, source snapshot, locks, Electron/Node/Kit, macOS signature, три платформы OS/arch, размеры/SHA-256 архивов, vendor-архив и записи INSTALL/SHA256SUMS. Native/VM/clean-install флаги остаются false до фактической отдельной приёмки; fixture не повышает их.
 
-T012-RELEASE создаёт корневой tracked `release-manifest.json` побайтовым копированием manifest комплекта. Он исключён из source snapshot и собственного хеша, чтобы не возникало циклического digest. SHA256SUMS перечисляет три пакета и vendor; manifest содержит hashes SHA256SUMS и INSTALL. Digest самого manifest сверяют между staging, Downloads, корнем и GitHub asset.
+T012-BUILD создаёт корневой tracked `release-manifest.json` побайтовым копированием manifest комплекта. Он исключён из source snapshot и собственного хеша, чтобы не возникало циклического digest. SHA256SUMS перечисляет три пакета и vendor; manifest содержит hashes SHA256SUMS и INSTALL. Digest самого manifest сверяют между staging, Downloads, корнем и GitHub asset.
 
 T013/T014 не изменяют manifest. Проверки выводят отдельное evidence для Kit; поздняя установка/публикация/живая приёмка не переписывает исторический состав выпуска.
 
