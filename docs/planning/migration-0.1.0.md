@@ -91,6 +91,29 @@ VPS пользователя: проверено через SSH 13.10.2026 — U
 
 Kit переносится из 1.7.2. Изменения только в новом packages/workflow-kit. При изменении его поставляемых owned-файлов повышать собственную версию и проверять штатное обновление с базовой 1.7.2 с сохранением ACTIVE/DONE и identity проекта; не оставлять разные owned-файлы под одной версией. resources/workflow-kit генерируется, .harness/kit обновляет installer. Никакого массового обновления реальных пользовательских проектов при переносе.
 
+## Результаты T001 — сверка до копирования, 13.10.2026
+
+Подтверждены точный HEAD донора и чистое рабочее дерево; исходники пока не копировались. Корневой LICENSE и packages/workflow-kit/LICENSE: MIT, Copyright 2026 Oleksandr Oliinyk. Корневое package.json донора содержит устаревшее `license: UNLICENSED`; в T002 привести метаданные нового продукта к фактическому MIT LICENSE, сохранить авторство и provenance repo/path/commit. Это не меняет лицензии внешних компонентов. Локальная Git identity повторно проверена: Oleksandr Oliinyk, 31826606+OleynikAleksandr@users.noreply.github.com.
+
+Карта выше дополнена обязательными входами, которые статический граф не доказывает лишними:
+
+| Вход донора | Условие сохранения при переносе |
+| --- | --- |
+| src/main.mjs → динамический tests/electron-smoke.mjs | Сохранить режим --smoke и загрузку тестового entrypoint после перемещения bootstrap |
+| src/preload.cjs, src/archive-preload.cjs, ui/index.html, ui/archive.html | Обновлять BrowserWindow/webPreferences и file URL вместе с файлами; проверять packaged-пути |
+| scripts/stage-page-observer.mjs → resources/chatgpt-page-observer-preload.cjs | Генерируемый observer включается в пакет; staging предшествует запуску/проверке |
+| resources/workspace-setup-worker.mjs, resources/project-doctor-worker.mjs | Отдельные Node-процессы через execFile; cwd, ресурсы и standalone-импорты не зависят от dev checkout |
+| chatgpt-dom/composer/experience, pageScript | Внешний Web Pilot Sidebar использует экспорты; сохранять имена/контракт, не удалять по отсутствию внутренних импортов |
+| process.resourcesPath, platform.mjs, windows-runtime.mjs | Packaged payload и пути scripts проверяются отдельно от исходного запуска |
+
+Реальные entrypoints базы: `npm test` → `node --test tests/*.test.mjs` (со staging Kit/observer); `npm run smoke` → Electron --smoke и tests/electron-smoke.mjs; `npm --prefix packages/workflow-kit run check` → пакетный scripts/check-package.mjs и consumer-contract/runtime/carryover/plan-review/parallel-plan/task-handoff/task-assignment/task-integration/parallel-execution/previous-upgrade fixtures. Executor-channel: `node --test tests/codex-app-server-mcp.test.mjs`; codex-tools-live: `npm run check:codex-tools` → scripts/check-codex-tools.mjs. T001 suite не запускает; все пять групп обязательны в новой копии T002 и на интеграции T011.
+
+Циклы подтверждены прямыми импортами: transaction → task-integration/task-assignment/validate; task-integration и task-assignment → transaction/validate; validate → task-integration/task-assignment. Второй узел: actions → plan-review/recovery, plan-review → actions, recovery → plan-review. Решение T007: выделить низкоуровневое чтение/запись журнала и чистую проверку evidence/schema без импорта orchestration-модулей; вынести связывание review и actions на уровень вызывающего сценария. Не заменять цикл динамическим import и не менять CLI/транзакционные гарантии. Точную декомпозицию проверяют существующие fixtures и направленные import-проверки.
+
+Старые runtime-пути не являются требованиями нового продукта: ~/Library и launchd в control.py, донорские PROJECT_WEB_PILOT-переменные/markers, Windows vendor install-state и process.resourcesPath, общий VPS alias/служба/17842. Их адаптация идёт через platform/identity, а не глобальную замену строк без проверки владельца. Linux control.py/setup и startupSupported пока отвергают Linux; загрузчик tunnel-client формирует darwin-имя. Это конкретные работы T009, не основание копировать рабочие службы донора.
+
+Подтверждение пользователя распространяется на самостоятельные решения в этом плане до первого GitHub Release; вопросы для следующего этапа сохраняются, но не блокируют перенос. Оно не расширяет scope до смены серверной конфигурации или новой оркестрации. Документ следующего этапа проверен: отдельный агент/чат для каждой микрозадачи остаётся будущим требованием.
+
 ## Платформы, проверки и поставка
 
 Обязательная вторая часть спецификации — [migration-platforms.md](migration-platforms.md): Linux-матрица, первый запуск, приёмка и единый выпуск. Она входит в тот же scope и required context pack.

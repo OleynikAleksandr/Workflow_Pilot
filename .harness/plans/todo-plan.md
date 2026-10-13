@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 5,
+  "plan_revision": 7,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -263,13 +263,17 @@
         "До копирования подтверждены конкретный Windows vendor asset v0.6.115 и SHA-256 из платформенной спецификации; архив войдёт отдельным asset 0.1.0. Локальная Git identity проверена по принятому донорскому авторству, новые placeholder-коммиты запрещены."
       ],
       "expected_commit_message": "docs: Закрепить карту переноса и платформенные зависимости",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T001",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "docs/planning/migration-0.1.0.md",
+        "docs/planning/migration-platforms.md"
+      ]
     },
     {
       "id": "T002",
@@ -1136,7 +1140,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 5
+Revision: 7
 
 ## Цель
 
@@ -1155,8 +1159,8 @@ Revision: 5
 Выполнение: sequential; разрешено: true; лимит: 4
 Причина: Перенос затрагивает общие main, stores, фасады и Kit; зависимости и пересечения записи требуют последовательного переключения потребителей. Будущая схема отдельного агента на каждую задачу относится к продукту следующего этапа и не меняет стратегию текущего переноса.
 
-- [TODO] T001: Закрепить карту переноса и платформенные зависимости — Ожидает
-  - Git Commit: [PENDING] docs: Закрепить карту переноса и платформенные зависимости
+- [DONE] T001: Закрепить карту переноса и платформенные зависимости — Завершено
+  - Git Commit: [DONE] docs: Закрепить карту переноса и платформенные зависимости
   - Reference: workflow-pilot-migration-0.1.0 / T001 / implementation
   - Файлы: docs/planning/migration-0.1.0.md, docs/planning/migration-platforms.md, docs/planning/orchestrated-execution-next.md
   - Параллельность: исключительное выполнение
