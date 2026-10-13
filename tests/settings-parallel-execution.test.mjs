@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
-import { settingsPanelView } from '../src/ui/settings-panel.mjs';
+import { settingsPanelView } from '../src/frontend/desktop/ui/settings-panel.mjs';
 import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from '../src/parallel-settings.mjs';
 import { startupMessage } from '../src/context-session.mjs';
 
@@ -19,7 +19,7 @@ test('execution settings reject malformed limits and return an independent snaps
 });
 
 test('real settings controls hide the limit when OFF, save valid values and explain invalid input', async t => {
-  const dom = new JSDOM(await fs.readFile(new URL('../src/ui/index.html',import.meta.url),'utf8'));
+  const dom = new JSDOM(await fs.readFile(new URL('../src/frontend/desktop/ui/index.html',import.meta.url),'utf8'));
   const before = globalThis.document; globalThis.document = dom.window.document;
   t.after(()=>{globalThis.document=before;dom.window.close();});
   const $ = id=>dom.window.document.getElementById(id), calls=[];
@@ -55,7 +55,7 @@ test('real settings controls hide the limit when OFF, save valid values and expl
 });
 
 test('recovery settings expose exact executor action, keep cloud-chat warning and respect pending state',async t=>{
-  const dom=new JSDOM(await fs.readFile(new URL('../src/ui/index.html',import.meta.url),'utf8'));
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/desktop/ui/index.html',import.meta.url),'utf8'));
   const previous=globalThis.document;globalThis.document=dom.window.document;
   t.after(()=>{globalThis.document=previous;dom.window.close();});
   const calls=[],view=settingsPanelView((...args)=>calls.push(args));

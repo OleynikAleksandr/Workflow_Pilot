@@ -221,10 +221,10 @@ test('automatic credentials stay out of readiness state and success still requir
 
 test('failed automatic tunnel retains working MCP, captured ID and a usable next attempt', async t => {
   const { TunnelClipboard } = await import('../src/tunnel-clipboard.mjs');
-  const { createStartupView } = await import('../src/ui/startup.mjs');
+  const { createStartupView } = await import('../src/frontend/desktop/ui/startup.mjs');
   const { JSDOM } = await import('jsdom');
   const fs = await import('node:fs/promises');
-  const dom = new JSDOM(await fs.readFile(new URL('../src/ui/index.html', import.meta.url), 'utf8'));
+  const dom = new JSDOM(await fs.readFile(new URL('../src/frontend/desktop/ui/index.html', import.meta.url), 'utf8'));
   t.after(() => dom.window.close());
   let copied = '', succeed = false;
   const f = new StartupReadiness({ probeNode: async () => {}, probeGit: async () => true,

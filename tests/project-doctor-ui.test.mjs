@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
-import { projectDoctorView } from '../src/ui/project-doctor.mjs';
-import { workspaceSetupView } from '../src/ui/workspace-setup.mjs';
-import { settingsPanelView } from '../src/ui/settings-panel.mjs';
+import { projectDoctorView } from '../src/frontend/desktop/ui/project-doctor.mjs';
+import { workspaceSetupView } from '../src/frontend/desktop/ui/workspace-setup.mjs';
+import { settingsPanelView } from '../src/frontend/desktop/ui/settings-panel.mjs';
 import { ProjectDoctor } from '../src/project-doctor.mjs';
 async function fixture(t, factory=projectDoctorView) {
-  const dom=new JSDOM(await fs.readFile(new URL('../src/ui/index.html',import.meta.url),'utf8'));
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/desktop/ui/index.html',import.meta.url),'utf8'));
   const before=globalThis.document;globalThis.document=dom.window.document;
   t.after(()=>{globalThis.document=before;dom.window.close();});
   const calls=[], view=factory((...args)=>calls.push(args));

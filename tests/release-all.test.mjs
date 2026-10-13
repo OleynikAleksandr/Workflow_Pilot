@@ -97,7 +97,7 @@ test('packager ignore of both platforms lets through only the application roots'
     assert.ok(match, name + ' has --ignore');
     // npm hands the script to sh, where "\\." inside double quotes becomes "\.".
     const ignore = new RegExp(match[1].replaceAll('\\\\', '\\'));
-    for (const kept of ['', '/src', '/src/main.mjs', '/src/ui/index.html', '/node_modules', '/node_modules/@webpilot/workflow-kit/cli.mjs', '/package.json', '/LICENSE'])
+    for (const kept of ['', '/src', '/src/main.mjs', '/src/frontend/desktop/ui/index.html', '/node_modules', '/node_modules/@webpilot/workflow-kit/cli.mjs', '/package.json', '/LICENSE'])
       assert.equal(ignore.test(kept), false, name + ' keeps ' + kept);
     for (const dropped of ['/Claude outputs', '/Claude outputs/draft.mp4', '/docs', '/tests/a.test.mjs', '/.harness/runtime', '/.git', '/.codex/hooks.json',
       '/Workflow Pilot.app', '/resources', '/tools/codex-app-server-mcp/server.py', '/scripts', '/AGENTS.md', '/README.md', '/package-lock.json',

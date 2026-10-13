@@ -1,7 +1,7 @@
 import { createProgress, operationLabel } from './progress.mjs';
 import { settingsPanelView } from './settings-panel.mjs';
 import { workspaceSetupView } from './workspace-setup.mjs';
-import { executionFinalStages } from '../execution-projection.mjs';
+import { executionFinalStages } from '../../../contracts/workflow-view.mjs';
 const $ = id => document.getElementById(id);
 const api = window.webPilot;
 let lastProjects = '';
@@ -563,5 +563,6 @@ $('new-context-session').addEventListener('click', () => {
   if(selected&&!selected.assignmentId)action('newSession',selected.workspace,selected.experience??'chat');
 });
 $('return-chat').addEventListener('click', () => action('returnToChat'));
-api.onState(render);
+const releaseState = api.onState(render);
+window.addEventListener('pagehide', () => releaseState?.(), { once: true });
 api.getState().then(render).catch(error => { $('error-banner').hidden = false; $('error-banner').textContent = error.message; });

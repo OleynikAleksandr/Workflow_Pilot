@@ -1,9 +1,9 @@
 import { projectDoctorView } from './project-doctor.mjs';
-import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from '../parallel-settings.mjs';
+import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from '../../../contracts/parallel-settings.mjs';
 
 function vpsLine(vps) {
   if (!vps) return 'Состояние VPS ещё не проверено.';
-  if (!vps.configured) return 'Свой сервер не настроен.';
+  if (!vps.configured) return 'Свой VPS не настроен. Требуется собственный маршрут; пока используйте Secure MCP Tunnel.';
   if (vps.conflict) return 'В ~/.ssh/config у workflow-pilot-vps остался RemoteForward — обновите настройку сервера.';
   if (vps.error) return 'Туннель VPS: ' + vps.error;
   if (vps.ready) return `Туннель VPS работает: сервер → MCP на порту ${vps.mcpPort}.`;

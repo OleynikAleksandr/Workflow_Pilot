@@ -52,8 +52,8 @@ test('plan rows separate identity, planned mode and current status, including fi
 
 
 async function fixture(t) {
-  const html = await fs.readFile(new URL('../src/ui/index.html', import.meta.url), 'utf8');
-  const source = await fs.readFile(new URL('../src/ui/sidebar.mjs', import.meta.url), 'utf8');
+  const html = await fs.readFile(new URL('../src/frontend/desktop/ui/index.html', import.meta.url), 'utf8');
+  const source = await fs.readFile(new URL('../src/frontend/desktop/ui/sidebar.mjs', import.meta.url), 'utf8');
   const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true, url: 'https://fixture.invalid/' });
   t.after(async () => { await new Promise(resolve => setTimeout(resolve, 0)); dom.window.close(); });
   const { window } = dom, document = window.document, calls = [];

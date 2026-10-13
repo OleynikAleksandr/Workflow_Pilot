@@ -4,9 +4,9 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { TunnelClipboard } from '../src/tunnel-clipboard.mjs';
 import { StartupReadiness } from '../src/startup-readiness.mjs';
-import { createStartupView } from '../src/ui/startup.mjs';
+import { createStartupView } from '../src/frontend/desktop/ui/startup.mjs';
 async function fixture(t, startup = {}) {
-  const html = await fs.readFile(new URL('../src/ui/index.html', import.meta.url), 'utf8');
+  const html = await fs.readFile(new URL('../src/frontend/desktop/ui/index.html', import.meta.url), 'utf8');
   const dom = new JSDOM(html, { url: 'https://fixture.invalid/' });
   t.after(() => dom.window.close());
   const document = dom.window.document, calls = [];

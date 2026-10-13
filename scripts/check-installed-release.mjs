@@ -138,7 +138,7 @@ try {
   for (const file of ['page-state.mjs','page-state-bridge.mjs','chatgpt-dom.mjs','chatgpt-composer.mjs'])
     await fs.writeFile(path.join(temporary, file), extractFile(path.join(targets[0], 'app.asar'), 'src/execution/browser/' + file));
   await fs.writeFile(path.join(temporary, 'auto-plan.mjs'), extractFile(path.join(targets[0], 'app.asar'), 'src/auto-plan.mjs'));
-  await fs.writeFile(path.join(temporary, 'progress.mjs'), extractFile(path.join(targets[0], 'app.asar'), 'src/ui/progress.mjs'));
+  await fs.writeFile(path.join(temporary, 'progress.mjs'), extractFile(path.join(targets[0], 'app.asar'), 'src/frontend/desktop/ui/progress.mjs'));
   const installedAuto = await import(pathToFileURL(path.join(temporary, 'auto-plan.mjs')).href);
   assert.equal(installedAuto.CONTINUE_TEXT, 'Продолжай');
   assert.equal(Object.hasOwn(installedAuto, 'AUTO_PLAN_INSTRUCTION'), false);

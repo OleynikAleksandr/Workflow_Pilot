@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { operationLabel, createProgress } from '../src/ui/progress.mjs';
+import { operationLabel, createProgress } from '../src/frontend/desktop/ui/progress.mjs';
 test('operations show stages; idle, errors and user input waits never spin',()=>{
   for(const phase of ['preparing','loading-context','preparing-message','sending']) {
     assert.ok(operationLabel({context:{phase}}));

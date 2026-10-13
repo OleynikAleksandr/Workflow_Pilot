@@ -62,5 +62,6 @@ document.getElementById('reset-all').addEventListener('click', async () => {
 });
 document.getElementById('close').addEventListener('click', async () => { await pending; await api.close(); });
 document.addEventListener('keydown', async event => { if (event.key === 'Escape') { await pending; await api.close(); } });
-api.onState(render);
+const releaseState = api.onState(render);
+window.addEventListener('pagehide', () => releaseState?.(), { once: true });
 api.getState().then(result => { if (result.ok) render(result.state); else notice(result.error.message, true); }).catch(error => notice(error.message, true));

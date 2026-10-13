@@ -122,4 +122,6 @@ $('delete-sessions').addEventListener('click', () => { confirmSessionDelete = se
 $('cancel-session-delete').addEventListener('click', () => { confirmSessionDelete = false; render(); });
 $('confirm-session-delete').addEventListener('click', async () => { if (await action('deleteSessions', sessionItems())) { selectedSessions.clear(); sessionAnchor = null; confirmSessionDelete = false; render(); } });
 $('close').addEventListener('click', () => api.close());
-api.onState(render); api.getState().then(render).catch(error => { state = { archives: [], sessionArchives: [], notice: error.message }; render(); });
+const releaseState = api.onState(render);
+window.addEventListener('pagehide', () => releaseState?.(), { once: true });
+api.getState().then(render).catch(error => { state = { archives: [], sessionArchives: [], notice: error.message }; render(); });

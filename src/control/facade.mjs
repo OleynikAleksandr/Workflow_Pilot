@@ -5,6 +5,12 @@ import { SessionPlans } from './sessions/session-plans.mjs';
 import { SessionRuntimes } from './sessions/service.mjs';
 import { ContextService } from './context/service.mjs';
 import { createWorkflowCoordination } from './workflow/coordination.mjs';
+import { StartupReadiness } from './startup/readiness.mjs';
+import { TunnelClipboard } from './startup/tunnel-clipboard.mjs';
+import { createProjectLifecycle } from './projects/lifecycle.mjs';
+import { SettingsService } from './settings/service.mjs';
+export { startupPlatformOptions, startupSupported } from './startup/platform.mjs';
+export { publicVpsState, publicRuntimeState } from './startup/public-state.mjs';
 export { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './workflow/parallel-settings.mjs';
 export { readCommandActivity, acknowledgeUnknownCommand } from './workflow/command-activity.mjs';
 export { projectExecutors } from './workflow/execution-projection.mjs';
@@ -21,6 +27,9 @@ export class ControlFacade {
   #plans;
   #sessions;
   #workflow;
+  #startup;
+  #lifecycle;
+  #settings;
   constructor({storageFile, execution, ...options}) {
     this.#execution = execution;
     this.projects = Object.freeze(new ProjectsService(storageFile, options));
@@ -62,6 +71,27 @@ export class ControlFacade {
     });
   }
   createDeletion(options) { return this.projects.createDeletion(options); }
+  configureSettings({file,workflowSnapshot}) {
+    if(this.#settings)throw new Error('CONTROL_SETTINGS_ALREADY_CONFIGURED');
+    this.#settings=new SettingsService({file,workflowSnapshot,files:this.#execution.files});
+    return Object.freeze(this.#settings);
+  }
+  configureLifecycle(options) {
+    if (this.#lifecycle) throw new Error('CONTROL_LIFECYCLE_ALREADY_CONFIGURED');
+    this.#lifecycle = createProjectLifecycle({...options,store:this.projects,workflow:this.#workflow,
+      liveSessions:this.#sessions,contextCache:this.context.cache,workspaceSetup:this.setup});
+    return this.#lifecycle;
+  }
+  configureStartup({ readiness, clipboard }) {
+    if (this.#startup) throw new Error('CONTROL_STARTUP_ALREADY_CONFIGURED');
+    const flow = new StartupReadiness(readiness);
+    const tunnel = new TunnelClipboard({ ...clipboard, configure: async credentials => {
+      await flow.configure(credentials);
+      if (!flow.snapshot().tunnel) throw new Error('Tunnel not ready');
+    } });
+    this.#startup = { flow, clipboard: tunnel };
+    return Object.freeze(this.#startup);
+  }
   configureWorkflow(options) {
     if(this.#workflow)throw new Error('CONTROL_WORKFLOW_ALREADY_CONFIGURED');
     this.#workflow=createWorkflowCoordination({...options,store:this.projects,setup:this.setup,plans:this.plans});

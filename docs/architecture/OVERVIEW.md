@@ -4,7 +4,7 @@
 
 Workflow Pilot — самостоятельное настольное приложение для управления проектами и работой с агентами через ChatGPT Web. Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot.
 
-Перенесена база 0.1.0 с собственной identity и Kit 1.7.3 с поддержкой продолжения проектов 1.7.2. ExecutionFacade обслуживает команды, stdin, файлы, службы и браузерные сессии. Execution/browser владеет страницами, observer и отправкой; Desktop размещает страницы через host. ControlFacade подключён к main: Control владеет проектами, логическими сессиями, привязками, recovery и координацией AutoPlan/Review/parallel. Frontend ещё мигрирует из прежней раскладки. Первый общий выпуск: macOS arm64, Windows x64, Ubuntu 24.04 LTS x64 (X11); Linux и полный комплект ещё в работе. Донор Project Web Pilot 0.6.115 заморожен.
+Перенесена база 0.1.0 с собственной identity и Kit 1.7.3 с поддержкой продолжения проектов 1.7.2. ExecutionFacade обслуживает команды, stdin, файлы, службы и браузерные сессии. Execution/browser владеет страницами, observer и отправкой; Desktop размещает страницы через host. Control владеет проектами, логическими сессиями, привязками, recovery, настройками и координацией AutoPlan/Review/parallel. Frontend расположен в frontend/desktop; bootstrap собирает зависимости, защищённый IPC предоставляет фиксированные возможности Control. Первый общий выпуск: macOS arm64, Windows x64, Ubuntu 24.04 LTS x64 (X11); Linux и полный комплект ещё в работе. Донор Project Web Pilot 0.6.115 заморожен.
 
 ## Планируемое устройство
 
@@ -19,6 +19,7 @@ AutoPlan, Review, sequential/parallel и оба канала подключен�
 - [Следующий этап выполнения](../planning/orchestrated-execution-next.md): оркестратор и отдельный агент для каждой микрозадачи.
 - Текущее размещение и границы: [Control](../modules/control.md), [Execution](../modules/execution.md), [Browser](../modules/browser.md), [Workflow](../modules/workflow-execution.md), [Desktop](../modules/desktop.md).
 - [Совместимость проектов](../modules/project-compatibility.md): зависимости Kit, обновление 1.7.2 и продолжение без импорта app-state.
+- [Первый запуск](../modules/first-run-onboarding.md) и [жизненный цикл проектов](../modules/project-lifecycle.md): настройки, собственные подключения, архив и безопасное удаление.
 
 ## Запуск и проверка
 

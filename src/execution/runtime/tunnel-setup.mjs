@@ -1,7 +1,8 @@
 import { executeInput as executePrivateInput } from '../commands/service.mjs';
 export { executePrivateInput };
 
-export const TUNNEL_ID_PATTERN = /^tunnel_[A-Za-z0-9_-]{16,100}$/;
+import { TUNNEL_ID_PATTERN } from '../../contracts/tunnel.mjs';
+export { TUNNEL_ID_PATTERN } from '../../contracts/tunnel.mjs';
 
 export async function runTunnelHelper({ python, helper, options, credentials, idOnly = false,
   execute, executeInput = executePrivateInput, errorPrefix, ErrorType, errorMessages }) {

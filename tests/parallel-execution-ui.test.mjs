@@ -53,8 +53,8 @@ test('saved executor belongs to its original main session, keeps totals without 
 });
 
 test('real sidebar renders executor group, worktree/status/time, protected action names and parent completion',async t=>{
-  const html=await fs.readFile(new URL('../src/ui/index.html',import.meta.url),'utf8');
-  const source=await fs.readFile(new URL('../src/ui/sidebar.mjs',import.meta.url),'utf8');
+  const html=await fs.readFile(new URL('../src/frontend/desktop/ui/index.html',import.meta.url),'utf8');
+  const source=await fs.readFile(new URL('../src/frontend/desktop/ui/sidebar.mjs',import.meta.url),'utf8');
   const dom=new JSDOM(html,{runScripts:'outside-only',pretendToBeVisual:true,url:'https://fixture.invalid/'});
   t.after(()=>dom.window.close());const {window}=dom,{document}=window,calls=[];
   const query=document.querySelectorAll.bind(document);

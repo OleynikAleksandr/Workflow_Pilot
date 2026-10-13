@@ -1,6 +1,12 @@
 // Temporary migration scope: main/root modules remain until T004–T008; bridges disappear in T011.
 module.exports = {
   forbidden: [
+    { name: 'renderer-only-local-ui-and-contracts', severity: 'error',
+      from: { path: '^src/frontend/desktop/ui/' }, to: { pathNot: '^src/(frontend/desktop/ui/|contracts/)' } },
+    { name: 'desktop-control-through-facade', severity: 'error',
+      from: { path: '^src/frontend/' }, to: { path: '^src/control/(?!facade\\.mjs$)' } },
+    { name: 'desktop-without-root-bridges', severity: 'error',
+      from: { path: '^src/frontend/' }, to: { path: '^src/[^/]+\\.mjs$' } },
     { name: 'session-coordination-uses-browser-port', severity: 'error',
       from: { path: '^src/(session-runtime|context-session)\\.mjs$' },
       to: { path: '(^|/)electron($|/)|^src/(execution/(?!facade\\.mjs$)|frontend/)' } },
