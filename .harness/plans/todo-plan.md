@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 48,
+  "plan_revision": 50,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -418,7 +418,7 @@
     ]
   },
   "baseline_commit": "dcb2703c8a766d9f1cf7030f6fc69a8af1c8e9be",
-  "current_task_id": null,
+  "current_task_id": "DOCS-4",
   "context_pack": {
     "documents": [
       {
@@ -2710,7 +2710,7 @@
     {
       "id": "DOCS-4",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2865,8 +2865,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
-Current Task: нет
-Revision: 48
+Current Task: DOCS-4
+Revision: 50
 
 ## Цель
 
@@ -2993,7 +2993,7 @@ Revision: 48
   - Файлы: src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/execution/browser/diagnostics.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/index.html, tests/page-state.test.mjs, tests/startup-ui.test.mjs, tests/chromium-diagnostics.test.mjs, tests/electron-smoke.mjs, scripts/release-all.mjs, tests/release-linux.test.mjs, package.json, package-lock.json, docs/modules/first-run-onboarding.md, AGENTS.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012-BUILD
-- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+- [IN_PROGRESS] DOCS-4: Актуализация всех документов проекта — В работе
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS-4 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/first-run-onboarding.md, AGENTS.md

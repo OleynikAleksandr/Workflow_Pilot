@@ -125,7 +125,7 @@
         "run",
         "build"
       ],
-      "evidence": "T012: единственный общий цикл 0.1.0 после DOCS; macOS arm64 + Windows x64 + Linux x64, sourceCommit, lock-файлы, полный manifest и все assets. Неполный комплект — отказ."
+      "evidence": "Общая сборка текущей версии после DOCS: macOS arm64, Windows x64, Linux x64 из одного sourceCommit; архивы, комплект и manifest проверяются. Неполный комплект запрещён."
     },
     {
       "id": "release-installed",
@@ -136,7 +136,7 @@
       "args": [
         "scripts/check-installed-release.mjs"
       ],
-      "evidence": "T013: готовая macOS 0.1.0 в корне нового проекта и /Applications/Workflow Pilot.app; sourceCommit/состав/подпись, без пересборки и без изменения донора."
+      "evidence": "После каждой общей сборки готовое macOS-приложение обновлено в корне проекта и /Applications/Workflow Pilot.app: текущая версия, sourceCommit, состав, подпись и runtime сверены; без пересборки и изменения донора."
     },
     {
       "id": "github-release",
@@ -147,7 +147,7 @@
       "args": [
         "scripts/check-github-release.mjs"
       ],
-      "evidence": "T014: новый GitHub repo, remote main, v0.1.0 на sourceCommit, полный набор assets по size/digest, без пересборки."
+      "evidence": "Собственный GitHub repo, remote main, тег v<version> на sourceCommit текущего manifest, полный набор assets по size/digest; без пересборки."
     }
   ],
   "budget": {
