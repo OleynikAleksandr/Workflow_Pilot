@@ -1,6 +1,6 @@
 # Linux runtime и первый запуск
 
-Цель выпуска — Ubuntu 24.04 LTS x64, обычный пользователь и сеанс «Ubuntu on Xorg». Linux runtime подключён в Desktop bootstrap к тем же Control, Chromium, preload, observer и командам, что другие платформы. Wayland (включая XWayland), root, другая архитектура/версия ОС и отсутствие DISPLAY дают явный отказ. Sandbox Electron не отключается. Production-поставка и native VM-приёмка ещё не выполнены.
+Цель выпуска — Ubuntu 24.04 LTS x64, обычный пользователь и сеанс «Ubuntu on Xorg». Linux runtime подключён в Desktop bootstrap к тем же Control, Chromium, preload, observer и командам, что другие платформы. Wayland (включая XWayland), root, другая архитектура/версия ОС и отсутствие DISPLAY дают явный отказ. Sandbox Electron не отключается. Production-пакет проверяется в общей поставке трёх ОС; native VM-приёмка остаётся за пользователем.
 
 ## Компоненты и подготовка
 

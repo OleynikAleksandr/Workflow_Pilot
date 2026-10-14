@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Самостоятельное Electron-приложение: локальные проекты и ChatGPT Web в одном окне. Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; версия 0.1.0. Происхождение — [Project Web Pilot 0.6.115](../../PROVENANCE.md), донор заморожен. Сохранены AutoPlan/Review/sequential/parallel; новая оркестрация и отдельный плагин ChatGPT Web не входят в этот выпуск.
+Самостоятельное Electron-приложение: локальные проекты и ChatGPT Web в одном окне. Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; версия 0.1.1. Происхождение — [Project Web Pilot 0.6.115](../../PROVENANCE.md), донор заморожен. Сохранены AutoPlan/Review/sequential/parallel; новая оркестрация и отдельный плагин ChatGPT Web не входят в этот выпуск.
 
 Общая поставка проверяет три платформы из одной исходной базы. Linux toolchain копируется с сохранением относительных ссылок отдельно от extraResource Electron Packager; тест подтверждает независимость пакета от папки сборки. Локализации и иконка macOS сверяются с закреплённым Electron по составу и содержимому. Контракт и порядок DOCS → общий выпуск → установка → публикация описаны в [поставке](../modules/release.md).
 
@@ -30,6 +30,6 @@ Control не импортирует Electron/Frontend и не выполняет
 
 ## Готовность и продолжение
 
-Linux runtime/мастер и общая поставка macOS arm64, Windows x64, Ubuntu 24.04 x64/X11 реализованы; девять gates T011 прошли. Production build/install/publish и native/VM/clean-install приёмка остаются отдельными шагами. Собственные профиль/runtime/службы обязательны; VPS без собственного маршрута показывает setup-required, доступен свой Secure MCP Tunnel. Сервер VPS не используется как desktop.
+Linux runtime/мастер и общая поставка macOS arm64, Windows x64, Ubuntu 24.04 x64/X11 реализованы. В 0.1.1 дополнены признаки входа ChatGPT, доступна ручная повторная проверка без перезагрузки, журнал объясняет наблюдение аккаунта и решение мастера. T015 прошла unit suite, скрытый Electron-сценарий и архитектурную проверку. Факт сборки задаёт manifest; установка готового приложения в Applications обязательна после каждого выпуска, публикация и native/VM/clean-install приёмка остаются отдельными шагами. Собственные профиль/runtime/службы обязательны; VPS без собственного маршрута показывает setup-required, доступен свой Secure MCP Tunnel. Сервер VPS не используется как desktop.
 
 Запуск и команды — [README](../../README.md). Работа идёт через Kit; DOCS предшествует build. Сборка всех платформ использует один sourceCommit и неизменяемый manifest; fixture не означает native-tested. История удалённых спецификаций доступна в Git, required-ссылки закрепляет Kit.

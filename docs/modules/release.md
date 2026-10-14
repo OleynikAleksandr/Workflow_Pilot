@@ -1,18 +1,18 @@
 # Единая поставка Workflow Pilot
 
-Инструменты общей поставки реализованы и проверены в T011. Production-проверки обнаружили преобразование ссылок Linux toolchain в пути build-host и ошибочный отказ на штатных ресурсах Electron macOS; неполный выпуск не доставлялся. Оба исправления проверены 25 тестами release-tooling и диагностикой подготовленных пакетов всех трёх ОС. Общий выпуск выполняет T012-BUILD после повторной DOCS из новой базы. Установка и push выполняются отдельно; живая приёмка macOS, Windows и Ubuntu остаётся за пользователем.
+Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.1.1 порядок: исправление первого входа и диагностики T015 → DOCS-4 → общая сборка T016 → установка T013. GitHub-публикация выполняется отдельно; живая приёмка macOS, Windows и Ubuntu остаётся за пользователем. Уже проверенные правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
 
 ## Матрица и состав
 
-Выходы: .harness/runtime/releases/0.1.0 и ~/Downloads/WorkflowPilot-0.1.0. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
+Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.1.1. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
 
 `npm run build` последовательно запускает macOS arm64, Windows x64 и Linux x64. Используются существующие Electron Packager, ASAR, системные ditto/tar. Linux-бинарники на Mac не запускаются. Ошибка/неизвестный исход платформы останавливает сборку; отдельный успешный пакет не считается выпуском.
 
-Семь assets версии 0.1.0:
+Семь assets версии 0.1.1:
 
-- Workflow-Pilot-0.1.0-macOS-arm64.zip
-- Workflow-Pilot-0.1.0-Windows-x64.zip
-- Workflow-Pilot-0.1.0-Linux-x64.tar.gz
+- Workflow-Pilot-0.1.1-macOS-arm64.zip
+- Workflow-Pilot-0.1.1-Windows-x64.zip
+- Workflow-Pilot-0.1.1-Linux-x64.tar.gz
 - Windows-Codex-Local-2026-09-10.zip
 - SHA256SUMS.txt
 - INSTALL.txt
@@ -40,7 +40,9 @@ Linux toolchain копирует `scripts/copy-linux-toolchain.mjs` после E
 
 Manifest schemaVersion 2 содержит version/sourceCommit, source snapshot, locks, Electron/Node/Kit, macOS signature, три платформы OS/arch, размеры/SHA-256 архивов, vendor-архив и записи INSTALL/SHA256SUMS. Native/VM/clean-install флаги остаются false до фактической отдельной приёмки; fixture не повышает их.
 
-T012-BUILD создаёт корневой tracked `release-manifest.json` побайтовым копированием manifest комплекта. Он исключён из source snapshot и собственного хеша, чтобы не возникало циклического digest. SHA256SUMS перечисляет три пакета и vendor; manifest содержит hashes SHA256SUMS и INSTALL. Digest самого manifest сверяют между staging, Downloads, корнем и GitHub asset.
+Общая сборка создаёт корневой tracked `release-manifest.json` побайтовым копированием manifest комплекта. Он исключён из source snapshot и собственного хеша, чтобы не возникало циклического digest. SHA256SUMS перечисляет три пакета и vendor; manifest содержит hashes SHA256SUMS и INSTALL. Digest самого manifest сверяют между staging, Downloads, корнем и GitHub asset.
+
+При следующей версии корневой manifest заменяется только после проверки сохранённого полного комплекта предыдущей версии и побайтового совпадения с его manifest. Версия должна увеличиться; другой состав той же версии, откат номера, неизвестный/повреждённый предыдущий комплект или симлинк дают отказ. Предыдущие release/Downloads-каталоги сохраняются. Новая доставка проверяется до атомарной замены корневого manifest; сбой не меняет прежний manifest.
 
 T013/T014 не изменяют manifest. Проверки выводят отдельное evidence для Kit; поздняя установка/публикация/живая приёмка не переписывает исторический состав выпуска.
 
@@ -48,7 +50,7 @@ T013/T014 не изменяют manifest. Проверки выводят отд
 
 Сертификат нового продукта выбирается явно: WORKFLOW_PILOT_MAC_SIGNING_IDENTITY либо собственный `.harness/runtime/mac-signing.json`, точный SHA-1 Apple Development. Автовыбора из Keychain нет; конфигурация донора не копируется. Это локальная development-подпись без notarization, не обещание отсутствия Gatekeeper на другом Mac.
 
-`build:mac` подготавливает, упаковывает и подписывает только staging. `release-mac.mjs` создаёт отдельный проверенный ZIP без установки/доставки общего комплекта. После готового общего выпуска T013 вызывает `node scripts/check-installed-release.mjs --install`, затем тот же script без аргументов проверяет установленное.
+`build:mac` подготавливает, упаковывает и подписывает только staging. `release-mac.mjs` создаёт отдельный проверенный ZIP без установки/доставки общего комплекта. После каждого готового общего выпуска установка обязательна: T013 вызывает `node scripts/check-installed-release.mjs --install`, затем тот же script без аргументов проверяет установленное. `/Applications/Workflow Pilot.app` всегда обновляется готовой распакованной копией нового проверенного комплекта. Пользователь полностью завершает прежний процесс и запускает новую версию; installer не перезапускает приложение.
 
 Устанавливаются только собственные `Workflow Pilot.app` в корне проекта и `/Applications`. Готовые Contents копируются без пересборки/переподписи. Внешний каталог существующего приложения сохраняет identity; старая Contents хранится в одном backup-slot на цель. Ошибка проверки новой копии возвращает старую Contents. Symlink, чужая identity или посторонние файлы цели дают отказ. Обновление двух копий последовательное: успешная первая копия не отменяется из-за отказа второй; повторное действие использует тот же готовый комплект. Preflight записывается перед установкой, включая случай, когда своего приложения ещё нет.
 
