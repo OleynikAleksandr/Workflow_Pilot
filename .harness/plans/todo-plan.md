@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 57,
+  "plan_revision": 58,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -381,7 +381,14 @@
       "scripts/release-archive.mjs",
       "scripts/release-package.mjs",
       "scripts/stage-vendor-notices.mjs",
-      "scripts/copy-linux-toolchain.mjs"
+      "scripts/copy-linux-toolchain.mjs",
+      "src/control/plugin/service.mjs",
+      "src/execution/plugin/bridge.mjs",
+      "src/frontend/plugin/app.mjs",
+      "src/frontend/plugin/index.html",
+      "tools/codex-app-server-mcp/plugin.py",
+      "scripts/stage-chatgpt-plugin.mjs",
+      "tests/chatgpt-plugin.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -414,7 +421,8 @@
       "packages/workflow-kit/src/templates/STAGES.md",
       "tests/fixtures/released-kit/README.md",
       "resources/THIRD-PARTY.md",
-      "docs/acceptance/migration-0.1.0.md"
+      "docs/acceptance/migration-0.1.0.md",
+      "docs/planning/chatgpt-plugin.md"
     ]
   },
   "baseline_commit": "dcb2703c8a766d9f1cf7030f6fc69a8af1c8e9be",
@@ -443,6 +451,11 @@
       },
       {
         "path": "docs/modules/first-run-onboarding.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/control.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -2855,6 +2868,55 @@
         "role": "implementation"
       },
       "actual_files": []
+    },
+    {
+      "id": "T017",
+      "title": "Добавить плагин ChatGPT для открытия проекта и создания внешней сессии",
+      "why": "Добавить плагин ChatGPT для открытия проекта и создания внешней сессии",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/facade.mjs",
+        "src/control/projects/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tools/codex-app-server-mcp/server.py",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md",
+        "docs/planning/chatgpt-plugin.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Один вертикальный сценарий: плагин в том же репозитории показывает зарегистрированные локальные проекты, открывает выбранный и создаёт новый разговор через официальный MCP Apps SDK с передачей recovery через тот же MCP.",
+        "Control остаётся единственным владельцем workspaces.json; плагин не читает и не пишет отдельную копию проектов. Привязка внешней сессии идемпотентна, проверяет project identity и данные контекста; внешний разговор не запускает встроенный браузер или AutoPlan.",
+        "Границы Control/Execution/Frontend сохранены. Есть изолированные проверки UI→MCP→Control, повторов/конкуренции/restart/ошибок и отказа неподдерживаемого клиента.",
+        "Добавлены инструкции подключения через существующий Secure MCP Tunnel и матрица ручной проверки Chat/Work/Codex. Живая приёмка выполняется пользователем; выпуск/установка/публикация релиза в этот раунд не входят."
+      ],
+      "expected_commit_message": "feat: добавить плагин ChatGPT для проектов и внешних сессий",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T017",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -2882,10 +2944,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 57
+Revision: 58
 
 ## Цель
 
@@ -3036,6 +3098,12 @@ Revision: 57
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T013, DOCS, DOCS-2, DOCS-3, DOCS-4
+- [TODO] T017: Добавить плагин ChatGPT для открытия проекта и создания внешней сессии — Ожидает
+  - Git Commit: [PENDING] feat: добавить плагин ChatGPT для проектов и внешних сессий
+  - Reference: workflow-pilot-migration-0.1.0 / T017 / implementation
+  - Файлы: src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/sidebar.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, scripts/stage-chatgpt-plugin.mjs, package.json, package-lock.json, tests/chatgpt-plugin.test.mjs, docs/modules/control.md, docs/planning/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
 
 ## Context Pack For This Cycle
 
@@ -3044,5 +3112,6 @@ Revision: 57
 - docs/planning/orchestrated-execution-next.md
 - docs/architecture/OVERVIEW.md
 - docs/modules/first-run-onboarding.md
+- docs/modules/control.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
