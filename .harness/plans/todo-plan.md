@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 53,
+  "plan_revision": 55,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2811,13 +2811,14 @@
         "Корневой/staging/поставочный manifest имеют одинаковый digest; установочная задача не меняет байты manifest комплекта и не добавляет app bundle в Git."
       ],
       "expected_commit_message": "release: Установить готовый macOS выпуск рядом с донором",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T013",
         "role": "implementation"
-      }
+      },
+      "actual_files": []
     },
     {
       "id": "T014",
@@ -2883,7 +2884,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 53
+Revision: 55
 
 ## Цель
 
@@ -3022,8 +3023,8 @@ Revision: 53
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T015, DOCS-4
-- [TODO] T013: Установить готовый macOS выпуск рядом с донором — Ожидает
-  - Git Commit: [PENDING] release: Установить готовый macOS выпуск рядом с донором
+- [DONE] T013: Установить готовый macOS выпуск рядом с донором — Завершено
+  - Git Commit: [DONE] release: Установить готовый macOS выпуск рядом с донором
   - Reference: workflow-pilot-migration-0.1.0 / T013 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
