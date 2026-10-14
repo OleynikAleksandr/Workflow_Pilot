@@ -303,3 +303,24 @@ test('data URL payloads never reach diagnostic logs', () => {
   const result = safeUrl('data:text/plain;base64,UFJJVkFURV9DT05URU5U');
   assert.deepEqual(result, { origin: 'data://', path: '[redacted]', queryKeys: [] });
 });
+
+test('startup report retains account evidence, wizard decision and observer errors without private data', async t => {
+  const { diagnostics, contents } = await startupDiagnostics(t);
+  diagnostics.observePage({ url: 'https://chatgpt.com/', login: 'signed-in', editorAvailable: true, writable: true,
+    loginEvidence: { reason: 'account-navigation', historyLink: true, projectLink: true, name: 'PRIVATE_NAME', cookie: 'PRIVATE_COOKIE' } });
+  diagnostics.observeStartup({ account: 'unknown', page: 'loaded', active: true, key: 'PRIVATE_KEY' });
+  diagnostics.recordAccountCheck({ reason: 'url-mismatch', observedLogin: 'signed-in', observationPresent: true, generation: 3, url: 'PRIVATE_CHAT_URL' });
+  diagnostics.recordObserverFailure('PAGE_OBSERVER_READ_FAILED');
+  diagnostics.recordObserverFailure('PRIVATE_ERROR');
+  for (let i = 0; i < 100; i++) contents.emit('did-frame-navigate', {}, 'https://chatgpt.com/', 200, '', true);
+  const text = await diagnostics.startupReport(), report = JSON.parse(text);
+  assert.equal(report.accountObservation.state.login, 'signed-in');
+  assert.equal(report.accountObservation.state.evidence.reason, 'account-navigation');
+  assert.equal(report.startupState.state.account, 'unknown');
+  assert.equal(report.lastAccountCheck.state.reason, 'url-mismatch');
+  assert.equal(report.lastObserverError.code, 'PAGE_OBSERVER_READ_FAILED');
+  assert.ok(report.events.length <= 61);
+  assert.equal(text.includes('PRIVATE'), false);
+  contents.emit('did-start-navigation', { isMainFrame: true, isSameDocument: false, url: 'https://chatgpt.com/' });
+  assert.equal(JSON.parse(await diagnostics.startupReport()).accountObservation, null, 'old document is not current account evidence');
+});

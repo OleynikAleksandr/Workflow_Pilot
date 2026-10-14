@@ -98,6 +98,7 @@ function applyObservedPage(event, record = liveSessions.visible) {
   workflow.observePage(event,record);
 }
 function sessionRuntimeError(record,error) {
+  record.diagnostics?.recordObserverFailure(error?.code);
   record.error=publicError(error);
   if(record===liveSessions.visible&&!settingsState&&!setupState)report(error);else publish();
 }
@@ -246,6 +247,7 @@ function publish() {
   rememberSessionTitle();
   rememberScopeTitle();
   const state = snapshot();
+  chromiumDiagnostics?.observeStartup(state.startup);
   if (sidebarReady && sidebar && !sidebar.webContents.isDestroyed()) {
     const signature = JSON.stringify(state);
     if (signature !== lastSidebarStateSignature) {
@@ -733,11 +735,18 @@ function observeStartupClipboard() {
   });
 }
 function observeStartupAccount(observation = pageState.current?.state) {
-  if (!startupFlow || !startupActive || !observation || !browser || browser.webContents.isDestroyed()) return false;
+  if (!startupFlow || !startupActive || !browser || browser.webContents.isDestroyed()) return false;
   const generation = navigationId;
-  if (!navigationCurrent(generation) || !isChatGPTOrigin(observation.url) || observation.url !== browser.webContents.getURL()) return false;
+  const record = reason => chromiumDiagnostics?.recordAccountCheck({ reason, observedLogin: observation?.login,
+    observationPresent: !!observation, generation });
+  if (!observation) { record('observer-unavailable'); return false; }
+  if (!navigationCurrent(generation)) { record('stale-navigation'); return false; }
+  if (!isChatGPTOrigin(observation.url)) { record('origin-mismatch'); return false; }
+  if (observation.url !== browser.webContents.getURL()) { record('url-mismatch'); return false; }
   if (['loading', 'slow', 'idle'].includes(startupFlow.snapshot().page)) startupFlow.finishPage(generation);
   startupFlow.observe(generation, observation);
+  record(startupFlow.snapshot().page === 'failed' ? 'page-failed' : 'applied');
+  chromiumDiagnostics?.observePage(observation);
   return true;
 }
 async function refreshStartupAccount() {
@@ -749,6 +758,7 @@ async function refreshStartupAccount() {
     if (!navigationCurrent(generation)) return false;
     return observeStartupAccount(observation) || observeStartupAccount();
   } catch {
+    chromiumDiagnostics?.recordObserverFailure('PAGE_OBSERVER_READ_FAILED');
     return observeStartupAccount();
   }
 }
@@ -762,7 +772,13 @@ async function startupAction(action) {
   }
   if (!startupActive) throw new Error('Сначала откройте начальную настройку.');
   if (action === 'copy-diagnostics') {
+    await refreshStartupAccount();
     await clipboard.writeText(await chromiumDiagnostics.startupReport());
+    return true;
+  }
+  if (action === 'check-account') {
+    chromiumDiagnostics?.recordAccountCheck({ reason: 'manual-check', generation: navigationId });
+    await refreshStartupAccount();
     return true;
   }
   if (action === 'check') { await refreshStartupAccount(); return startupFlow.check({ prepare: true }); }
@@ -1211,7 +1227,13 @@ async function createWindow() {
       store, controller, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir,
       chromiumDiagnostics, chromiumDiagnosticsFile, navigate, openArchiveWindow, getArchiveWindow: () => archiveWindow,
       getColorWindow: () => colorEditor.window, chatColorStyles, eventBaseline, runtimeMetrics, pageState, autoPlan,
-      liveSessions,sessionView,deletion,deletionHooks,execution,getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}) });
+      liveSessions,sessionView,deletion,deletionHooks,execution,getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}),
+      withStartupFixture: async (flow, run) => {
+        startupFlow = flow; startupActive = true; flow.onChange = publish;
+        flow.beginPage(navigationId); flow.finishPage(navigationId); publish();
+        try { await run(); }
+        finally { flow.dispose(); startupFlow = null; startupActive = false; publish(); }
+      } });
     await chromiumDiagnostics.stop(); chromiumDiagnostics = null;
     window.close(); app.quit();
   } else { const current = store.selected(); if (current && !storageError && !settingsState) void selectWorkspace(current.workspace).catch(report); else void navigate(); }

@@ -5,6 +5,12 @@ const allowedExperience = new Set(['chat', 'work', null]);
 const allowedVisibility = new Set(['visible', 'hidden', 'prerender', 'unknown']);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+export function normalizeLoginEvidence(value) {
+  const reason = ['login-control', 'profile-control', 'account-navigation', 'no-account-signal'].includes(value?.reason)
+    ? value.reason : 'unavailable';
+  return { reason, ...Object.fromEntries(['loginControl', 'profileControl', 'historyLink', 'projectLink', 'editorAvailable']
+    .map(key => [key, value?.[key] === true])) };
+}
 
 export function normalizePageObservation(message) {
   if (!message || typeof message !== 'object' || Buffer.byteLength(JSON.stringify(message)) > MAX_MESSAGE_BYTES)
@@ -28,7 +34,7 @@ export function normalizePageObservation(message) {
     documentId: message.documentId,
     seq: message.seq,
     state: {
-      url, experience, login, visibility,
+      url, experience, login, loginEvidence: normalizeLoginEvidence(state.loginEvidence), visibility,
       connectionError: state.connectionError === 'stream-interrupted' ? state.connectionError : null,
       editorAvailable: state.editorAvailable,
       editorRevision: state.editorRevision,

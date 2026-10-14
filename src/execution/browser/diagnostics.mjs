@@ -3,11 +3,14 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { queueDiagnosticFile } from '../files/diagnostics.mjs';
 import { StartupNetworkTrace } from './startup-network-trace.mjs';
+import { normalizeLoginEvidence } from './page-state.mjs';
 
 const STARTUP_EVENTS = new Set(['session-start', 'navigation-requested', 'navigation-waiting', 'load-url-failed',
       'did-start-navigation', 'did-start-loading', 'dom-ready', 'main-document-response', 'did-finish-load',
       'did-stop-loading', 'did-fail-load', 'did-fail-provisional-load', 'render-process-gone',
-      'unresponsive', 'responsive', 'attach-failed', 'attached', 'loading-failed']);
+      'unresponsive', 'responsive', 'attach-failed', 'attached', 'loading-failed',
+      'account-observation', 'startup-state', 'account-check', 'page-observer-error']);
+const loginState = value => ['signed-in', 'signed-out', 'unknown'].includes(value) ? value : 'unknown';
 
 const SAFE_SIGNAL_KEYS = new Set(['type', 'event', 'event_type', 'eventType', 'method', 'kind', 'op', 'action']);
 const TOKEN_USAGE_KEYS = new Set([
@@ -357,6 +360,10 @@ export class ChromiumDiagnostics {
     this.handlers = [];
     this.lastDomPulse = null;
     this.lastPageState = null;
+    this.accountObservation = null;
+    this.startupState = null;
+    this.lastAccountCheck = null;
+    this.lastObserverError = null;
     this.attachedByUs = false;
     this.started = false;
     this.streamResponses = new Map();
@@ -386,6 +393,9 @@ export class ChromiumDiagnostics {
   }
 
   #listenNative() {
+    this.#on('did-start-navigation', (event, _url, isInPlace, isMainFrame) => {
+      if ((event.isMainFrame ?? isMainFrame) && !(event.isSameDocument ?? isInPlace)) this.accountObservation = null;
+    });
     this.#on('did-start-navigation', (event, url, isInPlace, isMainFrame) => this.log.record('webContents', 'did-start-navigation', {
       url: safeUrl(event.url ?? url), isMainFrame: event.isMainFrame ?? isMainFrame,
       isSameDocument: event.isSameDocument ?? isInPlace,
@@ -587,6 +597,10 @@ export class ChromiumDiagnostics {
 
   observePage(state) {
     if (!this.started || !state) return;
+    const account = { login: loginState(state.login), evidence: normalizeLoginEvidence(state.loginEvidence),
+      editorAvailable: state.editorAvailable === true, writable: state.writable === true };
+    if (JSON.stringify(account) !== JSON.stringify(this.accountObservation?.state))
+      this.accountObservation = this.log.record('dom', 'account-observation', { state: account });
     const pulse = { url: safeUrl(state.url), userMessages: state.userMessageCount,
       busy: state.busy, composer: state.editorAvailable, visibility: state.visibility,
       manualStopRevision: state.manualStopRevision ?? 0, assistantRevision: state.assistantRevision ?? 0,
@@ -621,13 +635,39 @@ export class ChromiumDiagnostics {
     await this.log.flush();
   }
 
+  observeStartup(state) {
+    if (!state) return;
+    const safe = { account: loginState(state.account),
+      page: ['idle', 'loading', 'slow', 'loaded', 'failed'].includes(state.page) ? state.page : 'unknown',
+      active: state.active === true, busy: state.busy === true,
+      node: state.node === true, git: state.git === true, runtime: state.runtime === true, tunnel: state.tunnel === true };
+    if (JSON.stringify(safe) !== JSON.stringify(this.startupState?.state))
+      this.startupState = this.log.record('startup', 'startup-state', { state: safe });
+  }
+
+  recordAccountCheck({ reason, observedLogin, observationPresent, generation } = {}) {
+    const safe = { reason: ['applied', 'page-loading', 'page-failed', 'stale-navigation', 'origin-mismatch',
+      'url-mismatch', 'observer-unavailable', 'manual-check'].includes(reason) ? reason : 'unknown',
+      observedLogin: loginState(observedLogin), observationPresent: observationPresent === true,
+      generation: Number.isSafeInteger(generation) && generation >= 0 ? generation : null };
+    if (reason === 'manual-check' || JSON.stringify(safe) !== JSON.stringify(this.lastAccountCheck?.state))
+      this.lastAccountCheck = this.log.record('startup', 'account-check', { state: safe });
+  }
+
+  recordObserverFailure(code) {
+    if (!['PAGE_OBSERVER_FAILED', 'PAGE_OBSERVER_INVALID', 'PAGE_OBSERVER_UNAVAILABLE', 'PAGE_OBSERVER_READ_FAILED'].includes(code)) return;
+    this.lastObserverError = this.log.record('startup', 'page-observer-error', { code });
+  }
+
   async startupReport() {
     await this.log.flush();
     const events = [...new Map([...this.log.startupBeginning, ...this.log.startupRecent].map(e => [e.seq, e])).values()]
       .sort((a, b) => a.seq - b.seq);
     const network = await this.networkTrace?.snapshot();
     return JSON.stringify({ report: 'Web Pilot browser startup', eventsOmitted: this.log.startupCount - events.length,
-      events, ...(network ? { network } : {}) }, null, 2);
+      events, accountObservation: this.accountObservation, startupState: this.startupState,
+      lastAccountCheck: this.lastAccountCheck, lastObserverError: this.lastObserverError,
+      ...(network ? { network } : {}) }, null, 2);
   }
 
   async flush() { await this.log.flush(); }

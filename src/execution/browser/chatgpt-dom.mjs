@@ -9,6 +9,8 @@ export const CHATGPT_SELECTORS = Object.freeze({
   modeGroup: '[aria-label="Select chat surface"],[aria-label="Выберите режим чата"],[role="group"][aria-label="Режим редактора"],[role="group"][aria-label="Composer mode"]',
   activity: 'div[class~="group/activity-header"]',
   scroller: '.thread-scroll-container',
+  login: '[data-testid="login-button"],[data-testid="signup-button"],a[href="/auth/login"],a[href="https://chatgpt.com/auth/login"]',
+  profile: '[data-testid="profile-button"],[data-testid="accounts-profile-button"],[data-testid="user-menu-button"],[data-testid="profile-menu-button"],[data-testid="user-menu-dropdown"]',
 });
 
 export function createChatGPTDOM(selectors) {
@@ -38,6 +40,37 @@ export function createChatGPTDOM(selectors) {
     return selected.length === 1 ? selected[0] : null;
   };
   const editor = () => first(selectors.editor);
+  const account = () => {
+    // Only application chrome counts. A quoted profile button or chat link is not an account.
+    const excluded = selectors.user + ',' + selectors.assistant + ',pre,code,blockquote,[contenteditable="true"]';
+    const chrome = node => visible(node) && !node.closest(excluded);
+    const loginControl = [...document.querySelectorAll(selectors.login)].some(chrome);
+    const profileName = /^(?:open\s+)?(?:profile|user|account)\s+menu$|^(?:открыть\s+)?меню\s+(?:профиля|пользователя|аккаунта)$/i;
+    const profileControl = [...document.querySelectorAll(selectors.profile)].some(chrome)
+      || [...document.querySelectorAll('button,[role="button"]')].some(node => {
+        if (!chrome(node)) return false;
+        const labelled = (node.getAttribute('aria-labelledby') ?? '').split(/\s+/)
+          .map(id => document.getElementById(id)?.textContent ?? '').join(' ');
+        return [node.getAttribute('aria-label'), labelled, node.getAttribute('title')]
+          .some(name => profileName.test((name ?? '').replace(/\s+/g, ' ').trim()));
+      });
+    let historyLink = false, projectLink = false;
+    for (const link of document.querySelectorAll('nav a[href],aside a[href],[role="navigation"] a[href],#sidebar a[href],[data-testid="sidebar"] a[href]')) {
+      if (!chrome(link)) continue;
+      let url;
+      try { url = new URL(link.href, location.href); } catch { continue; }
+      if (url.origin !== 'https://chatgpt.com') continue;
+      historyLink ||= /^\/(?:c|work\/c|g\/[^/]+\/c)\/[a-zA-Z0-9_-]{8,}\/?$/.test(url.pathname);
+      projectLink ||= /^\/g\/g-p-[a-zA-Z0-9_-]+(?:\/project)?\/?$/.test(url.pathname)
+        || /^\/projects?\/[a-zA-Z0-9_-]+\/?$/.test(url.pathname);
+    }
+    const editorAvailable = !!editor();
+    const reason = loginControl ? 'login-control' : profileControl ? 'profile-control'
+      : editorAvailable && historyLink && projectLink ? 'account-navigation' : 'no-account-signal';
+    return { login: reason === 'login-control' ? 'signed-out'
+      : ['profile-control', 'account-navigation'].includes(reason) ? 'signed-in' : 'unknown',
+      loginEvidence: { reason, loginControl, profileControl, historyLink, projectLink, editorAvailable } };
+  };
   const sendButton = () => first(selectors.send) ?? [...(editor()?.closest('form')?.querySelectorAll('button[type="submit"]') ?? [])].find(visible);
   const connectionError = () => {
     // Inspect error UI, never ordinary message prose or code quoted by the user.
@@ -58,6 +91,6 @@ export function createChatGPTDOM(selectors) {
     }
     return null;
   };
-  return { selectors, visible, first, messages, connectionError, modeOf, modeButtons, experience, editor, sendButton, busy: () => !!first(selectors.stop) };
+  return { selectors, visible, first, messages, connectionError, modeOf, modeButtons, experience, editor, account, sendButton, busy: () => !!first(selectors.stop) };
 }
 export const chatGPTDOMScript = () => `(${createChatGPTDOM.toString()})(${JSON.stringify(CHATGPT_SELECTORS)})`;

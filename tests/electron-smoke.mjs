@@ -212,7 +212,7 @@ async function verifyUninterruptedRequest(dataDir) {
   }
 }
 
-export async function run({ app, window, sidebar, store, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, deletionHooks, execution }) {
+export async function run({ app, window, sidebar, store, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture }) {
   // Test actions follow the visible page; production controllers retain their own page.
   const currentObject=key=>new Proxy({}, {
     get:(_target,property)=>{const value=getLive()[key][property];return typeof value==='function'?value.bind(getLive()[key]):value;},
@@ -274,6 +274,31 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   await Promise.all([opening, duplicate]);
   const navigationReport = JSON.parse(await chromiumDiagnostics.startupReport());
   assert.equal(navigationReport.events.filter(e => e.event === 'navigation-requested' && e.url?.path === '/fixture-flight').length, 1);
+
+  const loginFlow = new StartupReadiness({ prepareRuntime: () => { throw new Error('Login check must not prepare services'); } });
+  loginFlow.publish({ node: true, git: true, runtime: true, phase: 'tunnel' });
+  await withStartupFixture(loginFlow, async () => {
+    await waitFor(() => sidebar.executeJavaScript('!document.getElementById("startup-account-check").hidden'), 'unknown login offers a real check button', snapshot);
+    const documentBefore = pageState.current.documentId, sequenceBefore = chromiumDiagnostics.log.sequence;
+    await sidebar.executeJavaScript('document.getElementById("startup-account-check").click()');
+    await waitFor(async () => (await sidebar.executeJavaScript('!document.getElementById("startup-account-check").disabled'))
+      && chromiumDiagnostics.log.sequence > sequenceBefore, 'manual account check completes through IPC', snapshot);
+    assert.equal(pageState.current.documentId, documentBefore, 'checking login never reloads the document');
+    assert.equal(snapshot().startup.account, 'unknown', 'guest editor is not authenticated');
+    await browser.executeJavaScript(`document.body.insertAdjacentHTML('afterbegin', '<nav id="account-fixture"><a href="/c/12345678-1234-1234-1234-123456789abc">Private history</a><a href="/g/g-p-1234567890abcdef/project">Private project</a></nav>')`);
+    await waitFor(() => snapshot().startup.account === 'signed-in', 'personal navigation confirms login through sandbox preload', snapshot);
+    await waitFor(() => sidebar.executeJavaScript('!document.getElementById("startup-tunnel-body").hidden'), 'confirmed login exposes file connection', snapshot);
+    const copied = await sidebar.executeJavaScript('window.webPilot.startup("copy-diagnostics")');
+    assert.equal(copied.ok, true);
+    const report = JSON.parse(clipboard.readText());
+    assert.equal(report.accountObservation.state.evidence.reason, 'account-navigation');
+    assert.equal(report.startupState.state.account, 'signed-in');
+    assert.equal(report.lastAccountCheck.state.reason, 'applied');
+    assert.equal(clipboard.readText().includes('Private history'), false);
+    await browser.executeJavaScript('document.getElementById("account-fixture").remove()');
+    await waitFor(() => snapshot().startup.account === 'unknown', 'removed account signals invalidate login', snapshot);
+  });
+  console.log(JSON.stringify({ startupAccount: true, manualCheck: 'real-ipc-no-reload', diagnostics: 'safe-account-evidence', isolated: true }));
 
   // Render the real startup UI with isolated state; never install host components or use real credentials.
   await sidebar.executeJavaScript('import("./startup.mjs").then(() => window.webPilot.getState()).then(() => true)');

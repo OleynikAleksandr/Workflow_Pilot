@@ -31,8 +31,26 @@ const present=async file=>!!await fs.lstat(file).catch(e=>{if(e.code!=='ENOENT')
 export async function publishReleaseSet({root,directory,delivery,version,verify=verifyReleaseDirectory}) {
   const proof=await verify(directory,{version}),canonical=path.join(root,'release-manifest.json');
   const bytes=await fs.readFile(path.join(directory,'release-manifest.json'));
-  if(await present(canonical)&&!bytes.equals(await fs.readFile(canonical)))throw new Error('Canonical manifest already differs');
+  const readCanonical=async()=>{
+    const stat=await fs.lstat(canonical).catch(e=>{if(e.code!=='ENOENT')throw e;return null;});
+    if(!stat)return null;
+    if(!stat.isFile()||stat.isSymbolicLink())throw new Error('Invalid canonical manifest destination');
+    return fs.readFile(canonical);
+  };
+  const previous=await readCanonical();
+  if(previous&&!bytes.equals(previous)) {
+    const old=JSON.parse(previous),numbers=v=>/^\d+\.\d+\.\d+$/.test(v??'')?v.split('.').map(Number):null;
+    const before=numbers(old.version),after=numbers(version);
+    const differing=before&&after?after.findIndex((n,i)=>n!==before[i]):-1;
+    if(differing<0||after[differing]<=before[differing])throw new Error('Canonical manifest already differs; release version must increase');
+    const saved=path.join(root,'.harness/runtime/releases',old.version);
+    const stat=await fs.lstat(saved);
+    if(!stat.isDirectory()||stat.isSymbolicLink())throw new Error('Previous release directory is invalid');
+    await verify(saved,{version:old.version});
+    if(!previous.equals(await fs.readFile(path.join(saved,'release-manifest.json'))))throw new Error('Previous canonical manifest is not preserved');
+  }
   if(await present(delivery)) {
+    if((await fs.lstat(delivery)).isSymbolicLink())throw new Error('Invalid delivery destination');
     await verify(delivery,{version});
     if(!bytes.equals(await fs.readFile(path.join(delivery,'release-manifest.json'))))throw new Error('Delivery manifest differs');
   } else {
@@ -44,6 +62,8 @@ export async function publishReleaseSet({root,directory,delivery,version,verify=
       await fs.rename(stage,delivery);
     } finally {await fs.rm(stage,{recursive:true,force:true});}
   }
+  const current=await readCanonical();
+  if(previous?!current?.equals(previous):current!==null)throw new Error('Canonical manifest changed during delivery');
   const temporary=canonical+'.tmp';
   await fs.writeFile(temporary,bytes,{flag:'wx'});
   await fs.rename(temporary,canonical);

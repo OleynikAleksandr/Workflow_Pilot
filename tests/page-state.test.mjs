@@ -9,6 +9,65 @@ import { connectPageState } from '../src/execution/browser/page-state-bridge.mjs
 
 const turn = () => new Promise(resolve => setImmediate(resolve));
 
+async function accountFixture(t, html = '') {
+  const dom = new JSDOM(html + '<div id="prompt-textarea" contenteditable="true"></div>',
+    { url: 'https://chatgpt.com/', runScripts: 'outside-only' });
+  const w = dom.window;
+  w.HTMLElement.prototype.getClientRects = function () { return this.closest('[hidden]') ? [] : [{}]; };
+  const source = new PageStateSource();
+  w.report = message => source.accept(message);
+  const dispose = w.eval('(' + installPageObserver.toString() + ')(' + chatGPTDOMScript() + ', report)');
+  t.after(() => { dispose(); source.dispose(); w.close(); });
+  return { w, source, state: () => source.current.state };
+}
+
+test('profile accessible names and late attribute changes confirm login through the real observer', async t => {
+  const f = await accountFixture(t, '<button id="account" aria-label="Other menu">AO</button><span id="name"></span>');
+  assert.equal(f.state().login, 'unknown');
+  const button = f.w.document.getElementById('account');
+  button.setAttribute('aria-label', 'Open profile menu'); await turn();
+  assert.equal(f.state().login, 'signed-in');
+  assert.equal(f.state().loginEvidence.reason, 'profile-control');
+  button.removeAttribute('aria-label'); button.setAttribute('aria-labelledby', 'name');
+  f.w.document.getElementById('name').textContent = 'Открыть меню профиля'; await turn();
+  assert.equal(f.state().login, 'signed-in');
+  button.hidden = true; await turn();
+  assert.equal(f.state().login, 'unknown');
+  button.hidden = false; button.removeAttribute('aria-labelledby');
+  button.dataset.testid = 'profile-menu-button'; await turn();
+  assert.equal(f.state().login, 'signed-in');
+});
+
+test('personal navigation plus editor recovers login while guest, quoted and foreign links never do', async t => {
+  const f = await accountFixture(t, '<nav id="sidebar"><a id="history" href="/c/12345678-1234-1234-1234-123456789abc">Private title</a><a id="project" href="/">Private project</a></nav>');
+  assert.equal(f.state().login, 'unknown', 'history alone is insufficient');
+  const project = f.w.document.getElementById('project');
+  project.href = '/g/g-p-1234567890abcdef/project'; await turn();
+  assert.equal(f.state().login, 'signed-in');
+  assert.equal(f.state().loginEvidence.reason, 'account-navigation');
+  assert.equal(JSON.stringify(f.state()).includes('Private'), false);
+  const login = f.w.document.createElement('a'); login.href = '/auth/login'; login.textContent = 'Log in';
+  f.w.document.body.append(login); await turn();
+  assert.equal(f.state().login, 'signed-out', 'a visible login control overrides stale navigation');
+  login.remove(); project.href = 'https://foreign.invalid/g/g-p-project/project'; await turn();
+  assert.equal(f.state().login, 'unknown');
+  project.href = '/g/g-p-project/project';
+  const message = f.w.document.createElement('article'); message.dataset.messageAuthorRole = 'assistant';
+  f.w.document.body.append(message); message.append(f.w.document.getElementById('sidebar'));
+  message.insertAdjacentHTML('beforeend', '<button data-testid="accounts-profile-button">Quoted button</button>');
+  await turn(); assert.equal(f.state().login, 'unknown', 'message contents are not application chrome');
+});
+
+test('login diagnostics accept only fixed reasons and booleans', () => {
+  const state = normalizePageObservation(observation(1, 'document-1111', {
+    loginEvidence: { reason: 'PRIVATE_NAME', profileControl: 'PRIVATE_KEY', historyLink: true, cookies: 'PRIVATE_COOKIE' },
+  })).state;
+  assert.equal(state.loginEvidence.reason, 'unavailable');
+  assert.equal(state.loginEvidence.profileControl, false);
+  assert.equal(state.loginEvidence.historyLink, true);
+  assert.equal(JSON.stringify(state).includes('PRIVATE'), false);
+});
+
 test('many live pages share one IPC listener and release it after the last page',()=>{
   const ipc=new EventEmitter(),stops=[];
   for(let i=0;i<20;i++) {

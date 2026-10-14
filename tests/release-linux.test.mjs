@@ -122,9 +122,10 @@ test('archive copying preserves executable bits and internal links; escaping lin
   await assert.rejects(packageInventory(source),/escapes/);
 });
 
-async function releaseFixture(t) {
-  const root=await temporary(t),directory=path.join(root,'release'),version='0.1.0';
-  await fs.mkdir(directory);
+async function releaseFixture(t, { root, version = '0.1.0' } = {}) {
+  root ??= await temporary(t);
+  const directory=path.join(root,'.harness/runtime/releases',version);
+  await fs.mkdir(directory,{recursive:true});
   const artifacts=[];
   for(const [i,row]of RELEASE_MATRIX.entries()) {
     const file=releaseAssetNames(version)[i];await write(directory,file,row.id);
@@ -169,6 +170,40 @@ test('missing platform, corrupt asset, stale manifest and copy failure never pub
     await assert.rejects(fs.stat(path.join(f.root,'release-manifest.json')),{code:'ENOENT'});
   }
 });
+
+test('a new version advances canonical manifest only after preserving and verifying the previous complete release',async t=>{
+  const old=await releaseFixture(t);await publishReleaseSet(old);
+  const previous=await fs.readFile(path.join(old.root,'release-manifest.json'));
+  const next=await releaseFixture(t,{root:old.root,version:'0.1.1'});
+  await publishReleaseSet(next);
+  await next.verify(next.delivery,{version:'0.1.1',root:old.root,canonical:true});
+  assert.deepEqual(await fs.readFile(path.join(old.delivery,'release-manifest.json')),previous);
+  assert.deepEqual(await fs.readFile(path.join(old.directory,'release-manifest.json')),previous);
+  await assert.rejects(publishReleaseSet(old),/version must increase/);
+});
+
+test('failed release advancement leaves canonical and previous delivery intact',async t=>{
+  for(const fault of ['previous-corrupt','previous-manifest','new-copy','canonical-symlink']) {
+    const old=await releaseFixture(t);await publishReleaseSet(old);
+    const previous=await fs.readFile(path.join(old.root,'release-manifest.json'));
+    const next=await releaseFixture(t,{root:old.root,version:'0.1.1'});
+    if(fault==='previous-corrupt')await write(old.directory,old.manifest.artifacts[0].file,'damaged');
+    if(fault==='previous-manifest')await write(old.root,'release-manifest.json',previous+'\n');
+    if(fault==='new-copy') {
+      const verify=next.verify;
+      next.verify=(dir,opts)=>[next.directory,old.directory].includes(dir)?verify(dir,opts):Promise.reject(new Error('copy verification failure'));
+    }
+    if(fault==='canonical-symlink') {
+      await fs.rm(path.join(old.root,'release-manifest.json'));
+      await fs.symlink(path.join(old.directory,'release-manifest.json'),path.join(old.root,'release-manifest.json'));
+    }
+    const canonicalBefore=await fs.readFile(path.join(old.root,'release-manifest.json'));
+    await assert.rejects(publishReleaseSet(next));
+    assert.deepEqual(await fs.readFile(path.join(old.root,'release-manifest.json')),canonicalBefore);
+    assert.deepEqual(await fs.readFile(path.join(old.delivery,'release-manifest.json')),previous);
+    await assert.rejects(fs.stat(next.delivery),{code:'ENOENT'});
+  }
+});
 test('unknown platform result stops the sequence and notices use pinned bytes',async t=>{
   const seen=[];
   await assert.rejects(buildPlatforms('/fixture',async(_,args)=>{seen.push(args[1]);if(args[1]==='build:win')throw new Error('UNKNOWN');}),/UNKNOWN/);
@@ -183,7 +218,6 @@ test('GitHub verification checks own origin, all seven digests, tag and immutabl
   const f=await releaseFixture(t);
   await write(f.root,'package.json',JSON.stringify({version:f.version}));
   await publishReleaseSet(f);
-  await fs.cp(f.directory,path.join(f.root,'.harness/runtime/releases',f.version),{recursive:true});
   const before=await fs.readFile(path.join(f.root,'release-manifest.json'));
   const assets=await Promise.all(releaseAssetNames(f.version).map(async name=>{
     const a=await artifactRecord(path.join(f.delivery,name));return {name,size:a.bytes,digest:'sha256:'+a.sha256};

@@ -7,8 +7,6 @@ export function installPageObserver(dom, send) {
   let reportedAssistantRevision = 0, lastProgressAt = 0, progressTimer = null;
   let seq = 0, draftRevision = 0, userMessagesRevision = 0, editorRevision = 0;
   let editorIdentity = null, pending = false, lastSignature = '', live = true;
-  const loginSelector = '[data-testid="login-button"],[data-testid="signup-button"],a[href="/auth/login"],a[href="https://chatgpt.com/auth/login"]';
-  const profileSelector = '[data-testid="profile-button"],[data-testid="accounts-profile-button"],[data-testid="user-menu-button"],button[aria-label="Open Profile Menu"],button[aria-label="Открыть меню профиля"]';
   const normalize = text => text.replace(/\s+/g, ' ').trim();
   // Stable across document reloads; store an opaque identity, never conversation text.
   const fingerprint = text => {
@@ -52,9 +50,9 @@ export function installPageObserver(dom, send) {
       : assistant ? 'assistant' : null;
     if (editor !== editorIdentity) { editorIdentity = editor; editorRevision++; draftRevision++; }
     const button = dom.sendButton();
-    const login = dom.first(loginSelector) ? 'signed-out' : dom.first(profileSelector) ? 'signed-in' : 'unknown';
+    const account = dom.account();
     return {
-      url: location.href, experience: dom.experience(), login,
+      url: location.href, experience: dom.experience(), ...account,
       visibility: document.visibilityState,
       editorAvailable: !!editor, editorRevision,
       writable: !!editor && !editor.disabled && !editor.readOnly && editor.getAttribute('contenteditable') !== 'false',
@@ -110,6 +108,7 @@ export function installPageObserver(dom, send) {
   const start = () => {
     observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true,
       attributeFilter: ['disabled', 'readonly', 'contenteditable', 'aria-disabled', 'aria-hidden', 'hidden',
+        'aria-label', 'aria-labelledby', 'title', 'href', 'role',
         'data-message-id', 'data-turn-id', 'id', 'data-state', 'aria-checked', 'aria-pressed', 'class', 'style', 'data-testid', 'data-message-author-role'] });
     document.addEventListener('click', event => {
       if (event.isTrusted && elementOf(event.target)?.closest(dom.selectors.stop)) {

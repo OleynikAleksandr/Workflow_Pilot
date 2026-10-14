@@ -35,10 +35,10 @@ export function createStartupView({ document, api }) {
     $('startup-account-title').textContent = logged || loginVisible ? 'Аккаунт ChatGPT' : 'Открытие ChatGPT';
     $('startup-account-status').textContent = pageMessages[s.page] ?? (logged ? 'Вход подтверждён' : loginVisible
       ? 'Теперь можно войти или создать аккаунт'
-      : 'Страница открыта. Состояние входа пока не определено.');
+      : 'Страница открыта, но вход пока не распознан. Если вы уже вошли, нажмите «Проверить вход». Если состояние не изменится, скопируйте диагностику и передайте разработчику.');
     $('startup-account-body').hidden = logged;
     $('startup-account-instructions').hidden = !loginVisible;
-    $('startup-account-check').hidden = !loginVisible;
+    $('startup-account-check').hidden = !loginVisible && !unknown;
     $('startup-signup').hidden = !loginVisible;
     $('startup-signup-help').hidden = !signup || !loginVisible;
     $('startup-open-chat').textContent = opening ? 'Открываем ChatGPT…' : retry || unknown ? 'Повторить открытие' : 'Открыть сайт ChatGPT';
@@ -84,6 +84,7 @@ export function createStartupView({ document, api }) {
       const action = button.dataset.startup;
       button.disabled = ((opening || pending) && ['chat', 'signup', 'plugins'].includes(action))
         || (pending && !INDEPENDENT.has(action))
+        || (action === 'check-account' && (opening || pending))
         || (s.busy && ['check', 'install-git', 'paste-tunnel-id', 'configure-tunnel', 'continue', 'existing'].includes(action))
         || (action === 'configure-tunnel' && (tunnelStep !== 'key' || !s.clipboard?.hasTunnelId))
         || (action === 'paste-tunnel-id' && tunnelStep !== 'tunnel')

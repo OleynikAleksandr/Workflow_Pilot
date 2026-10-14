@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 43,
+  "plan_revision": 48,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -423,12 +423,12 @@
     "documents": [
       {
         "path": "docs/planning/migration-0.1.0.md",
-        "required": true,
+        "required": false,
         "revision": "1f734caff5144f97fe7ebd4b0ff46f30db660402"
       },
       {
         "path": "docs/planning/migration-platforms.md",
-        "required": true,
+        "required": false,
         "revision": "1f734caff5144f97fe7ebd4b0ff46f30db660402"
       },
       {
@@ -2662,7 +2662,8 @@
         "package-lock.json"
       ],
       "documentation_paths": [
-        "docs/modules/first-run-onboarding.md"
+        "docs/modules/first-run-onboarding.md",
+        "AGENTS.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -2675,17 +2676,36 @@
         "Загруженное unknown состояние показывает отдельную повторную проверку входа без перезагрузки и подготовки служб; дальнейшие шаги требуют подтверждённого входа.",
         "Диагностика первого запуска содержит состояние входа, безопасные признаки, актуальное состояние мастера и причины отклонения наблюдения/ошибки observer без текста диалогов, имён, cookies, ключей или полных личных URL.",
         "Пользовательский путь проверен через изолированные DOM и Electron fixtures; живая проверка текущего ChatGPT остаётся за пользователем. Донор только прочитан.",
-        "Версия 0.1.1; поставщик допускает замену корневого manifest только при новом номере и совпадении предыдущего manifest с сохранённым проверенным комплектом. Архивы 0.1.0 остаются неизменными."
+        "Версия 0.1.1; поставщик допускает замену корневого manifest только при новом номере и совпадении предыдущего manifest с сохранённым проверенным комплектом. Архивы 0.1.0 остаются неизменными.",
+        "По уточнению пользователя установка нового готового macOS выпуска в /Applications/Workflow Pilot.app обязательна после сборки; постоянное правило записано в AGENTS.md. Установку выполняет T013 после T016, без перезапуска приложения и изменения донора."
       ],
       "expected_commit_message": "fix: восстановить первый вход и диагностику Workflow Pilot 0.1.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T015",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "AGENTS.md",
+        "package-lock.json",
+        "package.json",
+        "scripts/release-all.mjs",
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/diagnostics.mjs",
+        "src/execution/browser/page-state.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/startup.mjs",
+        "tests/chromium-diagnostics.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/page-state.test.mjs",
+        "tests/release-linux.test.mjs",
+        "tests/startup-ui.test.mjs"
+      ]
     },
     {
       "id": "DOCS-4",
@@ -2705,7 +2725,8 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/first-run-onboarding.md"
+        "docs/modules/first-run-onboarding.md",
+        "AGENTS.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -2733,7 +2754,7 @@
       "acceptance_criteria": [
         "После DOCS собраны macOS arm64, Windows x64 и Linux x64 из одного sourceCommit, включающего исправление входа и диагностику; все архивы распакованы и сверены штатной проверкой.",
         "Полный комплект доставлен в Downloads/WorkflowPilot-0.1.1; корневой, staging и поставочный manifest совпадают. Полный комплект 0.1.0 сохранён.",
-        "Native/VM/clean-install остаются pending; приложение пользователя и донор не перезапускаются. Поручение этого раунда завершается выдачей трёх архивов; установка и GitHub-публикация остаются отдельными задачами."
+        "Native/VM/clean-install остаются pending; после сборки T013 обновляет /Applications/Workflow Pilot.app готовым macOS-комплектом. Перезапуск выполняет пользователь; GitHub-публикация остаётся отдельной задачей."
       ],
       "expected_commit_message": "release: собрать исправленный Workflow Pilot 0.1.1 для трёх ОС",
       "implementation_status": "TODO",
@@ -2767,7 +2788,7 @@
       ],
       "verification_kind": "installed",
       "acceptance_criteria": [
-        "Установлены только готовые проверенные пакеты T012 без пересборки в <workspace>/Workflow Pilot.app и /Applications/Workflow Pilot.app; sourceCommit, version, manifest/подпись/состав соответствуют.",
+        "Установлены только готовые проверенные пакеты T016 версии 0.1.1 без пересборки в <workspace>/Workflow Pilot.app и /Applications/Workflow Pilot.app; sourceCommit, version, manifest/подпись/состав соответствуют.",
         "Назначения и симлинки проверены, предусмотрен откат, донор/его подпись/службы не затронуты. Приложения не перезапускаются и не управляются агентом; запуск и разрешения выполняет пользователь.",
         "Пользователю переданы порядок Mac→Windows→Linux→clean, точные пакеты/пути и ограничения x64 UTM/VPS setup/первого запуска. Неподтверждённая живая приёмка не отмечена выполненной.",
         "Корневой/staging/поставочный manifest имеют одинаковый digest; установочная задача не меняет байты manifest комплекта и не добавляет app bundle в Git."
@@ -2802,8 +2823,8 @@
       ],
       "verification_kind": "package",
       "acceptance_criteria": [
-        "После DOCS новый origin = https://github.com/OleynikAleksandr/Workflow_Pilot.git; main отправлен fast-forward без force. Тег v0.1.0 на manifest.sourceCommit, Release публикуется после сверки полного комплекта трёх ОС по именам/размерам/digest.",
-        "Использованы готовые assets T012, пересборки нет; в Release/manifest честно указаны pending nativeWindows/nativeLinux/clean и режим подписи. После финального коммита выполнены обычный push и повторная сверка remote main=local HEAD, тега и assets.",
+        "После DOCS новый origin = https://github.com/OleynikAleksandr/Workflow_Pilot.git; main отправлен fast-forward без force. Тег v0.1.1 на manifest.sourceCommit, Release публикуется после сверки полного комплекта трёх ОС по именам/размерам/digest.",
+        "Использованы готовые assets T016, пересборки нет; в Release/manifest честно указаны pending nativeWindows/nativeLinux/clean и режим подписи. После финального коммита выполнены обычный push и повторная сверка remote main=local HEAD, тега и assets.",
         "Даны результат, пути, тесты и дальнейшие действия пользователя; план READY_FOR_ACCEPTANCE, не архивирован без приёмки. Донорский репозиторий и старые теги не менялись.",
         "Manifest asset, корневая и поставочная копии побайтно одинаковы; новые коммиты после dcb2703c8a766d9f1cf7030f6fc69a8af1c8e9be не имеют placeholder-автора. Начальная история до этой границы сохраняется, force/rewrite не выполняются."
       ],
@@ -2845,7 +2866,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 43
+Revision: 48
 
 ## Цель
 
@@ -2966,16 +2987,16 @@ Revision: 43
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T012-RELEASE, DOCS-2, DOCS-3
-- [TODO] T015: Исправить распознавание входа и диагностику первого запуска в 0.1.1 — Ожидает
-  - Git Commit: [PENDING] fix: восстановить первый вход и диагностику Workflow Pilot 0.1.1
+- [DONE] T015: Исправить распознавание входа и диагностику первого запуска в 0.1.1 — Завершено
+  - Git Commit: [DONE] fix: восстановить первый вход и диагностику Workflow Pilot 0.1.1
   - Reference: workflow-pilot-migration-0.1.0 / T015 / implementation
-  - Файлы: src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/execution/browser/diagnostics.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/index.html, tests/page-state.test.mjs, tests/startup-ui.test.mjs, tests/chromium-diagnostics.test.mjs, tests/electron-smoke.mjs, scripts/release-all.mjs, tests/release-linux.test.mjs, package.json, package-lock.json, docs/modules/first-run-onboarding.md
+  - Файлы: src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/execution/browser/diagnostics.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/index.html, tests/page-state.test.mjs, tests/startup-ui.test.mjs, tests/chromium-diagnostics.test.mjs, tests/electron-smoke.mjs, scripts/release-all.mjs, tests/release-linux.test.mjs, package.json, package-lock.json, docs/modules/first-run-onboarding.md, AGENTS.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012-BUILD
 - [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS-4 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/first-run-onboarding.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/first-run-onboarding.md, AGENTS.md
   - Параллельность: исключительное выполнение
   - Зависимости: T015
 - [TODO] T016: Пересобрать исправленный комплект 0.1.1 для macOS, Windows и Linux — Ожидает

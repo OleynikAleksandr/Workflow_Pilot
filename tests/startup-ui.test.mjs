@@ -78,7 +78,7 @@ test('blank pages never direct the user to missing login controls and expose a c
     f.emit({ page, account: 'unknown' });
     assert.equal(f.document.querySelector('#startup-account-instructions').hidden, true);
     assert.equal(f.document.querySelector('#startup-signup').hidden, true);
-    assert.equal(f.document.querySelector('#startup-account-check').hidden, true);
+    assert.equal(f.document.querySelector('#startup-account-check').hidden, page !== 'loaded');
   }
   const copy = f.document.querySelector('#startup-copy-diagnostics');
   assert.equal(copy.hidden, false); assert.equal(copy.disabled, false);
@@ -117,6 +117,12 @@ test('loading copy remains available and a loaded unknown screen is not describe
   f.emit({ page: 'loaded' });
   assert.match(f.document.querySelector('#startup-account-status').textContent, /Страница открыта/);
   assert.equal(f.document.querySelector('#startup-open-chat').disabled, false);
+  const check = f.document.querySelector('#startup-account-check');
+  assert.equal(check.hidden, false);
+  check.click(); await f.settle();
+  assert.deepEqual(f.calls, ['check-account'], 'manual login check neither reloads nor prepares components');
+  assert.equal(f.document.querySelector('#startup-project-body').hidden, true);
+  assert.match(f.document.querySelector('#startup-account-status').textContent, /скопируйте диагностику/);
 });
 
 
