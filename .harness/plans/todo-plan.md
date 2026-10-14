@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 95,
+  "plan_revision": 97,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3445,8 +3445,8 @@
     {
       "id": "DOCS-8",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "DOCS-8",
@@ -3470,7 +3470,14 @@
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/release.md"
+      ]
     },
     {
       "id": "T028",
@@ -3563,7 +3570,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 95
+Revision: 97
 
 ## Цель
 
@@ -3798,8 +3805,8 @@ Revision: 95
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/frontend/plugin/navigation-probe.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, package.json, package-lock.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-8: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-8: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS-8 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, README.md, docs/modules/release.md, docs/acceptance/migration-0.1.0.md
   - Параллельность: исключительное выполнение
