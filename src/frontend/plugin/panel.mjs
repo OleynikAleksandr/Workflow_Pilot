@@ -18,10 +18,15 @@ export function mountPanel({document,callTool,getMessage,uuid=()=>crypto.randomU
   }
   function render(data){
     if(data?.error){status(data.error.message);return;}
-    if(data?.project){showProject(data);controls();return;}
+    if(data?.project){
+      if(Array.isArray(data.projects))render({projects:data.projects});
+      showProject(data);status('Проект открыт. Можно создать сессию.');controls();return;
+    }
     if(!Array.isArray(data?.projects))return;
     $('projects').replaceChildren();
-    if(selected&&!data.projects.some(p=>p.id===selected.id)){selected=null;$('project-detail').hidden=true;}
+    const current=selected&&data.projects.find(p=>p.id===selected.id);
+    if(current)showProject({project:current,sessions:current.sessions});
+    else if(selected){selected=null;created=false;$('project-detail').hidden=true;$('sessions').replaceChildren();}
     for(const p of data.projects){
       const button=document.createElement('button');button.type='button';button.textContent=p.name;
       button.addEventListener('click',()=>run(async()=>{
@@ -32,7 +37,7 @@ export function mountPanel({document,callTool,getMessage,uuid=()=>crypto.randomU
       $('projects').append(button);
     }
     if(!data.projects.length)status('Сначала откройте локальный проект в приложении Workflow Pilot, затем обновите список.');
-    else status('Выберите проект.');
+    else status(selected?'Данные проекта обновлены.':'Выберите проект.');
     controls();
   }
   async function run(action){if(busy)return;busy=true;controls();try{await action();}catch(error){status(error.message||'Не удалось выполнить действие.');}finally{busy=false;controls();}}
@@ -43,8 +48,15 @@ export function mountPanel({document,callTool,getMessage,uuid=()=>crypto.randomU
   $('new-session').addEventListener('click',()=>run(async()=>{
     const message=getMessage();if(!selected||!message||created)return;
     const requestId=uuid();
-    const text='Подключи этот разговор к локальному проекту Workflow Pilot. Вызови workflow_connect_project с аргументами '+
-      JSON.stringify({project_id:selected.id,request_id:requestId})+'. Прочитай весь полученный контекст и кратко подтверди готовность. Не начинай реализацию без моей задачи.';
+    const panelArgs=JSON.stringify({project_id:selected.id});
+    const text='Подключи этот разговор к локальному проекту Workflow Pilot. Первым вызовом инструмента выполни workflow_pilot_panel с аргументами '+
+      panelArgs+', чтобы сразу открыть панель проекта рядом с этим разговором, до получения и чтения контекста. '+
+      'Затем вызови workflow_connect_project с аргументами '+
+      JSON.stringify({project_id:selected.id,request_id:requestId})+'. После успешного подключения прочитай весь полученный контекст. '+
+      'Затем повторно вызови workflow_pilot_panel с аргументами '+panelArgs+
+      ', чтобы обновить список сессий после подключения этого разговора. '+
+      'После этого кратко подтверди готовность. Если подключение или открытие панели не удалось, сообщи об ошибке; '+
+      'не утверждай, что панель видна, только по успеху инструмента. Не создавай другой разговор и не начинай реализацию без моей задачи.';
     // Never retry an uncertain send: the host may already have created the conversation.
     created=true;
     status('Создаём разговор…');

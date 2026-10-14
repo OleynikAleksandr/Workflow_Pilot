@@ -134,6 +134,12 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   assert.equal(repeated.structuredContent.sessionId,connected.structuredContent.sessionId);
   const manual=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый'},_meta:metadata});
   assert.equal(manual.structuredContent.sessionId,connected.structuredContent.sessionId,'ordinary chat can connect without a panel request');
+  const focused=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'Первый'}});
+  assert.equal(focused.isError,false);assert.equal(focused.structuredContent.project.id,'Первый');
+  assert.equal(focused.structuredContent.projects.length,2);
+  assert.ok(focused.structuredContent.sessions.some(s=>s.id===connected.structuredContent.sessionId));
+  const absent=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'missing'}});
+  assert.equal(absent.isError,true);assert.equal(absent.structuredContent.error.code,'PLUGIN_PROJECT_UNAVAILABLE');
 });
 
 test('panel buttons traverse real MCP and Control; unsupported hosts cannot create conversations',async t=>{
@@ -152,6 +158,9 @@ test('panel buttons traverse real MCP and Control; unsupported hosts cannot crea
   message={send:async payload=>{
     sends++;assert.deepEqual(payload._meta,{'openai/message':{target:'new',send:true}});
     assert.match(payload.content[0].text,new RegExp(requestId));
+    const text=payload.content[0].text;
+    assert.ok(text.indexOf('workflow_pilot_panel')<text.indexOf('workflow_connect_project'),'panel is requested before connecting or reading recovery');
+    assert.ok(text.lastIndexOf('workflow_pilot_panel')>text.indexOf('прочитай весь полученный контекст'),'refresh after recovery');
     result=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый',request_id:requestId},_meta:metadata});
     return {};
   }};
@@ -160,6 +169,13 @@ test('panel buttons traverse real MCP and Control; unsupported hosts cannot crea
   assert.equal(sends,1);assert.equal(result.isError,false);
   assert.equal(f.store.snapshot().projects.find(p=>p.projectId==='Первый').sessions.filter(s=>s.external).length,1);
   assert.equal($('new-session').disabled,true);
+  $('refresh').click();await eventually(()=>$('status').textContent==='Данные проекта обновлены.');
+  assert.equal($('sessions').children.length,result?f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length:0);
+  assert.equal($('new-session').disabled,true,'refresh must not re-enable an uncertain send');
+  ui.render({projects:[]});
+  assert.equal($('project-detail').hidden,true);assert.equal($('sessions').children.length,0);
+  ui.render((await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'Первый'}})).structuredContent);
+  assert.equal($('project-detail').hidden,false);assert.equal($('projects').children.length,2);
   // An uncertain host response must not create a second conversation on a repeated click.
   first().click();await eventually(()=>$('new-session').disabled===false);
   message={send:async()=>{sends++;throw new Error('timeout');}};
@@ -177,7 +193,7 @@ test('MCP reports a closed desktop without creating a separate project store',as
 test('served bundled HTML starts the actual SDK and handles project and new-session buttons',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
-  const listing=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
+  const listing=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'Первый'}});
   const errors=[],calls=[],messages=[];let initialized=false;
   const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
   const dom=new JSDOM(html,{url:'https://plugin-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
@@ -207,7 +223,7 @@ test('served bundled HTML starts the actual SDK and handles project and new-sess
   await eventually(()=>initialized||errors.length>0);assert.deepEqual(errors,[]);
   await eventually(()=>$('projects').querySelectorAll('button').length===2);
   assert.equal(dom.window.document.querySelector('h1').textContent,'Workflow Pilot');
-  [...$('projects').querySelectorAll('button')].find(b=>b.textContent==='Первый').click();
+  assert.equal($('project-detail').hidden,false,'focused tool result opens project on a fresh panel');
   await eventually(()=>$('new-session').disabled===false).catch(error=>{
     throw new Error(error.message+'; status='+$('status').textContent+'; calls='+JSON.stringify(calls)+'; errors='+JSON.stringify(errors));
   });
@@ -215,5 +231,9 @@ test('served bundled HTML starts the actual SDK and handles project and new-sess
   $('new-session').click();await eventually(()=>messages.length===1);
   assert.deepEqual(JSON.parse(JSON.stringify(messages[0]._meta)),{'openai/message':{target:'new',send:true}});
   assert.match(messages[0].content[0].text,/workflow_connect_project/);
-  assert.deepEqual(calls,['workflow_open_project']);assert.deepEqual(errors,[]);
+  const requestId=messages[0].content[0].text.match(/"request_id":"([^"]+)"/)[1];
+  const connected=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый',request_id:requestId},_meta:metadata});
+  assert.equal(connected.isError,false);
+  $('refresh').click();await eventually(()=>$('sessions').children.length===f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length);
+  assert.deepEqual(calls,['workflow_pilot_panel']);assert.deepEqual(errors,[]);
 });

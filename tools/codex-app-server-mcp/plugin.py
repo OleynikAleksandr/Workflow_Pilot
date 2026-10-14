@@ -76,9 +76,19 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_pilot_panel", title="Workflow Pilot", annotations=READ,
               meta={"ui": ui, "openai/ui": {"entrypoints": [{"type": "global"}, {"type": "thread"}]}})
-    async def panel() -> CallToolResult:
-        """Open Workflow Pilot's project panel. Lists registered local projects; does not create a conversation or change files."""
-        return result(await asyncio.to_thread(bridge.call, {"action": "list"}))
+    async def panel(
+        project_id: Annotated[str | None, Field(min_length=1, max_length=512, description="Optional exact project id from the project list or successful workflow_connect_project result. Opens that project with its current sessions.")] = None,
+    ) -> CallToolResult:
+        """Open Workflow Pilot's panel beside this conversation. Lists registered local projects; with project_id also shows that project's current sessions. When starting from the panel's new-session message, call this FIRST with the supplied project_id, before workflow_connect_project and reading recovery. After connecting and reading recovery, call it again with the same project_id to refresh the session list before confirming readiness. Does not create another conversation, switch the embedded browser, or pin the panel across conversations. Tool success does not prove that the host has visibly rendered the panel."""
+        selected = {}
+        if project_id is not None:
+            selected = await asyncio.to_thread(bridge.call, {"action": "open", "projectId": project_id})
+            if "error" in selected:
+                return result(selected)
+        listing = await asyncio.to_thread(bridge.call, {"action": "list"})
+        if "error" in listing:
+            return result(listing)
+        return result({**listing, **selected})
 
     @mcp.tool(name="workflow_open_project", title="Открыть проект Workflow Pilot", annotations=READ,
               meta={"ui": {**ui, "visibility": ["app", "model"]}})

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 79,
+  "plan_revision": 81,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3269,14 +3269,21 @@
         "Панель принимает необязательный project_id, возвращает свежие список проектов и выбранный проект с сессиями. Обновление не оставляет старые сессии, удалённый проект сбрасывается, UNKNOWN send не повторяется. Проверки через реальные MCP и собранный HTML; без модельных ходов. Версия 0.1.4."
       ],
       "expected_commit_message": "fix: открывать панель проекта в новом разговоре и обновлять сессии",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T024",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-7",
@@ -3396,7 +3403,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 79
+Revision: 81
 
 ## Цель
 
@@ -3601,8 +3608,8 @@ Revision: 79
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: T022, DOCS-6
-- [TODO] T024: Открывать панель нового разговора с актуальными сессиями проекта — Ожидает
-  - Git Commit: [PENDING] fix: открывать панель проекта в новом разговоре и обновлять сессии
+- [DONE] T024: Открывать панель нового разговора с актуальными сессиями проекта — Завершено
+  - Git Commit: [DONE] fix: открывать панель проекта в новом разговоре и обновлять сессии
   - Reference: workflow-pilot-migration-0.1.0 / T024 / implementation
   - Файлы: src/frontend/plugin/panel.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, package.json, package-lock.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
