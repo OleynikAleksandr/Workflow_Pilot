@@ -164,7 +164,7 @@
   ],
   "budget": {
     "document_bytes": 28000,
-    "hard_bytes": 196000
+    "hard_bytes": 180000
   },
   "documentation": {
     "mappings": []
