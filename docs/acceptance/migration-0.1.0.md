@@ -2,7 +2,9 @@
 
 T011 завершена 13.10.2026 на коммите `1f734caff5144f97fe7ebd4b0ff46f30db660402`. Ниже сохранены фактические результаты её девяти gates, сверенные с evidence Kit перед DOCS. Файл `git rev-parse --git-path workflow-kit/last-verification.json` содержит последнюю операцию и впоследствии заменяется; он не является вечной ссылкой на T011. Это автоматическая проверка нового проекта, не native-приёмка трёх ОС. Последующий комплект 0.1.0 собран; актуальные факты сборки и подписи находятся в manifest, установка и публикация подтверждаются отдельными delivery-задачами.
 
-14.10.2026 пользователь обнаружил блокировку первого запуска: при открытом аккаунте ChatGPT мастер оставался в unknown. В T015 для 0.1.1 дополнены признаки аккаунта, отдельная кнопка проверки и безопасная диагностика. На коммите `f2fe8cd03469a6b9f22b82cbff5f078172143a1c` прошли 828 тестов (1 skipped), полный скрытый Electron smoke и проверка архитектуры. Smoke воспроизводит unknown → ручная проверка без перезагрузки → распознанная личная навигация → доступное подключение; удаление признаков возвращает unknown. Совпадение с живой текущей разметкой ChatGPT пользователь проверяет после установки 0.1.1.
+14.10.2026 пользователь подтвердил в установленной 0.1.1 исправленный вход, подключение собственного туннеля/MCP, создание проекта и получение контекста агентом. Это не полная приёмка AutoPlan/Review/restart. Проверки Windows/Linux отложены: Ubuntu x64 в UTM на Apple Silicon оказалась слишком медленной для практического теста приложения.
+
+Плагин T017 для 0.1.2 прошёл 834 теста (1 skipped), скрытый Electron smoke и архитектурную проверку на `8340a77c8f0c9ca4996669fc5f101a7ed4bfa92d`. Реальный FastMCP с изолированным Control проверяет контекст и привязку; Electron проверяет внешний сеанс без браузера/AutoPlan. Живая [матрица ChatGPT Desktop/Chat/Work/Codex](../modules/chatgpt-plugin.md) остаётся pending.
 
 | Проверка T011 | Результат |
 | --- | --- |
@@ -22,7 +24,7 @@ T011 завершена 13.10.2026 на коммите `1f734caff5144f97fe7ebd4b
 
 | Сценарий | Автоматическое доказательство | Ручная часть |
 | --- | --- | --- |
-| Проект → Chat/Work → recovery → ответ | control-facade, context-session, session-runtime, chatgpt-composer; electron-smoke с настоящим Chromium и локальной страницей | Mac/ChatGPT pending |
+| Проект → Chat/Work → recovery → ответ | control-facade, context-session, session-runtime, chatgpt-composer; electron-smoke с настоящим Chromium и локальной страницей | Mac: проект и контекст 0.1.1 подтверждены; оба режима отдельно pending |
 | Прежний чат, выбор другого проекта, cwd скрытой сессии, full-context once | conversation-recovery, workspace-session, context-session, session-opening-performance; smoke | Mac pending |
 | AutoPlan ON/OFF, sequential/parallel, Stop/draft/UNKNOWN | auto-plan, project-auto-plan, parallel-execution, automation-send-state; smoke | Mac pending |
 | Источник ready ≠ merge safe, writer, diagnostic, последовательная интеграция и final handoff once | parallel-finalization, parallel-execution-recovery, command-activity; реальные Git/Kit и изолированный HTTP writer в smoke | Mac pending |
@@ -31,7 +33,7 @@ T011 завершена 13.10.2026 на коммите `1f734caff5144f97fe7ebd4b
 | Архив/удаление/Доктор, ребёнок/родитель/сосед, old boot/пропавший исполнитель | workspace-deletion, project-state-cleanup, project-doctor, command-activity; smoke | Mac pending |
 | Проекты донора 1.7.2 NONE/ACTIVE/частично DONE | migration-compatibility, workflow-kit-upgrade и kit-check: identity/история/recovery; отказ чужой операции/незавершённой транзакции/неизвестной версии | Отдельная копия старого проекта pending |
 | Два приложения, свои профили/службы, оба канала и занятые порты | product-identity, mac-runtime-switch, windows-runtime, vps-tunnel, codex-app-server-mcp, linux-runtime | Сосуществование native pending; собственный VPS setup-required |
-| Первый запуск, повтор после ошибки, секреты, адрес/ID/коннектор | startup-readiness, startup-platform, startup-ui, tunnel-id-runtime, desktop-boundaries, linux-startup; smoke | Вход/регистрация/системные разрешения вручную pending |
+| Первый запуск, повтор после ошибки, секреты, адрес/ID/коннектор | startup-readiness, startup-platform, startup-ui, tunnel-id-runtime, desktop-boundaries, linux-startup; smoke | Mac 0.1.1: вход и собственный туннель/MCP подтверждены; clean-install pending |
 | Frontend/Control/Execution, IPC, освобождение подписок | execution-architecture, desktop-boundaries, control-facade, page-state; dependency-cruiser | Одно видимое окно проверяет пользователь |
 | Linux XDG/права/регистр/Unicode/пробелы, process groups/systemd/X11 | linux-runtime, linux-startup; Python fixtures, ELF/payload digests без запуска Linux на Mac | Ubuntu 24.04 x64 X11 VM pending; Wayland unsupported |
 | Три пакета, sourceCommit/manifest/assets, preload/HTML/workers/observer/Kit | release-all, release-mac, release-linux, sign-mac-bundle, windows-runtime; ASAR/архивные fixtures, исполняемые биты и rollback | T012 production; T013 установка; clean-install pending |

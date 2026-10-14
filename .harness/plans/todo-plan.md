@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 63,
+  "plan_revision": 65,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -424,7 +424,8 @@
       "tests/fixtures/released-kit/README.md",
       "resources/THIRD-PARTY.md",
       "docs/acceptance/migration-0.1.0.md",
-      "docs/planning/chatgpt-plugin.md"
+      "docs/planning/chatgpt-plugin.md",
+      "docs/modules/chatgpt-plugin.md"
     ]
   },
   "baseline_commit": "dcb2703c8a766d9f1cf7030f6fc69a8af1c8e9be",
@@ -2990,8 +2991,8 @@
     {
       "id": "DOCS-5",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "DOCS-5",
@@ -3006,14 +3007,32 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/control.md"
+        "docs/modules/control.md",
+        "README.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/release.md",
+        "docs/planning/chatgpt-plugin.md",
+        "docs/planning/orchestrated-execution-next.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/release.md",
+        "docs/planning/chatgpt-plugin.md",
+        "docs/planning/orchestrated-execution-next.md"
+      ]
     },
     {
       "id": "T019",
@@ -3106,7 +3125,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 63
+Revision: 65
 
 ## Цель
 
@@ -3269,10 +3288,10 @@ Revision: 63
   - Файлы: package.json, package-lock.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-5: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-5: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS-5 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md, README.md, docs/acceptance/migration-0.1.0.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/release.md, docs/planning/chatgpt-plugin.md, docs/planning/orchestrated-execution-next.md
   - Параллельность: исключительное выполнение
   - Зависимости: T017, T018
 - [TODO] T019: Собрать выпуск 0.1.2 с плагином для трёх ОС — Ожидает

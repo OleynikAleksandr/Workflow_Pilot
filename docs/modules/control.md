@@ -8,6 +8,6 @@ ProjectsService владеет WorkspaceSessions и очередью запис�
 
 Control не импортирует Electron, fs, child_process. IO проходит через ExecutionFacade/FileAdapter; страницы, Send и подписки — Execution/browser. Control/sessions/service владеет ContextSession, ConversationRecovery, таймером и ручной привязкой. Desktop предоставляет presentation/browser host. AutoPlan/Review/parallel — Control/workflow, настройки — Control/settings, onboarding — Control/startup. Architecture gate запрещает обход фасадов и циклы; attachSessions — внутренний порт, не публичный IPC.
 
-createPlugin использует тот же ProjectsService через приватный Execution-мост существующего MCP. Внешняя сессия хранит хеш идентификатора разговора, не запускает браузер и AutoPlan. Контракт и ограничения — [плагин ChatGPT](../planning/chatgpt-plugin.md).
+createPlugin использует тот же ProjectsService через приватный Execution-мост существующего MCP. Внешняя сессия хранит хеш идентификатора разговора, не запускает браузер и AutoPlan. Контракт и ограничения — [плагин ChatGPT](chatgpt-plugin.md).
 
 control-facade.test проверяет владение, restart, detached snapshots, UNKNOWN и откат записи. chatgpt-plugin.test проверяет UI→MCP→Control. Electron smoke проходит реальные IPC на изолированных fixtures, включая удаление и внешнюю сессию. Живую приёмку выполняет пользователь.

@@ -1,8 +1,8 @@
 # Workflow Pilot
 
-Самостоятельное Electron-приложение: локальные проекты и ChatGPT Web в одном окне. Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; версия 0.1.1. Происхождение — [Project Web Pilot 0.6.115](../../PROVENANCE.md), донор заморожен. Сохранены AutoPlan/Review/sequential/parallel; новая оркестрация и отдельный плагин ChatGPT Web не входят в этот выпуск.
+Workflow Pilot 0.1.2 — локальные проекты со встроенным ChatGPT Web и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
 
-Общая поставка проверяет три платформы из одной исходной базы. Linux toolchain копируется с сохранением относительных ссылок отдельно от extraResource Electron Packager; тест подтверждает независимость пакета от папки сборки. Локализации и иконка macOS сверяются с закреплённым Electron по составу и содержимому. Контракт и порядок DOCS → общий выпуск → установка → публикация описаны в [поставке](../modules/release.md).
+Три платформы собираются из одного sourceCommit. Порядок DOCS → сборка → установка и отдельная публикация — в [поставке](../modules/release.md).
 
 ## Границы и владельцы
 
@@ -13,13 +13,13 @@
 | Execution | Команды/stdin, файлы, процессы, службы, технические страницы/observer/Send | Результаты, события и ошибки; без Control/Frontend/Kit |
 | Workflow Kit | Единственный current plan и транзакции checkout/worktree | CLI и пакет 1.7.3, продолжение формата 1.7.2 |
 
-src/main.mjs только запускает Desktop bootstrap. Реализации расположены в src/control, src/execution, src/frontend/desktop; src/contracts содержит сообщения, ошибки и валидацию. Kit — packages/workflow-kit; автономный Python executor — tools/codex-app-server-mcp; workers и staged ресурсы — resources; разработка/поставка — scripts.
+src/main.mjs запускает Desktop bootstrap — точку композиции Control/Execution. src/contracts содержит сообщения и валидацию; packages/workflow-kit — Kit; tools/codex-app-server-mcp — Python MCP; resources — workers и staged ресурсы; scripts — поставка. src/frontend/plugin содержит автономную MCP App панель.
 
-Control не импортирует Electron/Frontend и не выполняет физическое IO. Renderer использует только локальный UI/contracts и фиксированный IPC; источник IPC проверяется до действия. Нет универсального диспетчера, общей шины, второго реестра планов или скрытого polling. Внутрипроцессные порты могут иметь callbacks; публичные snapshots/события сериализуемы и не раскрывают stores/Map/Electron.
+Control не импортирует Electron и не выполняет IO; renderer использует фиксированный IPC с проверкой источника. Snapshots сериализуемы и не раскрывают stores. Dependency-cruiser запрещает обход границ и циклы.
 
-Успех, ошибка, отмена и UNKNOWN различимы. Потеря связи не подтверждает завершение, UNKNOWN не разрешает повтор Send. Полный recovery отправляется один раз; выбор видимого проекта не меняет cwd фоновой сессии. Освобождение страниц снимает подписки и ожидания.
+UNKNOWN запрещает повтор Send. Recovery отправляется один раз; выбор проекта не меняет cwd фоновой сессии. Освобождение страниц снимает подписки.
 
-Временные корневые мосты удалены. Три публичных chatgpt-dom/composer/experience входа и pageScript сохранены для внешнего Sidebar. Динамические preload/HTML/observer/workers проверяются отдельно от статического графа. Dependency-cruiser запрещает циклы без исключений; конкретный desktop/bootstrap — единственная точка композиции Control и Execution.
+Публичные chatgpt-dom/composer/experience и pageScript сохранены. Динамические preload/HTML/observer/workers проверяются отдельно. Плагин использует тот же Control через приватный Execution-мост; внешняя сессия не запускает браузер или AutoPlan.
 
 ## Карта модулей
 
@@ -30,6 +30,6 @@ Control не импортирует Electron/Frontend и не выполняет
 
 ## Готовность и продолжение
 
-Linux runtime/мастер и общая поставка macOS arm64, Windows x64, Ubuntu 24.04 x64/X11 реализованы. В 0.1.1 дополнены признаки входа ChatGPT, доступна ручная повторная проверка без перезагрузки, журнал объясняет наблюдение аккаунта и решение мастера. T015 прошла unit suite, скрытый Electron-сценарий и архитектурную проверку. Факт сборки задаёт manifest; установка готового приложения в Applications обязательна после каждого выпуска, публикация и native/VM/clean-install приёмка остаются отдельными шагами. Собственные профиль/runtime/службы обязательны; VPS без собственного маршрута показывает setup-required, доступен свой Secure MCP Tunnel. Сервер VPS не используется как desktop.
+Вход, туннель и получение контекста проекта на Mac 0.1.1 подтверждены пользователем. Плагин 0.1.2 прошёл изолированные MCP/UI, Electron и архитектурные проверки; Chat/Work/Codex проверяет пользователь. Windows/Linux и clean-install отложены. Свои профиль/runtime/службы обязательны; доступен Secure MCP Tunnel, VPS без собственного маршрута — setup-required.
 
-Запуск и команды — [README](../../README.md). Работа идёт через Kit; DOCS предшествует build. Сборка всех платформ использует один sourceCommit и неизменяемый manifest; fixture не означает native-tested. История удалённых спецификаций доступна в Git, required-ссылки закрепляет Kit.
+Запуск — [README](../../README.md). Факт сборки задаёт manifest; установка в Applications обязательна, перезапускает пользователь. Fixture не означает native-tested. История спецификаций остаётся в Git.

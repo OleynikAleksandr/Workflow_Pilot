@@ -1,18 +1,18 @@
 # Единая поставка Workflow Pilot
 
-Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.1.1 порядок: исправление первого входа и диагностики T015 → DOCS-4 → общая сборка T016 → установка T013. GitHub-публикация выполняется отдельно; живая приёмка macOS, Windows и Ubuntu остаётся за пользователем. Уже проверенные правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
+Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.1.2 порядок: плагин T017 и версия T018 → DOCS-5 → общая сборка T019 → установка T020. GitHub-публикация выполняется отдельно. Вход/туннель/контекст 0.1.1 приняты пользователем на Mac; плагин 0.1.2 и Windows/Linux требуют живой проверки. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
 
 ## Матрица и состав
 
-Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.1.1. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
+Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.1.2. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
 
 `npm run build` последовательно запускает macOS arm64, Windows x64 и Linux x64. Используются существующие Electron Packager, ASAR, системные ditto/tar. Linux-бинарники на Mac не запускаются. Ошибка/неизвестный исход платформы останавливает сборку; отдельный успешный пакет не считается выпуском.
 
-Семь assets версии 0.1.1:
+Семь assets версии 0.1.2:
 
-- Workflow-Pilot-0.1.1-macOS-arm64.zip
-- Workflow-Pilot-0.1.1-Windows-x64.zip
-- Workflow-Pilot-0.1.1-Linux-x64.tar.gz
+- Workflow-Pilot-0.1.2-macOS-arm64.zip
+- Workflow-Pilot-0.1.2-Windows-x64.zip
+- Workflow-Pilot-0.1.2-Linux-x64.tar.gz
 - Windows-Codex-Local-2026-09-10.zip
 - SHA256SUMS.txt
 - INSTALL.txt
@@ -24,7 +24,7 @@ URL vendor: https://github.com/OleynikAleksandr/Project-Web-Pilot/releases/downl
 
 ## Сборка и доказательства
 
-Исходники, scripts, package/lock и packages/workflow-kit должны быть закоммичены. Сборка фиксирует HEAD, снимок исходников и хеши locks, затем повторно проверяет их перед завершением. Generated Kit/observer/notices подготавливаются из закреплённых источников. Версии приложения, Node/Electron, Kit и sourceCommit общие для трёх пакетов.
+Исходники, scripts, package/lock и packages/workflow-kit должны быть закоммичены. Сборка фиксирует HEAD, снимок исходников и хеши locks, затем повторно проверяет их перед завершением. Generated Kit/observer/notices и автономный plugin-ui.html подготавливаются из закреплённых источников. HTML плагина с лицензиями SDK и plugin.py входят в tools MCP всех платформ и сверяются по digest. Версии приложения, Node/Electron, Kit и sourceCommit общие для трёх пакетов.
 
 Проверка пакетов сравнивает исходники и точный набор src, runtime package.json, обе копии Kit (ASAR dependency и внешний runtime), Python executor, HTML, preload, workers и observer. Запрещены вложенные .app, лишние корневые файлы, неожиданные внешние ресурсы и runtime/secret-пути. Подготовленные toolchain и упакованные копии сверяются. Windows проверяет PE и pinned vendor/Node; Linux — ELF x64, executable bits, payload hashes и файлы Electron. Каждый ZIP/tar.gz распаковывается во временный каталог и сравнивается со staging по содержимому, правам и внутренним симлинкам; выходящие за пакет ссылки запрещены.
 
