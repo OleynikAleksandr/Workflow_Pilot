@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Workflow Pilot 0.1.3 — локальные проекты со встроенным ChatGPT Web и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
+Workflow Pilot 0.1.4 — локальные проекты со встроенным ChatGPT Web и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
 
 Три платформы собираются из одного sourceCommit. Порядок DOCS → сборка → установка и отдельная публикация — в [поставке](../modules/release.md).
 
@@ -30,6 +30,6 @@ UNKNOWN запрещает повтор Send. Recovery отправляется 
 
 ## Готовность и продолжение
 
-Вход, туннель и контекст на Mac 0.1.1 подтверждены пользователем. В 0.1.3 исправлено повреждение кода панели при сборке HTML; тест исполняет ресурс, полученный через MCP. После пустой панели 0.1.2 пользователь повторяет проверку Chat/Work; Codex не входит в приёмку. Windows/Linux и clean-install отложены. Свои профиль/runtime/службы обязательны; доступен Secure MCP Tunnel, VPS без собственного маршрута — setup-required.
+Вход, туннель и контекст на Mac 0.1.1, работа плагина 0.1.3 в Chat/Work подтверждены пользователем. В 0.1.4 новый разговор получает просьбу первым вызовом открыть панель до чтения recovery, затем обновить её; исправлено обновление сессий раскрытого проекта. Тест исполняет ресурс через MCP, живая проверка нового порядка и задержек pending. Codex не входит в приёмку. Windows/Linux и clean-install отложены. Свои профиль/runtime/службы обязательны; доступен Secure MCP Tunnel, VPS без собственного маршрута — setup-required.
 
 Запуск — [README](../../README.md). Факт сборки задаёт manifest; установка в Applications обязательна, перезапускает пользователь. Fixture не означает native-tested. История спецификаций остаётся в Git.
