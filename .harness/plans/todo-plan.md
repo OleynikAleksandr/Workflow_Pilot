@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 89,
+  "plan_revision": 90,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -465,7 +465,7 @@
       },
       {
         "path": "docs/modules/chatgpt-plugin.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       }
     ],
@@ -3550,7 +3550,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 89
+Revision: 90
 
 ## Цель
 
