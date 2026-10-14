@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 78,
+  "plan_revision": 79,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -3243,6 +3243,129 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T024",
+      "title": "Открывать панель нового разговора с актуальными сессиями проекта",
+      "why": "Открывать панель нового разговора с актуальными сессиями проекта",
+      "dependencies": [],
+      "functional_paths": [
+        "src/frontend/plugin/panel.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/chatgpt-plugin.test.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "architecture",
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Пользователь подтвердил работу 0.1.3 в Chat/Work и отдельное состояние панели каждого разговора. Новое сообщение требует после успешного подключения и чтения recovery открыть workflow_pilot_panel с точным project_id, затем подтвердить готовность; закрепление и автоматический переход не обещаются.",
+        "Панель принимает необязательный project_id, возвращает свежие список проектов и выбранный проект с сессиями. Обновление не оставляет старые сессии, удалённый проект сбрасывается, UNKNOWN send не повторяется. Проверки через реальные MCP и собранный HTML; без модельных ходов. Версия 0.1.4."
+      ],
+      "expected_commit_message": "fix: открывать панель проекта в новом разговоре и обновлять сессии",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T024",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-7",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "DOCS-7",
+        "role": "implementation",
+        "iteration": 7
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T024"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/control.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T025",
+      "title": "Собрать Workflow Pilot 0.1.4 для трёх ОС",
+      "why": "Собрать Workflow Pilot 0.1.4 для трёх ОС",
+      "dependencies": [
+        "T024",
+        "DOCS-7"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS собраны три платформы из одного sourceCommit, комплект проверен и доставлен в Downloads; новая живая проверка Chat/Work pending."
+      ],
+      "expected_commit_message": "release: собрать Workflow Pilot 0.1.4 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T025",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T026",
+      "title": "Установить готовый Workflow Pilot 0.1.4 на Mac",
+      "why": "Установить готовый Workflow Pilot 0.1.4 на Mac",
+      "dependencies": [
+        "T025",
+        "DOCS-7"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Собственные приложения обновлены штатным installer из готового комплекта, проверены версия/manifest/подпись и rollback; без перезапуска и изменения донора."
+      ],
+      "expected_commit_message": "release: установить Workflow Pilot 0.1.4 на Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T026",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -3270,10 +3393,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 78
+Revision: 79
 
 ## Цель
 
@@ -3478,6 +3601,30 @@ Revision: 78
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: T022, DOCS-6
+- [TODO] T024: Открывать панель нового разговора с актуальными сессиями проекта — Ожидает
+  - Git Commit: [PENDING] fix: открывать панель проекта в новом разговоре и обновлять сессии
+  - Reference: workflow-pilot-migration-0.1.0 / T024 / implementation
+  - Файлы: src/frontend/plugin/panel.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, package.json, package-lock.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-7: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-migration-0.1.0 / DOCS-7 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T024
+- [TODO] T025: Собрать Workflow Pilot 0.1.4 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: собрать Workflow Pilot 0.1.4 для трёх ОС
+  - Reference: workflow-pilot-migration-0.1.0 / T025 / implementation
+  - Файлы: release-manifest.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T024, DOCS-7
+- [TODO] T026: Установить готовый Workflow Pilot 0.1.4 на Mac — Ожидает
+  - Git Commit: [PENDING] release: установить Workflow Pilot 0.1.4 на Mac
+  - Reference: workflow-pilot-migration-0.1.0 / T026 / implementation
+  - Файлы: release-manifest.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T025, DOCS-7
 
 ## Context Pack For This Cycle
 
