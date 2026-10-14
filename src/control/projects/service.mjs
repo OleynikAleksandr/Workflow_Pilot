@@ -16,6 +16,7 @@ export class ProjectsService {
   selectSession(...args) { return this.#store.selectSession(...args); }
   bindChat(...args) { return this.#store.bindChat(...args); }
   newSession(...args) { return this.#store.newSession(...args); }
+  connectExternal(...args) { return this.#store.connectExternal(...args); }
   newChat(...args) { return this.#store.newChat(...args); }
   ensureExecutor(...args) { return this.#store.ensureExecutor(...args); }
   saveExecutorAutomation(...args) { return this.#store.saveExecutorAutomation(...args); }

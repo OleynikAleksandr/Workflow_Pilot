@@ -81,9 +81,9 @@ let agentTimer, pageState, conversationRecovery;
 function observeManualConversation(state, record = liveSessions.visible) {
   return liveSessions.observeManualConversation(state, record);
 }
-const workflow = control.configureWorkflow({getController:()=>controller,
-  contextAvailable:()=>!pageLoading&&!setupState&&!settingsState,
-  available:()=>!!controller&&!controller.composer.inFlight&&!pageLoading&&!setupState&&!settingsState
+const workflow = control.configureWorkflow({getController:()=>store.selected()?.external?null:controller,
+  contextAvailable:()=>!store.selected()?.external&&!pageLoading&&!setupState&&!settingsState,
+  available:()=>!store.selected()?.external&&!!controller&&!controller.composer.inFlight&&!pageLoading&&!setupState&&!settingsState
     &&workspaceHealth?.ready&&workspaceHealth.workspace===store.selected()?.workspace,
   onChange:()=>publish(),report,save:overrides=>saveSettings(overrides)});
 const {projectAutoPlan,autoPlan,planMonitor,planReview,reviewContinuation,execution,executionKit}=workflow;
@@ -207,7 +207,7 @@ function snapshot() {
       ||store.project(r.identity?.workspace)?.parentWorkspace===workspace)&&r.pageState.current?.state.busy)?'working'
       :execution.view(workspace).error||sessions.some(s=>liveRecord({workspace,sessionId:s.sessionId})?.controller.state.error)?'attention':'idle',
     executors:projectExecutors(projects,workspace,execution.view(workspace),liveRecord),
-    sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, chatUrl, title, createdAt }) => ({ sessionId, experience, chatUrl, title, createdAt })),
+    sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, chatUrl, title, createdAt, external }) => ({ sessionId, experience, chatUrl, title, createdAt, external:!!external })),
   })),
     executorRecovery:projects.filter(p=>p.parentWorkspace&&!projects.some(parent=>parent.workspace===p.parentWorkspace&&parent.projectId===p.parentProjectId))
       .map(p=>({workspace:p.workspace,projectId:p.projectId,name:p.displayName||p.name,
@@ -215,11 +215,11 @@ function snapshot() {
     archives: projectedArchives(), settings: settingsState, doctor: doctorState, parallelExecution: { ...preferences.parallelExecution },
     execution: {...execution.view(saved?.parentWorkspace??saved?.workspace),commands:(execution.view(saved?.parentWorkspace??saved?.workspace).commands??[])
       .map(c=>({...c,projectId:store.project(c.workspace)?.projectId}))},
-    conversationRecovery: conversationRecovery?.view() ?? { phase: 'idle', message: '', canRetry: false },
+    conversationRecovery: saved?.external ? {phase:'idle',message:'',canRetry:false} : conversationRecovery?.view() ?? { phase: 'idle', message: '', canRetry: false },
     autoPlan: {...(liveSessions.visible?.executor?.flow.view()??autoPlan.view()),
-      enabled:projectAutoPlan.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
+      enabled:!saved?.external&&projectAutoPlan.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
-    selected, context: controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
+    selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true} : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
     contextPreparation: { busy: selected ? contextCache.isBuilding(selected.workspace) : false },
     runtimeFolder, platform: process.platform,
     // The same view on both systems: the executor, the selected ChatGPT channel and the state of its services.
@@ -501,6 +501,7 @@ function navigationCurrent(generation) {
   return generation === navigationId && window && !window.isDestroyed() && browser && !browser.webContents.isDestroyed();
 }
 function attachController(project, { freshDraft = false } = {}) {
+  if(project?.external)return false;
   const selected = store.selected();
   if (!project || !navigationCurrent(workspaceHealth?.generation) || !workspaceHealth?.ready
       || workspaceHealth.workspace !== project.workspace || workspaceHealth.sessionId !== project.sessionId
@@ -515,6 +516,7 @@ function attachController(project, { freshDraft = false } = {}) {
 }
 
 async function navigate(project = store.selected(), { refresh = false, generation = null, resume = false, entryUrl = null, freshDraft = false } = {}) {
+  if(project?.external) {liveSessions.hide();pageLoading=false;publish();return;}
   if (!project && pageLoading) return;
   const ownNavigation = generation ?? nextNavigation();
   if (!navigationCurrent(ownNavigation)) return;
@@ -634,6 +636,10 @@ async function openConnectedSession(input, sessionId = null, { latest = false, r
     const project = await store.selectSession(workspace, sessionId, { isCurrent: current, expand: latest || explicitSession });
     if (!current() || !project) return null;
     publish();
+    if(project.external) {
+      workspaceHealth={workspace,sessionId,generation,phase:'ready',ready:true};
+      await navigate(project,{generation});void planMonitor.refresh();return project;
+    }
     const sessionRecord=liveSessions.ensure(project);
     sessionRecord.ready=false;
     const readinessEpoch=++sessionRecord.readinessEpoch;
@@ -866,7 +872,7 @@ function decorateSessionRuntime(record) {
 
 function registerIpc() {
   desktopIpc.handle('local', 'pilot:get-state', snapshot);
-  registerAction('pilot:auto-plan', enabled => workflow.setAutoPlan(enabled));
+  registerAction('pilot:auto-plan', enabled => {if(store.selected()?.external)throw new Error('Автовыполнение для внешней сессии пока не поддерживается.');return workflow.setAutoPlan(enabled);});
   registerAction('pilot:plan-review', input => planReview.setEnabled(input));
   registerAction('pilot:acknowledge-command', input=>lifecycle.acknowledgeCommand(input));
   registerAction('pilot:set-parallel-execution', async input => {
@@ -875,7 +881,7 @@ function registerIpc() {
     await saveSettings({ parallelExecution: next });
   });
   registerAction('pilot:clear-orphan-executor', input=>lifecycle.clearOrphanExecutor(input));
-  registerAction('pilot:reconnect', () => conversationRecovery.requestRetry());
+  registerAction('pilot:reconnect', () => {if(!store.selected()?.external)return conversationRecovery.requestRetry();});
   registerAction('pilot:startup', action => startupAction(action), { navigation: true });
   registerAction('pilot:open-archive-window', input => openArchiveWindow(typeof input === 'string' ? input : null));
   registerAction('pilot:open-settings', () => openSettings());
@@ -987,7 +993,7 @@ function registerIpc() {
     const project = store.project(input);
     if (!project || project.archivedAt || storageError) throw new Error('Выберите активный проект.');
     const selected = store.selected()?.workspace === input;
-    if (selected) { controller.cancel(); nextNavigation(); }
+    if (selected) { if(!project.external)controller.cancel(); nextNavigation(); }
     const generation = navigationId;
     try { await store.setArchived(input, true); }
     catch (error) { if (selected && navigationCurrent(generation)) await selectWorkspace(project.workspace, { resume: true }); throw error; }
@@ -998,7 +1004,7 @@ function registerIpc() {
   registerAction('pilot:archive-session', async input => {
     if (typeof input?.workspace !== 'string' || typeof input?.sessionId !== 'string') throw new Error('Выберите сессию проекта.');
     const current = store.selected(); const selected = current?.workspace === input.workspace && current.sessionId === input.sessionId;
-    if (selected) { controller.cancel(); nextNavigation(); }
+    if (selected) { if(!current.external)controller.cancel(); nextNavigation(); }
     const generation = navigationId;
     try { await store.setSessionArchived(input.workspace, input.sessionId, true); }
     catch (error) { if (selected && current && navigationCurrent(generation)) await selectWorkspace(current.workspace, { resume: true }); throw error; }
@@ -1302,6 +1308,12 @@ else {
       return permissionAllowed(permission, origin, details, _contents);
     });
     installMenu();
+    if(!storageError&&!smoke) {
+      const plugin=control.createPlugin({onChange:()=>publish()});
+      await executionServices.attachPlugin({directory:runtimeFolder,list:()=>plugin.list(),
+        open:id=>plugin.open(id),connect:input=>plugin.connect(input)})
+        .catch(()=>{startupError={code:'PLUGIN_BRIDGE_UNAVAILABLE',message:'Не удалось включить подключение панели ChatGPT. Проверьте, не открыта ли другая копия Workflow Pilot.'};});
+    }
     await createWindow();
     if(!storageError&&!smoke)workflow.restoreBackground();
   }).catch(error => {

@@ -957,7 +957,7 @@ test('App Server MCP answers a stale session id without initialize after a resta
   assert.deepEqual(tools.map(tool => tool.name).sort(), [
     'apply_patch', 'bridge_status', 'computer_capture_screen', 'computer_capture_window',
     'computer_list_windows', 'exec_command',
-    'turn_watchdog', 'view_image', 'write_stdin',
+    'turn_watchdog', 'view_image', 'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel', 'write_stdin',
   ]);
   for (const tool of tools) {
     assert.ok(tool.description?.trim(), `${tool.name} description is required`);
@@ -1156,7 +1156,8 @@ print(json.dumps(out, ensure_ascii=False))
   assert.ok(out.instructions.length < 850, 'short instructions');
   assert.doesNotMatch(out.instructions, /Workflow Kit|recover|context|part=|after key/i);
   assert.deepEqual(out.tools, ['apply_patch', 'bridge_status', 'computer_capture_screen', 'computer_capture_window',
-    'computer_list_windows', 'exec_command', 'turn_watchdog', 'view_image', 'write_stdin']);
+    'computer_list_windows', 'exec_command', 'turn_watchdog', 'view_image',
+    'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel', 'write_stdin']);
 });
 
 test('pid identity forces C locale for stable Terminal ownership checks', async () => {

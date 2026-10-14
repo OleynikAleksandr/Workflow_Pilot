@@ -4,6 +4,19 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 
+test('external conversation stays visibly external and cannot enable browser AutoPlan',async t=>{
+  const f=await fixture(t),base=f.state;
+  f.emit({...base,selected:{...base.selected,external:{provider:'chatgpt-plugin'},manualStart:true},
+    context:{phase:'external-session',servicesReady:true,messageSent:true},autoPlan:{enabled:false}});
+  const button=f.document.getElementById('auto-plan-toggle');
+  assert.equal(button.disabled,true);button.click();
+  assert.equal(f.calls.length,0);
+  assert.equal(f.document.getElementById('session-notice').hidden,false);
+  assert.match(f.document.getElementById('session-notice-title').textContent,/Открыто в ChatGPT/);
+  assert.equal(f.document.getElementById('new-context-session').hidden,true);
+  f.emit(base);assert.equal(button.disabled,false,'embedded sessions retain their AutoPlan control');
+});
+
 test('project picker searches, marks current/background work, keeps one parent and supports keyboard escape',async t=>{
   const f=await fixture(t),base=f.state,other={workspace:'/other',name:'Другой',activity:'working',expanded:true,sessions:[{sessionId:'other-chat',createdAt:1000,title:'Другой чат'}]};
   f.emit({...base,version:'0.6.110',projects:[...base.projects,other]});

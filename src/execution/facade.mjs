@@ -2,6 +2,7 @@ import { desktopCommands } from './commands/service.mjs';
 import { desktopFiles } from './files/adapter.mjs';
 import { RuntimeError } from '../contracts/errors.mjs';
 import { BrowserSessions } from './browser/session-runtime.mjs';
+import { startPluginBridge } from './plugin/bridge.mjs';
 export { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from './browser/chatgpt-experience.mjs';
 export { desktopFiles, exists } from './files/adapter.mjs';
 export { ProjectInputWatch, ChildCommandWatches } from './files/project-input-watch.mjs';
@@ -14,6 +15,7 @@ export { executableCandidateAllowed, nodeExecutableCandidates } from './platform
 // A desktop instance owns these adapters; no plan/session/store is accepted here.
 export class ExecutionFacade {
   #browser = null;
+  #plugin = null;
   constructor({ commands = desktopCommands, files = desktopFiles } = {}) {
     this.commands = commands; this.files = files; this.runtime = null;
   }
@@ -49,6 +51,10 @@ export class ExecutionFacade {
   selectChannel(channel) { return this.services().setChannel(channel); }
   get channel() { return this.services().channel; }
   get lastStatus() { return this.runtime?.lastStatus ? structuredClone(this.runtime.lastStatus) : null; }
+  async attachPlugin(options) {
+    if(this.#plugin)throw new RuntimeError('EXECUTION_OWNER_CONFLICT','Plugin bridge уже подключён.');
+    this.#plugin=await startPluginBridge(options);
+  }
   // Login services survive closing the desktop. Only its own transient workers are disposed.
-  dispose() { this.#browser?.dispose(); return this.commands.dispose(); }
+  async dispose() { this.#browser?.dispose();await Promise.all([this.#plugin?.close(),this.commands.dispose()]); }
 }

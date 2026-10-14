@@ -1031,6 +1031,8 @@ def create_server(*, host: str, port: int, state_root: Path, codex_binary: str |
         return await asyncio.to_thread(facade.write_stdin,session_id,chars,yield_time_ms,max_output_tokens)
 
 
+    from plugin import register_plugin
+    register_plugin(mcp, state_root)
     return mcp
 
 

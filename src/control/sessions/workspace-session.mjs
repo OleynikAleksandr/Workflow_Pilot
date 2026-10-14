@@ -155,7 +155,7 @@ function projectPlan(plan, scopeTitle = '') {
 const copy = value => structuredClone(value);
 const persistent = data => JSON.parse(JSON.stringify(data, (key, value) => ['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'watchInputs', 'planExecution'].includes(key) ? undefined : value));
 const invalid = () => new WorkspaceError('SESSIONS_INVALID', 'Формат сохранённых проектов не поддерживается. Исходный файл сохранён.');
-const sessionFields = ['planId', 'originSessionId', 'legacyPlanId', 'lastNamedScopeId', 'sessionId', 'experience', 'chatUrl', 'manualStart', 'attempt', 'receipt', 'title', 'titleSource', 'createdAt', 'lastOpenedAt', 'archivedAt', 'executionSnapshot'];
+const sessionFields = ['planId', 'originSessionId', 'legacyPlanId', 'lastNamedScopeId', 'sessionId', 'experience', 'chatUrl', 'manualStart', 'attempt', 'receipt', 'title', 'titleSource', 'createdAt', 'lastOpenedAt', 'archivedAt', 'executionSnapshot', 'external'];
 const explicitTitleSources = new Set(['manual', 'scope']);
 
 function localName(value, { empty = 'Нужно непустое название.', code = 'TITLE_INVALID' } = {}) {
@@ -219,6 +219,9 @@ function validate(data) {
           || (s.chatUrl !== null && (!normalizeChatUrl(s.chatUrl) || normalizeChatUrl(s.chatUrl) !== s.chatUrl
             || !conversationUrlCompatibleWithExperience(s.chatUrl, s.experience)))) throw invalid();
       if (s.manualStart !== undefined && typeof s.manualStart !== 'boolean') throw invalid();
+      if (s.external !== undefined && (s.external?.provider !== 'chatgpt-plugin'
+          || !/^[0-9a-f]{64}$/.test(s.external.conversationKey ?? '')
+          || !/^[0-9a-f-]{36}$/i.test(s.external.requestId ?? '') || s.chatUrl !== null)) throw invalid();
       if(s.assignmentId!==undefined) {
         if(!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(s.assignmentId)||typeof s.taskId!=='string'
           ||typeof s.parentScopeId!=='string'||typeof s.parentWorkspace!=='string'||!path.isAbsolute(s.parentWorkspace)
@@ -576,6 +579,32 @@ export class WorkspaceSessions {
   }
 
   newChat(workspace) { return this.newSession(workspace, 'chat'); }
+
+  connectExternal(workspace, {projectId,requestId,conversationKey}) {
+    return this.mutate(async data => {
+      if (!/^[0-9a-f]{64}$/.test(conversationKey ?? '') || !/^[0-9a-f-]{36}$/i.test(requestId ?? ''))
+        throw new WorkspaceError('PLUGIN_BINDING_INVALID', 'Не удалось подтвердить внешний разговор.');
+      const project=data.projects.find(p=>p.workspace===workspace&&p.projectId===projectId&&!p.archivedAt&&!p.parentWorkspace);
+      if (!project) throw new WorkspaceError('PLUGIN_PROJECT_UNAVAILABLE', 'Проект недоступен.');
+      const info=await this.inspect(workspace);
+      if(info.projectId!==projectId)throw new WorkspaceError('PROJECT_REPLACED', 'В этой папке теперь другой проект.');
+      for(const p of data.projects)for(const s of p.sessions) {
+        if(s.external?.conversationKey===conversationKey||s.external?.requestId===requestId) {
+          if(p!==project||s.archivedAt||s.external.conversationKey!==conversationKey)
+            throw new WorkspaceError('PLUGIN_BINDING_CONFLICT', 'Этот разговор или запрос уже связан с другой сессией.');
+          return currentView(project,s.sessionId);
+        }
+      }
+      const session=this.createSession();
+      session.external={provider:'chatgpt-plugin',requestId,conversationKey};
+      session.manualStart=true;
+      session.title=sessionName('ChatGPT · '+(project.displayName||project.name));
+      session.titleSource='manual';
+      project.sessions.push(session);project.expanded=true;
+      // A remote tool call must not switch the user's desktop selection.
+      return currentView(project,session.sessionId);
+    });
+  }
 
   ensureExecutor(assignment,origin) {
     return this.mutate(async data=>{

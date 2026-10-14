@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 58,
+  "plan_revision": 60,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -388,7 +388,9 @@
       "src/frontend/plugin/index.html",
       "tools/codex-app-server-mcp/plugin.py",
       "scripts/stage-chatgpt-plugin.mjs",
-      "tests/chatgpt-plugin.test.mjs"
+      "tests/chatgpt-plugin.test.mjs",
+      "src/frontend/plugin/panel.mjs",
+      "tests/fixtures/plugin-server.py"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -2890,7 +2892,14 @@
         "scripts/stage-chatgpt-plugin.mjs",
         "package.json",
         "package-lock.json",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        ".gitignore",
+        "src/control/sessions/service.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/plugin-server.py",
+        "tests/sidebar.test.mjs"
       ],
       "documentation_paths": [
         "docs/modules/control.md",
@@ -2909,14 +2918,41 @@
         "Добавлены инструкции подключения через существующий Secure MCP Tunnel и матрица ручной проверки Chat/Work/Codex. Живая приёмка выполняется пользователем; выпуск/установка/публикация релиза в этот раунд не входят."
       ],
       "expected_commit_message": "feat: добавить плагин ChatGPT для проектов и внешних сессий",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T017",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        ".gitignore",
+        "docs/modules/control.md",
+        "docs/planning/chatgpt-plugin.md",
+        "package-lock.json",
+        "package.json",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/projects/service.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/plugin-server.py",
+        "tests/sidebar.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tools/codex-app-server-mcp/server.py"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -2944,10 +2980,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 58
+Revision: 60
 
 ## Цель
 
@@ -3098,10 +3134,10 @@ Revision: 58
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T013, DOCS, DOCS-2, DOCS-3, DOCS-4
-- [TODO] T017: Добавить плагин ChatGPT для открытия проекта и создания внешней сессии — Ожидает
-  - Git Commit: [PENDING] feat: добавить плагин ChatGPT для проектов и внешних сессий
+- [DONE] T017: Добавить плагин ChatGPT для открытия проекта и создания внешней сессии — Завершено
+  - Git Commit: [DONE] feat: добавить плагин ChatGPT для проектов и внешних сессий
   - Reference: workflow-pilot-migration-0.1.0 / T017 / implementation
-  - Файлы: src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/sidebar.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, scripts/stage-chatgpt-plugin.mjs, package.json, package-lock.json, tests/chatgpt-plugin.test.mjs, docs/modules/control.md, docs/planning/chatgpt-plugin.md
+  - Файлы: src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/sidebar.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, scripts/stage-chatgpt-plugin.mjs, package.json, package-lock.json, tests/chatgpt-plugin.test.mjs, .gitignore, src/control/sessions/service.mjs, src/frontend/plugin/panel.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/fixtures/plugin-server.py, tests/sidebar.test.mjs, docs/modules/control.md, docs/planning/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 

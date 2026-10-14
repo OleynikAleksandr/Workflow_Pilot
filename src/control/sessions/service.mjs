@@ -30,6 +30,7 @@ export class SessionRuntimes {
     this.visible=null;
   }
   ensure(project=null) {
+    if(project?.external)throw Object.assign(new Error('Эта сессия открыта в ChatGPT. Продолжайте разговор там.'),{code:'EXTERNAL_SESSION'});
     const key=sessionRuntimeKey(project), existing=this.#records.get(key);
     if(existing)return existing;
     const identity=project?Object.freeze({workspace:project.workspace,sessionId:project.sessionId,

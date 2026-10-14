@@ -339,9 +339,9 @@ function render(state) {
         const copy = document.createElement('span'); copy.className = 'session-copy';
         const title = document.createElement('strong'); title.textContent = session.title || 'Новая сессия';
         const date = document.createElement('small');
-        date.textContent = dateFormat.format(new Date(session.createdAt)) + (session.chatUrl ? '' : ' · новая');
+        date.textContent = dateFormat.format(new Date(session.createdAt)) + (session.chatUrl || session.external ? '' : ' · новая');
         copy.append(title, date);
-        const experience = document.createElement('span'); experience.className = 'session-experience'; experience.dataset.experience = session.experience ?? 'chat'; experience.textContent = session.experience === 'work' ? 'Work' : 'Chat';
+        const experience = document.createElement('span'); experience.className = 'session-experience'; experience.dataset.experience = session.experience ?? 'chat'; experience.textContent = session.external ? 'ChatGPT ↗' : session.experience === 'work' ? 'Work' : 'Chat';
         choice.title = `${session.title || 'Новая сессия'} · ${experience.textContent}\n${new Date(session.createdAt).toLocaleString('ru-RU')}`;
         choice.append(copy, experience);
         choice.addEventListener('click', () => action('selectSession', project.workspace, session.sessionId));
@@ -439,7 +439,7 @@ function render(state) {
   })[execution.finalizationStatus]??$('execution-message').textContent;
   const auto = state.autoPlan ?? { phase: 'off', active: false, message: '' };
   $('auto-plan-toggle').textContent = auto.enabled ? 'Выключить автовыполнение' : 'Включить автовыполнение';
-  $('auto-plan-toggle').disabled = actionPending;
+  $('auto-plan-toggle').disabled = actionPending || !!selected?.external;
   $('auto-plan-toggle').setAttribute('aria-pressed', String(auto.enabled));
   const review=state.planReview??{enabled:false,supported:false,message:''};
   $('plan-review-toggle').textContent=review.enabled?'Выключить Review':'Включить Review';
@@ -493,15 +493,15 @@ function render(state) {
       item.append(mark, body); return item;
     }));
   } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; }
-  const [title, detail] = phases[context.phase] ?? phases.selected;
-  const attention=['error','prepared-stale','waiting-draft','waiting-login','waiting-experience','chat-changed','send-unknown'].includes(context.phase);
+  const [title, detail] = context.phase==='external-session' ? ['Открыто в ChatGPT','Продолжайте разговор в приложении ChatGPT. Эта сессия подключена через плагин Workflow Pilot.'] : phases[context.phase] ?? phases.selected;
+  const attention=['external-session','error','prepared-stale','waiting-draft','waiting-login','waiting-experience','chat-changed','send-unknown'].includes(context.phase);
   const started=selected?.manualStart||context.messageSent||['sending','unknown','sent','acknowledged'].includes(selected?.attempt?.state);
   $('session-notice').hidden=!selected||!attention||!!state.setup||!!state.settings;
   $('session-notice-title').textContent=(selected?.title||'Текущая сессия')+' · '+title;
   $('session-notice-detail').textContent=context.error?.message??detail;
   $('retry-context').hidden=started||!['error','prepared-stale'].includes(context.phase);
   $('observe-context').hidden=context.phase!=='send-unknown';
-  $('new-context-session').hidden=!started&&context.phase!=='send-unknown';
+  $('new-context-session').hidden=context.phase==='external-session'||!started&&context.phase!=='send-unknown';
   $('return-chat').hidden = context.phase !== 'chat-changed';
   $('connection-detail').textContent = state.localRuntime ? `${state.localRuntime.label} · встроенный MCP` : state.runtimeFolder;
   const delivery = context.delivery;
@@ -525,7 +525,8 @@ function render(state) {
   $('error-banner').textContent = error ? `${error.message} (${error.code})` : '';
   for (const button of document.querySelectorAll('button')) {
     if (button.closest('#startup-panel') || button.id==='open-startup') continue;
-    button.disabled = actionPending || (state.storageError && ['create-workspace', 'add-workspace', 'retry-context'].includes(button.id));
+    button.disabled = actionPending || (button.id==='auto-plan-toggle' && !!selected?.external)
+      || (state.storageError && ['create-workspace', 'add-workspace', 'retry-context'].includes(button.id));
   }
   const recovery = state.conversationRecovery;
   $('conversation-recovery').hidden = !recovery || recovery.phase === 'idle' || !!state.setup || !!state.settings;

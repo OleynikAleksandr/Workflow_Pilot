@@ -9,6 +9,7 @@ import { StartupReadiness } from './startup/readiness.mjs';
 import { TunnelClipboard } from './startup/tunnel-clipboard.mjs';
 import { createProjectLifecycle } from './projects/lifecycle.mjs';
 import { SettingsService } from './settings/service.mjs';
+import { PluginProjects } from './plugin/service.mjs';
 export { startupPlatformOptions, startupSupported } from './startup/platform.mjs';
 export { publicVpsState, publicRuntimeState } from './startup/public-state.mjs';
 export { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './workflow/parallel-settings.mjs';
@@ -71,6 +72,10 @@ export class ControlFacade {
     });
   }
   createDeletion(options) { return this.projects.createDeletion(options); }
+  createPlugin(options = {}) {
+    return new PluginProjects({ projects:this.projects,
+      loadContext:workspace=>this.plans.loadContext(workspace), ...options });
+  }
   configureSettings({file,workflowSnapshot}) {
     if(this.#settings)throw new Error('CONTROL_SETTINGS_ALREADY_CONFIGURED');
     this.#settings=new SettingsService({file,workflowSnapshot,files:this.#execution.files});

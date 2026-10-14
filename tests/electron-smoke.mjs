@@ -1827,6 +1827,31 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   assert.equal(browser.getURL(), manualSession.chatUrl);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
   assert.equal(packetLoads, loadsBeforeManualReopen);
+  const nativeProject=store.selected(), browserCount=[...liveSessions.all()].length, loadsBeforeNative=packetLoads;
+  const nativeSession=await store.connectExternal(nativeProject.workspace,{projectId:nativeProject.projectId,
+    requestId:'00000000-0000-4000-8000-000000000017',conversationKey:'a'.repeat(64)});
+  assert.equal(store.selected().sessionId,nativeProject.sessionId);
+  const selectNative=await sidebar.executeJavaScript('window.webPilot.selectSession('+JSON.stringify(nativeProject.workspace)+','+JSON.stringify(nativeSession.sessionId)+')');
+  assert.equal(selectNative.ok,true,JSON.stringify(selectNative.error));
+  await waitFor(()=>snapshot().context.phase==='external-session','external conversation selection',snapshot);
+  assert.equal(liveSessions.visible,null,'native conversation has no embedded browser');
+  assert.equal([...liveSessions.all()].length,browserCount);
+  assert.equal(packetLoads,loadsBeforeNative,'selecting external session does not resend context');
+  assert.throws(()=>liveSessions.ensure(store.selected()),{code:'EXTERNAL_SESSION'});
+  await waitFor(()=>sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").disabled && !document.getElementById("session-notice").hidden'),'external session notice',snapshot);
+  const nativeRestart=new WorkspaceSessions(store.file);await nativeRestart.load();
+  assert.equal(nativeRestart.selected().external.provider,'chatgpt-plugin');
+  const previousController=getLive().controller,previousCancel=previousController.cancel;
+  let backgroundCancelled=0;
+  previousController.cancel=function(...args){backgroundCancelled++;return previousCancel.apply(this,args);};
+  try {
+    const archived=await sidebar.executeJavaScript('window.webPilot.archiveSession('+JSON.stringify(nativeProject.workspace)+','+JSON.stringify(nativeSession.sessionId)+')');
+    assert.equal(archived.ok,true);
+    assert.equal(backgroundCancelled,0,'archiving a native session must not cancel the previous browser');
+  }finally{previousController.cancel=previousCancel;}
+  const selectEmbedded=await sidebar.executeJavaScript('window.webPilot.selectSession('+JSON.stringify(nativeProject.workspace)+','+JSON.stringify(nativeProject.sessionId)+')');
+  assert.equal(selectEmbedded.ok,true,JSON.stringify(selectEmbedded.error));
+  assert.equal(store.selected().external,undefined);
   const parallelFixture=await import('./parallel-execution-smoke-fixture.cjs');
   await parallelFixture.default.run({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow});
   await verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,deletionHooks,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour:auxE});

@@ -13,6 +13,7 @@ dist/
 /resources/workflow-kit/
 /resources/chatgpt-page-observer-preload.cjs
 /resources/vendor-notices/
+/tools/codex-app-server-mcp/plugin-ui.html
 /windows-app/
 __pycache__/
 *.py[cod]
