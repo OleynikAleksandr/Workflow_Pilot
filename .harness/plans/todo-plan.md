@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 87,
+  "plan_revision": 88,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -390,7 +390,8 @@
       "scripts/stage-chatgpt-plugin.mjs",
       "tests/chatgpt-plugin.test.mjs",
       "src/frontend/plugin/panel.mjs",
-      "tests/fixtures/plugin-server.py"
+      "tests/fixtures/plugin-server.py",
+      "src/frontend/plugin/navigation-probe.mjs"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -459,6 +460,11 @@
       },
       {
         "path": "docs/modules/control.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/chatgpt-plugin.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -3388,6 +3394,132 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T027",
+      "title": "Подготовить проверку открытия прежнего диалога из панели ChatGPT",
+      "why": "Подготовить проверку открытия прежнего диалога из панели ChatGPT",
+      "dependencies": [],
+      "functional_paths": [
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/navigation-probe.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/chatgpt-plugin.test.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "verification_ids": [
+        "architecture",
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "В сворачиваемом разделе панели пользователь вводит обычную ссылку на существующий диалог и отдельно проверяет стандартный MCP openLink, совместимый openExternal в двух режимах и обычные ссылки. Никаких новых диалогов, модельных ходов или управления окнами агентом.",
+        "Результат транспорта не объявляется успешной навигацией; видны доступность API, ограниченное ожидание и безопасный журнал без URL и идентификаторов. Валидация разрешает только обычные https://chatgpt.com/c/... ссылки, без Share и сторонних адресов. Изолированный тест исполняет настоящий SDK из полного MCP HTML, проверяет маршруты и ошибки. Версия 0.1.5.",
+        "Тестовую версию пользователь проверяет в Chat и Work. Автоматическое получение URL и навигация в Desktop остаются неподтверждёнными до живой проверки."
+      ],
+      "expected_commit_message": "feat: Подготовить проверку открытия прежнего диалога из панели ChatGPT",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T027",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-8",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "DOCS-8",
+        "role": "implementation",
+        "iteration": 8
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T027"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T028",
+      "title": "Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС",
+      "why": "Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС",
+      "dependencies": [
+        "T027",
+        "DOCS-8"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS собран и проверен полный комплект трёх платформ из одного sourceCommit; живые переходы в ChatGPT не объявляются принятыми."
+      ],
+      "expected_commit_message": "feat: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T028",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T029",
+      "title": "Установить готовый Workflow Pilot 0.1.5 для проверки переходов",
+      "why": "Установить готовый Workflow Pilot 0.1.5 для проверки переходов",
+      "dependencies": [
+        "T028",
+        "DOCS-8"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer обновляет собственные app в проекте и Applications готовым комплектом без пересборки/перезапуска, проверяя подпись, manifest и rollback. Пользователю переданы шаги сравнительного теста."
+      ],
+      "expected_commit_message": "feat: Установить готовый Workflow Pilot 0.1.5 для проверки переходов",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T029",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -3415,10 +3547,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 87
+Revision: 88
 
 ## Цель
 
@@ -3647,6 +3779,30 @@ Revision: 87
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: T025, DOCS-7
+- [TODO] T027: Подготовить проверку открытия прежнего диалога из панели ChatGPT — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить проверку открытия прежнего диалога из панели ChatGPT
+  - Reference: workflow-pilot-migration-0.1.0 / T027 / implementation
+  - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/frontend/plugin/navigation-probe.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, package.json, package-lock.json, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-8: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-migration-0.1.0 / DOCS-8 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T027
+- [TODO] T028: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС
+  - Reference: workflow-pilot-migration-0.1.0 / T028 / implementation
+  - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T027, DOCS-8
+- [TODO] T029: Установить готовый Workflow Pilot 0.1.5 для проверки переходов — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовый Workflow Pilot 0.1.5 для проверки переходов
+  - Reference: workflow-pilot-migration-0.1.0 / T029 / implementation
+  - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T028, DOCS-8
 
 ## Context Pack For This Cycle
 
@@ -3656,5 +3812,6 @@ Revision: 87
 - docs/architecture/OVERVIEW.md
 - docs/modules/first-run-onboarding.md
 - docs/modules/control.md
+- docs/modules/chatgpt-plugin.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
