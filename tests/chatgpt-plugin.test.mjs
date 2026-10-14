@@ -13,6 +13,7 @@ import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {ControlFacade} from '../src/control/facade.mjs';
 import {startPluginBridge} from '../src/execution/plugin/bridge.mjs';
 import {mountPanel} from '../src/frontend/plugin/panel.mjs';
+import {mountNavigationProbe,conversationUrl} from '../src/frontend/plugin/navigation-probe.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
 const digest=text=>createHash('sha256').update(text).digest('hex');
@@ -194,10 +195,11 @@ test('served bundled HTML starts the actual SDK and handles project and new-sess
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
   const listing=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'Первый'}});
-  const errors=[],calls=[],messages=[];let initialized=false;
+  const errors=[],calls=[],messages=[],links=[],compatLinks=[];let initialized=false;
   const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
   const dom=new JSDOM(html,{url:'https://plugin-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
     beforeParse(window){
+      window.openai={openExternal:params=>{compatLinks.push(params);return {};}};
       window.TextEncoder=TextEncoder;window.TextDecoder=TextDecoder;
       window.ResizeObserver=class {observe(){} unobserve(){} disconnect(){}};
       window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
@@ -207,7 +209,7 @@ test('served bundled HTML starts the actual SDK and handles project and new-sess
           if(request.method==='ui/initialize'){
             queueMicrotask(()=>deliver({jsonrpc:'2.0',id:request.id,result:{protocolVersion:request.params.protocolVersion,
               hostInfo:{name:'Fixture Host',version:'1'},hostContext:{theme:'dark'},
-              hostCapabilities:{serverTools:{},experimental:{'openai/message':{}}}}}));
+              hostCapabilities:{openLinks:{},serverTools:{},experimental:{'openai/message':{}}}}}));
           }else if(request.method==='ui/notifications/initialized'){
             initialized=true;deliver({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:listing});
           }else if(request.method==='tools/call'){
@@ -215,6 +217,8 @@ test('served bundled HTML starts the actual SDK and handles project and new-sess
             deliver({jsonrpc:'2.0',id:request.id,result:await c.callTool(request.params)});
           }else if(request.method==='ui/message'){
             messages.push(request.params);deliver({jsonrpc:'2.0',id:request.id,result:{}});
+          }else if(request.method==='ui/open-link'){
+            links.push(request.params);deliver({jsonrpc:'2.0',id:request.id,result:{isError:links.length>1}});
           }
         }catch(e){errors.push(e.message);}
       };
@@ -228,6 +232,26 @@ test('served bundled HTML starts the actual SDK and handles project and new-sess
     throw new Error(error.message+'; status='+$('status').textContent+'; calls='+JSON.stringify(calls)+'; errors='+JSON.stringify(errors));
   });
   assert.equal($('project-name').textContent,'Первый');
+  const url='https://chatgpt.com/c/12345678-1234-1234-1234-123456789abc';
+  $('probe-url').value=url;$('probe-url').dispatchEvent(new dom.window.Event('input'));
+  assert.equal($('probe-sdk').disabled,false);
+  $('probe-sdk').click();await eventually(()=>$('probe-status').textContent.includes('API вернул'));
+  assert.equal(links[0].url,url);assert.equal(messages.length,0,'navigation does not send a message');
+  $('probe-sdk').click();await eventually(()=>$('probe-status').textContent.includes('отклонил'));
+  $('probe-compat').click();await eventually(()=>compatLinks.length===1&&!$('probe-compat').disabled);
+  $('probe-compat-direct').click();await eventually(()=>compatLinks.length===2&&!$('probe-compat-direct').disabled);
+  assert.deepEqual(JSON.parse(JSON.stringify(compatLinks)),[{href:url},{href:url,redirectUrl:false}]);
+  for(const [id,target] of [['anchor-blank','_blank'],['anchor-top','_top']]){
+    const anchor=$('probe-'+id);assert.equal(anchor.href,url);assert.equal(anchor.target,target);
+    anchor.addEventListener('click',e=>e.preventDefault(),{once:true});anchor.click();
+    assert.equal(JSON.parse($('probe-report').value).events.at(-1).method,id);
+  }
+  $('probe-outcome').value='browser';$('probe-save').click();
+  assert.equal(JSON.parse($('probe-report').value).events.at(-1).outcome,'browser');
+  assert.ok(!$('probe-report').value.includes('12345678'));
+  assert.ok(!dom.window.localStorage.getItem('workflow-pilot-navigation-probe-v1').includes(url));
+  $('probe-url').value='https://chatgpt.com/share/123';$('probe-url').dispatchEvent(new dom.window.Event('input'));
+  assert.equal($('probe-sdk').disabled,true);assert.equal($('probe-anchor-top').hasAttribute('href'),false);
   $('new-session').click();await eventually(()=>messages.length===1);
   assert.deepEqual(JSON.parse(JSON.stringify(messages[0]._meta)),{'openai/message':{target:'new',send:true}});
   assert.match(messages[0].content[0].text,/workflow_connect_project/);
@@ -236,4 +260,21 @@ test('served bundled HTML starts the actual SDK and handles project and new-sess
   assert.equal(connected.isError,false);
   $('refresh').click();await eventually(()=>$('sessions').children.length===f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length);
   assert.deepEqual(calls,['workflow_pilot_panel']);assert.deepEqual(errors,[]);
+});
+
+test('navigation probe rejects unrelated URLs, limits waiting and restores only safe journal fields',async t=>{
+  for(const value of ['javascript:alert(1)','https://evil.test/c/a','https://chatgpt.com.evil.test/c/a',
+    'https://user:pass@chatgpt.com/c/a','https://chatgpt.com/share/a','https://chatgpt.com/c/a?token=secret',
+    'https://chatgpt.com/c/a#secret','http://chatgpt.com/c/a'])assert.equal(conversationUrl(value),null);
+  assert.equal(conversationUrl(' https://chatgpt.com/g/g-p-test/c/abc '),'https://chatgpt.com/g/g-p-test/c/abc');
+  const dom=new JSDOM(await fs.readFile(path.join(root,'src/frontend/plugin/index.html'),'utf8'));t.after(()=>dom.window.close());
+  const $=id=>dom.window.document.getElementById(id);let sent=0;
+  let stored=JSON.stringify([{method:'sdk',phase:'attempt',time:1,secret:'sensitive value'}]);
+  const ui=mountNavigationProbe({document:dom.window.document,storage:{getItem:()=>stored,setItem:(_k,v)=>{stored=v;}},
+    timeoutMs:5,getPorts:()=>({sdk:()=>{sent++;return new Promise(()=>{});}})});
+  assert.equal($('probe-compat').disabled,true);assert.ok(!$('probe-report').value.includes('sensitive value'));
+  $('probe-url').value='https://chatgpt.com/c/test';ui.ready();$('probe-sdk').click();$('probe-sdk').click();
+  await eventually(()=>$('probe-status').textContent.includes('не подтверждён'));
+  assert.equal(sent,1);assert.equal(JSON.parse(stored).at(-1).phase,'unknown');
+  assert.equal($('probe-sdk').disabled,false);
 });

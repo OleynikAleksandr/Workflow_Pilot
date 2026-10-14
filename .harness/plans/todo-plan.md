@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 92,
+  "plan_revision": 94,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3424,14 +3424,23 @@
         "Тестовую версию пользователь проверяет в Chat и Work. Автоматическое получение URL и навигация в Desktop остаются неподтверждёнными до живой проверки."
       ],
       "expected_commit_message": "feat: Подготовить проверку открытия прежнего диалога из панели ChatGPT",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T027",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/navigation-probe.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-8",
@@ -3551,7 +3560,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 92
+Revision: 94
 
 ## Цель
 
@@ -3780,8 +3789,8 @@ Revision: 92
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: T025, DOCS-7
-- [TODO] T027: Подготовить проверку открытия прежнего диалога из панели ChatGPT — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить проверку открытия прежнего диалога из панели ChatGPT
+- [DONE] T027: Подготовить проверку открытия прежнего диалога из панели ChatGPT — Завершено
+  - Git Commit: [DONE] feat: Подготовить проверку открытия прежнего диалога из панели ChatGPT
   - Reference: workflow-pilot-migration-0.1.0 / T027 / implementation
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/frontend/plugin/navigation-probe.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, package.json, package-lock.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение

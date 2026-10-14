@@ -70,7 +70,9 @@ def register_plugin(mcp, state_root: Path):
     @mcp.resource(UI_URI, name="workflow_pilot_projects", title="Workflow Pilot",
                   mime_type="text/html;profile=mcp-app",
                   meta={"openai/ui": {"preferredDisplayMode": "fullscreen", "availableDisplayModes": ["inline", "fullscreen"]},
-                        "ui": {"csp": {"connectDomains": [], "resourceDomains": []}}})
+                        "ui": {"csp": {"connectDomains": [], "resourceDomains": []}},
+                        "openai/widgetCSP": {"connect_domains": [], "resource_domains": [],
+                                             "redirect_domains": ["https://chatgpt.com"]}})
     def panel_resource() -> str:
         return (Path(__file__).parent / "plugin-ui.html").read_text(encoding="utf-8")
 
