@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 55,
+  "plan_revision": 57,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -2847,13 +2847,14 @@
         "Manifest asset, корневая и поставочная копии побайтно одинаковы; новые коммиты после dcb2703c8a766d9f1cf7030f6fc69a8af1c8e9be не имеют placeholder-автора. Начальная история до этой границы сохраняется, force/rewrite не выполняются."
       ],
       "expected_commit_message": "release: Опубликовать и сверить полный GitHub Release",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T014",
         "role": "implementation"
-      }
+      },
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -2881,10 +2882,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 55
+Revision: 57
 
 ## Цель
 
@@ -3029,8 +3030,8 @@ Revision: 55
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T012-BUILD, DOCS, DOCS-2, DOCS-3, DOCS-4, T016
-- [TODO] T014: Опубликовать и сверить полный GitHub Release — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать и сверить полный GitHub Release
+- [DONE] T014: Опубликовать и сверить полный GitHub Release — Завершено
+  - Git Commit: [DONE] release: Опубликовать и сверить полный GitHub Release
   - Reference: workflow-pilot-migration-0.1.0 / T014 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
