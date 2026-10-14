@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 42,
+  "plan_revision": 43,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2715,6 +2715,37 @@
       "parallel_safe": false
     },
     {
+      "id": "T016",
+      "title": "Пересобрать исправленный комплект 0.1.1 для macOS, Windows и Linux",
+      "why": "Пересобрать исправленный комплект 0.1.1 для macOS, Windows и Linux",
+      "dependencies": [
+        "T015",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS собраны macOS arm64, Windows x64 и Linux x64 из одного sourceCommit, включающего исправление входа и диагностику; все архивы распакованы и сверены штатной проверкой.",
+        "Полный комплект доставлен в Downloads/WorkflowPilot-0.1.1; корневой, staging и поставочный manifest совпадают. Полный комплект 0.1.0 сохранён.",
+        "Native/VM/clean-install остаются pending; приложение пользователя и донор не перезапускаются. Поручение этого раунда завершается выдачей трёх архивов; установка и GitHub-публикация остаются отдельными задачами."
+      ],
+      "expected_commit_message": "release: собрать исправленный Workflow Pilot 0.1.1 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T016",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "id": "T013",
       "title": "Установить готовый macOS выпуск рядом с донором",
       "why": "Установить готовый macOS выпуск рядом с донором",
@@ -2723,7 +2754,8 @@
         "DOCS",
         "DOCS-2",
         "DOCS-3",
-        "DOCS-4"
+        "DOCS-4",
+        "T016"
       ],
       "parallel_safe": false,
       "functional_paths": [
@@ -2813,7 +2845,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 42
+Revision: 43
 
 ## Цель
 
@@ -2946,12 +2978,18 @@ Revision: 42
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/first-run-onboarding.md
   - Параллельность: исключительное выполнение
   - Зависимости: T015
+- [TODO] T016: Пересобрать исправленный комплект 0.1.1 для macOS, Windows и Linux — Ожидает
+  - Git Commit: [PENDING] release: собрать исправленный Workflow Pilot 0.1.1 для трёх ОС
+  - Reference: workflow-pilot-migration-0.1.0 / T016 / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: T015, DOCS-4
 - [TODO] T013: Установить готовый macOS выпуск рядом с донором — Ожидает
   - Git Commit: [PENDING] release: Установить готовый macOS выпуск рядом с донором
   - Reference: workflow-pilot-migration-0.1.0 / T013 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T012-BUILD, DOCS, DOCS-2, DOCS-3, DOCS-4
+  - Зависимости: T012-BUILD, DOCS, DOCS-2, DOCS-3, DOCS-4, T016
 - [TODO] T014: Опубликовать и сверить полный GitHub Release — Ожидает
   - Git Commit: [PENDING] release: Опубликовать и сверить полный GitHub Release
   - Reference: workflow-pilot-migration-0.1.0 / T014 / implementation
