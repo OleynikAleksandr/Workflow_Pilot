@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 94,
+  "plan_revision": 95,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3460,7 +3460,10 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/chatgpt-plugin.md"
+        "docs/modules/chatgpt-plugin.md",
+        "README.md",
+        "docs/modules/release.md",
+        "docs/acceptance/migration-0.1.0.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -3560,7 +3563,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 94
+Revision: 95
 
 ## Цель
 
@@ -3798,7 +3801,7 @@ Revision: 94
 - [TODO] DOCS-8: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS-8 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, README.md, docs/modules/release.md, docs/acceptance/migration-0.1.0.md
   - Параллельность: исключительное выполнение
   - Зависимости: T027
 - [TODO] T028: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС — Ожидает
