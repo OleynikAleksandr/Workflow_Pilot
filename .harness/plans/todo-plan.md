@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 65,
+  "plan_revision": 67,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3056,14 +3056,17 @@
         "После DOCS полный комплект macOS arm64, Windows x64 и Linux x64 создан из одного sourceCommit; панель и MCP плагина включены, архивы и manifest проверены и доставлены в Downloads/WorkflowPilot-0.1.2. Предыдущие выпуски сохранены; живая приёмка плагина и Windows/Linux pending."
       ],
       "expected_commit_message": "release: собрать Workflow Pilot 0.1.2 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T019",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T020",
@@ -3125,7 +3128,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 65
+Revision: 67
 
 ## Цель
 
@@ -3294,8 +3297,8 @@ Revision: 65
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md, README.md, docs/acceptance/migration-0.1.0.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/release.md, docs/planning/chatgpt-plugin.md, docs/planning/orchestrated-execution-next.md
   - Параллельность: исключительное выполнение
   - Зависимости: T017, T018
-- [TODO] T019: Собрать выпуск 0.1.2 с плагином для трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: собрать Workflow Pilot 0.1.2 для трёх ОС
+- [DONE] T019: Собрать выпуск 0.1.2 с плагином для трёх ОС — Завершено
+  - Git Commit: [DONE] release: собрать Workflow Pilot 0.1.2 для трёх ОС
   - Reference: workflow-pilot-migration-0.1.0 / T019 / implementation
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
