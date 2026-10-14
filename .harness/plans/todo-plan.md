@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 74,
+  "plan_revision": 76,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3200,14 +3200,17 @@
         "После DOCS собраны и проверены три платформы из одного sourceCommit, полный комплект 0.1.3 доставлен в Downloads, прежние выпуски сохранены. Живая проверка исправления Chat/Work pending."
       ],
       "expected_commit_message": "release: собрать исправленную панель Workflow Pilot 0.1.3",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T022",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T023",
@@ -3269,7 +3272,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 74
+Revision: 76
 
 ## Цель
 
@@ -3462,8 +3465,8 @@ Revision: 74
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md, README.md, docs/acceptance/migration-0.1.0.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T021
-- [TODO] T022: Собрать исправленный выпуск панели 0.1.3 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: собрать исправленную панель Workflow Pilot 0.1.3
+- [DONE] T022: Собрать исправленный выпуск панели 0.1.3 для трёх ОС — Завершено
+  - Git Commit: [DONE] release: собрать исправленную панель Workflow Pilot 0.1.3
   - Reference: workflow-pilot-migration-0.1.0 / T022 / implementation
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
