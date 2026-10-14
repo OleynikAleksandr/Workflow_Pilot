@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 69,
+  "plan_revision": 70,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -3099,6 +3099,129 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T021",
+      "title": "Исправить повреждение HTML панели ChatGPT при сборке",
+      "why": "Исправить повреждение HTML панели ChatGPT при сборке",
+      "dependencies": [],
+      "functional_paths": [
+        "scripts/stage-chatgpt-plugin.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "src/frontend/plugin/app.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "architecture",
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Зафиксирован отказ 0.1.2 в Chat и Work: панель открывается пустой, MCP возвращает проект. Установленный HTML воспроизводит синтаксическую ошибку из-за подстановок String.replace; Codex не входит в целевую приёмку.",
+        "Сборка сохраняет JavaScript буквально, проверяет синтаксис перед записью. Regression проверяет специальные последовательности замены и запускает полный собранный HTML, полученный через настоящий MCP, с handshake SDK и действиями панели. Версия 0.1.3."
+      ],
+      "expected_commit_message": "fix: сохранить код панели ChatGPT при упаковке HTML",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T021",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-6",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "DOCS-6",
+        "role": "implementation",
+        "iteration": 6
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T021"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/control.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T022",
+      "title": "Собрать исправленный выпуск панели 0.1.3 для трёх ОС",
+      "why": "Собрать исправленный выпуск панели 0.1.3 для трёх ОС",
+      "dependencies": [
+        "T021",
+        "DOCS-6"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS собраны и проверены три платформы из одного sourceCommit, полный комплект 0.1.3 доставлен в Downloads, прежние выпуски сохранены. Живая проверка исправления Chat/Work pending."
+      ],
+      "expected_commit_message": "release: собрать исправленную панель Workflow Pilot 0.1.3",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T022",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T023",
+      "title": "Установить готовый Workflow Pilot 0.1.3 на Mac",
+      "why": "Установить готовый Workflow Pilot 0.1.3 на Mac",
+      "dependencies": [
+        "T022",
+        "DOCS-6"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer обновил собственные приложения готовым пакетом, проверены подпись, версия, manifest и rollback; без пересборки и перезапуска. Переданы действия Refresh и повторная проверка Chat/Work, Codex исключён."
+      ],
+      "expected_commit_message": "release: установить Workflow Pilot 0.1.3 на Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T023",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -3126,10 +3249,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 69
+Revision: 70
 
 ## Цель
 
@@ -3310,6 +3433,30 @@ Revision: 69
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: T019, DOCS-5
+- [TODO] T021: Исправить повреждение HTML панели ChatGPT при сборке — Ожидает
+  - Git Commit: [PENDING] fix: сохранить код панели ChatGPT при упаковке HTML
+  - Reference: workflow-pilot-migration-0.1.0 / T021 / implementation
+  - Файлы: scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, src/frontend/plugin/app.mjs, package.json, package-lock.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-6: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-migration-0.1.0 / DOCS-6 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T021
+- [TODO] T022: Собрать исправленный выпуск панели 0.1.3 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: собрать исправленную панель Workflow Pilot 0.1.3
+  - Reference: workflow-pilot-migration-0.1.0 / T022 / implementation
+  - Файлы: release-manifest.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T021, DOCS-6
+- [TODO] T023: Установить готовый Workflow Pilot 0.1.3 на Mac — Ожидает
+  - Git Commit: [PENDING] release: установить Workflow Pilot 0.1.3 на Mac
+  - Reference: workflow-pilot-migration-0.1.0 / T023 / implementation
+  - Файлы: release-manifest.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T022, DOCS-6
 
 ## Context Pack For This Cycle
 
