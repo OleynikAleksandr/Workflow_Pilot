@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 99,
+  "plan_revision": 101,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -3535,14 +3535,15 @@
         "Штатный installer обновляет собственные app в проекте и Applications готовым комплектом без пересборки/перезапуска, проверяя подпись, manifest и rollback. Пользователю переданы шаги сравнительного теста."
       ],
       "expected_commit_message": "feat: Установить готовый Workflow Pilot 0.1.5 для проверки переходов",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T029",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -3570,10 +3571,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 99
+Revision: 101
 
 ## Цель
 
@@ -3820,8 +3821,8 @@ Revision: 99
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T027, DOCS-8
-- [TODO] T029: Установить готовый Workflow Pilot 0.1.5 для проверки переходов — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовый Workflow Pilot 0.1.5 для проверки переходов
+- [DONE] T029: Установить готовый Workflow Pilot 0.1.5 для проверки переходов — Завершено
+  - Git Commit: [DONE] feat: Установить готовый Workflow Pilot 0.1.5 для проверки переходов
   - Reference: workflow-pilot-migration-0.1.0 / T029 / implementation
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
