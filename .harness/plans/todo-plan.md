@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 51,
+  "plan_revision": 53,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2771,14 +2771,17 @@
         "Native/VM/clean-install остаются pending; после сборки T013 обновляет /Applications/Workflow Pilot.app готовым macOS-комплектом. Перезапуск выполняет пользователь; GitHub-публикация остаётся отдельной задачей."
       ],
       "expected_commit_message": "release: собрать исправленный Workflow Pilot 0.1.1 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T016",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T013",
@@ -2880,7 +2883,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 51
+Revision: 53
 
 ## Цель
 
@@ -3013,8 +3016,8 @@ Revision: 51
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/first-run-onboarding.md, AGENTS.md, README.md, docs/acceptance/migration-0.1.0.md, docs/modules/browser.md, docs/modules/linux.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T015
-- [TODO] T016: Пересобрать исправленный комплект 0.1.1 для macOS, Windows и Linux — Ожидает
-  - Git Commit: [PENDING] release: собрать исправленный Workflow Pilot 0.1.1 для трёх ОС
+- [DONE] T016: Пересобрать исправленный комплект 0.1.1 для macOS, Windows и Linux — Завершено
+  - Git Commit: [DONE] release: собрать исправленный Workflow Pilot 0.1.1 для трёх ОС
   - Reference: workflow-pilot-migration-0.1.0 / T016 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
