@@ -1,14 +1,14 @@
 {
   "schemaVersion": 2,
-  "version": "0.1.3",
-  "sourceCommit": "223ad1f36728138de519eb04c18f768ae80c60e9",
+  "version": "0.1.4",
+  "sourceCommit": "7219d6a774e23f79227416e011c3b885b809757b",
   "sourceFiles": 187,
   "sources": {
     "LICENSE": "43a6559711f10402ae87af80b8ac779ed3df6af92aba3f2ed85bf80d4ebf3c69",
     "packages/workflow-kit/package.json": "5c6f248d4d6189fb1668f6d85c3dad795b8c7dcf92d4cd9b992d441aa00aa577",
     "packages/workflow-kit/index.mjs": "3daab9251d8ceab8c3b54148469848d263c27dd731782dd64b4e3484fcc85dba",
-    "package.json": "642c4e2290356bea5c3c93b82cab5a04922462a056e573955a0241ec1de3b2cc",
-    "package-lock.json": "3d93a0f53701e9f14b925a3ac2086d1758ee6cc2e44abfdc9d4c77527ff9af7f",
+    "package.json": "956a25f7967b82cc0cd5c7745c7450131e27a97f09a20fd298ce7a270b1b8e7b",
+    "package-lock.json": "6ce24dc7507b3455a13414d0df5318e9e4153cb33603bdc4500009e9a926aa75",
     "src/chatgpt-composer.mjs": "b3e9ca8c2b9db94ac8f42d35526e1770058229fef7607ddd38d20f7282dcfac7",
     "src/chatgpt-dom.mjs": "b913cf4298d106e48f80430a5ff694fa439ee010d40b3e974278becc7768f9ba",
     "src/chatgpt-experience.mjs": "80dc2e64c637b6be497ea692552530b951351c84015584b5b9093bc3b998037f",
@@ -116,7 +116,7 @@
     "src/frontend/desktop/ui/workspace-setup.mjs": "82eea0da937584297fd43bec77abbbc396560173e14a4ee51a241b8d2fdba78b",
     "src/frontend/plugin/app.mjs": "135e971caa3462cb6638709f0b6b9a80e0046149182a22888104e8632e11fcf8",
     "src/frontend/plugin/index.html": "6d9497804ddf0d5dd1f0ad43be8e3c541f6e820ee225c994a694f9bcbfb041d0",
-    "src/frontend/plugin/panel.mjs": "61959a65a41f3b92bacdcc6c8acfa8c4feabe20598d233c2b1c7c202dd505232",
+    "src/frontend/plugin/panel.mjs": "916df3d30e665baaaffd28d6d550a92313208435bb66d6000e980d6daffb4b44",
     "src/main.mjs": "73ca5b305551400caa3f20a899aedbbf420cab2d56e3dd28c4e64750320fb1e1",
     "resources/THIRD-PARTY.md": "3de47c931f6f3e2280c521695721396fb481fd461fcf9aaeed09231d876a9aa3",
     "resources/chatgpt-page-observer-preload.cjs": "e6cc18141cde34260dabd01fe53c9efffac83e941616e8f2c5cfb0c87812164f",
@@ -182,8 +182,8 @@
     "tools/codex-app-server-mcp/control.py": "c1f1d26b356b20d6e4c1087efdbb4a9cc885f9247820903db32c050caa312f37",
     "tools/codex-app-server-mcp/linux_desktop.py": "5fb02227a28c41bcdae333154c4ee1dc4736f31912f000e38d4c1945cb910676",
     "tools/codex-app-server-mcp/linux_runtime.py": "6efa1bcc6c81cbd3bd3f8e62937422f385f4d3daa23a00843bff003baca94883",
-    "tools/codex-app-server-mcp/plugin-ui.html": "cc01be2ec5531997c78ec710e7388cbe881866f8ffc49e7cc03a39708c02e333",
-    "tools/codex-app-server-mcp/plugin.py": "2d356f0c511c556351998aaf2c8415a1e5663bea0b06b35bfbb8cae2cd699628",
+    "tools/codex-app-server-mcp/plugin-ui.html": "886422e34995541b0a8d0db53a4d8aeb7b57fc6e115de70060ee97289a38fb9a",
+    "tools/codex-app-server-mcp/plugin.py": "22bc4061566caed84e8be425f8e8e8135ec78cfae7cff19f541e9476d7054cf2",
     "tools/codex-app-server-mcp/requirements-linux.in": "081ff759c914456b2886a63fbd100855e8e2a75facfbd281ca016f862f99b8ce",
     "tools/codex-app-server-mcp/requirements-linux.lock": "3f9979e11eb6f454af921ff9cf734b811b7e7e98064f8dfb5929178443237752",
     "tools/codex-app-server-mcp/requirements.txt": "62e88d43fb5d987eb9cd6c21cd01a82037d6a7357123fcc6e2a474dd1a3e697b",
@@ -193,7 +193,7 @@
     "tools/codex-app-server-mcp/windows_notify.ps1": "6b67095838698735bdd44981e744cac2b572427252bc7ebd56face2293b9acdb"
   },
   "locks": {
-    "package-lock.json": "3d93a0f53701e9f14b925a3ac2086d1758ee6cc2e44abfdc9d4c77527ff9af7f",
+    "package-lock.json": "6ce24dc7507b3455a13414d0df5318e9e4153cb33603bdc4500009e9a926aa75",
     "tools/codex-app-server-mcp/codex-tools.lock.json": "ad52385c24f34b655a57374f5fc7b783397f251736ef9105b408550383b7756c",
     "tools/codex-app-server-mcp/requirements-linux.lock": "3f9979e11eb6f454af921ff9cf734b811b7e7e98064f8dfb5929178443237752"
   },
@@ -209,7 +209,7 @@
     "identity": "A0F7CEBAE465D22E7A0CD3FFC3C5F785589A85A5",
     "teamId": "JG9T5YMR4M",
     "identifier": "com.oleynik.WorkflowPilot",
-    "cdhash": "53be4e590ccb36679b7a66c19d4aed1f829b6239",
+    "cdhash": "0e64844a209a6c7ce606140497a660a3aff2bae2",
     "requirement": "identifier \"com.oleynik.WorkflowPilot\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: alexandrovichroman@gmail.com (DQT97QNYK6)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */"
   },
   "artifacts": [
@@ -217,31 +217,31 @@
       "platform": "macOS arm64",
       "os": "darwin",
       "arch": "arm64",
-      "asarSha256": "c7e59cba1ce56f3232ca6e1b763de8b2151a01a7d318dc0de39d48f29b7379ba",
+      "asarSha256": "bada66da27a226c824b71d99c91024f1fc820aa7c2d0a02bcc9261150303adf1",
       "packageFiles": 357,
-      "file": "Workflow-Pilot-0.1.3-macOS-arm64.zip",
-      "bytes": 185489664,
-      "sha256": "4218b3e342962464905e9587b43d16f938fbe3d05bde99ef6553e13ba7c86a90"
+      "file": "Workflow-Pilot-0.1.4-macOS-arm64.zip",
+      "bytes": 185490650,
+      "sha256": "a5502acdf757c26433985eb0cc6bb087f4910ce2446ceeec5c4a906236c44005"
     },
     {
       "platform": "Windows x64",
       "os": "win32",
       "arch": "x64",
-      "asarSha256": "c7e59cba1ce56f3232ca6e1b763de8b2151a01a7d318dc0de39d48f29b7379ba",
+      "asarSha256": "bada66da27a226c824b71d99c91024f1fc820aa7c2d0a02bcc9261150303adf1",
       "packageFiles": 2144,
-      "file": "Workflow-Pilot-0.1.3-Windows-x64.zip",
-      "bytes": 321438354,
-      "sha256": "0bc9378792417ea0479fce9547781bc973556ed77872a1628fb8250a6f357de8"
+      "file": "Workflow-Pilot-0.1.4-Windows-x64.zip",
+      "bytes": 321439323,
+      "sha256": "476575f953ee57ce145072e9621932e51ad1dc0a03483ed3b961c4efa75f07b7"
     },
     {
       "platform": "Linux x64",
       "os": "linux",
       "arch": "x64",
-      "asarSha256": "c7e59cba1ce56f3232ca6e1b763de8b2151a01a7d318dc0de39d48f29b7379ba",
+      "asarSha256": "bada66da27a226c824b71d99c91024f1fc820aa7c2d0a02bcc9261150303adf1",
       "packageFiles": 9677,
-      "file": "Workflow-Pilot-0.1.3-Linux-x64.tar.gz",
-      "bytes": 379766799,
-      "sha256": "cd8073e84cb5088506224914a07f59054db148d9db88a40802165115ff3a91ef"
+      "file": "Workflow-Pilot-0.1.4-Linux-x64.tar.gz",
+      "bytes": 379768289,
+      "sha256": "e6b471569091f1379a75b1c6a5ca9b0c02c436709f0e38c7dd1ed50f81fd7af4"
     }
   ],
   "windowsRuntimeArchive": {
@@ -253,12 +253,12 @@
     {
       "file": "SHA256SUMS.txt",
       "bytes": 411,
-      "sha256": "b426aede603b09693a4ba031e9c57ea33d840cce8ec4cbfcd437653afb86d022"
+      "sha256": "6ffe93e6e5da906d2f605d350446e880e26ab36e5f6ab137ad960d84578277d3"
     },
     {
       "file": "INSTALL.txt",
       "bytes": 2075,
-      "sha256": "12c1f4482c5273effaa57d48583c186fc33171eb14890cbd68422f2d47b8bb85"
+      "sha256": "59e4ca3c96e9d8bea50ee06f9e0842dbc57827726ccc0209aa41574db505cb8f"
     }
   ],
   "nativeMacTested": false,
