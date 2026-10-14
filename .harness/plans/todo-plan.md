@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 70,
+  "plan_revision": 72,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3125,14 +3125,20 @@
         "Сборка сохраняет JavaScript буквально, проверяет синтаксис перед записью. Regression проверяет специальные последовательности замены и запускает полный собранный HTML, полученный через настоящий MCP, с handshake SDK и действиями панели. Версия 0.1.3."
       ],
       "expected_commit_message": "fix: сохранить код панели ChatGPT при упаковке HTML",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T021",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "id": "DOCS-6",
@@ -3252,7 +3258,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 70
+Revision: 72
 
 ## Цель
 
@@ -3433,8 +3439,8 @@ Revision: 70
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: T019, DOCS-5
-- [TODO] T021: Исправить повреждение HTML панели ChatGPT при сборке — Ожидает
-  - Git Commit: [PENDING] fix: сохранить код панели ChatGPT при упаковке HTML
+- [DONE] T021: Исправить повреждение HTML панели ChatGPT при сборке — Завершено
+  - Git Commit: [DONE] fix: сохранить код панели ChatGPT при упаковке HTML
   - Reference: workflow-pilot-migration-0.1.0 / T021 / implementation
   - Файлы: scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, src/frontend/plugin/app.mjs, package.json, package-lock.json, docs/modules/control.md
   - Параллельность: исключительное выполнение

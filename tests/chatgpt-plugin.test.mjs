@@ -5,7 +5,9 @@ import path from 'node:path';
 import os from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
-import {JSDOM} from 'jsdom';
+import {JSDOM,VirtualConsole} from 'jsdom';
+import {Script} from 'node:vm';
+import {pluginHtml} from '../scripts/stage-chatgpt-plugin.mjs';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {ControlFacade} from '../src/control/facade.mjs';
@@ -15,6 +17,14 @@ import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const digest=text=>createHash('sha256').update(text).digest('hex');
 const metadata={'openai/session':'conversation-fixture','openai/subject':'user-fixture'};
+test('HTML staging preserves replacement tokens and refuses broken JavaScript',()=>{
+  const source='globalThis.sample='+JSON.stringify(['$&',"$'",'$`','$$','</script>','кириллица'])+';';
+  const dom=new JSDOM(pluginHtml('<body><!-- plugin-script --></body>',source),{runScripts:'dangerously'});
+  assert.deepEqual(Array.from(dom.window.sample),['$&',"$'",'$`','$$','</script>','кириллица']);
+  assert.equal(dom.window.document.scripts.length,1);dom.window.close();
+  assert.throws(()=>pluginHtml('<!-- plugin-script -->','broken('),SyntaxError);
+  assert.throws(()=>pluginHtml('',source),/exactly one/);
+});
 function packet(workspace,name){
   const context='Контекст проекта '+name+'\nПолный текст: ✓';const bytes=Buffer.byteLength(context);
   return {delivery_protocol:'inline-context-v1',ack_required:false,workspace,status:'ready',completeness:'COMPLETE',
@@ -110,6 +120,9 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   assert.equal(resource.contents[0].mimeType,'text/html;profile=mcp-app');
   assert.match(resource.contents[0].text,/Новая сессия/);assert.match(resource.contents[0].text,/<script>/);
   assert.doesNotMatch(resource.contents[0].text,/<script[^>]+src=/);
+  const bundled=new JSDOM(resource.contents[0].text);
+  for(const script of bundled.window.document.scripts)new Script(script.textContent);
+  bundled.window.close();
   const listing=await c.callTool({name:'workflow_pilot_panel',arguments:{}});assert.equal(listing.structuredContent.projects.length,2);
   const args={project_id:'Первый',request_id:randomUUID()};
   const missing=await c.callTool({name:'workflow_connect_project',arguments:args});
@@ -159,4 +172,48 @@ test('MCP reports a closed desktop without creating a separate project store',as
   const response=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
   assert.equal(response.isError,true);assert.equal(response.structuredContent.error.code,'PLUGIN_DESKTOP_REQUIRED');
   assert.deepEqual((await fs.readdir(f.directory)).sort(),['Second','sessions.json','Первый'].sort());
+});
+
+test('served bundled HTML starts the actual SDK and handles project and new-session buttons',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
+  const listing=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
+  const errors=[],calls=[],messages=[];let initialized=false;
+  const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
+  const dom=new JSDOM(html,{url:'https://plugin-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
+    beforeParse(window){
+      window.TextEncoder=TextEncoder;window.TextDecoder=TextDecoder;
+      window.ResizeObserver=class {observe(){} unobserve(){} disconnect(){}};
+      window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+      const deliver=data=>window.dispatchEvent(new window.MessageEvent('message',{source:window,data}));
+      window.postMessage=async request=>{
+        try{
+          if(request.method==='ui/initialize'){
+            queueMicrotask(()=>deliver({jsonrpc:'2.0',id:request.id,result:{protocolVersion:request.params.protocolVersion,
+              hostInfo:{name:'Fixture Host',version:'1'},hostContext:{theme:'dark'},
+              hostCapabilities:{serverTools:{},experimental:{'openai/message':{}}}}}));
+          }else if(request.method==='ui/notifications/initialized'){
+            initialized=true;deliver({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:listing});
+          }else if(request.method==='tools/call'){
+            calls.push(request.params.name);
+            deliver({jsonrpc:'2.0',id:request.id,result:await c.callTool(request.params)});
+          }else if(request.method==='ui/message'){
+            messages.push(request.params);deliver({jsonrpc:'2.0',id:request.id,result:{}});
+          }
+        }catch(e){errors.push(e.message);}
+      };
+    }});
+  t.after(()=>dom.window.close());const $=id=>dom.window.document.getElementById(id);
+  await eventually(()=>initialized||errors.length>0);assert.deepEqual(errors,[]);
+  await eventually(()=>$('projects').querySelectorAll('button').length===2);
+  assert.equal(dom.window.document.querySelector('h1').textContent,'Workflow Pilot');
+  [...$('projects').querySelectorAll('button')].find(b=>b.textContent==='Первый').click();
+  await eventually(()=>$('new-session').disabled===false).catch(error=>{
+    throw new Error(error.message+'; status='+$('status').textContent+'; calls='+JSON.stringify(calls)+'; errors='+JSON.stringify(errors));
+  });
+  assert.equal($('project-name').textContent,'Первый');
+  $('new-session').click();await eventually(()=>messages.length===1);
+  assert.deepEqual(JSON.parse(JSON.stringify(messages[0]._meta)),{'openai/message':{target:'new',send:true}});
+  assert.match(messages[0].content[0].text,/workflow_connect_project/);
+  assert.deepEqual(calls,['workflow_open_project']);assert.deepEqual(errors,[]);
 });
