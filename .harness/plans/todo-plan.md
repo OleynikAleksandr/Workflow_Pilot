@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 60,
+  "plan_revision": 61,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -2953,6 +2953,125 @@
         "tools/codex-app-server-mcp/plugin.py",
         "tools/codex-app-server-mcp/server.py"
       ]
+    },
+    {
+      "id": "T018",
+      "title": "Подготовить версию 0.1.2 с плагином ChatGPT",
+      "why": "Подготовить версию 0.1.2 с плагином ChatGPT",
+      "dependencies": [],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия приложения и lock согласованы: 0.1.2; проверенная реализация T017 включается без изменения поведения."
+      ],
+      "expected_commit_message": "chore: подготовить Workflow Pilot 0.1.2 с плагином ChatGPT",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T018",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-5",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "DOCS-5",
+        "role": "implementation",
+        "iteration": 5
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T017",
+        "T018"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/control.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T019",
+      "title": "Собрать выпуск 0.1.2 с плагином для трёх ОС",
+      "why": "Собрать выпуск 0.1.2 с плагином для трёх ОС",
+      "dependencies": [
+        "T018",
+        "DOCS-5"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS полный комплект macOS arm64, Windows x64 и Linux x64 создан из одного sourceCommit; панель и MCP плагина включены, архивы и manifest проверены и доставлены в Downloads/WorkflowPilot-0.1.2. Предыдущие выпуски сохранены; живая приёмка плагина и Windows/Linux pending."
+      ],
+      "expected_commit_message": "release: собрать Workflow Pilot 0.1.2 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T019",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T020",
+      "title": "Установить готовый Workflow Pilot 0.1.2 на Mac",
+      "why": "Установить готовый Workflow Pilot 0.1.2 на Mac",
+      "dependencies": [
+        "T019",
+        "DOCS-5"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer обновил собственные копии в проекте и /Applications из готового комплекта T019 без пересборки или переподписи. Version/source/manifest/signature проверены, предусмотрен rollback; приложение не перезапущено, donor не изменён. Пользователю переданы инструкции Refresh существующего MCP и проверки ChatGPT Desktop."
+      ],
+      "expected_commit_message": "release: установить готовый Workflow Pilot 0.1.2 на Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T020",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -2980,10 +3099,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 60
+Revision: 61
 
 ## Цель
 
@@ -3140,6 +3259,30 @@ Revision: 60
   - Файлы: src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/sidebar.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, scripts/stage-chatgpt-plugin.mjs, package.json, package-lock.json, tests/chatgpt-plugin.test.mjs, .gitignore, src/control/sessions/service.mjs, src/frontend/plugin/panel.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/fixtures/plugin-server.py, tests/sidebar.test.mjs, docs/modules/control.md, docs/planning/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
+- [TODO] T018: Подготовить версию 0.1.2 с плагином ChatGPT — Ожидает
+  - Git Commit: [PENDING] chore: подготовить Workflow Pilot 0.1.2 с плагином ChatGPT
+  - Reference: workflow-pilot-migration-0.1.0 / T018 / implementation
+  - Файлы: package.json, package-lock.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-5: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-migration-0.1.0 / DOCS-5 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T017, T018
+- [TODO] T019: Собрать выпуск 0.1.2 с плагином для трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: собрать Workflow Pilot 0.1.2 для трёх ОС
+  - Reference: workflow-pilot-migration-0.1.0 / T019 / implementation
+  - Файлы: release-manifest.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T018, DOCS-5
+- [TODO] T020: Установить готовый Workflow Pilot 0.1.2 на Mac — Ожидает
+  - Git Commit: [PENDING] release: установить готовый Workflow Pilot 0.1.2 на Mac
+  - Reference: workflow-pilot-migration-0.1.0 / T020 / implementation
+  - Файлы: release-manifest.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T019, DOCS-5
 
 ## Context Pack For This Cycle
 
