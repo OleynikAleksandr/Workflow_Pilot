@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 41,
+  "plan_revision": 42,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -438,6 +438,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/first-run-onboarding.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -2633,6 +2638,83 @@
       ]
     },
     {
+      "id": "T015",
+      "title": "Исправить распознавание входа и диагностику первого запуска в 0.1.1",
+      "why": "Исправить распознавание входа и диагностику первого запуска в 0.1.1",
+      "dependencies": [
+        "T012-BUILD"
+      ],
+      "functional_paths": [
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/page-state.mjs",
+        "src/execution/browser/diagnostics.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/ui/startup.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tests/page-state.test.mjs",
+        "tests/startup-ui.test.mjs",
+        "tests/chromium-diagnostics.test.mjs",
+        "tests/electron-smoke.mjs",
+        "scripts/release-all.mjs",
+        "tests/release-linux.test.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/first-run-onboarding.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Подтверждение входа использует явные признаки профиля либо совокупность личной навигации и редактора; гостевой редактор и ссылки внутри сообщений не подтверждают вход. Наблюдаются поздние изменения доступных имён и ссылок, подписки не создают polling.",
+        "Загруженное unknown состояние показывает отдельную повторную проверку входа без перезагрузки и подготовки служб; дальнейшие шаги требуют подтверждённого входа.",
+        "Диагностика первого запуска содержит состояние входа, безопасные признаки, актуальное состояние мастера и причины отклонения наблюдения/ошибки observer без текста диалогов, имён, cookies, ключей или полных личных URL.",
+        "Пользовательский путь проверен через изолированные DOM и Electron fixtures; живая проверка текущего ChatGPT остаётся за пользователем. Донор только прочитан.",
+        "Версия 0.1.1; поставщик допускает замену корневого manifest только при новом номере и совпадении предыдущего manifest с сохранённым проверенным комплектом. Архивы 0.1.0 остаются неизменными."
+      ],
+      "expected_commit_message": "fix: восстановить первый вход и диагностику Workflow Pilot 0.1.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T015",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-4",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "DOCS-4",
+        "role": "implementation",
+        "iteration": 4
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T015"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/first-run-onboarding.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
       "id": "T013",
       "title": "Установить готовый macOS выпуск рядом с донором",
       "why": "Установить готовый macOS выпуск рядом с донором",
@@ -2640,7 +2722,8 @@
         "T012-BUILD",
         "DOCS",
         "DOCS-2",
-        "DOCS-3"
+        "DOCS-3",
+        "DOCS-4"
       ],
       "parallel_safe": false,
       "functional_paths": [
@@ -2674,7 +2757,8 @@
         "T013",
         "DOCS",
         "DOCS-2",
-        "DOCS-3"
+        "DOCS-3",
+        "DOCS-4"
       ],
       "parallel_safe": false,
       "functional_paths": [
@@ -2729,7 +2813,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 41
+Revision: 42
 
 ## Цель
 
@@ -2850,18 +2934,30 @@ Revision: 41
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T012-RELEASE, DOCS-2, DOCS-3
+- [TODO] T015: Исправить распознавание входа и диагностику первого запуска в 0.1.1 — Ожидает
+  - Git Commit: [PENDING] fix: восстановить первый вход и диагностику Workflow Pilot 0.1.1
+  - Reference: workflow-pilot-migration-0.1.0 / T015 / implementation
+  - Файлы: src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/execution/browser/diagnostics.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/index.html, tests/page-state.test.mjs, tests/startup-ui.test.mjs, tests/chromium-diagnostics.test.mjs, tests/electron-smoke.mjs, scripts/release-all.mjs, tests/release-linux.test.mjs, package.json, package-lock.json, docs/modules/first-run-onboarding.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T012-BUILD
+- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-migration-0.1.0 / DOCS-4 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/first-run-onboarding.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T015
 - [TODO] T013: Установить готовый macOS выпуск рядом с донором — Ожидает
   - Git Commit: [PENDING] release: Установить готовый macOS выпуск рядом с донором
   - Reference: workflow-pilot-migration-0.1.0 / T013 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T012-BUILD, DOCS, DOCS-2, DOCS-3
+  - Зависимости: T012-BUILD, DOCS, DOCS-2, DOCS-3, DOCS-4
 - [TODO] T014: Опубликовать и сверить полный GitHub Release — Ожидает
   - Git Commit: [PENDING] release: Опубликовать и сверить полный GitHub Release
   - Reference: workflow-pilot-migration-0.1.0 / T014 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T013, DOCS, DOCS-2, DOCS-3
+  - Зависимости: T013, DOCS, DOCS-2, DOCS-3, DOCS-4
 
 ## Context Pack For This Cycle
 
@@ -2869,5 +2965,6 @@ Revision: 41
 - docs/planning/migration-platforms.md
 - docs/planning/orchestrated-execution-next.md
 - docs/architecture/OVERVIEW.md
+- docs/modules/first-run-onboarding.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
