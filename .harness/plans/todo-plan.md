@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 61,
+  "plan_revision": 63,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -2974,14 +2974,18 @@
         "Версия приложения и lock согласованы: 0.1.2; проверенная реализация T017 включается без изменения поведения."
       ],
       "expected_commit_message": "chore: подготовить Workflow Pilot 0.1.2 с плагином ChatGPT",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T018",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json"
+      ]
     },
     {
       "id": "DOCS-5",
@@ -3102,7 +3106,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 61
+Revision: 63
 
 ## Цель
 
@@ -3259,8 +3263,8 @@ Revision: 61
   - Файлы: src/control/facade.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/ui/sidebar.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, scripts/stage-chatgpt-plugin.mjs, package.json, package-lock.json, tests/chatgpt-plugin.test.mjs, .gitignore, src/control/sessions/service.mjs, src/frontend/plugin/panel.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/fixtures/plugin-server.py, tests/sidebar.test.mjs, docs/modules/control.md, docs/planning/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T018: Подготовить версию 0.1.2 с плагином ChatGPT — Ожидает
-  - Git Commit: [PENDING] chore: подготовить Workflow Pilot 0.1.2 с плагином ChatGPT
+- [DONE] T018: Подготовить версию 0.1.2 с плагином ChatGPT — Завершено
+  - Git Commit: [DONE] chore: подготовить Workflow Pilot 0.1.2 с плагином ChatGPT
   - Reference: workflow-pilot-migration-0.1.0 / T018 / implementation
   - Файлы: package.json, package-lock.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
