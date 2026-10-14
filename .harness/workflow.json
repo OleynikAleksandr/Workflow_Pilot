@@ -148,11 +148,23 @@
         "scripts/check-github-release.mjs"
       ],
       "evidence": "Собственный GitHub repo, remote main, тег v<version> на sourceCommit текущего manifest, полный набор assets по size/digest; без пересборки."
+    },
+    {
+      "id": "chatgpt-plugin",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 180000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "evidence": "Полный HTML через настоящий MCP и SDK на изолированном host fixture; живую навигацию ChatGPT проверяет пользователь. Перед проверкой stage:chatgpt-plugin."
     }
   ],
   "budget": {
     "document_bytes": 28000,
-    "hard_bytes": 180000
+    "hard_bytes": 196000
   },
   "documentation": {
     "mappings": []
