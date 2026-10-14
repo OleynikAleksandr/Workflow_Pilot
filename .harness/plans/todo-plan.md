@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 97,
+  "plan_revision": 99,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3501,14 +3501,17 @@
         "После DOCS собран и проверен полный комплект трёх платформ из одного sourceCommit; живые переходы в ChatGPT не объявляются принятыми."
       ],
       "expected_commit_message": "feat: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T028",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T029",
@@ -3570,7 +3573,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 97
+Revision: 99
 
 ## Цель
 
@@ -3811,8 +3814,8 @@ Revision: 97
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, README.md, docs/modules/release.md, docs/acceptance/migration-0.1.0.md
   - Параллельность: исключительное выполнение
   - Зависимости: T027
-- [TODO] T028: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС
+- [DONE] T028: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать диагностический Workflow Pilot 0.1.5 для трёх ОС
   - Reference: workflow-pilot-migration-0.1.0 / T028 / implementation
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
