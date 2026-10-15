@@ -50,6 +50,7 @@ let startupClipboard = null;
 let startupFlow = null, startupActive = false;
 let startupError = null;
 let storageError = false;
+let plugin = null;
 let lastDiagnostic = '';
 let actionTail = Promise.resolve();
 const titleSyncSuccess = new Map();
@@ -221,7 +222,7 @@ function snapshot() {
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true} : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
     contextPreparation: { busy: selected ? contextCache.isBuilding(selected.workspace) : false },
-    runtimeFolder, platform: process.platform,
+    runtimeFolder, platform: process.platform, pluginLaunch:plugin?.launch.snapshot()??null,
     // The same view on both systems: the executor, the selected ChatGPT channel and the state of its services.
     localRuntime: {
       label: runtimeLabel(),
@@ -1102,6 +1103,14 @@ function registerIpc() {
     if (!navigationCurrent(generation)) return;
     startupError = null; void navigate(project, { generation, freshDraft: true });
   });
+  registerAction('pilot:new-plugin-session', async workspace => {
+    if(storageError||typeof workspace!=='string'||!plugin)throw new Error('Подключение плагина недоступно. Проверьте Workflow Pilot.');
+    const project=store.project(workspace);
+    if(!project||project.archivedAt||project.parentWorkspace)throw new Error('Выберите активный проект.');
+    const opened=await plugin.open(project.projectId);
+    const result=plugin.launch.request(opened.project);
+    startupError=null;return result;
+  });
   registerAction('pilot:return-chat', async () => { const current = store.selected(); if (current) await selectWorkspace(current.workspace); }, { navigation: true });
   registerAction('pilot:retry', async () => {
     const selected = store.selected(); if (selected && !await reviewWorkspace(selected.workspace, true)) return;
@@ -1230,7 +1239,7 @@ async function createWindow() {
   }
   if (smoke) {
     await fixture.run({ app, window, browser: browser.webContents, sidebar: sidebar.webContents,
-      store, controller, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir,
+      store, controller, plugin, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir,
       chromiumDiagnostics, chromiumDiagnosticsFile, navigate, openArchiveWindow, getArchiveWindow: () => archiveWindow,
       getColorWindow: () => colorEditor.window, chatColorStyles, eventBaseline, runtimeMetrics, pageState, autoPlan,
       liveSessions,sessionView,deletion,deletionHooks,execution,getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}),
@@ -1308,10 +1317,12 @@ else {
       return permissionAllowed(permission, origin, details, _contents);
     });
     installMenu();
-    if(!storageError&&!smoke) {
-      const plugin=control.createPlugin({onChange:()=>publish()});
+    if(!storageError)plugin=control.createPlugin({onChange:()=>publish(),
+      ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
+    if(plugin&&!smoke) {
       await executionServices.attachPlugin({directory:runtimeFolder,list:()=>plugin.list(),
-        open:id=>plugin.open(id),connect:input=>plugin.connect(input)})
+        open:id=>plugin.open(id),connect:input=>plugin.connect(input),
+        wait:(id,signal)=>plugin.launch.wait(id,signal),claim:input=>plugin.launch.claim(input),report:input=>plugin.launch.report(input)})
         .catch(()=>{startupError={code:'PLUGIN_BRIDGE_UNAVAILABLE',message:'Не удалось включить подключение панели ChatGPT. Проверьте, не открыта ли другая копия Workflow Pilot.'};});
     }
     await createWindow();

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 102,
+  "plan_revision": 104,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3569,7 +3569,8 @@
         "tests/sidebar.test.mjs",
         "tests/electron-smoke.mjs",
         "package.json",
-        "package-lock.json"
+        "package-lock.json",
+        "src/contracts/desktop.mjs"
       ],
       "documentation_paths": [
         "docs/modules/control.md"
@@ -3587,14 +3588,34 @@
         "Версия 0.1.6; проверки настоящего SDK из MCP HTML и меню/preload/IPC на изолированных fixtures. Live приёмка Chat/Work и фонового API ожидает пользователя. Режим нового разговора выбирает ChatGPT, гарантий принудительного Chat нет."
       ],
       "expected_commit_message": "feat: Запускать пробный новый разговор из меню Desktop через открытую панель плагина",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T030",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/desktop.mjs",
+        "src/control/plugin/launch.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/sidebar.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-9",
@@ -3714,7 +3735,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 102
+Revision: 104
 
 ## Цель
 
@@ -3967,10 +3988,10 @@ Revision: 102
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T028, DOCS-8
-- [TODO] T030: Запускать пробный новый разговор из меню Desktop через открытую панель плагина — Ожидает
-  - Git Commit: [PENDING] feat: Запускать пробный новый разговор из меню Desktop через открытую панель плагина
+- [DONE] T030: Запускать пробный новый разговор из меню Desktop через открытую панель плагина — Завершено
+  - Git Commit: [DONE] feat: Запускать пробный новый разговор из меню Desktop через открытую панель плагина
   - Reference: workflow-pilot-migration-0.1.0 / T030 / implementation
-  - Файлы: src/control/plugin/launch.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, docs/modules/control.md
+  - Файлы: src/control/plugin/launch.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, src/contracts/desktop.mjs, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DOCS-9: Актуализация всех документов проекта — Ожидает

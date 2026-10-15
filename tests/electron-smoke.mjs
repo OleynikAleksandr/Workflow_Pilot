@@ -212,7 +212,7 @@ async function verifyUninterruptedRequest(dataDir) {
   }
 }
 
-export async function run({ app, window, sidebar, store, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture }) {
+export async function run({ app, window, sidebar, store, plugin, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture }) {
   // Test actions follow the visible page; production controllers retain their own page.
   const currentObject=key=>new Proxy({}, {
     get:(_target,property)=>{const value=getLive()[key][property];return typeof value==='function'?value.bind(getLive()[key]):value;},
@@ -846,7 +846,7 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   await controller.contextCache.load(workspace);
   const warmPacketLoads = packetLoads;
   assert.deepEqual(await sidebar.executeJavaScript(`(() => { document.querySelector('.project-menu-button').click(); return Array.from(document.querySelectorAll('.project-menu button')).map(button => button.textContent); })()`),
-    ['Новый Chat', 'Новый Work', 'Переименовать', 'Скопировать полный путь', 'Скопировать строку для внешнего клиента', 'Перенести в архив']);
+    ['Новый Chat', 'Новый Work', 'Новый чат через плагин', 'Переименовать', 'Скопировать полный путь', 'Скопировать строку для внешнего клиента', 'Перенести в архив']);
   await sidebar.executeJavaScript(`document.querySelector('.project-menu-button').click(); document.querySelector('.rename-project').click()`);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("rename-dialog").open'), true);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("rename-dialog-input").value'), 'Тестовый проект с пробелами');
@@ -1841,6 +1841,22 @@ export async function run({ app, window, sidebar, store, selectWorkspace, worksp
   await waitFor(()=>sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").disabled && !document.getElementById("session-notice").hidden'),'external session notice',snapshot);
   const nativeRestart=new WorkspaceSessions(store.file);await nativeRestart.load();
   assert.equal(nativeRestart.selected().external.provider,'chatgpt-plugin');
+  const messagesBeforeLaunch=await browser.executeJavaScript('window.fixtureMessages.length');
+  await sidebar.executeJavaScript('document.querySelector(".new-project-plugin").click()');
+  await waitFor(()=>snapshot().startupError?.message.includes('Подготовить'),'plugin launch needs a prepared panel',snapshot);
+  const receiverId='00000000-0000-4000-8000-000000000030';
+  const pendingLaunch=plugin.launch.wait(receiverId);
+  await sidebar.executeJavaScript('document.querySelector(".new-project-plugin").click()');
+  await waitFor(()=>snapshot().pluginLaunch.phase==='dispatched','desktop menu to plugin launch',snapshot);
+  const launchRequest=await pendingLaunch;
+  assert.equal(launchRequest.projectId,nativeProject.projectId);
+  assert.equal(store.selected().sessionId,nativeSession.sessionId);
+  assert.equal([...liveSessions.all()].length,browserCount);
+  assert.equal(packetLoads,loadsBeforeNative,'menu does not insert recovery into a browser');
+  assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),messagesBeforeLaunch,'no browser Send');
+  plugin.launch.claim({...launchRequest,receiverId});
+  plugin.launch.report({...launchRequest,receiverId,outcome:'accepted'});
+  await waitFor(()=>sidebar.executeJavaScript('document.getElementById("plugin-launch-notice").textContent.includes("ChatGPT принял")'),'plugin API result visible',snapshot);
   const previousController=getLive().controller,previousCancel=previousController.cancel;
   let backgroundCancelled=0;
   previousController.cancel=function(...args){backgroundCancelled++;return previousCancel.apply(this,args);};

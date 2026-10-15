@@ -1,3 +1,15 @@
+export function newSessionMessage(projectId,requestId) {
+  const panelArgs=JSON.stringify({project_id:projectId});
+  const text='Подключи этот разговор к локальному проекту Workflow Pilot. Первым вызовом инструмента выполни workflow_pilot_panel с аргументами '+
+    panelArgs+', чтобы сразу открыть панель проекта рядом с этим разговором, до получения и чтения контекста. '+
+    'Затем вызови workflow_connect_project с аргументами '+JSON.stringify({project_id:projectId,request_id:requestId})+
+    '. После успешного подключения прочитай весь полученный контекст. '+
+    'Затем повторно вызови workflow_pilot_panel с аргументами '+panelArgs+', чтобы обновить список сессий после подключения этого разговора. '+
+    'После этого кратко подтверди готовность: назови проект, полноту контекста, текущую задачу и перечисли полученные разделы контекста. '+
+    'Если подключение или открытие панели не удалось, сообщи об ошибке; не утверждай, что панель видна, только по успеху инструмента. '+
+    'Не создавай другой разговор и не начинай реализацию без моей задачи.';
+  return {role:'user',content:[{type:'text',text}],_meta:{'openai/message':{target:'new',send:true}}};
+}
 // UI logic depends on an MCP App port, so fixture hosts exercise the same buttons.
 export function mountPanel({document,callTool,getMessage,uuid=()=>crypto.randomUUID()}) {
   const $=id=>document.getElementById(id);
@@ -48,20 +60,11 @@ export function mountPanel({document,callTool,getMessage,uuid=()=>crypto.randomU
   $('new-session').addEventListener('click',()=>run(async()=>{
     const message=getMessage();if(!selected||!message||created)return;
     const requestId=uuid();
-    const panelArgs=JSON.stringify({project_id:selected.id});
-    const text='Подключи этот разговор к локальному проекту Workflow Pilot. Первым вызовом инструмента выполни workflow_pilot_panel с аргументами '+
-      panelArgs+', чтобы сразу открыть панель проекта рядом с этим разговором, до получения и чтения контекста. '+
-      'Затем вызови workflow_connect_project с аргументами '+
-      JSON.stringify({project_id:selected.id,request_id:requestId})+'. После успешного подключения прочитай весь полученный контекст. '+
-      'Затем повторно вызови workflow_pilot_panel с аргументами '+panelArgs+
-      ', чтобы обновить список сессий после подключения этого разговора. '+
-      'После этого кратко подтверди готовность. Если подключение или открытие панели не удалось, сообщи об ошибке; '+
-      'не утверждай, что панель видна, только по успеху инструмента. Не создавай другой разговор и не начинай реализацию без моей задачи.';
     // Never retry an uncertain send: the host may already have created the conversation.
     created=true;
     status('Создаём разговор…');
     try {
-      const result=await message.send({role:'user',content:[{type:'text',text}],_meta:{'openai/message':{target:'new',send:true}}});
+      const result=await message.send(newSessionMessage(selected.id,requestId));
       if(result?.isError)throw new Error('Клиент отклонил создание разговора.');
       status('Запрос передан ChatGPT. Сессия появится в Workflow Pilot после подключения агента к проекту.');
     }catch {status('Результат отправки не подтверждён. Проверьте новые разговоры в ChatGPT; повторно сообщение не отправлено.');}

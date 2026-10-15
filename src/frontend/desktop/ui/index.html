@@ -97,6 +97,7 @@
     #project-options small{display:block;font-size:10px;color:var(--muted);margin-top:3px}
     #session-notice{font-size:11px;line-height:1.5;padding:10px;margin-top:8px;border:1px solid var(--tree-branch);border-radius:8px;overflow-wrap:anywhere}
     #session-notice p{margin:4px 0 8px}
+    #plugin-launch-notice{font-size:12px;line-height:1.5;padding:10px;border:1px solid var(--tree-branch);border-radius:8px;overflow-wrap:anywhere}
     .plan-task-id{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
     .plan-task-mode{color:var(--muted)}.plan-task-status{font-weight:600}
     .execution-stages{list-style:none;margin:0;padding:0;display:grid;gap:5px;min-width:0}
@@ -188,6 +189,7 @@ SOFTWARE.
         <button id="toggle-projects" class="icon-button" title="Свернуть все проекты" aria-label="Свернуть все проекты"><svg class="tree-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#tree-list-chevrons-up-down"/></svg></button>
       </div>
       <ul id="projects" class="projects" aria-label="Workspace и сессии"><li class="empty">Выберите проект, чтобы начать<br>работу с его контекстом.</li></ul>
+      <p id="plugin-launch-notice" role="status" aria-live="polite" hidden></p>
       <section id="session-notice" aria-live="polite" hidden>
         <strong id="session-notice-title"></strong><p id="session-notice-detail"></p>
         <div class="actions">

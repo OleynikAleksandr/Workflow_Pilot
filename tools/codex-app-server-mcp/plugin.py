@@ -14,6 +14,7 @@ from pydantic import Field
 UI_URI = "ui://workflow-pilot/projects-v1.html"
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 CONNECT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+LAUNCH = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 
 
 class PluginBridge:
@@ -75,6 +76,32 @@ def register_plugin(mcp, state_root: Path):
                                              "redirect_domains": ["https://chatgpt.com"]}})
     def panel_resource() -> str:
         return (Path(__file__).parent / "plugin-ui.html").read_text(encoding="utf-8")
+
+    @mcp.tool(name="workflow_plugin_wait", title="Ожидать запуск из Workflow Pilot", annotations=LAUNCH,
+              meta={"ui": {"visibility": ["app"]}})
+    async def wait_launch(receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")]) -> CallToolResult:
+        """App-only, explicit one-shot wait, at most 45 seconds. Never call automatically or poll. Does not launch a model or create a conversation. Keep this panel open; the user triggers one request from the local Workflow Pilot menu."""
+        return result(await asyncio.to_thread(bridge.call, {"action": "wait", "receiverId": receiver_id}))
+
+    @mcp.tool(name="workflow_plugin_claim", title="Принять одну команду запуска", annotations=LAUNCH,
+              meta={"ui": {"visibility": ["app"]}})
+    async def claim_launch(
+        receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")],
+        request_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")],
+    ) -> CallToolResult:
+        """App-only consume-once launch ticket. After success the panel may send one new-conversation message through the host API. Never retry claim or send after an uncertain result. No DOM operations."""
+        return result(await asyncio.to_thread(bridge.call, {"action": "claim", "receiverId": receiver_id, "requestId": request_id}))
+
+    @mcp.tool(name="workflow_plugin_report", title="Результат запроса нового разговора", annotations=CONNECT,
+              meta={"ui": {"visibility": ["app"]}})
+    async def report_launch(
+        receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")],
+        request_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")],
+        outcome: Annotated[str, Field(pattern=r"^(accepted|unknown)$")],
+    ) -> CallToolResult:
+        """App-only report of host API outcome. Accepted does not prove visible navigation or context delivery. Never creates a conversation or retries a send."""
+        return result(await asyncio.to_thread(bridge.call, {"action": "report", "receiverId": receiver_id,
+                                                            "requestId": request_id, "outcome": outcome}))
 
     @mcp.tool(name="workflow_pilot_panel", title="Workflow Pilot", annotations=READ,
               meta={"ui": ui, "openai/ui": {"entrypoints": [{"type": "global"}, {"type": "thread"}]}})

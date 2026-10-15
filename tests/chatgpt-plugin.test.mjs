@@ -14,6 +14,8 @@ import {ControlFacade} from '../src/control/facade.mjs';
 import {startPluginBridge} from '../src/execution/plugin/bridge.mjs';
 import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 import {mountNavigationProbe,conversationUrl} from '../src/frontend/plugin/navigation-probe.mjs';
+import {mountLaunch} from '../src/frontend/plugin/launch.mjs';
+import {PluginLaunch} from '../src/control/plugin/launch.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
 const digest=text=>createHash('sha256').update(text).digest('hex');
@@ -56,7 +58,8 @@ async function fixture(t){
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
 async function bridge(t,f){
-  const b=await startPluginBridge({directory:f.directory,list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i)});
+  const b=await startPluginBridge({directory:f.directory,list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
+    wait:(id,signal)=>f.plugin.launch.wait(id,signal),claim:i=>f.plugin.launch.claim(i),report:i=>f.plugin.launch.report(i)});
   t.after(()=>b.close());
   return JSON.parse(await fs.readFile(path.join(f.directory,'plugin-bridge.json'),'utf8'));
 }
@@ -117,6 +120,8 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   assert.equal(panel.inputSchema.required?.length??0,0);
   assert.equal(tools.find(v=>v.name==='workflow_connect_project').annotations.idempotentHint,true);
   assert.equal(tools.find(v=>v.name==='workflow_connect_project').inputSchema.properties.ctx,undefined);
+  for(const name of ['workflow_plugin_wait','workflow_plugin_claim','workflow_plugin_report'])
+    assert.deepEqual(tools.find(v=>v.name===name)._meta.ui.visibility,['app']);
   const resource=await c.readResource({uri:panel._meta.ui.resourceUri});
   assert.equal(resource.contents[0].mimeType,'text/html;profile=mcp-app');
   assert.match(resource.contents[0].text,/Новая сессия/);assert.match(resource.contents[0].text,/<script>/);
@@ -260,6 +265,71 @@ test('served bundled HTML starts the actual SDK and handles project and new-sess
   assert.equal(connected.isError,false);
   $('refresh').click();await eventually(()=>$('sessions').children.length===f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length);
   assert.deepEqual(calls,['workflow_pilot_panel']);assert.deepEqual(errors,[]);
+  const selected=f.store.selected(),count=f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length;
+  $('launch-arm').click();$('launch-arm').click();
+  await eventually(()=>f.plugin.launch.snapshot().phase==='ready');
+  const ticket=f.plugin.launch.request((await f.plugin.open('Первый')).project);
+  await eventually(()=>messages.length===2 && f.plugin.launch.snapshot().phase==='accepted');
+  assert.match(messages[1].content[0].text,new RegExp(ticket.requestId));
+  assert.equal(messages[1]._meta['openai/message'].target,'new');
+  assert.equal(f.store.selected().sessionId,selected.sessionId,'launch never selects a browser session');
+  assert.equal(f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length,count,'host acceptance alone does not bind a session');
+  const launched=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый',request_id:ticket.requestId},
+    _meta:{...metadata,'openai/session':'fresh-launch-conversation'}});
+  assert.equal(launched.isError,false,JSON.stringify(launched));
+  assert.equal(launched.content[1].text,(await f.loadContext(path.join(f.directory,'Первый'))).context);
+  assert.equal(f.plugin.launch.snapshot().phase,'context-delivered');
+  assert.equal(f.plugin.launch.snapshot().contextBytes,Buffer.byteLength(launched.content[1].text));
+  assert.equal(f.plugin.launch.snapshot().contextSha256,digest(launched.content[1].text));
+  assert.equal(f.plugin.launch.snapshot().domUsed,false);
+  assert.deepEqual(calls.slice(1),['workflow_plugin_wait','workflow_plugin_claim','workflow_plugin_report']);
+  assert.deepEqual(errors,[]);
+});
+
+test('one-shot launch rejects missing receiver, duplicate claims, wrong tickets and expired waits',async()=>{
+  let now=1000;const launch=new PluginLaunch({waitMs:10,now:()=>now});
+  const receiverId=randomUUID(),project={id:'one',name:'Project'};
+  assert.throws(()=>launch.request(project),{code:'PLUGIN_RECEIVER_REQUIRED'});
+  const expired=launch.wait(receiverId);
+  assert.throws(()=>launch.wait(randomUUID()),{code:'PLUGIN_RECEIVER_BUSY'});
+  assert.deepEqual(await expired,{expired:true});
+  assert.equal(launch.snapshot().phase,'expired');
+  const abort=new AbortController(),cancelled=launch.wait(receiverId,abort.signal);abort.abort();
+  assert.deepEqual(await cancelled,{expired:true});
+  const waiting=launch.wait(receiverId),ticket=launch.request(project);
+  assert.deepEqual(await waiting,{...ticket,projectId:'one'});
+  assert.throws(()=>launch.request(project),{code:'PLUGIN_RECEIVER_REQUIRED'});
+  assert.throws(()=>launch.claim({...ticket,receiverId:randomUUID()}),{code:'PLUGIN_LAUNCH_EXPIRED'});
+  now+=16000;
+  assert.throws(()=>launch.claim({...ticket,receiverId}),{code:'PLUGIN_LAUNCH_EXPIRED'});
+  // A separate receiver represents an explicit subsequent experiment.
+  const other=new PluginLaunch({waitMs:100});
+  const ready=other.wait(receiverId),next=other.request(project);await ready;
+  other.claim({...next,receiverId});
+  assert.throws(()=>other.claim({...next,receiverId}),{code:'PLUGIN_LAUNCH_EXPIRED'});
+  other.connected({...next,projectId:'other',contextBytes:20,contextSha256:'hash'});
+  assert.equal(other.snapshot().phase,'sending');
+  other.connected({...next,projectId:'one',contextBytes:20,contextSha256:'hash'});
+  other.report({...next,receiverId,outcome:'accepted'});
+  assert.equal(other.snapshot().phase,'context-delivered','late API response cannot downgrade context delivery');
+});
+
+test('launch UI times out once, does not resend and disposes before dispatch',async t=>{
+  const dom=new JSDOM(await fs.readFile(path.join(root,'src/frontend/plugin/index.html'),'utf8'));t.after(()=>dom.window.close());
+  let sends=0;const outcomes=[];
+  const request={projectId:'one',requestId:randomUUID()};
+  const ui=mountLaunch({document:dom.window.document,sendTimeoutMs:5,
+    getMessage:()=>({send:()=>{sends++;return new Promise(()=>{});}}),
+    callTool:async(name,args)=>{if(name==='workflow_plugin_report')outcomes.push(args.outcome);return {structuredContent:request};}});
+  const button=dom.window.document.getElementById('launch-arm');button.click();button.click();
+  await eventually(()=>outcomes.length===1);
+  assert.equal(sends,1);assert.deepEqual(outcomes,['unknown']);ui.dispose();button.click();assert.equal(sends,1);
+  const second=new JSDOM(await fs.readFile(path.join(root,'src/frontend/plugin/index.html'),'utf8'));t.after(()=>second.window.close());
+  let resolve;
+  const closed=mountLaunch({document:second.window.document,getMessage:()=>({send:()=>sends++}),
+    callTool:()=>new Promise(r=>{resolve=r;})});
+  second.window.document.getElementById('launch-arm').click();closed.dispose();resolve({structuredContent:request});
+  await delay(0);assert.equal(sends,1,'unmounted panel does not claim or send');
 });
 
 test('navigation probe rejects unrelated URLs, limits waiting and restores only safe journal fields',async t=>{
