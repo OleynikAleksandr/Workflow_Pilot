@@ -9,7 +9,6 @@ import {SessionRuntimes} from '../src/control/sessions/service.mjs';
 import {ProjectAutoPlan} from '../src/control/workflow/project-auto-plan.mjs';
 import {configureProjectAutoPlan} from '../src/control/workflow/project-session-auto-plan.mjs';
 import {createBackendPages} from '../src/backend/bootstrap.mjs';
-import {assertBackendProfileAllowed} from '../src/backend/identity.mjs';
 
 const settle=(ms=25)=>new Promise(resolve=>setTimeout(resolve,ms));
 async function until(predicate,description) {
@@ -64,12 +63,6 @@ test('backend host keeps a hidden offscreen page independent of its viewers',()=
   const late=host.attachViewer('page-a');host.close('page-a');
   assert.equal(contents.isDestroyed(),true);assert.equal(host.selected,null);
   assert.equal(host.detachViewer(late),false);assert.equal(host.count,0);
-});
-
-test('independent backend refuses the product profile until T009 release and recovery exist',()=>{
-  assert.throws(()=>assertBackendProfileAllowed({}),{code:'BACKEND_PROFILE_NOT_ENABLED'});
-  assert.throws(()=>assertBackendProfileAllowed({fixtureRoot:''}),{code:'BACKEND_PROFILE_NOT_ENABLED'});
-  assert.doesNotThrow(()=>assertBackendProfileAllowed({fixtureRoot:'/tmp/fixture-profile'}));
 });
 
 function backendFixture(t,root) {

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 141,
+  "plan_revision": 143,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -749,7 +749,8 @@
         "src/backend/lifecycle.mjs",
         "src/frontend/desktop/bootstrap.mjs",
         "tests/backend-lifecycle.test.mjs",
-        "tests/backend-owner-recovery.test.mjs"
+        "tests/backend-owner-recovery.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md"
@@ -766,14 +767,22 @@
         "Запрет настоящего профиля снят; legacy Desktop и backend никогда не владеют профилем одновременно."
       ],
       "expected_commit_message": "feat: Освобождать профиль backend и восстанавливаться после падения",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T006R",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/identity.mjs",
+        "src/backend/main.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-lifecycle.test.mjs",
+        "tests/backend-owner-recovery.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1475,7 +1484,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 141
+Revision: 143
 
 ## Цель
 
@@ -1545,10 +1554,10 @@ Revision: 141
   - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/input.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/backend/transfers.mjs, src/contracts/browser-presentation.mjs, tests/browser-presentation.test.mjs, tests/fixtures/backend-browser-page.html, src/backend/events.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/backend/server.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/diagnostics.mjs, src/execution/facade.mjs, src/frontend/client/connection.mjs, tests/backend-browser-lifecycle.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T005
-- [TODO] T006R: Освобождать профиль backend и восстанавливаться после падения — Ожидает
-  - Git Commit: [PENDING] feat: Освобождать профиль backend и восстанавливаться после падения
+- [DONE] T006R: Освобождать профиль backend и восстанавливаться после падения — Завершено
+  - Git Commit: [DONE] feat: Освобождать профиль backend и восстанавливаться после падения
   - Reference: workflow-pilot-backend-independence / T006R / implementation
-  - Файлы: src/backend/main.mjs, src/backend/identity.mjs, src/backend/lifecycle.mjs, src/frontend/desktop/bootstrap.mjs, tests/backend-lifecycle.test.mjs, tests/backend-owner-recovery.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md
+  - Файлы: src/backend/main.mjs, src/backend/identity.mjs, src/backend/lifecycle.mjs, src/frontend/desktop/bootstrap.mjs, tests/backend-lifecycle.test.mjs, tests/backend-owner-recovery.test.mjs, tests/backend-browser-lifecycle.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T007: Перевести desktop в отдельный клиент — Ожидает

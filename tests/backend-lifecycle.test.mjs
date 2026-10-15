@@ -41,8 +41,8 @@ test('profile ownership excludes legacy desktop and rejects symlink/foreign/stal
   fs.writeFileSync(identity.serviceFile,'{"product":"other"}');
   assert.throws(()=>claimBackendIdentity(identity),error=>error.code==='BACKEND_OWNER_CONFLICT');
   fs.unlinkSync(identity.serviceFile);
-  // Stale owner is never silently reclaimed, regardless of an inactive PID.
-  fs.writeFileSync(identity.ownerFile,JSON.stringify({product:'workflow-pilot',pid:999999999,generation:'old'}));
+  // A live owner is never reclaimed; a stale one is covered by backend-owner-recovery.
+  fs.writeFileSync(identity.ownerFile,JSON.stringify({product:'workflow-pilot',pid:process.pid,generation:'live'}));
   assert.throws(()=>claimBackendIdentity(identity),error=>error.code==='BACKEND_OWNER_CONFLICT');
   fs.unlinkSync(identity.ownerFile);
   const linked=path.join(root,'linked');fs.symlinkSync(dataDir,linked,'dir');

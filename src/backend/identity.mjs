@@ -44,12 +44,41 @@ function privateDirectory(directory) {
     throw identityError('BACKEND_PROFILE_UNSAFE','Профиль backend должен быть приватным.');
 }
 
-export function claimBackendIdentity(identity,{pid=process.pid}={}) {
+// A PID that no longer exists cannot own the profile. EPERM means a live
+// process of another user: treated as alive, never reclaimed.
+export function processAlive(pid) {
+  if(!Number.isSafeInteger(pid)||pid<=0)return false;
+  try{process.kill(pid,0);return true;}catch(error){return error.code!=='ESRCH';}
+}
+
+function readOwner(file) {
+  const stat=fs.lstatSync(file,{throwIfNoEntry:false});
+  if(!stat)return null;
+  if(!stat.isFile()||stat.isSymbolicLink())throw identityError('BACKEND_OWNER_CONFLICT','Владелец профиля не подтверждён.');
+  try {
+    const owner=JSON.parse(fs.readFileSync(file,'utf8'));
+    if(!owner||typeof owner!=='object'||typeof owner.product!=='string'||!Number.isSafeInteger(owner.pid))throw new Error();
+    return owner;
+  }catch{throw identityError('BACKEND_OWNER_CORRUPT','Запись владельца профиля повреждена. Данные не изменены.');}
+}
+
+// Called only while this process holds the application single-instance lock:
+// no other Workflow Pilot process can use the profile at the same time.
+export function claimBackendIdentity(identity,{pid=process.pid,alive=processAlive}={}) {
   privateDirectory(identity.ownerDir);
-  if(fs.lstatSync(identity.serviceFile,{throwIfNoEntry:false}))
+  const previous=readOwner(identity.ownerFile);
+  if(previous) {
+    if(previous.product!=='workflow-pilot'||alive(previous.pid))
+      throw identityError('BACKEND_OWNER_CONFLICT','Профиль уже занят другим процессом.');
+    // Stale owner of a finished process: its operations stay UNKNOWN by boot
+    // generation; Kit transactions are checked separately and never reset.
+    const service=fs.lstatSync(identity.serviceFile,{throwIfNoEntry:false});
+    if(service&&(!service.isFile()||service.isSymbolicLink()))
+      throw identityError('BACKEND_OWNER_CONFLICT','Descriptor backend не подтверждён.');
+    if(service)fs.unlinkSync(identity.serviceFile);
+    fs.unlinkSync(identity.ownerFile);
+  } else if(fs.lstatSync(identity.serviceFile,{throwIfNoEntry:false}))
     throw identityError('BACKEND_OWNER_CONFLICT','Обнаружен прежний descriptor backend. Без восстановления второй владелец запрещён.');
-  // Do not reclaim even a dead PID automatically: a stale descriptor may
-  // signal a crashed writer with an incomplete transaction.
   const generation=randomBytes(16).toString('hex');
   const token=randomBytes(32).toString('hex');
   const claim={product:'workflow-pilot',pid,generation};
@@ -91,16 +120,12 @@ export function claimBackendIdentity(identity,{pid=process.pid}={}) {
   return Object.freeze({generation,token,pid,publish,release,owns});
 }
 
-export function assertNoBackendOwner(dataDir) {
+// Legacy Desktop refuses only a live backend owner. A stale owner left by a
+// crash does not block it; the single-instance lock excludes both owners.
+export function assertNoBackendOwner(dataDir,{alive=processAlive}={}) {
   const file=path.join(dataDir,'.backend-host','owner.json');
-  const stat=fs.lstatSync(file,{throwIfNoEntry:false});
-  if(stat)throw identityError('BACKEND_OWNER_CONFLICT','Backend уже владеет профилем; Desktop не открывает второй экземпляр.');
-}
-
-// The product profile opens only after T009 adds release on quit and recovery
-// of a stale owner. Until then a quit or crash would leave an owner record that
-// blocks Desktop, so the independent backend runs on isolated test profiles.
-export function assertBackendProfileAllowed({fixtureRoot=null}={}) {
-  if(typeof fixtureRoot==='string'&&fixtureRoot)return;
-  throw identityError('BACKEND_PROFILE_NOT_ENABLED','Независимый backend пока запускается только на тестовом профиле.');
+  let owner;
+  try{owner=readOwner(file);}catch(error){if(error.code==='BACKEND_OWNER_CORRUPT')return;throw error;}
+  if(owner&&owner.product==='workflow-pilot'&&alive(owner.pid))
+    throw identityError('BACKEND_OWNER_CONFLICT','Backend уже владеет профилем; Desktop не открывает второй экземпляр.');
 }

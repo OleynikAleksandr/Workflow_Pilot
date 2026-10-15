@@ -1,6 +1,6 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {configureBackendIdentity,claimBackendIdentity,assertBackendProfileAllowed} from './identity.mjs';
+import {configureBackendIdentity,claimBackendIdentity} from './identity.mjs';
 import {initializeBackendServices} from './bootstrap.mjs';
 import {startBackendPort,installFixtureChat} from './lifecycle.mjs';
 import {BackendBrowserHost} from '../execution/facade.mjs';
@@ -8,17 +8,26 @@ import {BackendBrowserHost} from '../execution/facade.mjs';
 export function startBackend(electron,{fixtureRoot=null}={}) {
   const {app}=electron;
   let identity;
-  try{assertBackendProfileAllowed({fixtureRoot});identity=configureBackendIdentity(app,{testRoot:fixtureRoot});}
+  try{identity=configureBackendIdentity(app,{testRoot:fixtureRoot});}
   catch(error){process.stderr.write(JSON.stringify({error:error.code??'BACKEND_IDENTITY_FAILED'})+'\n');app.exit(1);return;}
   if(!app.requestSingleInstanceLock()){
     process.stderr.write(JSON.stringify({error:'BACKEND_OWNER_CONFLICT'})+'\n');
     app.exit(2);return;
   }
   app.on('window-all-closed',()=>{});
+  let port=null,stopping=null;
+  // Every ordinary exit stops own services first, then releases the profile.
+  // The owner record is removed only by the process that proved ownership.
+  const shutdown=()=>{
+    stopping??=(port?port.stop():Promise.resolve()).catch(()=>{}).finally(()=>app.exit(0));
+    return stopping;
+  };
+  app.on('before-quit',event=>{if(port){event.preventDefault();void shutdown();}});
+  for(const signal of ['SIGTERM','SIGINT','SIGHUP'])process.on(signal,()=>{void shutdown();});
   app.whenReady().then(async()=>{
     if(process.platform==='darwin')app.setActivationPolicy('accessory');
     const claim=claimBackendIdentity(identity);
-    let services,port;
+    let services;
     try {
       const sourceDir=fileURLToPath(new URL('../',import.meta.url));
       const preload=app.isPackaged?path.join(process.resourcesPath,'resources/chatgpt-page-observer-preload.cjs')
@@ -42,9 +51,7 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
       let buffer='';
       process.stdin.on('data',chunk=>{
         buffer+=chunk;
-        if(buffer.includes('\n') && buffer.trim()==='stop') {
-          void port.stop().then(()=>app.quit());
-        }
+        if(buffer.includes('\n') && buffer.trim()==='stop')void shutdown();
       });
     }
   }).catch(error=>{
