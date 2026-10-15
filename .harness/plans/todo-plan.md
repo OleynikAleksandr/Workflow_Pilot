@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 140,
+  "plan_revision": 141,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -117,7 +117,8 @@
       "tests/fixtures/backend-browser-viewer.html",
       "tests/fixtures/backend-browser-viewer.mjs",
       "tests/execution-architecture.test.mjs",
-      "src/execution/browser/diagnostics.mjs"
+      "src/execution/browser/diagnostics.mjs",
+      "tests/backend-owner-recovery.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -144,11 +145,6 @@
   "current_task_id": null,
   "context_pack": {
     "documents": [
-      {
-        "path": "docs/planning/workflow-pilot-backend-spec-draft.md",
-        "required": true,
-        "revision": "WORKTREE"
-      },
       {
         "path": "docs/planning/workflow-pilot-backend-todo-draft.md",
         "required": false,
@@ -207,6 +203,11 @@
       {
         "path": "docs/modules/project-compatibility.md",
         "required": false,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "required": true,
         "revision": "WORKTREE"
       }
     ],
@@ -738,6 +739,43 @@
       ]
     },
     {
+      "id": "T006R",
+      "title": "Освобождать профиль backend и восстанавливаться после падения",
+      "why": "Решение пользователя: исправить ловушку owner.json до T007, чтобы клиент работал на настоящем профиле.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/backend/main.mjs",
+        "src/backend/identity.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/frontend/desktop/bootstrap.mjs",
+        "tests/backend-lifecycle.test.mjs",
+        "tests/backend-owner-recovery.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/workflow-pilot-backend-spec-draft.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Штатное завершение backend (quit, SIGTERM, SIGINT, выход из системы) после остановки собственных служб удаляет owner.json и service.json только при доказанном владении.",
+        "После crash/kill устаревший owner с завершённым процессом восстанавливается безопасно: операции прошлого запуска читаются как UNKNOWN и не повторяются; незавершённая транзакция Kit по-прежнему даёт отказ без сброса данных.",
+        "Живой владелец, чужой продукт, повреждённый или неподтверждённый descriptor дают отказ без изменения данных; Desktop не блокируется навсегда устаревшим owner.",
+        "Запрет настоящего профиля снят; legacy Desktop и backend никогда не владеют профилем одновременно."
+      ],
+      "expected_commit_message": "feat: Освобождать профиль backend и восстанавливаться после падения",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "T006R",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -746,7 +784,8 @@
         "role": "implementation"
       },
       "dependencies": [
-        "T006"
+        "T006",
+        "T006R"
       ],
       "functional_paths": [
         "src/frontend/desktop/bootstrap.mjs",
@@ -1165,6 +1204,7 @@
         "T004",
         "T005",
         "T006",
+        "T006R",
         "T007",
         "T008",
         "T009",
@@ -1435,7 +1475,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 140
+Revision: 141
 
 ## Цель
 
@@ -1505,12 +1545,18 @@ Revision: 140
   - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/input.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/backend/transfers.mjs, src/contracts/browser-presentation.mjs, tests/browser-presentation.test.mjs, tests/fixtures/backend-browser-page.html, src/backend/events.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/backend/server.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/diagnostics.mjs, src/execution/facade.mjs, src/frontend/client/connection.mjs, tests/backend-browser-lifecycle.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T005
+- [TODO] T006R: Освобождать профиль backend и восстанавливаться после падения — Ожидает
+  - Git Commit: [PENDING] feat: Освобождать профиль backend и восстанавливаться после падения
+  - Reference: workflow-pilot-backend-independence / T006R / implementation
+  - Файлы: src/backend/main.mjs, src/backend/identity.mjs, src/backend/lifecycle.mjs, src/frontend/desktop/bootstrap.mjs, tests/backend-lifecycle.test.mjs, tests/backend-owner-recovery.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
 - [TODO] T007: Перевести desktop в отдельный клиент — Ожидает
   - Git Commit: [PENDING] feat: Перевести desktop в отдельный клиент
   - Reference: workflow-pilot-backend-independence / T007 / implementation
   - Файлы: src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ipc.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/settings-panel.mjs, src/frontend/desktop/ui/project-doctor.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/archive-preload.cjs, src/frontend/desktop/chat-colors-window.mjs, src/frontend/desktop/chat-colors-preload.cjs, src/frontend/desktop/ui/chat-colors.mjs, src/frontend/desktop/ui/chat-colors.html, src/frontend/client/connection.mjs, tests/desktop-boundaries.test.mjs, tests/electron-smoke.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T006
+  - Зависимости: T006, T006R
 - [TODO] T008: Сохранить MCP, туннель и плагин без frontend — Ожидает
   - Git Commit: [PENDING] feat: Сохранить MCP, туннель и плагин без frontend
   - Reference: workflow-pilot-backend-independence / T008 / implementation
@@ -1546,7 +1592,7 @@ Revision: 140
   - Reference: workflow-pilot-backend-independence / DOCS / implementation
   - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/control.md, docs/modules/execution.md, docs/modules/workflow-execution.md, docs/modules/first-run-onboarding.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/linux.md, docs/modules/project-compatibility.md, docs/acceptance/backend-independence.md, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T001, T001R, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012
+  - Зависимости: T001, T001R, T002, T003, T004, T005, T006, T006R, T007, T008, T009, T010, T011, T012
 - [TODO] T013: Собрать новый выпуск трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать новый выпуск трёх ОС
   - Reference: workflow-pilot-backend-independence / T013 / implementation
@@ -1568,7 +1614,6 @@ Revision: 140
 
 ## Context Pack For This Cycle
 
-- docs/planning/workflow-pilot-backend-spec-draft.md
 - docs/planning/workflow-pilot-backend-todo-draft.md
 - docs/architecture/OVERVIEW.md
 - docs/modules/desktop.md
@@ -1581,5 +1626,6 @@ Revision: 140
 - docs/modules/chatgpt-plugin.md
 - docs/modules/linux.md
 - docs/modules/project-compatibility.md
+- docs/planning/workflow-pilot-backend-spec-draft.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
