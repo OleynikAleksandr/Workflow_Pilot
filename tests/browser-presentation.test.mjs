@@ -157,7 +157,7 @@ test('Electron backend page: frames, addressed input, clipboard, files, popup, r
   const pressed=await state();
   const holder=new BrowserView(client,action.browserSessionId);await holder.attach();await until(()=>holder.nextFrame(),'frame');
   await holder.input('pointer',{action:'down',x:6,y:6,button:'left',clickCount:1});
-  await observer.acquire();
+  await observer.acquire({takeover:true});
   await until(async()=>(await state()).mouseUps>pressed.mouseUps,'lease change release');
   assert.equal((await fixture('/v1/browser/fixture-state')).visible,false,'no visible or focused server window');
   observer.close();

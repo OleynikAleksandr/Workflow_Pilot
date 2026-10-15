@@ -8,12 +8,14 @@ const remoteError=value=>protocolError(typeof value?.code==='string'?value.code:
 // stream. It never touches stores, files or Electron and never resends a
 // mutation after the backend boot generation changed.
 export class BackendConnection {
-  #base; #token; #fetch; #identity; #randomId; #handshake=null; #lease=null; #streams=new Set();
+  #base; #token; #fetch; #identity; #randomId; #handshake=null; #lease=null; #streams=new Set(); #clientId;
   constructor({port,token,fetch=globalThis.fetch,identity='workflow-pilot',randomId=()=>globalThis.crypto.randomUUID()}) {
     if(!Number.isSafeInteger(port)||port<1||port>65535||typeof token!=='string'||token.length<16)
       throw protocolError('BACKEND_AUTH_CONFIG');
     this.#base=`http://127.0.0.1:${port}`;this.#token=token;this.#fetch=fetch;this.#identity=identity;this.#randomId=randomId;
+    this.#clientId='client-'+randomId();
   }
+  get clientId(){return this.#clientId;}
   get bootGeneration(){return this.#handshake?.bootGeneration??null;}
   // Authenticated request to this backend only; the token never enters a URL.
   fetch(path,{method='GET',headers={},body,signal}={}) {
@@ -70,13 +72,23 @@ export class BackendConnection {
     if(result.status==='failed')throw remoteError(result.error);
     return result.value;
   }
-  async acquire() {
-    const result=await this.submit('control.acquire',{});
+  // Control is explicit: a held lease is refused unless takeover is requested.
+  async acquire({takeover=false}={}) {
+    const result=await this.submit('control.acquire',{clientId:this.#clientId,takeover});
+    if(result.status==='failed')throw remoteError(result.error);
     this.#lease=result.value.leaseGeneration;return this.#lease;
   }
-  async release() {
-    const result=await this.submit('control.release',{});this.#lease=null;return result.value;
+  async renew() {
+    try {
+      const result=await this.submit('control.renew',{clientId:this.#clientId});
+      if(result.status==='failed')throw remoteError(result.error);
+      return result.value;
+    }catch(error){if(error.code==='BACKEND_LEASE_STALE'||error.code==='BACKEND_LEASE_REQUIRED')this.#lease=null;throw error;}
   }
+  async release() {
+    const result=await this.submit('control.release',{clientId:this.#clientId});this.#lease=null;return result.value;
+  }
+  forgetLease(){this.#lease=null;}
   async operation(operationId) {
     if(typeof operationId!=='string'||!/^op:[a-f0-9]{40}$/.test(operationId))throw protocolError('BACKEND_OPERATION_INVALID');
     return validateOperation(await this.#request('/v1/operations/'+operationId));

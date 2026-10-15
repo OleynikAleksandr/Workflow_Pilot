@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 149,
+  "plan_revision": 151,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1105,8 +1105,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T010",
@@ -1121,7 +1121,14 @@
         "src/backend/events.mjs",
         "src/frontend/client/connection.mjs",
         "src/frontend/client/browser-view.mjs",
-        "tests/backend-reconnect.test.mjs"
+        "tests/backend-reconnect.test.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/contracts/backend.mjs",
+        "src/frontend/desktop/client.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/browser-presentation.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
@@ -1161,7 +1168,21 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/control-lease.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/server.mjs",
+        "src/contracts/backend.mjs",
+        "src/frontend/client/connection.mjs",
+        "src/frontend/desktop/client.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-reconnect.test.mjs",
+        "tests/browser-presentation.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1594,7 +1615,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 149
+Revision: 151
 
 ## Цель
 
@@ -1688,10 +1709,10 @@ Revision: 149
   - Файлы: src/main.mjs, src/backend/launcher.mjs, src/backend/lifecycle.mjs, src/backend/status-menu.mjs, src/execution/platform/paths.mjs, tests/backend-launcher.test.mjs, tests/backend-shutdown.test.mjs, src/backend/desktop-model.mjs, src/backend/events.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/backend/shutdown.mjs, src/contracts/backend.mjs, src/control/facade.mjs, src/control/sessions/service.mjs, src/control/workflow/coordination.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/project-session-auto-plan.mjs, src/frontend/desktop/client.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T008
-- [TODO] T010: Проверить reconnect и управляющее право — Ожидает
-  - Git Commit: [PENDING] feat: Проверить reconnect и управляющее право
+- [DONE] T010: Проверить reconnect и управляющее право — Завершено
+  - Git Commit: [DONE] feat: Проверить reconnect и управляющее право
   - Reference: workflow-pilot-backend-independence / T010 / implementation
-  - Файлы: src/backend/control-lease.mjs, src/backend/server.mjs, src/backend/events.mjs, src/frontend/client/connection.mjs, src/frontend/client/browser-view.mjs, tests/backend-reconnect.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: src/backend/control-lease.mjs, src/backend/server.mjs, src/backend/events.mjs, src/frontend/client/connection.mjs, src/frontend/client/browser-view.mjs, tests/backend-reconnect.test.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/contracts/backend.mjs, src/frontend/desktop/client.mjs, tests/backend-api.test.mjs, tests/browser-presentation.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T009
 - [TODO] T011: Подготовить upgrade и поставку процессов — Ожидает

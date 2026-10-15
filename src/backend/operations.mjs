@@ -3,6 +3,7 @@ import path from 'node:path';
 import {BACKEND_LIMITS,BACKEND_OPERATIONS,protocolError,validateCommand,validateError,validateOperation,wireCopy} from '../contracts/backend.mjs';
 import {registerBackendCommand,verifyControlLease} from './protocol.mjs';
 import {DESKTOP_CHANNELS} from '../contracts/desktop.mjs';
+import {createControlLease} from './control-lease.mjs';
 
 const JOURNAL_KEEP=1000;
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
@@ -213,8 +214,9 @@ const publicError=error=>{
 // Operations listed in `concurrent` keep their own ordering (Desktop actions:
 // a newer navigation supersedes an older one); the rest run one at a time.
 export function createBackendOperations({bootGeneration,journal,catalog,onOperation=()=>{},onLease=()=>{},
-  limit=BACKEND_LIMITS.pendingCommands,concurrent=new Set(['ui.invoke'])}) {
-  let lease=null,leaseGeneration=0,pending=0,tail=Promise.resolve();
+  limit=BACKEND_LIMITS.pendingCommands,concurrent=new Set(['ui.invoke']),leaseTtlMs,now}) {
+  let pending=0,tail=Promise.resolve();
+  const lease=createControlLease({bootGeneration,...leaseTtlMs?{ttlMs:leaseTtlMs}:{},...now?{now}:{},onChange:view=>onLease(view)});
   const inflight=new Set();
   const operationView=record=>validateOperation({operationId:record.operationId,requestId:record.requestId,
     bootGeneration:record.bootGeneration,status:record.bootGeneration!==bootGeneration&&['accepted','running'].includes(record.status)?'unknown':record.status,
@@ -248,15 +250,19 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
       catch(error){return {requestId:request.requestId,status:'failed',error:publicError(error)};}
     }
     if(request.operation==='control.acquire') {
-      exact(request.args,[]);
-      // T010 adds expiry and explicit takeover; here the newest writer wins.
-      lease={generation:++leaseGeneration,bootGeneration};onLease(lease.generation);
-      return {requestId:request.requestId,status:'completed',value:{leaseGeneration:lease.generation}};
+      exact(request.args,['clientId','takeover']);
+      const view=lease.acquire(request.args);
+      return {requestId:request.requestId,status:'completed',value:{leaseGeneration:view.generation,...view}};
     }
-    verifyControlLease(request,lease);
+    verifyControlLease(request,lease.current());
+    if(request.operation==='control.renew') {
+      exact(request.args,['clientId']);
+      const view=lease.renew({clientId:request.args.clientId,leaseGeneration:request.leaseGeneration});
+      return {requestId:request.requestId,status:'completed',value:{leaseGeneration:view.generation,...view}};
+    }
     if(request.operation==='control.release') {
-      exact(request.args,[]);lease=null;onLease(null);
-      return {requestId:request.requestId,status:'completed',value:{released:true}};
+      exact(request.args,['clientId']);
+      return {requestId:request.requestId,status:'completed',value:lease.release({clientId:request.args.clientId,leaseGeneration:request.leaseGeneration})};
     }
     if(!Object.hasOwn(catalog,request.operation))throw protocolError('BACKEND_OPERATION_NOT_AVAILABLE');
     if(pending>=limit)throw protocolError('BACKEND_QUEUE_LIMIT','Backend занят. Повторите позже с тем же requestId.');
@@ -267,6 +273,7 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
   }
   return Object.freeze({submit,
     operation:operationId=>{const record=journal.operation(operationId);return record?operationView(record):null;},
-    get pending(){return pending;},get leaseGeneration(){return lease?.generation??null;},
+    get pending(){return pending;},get leaseGeneration(){return lease.current()?.generation??null;},
+    lease:()=>lease.view(),dispose:()=>lease.dispose(),
     idle:()=>Promise.all([tail,...inflight])});
 }

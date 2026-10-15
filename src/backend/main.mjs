@@ -59,7 +59,8 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
         setup:base.setup,sessions:base.sessions,desktop,service,
         pages:createBackendPages({sessions:base.sessions,setup:base.setup,store:base.control.projects,host}),
         onChange:listener=>desktop.onPublish(listener),restore:async()=>{},dispose:async()=>desktop.dispose()});
-      port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:sink=>{events=sink;surface.attach(sink);desktop.publish();}});
+      port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:sink=>{events=sink;surface.attach(sink);desktop.publish();},
+        leaseTtlMs:fixtureRoot&&Number(process.argv.find(arg=>arg.startsWith('--backend-lease-ttl-ms='))?.split('=')[1])||undefined});
       const status=()=>({service:stopper.view(),pages:base.sessions.all().length});
       stopper=createStopController({drainState:()=>desktop.drainState(),pause:value=>desktop.pause(value),stop:shutdown,
         onChange:view=>{events.ui('service',view);statusMenu?.update(status());}});

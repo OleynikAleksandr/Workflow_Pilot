@@ -16,7 +16,7 @@ export const BACKEND_OPERATIONS = Object.freeze({
   'sessions.rename': 'mutate', 'sessions.delete': 'mutate', 'sessions.select': 'mutate',
   'settings.get': 'read', 'settings.update': 'mutate',
   'plan.snapshot': 'read', 'plan.continue': 'mutate', 'plan.stop': 'mutate',
-  'control.acquire': 'control', 'control.release': 'control',
+  'control.acquire': 'control', 'control.renew': 'control', 'control.release': 'control',
   'browser.input': 'input', 'browser.transfer.start': 'transfer',
   'browser.transfer.complete': 'transfer',
   'plugin.list': 'read', 'plugin.open': 'mutate', 'plugin.connect': 'mutate',

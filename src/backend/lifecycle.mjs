@@ -27,7 +27,7 @@ const readBody=req=>new Promise((resolve,reject)=>{
 
 // Fixture routes (test profiles only) address backend-owned pages and expose
 // no URL navigation, JavaScript or file access.
-export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{}}) {
+export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{},leaseTtlMs}) {
   const fixturePage=async()=>{
     const {sessions}=services;
     if(sessions.visible&&!sessions.visible.disposed)return sessions.visible;
@@ -91,7 +91,10 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
   host.emit=events.browser;host.onDownload=transfers.download;
   let presentation;
   const operations=createBackendOperations({bootGeneration:claim.generation,journal,catalog:backendCatalog(services),
-    onOperation:view=>{events.operation(view);events.changed();},onLease:()=>{void presentation?.leaseChanged();}});
+    onOperation:view=>{events.operation(view);events.changed();},leaseTtlMs,
+    // Every client learns who controls; the previous holder's pressed input is released.
+    onLease:view=>{events.ui('lease',view);void presentation?.leaseChanged();}});
+  events.ui('lease',operations.lease());
   presentation=createPresentationRoutes({host,transfers,leaseGeneration:()=>operations.leaseGeneration});
   const extra=async(req,res,url)=>{
     if(fixtureRoot&&await fixtureRoute(req,res)!==false)return true;
@@ -111,7 +114,7 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
     if(stopped)return;stopped=true;
     services.onChange(null);host.emit=()=>{};host.onDownload=null;await server.close();
     // Accepted operations finish or stay recorded before services go away.
-    await operations.idle();
+    await operations.idle();operations.dispose();
     await services.dispose();
     transfers.close();
     claim.release();

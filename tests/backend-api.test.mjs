@@ -129,7 +129,9 @@ test('client performs allowed project/session/settings/plan operations under the
   assert.equal(typeof (await client.run('plan.continue',{})).autoPlan,'boolean');
   assert.equal((await client.run('plan.stop',{})).autoPlan,false);
   // A newer writer invalidates the older lease generation.
-  const other=clientOf(backend);await other.connect();await other.acquire();
+  const other=clientOf(backend);await other.connect();
+  await assert.rejects(other.acquire(),{code:'BACKEND_LEASE_HELD'},'control is never taken implicitly');
+  await other.acquire({takeover:true});
   await assert.rejects(client.submit('settings.update',{theme:'light'}),error=>error.code==='BACKEND_LEASE_STALE');
   await other.release();client.close();
 });
@@ -227,7 +229,7 @@ test('pending mutation limit refuses new work without stopping accepted work',as
   let release;const blocked=new Promise(resolve=>{release=resolve;});
   const operations=createBackendOperations({bootGeneration:'boot-a',journal,limit:1,
     catalog:{'settings.update':async()=>{await blocked;return {done:true};}}});
-  const lease=(await operations.submit({requestId:'lease',operation:'control.acquire',args:{},bootGeneration:'boot-a'})).value.leaseGeneration;
+  const lease=(await operations.submit({requestId:'lease',operation:'control.acquire',args:{clientId:'client-fixture-1'},bootGeneration:'boot-a'})).value.leaseGeneration;
   const command=requestId=>({requestId,operation:'settings.update',args:{theme:'dark'},bootGeneration:'boot-a',leaseGeneration:lease});
   const accepted=await operations.submit(command('one'));
   assert.equal(accepted.status,'accepted');

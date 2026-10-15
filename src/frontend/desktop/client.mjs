@@ -11,6 +11,7 @@ import { ChatColorsWindow } from './chat-colors-window.mjs';
 const shellBackground = { light: '#f4f6f8', dark: '#1b1d22' };
 const settle = ms => new Promise(resolve => setTimeout(resolve, ms));
 const MAX_UPLOAD = 32 * 1024 * 1024;
+const RENEW_MS = 10000;
 
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { return error.code !== 'ESRCH'; } };
 
@@ -41,15 +42,19 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   let window = null, sidebar = null, pageView = null, archiveWindow = null, colorEditor = null;
   let connection = null, stream = null, uiState = null, archiveState = null, colorsState = null, sidebarWidth = 312, theme = 'light';
   let service = { phase: 'running', reasons: [] };
+  // control: this window holds the writer lease; stale: the backend is not reachable.
+  let control = false, stale = false, renewTimer = null, watchdog = null, descriptorSeen = null;
   const viewers = new Map();
   const report = (code, message) => { uiState = { ...(uiState ?? {}), startupError: { code, message } }; sidebar?.webContents.send('pilot:state-changed', uiState); };
 
-  async function backendConnection() {
-    const descriptorFile = path.join(dataDir, '.backend-host', 'service.json');
+  const descriptorFile = path.join(dataDir, '.backend-host', 'service.json');
+  const liveDescriptor = () => { const value = readDescriptor(descriptorFile); return value && alive(value.pid) ? value : null; };
+  async function backendConnection({ start = true } = {}) {
     let descriptor = readDescriptor(descriptorFile);
     // A descriptor left by a crashed backend is not a running service; the new
     // backend recovers that stale owner itself.
     if (descriptor && !alive(descriptor.pid)) descriptor = null;
+    if (!descriptor && !start) throw Object.assign(new Error('Фоновая служба Workflow Pilot не запущена.'), { code: 'BACKEND_UNAVAILABLE' });
     if (!descriptor) {
       // Started detached in its own process group: the backend outlives this client.
       const args = [...(app.isPackaged ? [] : [app.getAppPath()]), '--backend-host', ...(backendRoot ? ['--backend-fixture-root=' + backendRoot] : [])];
@@ -64,8 +69,22 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     }
     const next = new BackendConnection({ port: descriptor.port, token: descriptor.token });
     await next.connect();
-    await next.acquire();
+    descriptorSeen = { port: descriptor.port, generation: next.bootGeneration };
     return next;
+  }
+  // Control is explicit. A free lease is taken automatically; a held one only
+  // by the user's own choice. Renewal every 10 s keeps it; a refusal ends it.
+  async function takeControl({ takeover = false } = {}) {
+    if (!connection) return false;
+    try { await connection.acquire({ takeover }); control = true; }
+    catch (error) { control = false; if (error.code !== 'BACKEND_LEASE_HELD') throw error; }
+    clearInterval(renewTimer); renewTimer = null;
+    if (control) {
+      renewTimer = setInterval(() => void connection.renew().catch(() => { control = false; clearInterval(renewTimer); renewTimer = null; showService(); installMenu(); }), RENEW_MS);
+      renewTimer.unref?.();
+    }
+    showService(); installMenu();
+    return control;
   }
 
   // One viewer per displayed backend page; frames are pulled while it is open.
@@ -182,7 +201,8 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   async function relay(surface, channel, input) {
     if (channel === 'pilot:get-state') return uiState;
     if (channel === 'archive:get-state') return archiveState;
-    if (!connection) return { ok: false, error: { code: 'BACKEND_UNAVAILABLE', message: 'Нет связи с backend Workflow Pilot.' }, state: uiState };
+    if (!connection || stale) return { ok: false, error: { code: 'BACKEND_UNAVAILABLE', message: 'Нет связи с фоновой службой Workflow Pilot. Данные могут быть устаревшими; изменения заблокированы до восстановления связи.' }, state: uiState };
+    if (!control) return { ok: false, error: { code: 'BACKEND_LEASE_HELD', message: 'Управление у другого окна Workflow Pilot. Меню Workflow Pilot → «Взять управление».' }, state: uiState };
     try {
       const value = await connection.invoke(surface, channel, input);
       return { ok: value.ok, result: value.result, ...(value.error ? { error: value.error } : {}), state: surface === 'archive' ? archiveState : uiState };
@@ -213,8 +233,11 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   function showService() {
     if (!window || window.isDestroyed()) return;
     const reason = service.reasons?.[0]?.message;
-    window.setTitle(service.phase === 'draining' ? 'Workflow Pilot — остановка: ' + (reason ?? 'ждём безопасной точки')
-      : service.phase === 'stopping' ? 'Workflow Pilot — фоновая служба останавливается' : (fixture ? 'Workflow Pilot — CLIENT FIXTURE' : 'Workflow Pilot'));
+    const base = fixture ? 'Workflow Pilot — CLIENT FIXTURE' : 'Workflow Pilot';
+    window.setTitle(stale ? base + ' — нет связи, данные могут быть устаревшими'
+      : service.phase === 'draining' ? base + ' — остановка: ' + (reason ?? 'ждём безопасной точки')
+      : service.phase === 'stopping' ? base + ' — фоновая служба останавливается'
+      : !control ? base + ' — наблюдение (управление у другого окна)' : base);
   }
   async function requestStop() {
     if (!connection) return;
@@ -227,6 +250,9 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     const draining = service.phase === 'draining';
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       { label: 'Workflow Pilot', submenu: [{ role: 'about', label: 'О Workflow Pilot' }, { type: 'separator' },
+        control ? { label: 'Управление у этого окна', enabled: false }
+          : { label: 'Взять управление', enabled: !!connection && !stale, click: () => void takeControl({ takeover: true }).catch(() => {}) },
+        ...(!connection || stale ? [{ label: 'Запустить фоновую службу', click: () => void reconnect({ start: true }) }] : []),
         draining ? { label: 'Отменить остановку фоновой службы', click: () => void connection?.run('service.cancel-stop').catch(() => {}) }
           : { label: 'Остановить фоновую службу…', enabled: service.phase === 'running' && !!connection, click: () => void requestStop() },
         { type: 'separator' },
@@ -238,8 +264,32 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     ]));
   }
 
-  async function connect() {
-    connection = await backendConnection();
+  // A new backend boot means a new connection: viewers and control are taken
+  // again; nothing is resent. A stopped service is not restarted implicitly.
+  async function reconnect({ start = false } = {}) {
+    try {
+      stream?.close(); clearInterval(renewTimer); renewTimer = null; control = false;
+      for (const contents of [...viewers.keys()]) { const entry = viewers.get(contents); entry.active = false; viewers.delete(contents); }
+      for (const popup of popups.values()) popup.destroy(); popups.clear();
+      connection = null;
+      await connect({ start });
+      stale = false;
+      void showSelectedPage().catch(() => {});
+    } catch { stale = true; }
+    showService(); installMenu();
+  }
+  function watch() {
+    clearInterval(watchdog);
+    watchdog = setInterval(() => {
+      if (!stale) return;
+      const descriptor = liveDescriptor();
+      if (descriptor && (!descriptorSeen || descriptor.port !== descriptorSeen.port || descriptor.pid !== descriptorSeen.pid)) void reconnect();
+    }, 2000);
+    watchdog.unref?.();
+  }
+  async function connect({ start = true } = {}) {
+    connection = await backendConnection({ start });
+    descriptorSeen = { ...descriptorSeen, pid: readDescriptor(descriptorFile)?.pid };
     stream = connection.subscribe({
       onUi: (kind, value) => {
         if (kind === 'state') { uiState = value; theme = value.theme ?? theme; sidebarWidth = value.sidebarWidth ?? sidebarWidth;
@@ -247,14 +297,26 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
         if (kind === 'archive') { archiveState = value; archiveWindow?.webContents.send('pilot-archive:state-changed', value); }
         if (kind === 'colors') { colorsState = value; colorEditor?.publish(); }
         if (kind === 'service') { service = value; showService(); installMenu(); }
+        if (kind === 'lease') {
+          const mine = value.holder === connection?.clientId;
+          if (control && !mine) { control = false; connection?.forgetLease(); clearInterval(renewTimer); renewTimer = null; }
+          // A short drop let the lease lapse: take it back only while nobody else holds it.
+          if (!value.holder && !control && !stale) void takeControl().catch(() => {});
+          showService(); installMenu();
+        }
       },
       onEvent: event => { void onEvent(event).catch(() => {}); },
-      onError: () => {},
+      onSnapshot: () => { if (stale) { stale = false; showService(); installMenu(); if (!control) void takeControl().catch(() => {}); } },
+      onError: () => { if (!stale) { stale = true; showService(); installMenu(); } },
     });
+    await takeControl();
   }
 
   if (!fixture && !app.requestSingleInstanceLock()) { app.quit(); return; }
-  app.on('second-instance', () => { if (window?.isMinimized()) window.restore(); window?.focus(); });
+  const focusWindow = () => { if (!window || window.isDestroyed()) return; if (window.isMinimized()) window.restore(); if (!fixture) { window.show(); window.focus(); } };
+  app.on('second-instance', focusWindow);
+  // macOS reopen of the same bundle reaches whichever process is registered.
+  app.on('activate', focusWindow);
   // Closing the client is only a disconnect; nothing here stops the backend.
   app.on('window-all-closed', () => app.quit());
   app.on('before-quit', () => { stream?.close(); for (const contents of [...viewers.keys()]) viewers.get(contents)?.view.detach().catch(() => {}); });
@@ -279,8 +341,10 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     window.on('closed', () => { window = null; detachViewer(pageView.webContents); });
     layout();
     await Promise.all([sidebar.webContents.loadURL(sidebarUrl), pageView.webContents.loadURL(viewerUrl)]);
+    watch();
     try { await connect(); }
     catch (error) {
+      stale = true;
       pageView.webContents.send('browser:status', { message: 'Нет связи с backend Workflow Pilot: ' + error.message });
       report(error.code ?? 'BACKEND_UNAVAILABLE', 'Нет связи с backend Workflow Pilot. Повторите запуск.');
     }
@@ -299,7 +363,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
             if (command.op === 'probe') value = {
               sidebar: await sidebar.webContents.executeJavaScript('document.body.innerText'),
               frame: await pageView.webContents.executeJavaScript("document.getElementById('frame').src.startsWith('blob:')"),
-              viewers: viewers.size, state: !!uiState };
+              viewers: viewers.size, state: !!uiState, control, stale, title: window?.getTitle() ?? '' };
             if (command.op === 'rename') value = await sidebar.webContents.executeJavaScript(
               `window.webPilot.renameProject(${JSON.stringify(command.workspace)}, ${JSON.stringify(command.name)})`);
             process.stdout.write(JSON.stringify({ op: command.op, value }) + '\n');
