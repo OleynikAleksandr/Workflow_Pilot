@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 107,
+  "plan_revision": 109,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3654,8 +3654,8 @@
     {
       "id": "DOCS-9",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "DOCS-9",
@@ -3670,14 +3670,28 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/control.md"
+        "docs/modules/control.md",
+        "README.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/release.md"
+      ]
     },
     {
       "id": "T031",
@@ -3770,7 +3784,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 107
+Revision: 109
 
 ## Цель
 
@@ -4035,10 +4049,10 @@ Revision: 107
   - Файлы: tools/codex-app-server-mcp/plugin.py, tests/codex-app-server-mcp.test.mjs, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-9: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-9: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-migration-0.1.0 / DOCS-9 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md, README.md, docs/acceptance/migration-0.1.0.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T030, T030-MCP
 - [TODO] T031: Собрать Workflow Pilot 0.1.6 для трёх ОС — Ожидает

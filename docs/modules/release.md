@@ -1,18 +1,18 @@
 # Единая поставка Workflow Pilot
 
-Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.1.5 порядок: проверка переходов T027 → DOCS-8 → общая сборка T028 → установка T029. GitHub-публикация выполняется отдельно. Панель Chat/Work 0.1.4, её быстрое открытие и обновление подтверждены пользователем; открытие прежних диалогов в Desktop через диагностический раздел 0.1.5 требует живой проверки. Codex исключён из приёмки, Windows/Linux отложены. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
+Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.1.6 порядок: запуск из меню через плагин T030 и проверка каталога T030-MCP → DOCS-9 → общая сборка T031 → установка T032. GitHub-публикация выполняется отдельно. Панель Chat/Work и её обновление подтверждены пользователем; новый запуск из меню требует живой проверки. Все пять способов навигации 0.1.5 открыли Safari. Codex исключён из приёмки, Windows/Linux отложены. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
 
 ## Матрица и состав
 
-Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.1.5. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
+Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.1.6. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
 
 `npm run build` последовательно запускает macOS arm64, Windows x64 и Linux x64. Используются существующие Electron Packager, ASAR, системные ditto/tar. Linux-бинарники на Mac не запускаются. Ошибка/неизвестный исход платформы останавливает сборку; отдельный успешный пакет не считается выпуском.
 
-Семь assets версии 0.1.5:
+Семь assets версии 0.1.6:
 
-- Workflow-Pilot-0.1.5-macOS-arm64.zip
-- Workflow-Pilot-0.1.5-Windows-x64.zip
-- Workflow-Pilot-0.1.5-Linux-x64.tar.gz
+- Workflow-Pilot-0.1.6-macOS-arm64.zip
+- Workflow-Pilot-0.1.6-Windows-x64.zip
+- Workflow-Pilot-0.1.6-Linux-x64.tar.gz
 - Windows-Codex-Local-2026-09-10.zip
 - SHA256SUMS.txt
 - INSTALL.txt
