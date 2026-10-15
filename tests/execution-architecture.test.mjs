@@ -41,5 +41,8 @@ test('architecture gate rejects a real Execution to Control import and a new cyc
   await write('frontend/client/a.mjs',"import '../../control/private.mjs';");
   await assert.rejects(check(), error => error.code !== 0 && /network-client-is-unprivileged/.test(error.stdout + error.stderr));
   await write('frontend/client/a.mjs','export const client = true;');
+  await write('backend/a.mjs',"import '../frontend/client/a.mjs';");
+  await assert.rejects(check(),error=>error.code!==0 && /backend-does-not-import-desktop/.test(error.stdout+error.stderr));
+  await write('backend/a.mjs','export const backend = true;');
   await check();
 });

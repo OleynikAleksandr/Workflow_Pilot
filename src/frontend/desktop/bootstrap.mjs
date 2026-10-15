@@ -11,12 +11,12 @@ import { BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecuta
 import { WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE } from '../../execution/runtime/windows.mjs';
 import { CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS } from '../../execution/runtime/service.mjs';
 import { VpsTunnel, WindowsVpsTunnel } from '../../execution/runtime/vps.mjs';
-import { ExecutionFacade } from '../../execution/facade.mjs';
+import { createBackendComposition } from '../../backend/bootstrap.mjs';
+import { assertNoBackendOwner } from '../../backend/identity.mjs';
 import {fileURLToPath} from 'node:url';
 import { inspectMacGit, installMacGit } from '../../execution/platform/mac-setup.mjs';
 import { ChromiumDiagnostics, safeUrl } from '../../execution/browser/diagnostics.mjs';
 import { appendDiagnostic } from '../../execution/files/diagnostics.mjs';
-import {ControlFacade} from '../../control/facade.mjs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -30,6 +30,7 @@ export function configureDesktopIdentity(app, { smoke = false, temporaryRoot = o
       throw new Error('Workflow Pilot refuses a linked profile directory: ' + directory);
     }
   }
+  if (!smoke) assertNoBackendOwner(dataDir);
   app.setName('Workflow Pilot');
   app.setPath('userData', dataDir);
   app.setPath('sessionData', browserDir);
@@ -43,12 +44,12 @@ export async function startDesktop(electron) {
   const eventRuntimeChecker=!app.isPackaged&&process.argv.includes('--event-runtime-checker');
   const smoke=!app.isPackaged&&(process.argv.includes('--smoke')||eventBaseline);
   const identity=configureDesktopIdentity(app,{smoke});
-  const executionServices=new ExecutionFacade();
+  const {execution:executionServices,createControl}=createBackendComposition();
   const {startDesktopApplication}=await import('./application.mjs');
   return startDesktopApplication({electron,...identity,smoke,eventBaseline,eventRuntimeChecker,
     sourceDir:fileURLToPath(new URL('../../',import.meta.url)),
     desktopDir:fileURLToPath(new URL('./',import.meta.url)),executionServices,
-    createControl:options=>new ControlFacade({...options,execution:executionServices}),
+    createControl,
     dependencies:{LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode,ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel},
   });
 }

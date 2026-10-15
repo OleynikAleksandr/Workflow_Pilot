@@ -28,7 +28,7 @@ module.exports = {
       from: { path: '^src/control/' }, to: { path: '^(node:)?(fs|child_process)(/|$)' } },
     { name: 'main-only-starts-desktop', severity: 'error',
       from: { path: '^src/main\\.mjs$' },
-      to: { pathNot: '^(electron|node_modules/electron/index\\.js|src/frontend/desktop/bootstrap\\.mjs)$' } },
+      to: { pathNot: '^(electron|node_modules/electron/index\\.js|src/frontend/desktop/bootstrap\\.mjs|src/backend/main\\.mjs)$' } },
     { name: 'frontend-uses-contracts-not-execution', severity: 'error',
       from: { path: '^src/frontend/', pathNot: '^src/frontend/desktop/bootstrap\\.mjs$' }, to: { path: '^src/execution/' } },
     { name: 'control-does-not-use-root-bridges', severity: 'error',

@@ -63,11 +63,11 @@
 | Frontend | Панели, изображение выбранной страницы и пользовательский ввод |
 | Системный значок | Backend либо минимальный независимый системный компонент |
 
-Допустим единый Electron backend host с Chromium/Control/Execution; browser worker — по необходимости.
+T003: `--backend-host` запускает отдельный Electron backend со своими Control/Execution/Kit, браузерным host и закрытым loopback-port. Один владелец userData/partition защищён Electron lock и приватным descriptor; повреждённые данные/Kit journal отвергаются. Обычный Desktop пока работает в legacy-режиме и не может владеть тем же профилем одновременно; перенос страниц/клиентского UI завершают T004–T007. Новый backend не создаёт видимое окно и не требует sidebarReady.
 
-В T001 выбрать macOS-топологию: отдельный helper-bundle/identity либо обработка activate/reopen живым backend с запуском клиента. Учесть LaunchServices, отдельные locks/profiles, отсутствие лишней Dock-иконки и подпись helpers. Повторное открытие .app при живом backend возвращает клиент; выбранный путь реализует T009, упаковывает T011.
+macOS: выбран отдельный backend helper со своей identity; в T009/T011 проверить LaunchServices/reopen, locks, profile, Dock и подпись nested helpers. Повторное открытие `.app` подключает клиент без рестарта backend.
 
-Backend не должен погибать с родительским frontend/process group. Frontend не владеет stores, планом, cookies, partition или секретами. Профиль frontend отделён; существующий persist:workflow-pilot-chatgpt принадлежит только backend.
+Backend не зависит от frontend/process group. Stores, план, cookies, partition и секреты остаются у backend; frontend имеет свой профиль. `persist:workflow-pilot-chatgpt` принадлежит backend.
 
 Kit остаётся единственным владельцем плана и транзакций. Готовность проверяется по backend identity, поколению запуска, API version и состоянию компонентов; один PID/порт её не доказывает.
 

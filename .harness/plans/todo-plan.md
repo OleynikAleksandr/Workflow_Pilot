@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 129,
+  "plan_revision": 131,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -412,8 +412,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T003",
@@ -432,7 +432,9 @@
         "src/backend/identity.mjs",
         "src/control/facade.mjs",
         "src/execution/facade.mjs",
-        "tests/backend-lifecycle.test.mjs"
+        "tests/backend-lifecycle.test.mjs",
+        ".dependency-cruiser.cjs",
+        "tests/execution-architecture.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
@@ -475,7 +477,19 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/bootstrap.mjs",
+        "src/backend/identity.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/frontend/desktop/bootstrap.mjs",
+        "src/main.mjs",
+        "tests/backend-lifecycle.test.mjs",
+        "tests/execution-architecture.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1338,7 +1352,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 129
+Revision: 131
 
 ## Цель
 
@@ -1384,10 +1398,10 @@ Revision: 129
   - Файлы: src/contracts/backend.mjs, src/contracts/browser-presentation.mjs, src/backend/protocol.mjs, tests/backend-protocol.test.mjs, .dependency-cruiser.cjs, tests/execution-architecture.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T001R
-- [TODO] T003: Выделить самостоятельный backend host — Ожидает
-  - Git Commit: [PENDING] feat: Выделить самостоятельный backend host
+- [DONE] T003: Выделить самостоятельный backend host — Завершено
+  - Git Commit: [DONE] feat: Выделить самостоятельный backend host
   - Reference: workflow-pilot-backend-independence / T003 / implementation
-  - Файлы: src/main.mjs, src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/application.mjs, src/backend/main.mjs, src/backend/bootstrap.mjs, src/backend/lifecycle.mjs, src/backend/identity.mjs, src/control/facade.mjs, src/execution/facade.mjs, tests/backend-lifecycle.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: src/main.mjs, src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/application.mjs, src/backend/main.mjs, src/backend/bootstrap.mjs, src/backend/lifecycle.mjs, src/backend/identity.mjs, src/control/facade.mjs, src/execution/facade.mjs, tests/backend-lifecycle.test.mjs, .dependency-cruiser.cjs, tests/execution-architecture.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
 - [TODO] T004: Передать backend страницы и автоматизацию — Ожидает
