@@ -4,11 +4,11 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 121,
+  "plan_revision": 122,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
-  "execution_scope_status": "BLOCKED",
+  "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
   "objective": "Независимый frontend и постоянно работающий backend/browser на одном Mac; совместимая поставка трёх ОС.",
   "acceptance_criteria": [
@@ -1235,7 +1235,7 @@
       }
     }
   ],
-  "blocked_reason": "После завершения T001 требуется живая проверка пользователем отдельного графического клиента, ввода/IME, clipboard, передачи TXT, читаемости и задержки. Транспорт Electron offscreen + CDP/PNG и macOS helper topology предложены, но не утверждены. До записанного user_decision по T001 запрещено начинать T002. Протокол: docs/planning/workflow-pilot-backend-t001-evidence.md.",
+  "blocked_reason": null,
   "user_decisions": [
     {
       "id": "draft-review-only",
@@ -1269,11 +1269,11 @@
 
 ## Состояние
 
-Execution Scope Status: BLOCKED
+Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 121
+Revision: 122
 
 ## Цель
 
