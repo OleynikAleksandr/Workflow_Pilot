@@ -1,7 +1,9 @@
-import http from 'node:http';
 import fs from 'node:fs';
-import {authorizeLoopback,checkBackendCompatibility} from './protocol.mjs';
+import path from 'node:path';
 import {BACKEND_API_VERSION} from '../contracts/backend.mjs';
+import {startBackendServer} from './server.mjs';
+import {createBackendEvents} from './events.mjs';
+import {openOperationJournal,createBackendOperations,backendCatalog,backendPublicState} from './operations.mjs';
 
 const FIXTURE_PAGE=new URL('../../tests/fixtures/backend-browser-page.html',import.meta.url);
 const FIXTURE_ENTRY='https://chatgpt.com/fixture-entry';
@@ -17,13 +19,13 @@ export async function installFixtureChat(session) {
 
 const readBody=req=>new Promise((resolve,reject)=>{
   let size=0;const chunks=[];
-  req.on('data',chunk=>{size+=chunk.length;if(size>4096){reject(Object.assign(new Error('Too large'),{code:'BACKEND_ACCESS_DENIED'}));req.destroy();}else chunks.push(chunk);});
+  req.on('data',chunk=>{size+=chunk.length;if(size>4096){reject(Object.assign(new Error('Too large'),{code:'BACKEND_MESSAGE_SIZE'}));req.destroy();}else chunks.push(chunk);});
   req.on('end',()=>resolve(Buffer.concat(chunks).toString('utf8')));req.on('error',reject);
 });
 
-// The production API is T005. Fixture routes address only backend-owned pages
-// and expose no URL navigation, JavaScript or file access.
-export async function startBackendPort({claim,services,host,fixtureRoot=null}) {
+// Fixture routes (test profiles only) address backend-owned pages and expose
+// no URL navigation, JavaScript or file access.
+export async function startBackendPort({identity,claim,services,host,fixtureRoot=null}) {
   const fixturePage=async()=>{
     const {sessions}=services;
     if(sessions.visible&&!sessions.visible.disposed)return sessions.visible;
@@ -70,35 +72,28 @@ export async function startBackendPort({claim,services,host,fixtureRoot=null}) {
     }
     return false;
   };
-  const server=http.createServer(async(req,res)=>{
-    try {
-      authorizeLoopback(req.headers,{port:server.address().port,token:claim.token});
-      checkBackendCompatibility({apiVersion:BACKEND_API_VERSION,identity:'workflow-pilot',bootGeneration:claim.generation},
-        {identity:'workflow-pilot'});
-      if(req.method==='GET'&&req.url==='/v1/status') {
-        return respond(res,200,{apiVersion:BACKEND_API_VERSION,identity:'workflow-pilot',
-          bootGeneration:claim.generation,readiness:'ready',projects:services.control.projects.snapshot().projects.length,
-          browser:{connected:true,owner:'backend',fixtureAvailable:!!fixtureRoot}});
-      }
-      if(fixtureRoot&&await fixtureRoute(req,res)!==false)return;
-      respond(res,404,{error:{code:'BACKEND_ROUTE_NOT_FOUND',message:'Операция недоступна.'}});
-    }catch(error){
-      if(res.headersSent)return res.destroy();
-      respond(res,403,{error:{code:error?.code==='BACKEND_ACCESS_DENIED'?'BACKEND_ACCESS_DENIED':'BACKEND_UNAVAILABLE',message:'Доступ запрещён.'}});
-    }
-  });
-  await new Promise((resolve,reject)=>{
-    const onError=error=>reject(error);server.once('error',onError);
-    server.listen(0,'127.0.0.1',()=>{server.off('error',onError);resolve();});
-  });
-  try{claim.publish(server.address().port);}
-  catch(error){await new Promise(resolve=>server.close(resolve));throw error;}
+  const journal=openOperationJournal(path.join(identity.ownerDir,'operations.jsonl'));
+  const events=createBackendEvents({bootGeneration:claim.generation,state:()=>backendPublicState(services)});
+  services.onChange(events.changed);
+  const operations=createBackendOperations({bootGeneration:claim.generation,journal,catalog:backendCatalog(services),
+    onOperation:view=>{events.operation(view);events.changed();}});
+  let server;
+  try {
+    server=await startBackendServer({claim,operations,events,extra:fixtureRoot?fixtureRoute:null,
+      status:()=>({apiVersion:BACKEND_API_VERSION,identity:'workflow-pilot',bootGeneration:claim.generation,readiness:'ready',
+        projects:services.control.projects.snapshot().projects.length,
+        browser:{connected:true,owner:'backend',fixtureAvailable:!!fixtureRoot}})});
+  }catch(error){services.onChange(null);events.close();throw error;}
+  try{claim.publish(server.port);}
+  catch(error){await server.close();throw error;}
   let stopped=false;
   const stop=async()=>{
     if(stopped)return;stopped=true;
-    server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
+    services.onChange(null);await server.close();
+    // Accepted operations finish or stay recorded before services go away.
+    await operations.idle();
     await services.dispose();
     claim.release();
   };
-  return Object.freeze({port:server.address().port,stop});
+  return Object.freeze({port:server.port,stop});
 }

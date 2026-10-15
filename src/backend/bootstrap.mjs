@@ -24,7 +24,8 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
       throw Object.assign(new Error('Backend refuses a linked store.'),{code:'BACKEND_STORE_LINK'});
   }
   const {createControl}=createBackendComposition({execution});
-  let workflow,sessions;
+  let workflow,sessions,changed=()=>{};
+  const notify=()=>{try{changed();}catch{ /* a subscriber never stops Control */ }};
   const control=createControl({storageFile:path.join(dataDir,'workspaces.json'),
     getExecutionSettings:()=>settings.parallelExecution,
     git:(workspace,args)=>workflow.executionKit.git(workspace,['--no-optional-locks',...args])});
@@ -40,7 +41,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
   const controller=()=>visible()?.controller??null;
   const pageReady=()=>Boolean(visible()?.ready && !visible().loading && controller() && !controller().composer?.inFlight);
   workflow=control.configureWorkflow({getController:controller,available:pageReady,
-    contextAvailable:()=>Boolean(visible()?.ready&&!visible().loading&&controller()),onChange:()=>{},report:()=>{},save:overrides=>settings.save(overrides)});
+    contextAvailable:()=>Boolean(visible()?.ready&&!visible().loading&&controller()),onChange:notify,report:notify,save:overrides=>settings.save(overrides)});
   if(browser)execution.attachBrowser(browser);
   const diagnosticsFile=path.join(dataDir,'diagnostics','chromium-events.jsonl');
   const decorate=record=>{
@@ -49,7 +50,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
       ||workflow.projectAutoPlan.enabled(project.parentWorkspace,project.parentScopeId);
     const contents=browser.host.view(record.key).webContents;
     const page=decorateBackendPage(contents,{colors:settings.chatColors,hideToolCalls:()=>settings.hideToolCalls});
-    record.colors=page.colors;
+    record.colors=page.colors;record.applyToolCalls=page.applyToolCalls;
     if(diagnostics) {
       record.diagnostics=new ChromiumDiagnostics(contents,{file:diagnosticsFile,
         owner:()=>({workspace:record.identity?.workspace,sessionId:record.identity?.sessionId}),
@@ -61,7 +62,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
     return ()=>{page.dispose();void record.diagnostics?.stop().catch(()=>{});};
   };
   sessions=control.attachSessions({presentation:browser?{show:id=>browser.host.show(id),hide:()=>browser.host.hide()}:{show:()=>{},hide:()=>{}},
-    onChange:record=>workflow.sessionChanged(record),
+    onChange:record=>{workflow.sessionChanged(record);notify();},
     onPage:(record,event)=>{
       if(!event.reset) {
         record.diagnostics?.observePage(event.state);
@@ -69,7 +70,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
       }
       workflow.observePage(event,record);
     },
-    onError:(record,error)=>{record.diagnostics?.recordObserverFailure(error?.code);record.error=pageError(error);},
+    onError:(record,error)=>{record.diagnostics?.recordObserverFailure(error?.code);record.error=pageError(error);notify();},
     decorate:browser?decorate:undefined});
   workflow.attachSessions(sessions);
   try{workflow.restore(await settings.load());}
@@ -81,8 +82,10 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
     if(journal(workspace))throw Object.assign(new Error('Kit transaction requires recovery before backend starts.'),
       {code:'BACKEND_KIT_TRANSACTION_PENDING'});
   }
-  const pages=createBackendPages({sessions,setup,store:control.projects,host:browser?.host??null});
+  const pages=createBackendPages({sessions,setup,store:control.projects,host:browser?.host??null,onReady:notify});
   return Object.freeze({control,execution,workflow,settings,setup,sessions,pages,
+    // One change listener: the backend event log. It reads state, never stores it.
+    onChange:listener=>{changed=typeof listener==='function'?listener:()=>{};},
     // Pages of AutoPlan and parallel work come back first; then the saved selection.
     restore:async()=>{
       workflow.restoreBackground();
@@ -97,7 +100,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
 
 // Page addressing for viewers. A viewer never selects, reloads or releases a
 // page; its absence leaves the page, observer, waits and automation running.
-export function createBackendPages({sessions,setup,store,host}) {
+export function createBackendPages({sessions,setup,store,host,onReady=()=>{}}) {
   const record=key=>sessions.all().find(item=>item.key===key&&!item.disposed);
   const required=key=>{
     const found=record(key);
@@ -115,7 +118,7 @@ export function createBackendPages({sessions,setup,store,host}) {
       await sessions.navigate(page,current.chatUrl??chatGPTEntrypoint(current.experience),{freshDraft:!current.chatUrl});
       const ready=await readiness;
       if(page.disposed||page.readinessEpoch!==epoch)return page.key;
-      page.ready=ready;
+      page.ready=ready;onReady();
       if(ready)sessions.tick(page);else page.controller.cancel();
       return page.key;
     },

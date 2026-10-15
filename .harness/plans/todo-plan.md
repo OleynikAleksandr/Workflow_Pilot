@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 135,
+  "plan_revision": 137,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -574,8 +574,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T005",
@@ -590,7 +590,10 @@
         "src/backend/events.mjs",
         "src/frontend/client/connection.mjs",
         "src/contracts/backend.mjs",
-        "tests/backend-api.test.mjs"
+        "tests/backend-api.test.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
@@ -629,7 +632,18 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/bootstrap.mjs",
+        "src/backend/events.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/server.mjs",
+        "src/frontend/client/connection.mjs",
+        "tests/backend-api.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1370,7 +1384,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 135
+Revision: 137
 
 ## Цель
 
@@ -1428,10 +1442,10 @@ Revision: 135
   - Файлы: src/frontend/desktop/browser-host.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/backend-host.mjs, src/control/sessions/service.mjs, src/control/workflow/coordination.mjs, src/frontend/desktop/application.mjs, tests/session-runtime.test.mjs, tests/backend-browser-lifecycle.test.mjs, src/backend/bootstrap.mjs, src/backend/identity.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/execution/facade.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Провести команды и состояние через API — Ожидает
-  - Git Commit: [PENDING] feat: Провести команды и состояние через API
+- [DONE] T005: Провести команды и состояние через API — Завершено
+  - Git Commit: [DONE] feat: Провести команды и состояние через API
   - Reference: workflow-pilot-backend-independence / T005 / implementation
-  - Файлы: src/backend/server.mjs, src/backend/operations.mjs, src/backend/events.mjs, src/frontend/client/connection.mjs, src/contracts/backend.mjs, tests/backend-api.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: src/backend/server.mjs, src/backend/operations.mjs, src/backend/events.mjs, src/frontend/client/connection.mjs, src/contracts/backend.mjs, tests/backend-api.test.mjs, src/backend/bootstrap.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
 - [TODO] T006: Реализовать полный интерактив браузера — Ожидает

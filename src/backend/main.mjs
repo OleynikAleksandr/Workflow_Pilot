@@ -28,7 +28,7 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
       services=await initializeBackendServices({dataDir:identity.dataDir,sourceDir,
         resourcesDir:app.isPackaged?path.join(process.resourcesPath,'resources'):path.join(sourceDir,'../resources'),
         browser:{host,ipc:electron.ipcMain}});
-      port=await startBackendPort({claim,services,host,fixtureRoot});
+      port=await startBackendPort({identity,claim,services,host,fixtureRoot});
       // A page that cannot open is recorded on its session; the backend stays up.
       await services.restore().catch(()=>{});
     }catch(error){

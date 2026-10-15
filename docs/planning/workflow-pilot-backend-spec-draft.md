@@ -118,7 +118,7 @@ Branch/Delete/Retry передаются настоящей странице, н
 
 ## 7. Сетевой контракт
 
-После живой приёмки T001/T001R принят Electron offscreen PNG/CDP, с автоматической плотностью клиентского дисплея. Локальный API: HTTP для команд/снимков/файлов, WebSocket для событий и ввода; конкретная реализация в T005–T006. Контракты и тесты: `src/contracts/{backend,browser-presentation}.mjs`, `src/backend/protocol.mjs`. UI не вызывает Control напрямую.
+После живой приёмки T001/T001R принят Electron offscreen PNG/CDP, с автоматической плотностью клиентского дисплея. API: HTTP-команды/операции, события SSE (bearer в заголовке), журнал приёма до эффекта; ввод — T006. Контракты и тесты: `src/contracts/{backend,browser-presentation}.mjs`, `src/backend/protocol.mjs`. UI не вызывает Control напрямую.
 
 | Объект | Контракт |
 | --- | --- |
