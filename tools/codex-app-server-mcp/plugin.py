@@ -79,15 +79,15 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_plugin_wait", title="Ожидать запуск из Workflow Pilot", annotations=LAUNCH,
               meta={"ui": {"visibility": ["app"]}})
-    async def wait_launch(receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")]) -> CallToolResult:
+    async def wait_launch(receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Unique receiver id for this explicitly prepared panel instance.")]) -> CallToolResult:
         """App-only, explicit one-shot wait, at most 45 seconds. Never call automatically or poll. Does not launch a model or create a conversation. Keep this panel open; the user triggers one request from the local Workflow Pilot menu."""
         return result(await asyncio.to_thread(bridge.call, {"action": "wait", "receiverId": receiver_id}))
 
     @mcp.tool(name="workflow_plugin_claim", title="Принять одну команду запуска", annotations=LAUNCH,
               meta={"ui": {"visibility": ["app"]}})
     async def claim_launch(
-        receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")],
-        request_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")],
+        receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact receiver id used by the waiting panel.")],
+        request_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact one-shot request id returned by workflow_plugin_wait.")],
     ) -> CallToolResult:
         """App-only consume-once launch ticket. After success the panel may send one new-conversation message through the host API. Never retry claim or send after an uncertain result. No DOM operations."""
         return result(await asyncio.to_thread(bridge.call, {"action": "claim", "receiverId": receiver_id, "requestId": request_id}))
@@ -95,9 +95,9 @@ def register_plugin(mcp, state_root: Path):
     @mcp.tool(name="workflow_plugin_report", title="Результат запроса нового разговора", annotations=CONNECT,
               meta={"ui": {"visibility": ["app"]}})
     async def report_launch(
-        receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")],
-        request_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$")],
-        outcome: Annotated[str, Field(pattern=r"^(accepted|unknown)$")],
+        receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact receiver id used to claim this request.")],
+        request_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact claimed one-shot request id.")],
+        outcome: Annotated[str, Field(pattern=r"^(accepted|unknown)$", description="Host API result: accepted or unknown; neither proves navigation or context reading.")],
     ) -> CallToolResult:
         """App-only report of host API outcome. Accepted does not prove visible navigation or context delivery. Never creates a conversation or retries a send."""
         return result(await asyncio.to_thread(bridge.call, {"action": "report", "receiverId": receiver_id,

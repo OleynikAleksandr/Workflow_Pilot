@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 105,
+  "plan_revision": 107,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3638,14 +3638,18 @@
         "Полный каталог сервера включает app-only wait/claim/report с описаниями всех параметров; существующие инструменты и server instructions не меняются. Настоящий MCP и исполнитель проверены без модельных ходов."
       ],
       "expected_commit_message": "feat: Проверить каталог служебных MCP операций запуска плагина",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T030-MCP",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "tests/codex-app-server-mcp.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-9",
@@ -3766,7 +3770,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 105
+Revision: 107
 
 ## Цель
 
@@ -4025,8 +4029,8 @@ Revision: 105
   - Файлы: src/control/plugin/launch.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, src/contracts/desktop.mjs, docs/modules/control.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T030-MCP: Проверить каталог служебных MCP операций запуска плагина — Ожидает
-  - Git Commit: [PENDING] feat: Проверить каталог служебных MCP операций запуска плагина
+- [DONE] T030-MCP: Проверить каталог служебных MCP операций запуска плагина — Завершено
+  - Git Commit: [DONE] feat: Проверить каталог служебных MCP операций запуска плагина
   - Reference: workflow-pilot-migration-0.1.0 / T030-MCP / implementation
   - Файлы: tools/codex-app-server-mcp/plugin.py, tests/codex-app-server-mcp.test.mjs, docs/modules/control.md
   - Параллельность: исключительное выполнение
