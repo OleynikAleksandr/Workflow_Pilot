@@ -80,7 +80,8 @@ export class BackendBrowserHost {
   browserSessionId(id) { return this.#pages.get(id)?.presentation.browserSessionId ?? null; }
   pages() {
     return [...this.#pages.values()].map(({ id, viewers, presentation }) => ({ id, browserSessionId: presentation.browserSessionId,
-      kind: presentation.kind, parentId: presentation.parentId, documentGeneration: presentation.documentGeneration, viewers: viewers.size }));
+      kind: presentation.kind, parentId: presentation.parentId, documentGeneration: presentation.documentGeneration, viewers: viewers.size,
+      selected: this.#selected === id }));
   }
   // Selection designates the primary page for workflow; it is not a viewer.
   show(id) { if (!this.#pages.has(id)) throw released(); this.#selected = id; }

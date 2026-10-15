@@ -16,13 +16,27 @@ export function createBackendComposition({execution=new ExecutionFacade()}={}) {
 const pageError=error=>({code:typeof error?.code==='string'?error.code:'BACKEND_PAGE_ERROR',
   message:typeof error?.message==='string'?error.message:'Страница недоступна.'});
 
-export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,execution=new ExecutionFacade(),
-  browser=null,diagnostics=true}) {
-  // Never follow an existing file link out of our own product profile.
+// Never follow an existing file link out of our own product profile.
+export function assertProfileStores(dataDir) {
   for(const name of ['settings.json','workspaces.json']) {
     if(fs.lstatSync(path.join(dataDir,name),{throwIfNoEntry:false})?.isSymbolicLink())
       throw Object.assign(new Error('Backend refuses a linked store.'),{code:'BACKEND_STORE_LINK'});
   }
+}
+
+// An unfinished Kit transaction is recovered by Kit, never run over by the backend.
+export function assertNoPendingKitTransactions(projects) {
+  for(const workspace of new Set(projects.map(project=>project.workspace))) {
+    if(typeof workspace!=='string'||!path.isAbsolute(workspace)
+      || !fs.existsSync(path.join(workspace,'.harness','workflow.json')))continue;
+    if(journal(workspace))throw Object.assign(new Error('Kit transaction requires recovery before backend starts.'),
+      {code:'BACKEND_KIT_TRANSACTION_PENDING'});
+  }
+}
+
+export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,execution=new ExecutionFacade(),
+  browser=null,diagnostics=true}) {
+  assertProfileStores(dataDir);
   const {createControl}=createBackendComposition({execution});
   let workflow,sessions,changed=()=>{};
   const notify=()=>{try{changed();}catch{ /* a subscriber never stops Control */ }};
@@ -76,12 +90,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
   try{workflow.restore(await settings.load());}
   catch(error){if(error.code!=='ENOENT')throw error;workflow.restore({});}
   await control.projects.load();
-  for(const workspace of new Set(control.projects.snapshot().projects.map(project=>project.workspace))) {
-    if(typeof workspace!=='string'||!path.isAbsolute(workspace)
-      || !fs.existsSync(path.join(workspace,'.harness','workflow.json')))continue;
-    if(journal(workspace))throw Object.assign(new Error('Kit transaction requires recovery before backend starts.'),
-      {code:'BACKEND_KIT_TRANSACTION_PENDING'});
-  }
+  assertNoPendingKitTransactions(control.projects.snapshot().projects);
   const pages=createBackendPages({sessions,setup,store:control.projects,host:browser?.host??null,onReady:notify});
   return Object.freeze({control,execution,workflow,settings,setup,sessions,pages,
     // One change listener: the backend event log. It reads state, never stores it.

@@ -21,6 +21,8 @@ export const BACKEND_OPERATIONS = Object.freeze({
   'browser.transfer.complete': 'transfer',
   'plugin.list': 'read', 'plugin.open': 'mutate', 'plugin.connect': 'mutate',
   'plugin.claim': 'mutate', 'plugin.report': 'mutate', 'plugin.wait': 'read',
+  // The Desktop client: the same allowlisted channels as the former local IPC.
+  'ui.state': 'read', 'ui.invoke': 'mutate',
 });
 
 export const PLUGIN_ACTION_CLASS = Object.freeze({

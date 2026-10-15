@@ -11,6 +11,7 @@ export { chatGPTEntrypoint } from './browser/chatgpt-experience.mjs';
 export { BackendBrowserHost, decorateBackendPage } from './browser/backend-host.mjs';
 export { ChromiumDiagnostics } from './browser/diagnostics.mjs';
 export { createPresentationRoutes } from './browser/presentation/transport.mjs';
+export { desktopDependencies } from './desktop-dependencies.mjs';
 export { executeFile } from './commands/service.mjs';
 export { diagnosticFiles, queueDiagnosticFile } from './files/diagnostics.mjs';
 export { executableCandidateAllowed, nodeExecutableCandidates } from './platform/paths.mjs';

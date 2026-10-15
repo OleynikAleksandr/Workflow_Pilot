@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 143,
+  "plan_revision": 145,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -118,7 +118,17 @@
       "tests/fixtures/backend-browser-viewer.mjs",
       "tests/execution-architecture.test.mjs",
       "src/execution/browser/diagnostics.mjs",
-      "tests/backend-owner-recovery.test.mjs"
+      "tests/backend-owner-recovery.test.mjs",
+      "src/backend/desktop-model.mjs",
+      "src/backend/remote-surface.mjs",
+      "src/contracts/desktop.mjs",
+      "src/execution/desktop-dependencies.mjs",
+      "src/frontend/desktop/browser-view-preload.cjs",
+      "src/frontend/desktop/client.mjs",
+      "src/frontend/desktop/ui/browser-view.html",
+      "src/frontend/desktop/ui/browser-view.mjs",
+      "tests/backend-desktop-model.test.mjs",
+      "tests/desktop-client.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -138,7 +148,8 @@
       "docs/acceptance/backend-independence.md",
       "docs/planning/workflow-pilot-backend-spec-draft.md",
       "docs/planning/workflow-pilot-backend-todo-draft.md",
-      "docs/planning/workflow-pilot-backend-t001-evidence.md"
+      "docs/planning/workflow-pilot-backend-t001-evidence.md",
+      "docs/modules/chatgpt-plugin-acceptance.md"
     ]
   },
   "baseline_commit": "e01124c2bb74ab86c8f67b19bfbf79404694add6",
@@ -785,8 +796,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T007",
@@ -815,11 +826,35 @@
         "src/frontend/desktop/ui/chat-colors.html",
         "src/frontend/client/connection.mjs",
         "tests/desktop-boundaries.test.mjs",
-        "tests/electron-smoke.mjs"
+        "tests/electron-smoke.mjs",
+        ".dependency-cruiser.cjs",
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/events.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/remote-surface.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/desktop.mjs",
+        "src/execution/browser/backend-host.mjs",
+        "src/execution/desktop-dependencies.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/desktop/browser-host.mjs",
+        "src/frontend/desktop/browser-view-preload.cjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/browser-view.html",
+        "src/frontend/desktop/ui/browser-view.mjs",
+        "src/main.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/desktop-client.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
-        "docs/planning/workflow-pilot-backend-todo-draft.md"
+        "docs/planning/workflow-pilot-backend-todo-draft.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -855,7 +890,37 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/events.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/remote-surface.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/desktop.mjs",
+        "src/execution/browser/backend-host.mjs",
+        "src/execution/desktop-dependencies.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/client/connection.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/bootstrap.mjs",
+        "src/frontend/desktop/browser-host.mjs",
+        "src/frontend/desktop/browser-view-preload.cjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/browser-view.html",
+        "src/frontend/desktop/ui/browser-view.mjs",
+        "src/main.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/desktop-client.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1240,7 +1305,8 @@
         "docs/acceptance/backend-independence.md",
         "docs/planning/workflow-pilot-backend-spec-draft.md",
         "docs/planning/workflow-pilot-backend-todo-draft.md",
-        "docs/planning/workflow-pilot-backend-t001-evidence.md"
+        "docs/planning/workflow-pilot-backend-t001-evidence.md",
+        "docs/modules/chatgpt-plugin-acceptance.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -1484,7 +1550,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 143
+Revision: 145
 
 ## Цель
 
@@ -1560,10 +1626,10 @@ Revision: 143
   - Файлы: src/backend/main.mjs, src/backend/identity.mjs, src/backend/lifecycle.mjs, src/frontend/desktop/bootstrap.mjs, tests/backend-lifecycle.test.mjs, tests/backend-owner-recovery.test.mjs, tests/backend-browser-lifecycle.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T007: Перевести desktop в отдельный клиент — Ожидает
-  - Git Commit: [PENDING] feat: Перевести desktop в отдельный клиент
+- [DONE] T007: Перевести desktop в отдельный клиент — Завершено
+  - Git Commit: [DONE] feat: Перевести desktop в отдельный клиент
   - Reference: workflow-pilot-backend-independence / T007 / implementation
-  - Файлы: src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ipc.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/settings-panel.mjs, src/frontend/desktop/ui/project-doctor.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/archive-preload.cjs, src/frontend/desktop/chat-colors-window.mjs, src/frontend/desktop/chat-colors-preload.cjs, src/frontend/desktop/ui/chat-colors.mjs, src/frontend/desktop/ui/chat-colors.html, src/frontend/client/connection.mjs, tests/desktop-boundaries.test.mjs, tests/electron-smoke.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ipc.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/settings-panel.mjs, src/frontend/desktop/ui/project-doctor.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/archive-preload.cjs, src/frontend/desktop/chat-colors-window.mjs, src/frontend/desktop/chat-colors-preload.cjs, src/frontend/desktop/ui/chat-colors.mjs, src/frontend/desktop/ui/chat-colors.html, src/frontend/client/connection.mjs, tests/desktop-boundaries.test.mjs, tests/electron-smoke.mjs, .dependency-cruiser.cjs, src/backend/bootstrap.mjs, src/backend/desktop-model.mjs, src/backend/events.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/backend/remote-surface.mjs, src/contracts/backend.mjs, src/contracts/desktop.mjs, src/execution/browser/backend-host.mjs, src/execution/desktop-dependencies.mjs, src/execution/facade.mjs, src/frontend/desktop/browser-host.mjs, src/frontend/desktop/browser-view-preload.cjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.html, src/frontend/desktop/ui/browser-view.mjs, src/main.mjs, tests/backend-api.test.mjs, tests/backend-desktop-model.test.mjs, tests/desktop-client.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006, T006R
 - [TODO] T008: Сохранить MCP, туннель и плагин без frontend — Ожидает
@@ -1599,7 +1665,7 @@ Revision: 143
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: Актуализировать документы выпуска
   - Reference: workflow-pilot-backend-independence / DOCS / implementation
-  - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/control.md, docs/modules/execution.md, docs/modules/workflow-execution.md, docs/modules/first-run-onboarding.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/linux.md, docs/modules/project-compatibility.md, docs/acceptance/backend-independence.md, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
+  - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/control.md, docs/modules/execution.md, docs/modules/workflow-execution.md, docs/modules/first-run-onboarding.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/linux.md, docs/modules/project-compatibility.md, docs/acceptance/backend-independence.md, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md, docs/modules/chatgpt-plugin-acceptance.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T001R, T002, T003, T004, T005, T006, T006R, T007, T008, T009, T010, T011, T012
 - [TODO] T013: Собрать новый выпуск трёх ОС — Ожидает

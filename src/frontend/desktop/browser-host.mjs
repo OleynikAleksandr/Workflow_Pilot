@@ -11,6 +11,7 @@ export class DesktopBrowserHost {
     return view.webContents;
   }
   view(id) { return this.#views.get(id); }
+  visibleView() { return this.#visible === null ? null : this.#views.get(this.#visible) ?? null; }
   show(id, container) {
     const view = this.#views.get(id);
     if (!view) throw new Error('SESSION_RUNTIME_RELEASED');

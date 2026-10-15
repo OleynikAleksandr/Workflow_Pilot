@@ -27,7 +27,7 @@ const readBody=req=>new Promise((resolve,reject)=>{
 
 // Fixture routes (test profiles only) address backend-owned pages and expose
 // no URL navigation, JavaScript or file access.
-export async function startBackendPort({identity,claim,services,host,fixtureRoot=null}) {
+export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{}}) {
   const fixturePage=async()=>{
     const {sessions}=services;
     if(sessions.visible&&!sessions.visible.disposed)return sessions.visible;
@@ -86,6 +86,7 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
   const journal=openOperationJournal(path.join(identity.ownerDir,'operations.jsonl'));
   const events=createBackendEvents({bootGeneration:claim.generation,state:()=>backendPublicState(services)});
   services.onChange(events.changed);
+  onEvents(events);
   const transfers=createTransfers({directory:path.join(identity.ownerDir,'transfers'),emit:events.browser});
   host.emit=events.browser;host.onDownload=transfers.download;
   let presentation;

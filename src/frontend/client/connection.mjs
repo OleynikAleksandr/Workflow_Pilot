@@ -90,6 +90,11 @@ export class BackendConnection {
       await settle(intervalMs);
     }
   }
+  // A Desktop channel through the API: the same envelope as the former IPC.
+  async invoke(surface,channel,input) {
+    const value=await this.run('ui.invoke',{surface,channel,...input===undefined?{}:{input}});
+    return value;
+  }
   async run(operation,args={},options={}) {
     const result=await this.submit(operation,args,options);
     if(result.status==='completed')return result.value;
@@ -102,7 +107,7 @@ export class BackendConnection {
   }
   // Events arrive in sequence order. A gap or generation change becomes a
   // fresh snapshot; already seen events are dropped by sequence.
-  subscribe({onSnapshot=()=>{},onEvent=()=>{},onError=()=>{},retryMs=250}={}) {
+  subscribe({onSnapshot=()=>{},onEvent=()=>{},onUi=()=>{},onError=()=>{},retryMs=250}={}) {
     const controller=new AbortController();
     let generation=null,last=null,active=true;
     const stream={close:()=>{active=false;controller.abort();this.#streams.delete(stream);}};
@@ -112,6 +117,8 @@ export class BackendConnection {
         const snapshot=validateSnapshot(JSON.parse(data));
         generation=snapshot.bootGeneration;last=snapshot.sequence;onSnapshot(snapshot);return true;
       }
+      // Desktop UI state is a latest value outside the event sequence.
+      if(type==='ui'){const value=JSON.parse(data);if(typeof value?.kind==='string')onUi(value.kind,value.value);return true;}
       if(type!=='event')return true;
       const event=validateEvent(JSON.parse(data));
       if(event.bootGeneration!==generation||last===null)return false;

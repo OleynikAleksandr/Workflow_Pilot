@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {BACKEND_LIMITS,BACKEND_OPERATIONS,protocolError,validateCommand,validateError,validateOperation,wireCopy} from '../contracts/backend.mjs';
 import {registerBackendCommand,verifyControlLease} from './protocol.mjs';
+import {DESKTOP_CHANNELS} from '../contracts/desktop.mjs';
 
 const JOURNAL_KEEP=1000;
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
@@ -104,7 +105,52 @@ function planSnapshot(services) {
 
 // Every allowed operation maps to an existing Control method with its own
 // domain validation. Missing operations are refused, never routed generically.
+const unwrap=envelope=>{
+  if(envelope?.ok===false)throw Object.assign(new Error(envelope.error?.message??'Операция не выполнена.'),{code:envelope.error?.code??'BACKEND_OPERATION_FAILED'});
+  return envelope?.result??null;
+};
+// With the Desktop model in the backend, product mutations go through its own
+// actions (navigation generations, setup state, title sync), not around them.
+function desktopCatalog(services,base) {
+  const local=(channel,input)=>services.desktop.invoke('local',channel,input).then(unwrap);
+  return Object.freeze({...base,
+    'projects.open':async args=>{exact(args,['workspace']);if(!absolute(args.workspace))throw invalid();
+      await local('pilot:select-workspace',args.workspace);return {selected:services.control.projects.selected()?{workspace:services.control.projects.selected().workspace,sessionId:services.control.projects.selected().sessionId}:null};},
+    'projects.rename':async args=>{exact(args,['workspace','name']);if(!absolute(args.workspace)||!name(args.name))throw invalid();
+      return {changed:await local('pilot:rename-project',args)};},
+    'sessions.select':async args=>{exact(args,['workspace','sessionId']);if(!absolute(args.workspace)||!sessionId(args.sessionId))throw invalid();
+      await local('pilot:select-session',args);return {selected:{workspace:args.workspace,sessionId:args.sessionId}};},
+    'sessions.create':async args=>{exact(args,['workspace','experience']);
+      if(!absolute(args.workspace)||!['chat','work'].includes(args.experience))throw invalid();
+      await local('pilot:new-session',args);const selected=services.control.projects.selected();
+      return {selected:selected?{workspace:selected.workspace,sessionId:selected.sessionId}:null};},
+    'sessions.rename':async args=>{exact(args,['workspace','sessionId','name']);
+      if(!absolute(args.workspace)||!sessionId(args.sessionId)||!name(args.name))throw invalid();
+      return {changed:await local('pilot:rename-session',args)};},
+    'settings.update':async args=>{exact(args,['theme','hideToolCalls']);
+      if(!Object.keys(args).length||(args.theme!==undefined&&!['light','dark'].includes(args.theme))
+        ||(args.hideToolCalls!==undefined&&typeof args.hideToolCalls!=='boolean'))throw invalid();
+      if(args.theme!==undefined)await local('pilot:set-theme',args.theme);
+      if(args.hideToolCalls!==undefined)await local('pilot:set-hide-tool-calls',args.hideToolCalls);
+      return {theme:services.settings.shellTheme,hideToolCalls:services.settings.hideToolCalls};},
+    'plan.continue':async args=>{exact(args,[]);await local('pilot:auto-plan',true);return planSnapshot(services);},
+    'plan.stop':async args=>{exact(args,[]);await local('pilot:auto-plan',false);return planSnapshot(services);},
+    'ui.state':args=>{exact(args,[]);return {state:services.desktop.snapshot(),archive:services.desktop.archiveSnapshot()};},
+    // The former IPC allowlist; the model validates each input as before.
+    'ui.invoke':async args=>{exact(args,['surface','channel','input']);
+      if(!['local','archive','colors'].includes(args.surface)||!DESKTOP_CHANNELS[args.surface].includes(args.channel))throw invalid();
+      const envelope=await services.desktop.invoke(args.surface,args.channel,args.input);
+      if(args.surface==='colors')return {ok:envelope.ok!==false,result:envelope.state??null,...envelope.ok===false?{error:envelope.error}:{}};
+      if(/:get-state$/.test(args.channel))return {ok:true,result:null};
+      return {ok:envelope?.ok!==false,result:envelope?.result??null,...envelope?.ok===false?{error:envelope.error}:{}};},
+  });
+}
+
 export function backendCatalog(services) {
+  if(services.desktop)return desktopCatalog(services,baseCatalog(services));
+  return baseCatalog(services);
+}
+function baseCatalog(services) {
   const store=services.control.projects;
   const registered=workspace=>{
     const project=store.snapshot().projects.find(item=>item.workspace===workspace);
@@ -161,9 +207,12 @@ const publicError=error=>{
 
 // Commands: validation, single-writer lease, durable acceptance, then effect.
 // An effect runs at most once per accepted record and outlives its connection.
+// Operations listed in `concurrent` keep their own ordering (Desktop actions:
+// a newer navigation supersedes an older one); the rest run one at a time.
 export function createBackendOperations({bootGeneration,journal,catalog,onOperation=()=>{},onLease=()=>{},
-  limit=BACKEND_LIMITS.pendingCommands}) {
+  limit=BACKEND_LIMITS.pendingCommands,concurrent=new Set(['ui.invoke'])}) {
   let lease=null,leaseGeneration=0,pending=0,tail=Promise.resolve();
+  const inflight=new Set();
   const operationView=record=>validateOperation({operationId:record.operationId,requestId:record.requestId,
     bootGeneration:record.bootGeneration,status:record.bootGeneration!==bootGeneration&&['accepted','running'].includes(record.status)?'unknown':record.status,
     ...(record.result!==undefined?{result:record.result}:{})});
@@ -175,14 +224,17 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
   };
   const run=(record,operation,args)=>{
     pending++;
-    tail=tail.then(async()=>{
+    const work=async()=>{
       await journal.update(record.operationId,{status:'running'});
       onOperation(operationView({...record,status:'running'}));
       let outcome;
       try{outcome={status:'completed',result:{value:wireCopy(await catalog[operation](args)??null)}};}
       catch(error){outcome={status:'failed',result:{error:publicError(error)}};}
       await finish(record,outcome);
-    }).catch(()=>{}).finally(()=>{pending--;});
+    };
+    const done=(concurrent.has(operation)?work():tail.then(work)).catch(()=>{}).finally(()=>{pending--;});
+    if(concurrent.has(operation))inflight.add(done),done.finally(()=>inflight.delete(done));
+    else tail=done;
   };
   async function submit(command) {
     const request=validateCommand(command),operationClass=BACKEND_OPERATIONS[request.operation];
@@ -213,5 +265,5 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
   return Object.freeze({submit,
     operation:operationId=>{const record=journal.operation(operationId);return record?operationView(record):null;},
     get pending(){return pending;},get leaseGeneration(){return lease?.generation??null;},
-    idle:()=>tail});
+    idle:()=>Promise.all([tail,...inflight])});
 }

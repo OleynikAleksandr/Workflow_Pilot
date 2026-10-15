@@ -59,5 +59,11 @@ export const DESKTOP_CHANNELS = Object.freeze({
     "archive:delete-project",
     "archive:recover-deletions",
     "archive:close"
+  ]),
+  // Chat colour editor of a remote client; the in-process window calls the model directly.
+  "colors": Object.freeze([
+    "colors:get-state",
+    "colors:change",
+    "colors:reset"
   ])
 });

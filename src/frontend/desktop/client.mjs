@@ -1,0 +1,287 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
+import { DESKTOP_CHANNELS } from '../../contracts/desktop.mjs';
+import { BackendConnection } from '../client/connection.mjs';
+import { BrowserView } from '../client/browser-view.mjs';
+import { DesktopIpc } from './ipc.mjs';
+import { ChatColorsWindow } from './chat-colors-window.mjs';
+
+const shellBackground = { light: '#f4f6f8', dark: '#1b1d22' };
+const settle = ms => new Promise(resolve => setTimeout(resolve, ms));
+const MAX_UPLOAD = 32 * 1024 * 1024;
+
+// The backend writes its private descriptor only after proving ownership.
+function readDescriptor(file) {
+  const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+  if (!stat || !stat.isFile() || stat.isSymbolicLink() || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) return null;
+  try {
+    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return value?.product === 'workflow-pilot' && Number.isSafeInteger(value.port) && typeof value.token === 'string' ? value : null;
+  } catch { return null; }
+}
+
+// Separate Desktop client. Its process owns windows only: closing it, Cmd+Q or
+// a crash disconnects from the backend, which keeps pages and work running.
+export function startDesktopClient(electron, { backendRoot = null, clientRoot = null, fixture = false } = {}) {
+  const { app, BaseWindow, BrowserWindow, WebContentsView, Menu, ipcMain, dialog, nativeTheme, clipboard } = electron;
+  const desktopDir = new URL('./', import.meta.url).pathname;
+  const dataDir = backendRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot');
+  const ownDir = clientRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot Client');
+  fs.mkdirSync(ownDir, { recursive: true, mode: 0o700 });
+  app.setName('Workflow Pilot');
+  app.setPath('userData', ownDir);
+  app.setPath('sessionData', path.join(ownDir, 'browser'));
+  const sidebarUrl = pathToFileURL(path.join(desktopDir, 'ui/index.html')).href;
+  const archiveUrl = pathToFileURL(path.join(desktopDir, 'ui/archive.html')).href;
+  const viewerUrl = pathToFileURL(path.join(desktopDir, 'ui/browser-view.html')).href;
+  let window = null, sidebar = null, pageView = null, archiveWindow = null, colorEditor = null;
+  let connection = null, stream = null, uiState = null, archiveState = null, colorsState = null, sidebarWidth = 312, theme = 'light';
+  const viewers = new Map();
+  const report = (code, message) => { uiState = { ...(uiState ?? {}), startupError: { code, message } }; sidebar?.webContents.send('pilot:state-changed', uiState); };
+
+  async function backendConnection() {
+    const descriptorFile = path.join(dataDir, '.backend-host', 'service.json');
+    let descriptor = readDescriptor(descriptorFile);
+    if (!descriptor) {
+      // Started detached in its own process group: the backend outlives this client.
+      const args = [...(app.isPackaged ? [] : [app.getAppPath()]), '--backend-host', ...(backendRoot ? ['--backend-fixture-root=' + backendRoot] : [])];
+      const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
+      spawn(process.execPath, args, { detached: true, stdio: 'ignore', env }).unref();
+      for (let attempt = 0; attempt < 300 && !descriptor; attempt++) { await settle(100); descriptor = readDescriptor(descriptorFile); }
+      if (!descriptor) throw Object.assign(new Error('Backend Workflow Pilot не запустился.'), { code: 'BACKEND_UNAVAILABLE' });
+    }
+    const next = new BackendConnection({ port: descriptor.port, token: descriptor.token });
+    await next.connect();
+    await next.acquire();
+    return next;
+  }
+
+  // One viewer per displayed backend page; frames are pulled while it is open.
+  function attachViewer(contents, browserSessionId) {
+    const view = new BrowserView(connection, browserSessionId), entry = { view, contents, active: true };
+    viewers.set(contents.id, entry);
+    void (async () => {
+      try {
+        await view.attach();
+        while (entry.active && !contents.isDestroyed()) {
+          try {
+            const frame = await view.nextFrame();
+            if (frame && entry.active && !contents.isDestroyed()) contents.send('browser:frame', { meta: frame.meta, png: frame.png });
+          } catch (error) {
+            if (!entry.active) return;
+            contents.send('browser:status', { message: 'Страница недоступна. Ожидаем backend…' });
+            await settle(500);
+          }
+        }
+      } catch { contents.send('browser:status', { message: 'Страница backend недоступна.' }); }
+    })();
+    return entry;
+  }
+  function detachViewer(contents) {
+    const entry = viewers.get(contents.id);
+    if (!entry) return;
+    entry.active = false; viewers.delete(contents.id);
+    void entry.view.detach().catch(() => {});
+  }
+  async function showSelectedPage() {
+    if (!pageView || !connection) return;
+    const { pages } = await connection.json('/v1/browser/pages');
+    const selected = pages.find(page => page.selected && page.kind === 'page');
+    const current = viewers.get(pageView.webContents.id);
+    if (!selected || current?.view.browserSessionId === selected.browserSessionId) return;
+    detachViewer(pageView.webContents);
+    attachViewer(pageView.webContents, selected.browserSessionId);
+    syncViewport();
+  }
+  function syncViewport() {
+    const entry = pageView && viewers.get(pageView.webContents.id);
+    if (!entry || !window || window.isDestroyed()) return;
+    const [width, height] = window.getContentSize();
+    // The controlling client sets the server viewport; observers only scale frames.
+    void entry.view.setViewport(Math.max(320, Math.min(4096, width - sidebarWidth)), Math.max(320, Math.min(4096, height))).catch(() => {});
+  }
+  function layout() {
+    if (!window || window.isDestroyed()) return;
+    const [width, height] = window.getContentSize();
+    sidebar.setBounds({ x: 0, y: 0, width: sidebarWidth, height });
+    pageView.setBounds({ x: sidebarWidth, y: 0, width: Math.max(0, width - sidebarWidth), height });
+    syncViewport();
+  }
+  function applyTheme(next) {
+    theme = next; nativeTheme.themeSource = next; colorEditor?.publish();
+    if (window && !window.isDestroyed()) window.setBackgroundColor(shellBackground[next]);
+  }
+  const viewerWindow = (title, browserSessionId) => {
+    const popup = new BrowserWindow({ title, width: 980, height: 780, show: !fixture, focusable: !fixture,
+      backgroundColor: shellBackground[theme], webPreferences: { preload: path.join(desktopDir, 'browser-view-preload.cjs'),
+        nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
+    popup.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    popup.webContents.on('will-navigate', event => event.preventDefault());
+    popup.webContents.once('did-finish-load', () => attachViewer(popup.webContents, browserSessionId));
+    popup.on('closed', () => detachViewer(popup.webContents));
+    void popup.loadURL(viewerUrl);
+    return popup;
+  };
+  const popups = new Map();
+  async function onEvent(event) {
+    const data = event.data ?? {};
+    if (event.type === 'ui.open-archive') return openArchive();
+    if (event.type === 'ui.close-archive') return archiveWindow?.close();
+    if (event.type === 'ui.open-colors') return colorEditor.open();
+    if (event.type === 'ui.theme') return applyTheme(data.theme);
+    if (event.type === 'ui.layout' && Number.isSafeInteger(data.sidebarWidth)) { sidebarWidth = data.sidebarWidth; return layout(); }
+    if (event.type === 'browser.page-opened' && data.kind === 'popup') popups.set(data.browserSessionId, viewerWindow('Окно ChatGPT — Workflow Pilot', data.browserSessionId));
+    if (event.type === 'browser.page-closed') { const popup = popups.get(data.browserSessionId); popups.delete(data.browserSessionId); popup?.destroy(); }
+    const entry = [...viewers.values()].find(item => item.view.browserSessionId === data.browserSessionId);
+    if (event.type === 'browser.file-chooser' && entry) {
+      const result = await dialog.showOpenDialog(window, { properties: data.multiple ? ['openFile', 'multiSelections'] : ['openFile'] });
+      if (result.canceled || !result.filePaths.length) return entry.view.cancelChooser(data.chooserId).catch(() => {});
+      const file = result.filePaths[0], size = fs.statSync(file).size;
+      if (size > MAX_UPLOAD) { void entry.view.cancelChooser(data.chooserId).catch(() => {}); return dialog.showErrorBox('Workflow Pilot', 'Файл больше 32 МБ.'); }
+      await entry.view.upload({ chooserId: data.chooserId, name: path.basename(file), bytes: fs.readFileSync(file) }).catch(error =>
+        dialog.showErrorBox('Workflow Pilot', 'Не удалось передать файл: ' + error.message));
+    }
+    if (event.type === 'browser.download-ready') {
+      const owner = entry ?? [...viewers.values()][0];
+      if (!owner) return;
+      const target = await dialog.showSaveDialog(window, { defaultPath: data.name });
+      const file = await owner.view.download(data.transferId);
+      if (!target.canceled && target.filePath) fs.writeFileSync(target.filePath, file.bytes);
+    }
+    if (event.type === 'state' || event.type === 'operation') void showSelectedPage().catch(() => {});
+  }
+  async function openArchive() {
+    if (archiveWindow && !archiveWindow.isDestroyed()) { if (!fixture) { archiveWindow.show(); archiveWindow.focus(); } return; }
+    archiveWindow = new BrowserWindow({ title: 'Архив — Workflow Pilot', width: 780, height: 720, minWidth: 620, minHeight: 480,
+      focusable: !fixture, show: !fixture, backgroundColor: shellBackground[theme],
+      webPreferences: { preload: path.join(desktopDir, 'archive-preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
+    archiveWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    archiveWindow.webContents.on('will-navigate', event => event.preventDefault());
+    archiveWindow.webContents.on('did-finish-load', () => { if (archiveState) archiveWindow.webContents.send('pilot-archive:state-changed', archiveState); });
+    archiveWindow.on('closed', () => { archiveWindow = null; });
+    await archiveWindow.loadURL(archiveUrl);
+  }
+  const desktopIpc = new DesktopIpc(ipcMain, {
+    local: () => ({ contents: sidebar?.webContents, url: sidebarUrl }),
+    archive: () => ({ contents: archiveWindow?.webContents, url: archiveUrl }),
+  });
+  // The same envelope as the former in-process IPC; state is the backend's latest.
+  async function relay(surface, channel, input) {
+    if (channel === 'pilot:get-state') return uiState;
+    if (channel === 'archive:get-state') return archiveState;
+    if (!connection) return { ok: false, error: { code: 'BACKEND_UNAVAILABLE', message: 'Нет связи с backend Workflow Pilot.' }, state: uiState };
+    try {
+      const value = await connection.invoke(surface, channel, input);
+      return { ok: value.ok, result: value.result, ...(value.error ? { error: value.error } : {}), state: surface === 'archive' ? archiveState : uiState };
+    } catch (error) {
+      return { ok: false, error: { code: error.code ?? 'BACKEND_UNAVAILABLE', message: error.message }, state: surface === 'archive' ? archiveState : uiState };
+    }
+  }
+  ipcMain.handle('browser:input', async (event, { type, data, bounds }) => {
+    const entry = viewers.get(event.sender.id);
+    if (!entry || !entry.view.frame) return false;
+    const point = 'x' in data && 'y' in data ? entry.view.point(data.x, data.y, bounds) : null;
+    await entry.view.input(type, point ? { ...data, x: point.x, y: point.y } : data);
+    return true;
+  });
+  // Clipboard by explicit user action only: the client device's own clipboard.
+  ipcMain.handle('browser:copy', async event => {
+    const entry = viewers.get(event.sender.id);
+    if (!entry) return false;
+    clipboard.writeText(await entry.view.selection()); return true;
+  });
+  ipcMain.handle('browser:paste', async event => {
+    const entry = viewers.get(event.sender.id), text = clipboard.readText();
+    if (!entry || !text) return false;
+    await entry.view.paste(text.slice(0, 60 * 1024)); return true;
+  });
+
+  function installMenu() {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { label: 'Workflow Pilot', submenu: [{ role: 'about', label: 'О Workflow Pilot' }, { type: 'separator' },
+        { role: 'hide', label: 'Скрыть' }, { role: 'quit', label: 'Закрыть окно (работа продолжится в фоне)' }] },
+      { label: 'Правка', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+        { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+      { label: 'Вид', submenu: [{ label: 'Обновить ChatGPT', accelerator: 'CmdOrCtrl+R', click: () => void relay('local', 'pilot:reload') },
+        { role: 'togglefullscreen' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
+    ]));
+  }
+
+  async function connect() {
+    connection = await backendConnection();
+    stream = connection.subscribe({
+      onUi: (kind, value) => {
+        if (kind === 'state') { uiState = value; theme = value.theme ?? theme; sidebarWidth = value.sidebarWidth ?? sidebarWidth;
+          sidebar?.webContents.send('pilot:state-changed', value); layout(); void showSelectedPage().catch(() => {}); }
+        if (kind === 'archive') { archiveState = value; archiveWindow?.webContents.send('pilot-archive:state-changed', value); }
+        if (kind === 'colors') { colorsState = value; colorEditor?.publish(); }
+      },
+      onEvent: event => { void onEvent(event).catch(() => {}); },
+      onError: () => {},
+    });
+  }
+
+  if (!fixture && !app.requestSingleInstanceLock()) { app.quit(); return; }
+  app.on('second-instance', () => { if (window?.isMinimized()) window.restore(); window?.focus(); });
+  // Closing the client is only a disconnect; nothing here stops the backend.
+  app.on('window-all-closed', () => app.quit());
+  app.on('before-quit', () => { stream?.close(); for (const contents of [...viewers.keys()]) viewers.get(contents)?.view.detach().catch(() => {}); });
+  app.whenReady().then(async () => {
+    installMenu();
+    window = new BaseWindow({ title: fixture ? 'Workflow Pilot — CLIENT FIXTURE' : 'Workflow Pilot', show: !fixture, focusable: !fixture,
+      width: 1440, height: 940, minWidth: 980, minHeight: 700, backgroundColor: shellBackground[theme] });
+    sidebar = new WebContentsView({ webPreferences: { preload: path.join(desktopDir, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
+    pageView = new WebContentsView({ webPreferences: { preload: path.join(desktopDir, 'browser-view-preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
+    for (const view of [sidebar, pageView]) {
+      window.contentView.addChildView(view);
+      view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+      view.webContents.on('will-navigate', event => event.preventDefault());
+    }
+    colorEditor = new ChatColorsWindow({ passive: fixture, sourceDir: desktopDir, getBounds: () => window?.getBounds(),
+      getState: () => colorsState ?? { colors: {}, defaults: {}, theme },
+      change: async input => { const value = await connection.invoke('colors', 'colors:change', input); if (!value.ok) throw new Error(value.error?.message ?? 'Не удалось изменить цвет.'); return value.result; },
+      reset: async () => { const value = await connection.invoke('colors', 'colors:reset'); if (!value.ok) throw new Error(value.error?.message ?? 'Не удалось сбросить цвета.'); return value.result; } });
+    for (const surface of ['local', 'archive'])
+      for (const channel of DESKTOP_CHANNELS[surface]) desktopIpc.handle(surface, channel, input => relay(surface, channel, input));
+    window.on('resize', layout);
+    window.on('closed', () => { window = null; detachViewer(pageView.webContents); });
+    layout();
+    await Promise.all([sidebar.webContents.loadURL(sidebarUrl), pageView.webContents.loadURL(viewerUrl)]);
+    try { await connect(); }
+    catch (error) {
+      pageView.webContents.send('browser:status', { message: 'Нет связи с backend Workflow Pilot: ' + error.message });
+      report(error.code ?? 'BACKEND_UNAVAILABLE', 'Нет связи с backend Workflow Pilot. Повторите запуск.');
+    }
+    if (fixture) {
+      process.stdout.write(JSON.stringify({ clientReady: true, connected: !!connection, pid: process.pid }) + '\n');
+      // Isolated test probes: read what the windows render, call the sidebar's own API.
+      process.stdin.setEncoding('utf8');
+      let buffer = '';
+      process.stdin.on('data', chunk => {
+        buffer += chunk;
+        for (let index; (index = buffer.indexOf('\n')) >= 0;) {
+          const line = buffer.slice(0, index); buffer = buffer.slice(index + 1);
+          void (async () => {
+            const command = JSON.parse(line);
+            let value;
+            if (command.op === 'probe') value = {
+              sidebar: await sidebar.webContents.executeJavaScript('document.body.innerText'),
+              frame: await pageView.webContents.executeJavaScript("document.getElementById('frame').src.startsWith('blob:')"),
+              viewers: viewers.size, state: !!uiState };
+            if (command.op === 'rename') value = await sidebar.webContents.executeJavaScript(
+              `window.webPilot.renameProject(${JSON.stringify(command.workspace)}, ${JSON.stringify(command.name)})`);
+            process.stdout.write(JSON.stringify({ op: command.op, value }) + '\n');
+          })().catch(error => process.stdout.write(JSON.stringify({ op: 'error', message: error.message }) + '\n'));
+        }
+      });
+    }
+  }).catch(error => {
+    console.error('Workflow Pilot client:', error.message);
+    if (!fixture) dialog.showErrorBox('Workflow Pilot', error.message);
+    app.exit(1);
+  });
+  // Fixture probes for tests only: read what the client renders.
+  return Object.freeze({ get sidebar() { return sidebar; }, get pageView() { return pageView; }, viewers, get state() { return uiState; } });
+}

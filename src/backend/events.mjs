@@ -1,7 +1,8 @@
 import {BACKEND_LIMITS} from '../contracts/backend.mjs';
 import {createBackendEventLog} from './protocol.mjs';
 
-const STREAM_BUFFER_BYTES=1024*1024;
+const STREAM_BUFFER_BYTES=4*1024*1024;
+const UI_STATE_BYTES=1024*1024;
 const frame=(type,value)=>`event: ${type}\ndata: ${JSON.stringify(value)}\n\n`;
 
 // State events for any number of clients. Control changes are coalesced; a
@@ -9,6 +10,18 @@ const frame=(type,value)=>`event: ${type}\ndata: ${JSON.stringify(value)}\n\n`;
 export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coalesceMs=40}) {
   const log=createBackendEventLog({bootGeneration,state:state()});
   const streams=new Set();
+  // Desktop UI state is a latest value, not history: every stream gets the
+  // current one on connect and each change; nothing large is retained.
+  const ui=new Map();
+  const setUi=(kind,value)=>{
+    let serialized;
+    try{serialized=JSON.stringify(value);}catch{return false;}
+    if(new TextEncoder().encode(serialized).byteLength>UI_STATE_BYTES||ui.get(kind)===serialized)return false;
+    ui.set(kind,serialized);
+    const text=`event: ui\ndata: {"kind":${JSON.stringify(kind)},"value":${serialized}}\n\n`;
+    for(const stream of streams)stream.write(text);
+    return true;
+  };
   let timer=null,lastState=JSON.stringify(state());
   const publishState=()=>{
     timer=null;
@@ -36,15 +49,24 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
     const send=event=>stream.write(frame('event',event));
     if(afterSequence!==null) {
       const result=log.subscribeSince({generation,afterSequence,listener:send});
-      if(result.status==='subscribed'){unsubscribe=result.unsubscribe;return stream;}
+      if(result.status==='subscribed'){
+        unsubscribe=result.unsubscribe;
+        for(const [kind,serialized] of ui)stream.write(`event: ui\ndata: {"kind":${JSON.stringify(kind)},"value":${serialized}}\n\n`);
+        return stream;
+      }
     }
     // Snapshot and registration happen synchronously, so no event falls between.
     const subscription=log.snapshotAndSubscribe(send);unsubscribe=subscription.unsubscribe;
     stream.write(frame('snapshot',subscription.snapshot));
+    for(const [kind,serialized] of ui)stream.write(`event: ui\ndata: {"kind":${JSON.stringify(kind)},"value":${serialized}}\n\n`);
     return stream;
   }
   const browserTypes=new Set(['document','file-chooser','page-opened','page-closed','download-ready','download-failed','presentation-error']);
+  const uiTypes=new Set(['open-archive','close-archive','open-colors','theme','layout']);
   return Object.freeze({open,changed,
+    ui:setUi,
+    // Requests to the client window (open archive, colours); small, ordered events.
+    uiCommand:(type,data={})=>{if(uiTypes.has(type))log.publish('ui.'+type,data);},
     operation:view=>log.publish('operation',view),
     // Browser notifications carry ids and generations only, never page content.
     browser:(type,data)=>{if(browserTypes.has(type))log.publish('browser.'+type,data);},

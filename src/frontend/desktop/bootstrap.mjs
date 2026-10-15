@@ -1,22 +1,9 @@
 import fs from 'node:fs';
-import { LinuxExecutorBootstrap, LinuxRuntimeSwitcher } from '../../execution/platform/linux/runtime.mjs';
-import { LinuxServices } from '../../execution/platform/linux/services.mjs';
-import { bundledLinuxNode } from '../../execution/platform/paths.mjs';
-import { chatGPTTitleScript } from '../../execution/browser/chatgpt-title.mjs';
-import { toolFilterScript } from '../../execution/browser/chatgpt-tool-filter.mjs';
-import { installChatGPTAutoScroll } from '../../execution/browser/chatgpt-auto-scroll.mjs';
-import { ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS } from '../../execution/browser/chatgpt-colors.mjs';
-import { chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT } from '../../execution/browser/chatgpt-experience.mjs';
-import { BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates } from '../../execution/platform/paths.mjs';
-import { WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE } from '../../execution/runtime/windows.mjs';
-import { CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS } from '../../execution/runtime/service.mjs';
-import { VpsTunnel, WindowsVpsTunnel } from '../../execution/runtime/vps.mjs';
+import { desktopDependencies } from '../../execution/facade.mjs';
 import { createBackendComposition } from '../../backend/bootstrap.mjs';
+import { createDesktopModel } from '../../backend/desktop-model.mjs';
 import { assertNoBackendOwner } from '../../backend/identity.mjs';
 import {fileURLToPath} from 'node:url';
-import { inspectMacGit, installMacGit } from '../../execution/platform/mac-setup.mjs';
-import { ChromiumDiagnostics, safeUrl } from '../../execution/browser/diagnostics.mjs';
-import { appendDiagnostic } from '../../execution/files/diagnostics.mjs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -49,7 +36,7 @@ export async function startDesktop(electron) {
   return startDesktopApplication({electron,...identity,smoke,eventBaseline,eventRuntimeChecker,
     sourceDir:fileURLToPath(new URL('../../',import.meta.url)),
     desktopDir:fileURLToPath(new URL('./',import.meta.url)),executionServices,
-    createControl,
-    dependencies:{LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode,ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel},
+    createControl,createDesktopModel,
+    dependencies:desktopDependencies,
   });
 }

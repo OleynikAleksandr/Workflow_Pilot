@@ -210,10 +210,10 @@ test('a slow event reader is disconnected while writers and other readers contin
   events.open(slow.req,slow.res,{generation:'boot-fixture',afterSequence:null});
   events.open(fast.req,fast.res,{generation:'boot-fixture',afterSequence:null});
   fast.res.write=function(text){this.chunks.push(text);return true;};
-  for(let index=0;index<300;index++)events.operation({operationId:'op:'+String(index).padStart(40,'0'),status:'completed',blob:'x'.repeat(8000)});
+  for(let index=0;index<600;index++)events.operation({operationId:'op:'+String(index).padStart(40,'0'),status:'completed',blob:'x'.repeat(8000)});
   assert.equal(slow.res.destroyed,true,'unbounded buffering is refused');
   assert.equal(fast.res.destroyed,false);
-  assert.equal(fast.res.chunks.filter(chunk=>chunk.startsWith('event: event')).length,300);
+  assert.equal(fast.res.chunks.filter(chunk=>chunk.startsWith('event: event')).length,600);
   assert.equal(events.clients,1);
   // A later subscriber beyond the retained window gets a snapshot, not a partial history.
   const late=stream();events.open(late.req,late.res,{generation:'boot-fixture',afterSequence:1});
