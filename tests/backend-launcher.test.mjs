@@ -27,6 +27,8 @@ test('concurrent launchers share one backend; a stale descriptor starts a new on
   const service=path.join(root,'.backend-host','service.json');
   const pids=new Set();
   t.after(async()=>{
+    // Also the backend of a failed assertion: its pid is in the descriptor.
+    try{pids.add(JSON.parse(fs.readFileSync(service,'utf8')).pid);}catch{}
     for(const pid of pids)if(processAlive(pid)){try{process.kill(pid,'SIGKILL');}catch{}}
     await settle(300);await fsp.rm(root,{recursive:true,force:true});
   });

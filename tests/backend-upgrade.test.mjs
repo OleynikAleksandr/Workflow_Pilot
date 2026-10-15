@@ -130,6 +130,7 @@ app.whenReady().then(()=>{if(!app.requestSingleInstanceLock()){app.exit(9);retur
   const reply=next(value=>value.op==='probe');ui.stdin.write('{"op":"probe"}\n');
   const probe=(await reply).value;
   assert.equal(probe.error,'BACKEND_OWNER_CONFLICT');
+  assert.match(probe.sidebar,/занят другой запущенной копией/,'the sidebar renders the reason');
   assert.equal(fs.existsSync(path.join(root,'.backend-host','service.json')),false,'no second owner was created');
   const gone=child=>child.exitCode!==null?Promise.resolve():new Promise(resolve=>child.once('exit',resolve));
   ui.kill('SIGTERM');holder.kill('SIGTERM');await Promise.all([gone(ui),gone(holder)]);

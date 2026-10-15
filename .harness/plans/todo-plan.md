@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 153,
+  "plan_revision": 155,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1289,8 +1289,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T012",
@@ -1302,7 +1302,11 @@
       "functional_paths": [
         "tests/backend-end-to-end.test.mjs",
         "tests/electron-smoke.mjs",
-        ".dependency-cruiser.cjs"
+        ".dependency-cruiser.cjs",
+        "src/backend/main.mjs",
+        "src/frontend/desktop/client.mjs",
+        "tests/backend-launcher.test.mjs",
+        "tests/backend-upgrade.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
@@ -1355,7 +1359,17 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/acceptance/backend-independence.md",
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/main.mjs",
+        "src/frontend/desktop/client.mjs",
+        "tests/backend-end-to-end.test.mjs",
+        "tests/backend-launcher.test.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1645,7 +1659,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 153
+Revision: 155
 
 ## Цель
 
@@ -1751,10 +1765,10 @@ Revision: 153
   - Файлы: package.json, package-lock.json, scripts/release-all.mjs, scripts/release-package.mjs, scripts/release-mac.mjs, scripts/release-linux.mjs, scripts/verify-windows-package.mjs, scripts/verify-linux-package.mjs, scripts/check-installed-release.mjs, scripts/stage-vendor-notices.mjs, tests/release-all.test.mjs, tests/release-mac.test.mjs, tests/release-linux.test.mjs, tests/backend-upgrade.test.mjs, .dependency-cruiser.cjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/server.mjs, src/contracts/backend.mjs, src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/main.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T010
-- [TODO] T012: Проверить общий результат и убрать временные пути — Ожидает
-  - Git Commit: [PENDING] feat: Проверить общий результат и убрать временные пути
+- [DONE] T012: Проверить общий результат и убрать временные пути — Завершено
+  - Git Commit: [DONE] feat: Проверить общий результат и убрать временные пути
   - Reference: workflow-pilot-backend-independence / T012 / implementation
-  - Файлы: tests/backend-end-to-end.test.mjs, tests/electron-smoke.mjs, .dependency-cruiser.cjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/acceptance/backend-independence.md
+  - Файлы: tests/backend-end-to-end.test.mjs, tests/electron-smoke.mjs, .dependency-cruiser.cjs, src/backend/main.mjs, src/frontend/desktop/client.mjs, tests/backend-launcher.test.mjs, tests/backend-upgrade.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/acceptance/backend-independence.md
   - Параллельность: исключительное выполнение
   - Зависимости: T011
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

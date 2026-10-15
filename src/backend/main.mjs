@@ -24,7 +24,9 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
   // Every ordinary exit stops own services first, then releases the profile.
   // The owner record is removed only by the process that proved ownership.
   const shutdown=()=>{
-    stopping??=(port?port.stop():Promise.resolve(desktop?.dispose())).catch(()=>{}).finally(()=>{stopper?.dispose();statusMenu?.destroy();app.exit(0);});
+    // The profile lock is released explicitly so the next owner never sees a leftover lock file.
+    stopping??=(port?port.stop():Promise.resolve(desktop?.dispose())).catch(()=>{})
+      .finally(()=>{stopper?.dispose();statusMenu?.destroy();app.releaseSingleInstanceLock();app.exit(0);});
     return stopping;
   };
   app.on('before-quit',event=>{if(port){event.preventDefault();void shutdown();}});
@@ -73,9 +75,14 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
         const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
         spawn(process.execPath,args,{detached:true,stdio:'ignore',env}).unref();
       };
-      app.on('activate',openClient);
-      // Another launch of this profile (any version) reaches the running backend.
-      app.on('second-instance',openClient);
+      // macOS also emits activate for the backend's own launch; only a later
+      // reopen of the app opens a client. Fixtures never react to OS events.
+      if(!fixtureRoot) {
+        const ready=Date.now();
+        app.on('activate',()=>{if(Date.now()-ready>3000)openClient();});
+        // Another launch of this profile (any version) reaches the running backend.
+        app.on('second-instance',openClient);
+      }
       if(!fixtureRoot) {
         statusMenu=createStatusMenu({Tray:electron.Tray,Menu:electron.Menu,nativeImage:electron.nativeImage,onOpen:openClient,
           onCancelStop:()=>stopper.cancel(),

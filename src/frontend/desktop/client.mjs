@@ -46,7 +46,19 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   // control: this window holds the writer lease; stale: the backend is not reachable.
   let control = false, stale = false, renewTimer = null, watchdog = null, descriptorSeen = null, incompatible = null;
   const viewers = new Map();
-  const report = (code, message) => { uiState = { ...(uiState ?? {}), startupError: { code, message } }; sidebar?.webContents.send('pilot:state-changed', uiState); };
+  // Without a backend the sidebar still renders a complete, empty state with the reason.
+  const unavailableState = error => ({ projects: [], executorRecovery: [], archives: [], settings: null, doctor: null,
+    parallelExecution: {}, execution: { phase: 'idle', assignments: [], commands: [], error: null },
+    conversationRecovery: { phase: 'idle', message: '', canRetry: false }, autoPlan: { enabled: false, phase: 'idle', message: '' },
+    planReview: {}, selected: null, context: { phase: 'selected', servicesReady: false, messageSent: false }, contextPreparation: { busy: false },
+    runtimeFolder: '', platform: process.platform, pluginLaunch: null,
+    localRuntime: { label: '', chatgptChannel: 'secure-tunnel', service: null, vps: null }, startup: null, theme,
+    hideToolCalls: true, sidebarWidth, sidebarMinWidth: 312, pageLoading: false, startupError: error, storageError: false,
+    setup: null, workspaceHealth: null, version: app.getVersion(), fixture });
+  const report = (code, message) => {
+    uiState = uiState ? { ...uiState, startupError: { code, message } } : unavailableState({ code, message });
+    sidebar?.webContents.send('pilot:state-changed', uiState);
+  };
 
   const descriptorFile = path.join(dataDir, '.backend-host', 'service.json');
   const liveDescriptor = () => { const value = readDescriptor(descriptorFile); return value && alive(value.pid) ? value : null; };
@@ -61,13 +73,14 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
       const args = [...(app.isPackaged ? [] : [app.getAppPath()]), '--backend-host', ...(backendRoot ? ['--backend-fixture-root=' + backendRoot] : [])];
       const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
       const child = spawn(process.execPath, args, { detached: true, stdio: 'ignore', env });
-      let exitCode = null;
-      child.once('exit', code => { exitCode = code; });
+      let exitCode = null, exitedAt = 0;
+      child.once('exit', code => { exitCode = code; exitedAt = Date.now(); });
       child.unref();
       for (let attempt = 0; attempt < 300 && !descriptor; attempt++) {
         await settle(100);
         // Exit 2: the profile lock is held by another running copy (for example an earlier release).
-        if (exitCode === 2 && !liveDescriptor()) throw Object.assign(new Error('Профиль Workflow Pilot занят другой запущенной копией (возможно, предыдущей версии). Закройте её и откройте Workflow Pilot снова.'), { code: 'BACKEND_OWNER_CONFLICT' });
+        // A concurrent launcher may own the profile and publish its descriptor a moment later.
+        if (exitCode === 2 && Date.now() - exitedAt > 5000 && !liveDescriptor()) throw Object.assign(new Error('Профиль Workflow Pilot занят другой запущенной копией (возможно, предыдущей версии). Закройте её и откройте Workflow Pilot снова.'), { code: 'BACKEND_OWNER_CONFLICT' });
         const candidate = readDescriptor(descriptorFile);
         descriptor = candidate && alive(candidate.pid) ? candidate : null;
       }
@@ -359,7 +372,8 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     catch (error) {
       stale = true;
       pageView.webContents.send('browser:status', { message: 'Нет связи с backend Workflow Pilot: ' + error.message });
-      report(error.code ?? 'BACKEND_UNAVAILABLE', 'Нет связи с backend Workflow Pilot. Повторите запуск.');
+      report(error.code ?? 'BACKEND_UNAVAILABLE', error.code === 'BACKEND_OWNER_CONFLICT' ? error.message
+        : 'Нет связи с фоновой службой Workflow Pilot. Меню Workflow Pilot → «Запустить фоновую службу».');
     }
     if (fixture) {
       process.stdout.write(JSON.stringify({ clientReady: true, connected: !!connection, pid: process.pid }) + '\n');
