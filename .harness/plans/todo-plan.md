@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 117,
+  "plan_revision": 118,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -143,7 +143,7 @@
       },
       {
         "path": "docs/planning/workflow-pilot-backend-todo-draft.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
@@ -153,52 +153,52 @@
       },
       {
         "path": "docs/modules/desktop.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/browser.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/control.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/execution.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/release.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/workflow-execution.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/first-run-onboarding.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/chatgpt-plugin.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/linux.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/project-compatibility.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       }
     ],
@@ -243,7 +243,28 @@
         "Живые графические проверки выполняет пользователь; автоматические — только fixtures, без модельных ходов."
       ],
       "expected_commit_message": "feat: Проверить независимый браузер и выбрать транспорт",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/desktop.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/browser.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -285,7 +306,28 @@
         "Классифицированы plugin UI-мутации и агентские MCP-вызовы: отсутствие клиента не блокирует работу агента."
       ],
       "expected_commit_message": "feat: Закрепить контракт и границы",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/control.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/browser.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -330,7 +372,28 @@
         "Чужой владелец, повреждённые stores и незавершённая транзакция дают отказ без сброса данных."
       ],
       "expected_commit_message": "feat: Выделить самостоятельный backend host",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/desktop.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/control.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -375,7 +438,28 @@
         "Публичные DOM exports и staged observer сохранены."
       ],
       "expected_commit_message": "feat: Передать backend страницы и автоматизацию",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/browser.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/workflow-execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -417,7 +501,23 @@
         "Control остаётся единственным источником stores, Kit — плана."
       ],
       "expected_commit_message": "feat: Провести команды и состояние через API",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/control.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -462,7 +562,23 @@
         "Сохраняются draft/Stop/UNKNOWN; новые правила ручного вмешательства не вводятся."
       ],
       "expected_commit_message": "feat: Реализовать полный интерактив браузера",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/browser.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/desktop.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -518,7 +634,23 @@
         "Закрытие, Cmd+Q и Quit завершают только клиент; подписи меню поясняют поведение."
       ],
       "expected_commit_message": "feat: Перевести desktop в отдельный клиент",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/desktop.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/first-run-onboarding.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -566,7 +698,28 @@
         "Донорские службы/profile не меняются."
       ],
       "expected_commit_message": "feat: Сохранить MCP, туннель и плагин без frontend",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/chatgpt-plugin.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/workflow-execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -613,7 +766,28 @@
         "Живые системные действия выполняет пользователь; fixture не управляет его окнами."
       ],
       "expected_commit_message": "feat: Завершить launcher, значок и остановку",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/desktop.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/linux.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -656,7 +830,23 @@
         "UI обозначает устаревание и блокирует непроверяемые изменения."
       ],
       "expected_commit_message": "feat: Проверить reconnect и управляющее право",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/control.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/workflow-execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -708,7 +898,28 @@
         "Paths/executable bits/symlinks/signature/resource lookup проверены fixtures."
       ],
       "expected_commit_message": "feat: Подготовить upgrade и поставку процессов",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/release.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/linux.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/project-compatibility.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -756,7 +967,28 @@
         "Пользователю передан сценарий Mac с меню, файлами, clipboard и reconnect."
       ],
       "expected_commit_message": "feat: Проверить общий результат и убрать временные пути",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/control.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/workflow-execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -814,7 +1046,18 @@
         "DOCS завершена до sourceCommit и production build."
       ],
       "expected_commit_message": "docs: Актуализировать документы выпуска",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/release.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -850,7 +1093,23 @@
         "Native/clean ограничения названы фактически."
       ],
       "expected_commit_message": "release: Собрать новый выпуск трёх ОС",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/release.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/linux.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -886,7 +1145,23 @@
         "Установка не объявлена живой приёмкой."
       ],
       "expected_commit_message": "release: Установить готовый macOS выпуск",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/release.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/project-compatibility.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     },
     {
       "implementation_status": "TODO",
@@ -922,7 +1197,18 @@
         "План READY_FOR_ACCEPTANCE; закрытие только по прямому поручению."
       ],
       "expected_commit_message": "release: Опубликовать и сверить GitHub Release",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/modules/release.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
     }
   ],
   "blocked_reason": null,
@@ -941,6 +1227,11 @@
       "id": "e8b2493e-ae40-448d-a4c8-ffb062a4a012",
       "text": "Пользователь поручил подготовить и передать на Claude Review два черновика. Это разрешение на ревью, не на публикацию активного плана, реализацию или выпуск.",
       "recorded_at": "2026-10-15T12:56:20.016Z"
+    },
+    {
+      "id": "recovery-context-by-task",
+      "recorded_at": "2026-10-15T13:12:44Z",
+      "text": "По поручению пользователя разгрузить recovery: общими оставить спецификацию и OVERVIEW, повторный to-do передавать ссылкой, документацию модулей подключать только для соответствующих задач. Задачи, критерии, зависимости и проверки не менять; реализацию не начинать. Документы по ссылкам читаются по необходимости, включая DOCS и общую регрессию."
     }
   ],
   "parallel_allowed": false,
@@ -958,7 +1249,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 117
+Revision: 118
 
 ## Цель
 
