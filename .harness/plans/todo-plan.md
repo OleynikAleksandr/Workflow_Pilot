@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 122,
+  "plan_revision": 123,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -290,6 +290,44 @@
       ]
     },
     {
+      "id": "T001R",
+      "title": "Автоматически подбирать Retina-плотность кадра для проверочного клиента",
+      "why": "Устранить замеченную пользователем размытость raster-viewer до согласования транспорта, не трогая реальный backend и ChatGPT.",
+      "dependencies": [
+        "T001"
+      ],
+      "functional_paths": [
+        "tests/fixtures/backend-browser-probe.mjs",
+        "tests/fixtures/backend-browser-viewer.mjs",
+        "tests/fixtures/backend-browser-viewer.html",
+        "tests/backend-browser-prototype.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/workflow-pilot-backend-t001-evidence.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Offscreen backend выбирает плотность кадров по экранным scaleFactor, без ручной цифры и без изменения логического viewport.",
+        "Отдельный viewer определяет масштаб собственного монитора и отображает серверный кадр с корректными координатами клика; подключение/разрыв не перезагружает страницу.",
+        "Автоматизированный fixture проверяет реальный размер PNG при разных доступных масштабах, Retina-координаты, прежние операции и ограничения мониторинга; пользователь повторяет живое сравнение чёткости.",
+        "После завершения текущий план возвращается в BLOCKED до пользовательской приёмки транспорта; T002 не запускается."
+      ],
+      "expected_commit_message": "test: Автонастройка чёткости независимого браузера под Retina",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "T001R",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -298,7 +336,8 @@
         "role": "implementation"
       },
       "dependencies": [
-        "T001"
+        "T001",
+        "T001R"
       ],
       "functional_paths": [
         "src/contracts/backend.mjs",
@@ -1023,6 +1062,7 @@
       },
       "dependencies": [
         "T001",
+        "T001R",
         "T002",
         "T003",
         "T004",
@@ -1273,7 +1313,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 122
+Revision: 123
 
 ## Цель
 
@@ -1307,12 +1347,18 @@ Revision: 122
   - Файлы: tests/fixtures/backend-browser-page.html, tests/backend-browser-prototype.test.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-probe.mjs, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
+- [TODO] T001R: Автоматически подбирать Retina-плотность кадра для проверочного клиента — Ожидает
+  - Git Commit: [PENDING] test: Автонастройка чёткости независимого браузера под Retina
+  - Reference: workflow-pilot-backend-independence / T001R / implementation
+  - Файлы: tests/fixtures/backend-browser-probe.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-viewer.html, tests/backend-browser-prototype.test.mjs, docs/planning/workflow-pilot-backend-t001-evidence.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T001
 - [TODO] T002: Закрепить контракт и границы — Ожидает
   - Git Commit: [PENDING] feat: Закрепить контракт и границы
   - Reference: workflow-pilot-backend-independence / T002 / implementation
   - Файлы: src/contracts/backend.mjs, src/contracts/browser-presentation.mjs, src/backend/protocol.mjs, tests/backend-protocol.test.mjs, .dependency-cruiser.cjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T001
+  - Зависимости: T001, T001R
 - [TODO] T003: Выделить самостоятельный backend host — Ожидает
   - Git Commit: [PENDING] feat: Выделить самостоятельный backend host
   - Reference: workflow-pilot-backend-independence / T003 / implementation
@@ -1378,7 +1424,7 @@ Revision: 122
   - Reference: workflow-pilot-backend-independence / DOCS / implementation
   - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/control.md, docs/modules/execution.md, docs/modules/workflow-execution.md, docs/modules/first-run-onboarding.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/linux.md, docs/modules/project-compatibility.md, docs/acceptance/backend-independence.md, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012
+  - Зависимости: T001, T001R, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012
 - [TODO] T013: Собрать новый выпуск трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать новый выпуск трёх ОС
   - Reference: workflow-pilot-backend-independence / T013 / implementation
