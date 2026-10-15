@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 132,
+  "plan_revision": 133,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -992,7 +992,8 @@
         "Installer не заменяет runtime под живым backend: реализована проверенная стратегия версии/отложенного переключения.",
         "Несовместимость видна; нет убийства процесса или скрытого fallback.",
         "Откат совместим с состоянием и не затирает новую работу.",
-        "Paths/executable bits/symlinks/signature/resource lookup проверены fixtures."
+        "Paths/executable bits/symlinks/signature/resource lookup проверены fixtures.",
+        "Packaged backend отвергает тестовые флаги (--backend-fixture-root и подобные): не загружает fixture, не печатает token и не меняет профиль."
       ],
       "expected_commit_message": "feat: Подготовить upgrade и поставку процессов",
       "parallel_safe": false,
@@ -1353,7 +1354,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 132
+Revision: 133
 
 ## Цель
 
