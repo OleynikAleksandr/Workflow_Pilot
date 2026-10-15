@@ -96,3 +96,11 @@ export function assertNoBackendOwner(dataDir) {
   const stat=fs.lstatSync(file,{throwIfNoEntry:false});
   if(stat)throw identityError('BACKEND_OWNER_CONFLICT','Backend уже владеет профилем; Desktop не открывает второй экземпляр.');
 }
+
+// The product profile opens only after T009 adds release on quit and recovery
+// of a stale owner. Until then a quit or crash would leave an owner record that
+// blocks Desktop, so the independent backend runs on isolated test profiles.
+export function assertBackendProfileAllowed({fixtureRoot=null}={}) {
+  if(typeof fixtureRoot==='string'&&fixtureRoot)return;
+  throw identityError('BACKEND_PROFILE_NOT_ENABLED','Независимый backend пока запускается только на тестовом профиле.');
+}

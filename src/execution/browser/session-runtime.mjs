@@ -15,14 +15,14 @@ export class BrowserSessions {
     if (typeof id !== 'string' || !id) throw new TypeError('BROWSER_SESSION_ID_REQUIRED');
     if (this.#records.has(id)) return this.#records.get(id).port;
     const contents = this.host.create(id), source = new PageStateSource();
-    const record = { id, contents, source, loading: false, epoch: 0, disposed: false,
+    const record = { id, contents, source, loading: false, epoch: 0, disposed: false, crashed: false,
       listeners: new Set(), cleanups: [] };
     let composer;
     try { composer = this.createComposer(contents, { pageState: source }); }
     catch (error) { source.dispose(); this.host.close(id); throw error; }
     record.composer = composer;
     const snapshot = () => ({ id, loading: record.loading, epoch: record.epoch, disposed: record.disposed,
-      url: contents.isDestroyed() ? '' : contents.getURL(), inFlight: composer.inFlight });
+      crashed: record.crashed, url: contents.isDestroyed() ? '' : contents.getURL(), inFlight: composer.inFlight });
     const emit = (type, fields = {}) => {
       const event = { type, ...fields, snapshot: snapshot() };
       for (const listener of [...record.listeners]) listener(structuredClone(event));
@@ -90,10 +90,11 @@ export class BrowserSessions {
           record.loading = true; emit('navigation-start');
         }
       });
-      on('did-finish-load', () => { record.loading = false; emit('loaded'); });
+      on('did-finish-load', () => { record.loading = false; record.crashed = false; emit('loaded'); });
       on('did-navigate-in-page', () => emit('navigated'));
+      // A lost renderer is a page failure. Viewer changes never emit page events.
       on('render-process-gone', () => {
-        record.loading = false; record.epoch++;
+        record.loading = false; record.crashed = true; record.epoch++;
         emit('crashed', { error: { code: 'RENDER_PROCESS_GONE',
           message: 'Страница ChatGPT закрылась. Повторите открытие страницы.' } });
       });

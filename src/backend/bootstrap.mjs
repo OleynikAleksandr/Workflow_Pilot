@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import {ControlFacade} from '../control/facade.mjs';
-import {ExecutionFacade,nodeExecutableCandidates} from '../execution/facade.mjs';
+import {ExecutionFacade,nodeExecutableCandidates,chatGPTEntrypoint,decorateBackendPage,ChromiumDiagnostics} from '../execution/facade.mjs';
 import {journal} from '@webpilot/workflow-kit/lib/validate';
 
 // The same product composition is used by legacy Desktop during migration and
@@ -13,7 +13,11 @@ export function createBackendComposition({execution=new ExecutionFacade()}={}) {
   });
 }
 
-export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,execution=new ExecutionFacade()}) {
+const pageError=error=>({code:typeof error?.code==='string'?error.code:'BACKEND_PAGE_ERROR',
+  message:typeof error?.message==='string'?error.message:'Страница недоступна.'});
+
+export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,execution=new ExecutionFacade(),
+  browser=null,diagnostics=true}) {
   // Never follow an existing file link out of our own product profile.
   for(const name of ['settings.json','workspaces.json']) {
     if(fs.lstatSync(path.join(dataDir,name),{throwIfNoEntry:false})?.isSymbolicLink())
@@ -30,15 +34,43 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
     resourceDir:resourcesDir??path.join(sourceDir,'../resources'),nodeCandidates:nodeExecutableCandidates(),
   });
   control.configureContext({getRuntime:()=>execution.runtime,onChange:()=>{}});
+  // The selected session is the primary page for workflow. It is chosen by
+  // Control, never by a window, a viewer or a client connection.
   const visible=()=>sessions?.visible;
   const controller=()=>visible()?.controller??null;
-  const pageReady=()=>Boolean(visible()?.ready && controller() && !controller().composer?.inFlight);
+  const pageReady=()=>Boolean(visible()?.ready && !visible().loading && controller() && !controller().composer?.inFlight);
   workflow=control.configureWorkflow({getController:controller,available:pageReady,
-    contextAvailable:()=>Boolean(visible()?.ready&&controller()),onChange:()=>{},report:()=>{},save:overrides=>settings.save(overrides)});
-  // The browser ports and workflow are owned here, not by window/sidebarReady.
-  // T004 supplies page-controller decoration and restores live sessions.
-  sessions=control.attachSessions({presentation:{show:()=>{},hide:()=>{}},onChange:()=>{},
-    onPage:(record,event)=>workflow.observePage(event,record),onError:()=>{}});
+    contextAvailable:()=>Boolean(visible()?.ready&&!visible().loading&&controller()),onChange:()=>{},report:()=>{},save:overrides=>settings.save(overrides)});
+  if(browser)execution.attachBrowser(browser);
+  const diagnosticsFile=path.join(dataDir,'diagnostics','chromium-events.jsonl');
+  const decorate=record=>{
+    workflow.configurePrimary(record);
+    record.controller.canSendContext=project=>!project.assignmentId
+      ||workflow.projectAutoPlan.enabled(project.parentWorkspace,project.parentScopeId);
+    const contents=browser.host.view(record.key).webContents;
+    const page=decorateBackendPage(contents,{colors:settings.chatColors,hideToolCalls:()=>settings.hideToolCalls});
+    record.colors=page.colors;
+    if(diagnostics) {
+      record.diagnostics=new ChromiumDiagnostics(contents,{file:diagnosticsFile,
+        owner:()=>({workspace:record.identity?.workspace,sessionId:record.identity?.sessionId}),
+        onConversationRateLimit:(id,seconds)=>record.recovery.rateLimited(id,seconds)});
+      void record.diagnostics.start({platform:process.platform,electron:process.versions.electron,
+        chromium:process.versions.chrome}).catch(()=>{});
+      record.browser.setDiagnostic(({event,...fields})=>record.diagnostics.log.record('composer',event,{sessionId:record.identity?.sessionId??null,...fields}));
+    }
+    return ()=>{page.dispose();void record.diagnostics?.stop().catch(()=>{});};
+  };
+  sessions=control.attachSessions({presentation:browser?{show:id=>browser.host.show(id),hide:()=>browser.host.hide()}:{show:()=>{},hide:()=>{}},
+    onChange:record=>workflow.sessionChanged(record),
+    onPage:(record,event)=>{
+      if(!event.reset) {
+        record.diagnostics?.observePage(event.state);
+        if(!record.loading)sessions.observeManualConversation(event.state,record);
+      }
+      workflow.observePage(event,record);
+    },
+    onError:(record,error)=>{record.diagnostics?.recordObserverFailure(error?.code);record.error=pageError(error);},
+    decorate:browser?decorate:undefined});
   workflow.attachSessions(sessions);
   try{workflow.restore(await settings.load());}
   catch(error){if(error.code!=='ENOENT')throw error;workflow.restore({});}
@@ -49,8 +81,53 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
     if(journal(workspace))throw Object.assign(new Error('Kit transaction requires recovery before backend starts.'),
       {code:'BACKEND_KIT_TRANSACTION_PENDING'});
   }
-  return Object.freeze({control,execution,workflow,settings,setup,sessions,dispose:async()=>{
-    workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
-    workflow.execution.dispose();sessions.dispose();await execution.dispose();
-  }});
+  const pages=createBackendPages({sessions,setup,store:control.projects,host:browser?.host??null});
+  return Object.freeze({control,execution,workflow,settings,setup,sessions,pages,
+    // Pages of AutoPlan and parallel work come back first; then the saved selection.
+    restore:async()=>{
+      workflow.restoreBackground();
+      const selected=control.projects.selected();
+      if(selected&&!selected.external&&!selected.archivedAt&&!selected.sessionArchivedAt)await pages.select(selected);
+    },
+    dispose:async()=>{
+      workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
+      workflow.execution.dispose();sessions.dispose();await execution.dispose();
+    }});
+}
+
+// Page addressing for viewers. A viewer never selects, reloads or releases a
+// page; its absence leaves the page, observer, waits and automation running.
+export function createBackendPages({sessions,setup,store,host}) {
+  const record=key=>sessions.all().find(item=>item.key===key&&!item.disposed);
+  const required=key=>{
+    const found=record(key);
+    if(!found||!host)throw Object.assign(new Error('Страница не найдена.'),{code:'SESSION_RUNTIME_RELEASED'});
+    return found;
+  };
+  return Object.freeze({
+    async select(project) {
+      if(!project||project.external)throw Object.assign(new Error('Сессия недоступна backend.'),{code:'EXTERNAL_SESSION'});
+      const current=store.project(project.workspace,project.sessionId)??project;
+      const page=sessions.ensure(current);sessions.show(page);
+      const epoch=++page.readinessEpoch;
+      // Readiness is project-specific; it never depends on a window or viewer.
+      const readiness=Promise.resolve().then(()=>setup.ready(current.workspace)).then(result=>result?.ready===true,()=>false);
+      await sessions.navigate(page,current.chatUrl??chatGPTEntrypoint(current.experience),{freshDraft:!current.chatUrl});
+      const ready=await readiness;
+      if(page.disposed||page.readinessEpoch!==epoch)return page.key;
+      page.ready=ready;
+      if(ready)sessions.tick(page);else page.controller.cancel();
+      return page.key;
+    },
+    attachViewer:key=>{required(key);return host.attachViewer(key);},
+    detachViewer:viewerId=>host?.detachViewer(viewerId)??false,
+    list:()=>sessions.all().filter(item=>!item.disposed).map(item=>{
+      const snapshot=item.browser.snapshot();
+      return {key:item.key,workspace:item.identity?.workspace??null,sessionId:item.identity?.sessionId??null,
+        assignmentId:item.identity?.assignmentId??null,taskId:item.identity?.taskId??null,
+        url:snapshot.url,epoch:snapshot.epoch,loading:snapshot.loading,crashed:snapshot.crashed,ready:item.ready,
+        selected:sessions.visible===item,viewers:host?.viewers(item.key)??0,
+        documentId:item.pageState.current?.documentId??null,error:item.error?structuredClone(item.error):null};
+    }),
+  });
 }

@@ -1,13 +1,14 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {configureBackendIdentity,claimBackendIdentity} from './identity.mjs';
+import {configureBackendIdentity,claimBackendIdentity,assertBackendProfileAllowed} from './identity.mjs';
 import {initializeBackendServices} from './bootstrap.mjs';
-import {startBackendPort,createBackendBrowserHost} from './lifecycle.mjs';
+import {startBackendPort,installFixtureChat} from './lifecycle.mjs';
+import {BackendBrowserHost} from '../execution/facade.mjs';
 
 export function startBackend(electron,{fixtureRoot=null}={}) {
   const {app}=electron;
   let identity;
-  try{identity=configureBackendIdentity(app,{testRoot:fixtureRoot});}
+  try{assertBackendProfileAllowed({fixtureRoot});identity=configureBackendIdentity(app,{testRoot:fixtureRoot});}
   catch(error){process.stderr.write(JSON.stringify({error:error.code??'BACKEND_IDENTITY_FAILED'})+'\n');app.exit(1);return;}
   if(!app.requestSingleInstanceLock()){
     process.stderr.write(JSON.stringify({error:'BACKEND_OWNER_CONFLICT'})+'\n');
@@ -20,14 +21,18 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
     let services,port;
     try {
       const sourceDir=fileURLToPath(new URL('../',import.meta.url));
-      services=await initializeBackendServices({dataDir:identity.dataDir,sourceDir,
-        resourcesDir:app.isPackaged?path.join(process.resourcesPath,'resources'):path.join(sourceDir,'../resources')});
       const preload=app.isPackaged?path.join(process.resourcesPath,'resources/chatgpt-page-observer-preload.cjs')
         :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs');
-      services.execution.attachBrowser({host:createBackendBrowserHost({electron,partition:identity.partition,preload}),ipc:electron.ipcMain});
-      port=await startBackendPort({identity,claim,services,electron,fixtureRoot});
+      if(fixtureRoot)await installFixtureChat(electron.session.fromPartition(identity.partition));
+      const host=new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,screen:electron.screen,partition:identity.partition,preload});
+      services=await initializeBackendServices({dataDir:identity.dataDir,sourceDir,
+        resourcesDir:app.isPackaged?path.join(process.resourcesPath,'resources'):path.join(sourceDir,'../resources'),
+        browser:{host,ipc:electron.ipcMain}});
+      port=await startBackendPort({claim,services,host,fixtureRoot});
+      // A page that cannot open is recorded on its session; the backend stays up.
+      await services.restore().catch(()=>{});
     }catch(error){
-      try{await services?.dispose();}finally{claim.release();}
+      try{await (port?port.stop():services?.dispose());}finally{claim.release();}
       throw error;
     }
     if(fixtureRoot){

@@ -8,6 +8,8 @@ export { desktopFiles, exists } from './files/adapter.mjs';
 export { ProjectInputWatch, ChildCommandWatches } from './files/project-input-watch.mjs';
 export { currentBootIdentity, isProcessDead } from './commands/activity-probe.mjs';
 export { chatGPTEntrypoint } from './browser/chatgpt-experience.mjs';
+export { BackendBrowserHost, decorateBackendPage } from './browser/backend-host.mjs';
+export { ChromiumDiagnostics } from './browser/diagnostics.mjs';
 export { executeFile } from './commands/service.mjs';
 export { diagnosticFiles, queueDiagnosticFile } from './files/diagnostics.mjs';
 export { executableCandidateAllowed, nodeExecutableCandidates } from './platform/paths.mjs';
