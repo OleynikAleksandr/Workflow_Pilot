@@ -4,6 +4,8 @@ import {BACKEND_API_VERSION} from '../contracts/backend.mjs';
 import {startBackendServer} from './server.mjs';
 import {createBackendEvents} from './events.mjs';
 import {openOperationJournal,createBackendOperations,backendCatalog,backendPublicState} from './operations.mjs';
+import {createTransfers} from './transfers.mjs';
+import {createPresentationRoutes} from '../execution/facade.mjs';
 
 const FIXTURE_PAGE=new URL('../../tests/fixtures/backend-browser-page.html',import.meta.url);
 const FIXTURE_ENTRY='https://chatgpt.com/fixture-entry';
@@ -39,7 +41,9 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
     // A crashed renderer never answers; the fixture probe is bounded.
     let timer;
     const live=page.browser.snapshot().crashed||contents.isCrashed()?null:await Promise.race([
-      contents.executeJavaScript('({bootId:fixtureBootId,ticks:fixtureTicks})').catch(()=>null),
+      contents.executeJavaScript(`({bootId:fixtureBootId,ticks:fixtureTicks,draft:document.querySelector('#draft')?.value??'',
+        menuOpen:!document.querySelector('#menu')?.hidden,selectedFile:document.querySelector('#selected-file')?.textContent??'',
+        compositions:window.fixtureCompositions??[],mouseUps:window.fixtureMouseUps??0,keyUps:window.fixtureKeyUps??[]})`).catch(()=>null),
       new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1000);})]).finally(()=>clearTimeout(timer));
     return {...entry,webContentsId:contents.id,page:live};
   };
@@ -66,6 +70,13 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
       const {viewerId}=JSON.parse(await readBody(req)||'{}');
       return respond(res,200,{detached:services.pages.detachViewer(viewerId)});
     }
+    if(req.method==='POST'&&req.url==='/v1/fixture/rect') {
+      const {selector}=JSON.parse(await readBody(req)||'{}');
+      if(!['#action','#draft','#popup','#file','#download','#menu'].includes(selector))return respond(res,400,{error:{code:'BACKEND_MESSAGE_INVALID'}});
+      const page=await fixturePage();
+      return respond(res,200,{browserSessionId:host.browserSessionId(page.key),
+        ...await contentsOf(page).executeJavaScript(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`)});
+    }
     if(req.method==='POST'&&req.url==='/v1/fixture/crash') {
       const page=await fixturePage();contentsOf(page).forcefullyCrashRenderer();
       return respond(res,200,{key:page.key});
@@ -75,24 +86,33 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
   const journal=openOperationJournal(path.join(identity.ownerDir,'operations.jsonl'));
   const events=createBackendEvents({bootGeneration:claim.generation,state:()=>backendPublicState(services)});
   services.onChange(events.changed);
+  const transfers=createTransfers({directory:path.join(identity.ownerDir,'transfers'),emit:events.browser});
+  host.emit=events.browser;host.onDownload=transfers.download;
+  let presentation;
   const operations=createBackendOperations({bootGeneration:claim.generation,journal,catalog:backendCatalog(services),
-    onOperation:view=>{events.operation(view);events.changed();}});
+    onOperation:view=>{events.operation(view);events.changed();},onLease:()=>{void presentation?.leaseChanged();}});
+  presentation=createPresentationRoutes({host,transfers,leaseGeneration:()=>operations.leaseGeneration});
+  const extra=async(req,res,url)=>{
+    if(fixtureRoot&&await fixtureRoute(req,res)!==false)return true;
+    return presentation.route(req,res,url);
+  };
   let server;
   try {
-    server=await startBackendServer({claim,operations,events,extra:fixtureRoot?fixtureRoute:null,
+    server=await startBackendServer({claim,operations,events,extra,
       status:()=>({apiVersion:BACKEND_API_VERSION,identity:'workflow-pilot',bootGeneration:claim.generation,readiness:'ready',
         projects:services.control.projects.snapshot().projects.length,
         browser:{connected:true,owner:'backend',fixtureAvailable:!!fixtureRoot}})});
-  }catch(error){services.onChange(null);events.close();throw error;}
+  }catch(error){services.onChange(null);host.emit=()=>{};host.onDownload=null;transfers.close();events.close();throw error;}
   try{claim.publish(server.port);}
   catch(error){await server.close();throw error;}
   let stopped=false;
   const stop=async()=>{
     if(stopped)return;stopped=true;
-    services.onChange(null);await server.close();
+    services.onChange(null);host.emit=()=>{};host.onDownload=null;await server.close();
     // Accepted operations finish or stay recorded before services go away.
     await operations.idle();
     await services.dispose();
+    transfers.close();
     claim.release();
   };
   return Object.freeze({port:server.port,stop});

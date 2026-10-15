@@ -11,10 +11,13 @@
   window.fixtureBootId=crypto.randomUUID();
   window.fixtureTicks=0;
   window.fixtureCompositions=[];
+  window.fixtureMouseUps=0;window.fixtureKeyUps=[];window.fixtureFocusClicks=0;
+  addEventListener('mouseup',()=>window.fixtureMouseUps++,true);
+  addEventListener('keyup',event=>window.fixtureKeyUps.push(event.key),true);
   for(const name of ['compositionstart','compositionupdate','compositionend'])document.getElementById('draft').addEventListener(name,event=>window.fixtureCompositions.push({name,data:event.data}));
   setInterval(()=>{window.fixtureTicks++;document.getElementById('counter').textContent=String(window.fixtureTicks)},100);
   document.getElementById('action').onclick=()=>document.getElementById('menu').hidden=!document.getElementById('menu').hidden;
-  document.getElementById('popup').onclick=()=>window.open('about:blank','fixture-popup','width=320,height=240');
+  document.getElementById('popup').onclick=()=>window.open(location.protocol==='https:'?location.origin+'/fixture-popup':'about:blank','fixture-popup','width=320,height=240');
   document.getElementById('file').onchange=event=>document.getElementById('selected-file').textContent=event.target.files[0]?.name||'';
   document.getElementById('download').onclick=()=>{
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['Результат проверки\n'],{type:'text/plain'}));

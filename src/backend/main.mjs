@@ -24,7 +24,8 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
       const preload=app.isPackaged?path.join(process.resourcesPath,'resources/chatgpt-page-observer-preload.cjs')
         :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs');
       if(fixtureRoot)await installFixtureChat(electron.session.fromPartition(identity.partition));
-      const host=new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,screen:electron.screen,partition:identity.partition,preload});
+      const host=new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,screen:electron.screen,partition:identity.partition,preload,
+        session:electron.session.fromPartition(identity.partition)});
       services=await initializeBackendServices({dataDir:identity.dataDir,sourceDir,
         resourcesDir:app.isPackaged?path.join(process.resourcesPath,'resources'):path.join(sourceDir,'../resources'),
         browser:{host,ipc:electron.ipcMain}});

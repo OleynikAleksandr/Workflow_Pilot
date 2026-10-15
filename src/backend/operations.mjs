@@ -161,7 +161,7 @@ const publicError=error=>{
 
 // Commands: validation, single-writer lease, durable acceptance, then effect.
 // An effect runs at most once per accepted record and outlives its connection.
-export function createBackendOperations({bootGeneration,journal,catalog,onOperation=()=>{},
+export function createBackendOperations({bootGeneration,journal,catalog,onOperation=()=>{},onLease=()=>{},
   limit=BACKEND_LIMITS.pendingCommands}) {
   let lease=null,leaseGeneration=0,pending=0,tail=Promise.resolve();
   const operationView=record=>validateOperation({operationId:record.operationId,requestId:record.requestId,
@@ -195,12 +195,12 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
     if(request.operation==='control.acquire') {
       exact(request.args,[]);
       // T010 adds expiry and explicit takeover; here the newest writer wins.
-      lease={generation:++leaseGeneration,bootGeneration};
+      lease={generation:++leaseGeneration,bootGeneration};onLease(lease.generation);
       return {requestId:request.requestId,status:'completed',value:{leaseGeneration:lease.generation}};
     }
     verifyControlLease(request,lease);
     if(request.operation==='control.release') {
-      exact(request.args,[]);lease=null;
+      exact(request.args,[]);lease=null;onLease(null);
       return {requestId:request.requestId,status:'completed',value:{released:true}};
     }
     if(!Object.hasOwn(catalog,request.operation))throw protocolError('BACKEND_OPERATION_NOT_AVAILABLE');

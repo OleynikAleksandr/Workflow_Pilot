@@ -365,6 +365,7 @@ export class ChromiumDiagnostics {
     this.lastAccountCheck = null;
     this.lastObserverError = null;
     this.attachedByUs = false;
+    this.listening = false;
     this.started = false;
     this.streamResponses = new Map();
     this.serviceResponses = new Map();
@@ -431,17 +432,16 @@ export class ChromiumDiagnostics {
   async #attachDebugger() {
     const debug = this.contents.debugger;
     try {
-      if (debug.isAttached()) {
-        this.log.record('cdp', 'attach-skipped', { reason: 'already-attached' });
-        return;
-      }
-      debug.attach('1.3');
-      this.attachedByUs = true;
+      // The backend presentation may already own the attachment; the session is
+      // shared, so diagnostics subscribe without taking or releasing it.
+      const shared = debug.isAttached();
+      if (!shared) { debug.attach('1.3'); this.attachedByUs = true; }
+      this.listening = true;
       debug.on('message', this.onDebuggerMessage);
       debug.on('detach', this.onDebuggerDetach);
       await Promise.all(['Network.enable', 'Page.enable', 'Log.enable'].map(command => debug.sendCommand(command)));
       await debug.sendCommand('Page.setLifecycleEventsEnabled', { enabled: true }).catch(() => {});
-      this.log.record('cdp', 'attached', { protocolVersion: '1.3' });
+      this.log.record('cdp', shared ? 'attach-shared' : 'attached', { protocolVersion: '1.3' });
     } catch (error) {
       this.log.record('cdp', 'attach-failed', { name: error?.name ?? 'Error', code: error?.code ?? null });
     }
@@ -624,9 +624,12 @@ export class ChromiumDiagnostics {
     for (const [name, handler] of this.handlers) this.contents.removeListener(name, handler);
     this.handlers = [];
     const debug = this.contents.debugger;
-    if (this.attachedByUs && debug.isAttached()) {
+    if (this.listening) {
       debug.removeListener('message', this.onDebuggerMessage);
       debug.removeListener('detach', this.onDebuggerDetach);
+      this.listening = false;
+    }
+    if (this.attachedByUs && debug.isAttached()) {
       try { debug.detach(); } catch {}
       this.attachedByUs = false;
     }

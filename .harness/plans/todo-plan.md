@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 137,
+  "plan_revision": 139,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -116,7 +116,8 @@
       "tests/fixtures/backend-browser-viewer-preload.cjs",
       "tests/fixtures/backend-browser-viewer.html",
       "tests/fixtures/backend-browser-viewer.mjs",
-      "tests/execution-architecture.test.mjs"
+      "tests/execution-architecture.test.mjs",
+      "src/execution/browser/diagnostics.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -646,8 +647,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T006",
@@ -664,7 +665,17 @@
         "src/backend/transfers.mjs",
         "src/contracts/browser-presentation.mjs",
         "tests/browser-presentation.test.mjs",
-        "tests/fixtures/backend-browser-page.html"
+        "tests/fixtures/backend-browser-page.html",
+        "src/backend/events.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/server.mjs",
+        "src/execution/browser/backend-host.mjs",
+        "src/execution/browser/diagnostics.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/client/connection.mjs",
+        "tests/backend-browser-lifecycle.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
@@ -704,7 +715,27 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/events.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/server.mjs",
+        "src/backend/transfers.mjs",
+        "src/execution/browser/backend-host.mjs",
+        "src/execution/browser/diagnostics.mjs",
+        "src/execution/browser/presentation/host.mjs",
+        "src/execution/browser/presentation/input.mjs",
+        "src/execution/browser/presentation/transport.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/client/browser-view.mjs",
+        "src/frontend/client/connection.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/browser-presentation.test.mjs",
+        "tests/fixtures/backend-browser-page.html"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1384,7 +1415,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 137
+Revision: 139
 
 ## Цель
 
@@ -1448,10 +1479,10 @@ Revision: 137
   - Файлы: src/backend/server.mjs, src/backend/operations.mjs, src/backend/events.mjs, src/frontend/client/connection.mjs, src/contracts/backend.mjs, tests/backend-api.test.mjs, src/backend/bootstrap.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [TODO] T006: Реализовать полный интерактив браузера — Ожидает
-  - Git Commit: [PENDING] feat: Реализовать полный интерактив браузера
+- [DONE] T006: Реализовать полный интерактив браузера — Завершено
+  - Git Commit: [DONE] feat: Реализовать полный интерактив браузера
   - Reference: workflow-pilot-backend-independence / T006 / implementation
-  - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/input.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/backend/transfers.mjs, src/contracts/browser-presentation.mjs, tests/browser-presentation.test.mjs, tests/fixtures/backend-browser-page.html, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/input.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/backend/transfers.mjs, src/contracts/browser-presentation.mjs, tests/browser-presentation.test.mjs, tests/fixtures/backend-browser-page.html, src/backend/events.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/backend/server.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/diagnostics.mjs, src/execution/facade.mjs, src/frontend/client/connection.mjs, tests/backend-browser-lifecycle.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T005
 - [TODO] T007: Перевести desktop в отдельный клиент — Ожидает

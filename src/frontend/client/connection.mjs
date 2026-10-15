@@ -15,6 +15,18 @@ export class BackendConnection {
     this.#base=`http://127.0.0.1:${port}`;this.#token=token;this.#fetch=fetch;this.#identity=identity;this.#randomId=randomId;
   }
   get bootGeneration(){return this.#handshake?.bootGeneration??null;}
+  // Authenticated request to this backend only; the token never enters a URL.
+  fetch(path,{method='GET',headers={},body,signal}={}) {
+    if(typeof path!=='string'||!path.startsWith('/v1/'))throw protocolError('BACKEND_ROUTE_NOT_FOUND');
+    return this.#fetch(this.#base+path,{method,body,signal,headers:{...headers,authorization:'Bearer '+this.#token}});
+  }
+  async json(path,{method='GET',body}={}) {
+    const response=await this.fetch(path,{method,body:body===undefined?undefined:JSON.stringify(body),
+      headers:body===undefined?{}:{'content-type':'application/json'}});
+    const value=await response.json().catch(()=>null);
+    if(!response.ok)throw remoteError(value?.error);
+    return value;
+  }
   get leaseGeneration(){return this.#lease;}
   async #request(path,{method='GET',body,signal}={}) {
     const response=await this.#fetch(this.#base+path,{method,signal,

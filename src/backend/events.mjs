@@ -43,8 +43,11 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
     stream.write(frame('snapshot',subscription.snapshot));
     return stream;
   }
+  const browserTypes=new Set(['document','file-chooser','page-opened','page-closed','download-ready','download-failed','presentation-error']);
   return Object.freeze({open,changed,
     operation:view=>log.publish('operation',view),
+    // Browser notifications carry ids and generations only, never page content.
+    browser:(type,data)=>{if(browserTypes.has(type))log.publish('browser.'+type,data);},
     snapshot:()=>log.snapshot(),
     get clients(){return streams.size;},
     close(){clearInterval(heartbeat);if(timer)clearTimeout(timer);for(const stream of [...streams])stream.close();},

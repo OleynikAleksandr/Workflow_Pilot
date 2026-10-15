@@ -46,7 +46,9 @@ test('backend host keeps a hidden offscreen page independent of its viewers',()=
   assert.equal(options.webPreferences.partition,'persist:workflow-pilot-chatgpt');
   assert.equal(options.webPreferences.preload,'/fixture/preload.cjs');
   assert.equal(options.webPreferences.sandbox,true);assert.equal(options.webPreferences.nodeIntegration,false);
-  assert.deepEqual(contents.openHandler({url:'https://chatgpt.com/popup'}),{action:'deny'});
+  assert.deepEqual(contents.openHandler({url:'http://example.invalid/popup'}),{action:'deny'});
+  const popup=contents.openHandler({url:'https://chatgpt.com/popup'});
+  assert.equal(popup.action,'allow');assert.equal(typeof popup.createWindow,'function','popups stay backend pages');
   let prevented=false;contents.emit('will-navigate',{preventDefault:()=>{prevented=true;}},'http://example.invalid/');
   assert.equal(prevented,true);
   assert.throws(()=>host.create('page-a'),{code:'BROWSER_HOST_CONFLICT'});
