@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 127,
+  "plan_revision": 129,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -115,7 +115,8 @@
       "tests/fixtures/backend-browser-probe.mjs",
       "tests/fixtures/backend-browser-viewer-preload.cjs",
       "tests/fixtures/backend-browser-viewer.html",
-      "tests/fixtures/backend-browser-viewer.mjs"
+      "tests/fixtures/backend-browser-viewer.mjs",
+      "tests/execution-architecture.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -335,8 +336,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T002",
@@ -351,11 +352,13 @@
         "src/contracts/browser-presentation.mjs",
         "src/backend/protocol.mjs",
         "tests/backend-protocol.test.mjs",
-        ".dependency-cruiser.cjs"
+        ".dependency-cruiser.cjs",
+        "tests/execution-architecture.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
-        "docs/planning/workflow-pilot-backend-todo-draft.md"
+        "docs/planning/workflow-pilot-backend-todo-draft.md",
+        "docs/planning/workflow-pilot-backend-t001-evidence.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -396,7 +399,17 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "docs/planning/workflow-pilot-backend-t001-evidence.md",
+        "src/backend/protocol.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/browser-presentation.mjs",
+        "tests/backend-protocol.test.mjs",
+        "tests/execution-architecture.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1325,7 +1338,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 127
+Revision: 129
 
 ## Цель
 
@@ -1365,10 +1378,10 @@ Revision: 127
   - Файлы: tests/fixtures/backend-browser-probe.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-viewer.html, tests/backend-browser-prototype.test.mjs, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T002: Закрепить контракт и границы — Ожидает
-  - Git Commit: [PENDING] feat: Закрепить контракт и границы
+- [DONE] T002: Закрепить контракт и границы — Завершено
+  - Git Commit: [DONE] feat: Закрепить контракт и границы
   - Reference: workflow-pilot-backend-independence / T002 / implementation
-  - Файлы: src/contracts/backend.mjs, src/contracts/browser-presentation.mjs, src/backend/protocol.mjs, tests/backend-protocol.test.mjs, .dependency-cruiser.cjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: src/contracts/backend.mjs, src/contracts/browser-presentation.mjs, src/backend/protocol.mjs, tests/backend-protocol.test.mjs, .dependency-cruiser.cjs, tests/execution-architecture.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T001R
 - [TODO] T003: Выделить самостоятельный backend host — Ожидает

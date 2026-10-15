@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 test('architecture gate rejects a real Execution to Control import and a new cycle', { timeout: 30000 }, async t => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workflow-pilot-boundary-'));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
-  for (const name of ['execution', 'control', 'contracts']) await fs.mkdir(path.join(directory, 'src', name), { recursive: true });
+  for (const name of ['execution', 'control', 'contracts','backend','frontend/client']) await fs.mkdir(path.join(directory, 'src', name), { recursive: true });
   const write = (name, text) => fs.writeFile(path.join(directory, 'src', name), text);
   await write('control/private.mjs', 'export const state = {};');
   await write('execution/a.mjs', "import '../control/private.mjs';");
@@ -34,4 +34,12 @@ test('architecture gate rejects a real Execution to Control import and a new cyc
   await write('auto-plan.mjs', 'export const legacy = true;');
   await write('main.mjs', "import './auto-plan.mjs';");
   await assert.rejects(check(), error => error.code === 1 && /main-only-starts-desktop/.test(error.stdout + error.stderr));
+  await write('main.mjs','export const entry = true;');
+  await write('backend/a.mjs',"import '../control/private.mjs';");
+  await assert.rejects(check(), error => error.code === 1 && /backend-uses-product-facades/.test(error.stdout + error.stderr));
+  await write('backend/a.mjs','export const backend = true;');
+  await write('frontend/client/a.mjs',"import '../../control/private.mjs';");
+  await assert.rejects(check(), error => error.code !== 0 && /network-client-is-unprivileged/.test(error.stdout + error.stderr));
+  await write('frontend/client/a.mjs','export const client = true;');
+  await check();
 });
