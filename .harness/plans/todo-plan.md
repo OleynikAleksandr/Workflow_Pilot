@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 131,
+  "plan_revision": 132,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -859,7 +859,8 @@
         "Stop переходит в draining: новых назначений нет, текущий ответ и инструменты могут закончиться.",
         "Ожидание/причина/отмена stop видны; нет автоматического kill по timeout.",
         "В безопасной точке остановлены только собственные службы, подтверждение проверено.",
-        "Живые системные действия выполняет пользователь; fixture не управляет его окнами."
+        "Живые системные действия выполняет пользователь; fixture не управляет его окнами.",
+        "Штатное завершение backend вне fixture (quit/SIGTERM/выход системы) освобождает owner.json и service.json; после crash/kill устаревший owner.json не блокирует Desktop/клиент навсегда: есть проверенный безопасный путь восстановления без потери незавершённой транзакции."
       ],
       "expected_commit_message": "feat: Завершить launcher, значок и остановку",
       "parallel_safe": false,
@@ -1352,7 +1353,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 131
+Revision: 132
 
 ## Цель
 
