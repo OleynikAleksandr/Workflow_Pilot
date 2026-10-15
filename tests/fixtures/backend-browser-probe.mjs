@@ -1,5 +1,5 @@
 // Disposable Chromium process: no user profile, ChatGPT, plugin or OS window control.
-import {app,BrowserWindow} from 'electron';
+import {app,BrowserWindow,screen} from 'electron';
 import {mkdtempSync,rmSync,writeFileSync,readFileSync} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +16,7 @@ let window,frames=0,lastFrame=0;
 let popupCount=0;
 let download;
 let server;
+let rasterScale=1;
 const token=randomBytes(24).toString('hex');
 const report=value=>process.stdout.write(JSON.stringify(value)+'\n');
 report({phase:'module-start',electron:process.versions.electron,ready:app.isReady()});
@@ -25,7 +26,10 @@ const state=async()=>window.webContents.executeJavaScript(`({bootId:fixtureBootI
 async function run() {
   await app.whenReady();
   report({phase:'app-ready'});
-  window=new BrowserWindow({show:false,width:900,height:700,webPreferences:{offscreen:true,backgroundThrottling:false,sandbox:true,nodeIntegration:false,contextIsolation:true}});
+  // The detached browser cannot change its raster density without recreating the
+  // WebContents. Render for the densest currently attached local display instead.
+  rasterScale=Math.max(1,...screen.getAllDisplays().map(display=>display.scaleFactor));
+  window=new BrowserWindow({show:false,width:900,height:700,webPreferences:{offscreen:{deviceScaleFactor:rasterScale},backgroundThrottling:false,sandbox:true,nodeIntegration:false,contextIsolation:true}});
   window.webContents.setWindowOpenHandler(()=>({action:'allow',overrideBrowserWindowOptions:{show:false}}));
   window.webContents.on('did-create-window',popup=>{popupCount++;popup.close();});
   window.webContents.session.on('will-download',(_event,item)=>{
@@ -39,7 +43,8 @@ async function run() {
     if(req.headers.host!==`127.0.0.1:${server.address().port}` || req.headers.authorization!==`Bearer ${token}` || req.headers.origin)return send(403,{error:'ACCESS_DENIED'});
     if(req.method==='POST' && req.url==='/frame') {
       const start=performance.now();const image=await window.webContents.capturePage();const png=image.toPNG();
-      res.writeHead(200,{'content-type':'image/png','content-length':png.length,'cache-control':'no-store','x-capture-ms':String(Math.round((performance.now()-start)*10)/10)});
+      res.writeHead(200,{'content-type':'image/png','content-length':png.length,'cache-control':'no-store','x-capture-ms':String(Math.round((performance.now()-start)*10)/10),
+        'x-logical-width':'900','x-logical-height':'700','x-raster-scale':String(rasterScale)});
       res.end(png);return;
     }
     if(req.method!=='POST'||req.url!=='/fixture')return send(404,{error:'NOT_FOUND'});
@@ -50,7 +55,7 @@ async function run() {
     }catch(error){send(400,{error:error.message});}
   });
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
-  report({ready:true,pid:process.pid,port:server.address().port,token});
+  report({ready:true,pid:process.pid,port:server.address().port,token,rasterScale,logicalSize:{width:900,height:700}});
   for await(const line of readline.createInterface({input:process.stdin,crlfDelay:Infinity})) {
     try {
       const command=JSON.parse(line);
@@ -60,7 +65,7 @@ async function run() {
   }
 }
 async function execute(command) {
-      if(command.op==='state')return {state:await state(),frames,lastFrame,popupCount};
+      if(command.op==='state')return {state:await state(),frames,lastFrame,popupCount,rasterScale};
       if(command.op==='metrics')return {cpu:process.getCPUUsage(),memory:await process.getProcessMemoryInfo(),frames,lastFrame};
       else if(command.op==='draft') {
         await window.webContents.executeJavaScript(`document.querySelector('#draft').value=${JSON.stringify(command.text)}`);

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 123,
+  "plan_revision": 125,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -318,14 +318,21 @@
         "После завершения текущий план возвращается в BLOCKED до пользовательской приёмки транспорта; T002 не запускается."
       ],
       "expected_commit_message": "test: Автонастройка чёткости независимого браузера под Retina",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T001R",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/workflow-pilot-backend-t001-evidence.md",
+        "tests/backend-browser-prototype.test.mjs",
+        "tests/fixtures/backend-browser-probe.mjs",
+        "tests/fixtures/backend-browser-viewer.html",
+        "tests/fixtures/backend-browser-viewer.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1313,7 +1320,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 123
+Revision: 125
 
 ## Цель
 
@@ -1347,8 +1354,8 @@ Revision: 123
   - Файлы: tests/fixtures/backend-browser-page.html, tests/backend-browser-prototype.test.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-probe.mjs, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T001R: Автоматически подбирать Retina-плотность кадра для проверочного клиента — Ожидает
-  - Git Commit: [PENDING] test: Автонастройка чёткости независимого браузера под Retina
+- [DONE] T001R: Автоматически подбирать Retina-плотность кадра для проверочного клиента — Завершено
+  - Git Commit: [DONE] test: Автонастройка чёткости независимого браузера под Retina
   - Reference: workflow-pilot-backend-independence / T001R / implementation
   - Файлы: tests/fixtures/backend-browser-probe.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-viewer.html, tests/backend-browser-prototype.test.mjs, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение

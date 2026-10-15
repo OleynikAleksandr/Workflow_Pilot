@@ -36,6 +36,7 @@ test('isolated offscreen Chromium retains document and timer across client reque
   }
   assert.equal(boot.ready,true);
   ({port,token}=boot);
+  assert.ok(boot.rasterScale>=1,'offscreen scale selected from detected monitors');
   const separateClient=async(op,text)=>{
     const {stdout}=await runClient(process.execPath,[path.join(here,'fixtures/backend-browser-client.mjs'),String(port),token,op,text??''],{timeout:10000});
     return JSON.parse(stdout);
@@ -71,12 +72,17 @@ test('isolated offscreen Chromium retains document and timer across client reque
   assert.equal(download.visible,false);
   const frame=await command({op:'frame'});
   assert.ok(frame.bytes>1000,'actual Chromium frame');
+  assert.equal(frame.width,Math.round(900*boot.rasterScale),'offscreen raster respects deviceScaleFactor');
+  assert.equal(frame.height,Math.round(700*boot.rasterScale));
   const point=await command({op:'rect',selector:'#action'});
   const viewer=JSON.parse((await runClient((await import('electron')).default,[path.join(here,'fixtures/backend-browser-viewer.mjs'),String(port),token,String(point.x),String(point.y)],{
     timeout:20000,env:{...env},maxBuffer:1024*1024})).stdout.trim().split('\n').at(-1));
   assert.equal(viewer.fatal,undefined,JSON.stringify(viewer));
   assert.equal(viewer.visible,false);
-  assert.deepEqual(viewer.decoded,{width:900,height:700});
+  assert.deepEqual(viewer.decoded,{width:frame.width,height:frame.height,logicalWidth:900,logicalHeight:700,
+    rasterScale:boot.rasterScale,clientScale:viewer.clientScale});
+  assert.ok(viewer.clientScale>=1,'frontend queries its display scale');
+  assert.ok(boot.rasterScale>=viewer.clientScale,'frame is not undersampled on the viewer monitor');
   assert.ok(viewer.compositedBytes>1000);
   assert.equal(viewer.state.menuOpen,false,'a pixel-coordinate click in an independent renderer reached the backend page');
   const latency=[];
@@ -91,6 +97,7 @@ test('isolated offscreen Chromium retains document and timer across client reque
   }
   t.diagnostic('PNG/frame full loopback roundtrip milliseconds: '+JSON.stringify(latency));
   t.diagnostic('Hidden-client Cyrillic text insertion: '+input.elapsedMs+'ms; raster payload: '+frame.bytes+' bytes');
+  t.diagnostic('Automatic display scale: frontend '+viewer.clientScale+'x, backend '+boot.rasterScale+'x, PNG '+frame.width+'x'+frame.height);
   // No active connection while the backend page/timer continue to run.
   const idleStart=await command({op:'metrics'});
   await new Promise(resolve=>setTimeout(resolve,350));

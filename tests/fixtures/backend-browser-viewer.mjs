@@ -1,6 +1,6 @@
 // Separate Electron frontend process; displays actual backend PNG in a hidden fixture window.
 // It does not access the backend's WebContents, cookie partition or OS clipboard.
-import {app,BrowserWindow,ipcMain,clipboard,dialog} from 'electron';
+import {app,BrowserWindow,ipcMain,clipboard,dialog,screen} from 'electron';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,14 +17,19 @@ const api=async payload=>{
 async function run() {
   await app.whenReady();
   const manual=process.argv.includes('--show');
-  const viewer=new BrowserWindow({show:manual,width:900,height:790,webPreferences:{
+  const viewer=new BrowserWindow({show:manual,width:900,height:880,webPreferences:{
     preload:path.join(import.meta.dirname,'backend-browser-viewer-preload.cjs'),sandbox:true,nodeIntegration:false,contextIsolation:true}});
   const checked=event=>{if(event.sender!==viewer.webContents)throw Error('INVALID_VIEWER');};
   ipcMain.handle('fixture-frame',async event=>{
     checked(event);
     const response=await fetch(url+'/frame',{method:'POST',headers:{authorization:`Bearer ${token}`}});
     if(!response.ok)throw Error('FRAME_DENIED_'+response.status);
-    return {png:Buffer.from(await response.arrayBuffer()).toString('base64')};
+    const logicalWidth=Number(response.headers.get('x-logical-width'));
+    const logicalHeight=Number(response.headers.get('x-logical-height'));
+    const rasterScale=Number(response.headers.get('x-raster-scale'));
+    if(!logicalWidth||!logicalHeight||!rasterScale)throw Error('Тестовый backend старой версии. Остановите его и запустите повторно.');
+    return {png:Buffer.from(await response.arrayBuffer()).toString('base64'),logicalWidth,logicalHeight,rasterScale,
+      clientScale:screen.getDisplayMatching(viewer.getBounds()).scaleFactor};
   });
   ipcMain.handle('fixture-click',(event,coordinates)=>{checked(event);return api({op:'clickAt',...coordinates});});
   ipcMain.handle('fixture-insert',(event,text)=>{checked(event);if(typeof text!=='string'||text.length>2000)throw Error('INVALID_TEXT');return api({op:'input',text});});
@@ -44,7 +49,9 @@ async function run() {
     if(x!==undefined&&y!==undefined)await viewer.webContents.executeJavaScript(`window.fixtureSyntheticClick(${Number(x)},${Number(y)})`);
     const composited=(await viewer.webContents.capturePage()).toPNG();
     const state=await api({op:'state'});
-    report({decoded,compositedBytes:composited.length,visible:viewer.isVisible(),state:state.state});
+    const display=screen.getDisplayMatching(viewer.getBounds());
+    report({decoded,compositedBytes:composited.length,visible:viewer.isVisible(),state:state.state,
+      clientScale:display.scaleFactor,rasterScale:state.rasterScale});
     if(manual)await new Promise(resolve=>viewer.once('closed',resolve));
   } finally {if(!viewer.isDestroyed())viewer.destroy();for(const action of ['frame','click','insert','copy','paste','upload','download'])ipcMain.removeHandler('fixture-'+action);}
 }
