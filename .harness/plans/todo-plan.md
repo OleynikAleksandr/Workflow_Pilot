@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 109,
+  "plan_revision": 111,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
@@ -3715,14 +3715,17 @@
         "После DOCS полный проверенный комплект трёх платформ из одного sourceCommit доставлен в Downloads; native Windows/Linux и запуск через живой ChatGPT остаются pending."
       ],
       "expected_commit_message": "feat: Собрать Workflow Pilot 0.1.6 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-migration-0.1.0",
         "task_id": "T031",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T032",
@@ -3784,7 +3787,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 109
+Revision: 111
 
 ## Цель
 
@@ -4055,8 +4058,8 @@ Revision: 109
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md, README.md, docs/acceptance/migration-0.1.0.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T030, T030-MCP
-- [TODO] T031: Собрать Workflow Pilot 0.1.6 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.1.6 для трёх ОС
+- [DONE] T031: Собрать Workflow Pilot 0.1.6 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать Workflow Pilot 0.1.6 для трёх ОС
   - Reference: workflow-pilot-migration-0.1.0 / T031 / implementation
   - Файлы: release-manifest.json, docs/modules/control.md
   - Параллельность: исключительное выполнение
