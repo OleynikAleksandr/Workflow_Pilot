@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DESKTOP_CHANNELS } from '../../contracts/desktop.mjs';
 import { BackendConnection } from '../client/connection.mjs';
 import { BrowserView } from '../client/browser-view.mjs';
@@ -29,7 +29,8 @@ function readDescriptor(file) {
 // a crash disconnects from the backend, which keeps pages and work running.
 export function startDesktopClient(electron, { backendRoot = null, clientRoot = null, fixture = false } = {}) {
   const { app, BaseWindow, BrowserWindow, WebContentsView, Menu, ipcMain, dialog, nativeTheme, clipboard } = electron;
-  const desktopDir = new URL('./', import.meta.url).pathname;
+  // A file path, not URL.pathname: the packaged bundle path contains spaces.
+  const desktopDir = fileURLToPath(new URL('./', import.meta.url));
   const dataDir = backendRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot');
   const ownDir = clientRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot Client');
   fs.mkdirSync(ownDir, { recursive: true, mode: 0o700 });
@@ -43,7 +44,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   let connection = null, stream = null, uiState = null, archiveState = null, colorsState = null, sidebarWidth = 312, theme = 'light';
   let service = { phase: 'running', reasons: [] };
   // control: this window holds the writer lease; stale: the backend is not reachable.
-  let control = false, stale = false, renewTimer = null, watchdog = null, descriptorSeen = null;
+  let control = false, stale = false, renewTimer = null, watchdog = null, descriptorSeen = null, incompatible = null;
   const viewers = new Map();
   const report = (code, message) => { uiState = { ...(uiState ?? {}), startupError: { code, message } }; sidebar?.webContents.send('pilot:state-changed', uiState); };
 
@@ -59,23 +60,30 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
       // Started detached in its own process group: the backend outlives this client.
       const args = [...(app.isPackaged ? [] : [app.getAppPath()]), '--backend-host', ...(backendRoot ? ['--backend-fixture-root=' + backendRoot] : [])];
       const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
-      spawn(process.execPath, args, { detached: true, stdio: 'ignore', env }).unref();
+      const child = spawn(process.execPath, args, { detached: true, stdio: 'ignore', env });
+      let exitCode = null;
+      child.once('exit', code => { exitCode = code; });
+      child.unref();
       for (let attempt = 0; attempt < 300 && !descriptor; attempt++) {
         await settle(100);
+        // Exit 2: the profile lock is held by another running copy (for example an earlier release).
+        if (exitCode === 2 && !liveDescriptor()) throw Object.assign(new Error('Профиль Workflow Pilot занят другой запущенной копией (возможно, предыдущей версии). Закройте её и откройте Workflow Pilot снова.'), { code: 'BACKEND_OWNER_CONFLICT' });
         const candidate = readDescriptor(descriptorFile);
         descriptor = candidate && alive(candidate.pid) ? candidate : null;
       }
       if (!descriptor) throw Object.assign(new Error('Backend Workflow Pilot не запустился.'), { code: 'BACKEND_UNAVAILABLE' });
     }
     const next = new BackendConnection({ port: descriptor.port, token: descriptor.token });
-    await next.connect();
+    const handshake = await next.connect();
+    // A backend of another release keeps running; this client only explains the switch.
+    incompatible = handshake.appVersion && handshake.appVersion !== app.getVersion() ? handshake.appVersion : null;
     descriptorSeen = { port: descriptor.port, generation: next.bootGeneration };
     return next;
   }
   // Control is explicit. A free lease is taken automatically; a held one only
   // by the user's own choice. Renewal every 10 s keeps it; a refusal ends it.
   async function takeControl({ takeover = false } = {}) {
-    if (!connection) return false;
+    if (!connection || incompatible) { showService(); installMenu(); return false; }
     try { await connection.acquire({ takeover }); control = true; }
     catch (error) { control = false; if (error.code !== 'BACKEND_LEASE_HELD') throw error; }
     clearInterval(renewTimer); renewTimer = null;
@@ -202,6 +210,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     if (channel === 'pilot:get-state') return uiState;
     if (channel === 'archive:get-state') return archiveState;
     if (!connection || stale) return { ok: false, error: { code: 'BACKEND_UNAVAILABLE', message: 'Нет связи с фоновой службой Workflow Pilot. Данные могут быть устаревшими; изменения заблокированы до восстановления связи.' }, state: uiState };
+    if (incompatible) return { ok: false, error: { code: 'BACKEND_VERSION_INCOMPATIBLE', message: `Работает фоновая служба Workflow Pilot ${incompatible}. Остановите её (значок или меню Workflow Pilot), затем откройте ${app.getVersion()} снова.` }, state: uiState };
     if (!control) return { ok: false, error: { code: 'BACKEND_LEASE_HELD', message: 'Управление у другого окна Workflow Pilot. Меню Workflow Pilot → «Взять управление».' }, state: uiState };
     try {
       const value = await connection.invoke(surface, channel, input);
@@ -234,7 +243,8 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     if (!window || window.isDestroyed()) return;
     const reason = service.reasons?.[0]?.message;
     const base = fixture ? 'Workflow Pilot — CLIENT FIXTURE' : 'Workflow Pilot';
-    window.setTitle(stale ? base + ' — нет связи, данные могут быть устаревшими'
+    window.setTitle(incompatible ? base + ` — работает фоновая служба версии ${incompatible}; для перехода на ${app.getVersion()} остановите её`
+      : stale ? base + ' — нет связи, данные могут быть устаревшими'
       : service.phase === 'draining' ? base + ' — остановка: ' + (reason ?? 'ждём безопасной точки')
       : service.phase === 'stopping' ? base + ' — фоновая служба останавливается'
       : !control ? base + ' — наблюдение (управление у другого окна)' : base);
@@ -244,7 +254,10 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     const answer = await dialog.showMessageBox(window, { type: 'question', buttons: ['Остановить', 'Отмена'], defaultId: 1, cancelId: 1,
       message: 'Остановить фоновую службу Workflow Pilot?',
       detail: 'Новые отправки и назначения не начнутся. Текущий ответ ChatGPT, инструменты и команды Kit завершатся; затем службы остановятся. Принудительного завершения нет.' });
-    if (answer.response === 0) await connection.run('service.stop').catch(error => dialog.showErrorBox('Workflow Pilot', error.message));
+    if (answer.response !== 0) return;
+    // Stopping needs control; an older service is stopped the same safe way.
+    if (!control) { try { await connection.acquire(); control = true; } catch (error) { return dialog.showErrorBox('Workflow Pilot', error.message); } }
+    await connection.run('service.stop').catch(error => dialog.showErrorBox('Workflow Pilot', error.message));
   }
   function installMenu() {
     const draining = service.phase === 'draining';
@@ -363,7 +376,8 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
             if (command.op === 'probe') value = {
               sidebar: await sidebar.webContents.executeJavaScript('document.body.innerText'),
               frame: await pageView.webContents.executeJavaScript("document.getElementById('frame').src.startsWith('blob:')"),
-              viewers: viewers.size, state: !!uiState, control, stale, title: window?.getTitle() ?? '' };
+              viewers: viewers.size, state: !!uiState, control, stale, title: window?.getTitle() ?? '',
+              error: uiState?.startupError?.code ?? null, incompatible };
             if (command.op === 'rename') value = await sidebar.webContents.executeJavaScript(
               `window.webPilot.renameProject(${JSON.stringify(command.workspace)}, ${JSON.stringify(command.name)})`);
             process.stdout.write(JSON.stringify({ op: command.op, value }) + '\n');

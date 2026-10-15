@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 151,
+  "plan_revision": 153,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -131,7 +131,10 @@
       "tests/desktop-client.test.mjs",
       "src/backend/shutdown.mjs",
       "src/control/workflow/executor-session.mjs",
-      "src/control/workflow/project-session-auto-plan.mjs"
+      "src/control/workflow/project-session-auto-plan.mjs",
+      "src/contracts/launch.mjs",
+      "src/frontend/plugin/app.mjs",
+      "src/frontend/plugin/index.html"
     ],
     "documentation_paths": [
       "README.md",
@@ -1185,8 +1188,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T011",
@@ -1209,7 +1212,17 @@
         "tests/release-all.test.mjs",
         "tests/release-mac.test.mjs",
         "tests/release-linux.test.mjs",
-        "tests/backend-upgrade.test.mjs"
+        "tests/backend-upgrade.test.mjs",
+        ".dependency-cruiser.cjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/server.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/launch.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/main.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
@@ -1256,7 +1269,24 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        ".dependency-cruiser.cjs",
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "package-lock.json",
+        "package.json",
+        "scripts/release-mac.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/server.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/launch.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/main.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1615,7 +1645,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 151
+Revision: 153
 
 ## Цель
 
@@ -1715,10 +1745,10 @@ Revision: 151
   - Файлы: src/backend/control-lease.mjs, src/backend/server.mjs, src/backend/events.mjs, src/frontend/client/connection.mjs, src/frontend/client/browser-view.mjs, tests/backend-reconnect.test.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/contracts/backend.mjs, src/frontend/desktop/client.mjs, tests/backend-api.test.mjs, tests/browser-presentation.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T009
-- [TODO] T011: Подготовить upgrade и поставку процессов — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить upgrade и поставку процессов
+- [DONE] T011: Подготовить upgrade и поставку процессов — Завершено
+  - Git Commit: [DONE] feat: Подготовить upgrade и поставку процессов
   - Reference: workflow-pilot-backend-independence / T011 / implementation
-  - Файлы: package.json, package-lock.json, scripts/release-all.mjs, scripts/release-package.mjs, scripts/release-mac.mjs, scripts/release-linux.mjs, scripts/verify-windows-package.mjs, scripts/verify-linux-package.mjs, scripts/check-installed-release.mjs, scripts/stage-vendor-notices.mjs, tests/release-all.test.mjs, tests/release-mac.test.mjs, tests/release-linux.test.mjs, tests/backend-upgrade.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: package.json, package-lock.json, scripts/release-all.mjs, scripts/release-package.mjs, scripts/release-mac.mjs, scripts/release-linux.mjs, scripts/verify-windows-package.mjs, scripts/verify-linux-package.mjs, scripts/check-installed-release.mjs, scripts/stage-vendor-notices.mjs, tests/release-all.test.mjs, tests/release-mac.test.mjs, tests/release-linux.test.mjs, tests/backend-upgrade.test.mjs, .dependency-cruiser.cjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/server.mjs, src/contracts/backend.mjs, src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/index.html, src/main.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T010
 - [TODO] T012: Проверить общий результат и убрать временные пути — Ожидает

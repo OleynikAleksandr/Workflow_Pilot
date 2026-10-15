@@ -27,7 +27,7 @@ const readBody=req=>new Promise((resolve,reject)=>{
 
 // Fixture routes (test profiles only) address backend-owned pages and expose
 // no URL navigation, JavaScript or file access.
-export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{},leaseTtlMs}) {
+export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{},leaseTtlMs,appVersion}) {
   const fixturePage=async()=>{
     const {sessions}=services;
     if(sessions.visible&&!sessions.visible.disposed)return sessions.visible;
@@ -102,7 +102,7 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
   };
   let server;
   try {
-    server=await startBackendServer({claim,operations,events,extra,
+    server=await startBackendServer({claim,operations,events,extra,appVersion,
       status:()=>({apiVersion:BACKEND_API_VERSION,identity:'workflow-pilot',bootGeneration:claim.generation,readiness:'ready',
         projects:services.control.projects.snapshot().projects.length,
         browser:{connected:true,owner:'backend',fixtureAvailable:!!fixtureRoot}})});

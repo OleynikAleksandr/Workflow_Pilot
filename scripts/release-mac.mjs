@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { extractFile, uncache } from '@electron/asar';
 import { verifyMacSignature } from './check-mac-signature.mjs';
@@ -19,6 +20,17 @@ export function backupSlot(backupRoot, target) {
 }
 const BUNDLE_ID = 'com.oleynik.WorkflowPilot';
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim();
+
+// The running backend of this user's profile, if any: the executable it was
+// started from. A file descriptor or a PID alone never proves a live process.
+export async function runningBackendExecutable({ profile = path.join(os.homedir(), 'Library/Application Support/Workflow Pilot') } = {}) {
+  let descriptor;
+  try { descriptor = JSON.parse(await fs.readFile(path.join(profile, '.backend-host', 'service.json'), 'utf8')); } catch { return null; }
+  if (!Number.isSafeInteger(descriptor?.pid) || descriptor.pid <= 0) return null;
+  try { process.kill(descriptor.pid, 0); } catch (error) { if (error.code === 'ESRCH') return null; }
+  try { return execFileSync('/bin/ps', ['-o', 'comm=', '-p', String(descriptor.pid)], { encoding: 'utf8' }).trim() || null; }
+  catch { return null; }
+}
 
 async function existingStat(file) {
   try { return await fs.lstat(file); }
@@ -55,7 +67,11 @@ function sameBundle(actual, expected) {
 }
 
 // Keep the outer directory: Finder aliases can retain its filesystem identity.
-export async function installMacBundle({ source, target, backupRoot, version, verifySignature = verifyMacSignature }) {
+// A live backend keeps loading files from its bundle: its runtime is never
+// replaced underneath it. The verified new app waits in a pending copy; the
+// switch happens on the next install after the user stops the service.
+export async function installMacBundle({ source, target, backupRoot, version, verifySignature = verifyMacSignature,
+  backendExecutable = runningBackendExecutable }) {
   if (process.platform !== 'darwin') throw new Error('macOS release requires macOS');
   if (path.resolve(source) === path.resolve(target)) throw new Error('Source and target must differ');
   if (!target.endsWith('.app')) throw new Error('Target must be an app bundle');
@@ -63,6 +79,16 @@ export async function installMacBundle({ source, target, backupRoot, version, ve
   const previous = await existingStat(target);
   if (previous) await inspectBundle(target);
   if(path.basename(target)!==APP)throw new Error('Target must use Workflow Pilot identity');
+  const running = previous ? await backendExecutable() : null;
+  if (running && path.resolve(running).startsWith(path.resolve(target) + path.sep)) {
+    const pending = path.join(backupRoot, 'pending-' + path.basename(backupSlot(backupRoot, target)), APP);
+    await fs.rm(path.dirname(pending), { recursive: true, force: true });
+    await fs.mkdir(path.dirname(pending), { recursive: true });
+    run('/usr/bin/ditto', [source, pending]);
+    sameBundle(await inspectSignedBundle(pending, version, verifySignature), expected);
+    return { target, ...expected, pending: true, reason: 'BACKEND_RUNNING', staged: pending,
+      instruction: 'Остановите фоновую службу Workflow Pilot (значок или меню) и повторите установку.' };
+  }
   await fs.mkdir(path.dirname(target), { recursive: true });
   const stage = await fs.mkdtemp(path.join(path.dirname(target), '.workflow-pilot-install-'));
   const stagedApp = path.join(stage, APP);

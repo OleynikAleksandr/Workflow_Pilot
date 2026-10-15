@@ -32,7 +32,7 @@ function readJson(req) {
 
 // Loopback HTTP API. Every request, including the event stream, carries the
 // bearer token in a header and passes the exact Host/Origin check first.
-export async function startBackendServer({claim,identity='workflow-pilot',readiness=()=>'ready',
+export async function startBackendServer({claim,identity='workflow-pilot',readiness=()=>'ready',appVersion,
   capabilities={},operations,events,status,allowedOrigins=[],extra=null}) {
   const respond=(res,code,value)=>{
     if(res.headersSent)return res.destroy();
@@ -45,7 +45,7 @@ export async function startBackendServer({claim,identity='workflow-pilot',readin
     respond(res,STATUS[code]??(/_INVALID$|_ARGS/.test(code)?400:503),{error:{code,message:MESSAGES[code]??'Операция недоступна.'}});
   };
   const handshake=()=>validateHandshake({apiVersion:BACKEND_API_VERSION,identity,bootGeneration:claim.generation,
-    capabilities:{commands:true,events:true,...capabilities},readiness:readiness()});
+    capabilities:{commands:true,events:true,...capabilities},readiness:readiness(),...appVersion?{appVersion}:{}});
   const route=async(req,res,url)=>{
     if(req.method==='GET'&&url.pathname==='/v1/handshake')return respond(res,200,handshake());
     if(req.method==='GET'&&url.pathname==='/v1/status')return respond(res,200,status());

@@ -57,7 +57,9 @@ export function wireCopy(value, maxBytes = BACKEND_LIMITS.messageBytes) {
 }
 
 export function validateHandshake(input) {
-  requireWire(object(input) && own(input, ['apiVersion','identity','bootGeneration','capabilities','readiness']), 'BACKEND_HANDSHAKE_INVALID');
+  requireWire(object(input) && own(input, ['apiVersion','identity','bootGeneration','capabilities','readiness','appVersion']), 'BACKEND_HANDSHAKE_INVALID');
+  // The product version lets a client of another release explain the switch instead of guessing.
+  requireWire(input.appVersion === undefined || typeof input.appVersion === 'string' && /^[0-9A-Za-z.+-]{1,32}$/.test(input.appVersion), 'BACKEND_HANDSHAKE_INVALID');
   requireWire(input.apiVersion === BACKEND_API_VERSION, 'BACKEND_VERSION_INCOMPATIBLE');
   requireWire(id(input.identity) && id(input.bootGeneration), 'BACKEND_HANDSHAKE_INVALID');
   requireWire(object(input.capabilities) && Object.values(input.capabilities).every(value => typeof value === 'boolean')

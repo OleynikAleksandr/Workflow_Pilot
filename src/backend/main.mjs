@@ -10,7 +10,7 @@ import {createStatusMenu} from './status-menu.mjs';
 import {spawn} from 'node:child_process';
 import {BackendBrowserHost,desktopDependencies} from '../execution/facade.mjs';
 
-export function startBackend(electron,{fixtureRoot=null}={}) {
+export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
   const {app}=electron;
   let identity;
   try{identity=configureBackendIdentity(app,{testRoot:fixtureRoot});}
@@ -60,7 +60,7 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
         pages:createBackendPages({sessions:base.sessions,setup:base.setup,store:base.control.projects,host}),
         onChange:listener=>desktop.onPublish(listener),restore:async()=>{},dispose:async()=>desktop.dispose()});
       port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:sink=>{events=sink;surface.attach(sink);desktop.publish();},
-        leaseTtlMs:fixtureRoot&&Number(process.argv.find(arg=>arg.startsWith('--backend-lease-ttl-ms='))?.split('=')[1])||undefined});
+        leaseTtlMs:fixtureRoot&&leaseTtlMs||undefined,appVersion:app.getVersion()});
       const status=()=>({service:stopper.view(),pages:base.sessions.all().length});
       stopper=createStopController({drainState:()=>desktop.drainState(),pause:value=>desktop.pause(value),stop:shutdown,
         onChange:view=>{events.ui('service',view);statusMenu?.update(status());}});
@@ -74,6 +74,8 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
         spawn(process.execPath,args,{detached:true,stdio:'ignore',env}).unref();
       };
       app.on('activate',openClient);
+      // Another launch of this profile (any version) reaches the running backend.
+      app.on('second-instance',openClient);
       if(!fixtureRoot) {
         statusMenu=createStatusMenu({Tray:electron.Tray,Menu:electron.Menu,nativeImage:electron.nativeImage,onOpen:openClient,
           onCancelStop:()=>stopper.cancel(),
