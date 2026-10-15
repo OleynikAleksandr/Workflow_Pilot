@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 101,
+  "plan_revision": 102,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-migration-0.1.0",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Перенести Project Web Pilot 0.6.115 в самостоятельный Workflow Pilot 0.1.0 с Control/Execution/Frontend, сохранив поведение и выпустив macOS, Windows и Linux из одной базы.",
   "acceptance_criteria": [
     "Самостоятельное приложение 0.1.0 сохраняет поведение 0.6.115, AutoPlan/Review/sequential/parallel, recovery и оба способа подключения; состояние донора не изменено.",
@@ -391,7 +391,9 @@
       "tests/chatgpt-plugin.test.mjs",
       "src/frontend/plugin/panel.mjs",
       "tests/fixtures/plugin-server.py",
-      "src/frontend/plugin/navigation-probe.mjs"
+      "src/frontend/plugin/navigation-probe.mjs",
+      "src/control/plugin/launch.mjs",
+      "src/frontend/plugin/launch.mjs"
     ],
     "documentation_paths": [
       "docs/planning/migration-0.1.0.md",
@@ -459,13 +461,13 @@
         "revision": "WORKTREE"
       },
       {
-        "path": "docs/modules/control.md",
-        "required": true,
+        "path": "docs/modules/chatgpt-plugin.md",
+        "required": false,
         "revision": "WORKTREE"
       },
       {
-        "path": "docs/modules/chatgpt-plugin.md",
-        "required": false,
+        "path": "docs/modules/control.md",
+        "required": true,
         "revision": "WORKTREE"
       }
     ],
@@ -3544,6 +3546,144 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T030",
+      "title": "Запускать пробный новый разговор из меню Desktop через открытую панель плагина",
+      "why": "Запускать пробный новый разговор из меню Desktop через открытую панель плагина",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/plugin/launch.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/electron-smoke.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "chatgpt-plugin",
+        "architecture",
+        "electron-smoke",
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Новый чат через плагин в меню проекта передаёт команду единственной явно подготовленной панели ChatGPT через существующий MCP. Панель один раз ожидает команду до 45 секунд; без скрытого polling, браузерных действий, DOM Send, новой модели в тестах или смены выбранной сессии.",
+        "Панель отправляет target:new/send:true без повторов. Таймаут/закрытие/двойной клик/другой приёмник не создают повторной отправки. Отдельные статусы запроса, ответа API и выдачи полного проверенного контекста через MCP; успех не объявляется чтением агентом или видимым переходом.",
+        "Версия 0.1.6; проверки настоящего SDK из MCP HTML и меню/preload/IPC на изолированных fixtures. Live приёмка Chat/Work и фонового API ожидает пользователя. Режим нового разговора выбирает ChatGPT, гарантий принудительного Chat нет."
+      ],
+      "expected_commit_message": "feat: Запускать пробный новый разговор из меню Desktop через открытую панель плагина",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T030",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-9",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "DOCS-9",
+        "role": "implementation",
+        "iteration": 9
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T030"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/control.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T031",
+      "title": "Собрать Workflow Pilot 0.1.6 для трёх ОС",
+      "why": "Собрать Workflow Pilot 0.1.6 для трёх ОС",
+      "dependencies": [
+        "T030",
+        "DOCS-9"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS полный проверенный комплект трёх платформ из одного sourceCommit доставлен в Downloads; native Windows/Linux и запуск через живой ChatGPT остаются pending."
+      ],
+      "expected_commit_message": "feat: Собрать Workflow Pilot 0.1.6 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T031",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T032",
+      "title": "Установить готовый Workflow Pilot 0.1.6 на Mac",
+      "why": "Установить готовый Workflow Pilot 0.1.6 на Mac",
+      "dependencies": [
+        "T031",
+        "DOCS-9"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/control.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer заменил собственные app в проекте и Applications готовым комплектом без пересборки, переподписи или перезапуска; версия, manifest, подпись, rollback проверены."
+      ],
+      "expected_commit_message": "feat: Установить готовый Workflow Pilot 0.1.6 на Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-migration-0.1.0",
+        "task_id": "T032",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -3571,10 +3711,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-migration-0.1.0
 Current Task: нет
-Revision: 101
+Revision: 102
 
 ## Цель
 
@@ -3827,6 +3967,30 @@ Revision: 101
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T028, DOCS-8
+- [TODO] T030: Запускать пробный новый разговор из меню Desktop через открытую панель плагина — Ожидает
+  - Git Commit: [PENDING] feat: Запускать пробный новый разговор из меню Desktop через открытую панель плагина
+  - Reference: workflow-pilot-migration-0.1.0 / T030 / implementation
+  - Файлы: src/control/plugin/launch.mjs, src/control/plugin/service.mjs, src/execution/plugin/bridge.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/index.html, src/frontend/desktop/application.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-9: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-migration-0.1.0 / DOCS-9 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T030
+- [TODO] T031: Собрать Workflow Pilot 0.1.6 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.1.6 для трёх ОС
+  - Reference: workflow-pilot-migration-0.1.0 / T031 / implementation
+  - Файлы: release-manifest.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T030, DOCS-9
+- [TODO] T032: Установить готовый Workflow Pilot 0.1.6 на Mac — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовый Workflow Pilot 0.1.6 на Mac
+  - Reference: workflow-pilot-migration-0.1.0 / T032 / implementation
+  - Файлы: release-manifest.json, docs/modules/control.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T031, DOCS-9
 
 ## Context Pack For This Cycle
 
@@ -3835,7 +3999,7 @@ Revision: 101
 - docs/planning/orchestrated-execution-next.md
 - docs/architecture/OVERVIEW.md
 - docs/modules/first-run-onboarding.md
-- docs/modules/control.md
 - docs/modules/chatgpt-plugin.md
+- docs/modules/control.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
