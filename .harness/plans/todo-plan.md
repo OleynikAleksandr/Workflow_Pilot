@@ -4,11 +4,11 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 126,
+  "plan_revision": 127,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
-  "execution_scope_status": "BLOCKED",
+  "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
   "objective": "Независимый frontend и постоянно работающий backend/browser на одном Mac; совместимая поставка трёх ОС.",
   "acceptance_criteria": [
@@ -1282,7 +1282,7 @@
       }
     }
   ],
-  "blocked_reason": "После T001 и T001R сохранена обязательная пользовательская приёмка транспорта. Пользователь подтвердил переподключение и сохранение страницы, но перед согласованием Electron offscreen ждём живую проверку качества Retina-текста и ручного ввода, clipboard, файлов, меню. T002 нельзя начинать до записанного user_decision; протокол docs/planning/workflow-pilot-backend-t001-evidence.md.",
+  "blocked_reason": null,
   "user_decisions": [
     {
       "id": "draft-review-only",
@@ -1303,6 +1303,11 @@
       "id": "recovery-context-by-task",
       "recorded_at": "2026-10-15T13:12:44Z",
       "text": "По поручению пользователя разгрузить recovery: общими оставить спецификацию и OVERVIEW, повторный to-do передавать ссылкой, документацию модулей подключать только для соответствующих задач. Задачи, критерии, зависимости и проверки не менять; реализацию не начинать. Документы по ссылкам читаются по необходимости, включая DOCS и общую регрессию."
+    },
+    {
+      "id": "t001-transport-manual-approval",
+      "recorded_at": "2026-10-15T15:03:44Z",
+      "text": "Пользователь в живом испытании macOS подтвердил сохранение черновика и продолжающийся счётчик при закрытии/повторном открытии отдельного клиента; после автоматического Retina-масштабирования 2x подтвердил идентичную чёткость текста серверного кадра и клиентского UI и прямо разрешил продолжать план. Для T002 принят проверенный локальный транспорт Electron offscreen PNG/CDP с автоматической плотностью кадра (не фиксированный 2x). Прочие живые интерактивные сценарии, macOS helper, Windows/Linux, версия выпуска, lease и draining не считаются подтверждёнными этой проверкой и остаются в соответствующих задачах/до отдельного решения."
     }
   ],
   "parallel_allowed": false,
@@ -1316,11 +1321,11 @@
 
 ## Состояние
 
-Execution Scope Status: BLOCKED
+Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 126
+Revision: 127
 
 ## Цель
 
