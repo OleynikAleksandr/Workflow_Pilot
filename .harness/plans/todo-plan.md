@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 118,
+  "plan_revision": 120,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -110,7 +110,12 @@
       "tests/release-linux.test.mjs",
       "tests/backend-upgrade.test.mjs",
       "tests/backend-end-to-end.test.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "tests/fixtures/backend-browser-client.mjs",
+      "tests/fixtures/backend-browser-probe.mjs",
+      "tests/fixtures/backend-browser-viewer-preload.cjs",
+      "tests/fixtures/backend-browser-viewer.html",
+      "tests/fixtures/backend-browser-viewer.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -129,7 +134,8 @@
       "docs/modules/project-compatibility.md",
       "docs/acceptance/backend-independence.md",
       "docs/planning/workflow-pilot-backend-spec-draft.md",
-      "docs/planning/workflow-pilot-backend-todo-draft.md"
+      "docs/planning/workflow-pilot-backend-todo-draft.md",
+      "docs/planning/workflow-pilot-backend-t001-evidence.md"
     ]
   },
   "baseline_commit": "e01124c2bb74ab86c8f67b19bfbf79404694add6",
@@ -207,8 +213,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T001",
@@ -217,11 +223,17 @@
       "dependencies": [],
       "functional_paths": [
         "tests/fixtures/backend-browser-page.html",
-        "tests/backend-browser-prototype.test.mjs"
+        "tests/backend-browser-prototype.test.mjs",
+        "tests/fixtures/backend-browser-client.mjs",
+        "tests/fixtures/backend-browser-probe.mjs",
+        "tests/fixtures/backend-browser-viewer-preload.cjs",
+        "tests/fixtures/backend-browser-viewer.html",
+        "tests/fixtures/backend-browser-viewer.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
-        "docs/planning/workflow-pilot-backend-todo-draft.md"
+        "docs/planning/workflow-pilot-backend-todo-draft.md",
+        "docs/planning/workflow-pilot-backend-t001-evidence.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -264,7 +276,18 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "docs/planning/workflow-pilot-backend-t001-evidence.md",
+        "tests/backend-browser-prototype.test.mjs",
+        "tests/fixtures/backend-browser-client.mjs",
+        "tests/fixtures/backend-browser-page.html",
+        "tests/fixtures/backend-browser-probe.mjs",
+        "tests/fixtures/backend-browser-viewer-preload.cjs",
+        "tests/fixtures/backend-browser-viewer.html",
+        "tests/fixtures/backend-browser-viewer.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1030,7 +1053,8 @@
         "docs/modules/project-compatibility.md",
         "docs/acceptance/backend-independence.md",
         "docs/planning/workflow-pilot-backend-spec-draft.md",
-        "docs/planning/workflow-pilot-backend-todo-draft.md"
+        "docs/planning/workflow-pilot-backend-todo-draft.md",
+        "docs/planning/workflow-pilot-backend-t001-evidence.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -1249,7 +1273,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 118
+Revision: 120
 
 ## Цель
 
@@ -1277,10 +1301,10 @@ Revision: 118
 Выполнение: sequential; разрешено: false; лимит: 2
 Причина: Снимок основной сессии запрещает параллельность. Последовательный перенос общих lifecycle, browser host, Control/API требует завершения предыдущей задачи.
 
-- [TODO] T001: Проверить независимый браузер и выбрать транспорт — Ожидает
-  - Git Commit: [PENDING] feat: Проверить независимый браузер и выбрать транспорт
+- [DONE] T001: Проверить независимый браузер и выбрать транспорт — Завершено
+  - Git Commit: [DONE] feat: Проверить независимый браузер и выбрать транспорт
   - Reference: workflow-pilot-backend-independence / T001 / implementation
-  - Файлы: tests/fixtures/backend-browser-page.html, tests/backend-browser-prototype.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: tests/fixtures/backend-browser-page.html, tests/backend-browser-prototype.test.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-probe.mjs, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T002: Закрепить контракт и границы — Ожидает
@@ -1352,7 +1376,7 @@ Revision: 118
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: Актуализировать документы выпуска
   - Reference: workflow-pilot-backend-independence / DOCS / implementation
-  - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/control.md, docs/modules/execution.md, docs/modules/workflow-execution.md, docs/modules/first-run-onboarding.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/linux.md, docs/modules/project-compatibility.md, docs/acceptance/backend-independence.md, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/control.md, docs/modules/execution.md, docs/modules/workflow-execution.md, docs/modules/first-run-onboarding.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/linux.md, docs/modules/project-compatibility.md, docs/acceptance/backend-independence.md, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012
 - [TODO] T013: Собрать новый выпуск трёх ОС — Ожидает

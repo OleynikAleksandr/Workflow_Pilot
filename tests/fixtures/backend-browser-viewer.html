@@ -1,0 +1,33 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><title>Browser transport fixture — viewer</title>
+<style>body{margin:0;font:14px system-ui}#frame{width:900px;height:700px;display:block}aside{padding:8px}input{width:55%}</style>
+<img id="frame" alt="Кадр удалённой страницы" />
+<aside><input id="typed" aria-label="Ввод в удалённую страницу"><button id="insert">Ввести в удалённую страницу</button><button id="refresh">Обновить кадр</button>
+<button id="copy">Скопировать черновик</button><button id="paste">Вставить из буфера</button>
+<input id="local-file" type="file" accept=".txt"><button id="upload">Прикрепить тестовый TXT</button><button id="download">Скачать TXT</button></aside>
+<script>
+  async function refresh(){const value=await window.fixtureView.frame();const image=document.getElementById('frame');await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src='data:image/png;base64,'+value.png;});return {width:image.naturalWidth,height:image.naturalHeight};}
+  const image=document.getElementById('frame');
+  image.addEventListener('click',event=>{window.fixtureLastClick=(async()=>{
+    const bounds=image.getBoundingClientRect();
+    const x=(event.clientX-bounds.left)*image.naturalWidth/bounds.width;
+    const y=(event.clientY-bounds.top)*image.naturalHeight/bounds.height;
+    await window.fixtureView.click(x,y);await refresh();
+  })();});
+  document.getElementById('refresh').onclick=()=>refresh();
+  document.getElementById('insert').onclick=async()=>{await window.fixtureView.insert(document.getElementById('typed').value);await refresh();};
+  document.getElementById('copy').onclick=()=>window.fixtureView.copy();
+  document.getElementById('paste').onclick=async()=>{await window.fixtureView.paste();await refresh();};
+  document.getElementById('upload').onclick=async()=>{
+    const file=document.getElementById('local-file').files[0];if(!file)return;
+    if(file.size>2048)throw Error('Тестовый TXT должен быть до 2 КБ.');
+    await window.fixtureView.upload(file.name,await file.text());await refresh();
+  };
+  document.getElementById('download').onclick=()=>window.fixtureView.download();
+  window.fixtureReady=refresh();
+  window.fixtureSyntheticClick=async(x,y)=>{await window.fixtureReady;
+    const rect=image.getBoundingClientRect();
+    image.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x*rect.width/image.naturalWidth+rect.left,clientY:y*rect.height/image.naturalHeight+rect.top}));
+    await window.fixtureLastClick;
+  };
+</script>
+</html>

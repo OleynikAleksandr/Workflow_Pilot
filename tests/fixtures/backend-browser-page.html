@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><title>Backend browser transport fixture</title>
+<style>body{font:18px system-ui;padding:24px}textarea{display:block;width:80%;height:100px}button{padding:12px}</style>
+<h1>Проверка независимого браузера</h1>
+<label for="draft">Черновик</label><textarea id="draft"></textarea>
+<button id="action">Открыть меню</button><div id="menu" hidden>Действие в меню</div>
+<button id="popup">Открыть дополнительное окно</button>
+<button id="download">Скачать результат</button>
+<input type="file" id="file"><p id="selected-file"></p><p id="counter"></p>
+<script>
+  window.fixtureBootId=crypto.randomUUID();
+  window.fixtureTicks=0;
+  window.fixtureCompositions=[];
+  for(const name of ['compositionstart','compositionupdate','compositionend'])document.getElementById('draft').addEventListener(name,event=>window.fixtureCompositions.push({name,data:event.data}));
+  setInterval(()=>{window.fixtureTicks++;document.getElementById('counter').textContent=String(window.fixtureTicks)},100);
+  document.getElementById('action').onclick=()=>document.getElementById('menu').hidden=!document.getElementById('menu').hidden;
+  document.getElementById('popup').onclick=()=>window.open('about:blank','fixture-popup','width=320,height=240');
+  document.getElementById('file').onchange=event=>document.getElementById('selected-file').textContent=event.target.files[0]?.name||'';
+  document.getElementById('download').onclick=()=>{
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['Результат проверки\n'],{type:'text/plain'}));
+    a.download='fixture-result.txt';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  };
+</script>
+</html>
