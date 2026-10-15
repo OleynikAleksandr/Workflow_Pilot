@@ -10,7 +10,7 @@ import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 // onboarding and workflow. It owns no window; a surface presents its state
 // (in-process legacy window or a remote client) and supplies the page host.
 export function createDesktopModel({electron,sourceDir,dataDir,partition,smoke,eventBaseline,eventRuntimeChecker,executionServices,createControl,dependencies,
-  browserHost,surface,remotePages=false,fixture=null,offline=false}) {
+  browserHost,surface,remotePages=false,fixture=null,offline=false,pluginDirectory=null}) {
 const {app,session,ipcMain,dialog,clipboard,shell}=electron;
 const {LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode}=dependencies;
 const {ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel}=dependencies;
@@ -1253,8 +1253,10 @@ async function start() {
   });
   if(!storageError)plugin=control.createPlugin({onChange:()=>publish(),
     ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
-  if(plugin&&!smoke&&!offline) {
-    await executionServices.attachPlugin({directory:runtimeFolder,list:()=>plugin.list(),
+  // The plugin bridge belongs to whoever runs the model (the backend); an
+  // isolated fixture names its own directory instead of the user's runtime folder.
+  if(plugin&&!smoke&&(!offline||pluginDirectory)) {
+    await executionServices.attachPlugin({directory:pluginDirectory??runtimeFolder,list:()=>plugin.list(),
       open:id=>plugin.open(id),connect:input=>plugin.connect(input),
       wait:(id,signal)=>plugin.launch.wait(id,signal),claim:input=>plugin.launch.claim(input),report:input=>plugin.launch.report(input)})
       .catch(()=>{startupError={code:'PLUGIN_BRIDGE_UNAVAILABLE',message:'Не удалось включить подключение панели ChatGPT. Проверьте, не открыта ли другая копия Workflow Pilot.'};});

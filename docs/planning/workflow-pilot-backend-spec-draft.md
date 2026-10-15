@@ -56,7 +56,7 @@
 | Frontend | Панели, изображение выбранной страницы и пользовательский ввод |
 | Системный значок | Backend либо минимальный независимый системный компонент |
 
-T003–T004: `--backend-host` — Electron backend с Control/Execution/Kit и loopback-port; владельца профиля защищают lock и приватный descriptor, повреждённые данные/Kit journal отвергаются. Backend владеет скрытыми offscreen-страницами, восстанавливает AutoPlan/parallel и выбранную сессию. Detach зрителя не вызывает release/cancel/reset, без зрителей страница и AutoPlan работают; crash отмечен отдельно. Выход освобождает профиль, owner завершённого процесса восстанавливается (T006R). T007: модель Desktop в backend, `--desktop-client` — клиент через API и кадры; in-process до T012.
+T003–T004: `--backend-host` — Electron backend с Control/Execution/Kit и loopback-port; владельца профиля защищают lock и приватный descriptor, повреждённые данные/Kit journal отвергаются. Backend владеет скрытыми offscreen-страницами, восстанавливает AutoPlan/parallel и выбранную сессию. Detach зрителя не вызывает release/cancel/reset, без зрителей страница и AutoPlan работают; crash отмечен отдельно. Выход освобождает профиль, owner завершённого процесса восстанавливается (T006R). T007: модель Desktop в backend, `--desktop-client` — клиент через API и кадры; in-process до T012. T008: мост плагина, runtime MCP и туннель запускает backend; MCP работает без клиента, ошибки говорят о фоновой службе.
 
 macOS: выбран отдельный backend helper со своей identity; в T009/T011 проверить LaunchServices/reopen, locks, profile, Dock и подпись nested helpers. Повторное открытие `.app` подключает клиент без рестарта backend.
 

@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { PLUGIN_ACTION_CLASS } from '../../contracts/backend.mjs';
 
 // Private transport to the single desktop owner. The MCP service never opens its store.
 export async function startPluginBridge({ directory, list, open, connect, wait, claim, report }) {
@@ -16,6 +17,9 @@ export async function startPluginBridge({ directory, list, open, connect, wait, 
       const chunks=[];let bytes=0;
       for await(const chunk of req) {bytes+=chunk.length;if(bytes>16384)return reply(413,{error:{code:'TOO_LARGE',message:'Запрос слишком велик.'}});chunks.push(chunk);}
       const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      // Only the classified plugin actions exist; agent MCP channels are not bridge actions.
+      if(!['read','ui-mutation'].includes(PLUGIN_ACTION_CLASS[input?.action]))
+        return reply(400,{error:{code:'PLUGIN_ACTION_INVALID',message:'Неизвестное действие плагина.'}});
       if(input.action==='list')return reply(200,await list());
       if(input.action==='open')return reply(200,await open(input.projectId));
       if(input.action==='connect')return reply(200,await connect(input));

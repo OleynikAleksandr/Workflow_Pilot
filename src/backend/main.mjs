@@ -47,7 +47,7 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
         }});
       desktop=createDesktopModel({electron,sourceDir,dataDir:identity.dataDir,partition:identity.partition,smoke:false,
         eventBaseline:false,eventRuntimeChecker:false,executionServices:execution,createControl,dependencies:desktopDependencies,
-        browserHost:host,surface,offline:!!fixtureRoot});
+        browserHost:host,surface,offline:!!fixtureRoot,pluginDirectory:fixtureRoot?path.join(fixtureRoot,'plugin'):null});
       if(!await desktop.start())throw Object.assign(new Error('Desktop model did not start.'),{code:'BACKEND_STARTUP_FAILED'});
       const base=desktop.services;
       const services=Object.freeze({control:base.control,execution:base.execution,workflow:base.workflow,settings:base.settings,

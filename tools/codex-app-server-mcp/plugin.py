@@ -1,4 +1,4 @@
-"""ChatGPT UI tools routed to the running Workflow Pilot Control owner."""
+"""ChatGPT UI tools routed to the running Workflow Pilot backend (the Control owner)."""
 import asyncio
 import http.client
 import json
@@ -31,7 +31,7 @@ class PluginBridge:
                     or not re.fullmatch(r"[a-f0-9]{64}", state.get("token", ""))):
                 raise ValueError("Invalid descriptor")
         except (OSError, ValueError, TypeError):
-            return {"error": {"code": "PLUGIN_DESKTOP_REQUIRED", "message": "Откройте Workflow Pilot с поддержкой плагина и повторите действие."}}
+            return {"error": {"code": "PLUGIN_DESKTOP_REQUIRED", "message": "Фоновая служба Workflow Pilot не запущена. Откройте Workflow Pilot (после закрытия окна служба продолжит работу) и повторите действие."}}
         connection = http.client.HTTPConnection("127.0.0.1", state["port"], timeout=120)
         try:
             connection.request("POST", "/plugin", json.dumps(payload).encode("utf-8"),
@@ -47,7 +47,7 @@ class PluginBridge:
                 raise ValueError("Bridge rejected request")
             return result
         except (OSError, ValueError, http.client.HTTPException):
-            return {"error": {"code": "PLUGIN_DESKTOP_UNAVAILABLE", "message": "Workflow Pilot недоступен. Проверьте, что приложение открыто, и повторите действие."}}
+            return {"error": {"code": "PLUGIN_DESKTOP_UNAVAILABLE", "message": "Фоновая служба Workflow Pilot недоступна. Откройте Workflow Pilot, чтобы перезапустить её, и повторите действие."}}
         finally:
             connection.close()
 

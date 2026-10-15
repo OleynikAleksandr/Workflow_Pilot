@@ -348,3 +348,46 @@ test('navigation probe rejects unrelated URLs, limits waiting and restores only 
   assert.equal(sent,1);assert.equal(JSON.parse(stored).at(-1).phase,'unknown');
   assert.equal($('probe-sdk').disabled,false);
 });
+
+test('backend owns the plugin bridge: MCP lists projects with no frontend and reports backend loss',{skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:90000},async t=>{
+  const {spawn,execFileSync}=await import('node:child_process');
+  const readline=await import('node:readline');
+  const backendRoot=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-plugin-backend-')));
+  t.after(()=>fs.rm(backendRoot,{recursive:true,force:true}));
+  const workspace=path.join(backendRoot,'Проект');
+  await fs.mkdir(path.join(workspace,'.harness/plans'),{recursive:true});await fs.mkdir(path.join(workspace,'scripts'));
+  await fs.writeFile(path.join(workspace,'scripts/workflow.mjs'),'// fixture');
+  await fs.writeFile(path.join(workspace,'.harness/workflow.json'),'{}');
+  await fs.writeFile(path.join(workspace,'.harness/plans/todo-plan.md'),
+    '<!-- workflow-state:begin -->\n```json\n'+JSON.stringify({schema_version:1,project_id:'backend-project',project_name:'Проект',
+      plan_revision:1,scope_id:'scope',execution_scope_status:'ACTIVE',delivery_status:'IN_PROGRESS',current_task_id:null,tasks:[]})
+      +'\n```\n<!-- workflow-state:end -->');
+  execFileSync('git',['init','-q',workspace]);
+  const control=new ControlFacade({storageFile:path.join(backendRoot,'workspaces.json'),execution:{}});
+  await control.projects.load();await control.projects.select(workspace);
+  const electron=(await import('electron')).default;
+  const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+  const backend=spawn(electron,['.','--backend-host','--backend-fixture-root='+backendRoot],{cwd:root,env,stdio:['pipe','pipe','pipe']});
+  t.after(()=>{if(backend.exitCode===null)backend.kill('SIGKILL');});
+  let errors='';backend.stderr.setEncoding('utf8');backend.stderr.on('data',chunk=>{errors+=chunk;});
+  const lines=readline.createInterface({input:backend.stdout});
+  let deadline;
+  const ready=await Promise.race([
+    new Promise((resolve,reject)=>{lines.on('line',line=>{try{const value=JSON.parse(line);if(value.ready)resolve(value);}catch{}});
+      backend.on('exit',code=>reject(new Error('backend '+code+': '+errors)));}),
+    new Promise((_,reject)=>{deadline=setTimeout(()=>reject(new Error('startup timeout: '+errors)),30000);}),
+  ]).finally(()=>clearTimeout(deadline));
+  const directory=path.join(backendRoot,'plugin');
+  const descriptor=JSON.parse(await fs.readFile(path.join(directory,'plugin-bridge.json'),'utf8'));
+  assert.equal(descriptor.pid,ready.pid,'the bridge belongs to the backend process');
+  const c=await client(t,{directory});
+  const panel=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
+  assert.equal(panel.isError,false,JSON.stringify(panel.structuredContent));
+  assert.deepEqual(panel.structuredContent.projects.map(project=>project.id),['backend-project']);
+  const opened=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'backend-project'}});
+  assert.equal(opened.isError,false);assert.equal(opened.structuredContent.project.id,'backend-project');
+  backend.kill('SIGKILL');await new Promise(resolve=>backend.once('exit',resolve));
+  const lost=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
+  assert.equal(lost.isError,true);assert.equal(lost.structuredContent.error.code,'PLUGIN_DESKTOP_UNAVAILABLE');
+  assert.match(lost.structuredContent.error.message,/Фоновая служба Workflow Pilot/);
+});

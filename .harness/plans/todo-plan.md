@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 145,
+  "plan_revision": 147,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -923,8 +923,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T008",
@@ -942,7 +942,9 @@
         "src/backend/lifecycle.mjs",
         "tools/codex-app-server-mcp/plugin.py",
         "tests/chatgpt-plugin.test.mjs",
-        "tests/codex-app-server-mcp.test.mjs"
+        "tests/codex-app-server-mcp.test.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/main.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
@@ -989,7 +991,15 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/desktop-model.mjs",
+        "src/backend/main.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1550,7 +1560,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 145
+Revision: 147
 
 ## Цель
 
@@ -1632,10 +1642,10 @@ Revision: 145
   - Файлы: src/frontend/desktop/bootstrap.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/ipc.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/settings-panel.mjs, src/frontend/desktop/ui/project-doctor.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/archive-preload.cjs, src/frontend/desktop/chat-colors-window.mjs, src/frontend/desktop/chat-colors-preload.cjs, src/frontend/desktop/ui/chat-colors.mjs, src/frontend/desktop/ui/chat-colors.html, src/frontend/client/connection.mjs, tests/desktop-boundaries.test.mjs, tests/electron-smoke.mjs, .dependency-cruiser.cjs, src/backend/bootstrap.mjs, src/backend/desktop-model.mjs, src/backend/events.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/backend/remote-surface.mjs, src/contracts/backend.mjs, src/contracts/desktop.mjs, src/execution/browser/backend-host.mjs, src/execution/desktop-dependencies.mjs, src/execution/facade.mjs, src/frontend/desktop/browser-host.mjs, src/frontend/desktop/browser-view-preload.cjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.html, src/frontend/desktop/ui/browser-view.mjs, src/main.mjs, tests/backend-api.test.mjs, tests/backend-desktop-model.test.mjs, tests/desktop-client.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006, T006R
-- [TODO] T008: Сохранить MCP, туннель и плагин без frontend — Ожидает
-  - Git Commit: [PENDING] feat: Сохранить MCP, туннель и плагин без frontend
+- [DONE] T008: Сохранить MCP, туннель и плагин без frontend — Завершено
+  - Git Commit: [DONE] feat: Сохранить MCP, туннель и плагин без frontend
   - Reference: workflow-pilot-backend-independence / T008 / implementation
-  - Файлы: src/execution/plugin/bridge.mjs, src/control/plugin/service.mjs, src/control/plugin/launch.mjs, src/execution/runtime/service.mjs, src/execution/runtime/vps.mjs, src/backend/lifecycle.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: src/execution/plugin/bridge.mjs, src/control/plugin/service.mjs, src/control/plugin/launch.mjs, src/execution/runtime/service.mjs, src/execution/runtime/vps.mjs, src/backend/lifecycle.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, src/backend/desktop-model.mjs, src/backend/main.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
 - [TODO] T009: Завершить launcher, значок и остановку — Ожидает
