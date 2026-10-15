@@ -40,7 +40,7 @@ export function configureExecutor(record,{store,inspectPlan,enabled,onChange,sig
       &&plan.planView?.tasks?.length===1&&plan.planView.tasks[0].id===saved.taskId
       &&(!plan.nextTask||plan.nextTask.id===saved.taskId)};
   },
-    available:()=>!!record.project()&&!record.disposed&&record.ready&&!record.loading&&!record.composer.inFlight
+    available:()=>!!record.project()&&!record.disposed&&!record.paused&&record.ready&&!record.loading&&!record.composer.inFlight
       &&!record.controller.pending&&['delivered','stale','manual-session'].includes(record.controller.state.phase),
     saveCheckpoint:autoPlanCheckpoint=>store.saveExecutorAutomation(saved.workspace,saved.sessionId,{autoPlanCheckpoint}),
     onChange,log,send:(text,canContinue,onBeforeSend)=>automation.send({selected:selected(),page:flow.page,

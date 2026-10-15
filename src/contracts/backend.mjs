@@ -23,6 +23,8 @@ export const BACKEND_OPERATIONS = Object.freeze({
   'plugin.claim': 'mutate', 'plugin.report': 'mutate', 'plugin.wait': 'read',
   // The Desktop client: the same allowlisted channels as the former local IPC.
   'ui.state': 'read', 'ui.invoke': 'mutate',
+  // Explicit stop of the background service (draining, never a kill).
+  'service.status': 'read', 'service.stop': 'mutate', 'service.cancel-stop': 'mutate',
 });
 
 export const PLUGIN_ACTION_CLASS = Object.freeze({

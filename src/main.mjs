@@ -9,7 +9,12 @@ if(process.argv.includes('--desktop-client')) {
 } else if(process.argv.includes('--backend-host')) {
   const {startBackend}=await import('./backend/main.mjs');
   startBackend(electron,{fixtureRoot:electron.app.isPackaged?null:option('--backend-fixture-root')??null});
-} else {
+} else if(!electron.app.isPackaged&&['--smoke','--event-runtime-baseline','--event-runtime-checker'].some(flag=>process.argv.includes(flag))) {
+  // In-process Desktop remains only for the development smoke fixtures (removed in T012).
   const {startDesktop}=await import('./frontend/desktop/bootstrap.mjs');
   await startDesktop(electron);
+} else {
+  // Ordinary launch: a client that connects to the one backend, starting it once if needed.
+  const {startDesktopClient}=await import('./frontend/desktop/client.mjs');
+  startDesktopClient(electron);
 }

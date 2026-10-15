@@ -19,7 +19,7 @@ export function configureProjectAutoPlan(record,{store,authorization,inspectPlan
   const complete=()=>{const project=selected();authorization.sync(project.workspace,project.scopeId,
     {complete:true,confirmed:true,planRevision:project.planRevision});};
   flow=new AutoPlan({selected,inspectPlan,log,onChange,onComplete:complete,
-    available:()=>{const p=selected();return !!p&&!p.archivedAt&&!p.sessionArchivedAt&&!record.disposed&&record.ready&&!record.loading
+    available:()=>{const p=selected();return !!p&&!p.archivedAt&&!p.sessionArchivedAt&&!record.disposed&&!record.paused&&record.ready&&!record.loading
       &&!record.composer.inFlight&&!record.controller.pending&&permitted(p)&&!!monitor?.view(record.project())&&!monitor.error
       &&p.planExecution?.execution_strategy!=='parallel'&&['delivered','stale','manual-session'].includes(record.controller.state.phase);},
     saveCheckpoint:checkpoint=>save({autoPlanCheckpoint:checkpoint}),

@@ -28,6 +28,9 @@ export class SessionRuntimes {
     decorate=()=>()=>{},onError=()=>{},onChatBound=()=>{}}) {
     Object.assign(this,{store,runtime,contextCache,execution,presentation,onChange,onPage,decorate,onError,onChatBound});
     this.visible=null;
+    // Backend draining: no new Send, context delivery or assignment starts;
+    // work already in flight continues and checkpoints are untouched.
+    this.paused=false;
   }
   ensure(project=null) {
     if(project?.external)throw Object.assign(new Error('Эта сессия открыта в ChatGPT. Продолжайте разговор там.'),{code:'EXTERNAL_SESSION'});
@@ -36,7 +39,8 @@ export class SessionRuntimes {
     const identity=project?Object.freeze({workspace:project.workspace,sessionId:project.sessionId,
       assignmentId:project.assignmentId??null,taskId:project.taskId??null}):null;
     const browser=this.execution.openBrowserSession(key);
-    const record={key,identity,browser,pageState:browser.pageState,ready:false,
+    const runtimes=this;
+    const record={key,identity,browser,pageState:browser.pageState,ready:false,get paused(){return runtimes.paused;},
       get loading(){return browser.snapshot().loading;},get epoch(){return browser.snapshot().epoch;},
       readinessEpoch:0,disposed:false,manualDocumentOwner:null,lastStopObservation:null,error:null,cleanups:[]};
     this.#records.set(key,record);
@@ -89,7 +93,7 @@ export class SessionRuntimes {
   }
   tick(record,{freshDraft=false}={}) {
     const project=record.project();
-    if(record.disposed||!record.ready||record.loading||!project||project.archivedAt||project.sessionArchivedAt)return;
+    if(record.disposed||this.paused||!record.ready||record.loading||!project||project.archivedAt||project.sessionArchivedAt)return;
     record.controller.runtime=this.runtime();
     if(!record.controller.active) {
       record.controller.attach(project,{freshDraft:freshDraft||record.freshDraft===true});

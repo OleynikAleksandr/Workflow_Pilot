@@ -136,6 +136,9 @@ function desktopCatalog(services,base) {
     'plan.continue':async args=>{exact(args,[]);await local('pilot:auto-plan',true);return planSnapshot(services);},
     'plan.stop':async args=>{exact(args,[]);await local('pilot:auto-plan',false);return planSnapshot(services);},
     'ui.state':args=>{exact(args,[]);return {state:services.desktop.snapshot(),archive:services.desktop.archiveSnapshot()};},
+    'service.status':args=>{exact(args,[]);return services.service.view();},
+    'service.stop':args=>{exact(args,[]);return services.service.request();},
+    'service.cancel-stop':args=>{exact(args,[]);return services.service.cancel();},
     // The former IPC allowlist; the model validates each input as before.
     'ui.invoke':async args=>{exact(args,['surface','channel','input']);
       if(!['local','archive','colors'].includes(args.surface)||!DESKTOP_CHANNELS[args.surface].includes(args.channel))throw invalid();

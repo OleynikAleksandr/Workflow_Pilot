@@ -84,7 +84,8 @@ async function restoreExecutionPage(project,assignment=null) {
   return project;
 }
 const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelExecutionBook,
-  isEnabled:(workspace,scope)=>projectAutoPlan.enabled(workspace,scope),
+  // A draining backend opens no new assignment and queues no new send.
+  isEnabled:(workspace,scope)=>!liveSessions?.paused&&projectAutoPlan.enabled(workspace,scope),
   canFinalize:(workspace,scope)=>projectAutoPlan.finalizationAllowed(workspace,scope),
   onComplete:(workspace,scope)=>projectAutoPlan.sync(workspace,scope,{complete:true,confirmed:true}),
   origin:(workspace,id)=>store.project(workspace,id),
@@ -221,7 +222,7 @@ function restore(settings={}) {
 }
 const executionPort=Object.freeze({
   view: workspace=>structuredClone(execution.view(workspace)),
-  allStates: ()=>structuredClone([...execution.states.values()]),
+  allStates: ()=>structuredClone([...execution.states].map(([workspace,state])=>({...state,workspace}))),
   ledgers: ()=>structuredClone(Object.values(parallelExecutionBook)),
   observe: workspace=>execution.observe(workspace),signal: workspace=>execution.signal(workspace),
   recheck: workspace=>execution.recheck(workspace),correct: (...args)=>execution.correct(...args),

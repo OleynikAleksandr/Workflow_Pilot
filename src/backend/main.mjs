@@ -5,6 +5,9 @@ import {createBackendComposition,createBackendPages,assertProfileStores,assertNo
 import {createDesktopModel} from './desktop-model.mjs';
 import {createRemoteSurface} from './remote-surface.mjs';
 import {startBackendPort,installFixtureChat} from './lifecycle.mjs';
+import {createStopController} from './shutdown.mjs';
+import {createStatusMenu} from './status-menu.mjs';
+import {spawn} from 'node:child_process';
 import {BackendBrowserHost,desktopDependencies} from '../execution/facade.mjs';
 
 export function startBackend(electron,{fixtureRoot=null}={}) {
@@ -17,11 +20,11 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
     app.exit(2);return;
   }
   app.on('window-all-closed',()=>{});
-  let port=null,desktop=null,stopping=null;
+  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null;
   // Every ordinary exit stops own services first, then releases the profile.
   // The owner record is removed only by the process that proved ownership.
   const shutdown=()=>{
-    stopping??=(port?port.stop():Promise.resolve(desktop?.dispose())).catch(()=>{}).finally(()=>app.exit(0));
+    stopping??=(port?port.stop():Promise.resolve(desktop?.dispose())).catch(()=>{}).finally(()=>{stopper?.dispose();statusMenu?.destroy();app.exit(0);});
     return stopping;
   };
   app.on('before-quit',event=>{if(port){event.preventDefault();void shutdown();}});
@@ -50,11 +53,38 @@ export function startBackend(electron,{fixtureRoot=null}={}) {
         browserHost:host,surface,offline:!!fixtureRoot,pluginDirectory:fixtureRoot?path.join(fixtureRoot,'plugin'):null});
       if(!await desktop.start())throw Object.assign(new Error('Desktop model did not start.'),{code:'BACKEND_STARTUP_FAILED'});
       const base=desktop.services;
+      const service=Object.freeze({view:()=>stopper?.view()??{phase:'running',reasons:[],since:null,error:null},
+        request:()=>stopper.request(),cancel:()=>stopper.cancel()});
       const services=Object.freeze({control:base.control,execution:base.execution,workflow:base.workflow,settings:base.settings,
-        setup:base.setup,sessions:base.sessions,desktop,
+        setup:base.setup,sessions:base.sessions,desktop,service,
         pages:createBackendPages({sessions:base.sessions,setup:base.setup,store:base.control.projects,host}),
         onChange:listener=>desktop.onPublish(listener),restore:async()=>{},dispose:async()=>desktop.dispose()});
-      port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:events=>{surface.attach(events);desktop.publish();}});
+      port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:sink=>{events=sink;surface.attach(sink);desktop.publish();}});
+      const status=()=>({service:stopper.view(),pages:base.sessions.all().length});
+      stopper=createStopController({drainState:()=>desktop.drainState(),pause:value=>desktop.pause(value),stop:shutdown,
+        onChange:view=>{events.ui('service',view);statusMenu?.update(status());}});
+      events.ui('service',stopper.view());
+      // A client is a separate process: focus a connected one or start a new one.
+      const openClient=()=>{
+        if(events.clients>0)return events.uiCommand('focus',{});
+        const args=[...(app.isPackaged?[]:[app.getAppPath()]),'--desktop-client',...(fixtureRoot?['--client-backend-root='+fixtureRoot,
+          '--client-root='+path.join(fixtureRoot,'client'),'--client-fixture']:[])];
+        const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+        spawn(process.execPath,args,{detached:true,stdio:'ignore',env}).unref();
+      };
+      app.on('activate',openClient);
+      if(!fixtureRoot) {
+        statusMenu=createStatusMenu({Tray:electron.Tray,Menu:electron.Menu,nativeImage:electron.nativeImage,onOpen:openClient,
+          onCancelStop:()=>stopper.cancel(),
+          onStop:async()=>{
+            const answer=await electron.dialog.showMessageBox({type:'question',buttons:['Остановить','Отмена'],defaultId:1,cancelId:1,
+              message:'Остановить фоновую службу Workflow Pilot?',
+              detail:'Новые отправки и назначения не начнутся. Текущий ответ ChatGPT, инструменты и команды Kit завершатся; затем службы остановятся.'});
+            if(answer.response===0)stopper.request();
+          }});
+        statusMenu?.update(status());
+        desktop.onPublish(()=>{events.changed();statusMenu?.update(status());});
+      }
     }catch(error){
       try{await (port?port.stop():desktop?.dispose());}finally{claim.release();}
       throw error;

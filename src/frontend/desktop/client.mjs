@@ -12,6 +12,8 @@ const shellBackground = { light: '#f4f6f8', dark: '#1b1d22' };
 const settle = ms => new Promise(resolve => setTimeout(resolve, ms));
 const MAX_UPLOAD = 32 * 1024 * 1024;
 
+const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { return error.code !== 'ESRCH'; } };
+
 // The backend writes its private descriptor only after proving ownership.
 function readDescriptor(file) {
   const stat = fs.lstatSync(file, { throwIfNoEntry: false });
@@ -38,18 +40,26 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   const viewerUrl = pathToFileURL(path.join(desktopDir, 'ui/browser-view.html')).href;
   let window = null, sidebar = null, pageView = null, archiveWindow = null, colorEditor = null;
   let connection = null, stream = null, uiState = null, archiveState = null, colorsState = null, sidebarWidth = 312, theme = 'light';
+  let service = { phase: 'running', reasons: [] };
   const viewers = new Map();
   const report = (code, message) => { uiState = { ...(uiState ?? {}), startupError: { code, message } }; sidebar?.webContents.send('pilot:state-changed', uiState); };
 
   async function backendConnection() {
     const descriptorFile = path.join(dataDir, '.backend-host', 'service.json');
     let descriptor = readDescriptor(descriptorFile);
+    // A descriptor left by a crashed backend is not a running service; the new
+    // backend recovers that stale owner itself.
+    if (descriptor && !alive(descriptor.pid)) descriptor = null;
     if (!descriptor) {
       // Started detached in its own process group: the backend outlives this client.
       const args = [...(app.isPackaged ? [] : [app.getAppPath()]), '--backend-host', ...(backendRoot ? ['--backend-fixture-root=' + backendRoot] : [])];
       const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
       spawn(process.execPath, args, { detached: true, stdio: 'ignore', env }).unref();
-      for (let attempt = 0; attempt < 300 && !descriptor; attempt++) { await settle(100); descriptor = readDescriptor(descriptorFile); }
+      for (let attempt = 0; attempt < 300 && !descriptor; attempt++) {
+        await settle(100);
+        const candidate = readDescriptor(descriptorFile);
+        descriptor = candidate && alive(candidate.pid) ? candidate : null;
+      }
       if (!descriptor) throw Object.assign(new Error('Backend Workflow Pilot не запустился.'), { code: 'BACKEND_UNAVAILABLE' });
     }
     const next = new BackendConnection({ port: descriptor.port, token: descriptor.token });
@@ -127,6 +137,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   const popups = new Map();
   async function onEvent(event) {
     const data = event.data ?? {};
+    if (event.type === 'ui.focus') { if (window && !window.isDestroyed()) { if (window.isMinimized()) window.restore(); if (!fixture) { window.show(); window.focus(); } } return; }
     if (event.type === 'ui.open-archive') return openArchive();
     if (event.type === 'ui.close-archive') return archiveWindow?.close();
     if (event.type === 'ui.open-colors') return colorEditor.open();
@@ -198,9 +209,27 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     await entry.view.paste(text.slice(0, 60 * 1024)); return true;
   });
 
+  // Status and stop of the background service, also where no tray exists.
+  function showService() {
+    if (!window || window.isDestroyed()) return;
+    const reason = service.reasons?.[0]?.message;
+    window.setTitle(service.phase === 'draining' ? 'Workflow Pilot — остановка: ' + (reason ?? 'ждём безопасной точки')
+      : service.phase === 'stopping' ? 'Workflow Pilot — фоновая служба останавливается' : (fixture ? 'Workflow Pilot — CLIENT FIXTURE' : 'Workflow Pilot'));
+  }
+  async function requestStop() {
+    if (!connection) return;
+    const answer = await dialog.showMessageBox(window, { type: 'question', buttons: ['Остановить', 'Отмена'], defaultId: 1, cancelId: 1,
+      message: 'Остановить фоновую службу Workflow Pilot?',
+      detail: 'Новые отправки и назначения не начнутся. Текущий ответ ChatGPT, инструменты и команды Kit завершатся; затем службы остановятся. Принудительного завершения нет.' });
+    if (answer.response === 0) await connection.run('service.stop').catch(error => dialog.showErrorBox('Workflow Pilot', error.message));
+  }
   function installMenu() {
+    const draining = service.phase === 'draining';
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       { label: 'Workflow Pilot', submenu: [{ role: 'about', label: 'О Workflow Pilot' }, { type: 'separator' },
+        draining ? { label: 'Отменить остановку фоновой службы', click: () => void connection?.run('service.cancel-stop').catch(() => {}) }
+          : { label: 'Остановить фоновую службу…', enabled: service.phase === 'running' && !!connection, click: () => void requestStop() },
+        { type: 'separator' },
         { role: 'hide', label: 'Скрыть' }, { role: 'quit', label: 'Закрыть окно (работа продолжится в фоне)' }] },
       { label: 'Правка', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' },
         { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
@@ -217,6 +246,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
           sidebar?.webContents.send('pilot:state-changed', value); layout(); void showSelectedPage().catch(() => {}); }
         if (kind === 'archive') { archiveState = value; archiveWindow?.webContents.send('pilot-archive:state-changed', value); }
         if (kind === 'colors') { colorsState = value; colorEditor?.publish(); }
+        if (kind === 'service') { service = value; showService(); installMenu(); }
       },
       onEvent: event => { void onEvent(event).catch(() => {}); },
       onError: () => {},

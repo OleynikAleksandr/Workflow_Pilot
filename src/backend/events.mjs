@@ -62,7 +62,7 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
     return stream;
   }
   const browserTypes=new Set(['document','file-chooser','page-opened','page-closed','download-ready','download-failed','presentation-error']);
-  const uiTypes=new Set(['open-archive','close-archive','open-colors','theme','layout']);
+  const uiTypes=new Set(['open-archive','close-archive','open-colors','theme','layout','focus']);
   return Object.freeze({open,changed,
     ui:setUi,
     // Requests to the client window (open archive, colours); small, ordered events.

@@ -64,6 +64,7 @@ export class ControlFacade {
     // Composition port for workflow/desktop migration; the registry and storage stay private.
     return Object.freeze({
       get visible() { return sessions.visible; },
+      get paused() { return sessions.paused; }, pause: value => { sessions.paused = value === true; },
       all: () => sessions.all(), find: project => sessions.find(project),
       ensure: project => sessions.ensure(project), tick: (...args) => sessions.tick(...args),
       show: record => sessions.show(record), hide: () => sessions.hide(),

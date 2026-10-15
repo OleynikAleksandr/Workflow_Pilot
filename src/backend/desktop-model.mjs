@@ -87,7 +87,7 @@ function observeManualConversation(state, record = liveSessions.visible) {
 }
 const workflow = control.configureWorkflow({getController:()=>store.selected()?.external?null:controller,
   contextAvailable:()=>!store.selected()?.external&&!pageLoading&&!setupState&&!settingsState,
-  available:()=>!store.selected()?.external&&!!controller&&!controller.composer.inFlight&&!pageLoading&&!setupState&&!settingsState
+  available:()=>!store.selected()?.external&&!liveSessions?.paused&&!!controller&&!controller.composer.inFlight&&!pageLoading&&!setupState&&!settingsState
     &&workspaceHealth?.ready&&workspaceHealth.workspace===store.selected()?.workspace,
   onChange:()=>publish(),report,save:overrides=>saveSettings(overrides)});
 const {projectAutoPlan,autoPlan,planMonitor,planReview,reviewContinuation,execution,executionKit}=workflow;
@@ -1266,6 +1266,30 @@ async function start() {
   return true;
 }
 
+// Draining: what still runs. A safe point is reached when nothing is listed;
+// nothing here cancels an answer, a tool or a Kit command.
+function drainState() {
+  const name = record => { const project = record.project(); return project ? (project.displayName || project.name || path.basename(project.workspace)) : 'ChatGPT'; };
+  const reasons = [];
+  for (const record of liveSessions.all()) {
+    if (record.pageState.current?.state.busy) reasons.push({ code: 'ANSWER_RUNNING', message: `Ждём завершения ответа ChatGPT: ${name(record)}.` });
+    else if (record.composer.inFlight) reasons.push({ code: 'SEND_RUNNING', message: `Ждём завершения отправки: ${name(record)}.` });
+    else if (record.controller.pending) reasons.push({ code: 'CONTEXT_RUNNING', message: `Ждём подготовки контекста: ${name(record)}.` });
+  }
+  for (const state of execution.allStates())
+    if ((state.commands ?? []).some(command => command.state && command.state !== 'completed'))
+      reasons.push({ code: 'COMMAND_RUNNING', message: `Ждём завершения команды Kit: ${path.basename(state.workspace ?? '') || 'проект'}.` });
+  return reasons;
+}
+function pause(value) {
+  liveSessions.pause(value === true);
+  if (value === true) { publish(); return; }
+  // Resume exactly where automation waited: availability is re-evaluated.
+  for (const record of liveSessions.all()) { workflow.sessionChanged(record); liveSessions.tick(record); }
+  for (const state of execution.allStates()) if (state.workspace) void execution.signal(state.workspace);
+  publish();
+}
+
 // One entry for every surface: the same allowlist, queue and result envelope
 // as the former IPC handlers.
 async function invoke(surfaceName, channel, input) {
@@ -1283,6 +1307,7 @@ return Object.freeze({ start, invoke, dispose, windowFocused, archiveClosed, rel
   get theme() { return preferences.shellTheme; }, get sidebarWidth() { return clampedSidebarWidth(); },
   report: error => report(error),
   onPublish: listener => { publishListener = typeof listener === 'function' ? listener : () => {}; },
+  drainState, pause,
   // Product services for the backend API; Control stays the store owner.
   services: Object.freeze({ control, execution: executionServices, workflow, settings: preferences, setup: workspaceSetup,
     get sessions() { return liveSessions; } }),

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 147,
+  "plan_revision": 149,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -128,7 +128,10 @@
       "src/frontend/desktop/ui/browser-view.html",
       "src/frontend/desktop/ui/browser-view.mjs",
       "tests/backend-desktop-model.test.mjs",
-      "tests/desktop-client.test.mjs"
+      "tests/desktop-client.test.mjs",
+      "src/backend/shutdown.mjs",
+      "src/control/workflow/executor-session.mjs",
+      "src/control/workflow/project-session-auto-plan.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -1002,8 +1005,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T009",
@@ -1019,7 +1022,19 @@
         "src/backend/status-menu.mjs",
         "src/execution/platform/paths.mjs",
         "tests/backend-launcher.test.mjs",
-        "tests/backend-shutdown.test.mjs"
+        "tests/backend-shutdown.test.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/events.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/shutdown.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/facade.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/project-session-auto-plan.mjs",
+        "src/frontend/desktop/client.mjs"
       ],
       "documentation_paths": [
         "docs/planning/workflow-pilot-backend-spec-draft.md",
@@ -1068,7 +1083,26 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/workflow-pilot-backend-spec-draft.md",
+        "src/backend/desktop-model.mjs",
+        "src/backend/events.mjs",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/shutdown.mjs",
+        "src/backend/status-menu.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/facade.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/project-session-auto-plan.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/main.mjs",
+        "tests/backend-launcher.test.mjs",
+        "tests/backend-shutdown.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1560,7 +1594,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 147
+Revision: 149
 
 ## Цель
 
@@ -1648,10 +1682,10 @@ Revision: 147
   - Файлы: src/execution/plugin/bridge.mjs, src/control/plugin/service.mjs, src/control/plugin/launch.mjs, src/execution/runtime/service.mjs, src/execution/runtime/vps.mjs, src/backend/lifecycle.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, src/backend/desktop-model.mjs, src/backend/main.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
-- [TODO] T009: Завершить launcher, значок и остановку — Ожидает
-  - Git Commit: [PENDING] feat: Завершить launcher, значок и остановку
+- [DONE] T009: Завершить launcher, значок и остановку — Завершено
+  - Git Commit: [DONE] feat: Завершить launcher, значок и остановку
   - Reference: workflow-pilot-backend-independence / T009 / implementation
-  - Файлы: src/main.mjs, src/backend/launcher.mjs, src/backend/lifecycle.mjs, src/backend/status-menu.mjs, src/execution/platform/paths.mjs, tests/backend-launcher.test.mjs, tests/backend-shutdown.test.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
+  - Файлы: src/main.mjs, src/backend/launcher.mjs, src/backend/lifecycle.mjs, src/backend/status-menu.mjs, src/execution/platform/paths.mjs, tests/backend-launcher.test.mjs, tests/backend-shutdown.test.mjs, src/backend/desktop-model.mjs, src/backend/events.mjs, src/backend/main.mjs, src/backend/operations.mjs, src/backend/shutdown.mjs, src/contracts/backend.mjs, src/control/facade.mjs, src/control/sessions/service.mjs, src/control/workflow/coordination.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/project-session-auto-plan.mjs, src/frontend/desktop/client.mjs, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T008
 - [TODO] T010: Проверить reconnect и управляющее право — Ожидает
