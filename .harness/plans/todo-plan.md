@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 182,
+  "plan_revision": 183,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -520,7 +520,12 @@
         "docs/architecture/OVERVIEW.md",
         "docs/planning/remote-access-spec.md",
         "docs/modules/first-run-onboarding.md",
-        "docs/acceptance/remote-access.md"
+        "docs/acceptance/remote-access.md",
+        "docs/modules/backend.md",
+        "docs/modules/desktop.md",
+        "docs/modules/browser.md",
+        "docs/modules/release.md",
+        "README.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -639,7 +644,7 @@ Execution Scope Status: BLOCKED
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 182
+Revision: 183
 
 ## Цель
 
@@ -720,7 +725,7 @@ Revision: 182
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-remote-access / DOCS / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, docs/acceptance/remote-access.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, docs/acceptance/remote-access.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, README.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009
 - [TODO] T010: Собрать выпуск трёх ОС — Ожидает
