@@ -8,7 +8,7 @@ export function assertIntegrationIdle(root) {
   check(!activeIntegration(root),'INTEGRATION_PENDING','main занят интеграцией; используйте integration:status/continue.');
 }
 export function assertIntegrationCommand(root,command) {
-  if(['status','validate','recover','plan:view','hook','hook:ack','git-hook','integration:status','integration:continue','integration:start','assignment:status'].includes(command))return;
+  if(['status','validate','recover','plan:view','hook','hook:ack','git-hook','integration:status','integration:continue','integration:start','assignment:status','task:block','assignment:message','plan:escalate'].includes(command))return;
   assertIntegrationIdle(root);
 }
 export const saveJournal = (root, data) => atomic(localPath(root, 'transaction.json'), json(data));

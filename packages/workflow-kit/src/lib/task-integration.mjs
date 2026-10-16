@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PLAN, CONFIG, check, hash, json, atomic, readJSON, safePath, withLock } from './common.mjs';
 import { git, head, gitPath, localPath, allChanges, paths, isAncestor, ensureIdleGit, commitTimeout } from './git.mjs';
-import { parsePlan, renderPlan } from './plan.mjs';
+import { parsePlan, renderPlan, isOrchestratedPlan } from './plan.mjs';
 import { validate, journal, taskChecks, readConfig, resolveReferences } from './validate.mjs';
-import { assignmentStatus } from './task-assignment.mjs';
+import { assignmentStatus, removeIntegratedWorktree } from './task-assignment.mjs';
 import { saveJournal, messageFor, completedTransaction, finishTransaction } from './transaction-state.mjs';
 
 const file = root => localPath(root,'integration.json');
@@ -24,7 +24,9 @@ export function validateIntegrationCandidate(root,t,plan) {
   check(git(root,['diff','--name-only','--diff-filter=U']).stdout.trim()==='','MERGE_CONFLICT','Остались конфликты.');
   check(paths(root).length===0 && paths(root,'untracked').length===0,'INTEGRATION_DIRTY','Кандидат не совпадает с рабочей папкой.');
   inspectIntegrationSource(root,t.source_commit,t.task,plan.scope_id);
-  const expected=integrationPlan(parsePlan(record.original_plan),t.task_id,t.id,t.source_commit,paths(root,'staged').filter(p=>p!==PLAN));
+  const staged=paths(root,'staged').filter(p=>p!==PLAN);
+  const expected=integrationPlan(parsePlan(record.original_plan),t.task_id,t.id,t.source_commit,staged,
+    {deleted:staged.filter(p=>!fs.existsSync(path.join(root,p))),pin:t.before_head});
   check(renderPlan(expected)===renderPlan(plan),'INTEGRATION_PLAN','Кандидат общего плана изменён.');
   check(git(root,['rev-parse',':'+CONFIG]).stdout.trim()===git(root,['rev-parse',t.before_head+':'+CONFIG]).stdout.trim(),
     'INTEGRATION_SERVICE_FILES','Конфигурация main должна сохраниться.');
@@ -37,7 +39,10 @@ function finish(root,record,t,sha) {
   atomic(recordFile(root,record.assignment_id),json(assignment),0o600);
   atomic(localPath(root,'integrations/'+record.id+'.json'),json({...record,phase:'INTEGRATED',integration_commit:sha}),0o600);
   if(fs.existsSync(file(root)))fs.unlinkSync(file(root));
-  return {ok:true,status:'INTEGRATED',assignment_id:record.assignment_id,task_id:record.task_id,source_commit:record.source_commit,integration_commit:sha};
+  // An orchestrated plan does not accumulate worktrees; a failed removal leaves the integration intact for assignment:cleanup.
+  const cleanup=isOrchestratedPlan(parsePlan(record.original_plan))?removeIntegratedWorktree(root,assignment):null;
+  return {ok:true,status:'INTEGRATED',assignment_id:record.assignment_id,task_id:record.task_id,source_commit:record.source_commit,integration_commit:sha,
+    ...(cleanup?{cleanup}:{})};
 }
 export function integrationStatus(root) {
   const record=activeIntegration(root);
@@ -64,8 +69,8 @@ export function startIntegration(root,{id,source_commit}) {
     ensureIdleGit(root);
     check(!journal(root) && !allChanges(root).length,'INTEGRATION_DIRTY','main должен быть чистым и без чужой транзакции.');
     check(git(root,['branch','--show-current']).stdout.trim()==='main' && fs.realpathSync(root)===assignment.parent_root
-      && plan.execution_strategy==='parallel' && plan.execution_scope_status==='ACTIVE' && !plan.current_task_id,
-      'INTEGRATION_OWNER','Интеграция выполняется в исходном main активного parallel-плана.');
+      && ['parallel','orchestrated'].includes(plan.execution_strategy) && plan.execution_scope_status==='ACTIVE' && !plan.current_task_id,
+      'INTEGRATION_OWNER','Интеграция выполняется в исходном main активного parallel- или orchestrated-плана.');
     const task=plan.tasks.find(t=>t.id===assignment.parent_task_id);
     check(task?.commit_status==='PENDING','INTEGRATION_TASK','Задача уже интегрирована.');
     const status=assignmentStatus(root,id);
@@ -138,7 +143,8 @@ function resume(root,record) {
   const stageable=changed.filter(p=>indexed.has(p)||fs.existsSync(path.join(root,p)));
   if(stageable.length)git(root,['add','--',...stageable]);
   const actual=paths(root,'staged').filter(p=>p!==PLAN).sort();
-  const candidate=renderPlan(integrationPlan(before,task.id,record.id,record.source_commit,actual));
+  const candidate=renderPlan(integrationPlan(before,task.id,record.id,record.source_commit,actual,
+    {deleted:actual.filter(p=>!fs.existsSync(path.join(root,p))),pin:record.before_head}));
   atomic(safePath(root,PLAN),candidate);git(root,['add','--',PLAN]);
   t={schema_version:1,id:record.id,plan_path:PLAN,role:'integration',scope_id:before.scope_id,task_id:task.id,
     task:{...task,actual_files:actual},source_commit:record.source_commit,message:'merge: '+task.title,

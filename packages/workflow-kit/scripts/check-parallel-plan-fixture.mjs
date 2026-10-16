@@ -123,6 +123,7 @@ try {
     const incomplete = structuredClone(done); delete incomplete.tasks[0].commit_ref.operation_id;
     expect('PLAN_SCHEMA',()=>validatePlan(incomplete));
     createScope(root,scope); startTask(root,'T001'); write(root,'README.md','# Legacy still executes\n');
+    expect('TASK_UPDATE',()=>updateTask(root,'T001',{context_pack:{documents:[{path:'GUIDE.md',required:true}]}},readPlan(root).plan_revision));
     commit(root);
     assert.equal(readPlan(root).tasks[0].commit_status,'DONE');
   }
@@ -261,8 +262,7 @@ try {
     updateTask(root,'T002',{context_pack:{documents:[{path:'NOTES.md',required:true}]}},current.plan_revision);
     current = readPlan(root);
     assert.deepEqual(current.tasks[1].context_pack.documents.map(d=>d.path),['NOTES.md'],'task:update replaces the context');
-    startTask(root,'T001');
-    expect('TASK_UPDATE',()=>updateTask(root,'T001',{context_pack:context},readPlan(root).plan_revision));
+    expect('ORCHESTRATED_MAIN_READ_ONLY',()=>startTask(root,'T001'));
   }
   console.log('parallel-plan fixture: legacy execution, orchestrated DOCS/release tail/context, policy validation, safe/exclusive areas, amendments, recovery, Review binding and parent DONE guard passed');
 } finally {

@@ -26,6 +26,6 @@
     "node": ">=22"
   },
   "scripts": {
-    "check": "node scripts/check-package.mjs && node scripts/check-consumer-contract.mjs && node scripts/check-runtime-fixture.mjs && node scripts/check-carryover-fixture.mjs && node scripts/check-plan-review-fixture.mjs && node scripts/check-parallel-plan-fixture.mjs && node scripts/check-task-handoff-fixture.mjs && node scripts/check-task-assignment-fixture.mjs && node scripts/check-task-integration-fixture.mjs && node scripts/check-parallel-execution-fixture.mjs && node scripts/check-previous-upgrade-fixture.mjs"
+    "check": "node scripts/check-package.mjs && node scripts/check-consumer-contract.mjs && node scripts/check-runtime-fixture.mjs && node scripts/check-carryover-fixture.mjs && node scripts/check-plan-review-fixture.mjs && node scripts/check-parallel-plan-fixture.mjs && node scripts/check-task-handoff-fixture.mjs && node scripts/check-task-assignment-fixture.mjs && node scripts/check-task-integration-fixture.mjs && node scripts/check-parallel-execution-fixture.mjs && node scripts/check-orchestrated-execution-fixture.mjs && node scripts/check-previous-upgrade-fixture.mjs"
   }
 }

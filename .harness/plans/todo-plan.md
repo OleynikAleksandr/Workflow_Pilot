@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 232,
+  "plan_revision": 234,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -111,7 +111,8 @@
       "src/frontend/plugin/index.html",
       "src/frontend/plugin/app.mjs",
       "tests/backend-upgrade.test.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "packages/workflow-kit/src/lib/transaction-state.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -250,8 +251,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T002",
@@ -272,7 +273,9 @@
         "packages/workflow-kit/package.json",
         "packages/workflow-kit/src/lib/integration-proof.mjs",
         "packages/workflow-kit/src/lib/plan.mjs",
-        "packages/workflow-kit/src/schemas/plan.schema.json"
+        "packages/workflow-kit/src/schemas/plan.schema.json",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/src/lib/transaction-state.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -294,7 +297,21 @@
         "Коммит delivery-задачи в main поверх merge-коммитов проходит HISTORY_NOT_LINEAR"
       ],
       "expected_commit_message": "feat: Kit ограничивает main delivery-задачами и чистит worktree",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/assignment-contract.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/integration-proof.mjs",
+        "packages/workflow-kit/src/lib/signals.mjs",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "packages/workflow-kit/src/lib/task-integration.mjs",
+        "packages/workflow-kit/src/lib/transaction-state.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -834,7 +851,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 232
+Revision: 234
 
 ## Цель
 
@@ -864,10 +881,10 @@ Revision: 232
   - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/validation-rules.mjs, packages/workflow-kit/src/lib/extend-plan.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/task-update.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/schemas/workflow.schema.json, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Kit: main только для delivery, барьер, сигналы и очистка worktree — Ожидает
-  - Git Commit: [PENDING] feat: Kit ограничивает main delivery-задачами и чистит worktree
+- [DONE] T002: Kit: main только для delivery, барьер, сигналы и очистка worktree — Завершено
+  - Git Commit: [DONE] feat: Kit ограничивает main delivery-задачами и чистит worktree
   - Reference: workflow-pilot-orchestrated-execution / T002 / implementation
-  - Файлы: packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/integration-proof.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/schemas/plan.schema.json
+  - Файлы: packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/integration-proof.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/src/lib/transaction-state.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] T003: Kit: recovery по ролям и версия 1.8.0 — Ожидает

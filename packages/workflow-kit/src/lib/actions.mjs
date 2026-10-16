@@ -1,5 +1,6 @@
 import fs from 'node:fs';
-import { assertAssignment, assertAssignmentCommand } from './assignment-contract.mjs';
+import { assertAssignment, assertAssignmentCommand, assertOrchestratedMain } from './assignment-contract.mjs';
+import { activeIntegration } from './transaction-state.mjs';
 import { assertReviewPublication, finishReviewPublication, cleanupReview } from './review-state.mjs';
 import {beginTaskFiles,handoffTaskFiles} from './task-files.mjs';
 import path from 'node:path';
@@ -119,6 +120,10 @@ export function startTask(root, taskId, expectedRevision) {
     check(plan.execution_scope_status === 'ACTIVE', 'SCOPE_NOT_ACTIVE', 'Реализация разрешена только в ACTIVE scope.');
     const task = plan.tasks.find(t => t.id === taskId);
     check(task, 'UNKNOWN_TASK', 'Задача не найдена: ' + taskId);
+    if (isOrchestratedPlan(plan) && !assignment && plan.current_task_id !== taskId) {
+      assertOrchestratedMain(root, plan, task);
+      check(!activeIntegration(root), 'INTEGRATION_PENDING', 'Сначала завершите текущую интеграцию.');
+    }
     const started=()=>{
       const cleanup=cleanupReview(root,plan), result=recover(root);
       if(cleanup?.error)result.facts.review_cleanup_error=cleanup.error;
