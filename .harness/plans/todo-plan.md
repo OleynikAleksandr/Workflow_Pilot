@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 221,
+  "plan_revision": 223,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -990,14 +990,15 @@
         "Установка штатным installer без пересборки; служба остановлена штатно с согласия пользователя"
       ],
       "expected_commit_message": "feat: Установить 0.3.1 в Applications",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T017",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "T018",
@@ -1063,7 +1064,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 221
+Revision: 223
 
 ## Цель
 
@@ -1195,8 +1196,8 @@ Revision: 221
   - Файлы: release-manifest.json, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T015, DOCS-2
-- [TODO] T017: Установить 0.3.1 в Applications — Ожидает
-  - Git Commit: [PENDING] feat: Установить 0.3.1 в Applications
+- [DONE] T017: Установить 0.3.1 в Applications — Завершено
+  - Git Commit: [DONE] feat: Установить 0.3.1 в Applications
   - Reference: workflow-pilot-remote-access / T017 / implementation
   - Файлы: release-manifest.json, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
