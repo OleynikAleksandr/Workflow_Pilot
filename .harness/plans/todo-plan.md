@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 204,
+  "plan_revision": 206,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -668,8 +668,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T010",
@@ -694,7 +694,10 @@
         "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
       ],
       "expected_commit_message": "release: Собрать выпуск трёх ОС",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -787,7 +790,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 204
+Revision: 206
 
 ## Цель
 
@@ -871,8 +874,8 @@ Revision: 204
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, docs/acceptance/remote-access.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, README.md, resources/THIRD-PARTY.md, docs/modules/chatgpt-plugin.md, docs/modules/remote-access.md, docs/planning/backend-independence-followup.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009
-- [TODO] T010: Собрать выпуск трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск трёх ОС
+- [DONE] T010: Собрать выпуск трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск трёх ОС
   - Reference: workflow-pilot-remote-access / T010 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
