@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 184,
+  "plan_revision": 186,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -119,8 +119,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T001",
@@ -147,7 +147,12 @@
         "Итог и решения записаны в спецификацию"
       ],
       "expected_commit_message": "test: Сверить Tailscale Serve и формат кадров",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "tests/remote-serve-probe.test.mjs",
+        "tests/fixtures/remote-serve-proxy.mjs",
+        "docs/planning/remote-access-spec.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -654,7 +659,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 184
+Revision: 186
 
 ## Цель
 
@@ -678,8 +683,8 @@ Revision: 184
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Задачи последовательно меняют общий backend API, lease, UI и представление страниц; каждая опирается на контракт предыдущей. Пользователь не просил параллельного выполнения.
 
-- [TODO] T001: Сверить Tailscale Serve и формат кадров — Ожидает
-  - Git Commit: [PENDING] test: Сверить Tailscale Serve и формат кадров
+- [DONE] T001: Сверить Tailscale Serve и формат кадров — Завершено
+  - Git Commit: [DONE] test: Сверить Tailscale Serve и формат кадров
   - Reference: workflow-pilot-remote-access / T001 / implementation
   - Файлы: tests/remote-serve-probe.test.mjs, tests/fixtures/remote-serve-proxy.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
