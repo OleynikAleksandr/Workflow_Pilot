@@ -14,7 +14,26 @@ try {
   const common=path.join(source,'lib/common.mjs'),text=await fs.readFile(common,'utf8');
   assert.ok(text.includes("VERSION = '"+VERSION+"'"));
   await fs.writeFile(common,text.replace("VERSION = '"+VERSION+"'","VERSION = '1.7.1'"));
+  // The previous release did not ignore .workflow-temp/.
+  const files=path.join(source,'lib/installation-files.mjs'),filesText=await fs.readFile(files,'utf8');
+  assert.ok(filesText.includes('dist/\\n.workflow-temp/\\n'));
+  await fs.writeFile(files,filesText.replace('dist/\\n.workflow-temp/\\n','dist/\\n'));
   const previous=await import(pathToFileURL(path.join(source,'lib/installer.mjs')).href);
+  const project=async directory=>{
+    await fs.mkdir(directory);
+    const run=(...args)=>execFileSync('git',['-C',directory,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+    run('init','-b','main');run('config','user.name','Upgrade Fixture');run('config','user.email','fixture@example.invalid');
+    await fs.writeFile(path.join(directory,'README.md'),'# Upgrade fixture\n');run('add','README.md');run('commit','-m','fixture');
+    previous.install({project:directory,mode:'existing'});return run;
+  };
+  // A user edit inside the Kit .gitignore section stops the upgrade without changes.
+  const edited=path.join(temporary,'edited'),runEdited=await project(edited);
+  const ignoreFile=path.join(edited,'.gitignore'),ignored=await fs.readFile(ignoreFile,'utf8');
+  assert.ok(!ignored.includes('.workflow-temp/'));
+  await fs.writeFile(ignoreFile,ignored.replace('dist/\n','dist/\nbuild/\n'));
+  const editedHead=runEdited('rev-parse','HEAD');
+  assert.throws(()=>installer.install({project:edited,mode:'existing',update:true}),{code:'MODIFIED_INTEGRATION'});
+  assert.equal(runEdited('rev-parse','HEAD'),editedHead);assert.ok((await fs.readFile(ignoreFile,'utf8')).includes('build/'));
   const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
   git('init','-b','main');git('config','user.name','Upgrade Fixture');git('config','user.email','fixture@example.invalid');
   await fs.writeFile(path.join(root,'README.md'),'# Upgrade fixture\n');git('add','README.md');git('commit','-m','fixture');
@@ -27,8 +46,9 @@ try {
   assert.equal(await fs.readFile(planFile,'utf8'),before);
   assert.equal(JSON.parse(await fs.readFile(path.join(root,'.harness/kit-manifest.json'),'utf8')).upgraded_from,'1.7.1');
   assert.equal(git('status','--porcelain'),'');
+  assert.match(await fs.readFile(path.join(root,'.gitignore'),'utf8'),/^\.workflow-temp\/$/m,'upgrade adds .workflow-temp/ to the Kit section');
   assert.equal(installer.inspect({project:root,mode:'existing'}).compatible,true);
   const head=git('rev-parse','HEAD');assert.notEqual(installer.install({project:root,mode:'existing',update:true}).upgraded,true);
   assert.equal(git('rev-parse','HEAD'),head);
-  console.log(JSON.stringify({previousVersionUpgrade:true,from:'1.7.1',to:VERSION,planPreserved:true,idempotent:true}));
+  console.log(JSON.stringify({previousVersionUpgrade:true,from:'1.7.1',to:VERSION,planPreserved:true,idempotent:true,gitignoreSection:true,editedSectionStops:true}));
 }finally{await fs.rm(temporary,{recursive:true,force:true});}

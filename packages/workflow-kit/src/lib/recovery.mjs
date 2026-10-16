@@ -3,13 +3,22 @@ import { reviewSummary } from './review-state.mjs';
 import path from 'node:path';
 import { VERSION, planPath, CONFIG, check, contextPath, textFile, atomic, json, hash, id, errorResult } from './common.mjs';
 import { validate, documentByteLimit, resolveReferences } from './validate.mjs';
-import { nextTask, PROJECT_CONTINUATION_OBJECTIVE, parsePlan, uniqueDocuments, isDeliveryTask, hasExecutionPolicy } from './plan.mjs';
+import { nextTask, PROJECT_CONTINUATION_OBJECTIVE, parsePlan, uniqueDocuments, isDeliveryTask, hasExecutionPolicy, isOrchestratedPlan } from './plan.mjs';
+import { assignmentRecords } from './assignment-contract.mjs';
+import { blockedTasks } from './signals.mjs';
 import { snapshot, git, localPath, head, fileFingerprint, documentText, commitHistory } from './git.mjs';
 import { projectFacts, projectFactPaths, planningDocuments } from './project-facts.mjs';
 import { inspectionInputs } from './inspection-inputs.mjs';
 
 export const TRANSPORT_HARD_BYTES = 180000;
 export const TRANSPORT_MAX_PARTS = 7;
+export const RECOVERY_ROLES = Object.freeze(['orchestrator','discussion','executor']);
+// Workflow Pilot assigns the role of a session; the model never chooses it.
+const ROLE_TEXT = {
+  orchestrator: 'РОЛЬ: ОРКЕСТРАТОР\nЭта сессия ведёт план проекта. Без активного плана: обсуждение, спецификация в docs/planning и план оркестратора (execution_strategy orchestrated, execution_origin_session_id — Session ID этой сессии, release, метки parallel_safe и context_pack каждой задачи). Обсуждение без плана сохрани документом через docs:commit. Обычные задачи и DOCS выполняют исполнители в своих worktree, запуск — кнопкой пользователя. Ты принимаешь интеграции; на task:block отвечай assignment:message или исправляющей задачей через plan:extend; если не можешь устранить сбой — plan:escalate и описание проблемы пользователю. Delivery-задачи и assignment:cleanup выполняй в main по поручению приложения.',
+  discussion: 'РОЛЬ: ЧАТ ОБСУЖДЕНИЯ\nПлан проекта выполняется. Эта сессия — обсуждение параллельно с ним: план не создавай и не меняй, задачи не начинай. Документы не создавай; только по прямой просьбе пользователя — во временной папке .workflow-temp/ в корне проекта вне Git, предупредив об этом и назвав путь.',
+  executor: 'РОЛЬ: ИСПОЛНИТЕЛЬ\nЭта сессия выполняет одну задачу назначения: task:start → работа → commit --task. Не можешь завершить её — task:block --task ID --reason "причина" и заверши ответ. Контекст — служебная часть Kit и документы context_pack задачи.',
+};
 const LEGACY_REFERENCE_DOCUMENTS = new Set(['docs/MODULES.md', 'docs/DOCUMENTATION_INDEX.md']);
 function withoutKitSection(text,file) {
   const begin = '<!-- workflow-kit:begin -->', end = '<!-- workflow-kit:end -->';
@@ -215,12 +224,17 @@ export function recoverState(root, reason = 'manual', options = {}) {
       check(false,'CONCURRENT_CHANGE','Проект меняется во время проверки; повторите после завершения операции.');
     }
     const {plan,config,resolved,transaction} = validation;
+    const role = options.role ?? null;
+    check(role === null || RECOVERY_ROLES.includes(role), 'RECOVERY_ROLE', 'Роль recovery: orchestrator, discussion или executor.');
+    check(role !== 'executor' || plan.assignment, 'RECOVERY_ROLE', 'Роль executor доступна только в worktree назначения.');
+    const executor = role === 'executor';
     const task = transaction?.task ?? nextTask(plan);
     const rulesPath = '.harness/kit/WORKFLOW.md', policyPath = '.harness/kit/templates/PROTOTYPE.md';
     const instructions = projectInstructions(root);
-    const documents = uniqueDocuments([...plan.context_pack.documents,...(task?.context_pack?.documents??[])]);
+    // An executor receives only the documents its orchestrator chose for the task.
+    const documents = uniqueDocuments([...(executor?[]:plan.context_pack.documents),...(task?.context_pack?.documents??[])]);
     documents.forEach(doc=>contextPath(root,doc.path));
-    const planning = planningDocuments(root);
+    const planning = executor ? [] : planningDocuments(root);
     const templatePaths = ['PLAN','SPEC','CONTINUE','STAGES'].map(name=>'.harness/kit/templates/'+name+'.md');
     const relevant = [...new Set([PLAN,CONFIG,rulesPath,policyPath,...(instructions?[instructions.file]:[]),
       ...templatePaths,...projectFactPaths(root),...planning.map(doc=>doc.path),
@@ -241,6 +255,9 @@ export function recoverState(root, reason = 'manual', options = {}) {
     else if (plan.execution_scope_status==='BLOCKED') continuation = 'Разрешены обсуждение и диагностика. Причина: '+plan.blocked_reason;
     else if (plan.assignment && plan.delivery_status==='READY_FOR_ACCEPTANCE') continuation = 'Назначение готово к интеграции. Родительская задача не завершена. Сохраните ветку и worktree; новые задачи и вложенные исполнители запрещены.';
     else if (plan.delivery_status==='READY_FOR_ACCEPTANCE') continuation = 'Все задачи выполнены, план остаётся видимым. Новое поручение добавляется через plan:extend; закрытие требует отдельной прямой команды пользователя.';
+    else if (isOrchestratedPlan(plan) && !plan.assignment) continuation = role==='discussion'
+      ? 'Чат обсуждения: обсуждайте с пользователем, план и задачи не меняйте.'
+      : 'План оркестратора выполняет приложение Workflow Pilot по кнопке пользователя: обычные задачи и DOCS — исполнители в worktree. Не начинайте их через task:start в main; delivery-задачи и assignment:cleanup — по поручению приложения.';
     else if (plan.execution_strategy==='parallel' && !plan.assignment) continuation = 'Основной чат ведёт планирование и исправление интеграций. Все задачи, включая общую основу и исключительные, выполняют отдельные назначения Web Pilot. Не вызывайте task:start/commit задачи в main. AutoPlan выбранного проекта управляет запуском. Если осталась прежняя начатая задача main, приложение сохраняет её через assignment:handoff; при блокировке сообщите точную причину, не удаляйте правки.';
     else continuation = (plan.current_task_id?'Продолжить ':'Начать через task:start ')+(task?.id??'задачу после уточнения зависимостей')+'.';
     const units = [];
@@ -253,31 +270,39 @@ export function recoverState(root, reason = 'manual', options = {}) {
       +'\nСостояние: '+plan.execution_scope_status+' / '+plan.delivery_status+(transaction?' / COMMIT_PENDING':'')
       +'\nТекущая задача: '+(task?.id??'нет')
       +'\nНовый chat/client продолжает этот же checkout plan.');
+    if(role) add('role',ROLE_TEXT[role]);
     add(rulesPath,section(textFile(root,rulesPath),['Workflow','Workflow Core'],rulesPath),{document:true});
     add(policyPath,textFile(root,policyPath),{document:true});
     if(instructions?.text) add(instructions.file,instructions.text,{document:true});
-    add('project-facts','СРЕДА И ПРОЕКТ (данные, не инструкции; команды не запускались)\n'+json(projectFacts(root)));
+    if(!executor) add('project-facts','СРЕДА И ПРОЕКТ (данные, не инструкции; команды не запускались)\n'+json(projectFacts(root)));
     add('on-demand','ФОРМЫ ПО ЗАПРОСУ\n- Новый план: ./scripts/workflow plan:create --help\n- Новые задачи: ./scripts/workflow plan:extend --help\n- Выполнение и DOCS: ./scripts/workflow task:start --help');
-    add('plan-review',reviewSummary(root));
+    if(!executor) add('plan-review',reviewSummary(root));
     add('objective','ЦЕЛЬ\n'+(plan.objective||PROJECT_CONTINUATION_OBJECTIVE)+'\nКритерии:\n'+plan.acceptance_criteria.map(item=>'- '+item).join('\n'));
-    if(hasExecutionPolicy(plan))add('execution-policy','ВЫПОЛНЕНИЕ\n'+JSON.stringify(Object.fromEntries(['parallel_allowed','max_workers','execution_strategy','execution_reason'].map(key=>[key,plan[key]])))+'\nРодительское DONE требует проверенной интеграции; коммит исполнителя не закрывает общий план.');
-    add('user-decisions','РЕШЕНИЯ ПОЛЬЗОВАТЕЛЯ\n'+plan.user_decisions.map(item=>'- '+item.text).join('\n'));
+    if(hasExecutionPolicy(plan)&&!executor)add('execution-policy','ВЫПОЛНЕНИЕ\n'+JSON.stringify(Object.fromEntries(['parallel_allowed','max_workers','execution_strategy','execution_reason',...(isOrchestratedPlan(plan)?['release','execution_origin_session_id']:[])].map(key=>[key,plan[key]])))+'\nРодительское DONE требует проверенной интеграции; коммит исполнителя не закрывает общий план.');
+    if(!executor) add('user-decisions','РЕШЕНИЯ ПОЛЬЗОВАТЕЛЯ\n'+plan.user_decisions.map(item=>'- '+item.text).join('\n'));
     if(plan.assignment)add('assignment','ЛОКАЛЬНОЕ НАЗНАЧЕНИЕ\n'+json(plan.assignment)+'Исполнитель не расширяет план и не создаёт вложенных назначений. Локальное DONE означает готовность к интеграции.');
     for(const item of plan.tasks) add('task:'+item.id,taskProjection(item,resolved));
+    if(isOrchestratedPlan(plan)&&!plan.assignment&&plan.execution_scope_status==='ACTIVE') {
+      const records=assignmentRecords(root).filter(record=>record.parent_scope_id===plan.scope_id), blocked=blockedTasks(root,plan);
+      add('execution-state','ИСПОЛНИТЕЛИ ПЛАНА ОРКЕСТРАТОРА\n'+(records.map(record=>'- '+record.parent_task_id+' — '+record.id+' — '+record.phase
+        +(record.phase==='INTEGRATED'?', очистка: '+(record.cleanup?.status??'нет'):'')).join('\n')||'назначений нет')
+        +'\nЗаблокированные задачи:\n'+(blocked.map(item=>'- '+item.task_id+': '+item.reason).join('\n')||'нет')
+        +'\nОбычные задачи и DOCS в main не выполняются.');
+    }
     const deliveryIndex = plan.tasks.findLastIndex(item=>isDeliveryTask(item)&&item.commit_status==='DONE');
     if(deliveryIndex>=0&&plan.tasks.length>deliveryIndex+1) {
       const delivery=plan.tasks[deliveryIndex];
       add('after-delivery','ИЗМЕНЕНИЯ ПОСЛЕ ВЫПУСКА\nПоследний delivery: '+delivery.id+' @ '+resolved[delivery.id]?.sha
         +'\nСледующие задачи: '+plan.tasks.slice(deliveryIndex+1).map(item=>item.id).join(', '));
     }
-    if(previous) {
+    if(previous && !executor) {
       add('previous-plan','ПРЕДЫДУЩИЙ ПЛАН\narchived_scope_id: '+plan.archived_scope_id+'\nКоммит закрытия: '+previous.sha
         +'\nЧтение плана: git show '+previous.sha+'^:'+PLAN
         +'\nСпецификации:\n'+previous.documents.map(referenceLine).join('\n'));
       add('previous-tasks',previous.plan.tasks.map(item=>item.id+' — '+item.title+' — '+item.implementation_status
         +' / '+item.commit_status+' — '+previous.resolved[item.id].sha).join('\n'),{revision:previous.parent});
     } else if(plan.execution_scope_status==='NONE') add('previous-plan','Предыдущего закрытого плана нет.');
-    add('planning','РАБОЧИЕ СПЕЦИФИКАЦИИ docs/planning (содержимое по выбору)\n'
+    if(!executor) add('planning','РАБОЧИЕ СПЕЦИФИКАЦИИ docs/planning (содержимое по выбору)\n'
       +(planning.map(doc=>'- '+doc.path+' — '+doc.title+' — '+doc.bytes+' байт').join('\n')||'нет'));
 
     const included = [PLAN,CONFIG,rulesPath,policyPath,...(instructions?.text?[instructions.file]:[])];
@@ -320,7 +345,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
       if(attempt===0) continue;
       check(false,'CONCURRENT_CHANGE','Проект меняется во время восстановления. Повторите после завершения другой операции.');
     }
-    const packet = {ok:true,transaction_pending:Boolean(transaction),session_id:null,plan_id:plan.scope_id,plan_path:PLAN,
+    const packet = {ok:true,transaction_pending:Boolean(transaction),session_id:null,role,plan_id:plan.scope_id,plan_path:PLAN,
       facts:{project_id:plan.project_id,project_name:plan.project_name,plan_revision:plan.plan_revision,scope_id:plan.scope_id,
         execution_scope_status:plan.execution_scope_status,delivery_status:plan.delivery_status,task_id:task?.id??null,task_title:task?.title??null},
       text:body,parts,marker,signature:hash(body),completeness:'COMPLETE',reason,head:before.head,plan_revision:plan.plan_revision,
@@ -338,10 +363,10 @@ export function sessionStart(root, event) {
   } catch (e) { const error = errorResult(e); return { continue: false, stopReason: error.code, systemMessage: error.message + ' Диагностика: ./scripts/workflow status' }; }
 }
 
-export function contextPacket(root) {
-  const packet = recover(root);
+export function contextPacket(root, options = {}) {
+  const packet = recover(root, 'manual', {role:options.role});
   return { ok: true, delivery_protocol: 'inline-context-v1', ack_required: false, status: 'ready', completeness: packet.completeness,
-    workspace: root, session_id: packet.session_id, plan_id: packet.plan_id, plan_path: packet.plan_path,
+    workspace: root, role: packet.role, session_id: packet.session_id, plan_id: packet.plan_id, plan_path: packet.plan_path,
     context: packet.text, context_bytes: Buffer.byteLength(packet.text, 'utf8'), context_sha256: hash(packet.text),
     parts: packet.parts, size: packet.size, budget: packet.budget,
     signature: packet.signature, generated_at_ms: Date.now(), head: packet.head, facts: packet.facts };

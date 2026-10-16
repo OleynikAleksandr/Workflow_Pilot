@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 234,
+  "plan_revision": 236,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -112,7 +112,8 @@
       "src/frontend/plugin/app.mjs",
       "tests/backend-upgrade.test.mjs",
       "release-manifest.json",
-      "packages/workflow-kit/src/lib/transaction-state.mjs"
+      "packages/workflow-kit/src/lib/transaction-state.mjs",
+      "packages/workflow-kit/src/lib/common.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -314,8 +315,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T003",
@@ -335,7 +336,14 @@
         "tests/workflow-kit-recovery.test.mjs",
         "tests/workflow-kit-upgrade.test.mjs",
         "tests/workflow-kit-source.test.mjs",
-        "tests/migration-compatibility.test.mjs"
+        "tests/migration-compatibility.test.mjs",
+        "package-lock.json",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/transaction-state.mjs"
       ],
       "documentation_paths": [
         "packages/workflow-kit/docs/modules/orchestrated-plans.md",
@@ -362,7 +370,26 @@
         "Новые контракты описаны в orchestrated-plans.md; все документы Kit не больше 28000 байт; recovery проекта Workflow Pilot укладывается в бюджет fixture"
       ],
       "expected_commit_message": "feat: Kit 1.8.0 с recovery по ролям",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installation-files.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/transaction-state.mjs",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -851,7 +878,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 234
+Revision: 236
 
 ## Цель
 
@@ -887,10 +914,10 @@ Revision: 234
   - Файлы: packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/integration-proof.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/src/lib/transaction-state.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Kit: recovery по ролям и версия 1.8.0 — Ожидает
-  - Git Commit: [PENDING] feat: Kit 1.8.0 с recovery по ролям
+- [DONE] T003: Kit: recovery по ролям и версия 1.8.0 — Завершено
+  - Git Commit: [DONE] feat: Kit 1.8.0 с recovery по ролям
   - Reference: workflow-pilot-orchestrated-execution / T003 / implementation
-  - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/installation-files.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-package.mjs, tests/workflow-kit-recovery.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/workflow-kit-source.test.mjs, tests/migration-compatibility.test.mjs, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/README.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
+  - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/installation-files.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-package.mjs, tests/workflow-kit-recovery.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/workflow-kit-source.test.mjs, tests/migration-compatibility.test.mjs, package-lock.json, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/README.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
 - [TODO] T004: Control: роли сессий и хранилище — Ожидает

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createFixture} from './check-parallel-execution-fixture.mjs';
-import {createScope,startTask,applyConfig} from '../src/lib/actions.mjs';
+import {createScope,startTask,applyConfig,status} from '../src/lib/actions.mjs';
 import {readPlan} from '../src/lib/plan.mjs';
 import {createAssignment,setupAssignment,assignmentStatus,cleanupAssignments} from '../src/lib/task-assignment.mjs';
 import {startIntegration} from '../src/lib/task-integration.mjs';
@@ -34,7 +34,7 @@ try {
     execution_origin_session_id:'orchestrator-fixture',release:true,acceptance_criteria:['Only main remains'],
     approved_scope:{functional_paths:['release.txt'],documentation_paths:['README.md','SECOND.md','THIRD.md','FOUNDATION.md','TOOL-A.md',SPEC,'docs/architecture/OVERVIEW.md']},
     context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false},
-    tasks:[task('T001','README.md',[],false),task('T002','SECOND.md',['T001'],true,['dependency']),task('T003','THIRD.md',['T001'],true),
+    tasks:[{...task('T001','README.md',[],false),context_pack:{documents:[{path:'SECOND.md',required:true}],dependency_task_ids:[],include_last_completed_task:false}},task('T002','SECOND.md',['T001'],true,['dependency']),task('T003','THIRD.md',['T001'],true),
       task('T004','FOUNDATION.md',['T002','T003'],false),
       {id:'DOCS',title:'Актуализация всех документов проекта',why:'Retire the released specification',dependencies:[],functional_paths:[],
         documentation_paths:[SPEC,'docs/architecture/OVERVIEW.md'],verification_ids:[],acceptance_criteria:['Specification retired'],expected_commit_message:'docs: retire spec'},
@@ -73,6 +73,24 @@ try {
   assert.equal(fs.readFileSync(path.join(first.worktree,'README.md'),'utf8'),'# worker-a\n','block keeps files');
   assert.deepEqual(blockedTasks(root,readPlan(root)).map(b=>b.task_id),['T001']);
   assert.throws(()=>escalatePlan(first.worktree,'Not allowed here'),{code:'ASSIGNMENT_READ_ONLY'});
+  // Recovery by role: the executor sees only its task context; main shows executors and blocks.
+  const executor=recover(first.worktree,'manual',{role:'executor'});
+  assert.match(executor.text,/РОЛЬ: ИСПОЛНИТЕЛЬ/);assert.equal(executor.role,'executor');
+  assert.ok(executor.included.includes('SECOND.md'),'task context_pack is delivered');
+  assert.ok(!executor.included.includes(SPEC)&&!executor.text.includes('# Orchestration fixture'),'plan documents are not delivered to an executor');
+  assert.doesNotMatch(executor.text,/РАБОЧИЕ СПЕЦИФИКАЦИИ/);
+  assert.throws(()=>recover(root,'manual',{role:'executor'}),{code:'RECOVERY_ROLE'});
+  assert.throws(()=>recover(root,'manual',{role:'author'}),{code:'RECOVERY_ROLE'});
+  const discussion=recover(root,'manual',{role:'discussion'});
+  assert.match(discussion.text,/РОЛЬ: ЧАТ ОБСУЖДЕНИЯ/);assert.match(discussion.text,/\.workflow-temp\//);
+  assert.match(discussion.text,/T001: Needs a decision/);assert.ok(discussion.included.includes(SPEC));
+  assert.match(recover(root,'manual',{role:'orchestrator'}).text,/РОЛЬ: ОРКЕСТРАТОР/);
+  const plain=recover(root);assert.equal(plain.role,null);assert.doesNotMatch(plain.text,/РОЛЬ:/);
+  assert.match(plain.text,/выполняет приложение Workflow Pilot/);assert.doesNotMatch(plain.text,/Начать через task:start/);
+  assert.deepEqual(status(root).blocked_tasks.map(b=>b.task_id),['T001']);
+  assert.match(fs.readFileSync(path.join(root,'.gitignore'),'utf8'),/^\.workflow-temp\/$/m);
+  write(root,'.workflow-temp/notes.md','# Temporary\n');
+  assert.ok(!status(root).changes.some(file=>file.startsWith('.workflow-temp')),'temporary documents stay outside Git');
   assert.throws(()=>messageAssignment(root,'missing','Hello there'),{code:'ASSIGNMENT_ID'});
   messageAssignment(root,first.id,'Proceed with the current text');
   assert.deepEqual(blockedTasks(root,readPlan(root)),[]);

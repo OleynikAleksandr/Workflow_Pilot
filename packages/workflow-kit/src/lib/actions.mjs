@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { assertAssignment, assertAssignmentCommand, assertOrchestratedMain } from './assignment-contract.mjs';
 import { activeIntegration } from './transaction-state.mjs';
+import { blockedTasks } from './signals.mjs';
 import { assertReviewPublication, finishReviewPublication, cleanupReview } from './review-state.mjs';
 import {beginTaskFiles,handoffTaskFiles} from './task-files.mjs';
 import path from 'node:path';
@@ -389,6 +390,7 @@ export function status(root) {
   return { ok: true, project_path: root, project_name: plan.project_name, version: VERSION, project_id: plan.project_id,
     scope_status: plan.execution_scope_status, delivery_status: plan.delivery_status, scope_id: plan.scope_id, objective: plan.objective,
     current_task_id: plan.current_task_id, next_task_id: nextTask(plan)?.id ?? null, plan_revision: plan.plan_revision,
+    ...(isOrchestratedPlan(plan) && !plan.assignment ? {blocked_tasks: blockedTasks(root, plan)} : {}),
     tasks_done: plan.tasks.filter(t => t.commit_status === 'DONE').length, tasks_total: plan.tasks.length,
     profile: config.profile, stack: config.stack, head: state.snapshot.head,
     changes: [...new Set([...state.snapshot.staged, ...state.snapshot.unstaged, ...state.snapshot.untracked])].sort(), resolved,

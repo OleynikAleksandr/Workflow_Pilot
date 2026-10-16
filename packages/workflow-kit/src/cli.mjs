@@ -89,7 +89,7 @@ export async function main(argv = process.argv.slice(2)) {
       case 'review:publish': result = publishReview(root); break;
       case 'status': { result = status(root); if (!opts.full) { delete result.recovery_text; delete result.last_hook_execution; delete result.resolved; } break; }
       case 'validate': { const r = validate(root); result = { ok: true, message: 'План и Git согласованы.', plan_revision: r.plan.plan_revision, resolved: r.resolved, transaction_pending: !!r.transaction }; break; }
-      case 'recover': { if (opts.format === 'packet') return { value: contextPacket(root), json: true }; const p = recover(root); return { value: opts.format === 'json' || opts.json ? p : p.text, json: opts.format === 'json' || !!opts.json }; }
+      case 'recover': { if (opts.format === 'packet') return { value: contextPacket(root,{role:opts.role}), json: true }; const p = recover(root,'manual',{role:opts.role}); return { value: opts.format === 'json' || opts.json ? p : p.text, json: opts.format === 'json' || !!opts.json }; }
       case 'plan:view': result = sessionPlanView(root, opts.session); break;
       case 'plan:prepare':
       case 'plan:bind':
