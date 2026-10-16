@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 181,
+  "plan_revision": 182,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -268,7 +268,9 @@
         "src/frontend/desktop/ui/workspace-setup.mjs",
         "src/frontend/desktop/ui/archive.mjs",
         "src/frontend/desktop/ui/chat-colors.mjs",
-        "tests/web-client-electron.test.mjs"
+        "tests/web-client-electron.test.mjs",
+        "src/backend/server.mjs",
+        "src/backend/remote-gateway.mjs"
       ],
       "documentation_paths": [
         "docs/planning/remote-access-spec.md"
@@ -287,7 +289,8 @@
         "Архив, Настройки, Доктор и цвета доступны; выбор папки проекта — ввод пути, не файловый диалог устройства",
         "Оконные команды (архив, цвета, focus, layout) адресуются клиенту-инициатору; тест: действие удалённого клиента не открывает окна на Mac",
         "У удалённого клиента архив и редактор цветов открываются внутри страницы; выбор папки — ввод пути или разрешённые корни без нативного диалога на Mac",
-        "Веб-клиент проверен в Chromium-fixture"
+        "Веб-клиент проверен в Chromium-fixture",
+        "/v1/events принимает clientId подписчика (клиент Mac передаёт свой, шлюз — clientId устройства); оконные события уходят только потоку этого клиента"
       ],
       "expected_commit_message": "feat: Веб-клиент интерфейса Workflow Pilot",
       "parallel_safe": false
@@ -636,7 +639,7 @@ Execution Scope Status: BLOCKED
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 181
+Revision: 182
 
 ## Цель
 
@@ -681,7 +684,7 @@ Revision: 181
 - [TODO] T004: Веб-клиент: интерфейс и состояние связи — Ожидает
   - Git Commit: [PENDING] feat: Веб-клиент интерфейса Workflow Pilot
   - Reference: workflow-pilot-remote-access / T004 / implementation
-  - Файлы: src/frontend/web/index.html, src/frontend/web/bridge.mjs, src/frontend/web/connection.mjs, src/frontend/client/connection.mjs, src/frontend/desktop/ui/index.html, tests/web-client.test.mjs, src/backend/events.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/chat-colors.mjs, tests/web-client-electron.test.mjs, docs/planning/remote-access-spec.md
+  - Файлы: src/frontend/web/index.html, src/frontend/web/bridge.mjs, src/frontend/web/connection.mjs, src/frontend/client/connection.mjs, src/frontend/desktop/ui/index.html, tests/web-client.test.mjs, src/backend/events.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/chat-colors.mjs, tests/web-client-electron.test.mjs, src/backend/server.mjs, src/backend/remote-gateway.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Изображение страницы на iPad: ввод и файлы — Ожидает
