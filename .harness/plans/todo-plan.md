@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 168,
+  "plan_revision": 170,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1741,7 +1741,8 @@
         "package.json",
         "package-lock.json",
         "src/frontend/plugin/index.html",
-        "src/frontend/plugin/app.mjs"
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/backend-0.2.1-fixes.md"
@@ -1755,14 +1756,21 @@
         "Версия 0.2.1 согласована в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.2.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T018",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -1950,7 +1958,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 168
+Revision: 170
 
 ## Цель
 
@@ -2098,10 +2106,10 @@ Revision: 168
   - Файлы: src/backend/main.mjs, src/backend/desktop-model.mjs, src/backend/diagnostics.mjs, src/frontend/desktop/client.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-diagnostics.test.mjs, src/backend/events.mjs, src/backend/lifecycle.mjs, src/execution/browser/session-runtime.mjs, src/control/sessions/service.mjs, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T016
-- [TODO] T018: Подготовить версию 0.2.1 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.2.1
+- [DONE] T018: Подготовить версию 0.2.1 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.2.1
   - Reference: workflow-pilot-backend-independence / T018 / implementation
-  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, docs/planning/backend-0.2.1-fixes.md
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T017
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает

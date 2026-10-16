@@ -4,7 +4,7 @@ import { mountPanel } from './panel.mjs';
 import { mountNavigationProbe } from './navigation-probe.mjs';
 import { mountLaunch } from './launch.mjs';
 
-const app=new App({name:'Workflow Pilot',version:'0.2.0'});
+const app=new App({name:'Workflow Pilot',version:'0.2.1'});
 const extensions=new OpenAIExtensions(app);
 const panel=mountPanel({document,callTool:(name,args)=>app.callServerTool({name,arguments:args}),
   getMessage:()=>extensions.message});
