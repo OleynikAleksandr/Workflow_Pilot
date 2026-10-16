@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 202,
+  "plan_revision": 204,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -98,7 +98,10 @@
       "docs/modules/first-run-onboarding.md",
       "docs/modules/release.md",
       "docs/acceptance/remote-access.md",
-      "resources/THIRD-PARTY.md"
+      "resources/THIRD-PARTY.md",
+      "docs/modules/chatgpt-plugin.md",
+      "docs/modules/remote-access.md",
+      "docs/planning/backend-independence-followup.md"
     ]
   },
   "baseline_commit": "c9cb80e1ab1a5140705afb5a234c99082da5cf2d",
@@ -108,7 +111,7 @@
       {
         "path": "docs/planning/remote-access-spec.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "f2b04bcdaabf0ce033a77cbc403c0b8b61e5b75b"
       },
       {
         "path": "docs/modules/backend.md",
@@ -606,8 +609,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "DOCS",
@@ -639,14 +642,30 @@
         "docs/modules/browser.md",
         "docs/modules/release.md",
         "README.md",
-        "resources/THIRD-PARTY.md"
+        "resources/THIRD-PARTY.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/remote-access.md",
+        "docs/planning/backend-independence-followup.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/first-run-onboarding.md",
+        "docs/modules/release.md",
+        "docs/modules/remote-access.md",
+        "docs/planning/backend-independence-followup.md",
+        "docs/planning/remote-access-spec.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -768,7 +787,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 202
+Revision: 204
 
 ## Цель
 
@@ -846,10 +865,10 @@ Revision: 202
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T008
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-remote-access / DOCS / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, docs/acceptance/remote-access.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, README.md, resources/THIRD-PARTY.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, docs/acceptance/remote-access.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, README.md, resources/THIRD-PARTY.md, docs/modules/chatgpt-plugin.md, docs/modules/remote-access.md, docs/planning/backend-independence-followup.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009
 - [TODO] T010: Собрать выпуск трёх ОС — Ожидает
