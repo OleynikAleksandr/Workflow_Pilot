@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 200,
+  "plan_revision": 202,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -564,8 +564,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T009",
@@ -596,7 +596,14 @@
         "Задача заблокирована до подтверждённого пользователем номера версии в user_decisions"
       ],
       "expected_commit_message": "feat: Подготовить версию выпуска",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -761,7 +768,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 200
+Revision: 202
 
 ## Цель
 
@@ -833,8 +840,8 @@ Revision: 200
   - Файлы: tests/remote-end-to-end.test.mjs, src/backend/main.mjs, docs/planning/remote-access-spec.md, docs/acceptance/remote-access.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
-- [TODO] T009: Подготовить версию выпуска — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию выпуска
+- [DONE] T009: Подготовить версию выпуска — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию выпуска
   - Reference: workflow-pilot-remote-access / T009 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
