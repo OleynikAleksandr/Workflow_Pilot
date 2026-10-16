@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 172,
+  "plan_revision": 174,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1843,14 +1843,17 @@
         "Один штатный цикл трёх ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
       "expected_commit_message": "feat: Собрать выпуск 0.2.1 трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T019",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T020",
@@ -1978,7 +1981,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 172
+Revision: 174
 
 ## Цель
 
@@ -2138,8 +2141,8 @@ Revision: 172
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/backend-0.2.1-fixes.md, README.md, docs/acceptance/backend-independence.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/release.md, docs/planning/backend-independence-followup.md
   - Параллельность: исключительное выполнение
   - Зависимости: T016, T017, T018
-- [TODO] T019: Собрать выпуск 0.2.1 трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать выпуск 0.2.1 трёх ОС
+- [DONE] T019: Собрать выпуск 0.2.1 трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать выпуск 0.2.1 трёх ОС
   - Reference: workflow-pilot-backend-independence / T019 / implementation
   - Файлы: release-manifest.json, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
