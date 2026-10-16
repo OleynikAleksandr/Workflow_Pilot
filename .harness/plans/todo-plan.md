@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 223,
+  "plan_revision": 225,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Интерфейс Workflow Pilot на iPad из любой точки интернета через Tailscale к backend на Mac; шаг мастера первого запуска.",
   "acceptance_criteria": [
     "R01 Удалённый доступ выключен по умолчанию; включение и выключение явные, состояние видно на Mac",
@@ -1022,14 +1022,15 @@
         "Тег v0.3.1 на sourceCommit, assets сверены, remote main == local HEAD"
       ],
       "expected_commit_message": "feat: Опубликовать GitHub Release 0.3.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T018",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1061,10 +1062,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 223
+Revision: 225
 
 ## Цель
 
@@ -1202,8 +1203,8 @@ Revision: 223
   - Файлы: release-manifest.json, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T016, DOCS-2
-- [TODO] T018: Опубликовать GitHub Release 0.3.1 — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать GitHub Release 0.3.1
+- [DONE] T018: Опубликовать GitHub Release 0.3.1 — Завершено
+  - Git Commit: [DONE] feat: Опубликовать GitHub Release 0.3.1
   - Reference: workflow-pilot-remote-access / T018 / implementation
   - Файлы: release-manifest.json, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
