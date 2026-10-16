@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 208,
+  "plan_revision": 210,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Интерфейс Workflow Pilot на iPad из любой точки интернета через Tailscale к backend на Mac; шаг мастера первого запуска.",
   "acceptance_criteria": [
     "R01 Удалённый доступ выключен по умолчанию; включение и выключение явные, состояние видно на Mac",
@@ -730,8 +730,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T012",
@@ -756,7 +756,8 @@
         "Тег v<version> на sourceCommit, семь assets сверены по размеру и digest, remote main совпадает с local HEAD"
       ],
       "expected_commit_message": "release: Опубликовать GitHub Release",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -788,10 +789,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 208
+Revision: 210
 
 ## Цель
 
@@ -887,8 +888,8 @@ Revision: 208
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T010, DOCS
-- [TODO] T012: Опубликовать GitHub Release — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать GitHub Release
+- [DONE] T012: Опубликовать GitHub Release — Завершено
+  - Git Commit: [DONE] release: Опубликовать GitHub Release
   - Reference: workflow-pilot-remote-access / T012 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
