@@ -167,6 +167,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
           void (async()=>{
             if(command.op==='remote-enable')return {remote:await port.remote.enable({owner:'owner@example.com',dnsName:'mac.tailnet-fixture.ts.net'})};
             if(command.op==='remote-approve')return {approved:devices.view().pairings.map(item=>devices.approve(item.id).id)};
+            if(command.op==='remote-revoke')return {revoked:devices.view().devices.map(item=>devices.revoke(item.id).revoked)};
             return {error:'UNKNOWN_FIXTURE_OP'};
           })().then(value=>process.stdout.write(JSON.stringify({op:command.op,...value})+'\n'),
             error=>process.stdout.write(JSON.stringify({op:command.op,error:error.code??error.message})+'\n'));

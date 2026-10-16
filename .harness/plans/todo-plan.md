@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 198,
+  "plan_revision": 200,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -522,8 +522,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T008",
@@ -533,7 +533,8 @@
         "T007"
       ],
       "functional_paths": [
-        "tests/remote-end-to-end.test.mjs"
+        "tests/remote-end-to-end.test.mjs",
+        "src/backend/main.mjs"
       ],
       "documentation_paths": [
         "docs/planning/remote-access-spec.md",
@@ -555,7 +556,12 @@
         "Пользователю передан пошаговый сценарий проверки с iPad"
       ],
       "expected_commit_message": "feat: Проверить общий результат удалённого доступа",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "tests/remote-end-to-end.test.mjs",
+        "docs/acceptance/remote-access.md",
+        "src/backend/main.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -755,7 +761,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 198
+Revision: 200
 
 ## Цель
 
@@ -821,10 +827,10 @@ Revision: 198
   - Файлы: src/execution/runtime/tailscale.mjs, src/execution/facade.mjs, src/control/startup/remote-access.mjs, src/control/facade.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/settings-panel.mjs, src/contracts/desktop.mjs, tests/remote-access-setup.test.mjs, tests/startup-ui.test.mjs, package.json, package-lock.json, src/execution/platform/paths.mjs, src/backend/remote-access.mjs, src/backend/main.mjs, src/frontend/desktop/ui/remote-access.mjs, src/frontend/desktop/ui/index.html, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, resources/THIRD-PARTY.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006
-- [TODO] T008: Проверить общий результат удалённого доступа — Ожидает
-  - Git Commit: [PENDING] feat: Проверить общий результат удалённого доступа
+- [DONE] T008: Проверить общий результат удалённого доступа — Завершено
+  - Git Commit: [DONE] feat: Проверить общий результат удалённого доступа
   - Reference: workflow-pilot-remote-access / T008 / implementation
-  - Файлы: tests/remote-end-to-end.test.mjs, docs/planning/remote-access-spec.md, docs/acceptance/remote-access.md
+  - Файлы: tests/remote-end-to-end.test.mjs, src/backend/main.mjs, docs/planning/remote-access-spec.md, docs/acceptance/remote-access.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
 - [TODO] T009: Подготовить версию выпуска — Ожидает
