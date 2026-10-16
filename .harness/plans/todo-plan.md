@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 166,
+  "plan_revision": 168,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1689,7 +1689,11 @@
         "src/backend/diagnostics.mjs",
         "src/frontend/desktop/client.mjs",
         "tests/backend-browser-lifecycle.test.mjs",
-        "tests/backend-diagnostics.test.mjs"
+        "tests/backend-diagnostics.test.mjs",
+        "src/backend/events.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/control/sessions/service.mjs"
       ],
       "documentation_paths": [
         "docs/planning/backend-0.2.1-fixes.md"
@@ -1706,14 +1710,25 @@
         "Журнал backend-events.jsonl ограничен и не содержит секретов"
       ],
       "expected_commit_message": "feat: Восстанавливать страницы backend и вести диагностику процессов",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T017",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/main.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/diagnostics.mjs",
+        "src/backend/events.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/control/sessions/service.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-diagnostics.test.mjs"
+      ]
     },
     {
       "id": "T018",
@@ -1935,7 +1950,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 166
+Revision: 168
 
 ## Цель
 
@@ -2077,10 +2092,10 @@ Revision: 166
   - Файлы: src/backend/operations.mjs, src/frontend/client/connection.mjs, src/frontend/desktop/client.mjs, tests/backend-api.test.mjs, tests/backend-reconnect.test.mjs, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T017: Восстанавливать страницы backend и вести диагностику процессов — Ожидает
-  - Git Commit: [PENDING] feat: Восстанавливать страницы backend и вести диагностику процессов
+- [DONE] T017: Восстанавливать страницы backend и вести диагностику процессов — Завершено
+  - Git Commit: [DONE] feat: Восстанавливать страницы backend и вести диагностику процессов
   - Reference: workflow-pilot-backend-independence / T017 / implementation
-  - Файлы: src/backend/main.mjs, src/backend/desktop-model.mjs, src/backend/diagnostics.mjs, src/frontend/desktop/client.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-diagnostics.test.mjs, docs/planning/backend-0.2.1-fixes.md
+  - Файлы: src/backend/main.mjs, src/backend/desktop-model.mjs, src/backend/diagnostics.mjs, src/frontend/desktop/client.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-diagnostics.test.mjs, src/backend/events.mjs, src/backend/lifecycle.mjs, src/execution/browser/session-runtime.mjs, src/control/sessions/service.mjs, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T016
 - [TODO] T018: Подготовить версию 0.2.1 — Ожидает

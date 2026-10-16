@@ -26,7 +26,9 @@ function fakeElectron() {
         executeJavaScript:async()=>null,insertCSS:async()=>'css-key',removeInsertedCSS:async()=>{},
         loadURL:async url=>{contents.loads.push(url);
           contents.emit('did-start-navigation',{isMainFrame:true,isSameDocument:false});
-          contents.url=url;contents.emit('did-finish-load');}});
+          contents.url=url;contents.emit('did-finish-load');},
+        reload:()=>{contents.reloads=(contents.reloads??0)+1;
+          contents.emit('did-start-navigation',{isMainFrame:true,isSameDocument:false});contents.emit('did-finish-load');}});
       Object.assign(this,{options,webContents:contents,destroyed:false});windows.push(this);
     }
     isDestroyed(){return this.destroyed;}
@@ -65,7 +67,7 @@ test('backend host keeps a hidden offscreen page independent of its viewers',()=
   assert.equal(host.detachViewer(late),false);assert.equal(host.count,0);
 });
 
-function backendFixture(t,root) {
+function backendFixture(t,root,{recoverCrashed=false}={}) {
   const electron=fakeElectron(),host=hostOf(electron),sources=new Map(),sends=[];
   let respond=()=>({state:'sent'});
   const workspace=path.join(root,'project');
@@ -77,7 +79,7 @@ function backendFixture(t,root) {
     bindChat:async()=>project};
   const auth=new ProjectAutoPlan();auth.set(workspace,'scope-a',true,'chat-a');
   const execution=new ExecutionFacade();
-  execution.attachBrowser({host,ipc:{},
+  execution.attachBrowser({host,ipc:{},recoverCrashed,recoveryDelayMs:5,
     connect:(contents,_ipc,source)=>{
       sources.set(contents,source);
       const reset=()=>source.reset();
@@ -172,6 +174,32 @@ test('page crash is distinct from detach and an unknown Send is not repeated aft
   assert.deepEqual(f.sends,['Продолжай'],'UNKNOWN is never resent');
 });
 
+test('a page whose renderer died is reloaded at its own address, keeps readiness and never resends',async t=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'wp-backend-recover-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const f=backendFixture(t,root,{recoverCrashed:true});
+  const key=await f.pages.select(f.project);
+  const record=f.sessions.find(f.project),contents=f.host.view(key).webContents,events=[];
+  record.browser.subscribe(event=>events.push(event.type==='crashed'?'crashed:'+event.recovering+':'+event.reason:event.type));
+  f.setResult(()=>({state:'unknown'}));
+  f.observe(record,1,{turnId:'r1'});
+  await until(()=>f.sends.length===1,'uncertain continuation');
+  contents.emit('render-process-gone',{},{reason:'killed',exitCode:15});
+  assert.equal(f.pages.list()[0].crashed,true);assert.equal(record.ready,false);
+  await until(()=>contents.reloads===1&&!f.pages.list()[0].crashed,'automatic reload');
+  assert.deepEqual(contents.loads,[f.project.chatUrl],'the same document address is reloaded, nothing else is opened');
+  assert.equal(record.ready,true,'readiness confirmed before the crash is kept');
+  assert.ok(events.includes('crashed:true:killed'));
+  f.setResult(()=>({state:'sent'}));
+  f.observe(record,1,{turnId:'r1'},'fixture-document-2');
+  await settle(80);
+  assert.deepEqual(f.sends,['Продолжай'],'UNKNOWN is never resent after recovery');
+  // Recovery is bounded: three reloads per window, then the page stays closed.
+  for(let i=0;i<3;i++){contents.emit('render-process-gone',{},{reason:'crashed',exitCode:1});await settle(30);}
+  assert.equal(contents.reloads,3);
+  assert.equal(f.pages.list()[0].crashed,true,'the fourth loss in the window is not reloaded');
+  assert.ok(events.includes('crashed:false:crashed'));
+});
+
 test('Electron backend owns the restored session page: viewer loss, reconnect and crash',{skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:60000},async t=>{
   const {spawn,execFileSync}=await import('node:child_process');
   const readline=await import('node:readline');
@@ -236,6 +264,16 @@ test('Electron backend owns the restored session page: viewer loss, reconnect an
   assert.equal(crashed.crashed,true);assert.equal(crashed.error.code,'RENDER_PROCESS_GONE');
   assert.equal(crashed.ready,false);assert.equal(crashed.webContentsId,before.webContentsId,'a crash does not release the page');
   assert.ok(crashed.epoch>before.epoch);
+  // The backend reloads the same page by itself; the crash notice disappears.
+  let recovered;
+  for(let attempt=0;attempt<200;attempt++){recovered=await state();if(!recovered.crashed&&recovered.page&&recovered.page.bootId!==before.page.bootId)break;await settle(50);}
+  assert.equal(recovered.crashed,false,'the page is reloaded after its renderer died');
+  assert.equal(recovered.webContentsId,before.webContentsId);assert.equal(recovered.url,chatUrl);
+  assert.notEqual(recovered.page.bootId,before.page.bootId);assert.equal(recovered.error,null);
+  const journal=await fs.readFile(path.join(root,'diagnostics','backend-events.jsonl'),'utf8');
+  assert.match(journal,/"event":"render-process-gone"/);assert.match(journal,/"event":"backend-start"/);
+  assert.equal(journal.includes(ready.token),false,'the journal never holds the token');
+  assert.equal(journal.includes('chatgpt.com'),false,'the journal holds no page addresses');
   backend.stdin.end('stop\n');
   const code=await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(Error('backend did not stop')),10000);
     backend.once('exit',value=>{clearTimeout(timeout);resolve(value);});});

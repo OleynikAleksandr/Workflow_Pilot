@@ -7,9 +7,14 @@ import { openStartupPage } from './browser-startup.mjs';
 // No projects, stores, recovery decisions or selected cwd cross this boundary.
 export class BrowserSessions {
   #records = new Map();
+  // recoverCrashed: a page whose renderer died (crash, external kill, OOM) is
+  // reloaded at its own address after recoveryDelayMs, at most recoveryLimit
+  // times per recoveryWindowMs. Reload restores the page only: an interrupted
+  // Send stays UNKNOWN and nothing is typed or sent again.
   constructor({ host, ipc, connect = connectPageState,
-    createComposer = (contents, options) => new ChatGPTComposer(contents, options) }) {
-    Object.assign(this, { host, ipc, connect, createComposer });
+    createComposer = (contents, options) => new ChatGPTComposer(contents, options),
+    recoverCrashed = false, recoveryDelayMs = 1000, recoveryLimit = 3, recoveryWindowMs = 10 * 60 * 1000, now = Date.now }) {
+    Object.assign(this, { host, ipc, connect, createComposer, recoverCrashed, recoveryDelayMs, recoveryLimit, recoveryWindowMs, now });
   }
   open(id) {
     if (typeof id !== 'string' || !id) throw new TypeError('BROWSER_SESSION_ID_REQUIRED');
@@ -93,17 +98,38 @@ export class BrowserSessions {
       on('did-finish-load', () => { record.loading = false; record.crashed = false; emit('loaded'); });
       on('did-navigate-in-page', () => emit('navigated'));
       // A lost renderer is a page failure. Viewer changes never emit page events.
-      on('render-process-gone', () => {
+      on('render-process-gone', (_event, details = {}) => {
         record.loading = false; record.crashed = true; record.epoch++;
-        emit('crashed', { error: { code: 'RENDER_PROCESS_GONE',
-          message: 'Страница ChatGPT закрылась. Повторите открытие страницы.' } });
+        const reason = typeof details.reason === 'string' ? details.reason : 'unknown';
+        const exitCode = Number.isSafeInteger(details.exitCode) ? details.exitCode : null;
+        const recovering = this.#scheduleRecovery(record);
+        emit('crashed', { reason, exitCode, recovering, error: { code: 'RENDER_PROCESS_GONE',
+          message: recovering ? 'Страница ChatGPT закрылась и перезагружается. Прерванная отправка не повторяется.'
+            : 'Страница ChatGPT закрылась. Повторите открытие страницы.' } });
       });
       this.#records.set(id, record);
       return record.port;
     } catch (error) { this.#release(record); throw error; }
   }
+  #scheduleRecovery(record) {
+    if (!this.recoverCrashed || record.disposed) return false;
+    const now = this.now();
+    record.recoveries = (record.recoveries ?? []).filter(at => now - at < this.recoveryWindowMs);
+    if (record.recoveries.length >= this.recoveryLimit) return false;
+    record.recoveries.push(now);
+    clearTimeout(record.recoveryTimer);
+    record.recoveryTimer = setTimeout(() => {
+      record.recoveryTimer = null;
+      if (record.disposed || !record.crashed || record.contents.isDestroyed()) return;
+      record.loading = true;
+      try { record.contents.reload(); } catch { record.loading = false; }
+    }, this.recoveryDelayMs);
+    record.recoveryTimer.unref?.();
+    return true;
+  }
   #release(record) {
     if (record.disposed) return false;
+    clearTimeout(record.recoveryTimer); record.recoveryTimer = null;
     record.disposed = true; record.epoch++;
     record.source.dispose();
     for (const cleanup of record.cleanups.splice(0).reverse()) cleanup();

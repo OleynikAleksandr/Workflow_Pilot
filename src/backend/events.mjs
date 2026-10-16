@@ -7,9 +7,10 @@ const frame=(type,value)=>`event: ${type}\ndata: ${JSON.stringify(value)}\n\n`;
 
 // State events for any number of clients. Control changes are coalesced; a
 // slow or broken stream is closed and resyncs, it never delays a writer.
-export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coalesceMs=40}) {
+export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coalesceMs=40,onStreams=()=>{}}) {
   const log=createBackendEventLog({bootGeneration,state:state()});
   const streams=new Set();
+  const counted=()=>{try{onStreams(streams.size);}catch{ /* diagnostics never block streams */ }};
   // Desktop UI state is a latest value, not history: every stream gets the
   // current one on connect and each change; nothing large is retained.
   const ui=new Map();
@@ -35,7 +36,7 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
   const heartbeat=setInterval(()=>{for(const stream of streams)stream.write(':\n\n');},heartbeatMs);heartbeat.unref?.();
   function open(req,res,{generation,afterSequence}) {
     let closed=false,unsubscribe=()=>{};
-    const close=()=>{if(closed)return;closed=true;unsubscribe();streams.delete(stream);res.destroy();};
+    const close=()=>{if(closed)return;closed=true;unsubscribe();streams.delete(stream);res.destroy();counted();};
     const stream={write:text=>{
       if(closed)return;
       // Bounded per-client buffer: a reader that cannot keep up must resync.
@@ -44,7 +45,7 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
     },close};
     res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-store','x-accel-buffering':'no'});
     res.flushHeaders?.();
-    streams.add(stream);
+    streams.add(stream);counted();
     req.on('close',close);res.on('error',close);
     const send=event=>stream.write(frame('event',event));
     if(afterSequence!==null) {

@@ -81,8 +81,11 @@ export class SessionRuntimes {
     record.cleanups.push(browser.subscribe(event=>{
       if(record.disposed)return;
       if(event.type==='navigation-start')record.controller.cancel();
+      // A page reloaded after its renderer died keeps the readiness it had; the
+      // interrupted Send stays UNKNOWN in the composer and is never repeated.
+      if(event.type==='loaded'&&record.readyBeforeCrash&&!event.snapshot?.crashed){record.ready=true;record.readyBeforeCrash=false;}
       if(event.type==='loaded'||event.type==='navigated'){this.tick(record);this.onChange(record);}
-      if(event.type==='crashed')record.ready=false;
+      if(event.type==='crashed'){record.readyBeforeCrash=event.recovering===true&&record.ready;record.ready=false;}
       if(event.error){
         record.controller.cancel();record.error=event.error;
         this.onError(record,Object.assign(new Error(event.error.message),{code:event.error.code}));

@@ -27,7 +27,8 @@ const readBody=req=>new Promise((resolve,reject)=>{
 
 // Fixture routes (test profiles only) address backend-owned pages and expose
 // no URL navigation, JavaScript or file access.
-export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{},leaseTtlMs,appVersion}) {
+export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{},leaseTtlMs,appVersion,
+  onStreams=()=>{},onLease=()=>{}}) {
   const fixturePage=async()=>{
     const {sessions}=services;
     if(sessions.visible&&!sessions.visible.disposed)return sessions.visible;
@@ -84,7 +85,7 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
     return false;
   };
   const journal=openOperationJournal(path.join(identity.ownerDir,'operations.jsonl'));
-  const events=createBackendEvents({bootGeneration:claim.generation,state:()=>backendPublicState(services)});
+  const events=createBackendEvents({bootGeneration:claim.generation,state:()=>backendPublicState(services),onStreams});
   services.onChange(events.changed);
   onEvents(events);
   const transfers=createTransfers({directory:path.join(identity.ownerDir,'transfers'),emit:events.browser});
@@ -93,7 +94,7 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
   const operations=createBackendOperations({bootGeneration:claim.generation,journal,catalog:backendCatalog(services),
     onOperation:view=>{events.operation(view);events.changed();},leaseTtlMs,
     // Every client learns who controls; the previous holder's pressed input is released.
-    onLease:view=>{events.ui('lease',view);void presentation?.leaseChanged();}});
+    onLease:view=>{events.ui('lease',view);void presentation?.leaseChanged();try{onLease(view);}catch{ /* diagnostics only */ }}});
   events.ui('lease',operations.lease());
   presentation=createPresentationRoutes({host,transfers,leaseGeneration:()=>operations.leaseGeneration});
   const extra=async(req,res,url)=>{
