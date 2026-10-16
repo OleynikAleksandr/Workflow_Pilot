@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 194,
+  "plan_revision": 196,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -409,8 +409,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T006",
@@ -447,7 +447,11 @@
         "Новая зависимость кодировщика добавляется только если выбранный в T001 формат её требует"
       ],
       "expected_commit_message": "feat: Сжатые адаптивные кадры",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "tests/browser-presentation.test.mjs",
+        "docs/planning/remote-access-spec.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -731,7 +735,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 194
+Revision: 196
 
 ## Цель
 
@@ -785,8 +789,8 @@ Revision: 194
   - Файлы: src/frontend/web/browser-view.mjs, src/frontend/web/touch-input.mjs, src/frontend/client/browser-view.mjs, tests/web-browser-view.test.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [TODO] T006: Сжатые адаптивные кадры — Ожидает
-  - Git Commit: [PENDING] feat: Сжатые адаптивные кадры
+- [DONE] T006: Сжатые адаптивные кадры — Завершено
+  - Git Commit: [DONE] feat: Сжатые адаптивные кадры
   - Reference: workflow-pilot-remote-access / T006 / implementation
   - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/transport.mjs, src/contracts/browser-presentation.mjs, src/frontend/client/browser-view.mjs, tests/browser-presentation.test.mjs, package.json, package-lock.json, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение

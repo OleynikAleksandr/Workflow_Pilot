@@ -92,6 +92,14 @@ test('Electron backend page: frames, addressed input, clipboard, files, popup, r
   const frame=await until(()=>view.nextFrame(),'first frame');
   assert.equal(Buffer.from(frame.png.subarray(0,8)).toString('hex'),'89504e470d0a1a0a');
   assert.equal(frame.meta.pixelWidth,Math.round(frame.meta.logicalWidth*frame.meta.scale));
+  // A remote device asks for a compressed frame at its own density; the Mac window keeps PNG.
+  assert.equal(frame.mime,'image/png');
+  const compressed=await view.nextFrame({after:null,format:'jpeg',quality:70,maxScale:1});
+  assert.equal(compressed.mime,'image/jpeg');assert.equal(Buffer.from(compressed.png.subarray(0,2)).toString('hex'),'ffd8');
+  assert.equal(compressed.meta.scale,1);assert.equal(compressed.meta.pixelWidth,compressed.meta.logicalWidth);
+  assert.ok(compressed.png.length<frame.png.length,'the remote frame is smaller: '+compressed.png.length+' < '+frame.png.length);
+  await assert.rejects(client.fetch('/v1/browser/frame?viewer='+view.viewerId+'&format=jpeg&quality=5').then(async response=>{
+    if(!response.ok)throw Object.assign(new Error(),{code:(await response.json()).error.code});}),{code:'BROWSER_PRESENTATION_INVALID'});
   const click=async({x,y})=>{
     await view.input('pointer',{action:'down',x,y,button:'left',clickCount:1});
     await view.input('pointer',{action:'up',x,y,button:'left',clickCount:1});
