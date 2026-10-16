@@ -42,6 +42,15 @@ export function createControlLease({bootGeneration,ttlMs=LEASE_TTL_MS,now=Date.n
       lease=null;changed();
       return {released:true};
     },
+    holder(){view();return lease?.clientId??null;},
+    // Owner-side end of a client's control (a revoked remote device): no
+    // generation from the client is needed and nothing else changes hands.
+    revoke(id) {
+      view();
+      if(!lease||lease.clientId!==id)return {revoked:false};
+      lease=null;changed();
+      return {revoked:true};
+    },
     dispose(){clearTimeout(timer);timer=null;},
   });
 }

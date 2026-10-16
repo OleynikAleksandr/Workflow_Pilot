@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {BACKEND_API_VERSION} from '../contracts/backend.mjs';
-import {startBackendServer} from './server.mjs';
+import {startBackendServer,createApiRoute} from './server.mjs';
+import {createRemoteGateway} from './remote-gateway.mjs';
+import {fileURLToPath} from 'node:url';
 import {createBackendEvents} from './events.mjs';
 import {openOperationJournal,createBackendOperations,backendCatalog,backendPublicState} from './operations.mjs';
 import {createTransfers} from './transfers.mjs';
@@ -28,7 +30,7 @@ const readBody=req=>new Promise((resolve,reject)=>{
 // Fixture routes (test profiles only) address backend-owned pages and expose
 // no URL navigation, JavaScript or file access.
 export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{},leaseTtlMs,appVersion,
-  onStreams=()=>{},onLease=()=>{}}) {
+  onStreams=()=>{},onLease=()=>{},remoteDevices=null,remoteSourceDir=fileURLToPath(new URL('../',import.meta.url)),backendJournal}) {
   const fixturePage=async()=>{
     const {sessions}=services;
     if(sessions.visible&&!sessions.visible.disposed)return sessions.visible;
@@ -96,29 +98,34 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
     // Every client learns who controls; the previous holder's pressed input is released.
     onLease:view=>{events.ui('lease',view);void presentation?.leaseChanged();try{onLease(view);}catch{ /* diagnostics only */ }}});
   events.ui('lease',operations.lease());
-  presentation=createPresentationRoutes({host,transfers,leaseGeneration:()=>operations.leaseGeneration});
+  presentation=createPresentationRoutes({host,transfers,leaseGeneration:()=>operations.leaseGeneration,leaseHolder:()=>operations.leaseHolder()});
   const extra=async(req,res,url)=>{
     if(fixtureRoot&&await fixtureRoute(req,res)!==false)return true;
     return presentation.route(req,res,url);
   };
+  const status=()=>({apiVersion:BACKEND_API_VERSION,identity:'workflow-pilot',bootGeneration:claim.generation,readiness:'ready',
+    projects:services.control.projects.snapshot().projects.length,
+    browser:{connected:true,owner:'backend',fixtureAvailable:!!fixtureRoot}});
+  // The remote gateway forwards to the same routes with the device context; it
+  // listens only after an explicit enable.
+  const remote=createRemoteGateway({sourceDir:remoteSourceDir,journal:backendJournal,
+    devices:remoteDevices??{authenticate:()=>null,route:async()=>{throw Object.assign(new Error('No devices.'),{code:'REMOTE_DEVICE_REQUIRED'});}},
+    route:createApiRoute({claim,operations,events,status,appVersion,extra:(req,res,url,context)=>presentation.route(req,res,url,context)})});
   let server;
   try {
-    server=await startBackendServer({claim,operations,events,extra,appVersion,
-      status:()=>({apiVersion:BACKEND_API_VERSION,identity:'workflow-pilot',bootGeneration:claim.generation,readiness:'ready',
-        projects:services.control.projects.snapshot().projects.length,
-        browser:{connected:true,owner:'backend',fixtureAvailable:!!fixtureRoot}})});
+    server=await startBackendServer({claim,operations,events,extra,appVersion,status});
   }catch(error){services.onChange(null);host.emit=()=>{};host.onDownload=null;transfers.close();events.close();throw error;}
   try{claim.publish(server.port);}
   catch(error){await server.close();throw error;}
   let stopped=false;
   const stop=async()=>{
     if(stopped)return;stopped=true;
-    services.onChange(null);host.emit=()=>{};host.onDownload=null;await server.close();
+    services.onChange(null);host.emit=()=>{};host.onDownload=null;await remote.disable();await server.close();
     // Accepted operations finish or stay recorded before services go away.
     await operations.idle();operations.dispose();
     await services.dispose();
     transfers.close();
     claim.release();
   };
-  return Object.freeze({port:server.port,stop});
+  return Object.freeze({port:server.port,stop,remote,operations,presentation,events});
 }

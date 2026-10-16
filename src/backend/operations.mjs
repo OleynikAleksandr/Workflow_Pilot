@@ -248,7 +248,13 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
     if(concurrent.has(operation))inflight.add(done),done.finally(()=>inflight.delete(done));
     else tail=done;
   };
-  async function submit(command) {
+  // context.clientId: a remote device whose identity the gateway assigned.
+  // Its control.* commands always name that device, and any change needs the
+  // device itself to hold the lease; a seen generation number is not enough.
+  async function submit(command,context={}) {
+    const remoteClient=typeof context.clientId==='string'?context.clientId:null;
+    if(remoteClient&&command&&typeof command==='object'&&/^control\./.test(command.operation)&&command.args&&typeof command.args==='object')
+      command={...command,args:{...command.args,clientId:remoteClient}};
     const request=validateCommand(command),operationClass=BACKEND_OPERATIONS[request.operation];
     if(request.bootGeneration!==bootGeneration)throw protocolError('BACKEND_BOOT_STALE','Backend перезапущен. Обновите состояние.');
     if(operationClass==='read') {
@@ -261,6 +267,7 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
       const view=lease.acquire(request.args);
       return {requestId:request.requestId,status:'completed',value:{leaseGeneration:view.generation,...view}};
     }
+    if(remoteClient&&lease.holder()!==remoteClient)throw protocolError('BACKEND_LEASE_STALE','Право управления у другого окна.');
     verifyControlLease(request,lease.current());
     if(request.operation==='control.renew') {
       exact(request.args,['clientId']);
@@ -281,6 +288,6 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
   return Object.freeze({submit,
     operation:operationId=>{const record=journal.operation(operationId);return record?operationView(record):null;},
     get pending(){return pending;},get leaseGeneration(){return lease.current()?.generation??null;},
-    lease:()=>lease.view(),dispose:()=>lease.dispose(),
+    lease:()=>lease.view(),leaseHolder:()=>lease.holder(),revokeLease:clientId=>lease.revoke(clientId),dispose:()=>lease.dispose(),
     idle:()=>Promise.all([tail,...inflight])});
 }

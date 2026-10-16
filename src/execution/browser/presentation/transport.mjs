@@ -29,12 +29,16 @@ const exact = (value, keys) => { if (!Object.keys(value).every(key => keys.inclu
 
 // Browser presentation over the authenticated loopback API. Observers read
 // frames; only the current lease holder sends input, paste, viewport or files.
-export function createPresentationRoutes({ host, transfers, leaseGeneration }) {
+// context.clientId (remote device): viewers belong to the device that created
+// them, and input, paste, viewport and files need that device to hold the lease.
+export function createPresentationRoutes({ host, transfers, leaseGeneration, leaseHolder = () => null }) {
   const sequences = new Map();
+  const viewerOwners = new Map();
   const inputOwners = new Map();
   let lastLease = leaseGeneration();
-  const viewer = id => {
+  const viewer = (id, context = {}) => {
     if (!uuid(id)) throw notFound();
+    if (context.clientId && viewerOwners.get(id) !== context.clientId) throw notFound();
     const presentation = host.viewerPage(id);
     if (!presentation) throw notFound();
     return presentation;
@@ -49,7 +53,8 @@ export function createPresentationRoutes({ host, transfers, leaseGeneration }) {
       await host.presentation(browserSessionId)?.release();
     }
   };
-  const requireLease = value => {
+  const requireLease = (value, context = {}) => {
+    if (context.clientId && leaseHolder() !== context.clientId) throw protocolError('BACKEND_LEASE_STALE', 'Право управления у другого окна.');
     const current = leaseGeneration();
     if (current === null || value !== current) throw protocolError('BACKEND_LEASE_STALE', 'Право управления устарело.');
   };
@@ -64,12 +69,18 @@ export function createPresentationRoutes({ host, transfers, leaseGeneration }) {
       inputOwners.delete(presentation.browserSessionId);
       await presentation.release();
     }
-    sequences.delete(viewerId);
+    sequences.delete(viewerId); viewerOwners.delete(viewerId);
     return host.detachViewer(viewerId);
   };
-  async function route(req, res, url) {
+  // A revoked device loses every viewer it created.
+  const detachClient = async clientId => {
+    for (const [viewerId, owner] of [...viewerOwners]) if (owner === clientId) await detach(viewerId);
+  };
+  async function route(req, res, url, requestContext = {}) {
     const path = url.pathname;
     if (!path.startsWith('/v1/browser/')) return false;
+    const context = requestContext;
+    const viewerOf = id => viewer(id, context), leaseOf = value => requireLease(value, context);
     await syncLease();
     if (req.method === 'GET' && path === '/v1/browser/pages') return json(res, 200, { pages: host.pages() });
     if (req.method === 'POST' && path === '/v1/browser/viewers') {
@@ -77,13 +88,13 @@ export function createPresentationRoutes({ host, transfers, leaseGeneration }) {
       const presentation = host.presentation(body.browserSessionId);
       if (!presentation) throw notFound();
       const viewerId = host.attachViewer(body.browserSessionId);
-      sequences.set(viewerId, 0);
+      sequences.set(viewerId, 0); viewerOwners.set(viewerId, context.clientId ?? null);
       return json(res, 200, { viewerId, browserSessionId: presentation.browserSessionId, documentGeneration: presentation.documentGeneration });
     }
     let match = path.match(/^\/v1\/browser\/viewers\/([0-9a-f-]{36})$/);
-    if (req.method === 'DELETE' && match) return json(res, 200, { detached: await detach(match[1]) });
+    if (req.method === 'DELETE' && match) { viewerOf(match[1]); return json(res, 200, { detached: await detach(match[1]) }); }
     if (req.method === 'GET' && path === '/v1/browser/frame') {
-      const presentation = viewer(url.searchParams.get('viewer'));
+      const presentation = viewerOf(url.searchParams.get('viewer'));
       const after = url.searchParams.get('after');
       if (after !== null && !/^\d{1,15}$/.test(after)) throw protocolError('BROWSER_PRESENTATION_INVALID');
       const frame = await presentation.frame({ after: after === null ? null : Number(after), waitMs: after === null ? 0 : 1000 });
@@ -94,7 +105,8 @@ export function createPresentationRoutes({ host, transfers, leaseGeneration }) {
     }
     if (req.method === 'POST' && path === '/v1/browser/input') {
       const body = exact(await readBody(req), ['viewerId', 'input']);
-      const presentation = viewer(body.viewerId), input = validateBrowserInput(body.input);
+      const presentation = viewerOf(body.viewerId), input = validateBrowserInput(body.input);
+      if (context.clientId && leaseHolder() !== context.clientId) throw protocolError('BACKEND_LEASE_STALE', 'Право управления у другого окна.');
       verifyInputTarget(input, { browserSessionId: presentation.browserSessionId, documentGeneration: presentation.documentGeneration,
         leaseGeneration: leaseGeneration(), lastSequence: sequences.get(body.viewerId) ?? 0 });
       sequences.set(body.viewerId, input.sequence);
@@ -104,32 +116,33 @@ export function createPresentationRoutes({ host, transfers, leaseGeneration }) {
     }
     if (req.method === 'POST' && path === '/v1/browser/viewport') {
       const body = exact(await readBody(req), ['viewerId', 'width', 'height', 'leaseGeneration']);
-      requireLease(body.leaseGeneration);
+      leaseOf(body.leaseGeneration);
       if (![body.width, body.height].every(value => Number.isSafeInteger(value) && value >= 320 && value <= 4096))
         throw protocolError('BROWSER_PRESENTATION_INVALID');
-      viewer(body.viewerId).setViewport(body.width, body.height);
+      viewerOf(body.viewerId).setViewport(body.width, body.height);
       return json(res, 200, { width: body.width, height: body.height });
     }
     if (req.method === 'POST' && path === '/v1/browser/clipboard/selection') {
       const body = exact(await readBody(req), ['viewerId']);
-      return json(res, 200, { text: await viewer(body.viewerId).selection() });
+      return json(res, 200, { text: await viewerOf(body.viewerId).selection() });
     }
     if (req.method === 'POST' && path === '/v1/browser/clipboard/paste') {
       const body = exact(await readBody(req), ['viewerId', 'text', 'leaseGeneration']);
-      requireLease(body.leaseGeneration);
+      leaseOf(body.leaseGeneration);
       if (typeof body.text !== 'string' || !body.text.length || body.text.length > 60 * 1024) throw protocolError('BROWSER_PRESENTATION_INVALID');
-      await viewer(body.viewerId).paste(body.text);
+      await viewerOf(body.viewerId).paste(body.text);
       return json(res, 200, { pasted: body.text.length });
     }
     if (req.method === 'POST' && path === '/v1/browser/transfers') {
       const body = exact(await readBody(req), ['transfer', 'leaseGeneration']);
-      requireLease(body.leaseGeneration);
+      leaseOf(body.leaseGeneration);
       return json(res, 200, transfers.startUpload(body.transfer));
     }
     match = path.match(/^\/v1\/browser\/transfers\/([A-Za-z0-9][A-Za-z0-9_.:-]{0,127})$/);
     if (req.method === 'PUT' && match) {
       const offset = url.searchParams.get('offset');
       if (offset === null || !/^\d{1,12}$/.test(offset)) throw protocolError('BACKEND_TRANSFER_INVALID');
+      if (context.clientId && leaseHolder() !== context.clientId) throw protocolError('BACKEND_LEASE_STALE', 'Право управления у другого окна.');
       const chunk = await readBody(req, { json: false, limit: BACKEND_LIMITS.transferChunkBytes });
       return json(res, 200, transfers.appendUpload(match[1], Number(offset), chunk));
     }
@@ -144,20 +157,20 @@ export function createPresentationRoutes({ host, transfers, leaseGeneration }) {
     match = path.match(/^\/v1\/browser\/transfers\/([A-Za-z0-9][A-Za-z0-9_.:-]{0,127})\/attach$/);
     if (req.method === 'POST' && match) {
       const body = exact(await readBody(req), ['viewerId', 'chooserId', 'leaseGeneration']);
-      requireLease(body.leaseGeneration);
+      leaseOf(body.leaseGeneration);
       if (!uuid(body.chooserId)) throw protocolError('BROWSER_PRESENTATION_INVALID');
-      const presentation = viewer(body.viewerId), file = transfers.finishUpload(match[1]);
+      const presentation = viewerOf(body.viewerId), file = transfers.finishUpload(match[1]);
       // Only a completely received file is attached to the page's own chooser.
       await presentation.setFiles(body.chooserId, [file]);
       return json(res, 200, { attached: true });
     }
     if (req.method === 'POST' && path === '/v1/browser/choosers/cancel') {
       const body = exact(await readBody(req), ['viewerId', 'chooserId', 'leaseGeneration']);
-      requireLease(body.leaseGeneration);
-      viewer(body.viewerId).cancelChooser(body.chooserId);
+      leaseOf(body.leaseGeneration);
+      viewerOf(body.viewerId).cancelChooser(body.chooserId);
       return json(res, 200, { cancelled: true });
     }
     throw protocolError('BACKEND_ROUTE_NOT_FOUND');
   }
-  return Object.freeze({ route, leaseChanged: syncLease, detach });
+  return Object.freeze({ route, leaseChanged: syncLease, detach, detachClient });
 }

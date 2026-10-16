@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 186,
+  "plan_revision": 188,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -155,8 +155,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T002",
@@ -197,7 +197,17 @@
         "Viewer принадлежит создавшему устройству; тест: наблюдатель с подсмотренным generation получает отказ и не продлевает и не снимает lease окна Mac"
       ],
       "expected_commit_message": "feat: Удалённый шлюз и контракт доступа",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/control-lease.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/server.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/remote-gateway.mjs",
+        "src/contracts/remote.mjs",
+        "src/execution/browser/presentation/transport.mjs",
+        "tests/backend-remote-gateway.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -659,7 +669,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 186
+Revision: 188
 
 ## Цель
 
@@ -689,8 +699,8 @@ Revision: 186
   - Файлы: tests/remote-serve-probe.test.mjs, tests/fixtures/remote-serve-proxy.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Удалённый шлюз и контракт доступа — Ожидает
-  - Git Commit: [PENDING] feat: Удалённый шлюз и контракт доступа
+- [DONE] T002: Удалённый шлюз и контракт доступа — Завершено
+  - Git Commit: [DONE] feat: Удалённый шлюз и контракт доступа
   - Reference: workflow-pilot-remote-access / T002 / implementation
   - Файлы: src/backend/remote-gateway.mjs, src/contracts/remote.mjs, src/backend/main.mjs, src/backend/lifecycle.mjs, src/backend/server.mjs, tests/backend-remote-gateway.test.mjs, .dependency-cruiser.cjs, src/backend/control-lease.mjs, src/backend/operations.mjs, src/backend/protocol.mjs, src/execution/browser/presentation/transport.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
