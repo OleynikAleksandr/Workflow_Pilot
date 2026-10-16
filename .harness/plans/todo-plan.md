@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 159,
+  "plan_revision": 161,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1526,8 +1526,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T014",
@@ -1575,7 +1575,8 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -1688,7 +1689,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 159
+Revision: 161
 
 ## Цель
 
@@ -1812,8 +1813,8 @@ Revision: 159
   - Файлы: release-manifest.json, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] T014: Установить готовый macOS выпуск — Ожидает
-  - Git Commit: [PENDING] release: Установить готовый macOS выпуск
+- [DONE] T014: Установить готовый macOS выпуск — Завершено
+  - Git Commit: [DONE] release: Установить готовый macOS выпуск
   - Reference: workflow-pilot-backend-independence / T014 / implementation
   - Файлы: release-manifest.json, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
