@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 176,
+  "plan_revision": 178,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Независимый frontend и постоянно работающий backend/browser на одном Mac; совместимая поставка трёх ОС.",
   "acceptance_criteria": [
     "A01: Launcher поднимает ровно один backend; конкурентный запуск безопасен",
@@ -1909,14 +1909,15 @@
         "Тег v0.2.1 на sourceCommit, assets сверены, remote main == local HEAD"
       ],
       "expected_commit_message": "feat: Опубликовать GitHub Release 0.2.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T021",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1979,10 +1980,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 176
+Revision: 178
 
 ## Цель
 
@@ -2154,8 +2155,8 @@ Revision: 176
   - Файлы: release-manifest.json, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T019, DOCS-2
-- [TODO] T021: Опубликовать GitHub Release 0.2.1 — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать GitHub Release 0.2.1
+- [DONE] T021: Опубликовать GitHub Release 0.2.1 — Завершено
+  - Git Commit: [DONE] feat: Опубликовать GitHub Release 0.2.1
   - Reference: workflow-pilot-backend-independence / T021 / implementation
   - Файлы: release-manifest.json, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
