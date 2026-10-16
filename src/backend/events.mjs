@@ -34,10 +34,10 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
   };
   const changed=()=>{if(timer===null){timer=setTimeout(publishState,coalesceMs);timer.unref?.();}};
   const heartbeat=setInterval(()=>{for(const stream of streams)stream.write(':\n\n');},heartbeatMs);heartbeat.unref?.();
-  function open(req,res,{generation,afterSequence}) {
+  function open(req,res,{generation,afterSequence,clientId=null,remote=false}) {
     let closed=false,unsubscribe=()=>{};
     const close=()=>{if(closed)return;closed=true;unsubscribe();streams.delete(stream);res.destroy();counted();};
-    const stream={write:text=>{
+    const stream={clientId,remote,write:text=>{
       if(closed)return;
       // Bounded per-client buffer: a reader that cannot keep up must resync.
       if(res.writableLength+text.length>STREAM_BUFFER_BYTES){close();return;}
@@ -72,6 +72,8 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
     // Browser notifications carry ids and generations only, never page content.
     browser:(type,data)=>{if(browserTypes.has(type))log.publish('browser.'+type,data);},
     snapshot:()=>log.snapshot(),
+    // A revoked device: its open streams end at once.
+    closeClient:clientId=>{for(const stream of [...streams])if(stream.clientId===clientId)stream.close();},
     get clients(){return streams.size;},
     close(){clearInterval(heartbeat);if(timer)clearTimeout(timer);for(const stream of [...streams])stream.close();},
     limits:{events:BACKEND_LIMITS.pendingEvents,bufferBytes:STREAM_BUFFER_BYTES}});

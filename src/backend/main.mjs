@@ -8,6 +8,7 @@ import {startBackendPort,installFixtureChat} from './lifecycle.mjs';
 import {createStopController} from './shutdown.mjs';
 import {createStatusMenu} from './status-menu.mjs';
 import {createBackendJournal,launchServicesType} from './diagnostics.mjs';
+import {createRemoteDevices} from './remote-devices.mjs';
 import {spawn} from 'node:child_process';
 import {BackendBrowserHost,desktopDependencies} from '../execution/facade.mjs';
 
@@ -69,7 +70,11 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
           assertNoPendingKitTransactions(desktop.services.control.projects.snapshot().projects);
           return false;
         }});
-      desktop=createDesktopModel({electron:{...electron,dialog:guardedDialog},recoverCrashedPages:true,sourceDir,dataDir:identity.dataDir,partition:identity.partition,smoke:false,
+      // Remote devices and the gateway are bound after the API port exists.
+      const remoteAccess={current:null};
+      const devices=createRemoteDevices({dir:path.join(identity.dataDir,'remote'),journal,onChange:()=>desktop?.publish(),
+        revokeClient:clientId=>void port?.revokeClient(clientId)});
+      desktop=createDesktopModel({electron:{...electron,dialog:guardedDialog},recoverCrashedPages:true,remoteAccess,sourceDir,dataDir:identity.dataDir,partition:identity.partition,smoke:false,
         eventBaseline:false,eventRuntimeChecker:false,executionServices:execution,createControl,dependencies:desktopDependencies,
         browserHost:host,surface,offline:!!fixtureRoot,pluginDirectory:fixtureRoot?path.join(fixtureRoot,'plugin'):null});
       if(!await desktop.start())throw Object.assign(new Error('Desktop model did not start.'),{code:'BACKEND_STARTUP_FAILED'});
@@ -81,9 +86,16 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
         pages:createBackendPages({sessions:base.sessions,setup:base.setup,store:base.control.projects,host}),
         onChange:listener=>desktop.onPublish(listener),restore:async()=>{},dispose:async()=>desktop.dispose()});
       port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:sink=>{events=sink;surface.attach(sink);desktop.publish();},
+        remoteDevices:devices,backendJournal:journal,
         onStreams:count=>journal.record('clients',{count}),onLease:view=>journal.record('lease',{held:!!view.holder,generation:view.generation}),
         leaseTtlMs:fixtureRoot&&leaseTtlMs||undefined,appVersion:app.getVersion()});
-      const status=()=>({service:stopper.view(),pages:base.sessions.all().length});
+      remoteAccess.current=Object.freeze({
+        view:()=>({...port.remote.status(),...devices.view()}),
+        approve:pairingId=>devices.approve(pairingId),reject:pairingId=>devices.reject(pairingId),revoke:deviceId=>devices.revoke(deviceId),
+        action:async()=>{throw Object.assign(new Error('Настройка Tailscale появится в следующем шаге.'),{code:'REMOTE_DISABLED'});},
+        initiatorIsRemote:()=>devices.isRemoteClient(port.operations.leaseHolder()),
+      });
+      const status=()=>({service:stopper.view(),pages:base.sessions.all().length,pairings:devices.view().pairings});
       stopper=createStopController({drainState:()=>desktop.drainState(),pause:value=>desktop.pause(value),stop:shutdown,
         onChange:view=>{events.ui('service',view);statusMenu?.update(status());}});
       events.ui('service',stopper.view());
@@ -114,6 +126,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
       }
       if(!fixtureRoot) {
         statusMenu=createStatusMenu({Tray:electron.Tray,Menu:electron.Menu,nativeImage:electron.nativeImage,onOpen:()=>openClient('status-menu'),
+          onApprove:pairingId=>{try{devices.approve(pairingId);}catch{ /* an expired request disappears from the menu */ }},
           onCancelStop:()=>stopper.cancel(),
           onStop:async()=>{
             const answer=await guardedDialog.showMessageBox({type:'question',buttons:['Остановить','Отмена'],defaultId:1,cancelId:1,

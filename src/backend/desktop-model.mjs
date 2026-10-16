@@ -10,7 +10,7 @@ import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 // onboarding and workflow. It owns no window; a surface presents its state
 // (in-process legacy window or a remote client) and supplies the page host.
 export function createDesktopModel({electron,sourceDir,dataDir,partition,smoke,eventBaseline,eventRuntimeChecker,executionServices,createControl,dependencies,
-  browserHost,surface,remotePages=false,fixture=null,offline=false,pluginDirectory=null,recoverCrashedPages=false}) {
+  browserHost,surface,remotePages=false,fixture=null,offline=false,pluginDirectory=null,recoverCrashedPages=false,remoteAccess=null}) {
 const {app,session,ipcMain,dialog,clipboard,shell}=electron;
 const {LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode}=dependencies;
 const {ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel}=dependencies;
@@ -230,7 +230,8 @@ function snapshot() {
       vps: vpsView(runtime?.lastStatus?.vps),
     },
     startup: startupFlow ? { ...startupFlow.snapshot(), clipboard: startupClipboard?.snapshot(), active: startupActive } : null,
-    theme: preferences.shellTheme, hideToolCalls:preferences.hideToolCalls, sidebarWidth:preferences.sidebarWidth, sidebarMinWidth: SIDEBAR_MIN_WIDTH, pageLoading, startupError, storageError, setup: setupState, workspaceHealth, version: app.getVersion(), fixture: smoke };
+    theme: preferences.shellTheme, hideToolCalls:preferences.hideToolCalls, sidebarWidth:preferences.sidebarWidth, sidebarMinWidth: SIDEBAR_MIN_WIDTH, pageLoading, startupError, storageError, setup: setupState, workspaceHealth, version: app.getVersion(), fixture: smoke,
+    remoteAccess: remoteAccess?.current?.view?.() ?? null };
 }
 
 let publishListener = () => {};
@@ -1087,6 +1088,17 @@ function registerIpc() {
     if (current) workspaceHealth = { ...workspaceHealth, sessionId: current.sessionId };
     if (attachController(current)) await controller.retry();
   });
+  // Devices are confirmed and removed only from the Mac, never from a remote client.
+  const localRemote = () => {
+    const remote = remoteAccess?.current;
+    if (!remote) throw Object.assign(new Error('Доступ с других устройств недоступен.'), { code: 'REMOTE_DISABLED' });
+    if (remote.initiatorIsRemote()) throw Object.assign(new Error('Подтверждать и отключать устройства можно только на компьютере.'), { code: 'REMOTE_LOCAL_ONLY' });
+    return remote;
+  };
+  registerAction('pilot:remote-approve', input => localRemote().approve(String(input ?? '')));
+  registerAction('pilot:remote-reject', input => localRemote().reject(String(input ?? '')));
+  registerAction('pilot:remote-revoke', input => localRemote().revoke(String(input ?? '')));
+  registerAction('pilot:remote-access', input => localRemote().action(input));
   registerAction('pilot:reload', async () => { startupError = null; const current = store.selected(); if (current) await selectWorkspace(current.workspace); else void navigate(); }, { navigation: true });
 
   desktopIpc.handle('archive', 'archive:get-state', archiveSnapshot);

@@ -16,14 +16,16 @@ const label=service=>service.phase==='draining'?'Остановка: ждём б
 // The status icon lives with the backend, independently of any client window.
 // Without a system tray (some Linux desktops) it is absent; the client menu
 // offers the same status and stop.
-export function createStatusMenu({Tray,Menu,nativeImage,onOpen,onStop,onCancelStop}) {
+export function createStatusMenu({Tray,Menu,nativeImage,onOpen,onStop,onCancelStop,onApprove=()=>{}}) {
   let tray;
   try{tray=new Tray(templateIcon(nativeImage));}catch{return null;}
   tray.setToolTip('Workflow Pilot');
-  const update=({service,pages=0})=>{
+  const update=({service,pages=0,pairings=[]})=>{
     const items=[{label:`${label(service)} · страниц: ${pages}`,enabled:false},
       ...service.reasons.slice(0,5).map(reason=>({label:reason.message,enabled:false})),
       ...(service.error?[{label:service.error.message,enabled:false}]:[]),
+      // A remote device waits for confirmation: the code matches its screen.
+      ...pairings.slice(0,3).map(item=>({label:`Подключить «${item.name}» · код ${item.code}`,click:()=>onApprove(item.id)})),
       {type:'separator'},
       {label:'Открыть Workflow Pilot',click:onOpen},
       service.phase==='draining'?{label:'Отменить остановку',click:onCancelStop}

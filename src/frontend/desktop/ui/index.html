@@ -190,6 +190,11 @@ SOFTWARE.
       </div>
       <ul id="projects" class="projects" aria-label="Workspace и сессии"><li class="empty">Выберите проект, чтобы начать<br>работу с его контекстом.</li></ul>
       <p id="plugin-launch-notice" role="status" aria-live="polite" hidden></p>
+      <section id="remote-pairing" class="card" aria-live="polite" hidden>
+        <h3>Подключение устройства</h3>
+        <p class="description">Сверьте код с экраном устройства и подтвердите, только если подключаете его вы.</p>
+        <ul id="remote-pairing-list" class="setup-checks"></ul>
+      </section>
       <section id="session-notice" aria-live="polite" hidden>
         <strong id="session-notice-title"></strong><p id="session-notice-detail"></p>
         <div class="actions">
@@ -312,6 +317,16 @@ SOFTWARE.
           <h3 id="host-platform-label">На вашем Mac</h3>
           <p id="connection-detail" class="description"></p><p id="session-detail" class="description"></p>
           <button id="open-startup" class="secondary" hidden>Начальная настройка</button>
+        </section>
+        <section id="remote-access" class="settings-section" aria-labelledby="remote-access-title">
+          <h3 id="remote-access-title">Доступ с iPad и других устройств</h3>
+          <p id="remote-access-status" class="description" role="status" aria-live="polite"></p>
+          <ol id="remote-access-steps" class="setup-checks"></ol>
+          <p id="remote-access-address" class="setup-path" hidden></p>
+          <div id="remote-access-qr" hidden></div>
+          <div id="remote-access-actions" class="actions"></div>
+          <h3>Подключённые устройства</h3>
+          <ul id="remote-devices" class="setup-checks"><li>Нет устройств</li></ul>
         </section>
         <section id="executor-recovery" class="settings-section" aria-label="Восстановление исполнителей" aria-live="polite" hidden>
           <h3>Восстановление исполнителей</h3>
@@ -444,5 +459,6 @@ SOFTWARE.
   </dialog>
   <script type="module" src="./sidebar.mjs"></script>
   <script type="module" src="./startup.mjs"></script>
+  <script type="module" src="./remote-access.mjs"></script>
 </body>
 </html>

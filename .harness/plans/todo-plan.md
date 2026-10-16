@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 188,
+  "plan_revision": 190,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -80,7 +80,9 @@
       "tests/startup-ui.test.mjs",
       "tests/web-browser-view.test.mjs",
       "tests/web-client-electron.test.mjs",
-      "tests/web-client.test.mjs"
+      "tests/web-client.test.mjs",
+      "src/frontend/desktop/ui/remote-access.mjs",
+      "tests/fixtures/remote-backend.mjs"
     ],
     "documentation_paths": [
       "docs/planning/remote-access-spec.md",
@@ -210,8 +212,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T003",
@@ -233,7 +235,14 @@
         "src/contracts/desktop.mjs",
         "src/frontend/desktop/preload.cjs",
         "src/frontend/desktop/ui/settings-panel.mjs",
-        "src/frontend/desktop/ui/sidebar.mjs"
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/remote-access.mjs",
+        "tests/backend-remote-gateway.test.mjs",
+        "tests/fixtures/remote-backend.mjs",
+        "tests/fixtures/remote-serve-proxy.mjs"
       ],
       "documentation_paths": [
         "docs/planning/remote-access-spec.md"
@@ -254,7 +263,23 @@
         "Отзыв вызывает принудительный revoke(clientId): lease снят, viewers отсоединены, потоки событий устройства закрыты; тест"
       ],
       "expected_commit_message": "feat: Пара устройств и управление устройствами",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/remote-devices.mjs",
+        "src/backend/events.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/backend/status-menu.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/desktop.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/remote-access.mjs",
+        "tests/backend-remote-devices.test.mjs",
+        "tests/backend-remote-gateway.test.mjs",
+        "tests/fixtures/remote-backend.mjs",
+        "tests/fixtures/remote-serve-proxy.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -669,7 +694,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 188
+Revision: 190
 
 ## Цель
 
@@ -705,10 +730,10 @@ Revision: 188
   - Файлы: src/backend/remote-gateway.mjs, src/contracts/remote.mjs, src/backend/main.mjs, src/backend/lifecycle.mjs, src/backend/server.mjs, tests/backend-remote-gateway.test.mjs, .dependency-cruiser.cjs, src/backend/control-lease.mjs, src/backend/operations.mjs, src/backend/protocol.mjs, src/execution/browser/presentation/transport.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Пара устройств и управление устройствами — Ожидает
-  - Git Commit: [PENDING] feat: Пара устройств и управление устройствами
+- [DONE] T003: Пара устройств и управление устройствами — Завершено
+  - Git Commit: [DONE] feat: Пара устройств и управление устройствами
   - Reference: workflow-pilot-remote-access / T003 / implementation
-  - Файлы: src/backend/remote-devices.mjs, src/backend/remote-gateway.mjs, src/backend/status-menu.mjs, src/frontend/desktop/client.mjs, tests/backend-remote-devices.test.mjs, src/backend/events.mjs, src/backend/desktop-model.mjs, src/backend/control-lease.mjs, src/backend/operations.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/settings-panel.mjs, src/frontend/desktop/ui/sidebar.mjs, docs/planning/remote-access-spec.md
+  - Файлы: src/backend/remote-devices.mjs, src/backend/remote-gateway.mjs, src/backend/status-menu.mjs, src/frontend/desktop/client.mjs, tests/backend-remote-devices.test.mjs, src/backend/events.mjs, src/backend/desktop-model.mjs, src/backend/control-lease.mjs, src/backend/operations.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/settings-panel.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/remote-access.mjs, tests/backend-remote-gateway.test.mjs, tests/fixtures/remote-backend.mjs, tests/fixtures/remote-serve-proxy.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
 - [TODO] T004: Веб-клиент: интерфейс и состояние связи — Ожидает

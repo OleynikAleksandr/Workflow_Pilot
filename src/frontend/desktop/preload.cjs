@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('webPilot', Object.freeze({
   reconnect: () => ipcRenderer.invoke('pilot:reconnect'),
   retry: () => ipcRenderer.invoke('pilot:retry'),
   reload: () => ipcRenderer.invoke('pilot:reload'),
+  approveRemoteDevice: pairingId => ipcRenderer.invoke('pilot:remote-approve', pairingId),
+  rejectRemoteDevice: pairingId => ipcRenderer.invoke('pilot:remote-reject', pairingId),
+  revokeRemoteDevice: deviceId => ipcRenderer.invoke('pilot:remote-revoke', deviceId),
+  remoteAccess: action => ipcRenderer.invoke('pilot:remote-access', action),
   onState: callback => {
     if (typeof callback !== 'function') throw new TypeError('Expected a callback');
     const listener = (_event, state) => callback(state);

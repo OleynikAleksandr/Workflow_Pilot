@@ -127,5 +127,7 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
     transfers.close();
     claim.release();
   };
-  return Object.freeze({port:server.port,stop,remote,operations,presentation,events});
+  // Owner-side end of a remote device: control, viewers and event streams.
+  const revokeClient=async clientId=>{operations.revokeLease(clientId);await presentation.detachClient(clientId);events.closeClient(clientId);};
+  return Object.freeze({port:server.port,stop,remote,operations,presentation,events,revokeClient});
 }

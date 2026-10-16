@@ -15,6 +15,8 @@ export async function startServeProxy({ targetPort, login = 'owner@example.com',
     const upstream = http.request({ host: '127.0.0.1', port: targetPort, method: req.method, path: req.url, headers }, response => {
       res.writeHead(response.statusCode, response.headers);
       response.pipe(res);
+      // A stream the backend closes is closed for the client too.
+      response.on('close', () => { if (!res.writableEnded) res.destroy(); });
     });
     upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end(); });
     req.pipe(upstream);
