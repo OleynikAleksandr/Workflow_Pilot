@@ -4,11 +4,11 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 180,
+  "plan_revision": 181,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
-  "execution_scope_status": "ACTIVE",
+  "execution_scope_status": "BLOCKED",
   "delivery_status": "IN_PROGRESS",
   "objective": "Интерфейс Workflow Pilot на iPad из любой точки интернета через Tailscale к backend на Mac; шаг мастера первого запуска.",
   "acceptance_criteria": [
@@ -614,7 +614,7 @@
       "parallel_safe": false
     }
   ],
-  "blocked_reason": null,
+  "blocked_reason": "План согласован Claude Review (раунд 2) и опубликован. По поручению пользователя реализация не начинается до его согласия с планом; согласие записывается в user_decisions, затем статус ACTIVE. Номер выпуска (предложение 0.3.0) подтверждается пользователем до T009.",
   "user_decisions": [
     {
       "id": "9ebcbf1e-6021-4f26-bb03-be9190af987f",
@@ -632,11 +632,11 @@
 
 ## Состояние
 
-Execution Scope Status: ACTIVE
+Execution Scope Status: BLOCKED
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 180
+Revision: 181
 
 ## Цель
 
