@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 163,
+  "plan_revision": 164,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Независимый frontend и постоянно работающий backend/browser на одном Mac; совместимая поставка трёх ОС.",
   "acceptance_criteria": [
     "A01: Launcher поднимает ровно один backend; конкурентный запуск безопасен",
@@ -134,7 +134,9 @@
       "src/control/workflow/project-session-auto-plan.mjs",
       "src/contracts/launch.mjs",
       "src/frontend/plugin/app.mjs",
-      "src/frontend/plugin/index.html"
+      "src/frontend/plugin/index.html",
+      "src/backend/diagnostics.mjs",
+      "tests/backend-diagnostics.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -157,7 +159,8 @@
       "docs/planning/workflow-pilot-backend-t001-evidence.md",
       "docs/modules/chatgpt-plugin-acceptance.md",
       "docs/acceptance/migration-0.1.0.md",
-      "docs/planning/backend-independence-followup.md"
+      "docs/planning/backend-independence-followup.md",
+      "docs/planning/backend-0.2.1-fixes.md"
     ]
   },
   "baseline_commit": "e01124c2bb74ab86c8f67b19bfbf79404694add6",
@@ -228,6 +231,11 @@
         "path": "docs/planning/workflow-pilot-backend-spec-draft.md",
         "required": true,
         "revision": "0ce57c2b9b8d472ab11570bcb6c948b0f5c94809"
+      },
+      {
+        "path": "docs/planning/backend-0.2.1-fixes.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -1625,6 +1633,235 @@
         "dependency_task_ids": []
       },
       "actual_files": []
+    },
+    {
+      "id": "T016",
+      "title": "Исправить размер результата операций и право управления",
+      "why": "Живая проверка 0.2.0: BACKEND_MESSAGE_SIZE у выполненных действий и ложный режим наблюдения.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/backend/operations.mjs",
+        "src/frontend/client/connection.mjs",
+        "src/frontend/desktop/client.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-reconnect.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/backend-0.2.1-fixes.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "ui.invoke не возвращает внутренние записи; большой проект не даёт BACKEND_MESSAGE_SIZE у выполненного действия",
+        "Один acquire за раз; временная ошибка acquire/renew повторяется; наблюдение показывается только при другом владельце"
+      ],
+      "expected_commit_message": "feat: Исправить размер результата операций и право управления",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "T016",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T017",
+      "title": "Восстанавливать страницы backend и вести диагностику процессов",
+      "why": "Renderer страниц backend погибали извне без восстановления; backend получал плитку Dock.",
+      "dependencies": [
+        "T016"
+      ],
+      "functional_paths": [
+        "src/backend/main.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/diagnostics.mjs",
+        "src/frontend/desktop/client.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-diagnostics.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/backend-0.2.1-fixes.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Гибель renderer восстанавливает ту же страницу без повторной отправки; повторы ограничены",
+        "Backend остаётся accessory, клиент открывается через LaunchServices",
+        "Журнал backend-events.jsonl ограничен и не содержит секретов"
+      ],
+      "expected_commit_message": "feat: Восстанавливать страницы backend и вести диагностику процессов",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "T017",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T018",
+      "title": "Подготовить версию 0.2.1",
+      "why": "Подготовить версию 0.2.1",
+      "dependencies": [
+        "T017"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/backend-0.2.1-fixes.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.2.1 согласована в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.2.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "T018",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T016",
+        "T017",
+        "T018"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/backend-0.2.1-fixes.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T019",
+      "title": "Собрать выпуск 0.2.1 трёх ОС",
+      "why": "Собрать выпуск 0.2.1 трёх ОС",
+      "dependencies": [
+        "T018",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/backend-0.2.1-fixes.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Один штатный цикл трёх ОС из одного sourceCommit после DOCS; manifest совпадает"
+      ],
+      "expected_commit_message": "feat: Собрать выпуск 0.2.1 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "T019",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T020",
+      "title": "Установить 0.2.1 в Applications",
+      "why": "Установить 0.2.1 в Applications",
+      "dependencies": [
+        "T019",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/backend-0.2.1-fixes.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка штатным installer без пересборки; при работающей службе — pending-копия и инструкция"
+      ],
+      "expected_commit_message": "feat: Установить 0.2.1 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "T020",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T021",
+      "title": "Опубликовать GitHub Release 0.2.1",
+      "why": "Опубликовать GitHub Release 0.2.1",
+      "dependencies": [
+        "T020",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/backend-0.2.1-fixes.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.2.1 на sourceCommit, assets сверены, remote main == local HEAD"
+      ],
+      "expected_commit_message": "feat: Опубликовать GitHub Release 0.2.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-backend-independence",
+        "task_id": "T021",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1687,10 +1924,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 163
+Revision: 164
 
 ## Цель
 
@@ -1826,6 +2063,48 @@ Revision: 163
   - Файлы: release-manifest.json, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T014, DOCS
+- [TODO] T016: Исправить размер результата операций и право управления — Ожидает
+  - Git Commit: [PENDING] feat: Исправить размер результата операций и право управления
+  - Reference: workflow-pilot-backend-independence / T016 / implementation
+  - Файлы: src/backend/operations.mjs, src/frontend/client/connection.mjs, src/frontend/desktop/client.mjs, tests/backend-api.test.mjs, tests/backend-reconnect.test.mjs, docs/planning/backend-0.2.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T017: Восстанавливать страницы backend и вести диагностику процессов — Ожидает
+  - Git Commit: [PENDING] feat: Восстанавливать страницы backend и вести диагностику процессов
+  - Reference: workflow-pilot-backend-independence / T017 / implementation
+  - Файлы: src/backend/main.mjs, src/backend/desktop-model.mjs, src/backend/diagnostics.mjs, src/frontend/desktop/client.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-diagnostics.test.mjs, docs/planning/backend-0.2.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T016
+- [TODO] T018: Подготовить версию 0.2.1 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.2.1
+  - Reference: workflow-pilot-backend-independence / T018 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, docs/planning/backend-0.2.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T017
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-backend-independence / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/backend-0.2.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T016, T017, T018
+- [TODO] T019: Собрать выпуск 0.2.1 трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать выпуск 0.2.1 трёх ОС
+  - Reference: workflow-pilot-backend-independence / T019 / implementation
+  - Файлы: release-manifest.json, docs/planning/backend-0.2.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T018, DOCS-2
+- [TODO] T020: Установить 0.2.1 в Applications — Ожидает
+  - Git Commit: [PENDING] feat: Установить 0.2.1 в Applications
+  - Reference: workflow-pilot-backend-independence / T020 / implementation
+  - Файлы: release-manifest.json, docs/planning/backend-0.2.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T019, DOCS-2
+- [TODO] T021: Опубликовать GitHub Release 0.2.1 — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать GitHub Release 0.2.1
+  - Reference: workflow-pilot-backend-independence / T021 / implementation
+  - Файлы: release-manifest.json, docs/planning/backend-0.2.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T020, DOCS-2
 
 ## Context Pack For This Cycle
 
@@ -1842,5 +2121,6 @@ Revision: 163
 - docs/modules/linux.md
 - docs/modules/project-compatibility.md
 - docs/planning/workflow-pilot-backend-spec-draft.md
+- docs/planning/backend-0.2.1-fixes.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
