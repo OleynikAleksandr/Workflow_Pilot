@@ -9,8 +9,9 @@ import {createStopController} from './shutdown.mjs';
 import {createStatusMenu} from './status-menu.mjs';
 import {createBackendJournal,launchServicesType} from './diagnostics.mjs';
 import {createRemoteDevices} from './remote-devices.mjs';
+import {createRemoteAccess} from './remote-access.mjs';
 import {spawn} from 'node:child_process';
-import {BackendBrowserHost,desktopDependencies} from '../execution/facade.mjs';
+import {BackendBrowserHost,desktopDependencies,TailscaleCli} from '../execution/facade.mjs';
 
 export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
   const {app}=electron;
@@ -40,13 +41,13 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
     {type:details?.type,reason:details?.reason,exitCode:details?.exitCode,serviceName:details?.serviceName}));
   app.on('render-process-gone',(_event,_contents,details)=>journal.record('render-process-gone',{reason:details?.reason,exitCode:details?.exitCode}));
   for(const name of ['activate','did-become-active','browser-window-created'])app.on(name,()=>setImmediate(()=>keepAccessory(name)));
-  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null;
+  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null,disposeAccess=()=>{};
   // Every ordinary exit stops own services first, then releases the profile.
   // The owner record is removed only by the process that proved ownership.
   const shutdown=()=>{
     // The profile lock is released explicitly so the next owner never sees a leftover lock file.
     stopping??=(port?port.stop():Promise.resolve(desktop?.dispose())).catch(()=>{})
-      .finally(()=>{stopper?.dispose();statusMenu?.destroy();app.releaseSingleInstanceLock();app.exit(0);});
+      .finally(()=>{disposeAccess();stopper?.dispose();statusMenu?.destroy();app.releaseSingleInstanceLock();app.exit(0);});
     return stopping;
   };
   app.on('before-quit',event=>{journal.record('quit-requested',{running:!!port});if(port){event.preventDefault();void shutdown();}});
@@ -91,12 +92,20 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
         remoteDevices:devices,backendJournal:journal,
         onStreams:count=>journal.record('clients',{count}),onLease:view=>journal.record('lease',{held:!!view.holder,generation:view.generation}),
         leaseTtlMs:fixtureRoot&&leaseTtlMs||undefined,appVersion:app.getVersion()});
+      // Fixtures never touch Tailscale, sleep settings or the default browser.
+      const access=createRemoteAccess({gateway:port.remote,dir:path.join(identity.dataDir,'remote'),journal,onChange:()=>desktop?.publish(),
+        tailscale:fixtureRoot?{state:async()=>({installed:false,running:false,loggedIn:false,httpsEnabled:false,login:null,dnsName:null}),
+          serveState:async()=>({known:false,ours:false,conflict:false}),serveOn:async()=>false,serveOff:async()=>false}:new TailscaleCli(),
+        power:fixtureRoot?null:electron.powerSaveBlocker,openExternal:url=>fixtureRoot?Promise.resolve():electron.shell.openExternal(url)});
       remoteAccess.current=Object.freeze({
-        view:()=>({...port.remote.status(),...devices.view()}),
+        view:()=>({...access.view(),...devices.view()}),
         approve:pairingId=>devices.approve(pairingId),reject:pairingId=>devices.reject(pairingId),revoke:deviceId=>devices.revoke(deviceId),
-        action:async()=>{throw Object.assign(new Error('Настройка Tailscale появится в следующем шаге.'),{code:'REMOTE_DISABLED'});},
+        action:input=>access.action(input),
         initiatorIsRemote:()=>devices.isRemoteClient(port.operations.leaseHolder()),
       });
+      // Read-only check of Tailscale at start; an earlier enabled choice is restored.
+      if(!fixtureRoot)void access.refresh().catch(()=>{}).then(()=>access.restore());
+      disposeAccess=()=>access.dispose();
       const status=()=>({service:stopper.view(),pages:base.sessions.all().length,pairings:devices.view().pairings});
       stopper=createStopController({drainState:()=>desktop.drainState(),pause:value=>desktop.pause(value),stop:shutdown,
         onChange:view=>{events.ui('service',view);statusMenu?.update(status());}});

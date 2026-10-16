@@ -17,6 +17,7 @@ are in resources/vendor-notices; manifest.json records their upstream URL/hash.
 | ripgrep | https://github.com/BurntSushi/ripgrep/tree/15.2.0 | MIT/Unlicense/COPYING in archive |
 | MinGit | https://github.com/git-for-windows/git/releases/tag/v2.55.0.windows.5 | GPL and dependency licenses in vendor archive; corresponding source available at the release |
 | python-xlib | https://github.com/python-xlib/python-xlib/tree/0.33 | LGPLv2+, license and exact unmodified source archive in vendor-notices; normal replaceable Python module |
+| qrcode-svg | https://github.com/papnkukn/qrcode-svg (npm 1.1.0, QR code of the remote access address) | MIT LICENSE in app.asar node_modules/qrcode-svg |
 | mcp/Pillow/mss and dependencies | tools/codex-app-server-mcp/requirements-linux.lock | Installed wheels retain their dist-info/licenses; hashes pin installation |
 
 The historical Windows-Codex-Local-2026-09-10.zip is an unchanged, verified

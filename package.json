@@ -59,6 +59,7 @@
     "prosemirror-view": "1.42.6"
   },
   "dependencies": {
-    "@webpilot/workflow-kit": "file:packages/workflow-kit"
+    "@webpilot/workflow-kit": "file:packages/workflow-kit",
+    "qrcode-svg": "1.1.0"
   }
 }

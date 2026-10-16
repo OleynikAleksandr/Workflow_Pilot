@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 196,
+  "plan_revision": 198,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -85,7 +85,8 @@
       "tests/fixtures/remote-backend.mjs",
       "src/frontend/web/app.mjs",
       "src/frontend/web/ipc.js",
-      "tests/fixtures/web-client-browser.mjs"
+      "tests/fixtures/web-client-browser.mjs",
+      "src/backend/remote-access.mjs"
     ],
     "documentation_paths": [
       "docs/planning/remote-access-spec.md",
@@ -96,7 +97,8 @@
       "docs/modules/browser.md",
       "docs/modules/first-run-onboarding.md",
       "docs/modules/release.md",
-      "docs/acceptance/remote-access.md"
+      "docs/acceptance/remote-access.md",
+      "resources/THIRD-PARTY.md"
     ]
   },
   "baseline_commit": "c9cb80e1ab1a5140705afb5a234c99082da5cf2d",
@@ -454,8 +456,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T007",
@@ -477,11 +479,16 @@
         "tests/startup-ui.test.mjs",
         "package.json",
         "package-lock.json",
-        "src/execution/platform/paths.mjs"
+        "src/execution/platform/paths.mjs",
+        "src/backend/remote-access.mjs",
+        "src/backend/main.mjs",
+        "src/frontend/desktop/ui/remote-access.mjs",
+        "src/frontend/desktop/ui/index.html"
       ],
       "documentation_paths": [
         "docs/planning/remote-access-spec.md",
-        "docs/modules/first-run-onboarding.md"
+        "docs/modules/first-run-onboarding.md",
+        "resources/THIRD-PARTY.md"
       ],
       "verification_ids": [
         "unit-all",
@@ -500,7 +507,19 @@
         "QR-код строится проверенной библиотекой с лицензией в составе поставки"
       ],
       "expected_commit_message": "feat: Tailscale в мастере первого запуска",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/execution/runtime/tailscale.mjs",
+        "src/execution/facade.mjs",
+        "src/backend/remote-access.mjs",
+        "src/backend/main.mjs",
+        "src/frontend/desktop/ui/remote-access.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "resources/THIRD-PARTY.md",
+        "package.json",
+        "package-lock.json",
+        "tests/remote-access-setup.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -606,7 +625,8 @@
         "docs/modules/desktop.md",
         "docs/modules/browser.md",
         "docs/modules/release.md",
-        "README.md"
+        "README.md",
+        "resources/THIRD-PARTY.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -735,7 +755,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 196
+Revision: 198
 
 ## Цель
 
@@ -795,10 +815,10 @@ Revision: 196
   - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/transport.mjs, src/contracts/browser-presentation.mjs, src/frontend/client/browser-view.mjs, tests/browser-presentation.test.mjs, package.json, package-lock.json, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T005
-- [TODO] T007: Tailscale в мастере первого запуска и Настройках — Ожидает
-  - Git Commit: [PENDING] feat: Tailscale в мастере первого запуска
+- [DONE] T007: Tailscale в мастере первого запуска и Настройках — Завершено
+  - Git Commit: [DONE] feat: Tailscale в мастере первого запуска
   - Reference: workflow-pilot-remote-access / T007 / implementation
-  - Файлы: src/execution/runtime/tailscale.mjs, src/execution/facade.mjs, src/control/startup/remote-access.mjs, src/control/facade.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/settings-panel.mjs, src/contracts/desktop.mjs, tests/remote-access-setup.test.mjs, tests/startup-ui.test.mjs, package.json, package-lock.json, src/execution/platform/paths.mjs, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md
+  - Файлы: src/execution/runtime/tailscale.mjs, src/execution/facade.mjs, src/control/startup/remote-access.mjs, src/control/facade.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/settings-panel.mjs, src/contracts/desktop.mjs, tests/remote-access-setup.test.mjs, tests/startup-ui.test.mjs, package.json, package-lock.json, src/execution/platform/paths.mjs, src/backend/remote-access.mjs, src/backend/main.mjs, src/frontend/desktop/ui/remote-access.mjs, src/frontend/desktop/ui/index.html, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, resources/THIRD-PARTY.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006
 - [TODO] T008: Проверить общий результат удалённого доступа — Ожидает
@@ -816,7 +836,7 @@ Revision: 196
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-remote-access / DOCS / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, docs/acceptance/remote-access.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, README.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-spec.md, docs/modules/first-run-onboarding.md, docs/acceptance/remote-access.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, README.md, resources/THIRD-PARTY.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009
 - [TODO] T010: Собрать выпуск трёх ОС — Ожидает

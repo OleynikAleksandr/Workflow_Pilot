@@ -39,7 +39,68 @@ export function renderDevices(state) {
     ...remoteClient ? [] : [button('Отключить', () => api.revokeRemoteDevice(device.id))])));
 }
 
-const listeners = [renderPairings, renderDevices];
+// Step-by-step setup: each step shows its checked state, never a user tick.
+function step(done, title, detail, ...actions) {
+  const li = document.createElement('li');
+  li.dataset.ok = done ? 'true' : 'false';
+  const head = document.createElement('strong'); head.textContent = (done ? '✓ ' : '• ') + title;
+  const text = document.createElement('span'); text.textContent = detail; text.style.display = 'block'; text.style.color = 'var(--muted)';
+  li.append(head, text);
+  if (actions.length) { const row = document.createElement('div'); row.className = 'actions'; row.append(...actions); li.append(row); }
+  return li;
+}
+const act = op => () => api.remoteAccess({ op }).then(result => { if (result?.ok === false) throw new Error(result.error?.message); })
+  .catch(error => { const status = $('remote-access-status'); if (status) status.textContent = error.message; });
+
+export function renderRemoteSetup(state) {
+  const list = $('remote-access-steps'), status = $('remote-access-status');
+  if (!list || !status) return;
+  const access = state?.remoteAccess ?? {}, ts = access.tailscale ?? {};
+  if (remoteClient) {
+    status.textContent = 'Это устройство подключено к компьютеру через Tailscale. Настройка доступа выполняется на компьютере.';
+    list.replaceChildren(); $('remote-access-actions')?.replaceChildren(); $('remote-access-address').hidden = true; $('remote-access-qr').hidden = true;
+    return;
+  }
+  const ready = access.enabled && access.serve?.ours;
+  status.textContent = access.busy ? 'Выполняется…' : access.error ? access.error.message
+    : ready ? 'Доступ включён. Компьютер не уйдёт в сон, пока доступ включён; не закрывайте крышку ноутбука без питания.'
+      : 'Подключите iPad по шагам ниже. Доступ работает только внутри вашей сети Tailscale, без публичного адреса.';
+  list.replaceChildren(
+    step(ts.installed, 'На компьютере: установите Tailscale', 'Загрузите приложение с официального сайта и откройте его.',
+      ...ts.installed ? [] : [button('Открыть страницу загрузки', act('open-download'))]),
+    step(ts.loggedIn, 'На компьютере: войдите в Tailscale и включите его', ts.login ? 'Аккаунт: ' + ts.login + (ts.dnsName ? ' · компьютер: ' + ts.dnsName : '')
+      : 'Войдите через Google, Apple, Microsoft, GitHub или почту и включите подключение.'),
+    step(ts.httpsEnabled, 'Один раз: разрешите HTTPS в панели Tailscale', 'Раздел DNS: включите MagicDNS и HTTPS Certificates.',
+      ...ts.httpsEnabled ? [] : [button('Открыть панель Tailscale', act('open-admin'))]),
+    step(ready, 'Включите доступ с других устройств', 'Workflow Pilot настроит Tailscale Serve только внутри вашей сети и проверит адрес.',
+      ready ? button('Выключить доступ', act('disable')) : button('Включить доступ с других устройств', act('enable'), 'primary')),
+    step(false, 'На iPad: установите Tailscale из App Store', 'Войдите тем же аккаунтом, разрешите конфигурацию VPN и включите переключатель Tailscale.'),
+    step(false, 'На iPad: откройте адрес в Safari', access.address ? 'Адрес ниже или QR-код камерой iPad.' : 'Адрес появится после включения доступа.'),
+    step(false, 'Подтвердите подключение на компьютере', 'iPad покажет код; здесь появится запрос с тем же кодом — нажмите «Подключить».'),
+    step(false, 'По желанию: «Поделиться» → «На экран Домой»', 'Workflow Pilot будет открываться на iPad как приложение.'),
+  );
+  const address = $('remote-access-address'), qr = $('remote-access-qr');
+  address.hidden = !access.address; address.textContent = access.address ?? '';
+  qr.hidden = !access.qr;
+  if (access.qr) { const image = qr.querySelector('img') ?? qr.appendChild(document.createElement('img')); image.alt = 'QR-код адреса'; image.width = 180; image.height = 180; image.src = access.qr; }
+  $('remote-access-actions')?.replaceChildren(button('Проверить снова', act('refresh')));
+}
+
+// The optional first-run step leads to the same checked steps in Settings.
+function renderStartupStep(state) {
+  const section = $('startup-remote-step'), status = $('startup-remote-status');
+  if (!section) return;
+  section.hidden = remoteClient;
+  const access = state?.remoteAccess ?? {};
+  if (status) status.textContent = access.enabled && access.serve?.ours ? 'Доступ включён: ' + (access.address ?? '')
+    : 'Можно пропустить и включить позже в Настройках.';
+}
+$('startup-remote-open')?.addEventListener('click', async () => {
+  await api.openSettings?.();
+  setTimeout(() => $('remote-access')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 150);
+});
+
+const listeners = [renderPairings, renderDevices, renderRemoteSetup, renderStartupStep];
 export function onRemoteState(listener) { listeners.push(listener); }
 function render(state) { for (const listener of listeners) listener(state); }
 if (api) { api.getState().then(render).catch(() => {}); api.onState(render); }
