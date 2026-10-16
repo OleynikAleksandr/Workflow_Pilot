@@ -4,11 +4,11 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 183,
+  "plan_revision": 184,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
-  "execution_scope_status": "BLOCKED",
+  "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
   "objective": "Интерфейс Workflow Pilot на iPad из любой точки интернета через Tailscale к backend на Mac; шаг мастера первого запуска.",
   "acceptance_criteria": [
@@ -622,12 +622,22 @@
       "parallel_safe": false
     }
   ],
-  "blocked_reason": "План согласован Claude Review (раунд 2) и опубликован. По поручению пользователя реализация не начинается до его согласия с планом; согласие записывается в user_decisions, затем статус ACTIVE. Номер выпуска (предложение 0.3.0) подтверждается пользователем до T009.",
+  "blocked_reason": null,
   "user_decisions": [
     {
       "id": "9ebcbf1e-6021-4f26-bb03-be9190af987f",
       "text": "Прямое поручение пользователя 16.10.2026: по черновику создать план удалённого доступа через Tailscale с шагом мастера и отправить на Claude Review; реализацию до согласия пользователя не начинать.",
       "recorded_at": "2026-10-16T07:55:09.012Z"
+    },
+    {
+      "id": "c3f1d7a2-5b8e-4c1a-9e2f-7a6b0d4e8f11",
+      "text": "16.10.2026 пользователь согласился с планом: «Да, начинай. Выполнение плана и, пожалуйста, не останавливайся, не спрашивай у меня ничего, вплоть до публикации на GitHub релиза. Все вопросы принимай решение самостоятельно и записывай, чтобы обсудить в конце». Разрешены реализация, DOCS, сборка, установка в /Applications и GitHub Release без остановок; спорные решения агент принимает сам и выносит на обсуждение после выпуска.",
+      "recorded_at": "2026-10-16T08:10:00.000Z"
+    },
+    {
+      "id": "d4a2e8b3-6c9f-4d2b-8f3a-8b7c1e5f9a22",
+      "text": "Номер выпуска 0.3.0 — решение агента по поручению пользователя принимать решения самостоятельно (предложение спецификации; пользователь не возражал). Выносится на обсуждение после выпуска.",
+      "recorded_at": "2026-10-16T08:10:00.000Z"
     }
   ],
   "parallel_allowed": false,
@@ -640,11 +650,11 @@
 
 ## Состояние
 
-Execution Scope Status: BLOCKED
+Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 183
+Revision: 184
 
 ## Цель
 
