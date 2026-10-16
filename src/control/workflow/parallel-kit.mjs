@@ -30,7 +30,7 @@ export class ParallelKit {
   }
   async read(workspace) {
     const text=await fs.readFile(path.join(workspace,planFile),'utf8'),plan=parsePlan(text);
-    if(plan.execution_strategy!=='parallel')return {workspace,plan,assignments:[],integration:{status:'IDLE'}};
+    if(!['parallel','orchestrated'].includes(plan.execution_strategy))return {workspace,plan,assignments:[],integration:{status:'IDLE'}};
     const gitDir=await this.git(workspace,['rev-parse','--absolute-git-dir']);
     const integration=await this.plans.call(workspace,'integration:status');
     const proof=await this.plans.call(workspace,'validate');

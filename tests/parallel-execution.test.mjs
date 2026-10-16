@@ -252,3 +252,121 @@ test('same project UNKNOWN reservation remains visibly current after the final r
  const key=JSON.stringify(['/main','scope']);f.runtime.book[key]={workspace:'/main',scope:'scope',projectId:'same',started:true,assignments:{old:{id:'old',taskId:'A',phase:'creating'}},corrections:{}};
  await f.grant();const task=f.runtime.view('/main').planView.tasks.find(t=>t.id==='A');assert.equal(task.status,'current');assert.equal(task.label,'Назначение требует сверки');assert.equal(f.calls.created.some(a=>a.task==='A'),false);
 });
+
+// Orchestrated plan: waves, pause with finishing executors, delivery handed to the orchestrator one step at a time.
+function orchestratedFixture(t) {
+  const sequential=id=>({...task(id),parallel_safe:false});
+  const delivery={...sequential('D1'),verification_kind:'package',functional_paths:['release-manifest.json']};
+  const origin={workspace:'/main',sessionId:'orchestrator',chatUrl:'https://chatgpt.com/c/orchestrator',executionSnapshot:{parallel_allowed:true,max_workers:2}};
+  const state={workspace:'/main',head:'base',confirmed:true,mainClean:true,commandActive:false,integration:{status:'IDLE'},assignments:[],
+    plan:{scope_id:'scope',execution_scope_status:'ACTIVE',plan_revision:4,parallel_allowed:true,max_workers:2,release:true,
+      execution_strategy:'orchestrated',execution_origin_session_id:'web-pilot-original',
+      tasks:[sequential('S1'),task('P1',['S1']),task('P2',['S1']),task('P3',['S1']),sequential('S2'),sequential('DOCS'),delivery]}};
+  const control={state:'running',settled:[]},page={documentId:'doc',stopped:true,canSend:true,lastMessageRole:'assistant',
+    userMessagesRevision:0,assistantRevision:0,manualSendRevision:0};
+  const pages=new Map(),calls={created:[],merged:[],sent:[],saved:[]};let sequence=0;
+  const kit={read:async()=>structuredClone(state),
+    create:async(workspace,plan,task,id)=>{calls.created.push(task.id);
+      const a={id,worktree:'/trees/'+id,parent_task_id:task.id,parent_scope_id:plan.scope_id,parent_root:workspace,status:'READY'};
+      state.assignments.push(a);return a;},
+    integrate:async(_workspace,a)=>{calls.merged.push(a.parent_task_id);state.assignments.find(x=>x.id===a.id).status='INTEGRATED';
+      state.plan.tasks.find(x=>x.id===a.parent_task_id).commit_status='DONE';state.head+='-merge';return {status:'INTEGRATED'};}};
+  let book={};
+  const create=()=>new ParallelExecution({kit,book,origin:(_w,id)=>id==='orchestrator'?origin:null,orchestrator:()=>'orchestrator',
+    isEnabled:()=>['running','pausing'].includes(control.state),isIssuing:()=>control.state==='running',
+    canFinalize:()=>control.state==='running',onComplete:()=>{control.state='complete';},
+    onSettle:(_w,_s,{busy})=>{control.settled.push(busy);if(control.state==='pausing'&&!busy)control.state='paused';},
+    openWorker:async a=>{pages.set(a.id,{stopped:false});return {sessionId:'session-'+a.id};},
+    workerState:a=>pages.get(a.id)??{stopped:false},mainState:()=>({...page}),
+    save:async data=>{book=structuredClone(data);calls.saved.push(data);},uuid:()=>String(++sequence),now:()=>sequence,
+    sendCorrection:async()=>({state:'sent'}),
+    sendFinalization:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.sent.push(text);return {state:'sent'};}});
+  let runtime=create();runtime.observe('/main');
+  t.after(()=>runtime.dispose());
+  const signal=()=>runtime.signal('/main');
+  const finish=id=>{const a=state.assignments.find(x=>x.parent_task_id===id);a.status='READY_FOR_INTEGRATION';a.source_commit='source-'+id;pages.set(a.id,{stopped:true});};
+  // The orchestrator answers: the user turn appears first, its assistant turn completes afterwards.
+  const reply=async()=>{page.userMessagesRevision++;await signal();page.assistantRevision++;await signal();};
+  const restart=()=>{runtime.dispose();runtime=create();runtime.observe('/main');return runtime;};
+  // The final handoff gives the remaining integrations to the orchestrator itself.
+  const integrated=id=>{const a=state.assignments.find(x=>x.parent_task_id===id);a.status='INTEGRATED';
+    state.plan.tasks.find(x=>x.id===id).commit_status='DONE';state.head+='-final';};
+  return {state,control,calls,page,finish,signal,reply,restart,integrated,get runtime(){return runtime;}};
+}
+
+test('orchestrated: a sequential task runs alone, parallel tasks wait for it and respect the limit',async t=>{
+  const f=orchestratedFixture(t);
+  await f.signal();assert.deepEqual(f.calls.created,['S1'],'only the first sequential task starts');
+  f.finish('S1');await f.signal();
+  assert.deepEqual(f.calls.merged,['S1']);assert.deepEqual(f.calls.created,['S1','P1','P2'],'two parallel tasks within max_workers');
+  f.finish('P1');await f.signal();
+  assert.deepEqual(f.calls.created.slice(3),['P3'],'a freed slot takes the next parallel task');
+  assert.ok(!f.calls.created.includes('S2'),'the next sequential task waits for the whole wave');
+  assert.ok(!f.calls.created.includes('D1'),'delivery is never assigned');
+});
+
+test('orchestrated: pause stops new tasks, running executors finish and integrate, continue resumes',async t=>{
+  const f=orchestratedFixture(t);
+  await f.signal();f.finish('S1');await f.signal();
+  f.control.state='pausing';
+  f.finish('P1');await f.signal();
+  assert.deepEqual(f.calls.merged,['S1','P1'],'a finished executor is still integrated');
+  assert.equal(f.calls.created.includes('P3'),false,'no new task while pausing');
+  assert.equal(f.control.state,'pausing','P2 is still working');
+  f.finish('P2');await f.signal();
+  assert.equal(f.control.state,'paused','the pause takes effect once no executor works');
+  assert.equal(f.calls.created.includes('P3'),false);
+  f.control.state='running';await f.signal();
+  assert.deepEqual(f.calls.created.slice(3),['P3'],'continue resumes with the first unstarted task');
+});
+
+test('orchestrated: final handoff, delivery one step at a time with a pause, cleanup and completion without repeated sends',async t=>{
+  const f=orchestratedFixture(t);
+  await f.signal();f.finish('S1');await f.signal();
+  for(const id of ['P1','P2'])f.finish(id);await f.signal();
+  f.finish('P3');await f.signal();
+  f.finish('S2');await f.signal();
+  f.finish('DOCS');await f.signal();
+  assert.deepEqual(f.calls.merged,['S1','P1','P2','P3','S2'],'the last integration is handed to the orchestrator');
+  assert.equal(f.calls.sent.length,1);assert.match(f.calls.sent[0],/^Заверши интеграции плана оркестратора/);
+  await f.signal();assert.equal(f.calls.sent.length,1,'a sent handoff is not repeated');
+  f.restart();await f.signal();assert.equal(f.calls.sent.length,1,'a backend restart does not repeat the send');
+  f.integrated('DOCS');await f.reply();
+  assert.equal(f.calls.sent.length,2);assert.match(f.calls.sent[1],/delivery-задачу/);assert.match(f.calls.sent[1],/task:start D1/);
+  assert.equal(f.runtime.view('/main').delivery,'D1');
+  // The orchestrator finishes D1; the user pauses before the next step.
+  f.state.plan.tasks.find(x=>x.id==='D1').commit_status='DONE';f.control.state='pausing';
+  await f.reply();
+  assert.equal(f.calls.sent.length,2,'nothing is sent while paused');assert.equal(f.control.state,'paused');
+  f.control.state='running';await f.signal();
+  assert.equal(f.calls.sent.length,3);assert.match(f.calls.sent[2],/assignment:cleanup/);
+  await f.reply();
+  assert.equal(f.control.state,'complete');assert.equal(f.runtime.view('/main').phase,'complete');
+  await f.signal();assert.equal(f.calls.sent.length,3);
+});
+
+test('orchestrated: an unfinished delivery step or a corrective task is not resent; the new task is issued first',async t=>{
+  const f=orchestratedFixture(t);
+  await f.signal();f.finish('S1');await f.signal();
+  for(const id of ['P1','P2'])f.finish(id);await f.signal();
+  for(const id of ['P3','S2','DOCS']){f.finish(id);await f.signal();}
+  f.integrated('DOCS');await f.reply();assert.equal(f.calls.sent.length,2,'D1 handed to the orchestrator');
+  await f.reply();
+  assert.equal(f.runtime.view('/main').error.code,'DELIVERY_NOT_DONE');assert.equal(f.calls.sent.length,2);
+  // The orchestrator adds a corrective task before the release instead.
+  f.state.plan.tasks.splice(5,0,{...f.state.plan.tasks[4],id:'FIX',parallel_safe:false,commit_status:'PENDING',implementation_status:'TODO',dependencies:[]});
+  await f.signal();await f.signal();
+  assert.equal(f.calls.created.at(-1),'FIX','the corrective task goes to a new executor');
+  f.finish('FIX');await f.signal();await f.signal();
+  assert.equal(f.calls.sent.length,3,'a new final handoff after the correction');assert.match(f.calls.sent[2],/^Заверши интеграции/);
+});
+
+test('orchestrated origin is the stored orchestrator, possibly chosen by the user',()=>{
+  const plan={execution_strategy:'orchestrated',execution_origin_session_id:'original',parallel_allowed:true,max_workers:2};
+  const chosen={sessionId:'chosen',executionSnapshot:{parallel_allowed:true,max_workers:3}};
+  assert.equal(executionOrigin(plan,id=>id==='chosen'?chosen:null,'chosen'),chosen);
+  assert.throws(()=>executionOrigin(plan,id=>id==='chosen'?{...chosen,executionSnapshot:{parallel_allowed:false,max_workers:1}}:null,'chosen'),
+    {code:'EXECUTION_POLICY_MISMATCH'});
+  assert.equal(executionOrigin({...plan,parallel_allowed:false,max_workers:1},()=>({sessionId:'original',executionSnapshot:{parallel_allowed:false,max_workers:1}})).sessionId,'original');
+  assert.deepEqual(availableTasks({...plan,tasks:[{...task('D'),parallel_safe:false,verification_kind:'package'}]},[],()=>({stopped:true})),[]);
+});

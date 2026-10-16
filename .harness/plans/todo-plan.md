@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 240,
+  "plan_revision": 242,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -506,8 +506,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T006",
@@ -526,7 +526,8 @@
         "tests/parallel-execution-recovery.test.mjs",
         "tests/parallel-finalization.test.mjs",
         "src/control/workflow/execution-control.mjs",
-        "tests/execution-control.test.mjs"
+        "tests/execution-control.test.mjs",
+        "src/backend/desktop-model.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -545,7 +546,15 @@
         "Тесты: последовательная → параллельные → последовательная, лимит, пауза, delivery-фаза, перезапуск без повторного Send"
       ],
       "expected_commit_message": "feat: Control ведёт план оркестратора до очистки",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/parallel-execution.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -899,7 +908,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 240
+Revision: 242
 
 ## Цель
 
@@ -953,10 +962,10 @@ Revision: 240
   - Файлы: src/control/workflow/execution-control.mjs, src/control/workflow/project-auto-plan.mjs, src/control/workflow/coordination.mjs, src/control/facade.mjs, src/contracts/desktop.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ipc.mjs, tests/execution-control.test.mjs, tests/project-auto-plan.test.mjs, tests/backend-desktop-model.test.mjs, tests/desktop-boundaries.test.mjs, src/control/workflow/auto-plan-state.mjs, src/control/workflow/project-session-auto-plan.mjs, src/control/projects/workspace-deletion.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [TODO] T006: Control: волны, delivery-фаза и очистка — Ожидает
-  - Git Commit: [PENDING] feat: Control ведёт план оркестратора до очистки
+- [DONE] T006: Control: волны, delivery-фаза и очистка — Завершено
+  - Git Commit: [DONE] feat: Control ведёт план оркестратора до очистки
   - Reference: workflow-pilot-orchestrated-execution / T006 / implementation
-  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-projection.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-finalization.test.mjs, src/control/workflow/execution-control.mjs, tests/execution-control.test.mjs
+  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-projection.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-finalization.test.mjs, src/control/workflow/execution-control.mjs, tests/execution-control.test.mjs, src/backend/desktop-model.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T005
 - [TODO] T007: Control: сигналы и эскалация сбоев — Ожидает

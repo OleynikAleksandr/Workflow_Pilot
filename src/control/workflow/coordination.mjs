@@ -81,12 +81,18 @@ authorizedExecutionKit.read=async workspace=>{
   return facts;
 };
 const liveRecord=project=>project&&liveSessions.find(project);
+const orchestratedPlan=workspace=>store.project(workspace)?.planExecution?.execution_strategy==='orchestrated';
+// Executors of an orchestrated plan keep their continuations while a pause is pending.
+const executorEnabled=(workspace,scope)=>orchestratedPlan(workspace)
+  ?['running','pausing'].includes(executionControl.view(workspace,scope).state):projectAutoPlan.enabled(workspace,scope);
+const storedOrchestrator=(workspace,scope)=>store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions
+  .find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId??null;
 async function restoreExecutionPage(project,assignment=null) {
   if(liveRecord(project)?.ready&&(!assignment||liveRecord(project).executor))return project;
   if(!project?.chatUrl||(!project.manualStart&&!project.attempt?.sendStartedAtMs&&!['sent','acknowledged'].includes(project.attempt?.state)))
     throw Object.assign(new Error('Сохранённый адрес и отправка не подтверждены. Откройте соответствующий чат и проверьте его; автоматического Send нет.'),{code:'EXECUTOR_CHAT_UNKNOWN'});
   const record=liveSessions.ensure(project);
-  if(assignment)configureExecutor(record,{store,enabled:projectAutoPlan.enabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
+  if(assignment)configureExecutor(record,{store,enabled:executorEnabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
     inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
     signal:()=>{void execution.signal(project.parentWorkspace);},
     log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});
@@ -95,9 +101,14 @@ async function restoreExecutionPage(project,assignment=null) {
 }
 const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelExecutionBook,
   // A draining backend opens no new assignment and queues no new send.
-  isEnabled:(workspace,scope)=>!liveSessions?.paused&&projectAutoPlan.enabled(workspace,scope),
-  canFinalize:(workspace,scope)=>projectAutoPlan.finalizationAllowed(workspace,scope),
-  onComplete:(workspace,scope)=>projectAutoPlan.sync(workspace,scope,{complete:true,confirmed:true}),
+  isEnabled:(workspace,scope)=>!liveSessions?.paused&&executorEnabled(workspace,scope),
+  // New tasks, the final handoff and delivery steps of an orchestrated plan wait while it is not running.
+  isIssuing:(workspace,scope)=>!orchestratedPlan(workspace)||executionControl.issuing(workspace,scope),
+  canFinalize:(workspace,scope)=>orchestratedPlan(workspace)?executionControl.issuing(workspace,scope):projectAutoPlan.finalizationAllowed(workspace,scope),
+  onComplete:(workspace,scope)=>orchestratedPlan(workspace)?executionControl.complete(workspace,scope)
+    :projectAutoPlan.sync(workspace,scope,{complete:true,confirmed:true}),
+  onSettle:(workspace,scope,facts)=>executionControl.settle(workspace,scope,facts),
+  orchestrator:storedOrchestrator,
   origin:(workspace,id)=>store.project(workspace,id),
   save:async book=>{parallelExecutionBook=book;await saveSettings({parallelExecutionBook:book});},
   onChange:()=>{
@@ -106,7 +117,9 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
     }
     for(const state of execution.states.values())for(const assignment of state.assignments??[])if(assignment.status==='INTEGRATED') {
       const record=liveRecord(store.project(assignment.worktree));
-      if(record){record.integrated=true;record.executor?.clock.observe('done');}
+      if(record){record.integrated=true;record.executor?.clock.observe('done');
+        // An integrated executor of an orchestrated plan frees its page; the chat reopens from the task.
+        if(orchestratedPlan(assignment.parent_root??state.workspace)&&liveSessions.visible!==record)liveSessions.release(record);}
     }
     publish();
   },
@@ -157,7 +170,7 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   },
   openWorker:async(assignment,origin)=>{
     const project=await store.ensureExecutor(assignment,origin),record=liveSessions.ensure(project);
-    configureExecutor(record,{store,enabled:projectAutoPlan.enabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
+    configureExecutor(record,{store,enabled:executorEnabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
       inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
       signal:()=>{void execution.signal(origin.workspace);},
       log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});

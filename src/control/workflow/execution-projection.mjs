@@ -10,6 +10,8 @@ export function integrationProblem(operation) {
 }
 
 export function plannedExecution(task,strategy) {
+  if(strategy==='orchestrated')return task.verification_kind==='package'||task.verification_kind==='installed'?'Оркестратор в main'
+    :task.parallel_safe?'Параллельно':'Последовательно';
   if(strategy!=='parallel')return 'Последовательно';
   const mode=task.parallel_safe?'Параллельно':'Отдельный исполнитель';
   return task.dependencies?.length?'После '+task.dependencies.join(', ')+' · '+mode:mode;

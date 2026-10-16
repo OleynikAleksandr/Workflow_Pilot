@@ -799,7 +799,7 @@ function connectController() {
 }
 function selectLiveSession(project=null) {
   const record=liveSessions.ensure(project);
-  if(project?.planExecution?.execution_strategy==='parallel')execution.observe(project.workspace);
+  if(['parallel','orchestrated'].includes(project?.planExecution?.execution_strategy))execution.observe(project.workspace);
   const changed=liveSessions.visible!==record;
   browser=sessionView(record);controller=record.controller;pageState=record.pageState;
   agentTimer=record.timer;conversationRecovery=record.recovery;

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { parallelTasksCompatible } from '@webpilot/workflow-kit/lib/plan';
+import { parallelTasksCompatible, isDeliveryTask } from '@webpilot/workflow-kit/lib/plan';
 import { validateParallelSettings } from './parallel-settings.mjs';
 import { integrationProblem, projectExecutionPlan } from './execution-projection.mjs';
 
@@ -43,7 +43,9 @@ function sentPageBaseline(entry,page){
 export function finalSourceState(state,workerStopped=()=>true) {
   const {plan,assignments=[]}=state;
   const allDone=plan.tasks.length>0&&plan.tasks.every(t=>t.commit_status==='DONE');
-  const sources=plan.tasks.filter(t=>t.commit_status!=='DONE').map(task=>{
+  // Delivery of an orchestrated plan runs in main after the final handoff, never through an assignment.
+  const orchestrated=plan.execution_strategy==='orchestrated';
+  const sources=plan.tasks.filter(t=>t.commit_status!=='DONE'&&!(orchestrated&&isDeliveryTask(t))).map(task=>{
     const matches=assignments.filter(a=>a.parent_task_id===task.id);
     if(matches.length!==1)return null;
     const a=matches[0];
@@ -62,13 +64,20 @@ export function finalSourceState(state,workerStopped=()=>true) {
   return {sourceReady,allDone,blockers,mergeSafe:baseSafe&&blockers.length===0,
     diagnosticEligible:baseSafe&&state.confirmed&&blockers.length>0};
 }
-export function executionOrigin(plan,lookup) {
-  if(plan.execution_strategy!=='parallel')return null;
-  const id=plan.execution_origin_session_id,origin=id&&lookup(id);
+export function executionOrigin(plan,lookup,orchestratorId=null) {
+  if(!['parallel','orchestrated'].includes(plan.execution_strategy))return null;
+  // An orchestrated plan is led by its stored orchestrator, which the user may have chosen explicitly.
+  const orchestrated=plan.execution_strategy==='orchestrated';
+  const id=orchestrated?orchestratorId??plan.execution_origin_session_id:plan.execution_origin_session_id,origin=id&&lookup(id);
   if(plan.project_id&&origin?.projectId!==plan.project_id)throw fail('EXECUTION_PROJECT_MISMATCH','Сессия принадлежит другому проекту. Запуск остановлен.');
   if(!origin?.executionSnapshot||origin.sessionId!==id||origin.assignmentId||origin.archivedAt||origin.sessionArchivedAt)
     throw fail('EXECUTION_ORIGIN_UNKNOWN','Не найден сохранённый снимок основной сессии этого плана.');
   const snapshot=validateParallelSettings(origin.executionSnapshot);
+  if(orchestrated) {
+    if(plan.max_workers>snapshot.max_workers||plan.parallel_allowed&&!snapshot.parallel_allowed)
+      throw fail('EXECUTION_POLICY_MISMATCH','Параметры плана превышают разрешение сессии оркестратора.');
+    return origin;
+  }
   if(!snapshot.parallel_allowed||snapshot.max_workers<2||plan.parallel_allowed!==snapshot.parallel_allowed||plan.max_workers!==snapshot.max_workers)
     throw fail('EXECUTION_POLICY_MISMATCH','Параметры плана не совпадают с разрешением основной сессии.');
   return origin;
@@ -78,10 +87,16 @@ export function availableTasks(plan,assignments,workers) {
   const occupied=unfinished.filter(a=>a.status!=='READY_FOR_INTEGRATION'||!workers(a).stopped).length;
   let slots=Math.max(0,plan.max_workers-occupied);const chosen=[];
   const activeTasks=unfinished.map(a=>plan.tasks.find(t=>t.id===a.parent_task_id)).filter(Boolean);
-  for(const task of plan.tasks) {
+  const orchestrated=plan.execution_strategy==='orchestrated';
+  for(const [index,task] of plan.tasks.entries()) {
     if(task.commit_status==='DONE')continue;
+    // Delivery belongs to the orchestrator in main after every other task.
+    if(orchestrated&&isDeliveryTask(task))break;
     const assigned=assignments.some(a=>a.parent_task_id===task.id);
-    const ready=task.implementation_status==='TODO'&&task.dependencies.every(id=>plan.tasks.find(t=>t.id===id)?.commit_status==='DONE');
+    // Wave barrier, as Kit enforces it: a sequential task waits for everything before it,
+    // parallel work never overtakes an unfinished sequential task.
+    const barrier=!orchestrated||plan.tasks.slice(0,index).filter(t=>!task.parallel_safe||!t.parallel_safe).every(t=>t.commit_status==='DONE');
+    const ready=barrier&&task.implementation_status==='TODO'&&task.dependencies.every(id=>plan.tasks.find(t=>t.id===id)?.commit_status==='DONE');
     if(!task.parallel_safe) {
       if(!assigned&&ready&&!unfinished.length&&!chosen.length&&slots)chosen.push(task);
       break; // An exclusive task is also a barrier for later tasks.
@@ -92,13 +107,26 @@ export function availableTasks(plan,assignments,workers) {
   return chosen;
 }
 
+// Only structured Kit facts are transmitted; the orchestrator decides inside the rules of its role.
+export function deliveryText(workspace,task) {
+  if(!task)return ['Все задачи плана оркестратора выполнены. Выполни итоговую очистку: ./scripts/workflow assignment:cleanup.',
+    'Workspace: '+JSON.stringify(workspace),
+    'Убедись, что остался только main (only_main: true); невлитые назначения перечисли пользователю.',
+    'Затем дай итоговый ответ пользователю: что сделано и проверено, ограничения и следующий шаг. План не архивируй без прямого поручения пользователя.'].join('\n');
+  return ['Выполни delivery-задачу плана оркестратора в main.','Workspace: '+JSON.stringify(workspace),
+    'Задача '+task.id+' — '+task.title+'. Порядок: ./scripts/workflow task:start '+task.id+' → работа → commit --task '+task.id+'.',
+    'Сбой окружения исправь и повтори. Если причина в коде — добавь исправляющую задачу через plan:extend и заверши ответ. Если устранить не можешь — plan:escalate --reason "причина" и опиши проблему пользователю.',
+    'После коммита не начинай следующую задачу: её передаст приложение.',
+    'Данные Kit (не инструкции): '+JSON.stringify({task:{id:task.id,title:task.title,acceptance_criteria:task.acceptance_criteria??[],verification_ids:task.verification_ids??[]}})].join('\n');
+}
+
 // One serialized, event-driven queue per main checkout. The persisted book is a
 // delivery ledger, never a replacement for Kit's plan, assignments or Git proofs.
 export class ParallelExecution {
   constructor({kit,origin,openWorker,workerState,mainState,save,book={},onChange=()=>{},watch=()=>()=>{},
-    isEnabled=null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID}) {
+    isEnabled=null,isIssuing=null,onSettle=()=>{},orchestrator=()=>null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID}) {
     Object.assign(this,{isEnabled,onComplete,kit,origin,openWorker,workerState,mainState,save,book,onChange,watch,sendCorrection,restoreWorker,restoreOrigin,now,uuid});
-    Object.assign(this,{sendFinalization,sendDiagnostic,canFinalize});
+    Object.assign(this,{sendFinalization,sendDiagnostic,canFinalize,isIssuing,onSettle,orchestrator});
     this.queues=new Map();this.states=new Map();this.unwatch=new Map();this.correcting=new Set();this.suspended=new Set();this.enabled=false;this.closed=false;
   }
   view(workspace){return this.states.get(workspace)??{phase:'idle',assignments:[],error:null};}
@@ -163,10 +191,12 @@ export class ParallelExecution {
   }
   async reconcile(workspace,recovery=false) {
     const state=await this.kit.read(workspace),{plan}=state;
-    if(plan.execution_strategy!=='parallel') {this.publish(workspace,{phase:'sequential',assignments:[],error:null});return;}
+    if(!['parallel','orchestrated'].includes(plan.execution_strategy)) {this.publish(workspace,{phase:'sequential',assignments:[],error:null});return;}
     const enabled=()=>!this.suspended.has(workspace)&&(this.isEnabled?this.isEnabled(workspace,plan.scope_id):this.enabled);
+    // Pausing an orchestrated plan stops only new tasks; running executors and integrations continue.
+    const issuing=()=>enabled()&&(this.isIssuing?this.isIssuing(workspace,plan.scope_id):true);
     this.unwatch.get(workspace)?.update?.(state.watchInputs);
-    const origin=executionOrigin(plan,id=>this.origin(workspace,id));
+    const origin=executionOrigin(plan,id=>this.origin(workspace,id),this.orchestrator(workspace,plan.scope_id));
     const ledger=await this.scopedLedger(state,origin);
     if(this.suspended.has(workspace))return;
     const assignments=state.assignments.map(a=>({...a,...(ledger.assignments[a.id]?.readyAt?{readyAt:ledger.assignments[a.id].readyAt}:{})}));
@@ -263,7 +293,7 @@ export class ParallelExecution {
       catch(error){entry.integration='unknown';await this.persist();throw error;}
       this.queues.get(workspace).again=true;return;
     }
-    if(!enabled()){this.publish(workspace,{phase:'paused'});return;}
+    if(!issuing()){this.publish(workspace,{phase:'paused'});this.settle(workspace,plan,assignments,state);return;}
     if(!state.mainClean)throw fail('MAIN_DIRTY','В main есть незакоммиченные изменения. Автовыполнение не удаляет и не присваивает их.');
     const mainPage=this.mainState(origin);
     if(!mainPage.stopped||mainPage.canSend===false)throw fail('MAIN_CHAT_NOT_READY','Ждём готовности основного чата без активного ответа и черновика.');
@@ -271,7 +301,7 @@ export class ParallelExecution {
     for(const a of assignments) {
       const entry=ledger.assignments[a.id];
       if(!entry||entry.sessionId||a.error||!['READY','NEEDS_SETUP'].includes(a.status)||a.commandActive||a.transaction_pending)continue;
-      if(!enabled())break;
+      if(!issuing())break;
       if(entry.phase==='opening')continue; // Crash during session creation is reconciled from the session store above.
       try {
         let prepared=a;
@@ -284,13 +314,13 @@ export class ParallelExecution {
       }catch(error){entry.error=issue(error);await this.persist();recoveryError??=entry.error;}
     }
     for(const task of availableTasks(plan,assignments,stopped)) {
-      if(this.closed||!enabled())break;
+      if(this.closed||!issuing())break;
       // Persist identity before creating a worktree. An ambiguous result never gets a new ID.
       let entry=Object.values(ledger.assignments).find(a=>a.taskId===task.id);
       if(entry)continue;
       const id='wp-'+this.uuid();entry=ledger.assignments[id]={id,taskId:task.id,base:state.head,phase:'creating'};
       await this.persist();this.publish(workspace,{phase:'preparing'});
-      if(this.closed||!enabled()){delete ledger.assignments[id];await this.persist();break;}
+      if(this.closed||!issuing()){delete ledger.assignments[id];await this.persist();break;}
       try {
         let assignment=await this.kit.create(workspace,plan,task,id,state.head);
         entry.worktree=assignment.worktree;entry.phase=assignment.status;await this.persist();
@@ -306,13 +336,30 @@ export class ParallelExecution {
       }catch(error){entry.error=issue(error);entry.phase='attention';await this.persist();throw error;}
     }
     const latest=await this.kit.read(workspace);
+    this.settle(workspace,latest.plan,latest.assignments,latest);
     this.publish(workspace,{phase:recoveryError?'attention':'waiting',planView:projectExecutionPlan(latest.plan,[...latest.assignments,...assignments.filter(a=>a.status==='UNKNOWN'&&!latest.assignments.some(b=>b.id===a.id))],latest.integration),assignments:latest.assignments.map(a=>({...a,
       ...(assignments.find(b=>b.id===a.id)?.error?{error:assignments.find(b=>b.id===a.id).error}:{})}))
       .concat(assignments.filter(a=>a.status==='UNKNOWN'&&!latest.assignments.some(b=>b.id===a.id))),error:recoveryError});
   }
+  // A requested pause of an orchestrated plan takes effect once no executor works and main is free.
+  settle(workspace,plan,assignments,state) {
+    if(plan?.execution_strategy!=='orchestrated')return;
+    const busy=(assignments??[]).some(a=>a.status!=='INTEGRATED')||(state.integration?.status??'IDLE')!=='IDLE';
+    this.onSettle(workspace,plan.scope_id,{busy});
+  }
   async finalize(workspace,state,origin,ledger,enabled) {
     if(!this.sendFinalization)return false;
     const {plan,assignments}=state;
+    const orchestrated=plan.execution_strategy==='orchestrated';
+    // A corrective task added after the handoff reopens the ordinary work: its integration needs a new final round.
+    if(orchestrated&&ledger.finalization&&plan.tasks.some(t=>!isDeliveryTask(t)&&t.commit_status!=='DONE')
+      &&['reply-observed','pending'].includes(ledger.finalization.status)) {
+      ledger.finalization=null;
+      for(const key of Object.keys(ledger.delivery??{}))
+        if(key==='cleanup'||plan.tasks.find(t=>t.id===key)?.commit_status!=='DONE')delete ledger.delivery[key];
+      await this.persist();
+      return false;
+    }
     const allowed=()=>!this.closed&&!this.suspended.has(workspace)
       &&(this.canFinalize?this.canFinalize(workspace,plan.scope_id):enabled());
     const source=finalSourceState(state,a=>this.workerState(a,ledger.assignments[a.id]).stopped);
@@ -326,9 +373,11 @@ export class ParallelExecution {
     if(final.projectId!==(plan.project_id??null)||final.scope!==plan.scope_id||final.sessionId!==origin.sessionId)
       throw fail('FINALIZATION_IDENTITY','Получатель итогового поручения не соответствует плану.');
     const page=this.mainState(origin);
-    await observeHandoffReply(final,page,()=>this.persist(),allDone);
+    // The orchestrator's reply completes the handoff once all ordinary work is in main; delivery follows it.
+    await observeHandoffReply(final,page,()=>this.persist(),allDone||orchestrated&&plan.tasks.every(t=>isDeliveryTask(t)||t.commit_status==='DONE'));
     this.publish(workspace,{finalizationStatus:final.status});
-    if(allDone&&state.confirmed)await this.onComplete(workspace,plan.scope_id);
+    // An orchestrated plan completes only after its delivery and the final cleanup.
+    if(allDone&&state.confirmed&&!orchestrated)await this.onComplete(workspace,plan.scope_id);
     // A diagnostic is strictly read-only: even a sent diagnostic does not
     // transfer main ownership. Only the final handoff does that.
     if(ledger.diagnostic) {
@@ -372,6 +421,7 @@ export class ParallelExecution {
       }
       return true;
     }
+    if(orchestrated&&final.status==='reply-observed')return this.deliver(workspace,state,origin,ledger,allowed);
     if(['sending','sent','unknown','reply-observed'].includes(final.status)) {
       this.publish(workspace,{phase:final.status==='reply-observed'?'complete':'finalizing',
         error:final.status==='unknown'||final.status==='sending'?{code:'FINALIZATION_SEND_UNKNOWN',
@@ -407,7 +457,8 @@ export class ParallelExecution {
       commands:[...(state.commands??[]),...assignments.flatMap(a=>a.commands??[])].map(c=>({
         id:c.id,session:c.processId,checkout:c.cwd,state:c.state,readOnly:c.readOnly}))};
     // Only structured Kit facts are transmitted; executor prose is not a control instruction.
-    const text=['Заверши общую работу по parallel-плану Workflow Kit и дай итоговый ответ пользователю.',
+    const text=[orchestrated?'Заверши интеграции плана оркестратора и проверь общий main. Delivery-задачи и итоговую очистку приложение передаст тебе отдельными поручениями — пока их не начинай.'
+      :'Заверши общую работу по parallel-плану Workflow Kit и дай итоговый ответ пользователю.',
       'Workspace: '+JSON.stringify(workspace),
       'Прочитай status, integration:status, назначения и доказательства проверок. Подтверждённые коммиты исполнителей готовы; общий main может ещё требовать интеграции.',
       'Заверши оставшиеся слияния через integration:start/continue; разреши конфликты в области соответствующих задач. Не делай implementation-коммит parallel-задачи в main.',
@@ -424,13 +475,72 @@ export class ParallelExecution {
         return current()&&fresh.confirmed&&!fresh.commandActive&&fresh.mainClean
           &&fresh.integration?.status===state.integration.status
           &&fresh.plan.scope_id===plan.scope_id&&fresh.plan.project_id===plan.project_id
-          &&fresh.plan.execution_origin_session_id===origin.sessionId&&fresh.head===state.head;
+          &&(fresh.plan.execution_strategy==='orchestrated'||fresh.plan.execution_origin_session_id===origin.sessionId)&&fresh.head===state.head;
       });
       final.status=result.state==='sent'?'sent':result.state==='unknown'&&result.reason!=='PAUSE_CONSUMED'?'unknown':'pending';
       await this.persist();this.publish(workspace,{finalizationStatus:final.status});
       // The send boundary may have observed newer command/scope facts; never merge the old snapshot.
       return true;
     }catch(error){final.status='unknown';await this.persist();throw error;}
+  }
+  // Delivery phase of an orchestrated plan: one task at a time to the orchestrator, then the final cleanup.
+  // The button pauses between steps; an unknown send or an unfinished step is never resent automatically.
+  async deliver(workspace,state,origin,ledger,allowed) {
+    const {plan}=state,page=this.mainState(origin);
+    this.settle(workspace,plan,state.assignments,state);
+    ledger.delivery??={};
+    for(const task of [...plan.tasks.filter(isDeliveryTask),null]) {
+      const key=task?.id??'cleanup',entry=ledger.delivery[key];
+      if(entry)await observeHandoffReply(entry,page,()=>this.persist());
+      if(task?.commit_status==='DONE'||!task&&entry?.status==='reply-observed')continue;
+      if(entry&&entry.status!=='pending') {
+        if(['sending','unknown'].includes(entry.status)) {
+          this.publish(workspace,{phase:'attention',delivery:key,error:{code:'DELIVERY_SEND_UNKNOWN',
+            message:'Исход поручения оркестратору неизвестен. Проверьте его чат; повторная отправка не выполняется.'}});
+          return true;
+        }
+        if(entry.status==='sent'){this.publish(workspace,{phase:'delivering',delivery:key,error:null});return true;}
+        this.publish(workspace,{phase:'attention',delivery:key,error:{code:'DELIVERY_NOT_DONE',
+          message:'Оркестратор ответил, но шаг '+key+' не завершён. Обсудите с ним; повторная отправка не выполняется.'}});
+        return true;
+      }
+      if(!allowed()){this.publish(workspace,{phase:'paused',delivery:key,error:null});return true;}
+      if(!state.confirmed||state.commandActive||!state.mainClean||!page.stopped||!page.canSend) {
+        this.publish(workspace,{phase:'delivering',delivery:key,error:null});return true;
+      }
+      const next=ledger.delivery[key]={status:'pending',scope:plan.scope_id,sessionId:origin.sessionId};
+      return this.handoff(workspace,state,origin,next,deliveryText(workspace,task),allowed,key);
+    }
+    this.publish(workspace,{phase:'complete',delivery:null,error:null});
+    await this.onComplete(workspace,plan.scope_id);
+    return true;
+  }
+  async handoff(workspace,state,origin,entry,text,allowed,key) {
+    const {plan}=state,page=this.mainState(origin);
+    const baseline={chatUrl:origin.chatUrl,projectId:origin.projectId,sessionId:origin.sessionId,documentId:page.documentId,
+      manualSendRevision:page.manualSendRevision??0,manualStopRevision:page.manualStopRevision??0,manualInputRevision:page.manualInputRevision??0};
+    const current=()=>{
+      const p=this.mainState(origin),latestOrigin=this.origin(workspace,origin.sessionId);
+      return allowed()&&latestOrigin?.sessionId===baseline.sessionId&&latestOrigin?.chatUrl===baseline.chatUrl
+        &&latestOrigin?.projectId===baseline.projectId&&!p.manualStopped&&!p.connectionError
+        &&(p.manualStopRevision??0)===baseline.manualStopRevision&&(p.manualSendRevision??0)===baseline.manualSendRevision
+        &&(p.manualInputRevision??0)===baseline.manualInputRevision&&p.documentId===baseline.documentId
+        &&(p.canContinueSend??(p.stopped&&p.canSend));
+    };
+    if(Buffer.byteLength(text,'utf8')>28000)throw fail('DELIVERY_TOO_LARGE','Поручение оркестратору превышает допустимый размер; данные не усечены.');
+    entry.status='sending';entry.pauseKey=page.pauseKey;sentPageBaseline(entry,page);
+    try {await this.persist();}catch(error){entry.status='pending';throw error;} // No Send attempted.
+    this.publish(workspace,{phase:'delivering',delivery:key,error:null});
+    try {
+      const result=await this.sendFinalization(origin,text,current,async()=>{
+        const fresh=await this.kit.read(workspace);
+        return current()&&fresh.confirmed&&!fresh.commandActive&&fresh.mainClean&&fresh.plan.scope_id===plan.scope_id
+          &&fresh.plan.project_id===plan.project_id&&fresh.head===state.head;
+      });
+      entry.status=result.state==='sent'?'sent':result.state==='unknown'&&result.reason!=='PAUSE_CONSUMED'?'unknown':'pending';
+      await this.persist();
+      return true;
+    }catch(error){entry.status='unknown';await this.persist();throw error;}
   }
   async sendBlockedDiagnostic(workspace,state,origin,ledger,allowed) {
     const diagnostic=ledger.diagnostic,blocker=diagnostic.blocker,page=this.mainState(origin);
