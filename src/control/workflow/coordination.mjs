@@ -8,6 +8,9 @@ import { readAutoPlanState } from './auto-plan-state.mjs';
 import { PlanMonitor } from './plan-monitor.mjs';
 import { ParallelExecution } from './parallel-execution.mjs';
 import { ParallelKit } from './parallel-kit.mjs';
+import { ExecutionControl } from './execution-control.mjs';
+import { readReview } from '@webpilot/workflow-kit/lib/plan-review';
+import { reviewBlocksExecution } from './auto-plan-state.mjs';
 import { configureExecutor, executorPageState } from './executor-session.mjs';
 import { ProjectInputWatch, ChildCommandWatches, chatGPTEntrypoint } from '../../execution/facade.mjs';
 import { removeProjectSettings, belongsToProject } from '../projects/project-state-cleanup.mjs';
@@ -27,6 +30,9 @@ const projectAutoPlan=new ProjectAutoPlan({identity:workspace=>store.snapshot().
   }
   void saveSettings().catch(report);void execution.signal(workspace);publish();
 }});
+// The run/pause button of orchestrated plans; legacy plans keep ProjectAutoPlan.
+const executionControl=new ExecutionControl({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
+  onChange:workspace=>{void saveSettings().catch(report);void execution.signal(workspace);publish();}});
 const planMonitor = new PlanMonitor({ selected: () => store.selected(),
   inspect: (workspace, sessionId) => store.inspect(workspace, sessionId), onChange: (_info, change) => {
     publish();
@@ -168,9 +174,24 @@ function sendExecutionMessage(origin,text,canContinue,onBeforeSend,kind) {
   return sender.send({selected:origin,page:record.pageState.current?.state,kind,ready:canContinue,
     perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})});
 }
+// The button command: verified against the published plan, never against a chat's guess.
+async function setPlanExecution() {
+  const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
+  if(!workspace||selected?.external)throw Object.assign(new Error('Выберите проект с планом оркестратора.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
+  const info=await store.inspect(workspace);
+  if(info.planExecution?.execution_strategy!=='orchestrated'||!['ACTIVE','BLOCKED'].includes(info.scopeStatus))
+    throw Object.assign(new Error('Кнопка доступна у опубликованного плана оркестратора.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
+  if(reviewBlocksExecution(readReview(workspace),info.scopeId))
+    throw Object.assign(new Error('План ещё не согласован в Review.'),{code:'PLAN_NOT_APPROVED'});
+  const view=executionControl.toggle(workspace,info.scopeId);
+  execution.observe(workspace);await saveSettings();
+  return view;
+}
 async function setAutoPlan(enabled) {
     const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
     const project=selected?.parentWorkspace?store.project(workspace):selected;
+    if(project&&(await store.inspect(workspace)).planExecution?.execution_strategy==='orchestrated')
+      throw Object.assign(new Error('План оркестратора запускается кнопкой «Начать выполнение плана».'),{code:'PLAN_EXECUTION_BUTTON'});
     const info=project&&await readAutoPlanState(project,workspaceSetup.environment);
     let verified=info?.confirmed===true;
     if(info?.scopeId&&info.planExecution?.execution_strategy==='parallel'){
@@ -211,10 +232,11 @@ function observePage(event, record = liveSessions.visible) {
 }
 
 function snapshot() {
-  return structuredClone({projectAutoPlan:projectAutoPlan.snapshot(),reviewCheckpoint,automationCheckpoint,parallelExecutionBook});
+  return structuredClone({projectAutoPlan:projectAutoPlan.snapshot(),executionControl:executionControl.snapshot(),reviewCheckpoint,automationCheckpoint,parallelExecutionBook});
 }
 function restore(settings={}) {
   projectAutoPlan.book=new ProjectAutoPlan({saved:settings.projectAutoPlan}).snapshot();
+  executionControl.book=new ExecutionControl({saved:settings.executionControl}).snapshot();
   parallelExecutionBook=settings.parallelExecutionBook&&typeof settings.parallelExecutionBook==='object'&&!Array.isArray(settings.parallelExecutionBook)
     ? structuredClone(settings.parallelExecutionBook) : {};
   execution.book=parallelExecutionBook;
@@ -248,6 +270,8 @@ return Object.freeze({
     get message(){return reviewContinuation.flow.state.message;},
     update:()=>reviewContinuation.update(),dispose:()=>reviewContinuation.dispose()}),
   projectAutoPlan:Object.freeze({enabled:(...args)=>projectAutoPlan.enabled(...args),snapshot:()=>projectAutoPlan.snapshot()}),
+  executionControl:Object.freeze({view:(...args)=>executionControl.view(...args),enabled:(...args)=>executionControl.enabled(...args),
+    snapshot:()=>executionControl.snapshot()}),setPlanExecution,
   execution:executionPort,executionKit:Object.freeze({git:(...args)=>executionKit.git(...args)}),
   configurePrimary,observePage,setAutoPlan,snapshot,restore,
   sessionChanged(record) {
@@ -263,11 +287,16 @@ return Object.freeze({
   projectAutoPlan.book=cleaned.projectAutoPlan;parallelExecutionBook=cleaned.parallelExecutionBook;execution.book=parallelExecutionBook;
   reviewCheckpoint=cleaned.reviewCheckpoint;automationCheckpoint=cleaned.automationCheckpoint;
   execution.forget(identities.map(p=>p.workspace));
+  executionControl.forget(identities.map(p=>p.workspace));
   for(const book of [automationSend.entries,automationSend.cycles,reviewContinuation.flow.checkpoints,reviewContinuation.flow.cycles,reviewContinuation.stops])
     for(const [key,value] of book)if(belongsToProject([key,value],identities))book.delete(key);
 
   },
   restoreBackground() {
+    // A plan that was running or pausing continues after a backend restart, without a repeated Send.
+    for(const [workspace,state] of Object.entries(executionControl.book))if(['running','pausing'].includes(state.state)) {
+      execution.observe(workspace);void execution.signal(workspace);
+    }
     for(const [workspace,state] of Object.entries(projectAutoPlan.book))if(state.enabled) {
       const project=store.project(workspace,state.sessionId);
       if(project?.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt)void restoreExecutionPage(project).catch(report);

@@ -21,7 +21,7 @@ export function configureProjectAutoPlan(record,{store,authorization,inspectPlan
   flow=new AutoPlan({selected,inspectPlan,log,onChange,onComplete:complete,
     available:()=>{const p=selected();return !!p&&!p.archivedAt&&!p.sessionArchivedAt&&!record.disposed&&!record.paused&&record.ready&&!record.loading
       &&!record.composer.inFlight&&!record.controller.pending&&permitted(p)&&!!monitor?.view(record.project())&&!monitor.error
-      &&p.planExecution?.execution_strategy!=='parallel'&&['delivered','stale','manual-session'].includes(record.controller.state.phase);},
+      &&!['parallel','orchestrated'].includes(p.planExecution?.execution_strategy)&&['delivered','stale','manual-session'].includes(record.controller.state.phase);},
     saveCheckpoint:checkpoint=>save({autoPlanCheckpoint:checkpoint}),
     send:(text,canContinue,onBeforeSend)=>automation.send({selected:selected(),page:flow.page,kind:'plan',ready:canContinue,
       perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})})});

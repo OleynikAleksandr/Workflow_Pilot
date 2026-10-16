@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 238,
+  "plan_revision": 240,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -449,8 +449,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T005",
@@ -493,7 +493,17 @@
         "Тесты переходов, отказов, перезапуска и границ preload"
       ],
       "expected_commit_message": "feat: Control хранит запуск и паузу плана",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/desktop.mjs",
+        "src/control/workflow/auto-plan-state.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/control/workflow/project-session-auto-plan.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "tests/execution-control.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -889,7 +899,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 238
+Revision: 240
 
 ## Цель
 
@@ -937,8 +947,8 @@ Revision: 238
   - Файлы: src/control/sessions/workspace-session.mjs, src/control/sessions/session-plans.mjs, src/control/projects/service.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, src/control/context/context-session.mjs, src/control/facade.mjs, tests/session-roles.test.mjs, tests/workspace-session.test.mjs, tests/session-plans.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, src/control/projects/workspace-deletion.mjs, src/control/workflow/coordination.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Control: состояние кнопки выполнения — Ожидает
-  - Git Commit: [PENDING] feat: Control хранит запуск и паузу плана
+- [DONE] T005: Control: состояние кнопки выполнения — Завершено
+  - Git Commit: [DONE] feat: Control хранит запуск и паузу плана
   - Reference: workflow-pilot-orchestrated-execution / T005 / implementation
   - Файлы: src/control/workflow/execution-control.mjs, src/control/workflow/project-auto-plan.mjs, src/control/workflow/coordination.mjs, src/control/facade.mjs, src/contracts/desktop.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ipc.mjs, tests/execution-control.test.mjs, tests/project-auto-plan.test.mjs, tests/backend-desktop-model.test.mjs, tests/desktop-boundaries.test.mjs, src/control/workflow/auto-plan-state.mjs, src/control/workflow/project-session-auto-plan.mjs, src/control/projects/workspace-deletion.mjs
   - Параллельность: исключительное выполнение

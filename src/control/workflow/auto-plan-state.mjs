@@ -32,7 +32,8 @@ export async function readAutoPlanState(selected, environment = process.env) {
   try { await fs.access(journal); pending = true; } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const dirty = await git(['status', '--porcelain', '--', '.harness/plans/todo-plan.md']);
   const after = await readWorkspace(workspace, sessionId);
-  return { ...after, nextTask: await readNextTask(after), confirmed: after.planExecution?.execution_strategy !== 'parallel'
+  // Parallel and orchestrated plans are driven by their queue, never by the main chat's continuation.
+  return { ...after, nextTask: await readNextTask(after), confirmed: !['parallel', 'orchestrated'].includes(after.planExecution?.execution_strategy)
     && !pending && !reviewBlocksExecution(readReview(workspace),after.scopeId) && (!after.planView.tasks.every(t => t.status === 'done') || !dirty) && before.planRevision === after.planRevision
     && before.scopeId === after.scopeId };
 }

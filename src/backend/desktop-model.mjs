@@ -189,6 +189,13 @@ function archiveSnapshot() {
     focusWorkspace: archiveState.focusWorkspace, theme: preferences.shellTheme, fixture: smoke };
 }
 function publishArchive() { surface.publishArchive(archiveSnapshot()); }
+// The state of the one run/pause button of the selected project's orchestrated plan.
+function planRunView(saved) {
+  const workspace=saved?.parentWorkspace??saved?.workspace,project=workspace&&store.project(workspace);
+  if(!project||saved.external||project.planExecution?.execution_strategy!=='orchestrated'||!['ACTIVE','BLOCKED'].includes(project.scopeStatus))return null;
+  return {workspace,scopeId:project.scopeId,...workflow.executionControl.view(workspace,project.scopeId),issue:project.orchestrationIssue??null,
+    complete:project.planView?.tasks?.length>0&&project.planView.tasks.every(task=>task.status==='done')};
+}
 function snapshot() {
   const saved = store.selected();
   const projects=store.snapshot().projects;
@@ -215,6 +222,7 @@ function snapshot() {
     conversationRecovery: saved?.external ? {phase:'idle',message:'',canRetry:false} : conversationRecovery?.view() ?? { phase: 'idle', message: '', canRetry: false },
     autoPlan: {...(liveSessions.visible?.executor?.flow.view()??autoPlan.view()),
       enabled:!saved?.external&&projectAutoPlan.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
+    planRun: planRunView(saved),
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true} : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
     contextPreparation: { busy: selected ? contextCache.isBuilding(selected.workspace) : false },
@@ -845,6 +853,12 @@ function registerIpc() {
   desktopIpc.handle('local', 'pilot:get-state', snapshot);
   registerAction('pilot:auto-plan', enabled => {if(store.selected()?.external)throw new Error('Автовыполнение для внешней сессии пока не поддерживается.');return workflow.setAutoPlan(enabled);});
   registerAction('pilot:plan-review', input => planReview.setEnabled(input));
+  registerAction('pilot:plan-execution', () => workflow.setPlanExecution());
+  registerAction('pilot:assign-orchestrator', sessionId => {
+    const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
+    if(typeof sessionId!=='string'||!sessionId||!workspace)throw new Error('Выберите сессию проекта.');
+    return store.assignOrchestrator(workspace,sessionId);
+  });
   registerAction('pilot:acknowledge-command', input=>lifecycle.acknowledgeCommand(input));
   registerAction('pilot:set-parallel-execution', async input => {
     if (!settingsState) throw new Error('Откройте настройки.');
