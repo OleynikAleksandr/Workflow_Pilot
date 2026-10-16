@@ -16,7 +16,8 @@
 - Перенос in-process smoke (`npm run smoke`, `frontend/desktop/bootstrap.mjs` и `application.mjs`) на связку клиент/backend и удаление in-process окна. Сейчас он только стенд разработки; release-пути до него не доходят.
 - Адаптация плотности кадра при изменении состава мониторов после создания страницы без reload ChatGPT. Сейчас плотность — максимальный scaleFactor на момент создания.
 - Сжатие или dirty frames вместо полных PNG, если живая проверка покажет недостаток комфорта; собственный видеокодек не создавать.
-- Отдельный macOS helper-bundle со своей identity — только если живая проверка reopen/Dock/значка в топологии activate/reopen одного bundle не пройдёт.
+- Отдельный macOS helper-bundle со своей identity (LSUIElement, собственный bundle id) — если в 0.2.1 после удержания accessory и открытия клиента через LaunchServices всё ещё появляются лишние плитки Dock; решение принимать по `backend-events.jsonl` (`dock-type`, `open-client`).
+- Источник внешнего завершения renderer и GPU/utility helper backend (16.10.2026, `killed`, exit 15) не установлен; 0.2.1 восстанавливает страницу и журналирует `child-process-gone`.
 - A12: моделирование отказа записи диска (журнал операций, stores, descriptor).
 - Нативная приёмка Windows x64 и Ubuntu 24.04 x64/X11 (в том числе отсутствие tray), clean-install.
 - Коды плагина `PLUGIN_DESKTOP_REQUIRED`/`PLUGIN_DESKTOP_UNAVAILABLE` сохранены ради совместимости, хотя означают недоступность фоновой службы; переименование — только с миграцией клиентов.

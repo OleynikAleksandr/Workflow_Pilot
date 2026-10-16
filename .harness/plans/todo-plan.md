@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 170,
+  "plan_revision": 172,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -235,7 +235,7 @@
       {
         "path": "docs/planning/backend-0.2.1-fixes.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "ce5010c50c2160c70d731da3eb93eed8989a60c8"
       }
     ],
     "include_last_completed_task": false,
@@ -1775,8 +1775,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "DOCS-2",
@@ -1792,14 +1792,34 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/backend-0.2.1-fixes.md"
+        "docs/planning/backend-0.2.1-fixes.md",
+        "README.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/release.md",
+        "docs/planning/backend-independence-followup.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/release.md",
+        "docs/planning/backend-0.2.1-fixes.md",
+        "docs/planning/backend-independence-followup.md"
+      ]
     },
     {
       "id": "T019",
@@ -1958,7 +1978,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 170
+Revision: 172
 
 ## Цель
 
@@ -2112,10 +2132,10 @@ Revision: 170
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T017
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-backend-independence / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/backend-0.2.1-fixes.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/backend-0.2.1-fixes.md, README.md, docs/acceptance/backend-independence.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/release.md, docs/planning/backend-independence-followup.md
   - Параллельность: исключительное выполнение
   - Зависимости: T016, T017, T018
 - [TODO] T019: Собрать выпуск 0.2.1 трёх ОС — Ожидает

@@ -1,18 +1,18 @@
 # Единая поставка Workflow Pilot
 
-Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.2.0 (независимый backend) порядок: DOCS → общая сборка T013 → установка в `/Applications` T014 → GitHub Release T015. Каждый пакет содержит одно приложение с тремя режимами запуска — клиент, backend (`--backend-host`) и ресурсы/MCP-инструменты; отдельного helper-bundle нет ([Backend](backend.md)). Packaged-сборка отвергает тестовые флаги. Codex исключён из приёмки, Windows/Linux native отложены. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
+Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.2.1 (исправления живой проверки независимого backend) порядок: DOCS-2 → общая сборка T019 → установка в `/Applications` T020 → GitHub Release T021; выпуск 0.2.0 шёл так же (DOCS → T013 → T014 → T015). Каждый пакет содержит одно приложение с тремя режимами запуска — клиент, backend (`--backend-host`) и ресурсы/MCP-инструменты; отдельного helper-bundle нет ([Backend](backend.md)). Packaged-сборка отвергает тестовые флаги. Codex исключён из приёмки, Windows/Linux native отложены. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
 
 ## Матрица и состав
 
-Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.2.0. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
+Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.2.1. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
 
 `npm run build` последовательно запускает macOS arm64, Windows x64 и Linux x64. Используются существующие Electron Packager, ASAR, системные ditto/tar. Linux-бинарники на Mac не запускаются. Ошибка/неизвестный исход платформы останавливает сборку; отдельный успешный пакет не считается выпуском.
 
-Семь assets версии 0.2.0:
+Семь assets версии 0.2.1:
 
-- Workflow-Pilot-0.2.0-macOS-arm64.zip
-- Workflow-Pilot-0.2.0-Windows-x64.zip
-- Workflow-Pilot-0.2.0-Linux-x64.tar.gz
+- Workflow-Pilot-0.2.1-macOS-arm64.zip
+- Workflow-Pilot-0.2.1-Windows-x64.zip
+- Workflow-Pilot-0.2.1-Linux-x64.tar.gz
 - Windows-Codex-Local-2026-09-10.zip
 - SHA256SUMS.txt
 - INSTALL.txt
@@ -60,6 +60,6 @@ Manifest schemaVersion 2 содержит version/sourceCommit, source snapshot,
 
 ## GitHub и приёмка
 
-Delivery-задача публикации (для 0.2.0 — T015) выпускает в OleynikAleksandr/Workflow_Pilot штатным fast-forward процессом: draft → загрузка семи assets → сверка → публикация. Проверяющий script сам ничего не публикует. Он проверяет собственный origin, remote main == local HEAD, tag v<version> == manifest.sourceCommit, отсутствие draft/prerelease и все размеры/digest. Main может включать более поздние delivery-коммиты; тег остаётся на исходниках сборки.
+Delivery-задача публикации (для 0.2.1 — T021) выпускает в OleynikAleksandr/Workflow_Pilot штатным fast-forward процессом: draft → загрузка семи assets → сверка → публикация. Проверяющий script сам ничего не публикует. Он проверяет собственный origin, remote main == local HEAD, tag v<version> == manifest.sourceCommit, отсутствие draft/prerelease и все размеры/digest. Main может включать более поздние delivery-коммиты; тег остаётся на исходниках сборки.
 
 Fixtures проверяют нормальный комплект, пропавшую платформу, повреждение архива, ошибку копирования, несовпадающий manifest, UNKNOWN, ресурсы трёх layouts, ELF/права/Unicode/симлинки, явную подпись, rollback и неизменность manifest при проверке GitHub. Native Linux/Windows и чистая VM не объявляются проверенными. Ubuntu требует X11 и штатный sandbox; root/Wayland/обход sandbox не являются способом запуска.

@@ -4,13 +4,13 @@
 
 ## Версия и готовность
 
-Версия исходников 0.2.0, Electron 44.5.1, Node 24.21.0, Workflow Kit 1.7.3. Новое в 0.2.0 — [независимый backend](docs/modules/backend.md): одна фоновая служба владеет страницами ChatGPT, проектами, AutoPlan/Review, MCP, туннелем и мостом [плагина ChatGPT](docs/modules/chatgpt-plugin.md); окно — отдельный клиент, показывающий интерактивное изображение той же страницы. Автоматические проверки пройдены на fixtures; [живая приёмка Mac](docs/acceptance/backend-independence.md) ожидает пользователя. Состав готового комплекта подтверждает `release-manifest.json`; GitHub-публикация выполняется отдельно.
+Версия исходников 0.2.1, Electron 44.5.1, Node 24.21.0, Workflow Kit 1.7.3. С 0.2.0 — [независимый backend](docs/modules/backend.md): одна фоновая служба владеет страницами ChatGPT, проектами, AutoPlan/Review, MCP, туннелем и мостом [плагина ChatGPT](docs/modules/chatgpt-plugin.md); окно — отдельный клиент, показывающий интерактивное изображение той же страницы. 0.2.1 исправляет найденное при первом живом запуске: страница ChatGPT, чей процесс завершился, перезагружается сама без повторной отправки; окно не застревает в режиме наблюдения; переключение сессий большого проекта больше не даёт ошибку протокола; фоновая служба не получает отдельную иконку в Dock; добавлены журналы диагностики `backend-events.jsonl` и `client-events.jsonl`. Автоматические проверки пройдены на fixtures; [живая приёмка Mac](docs/acceptance/backend-independence.md) ожидает пользователя. Состав готового комплекта подтверждает `release-manifest.json`; GitHub-публикация выполняется отдельно.
 
 Сохранены AutoPlan, Review и sequential/parallel базы 0.6.115. [Новая оркестрация](docs/planning/orchestrated-execution-next.md) и [следующие этапы backend](docs/planning/backend-independence-followup.md) относятся к отдельным планам. [Происхождение и лицензия](PROVENANCE.md).
 
 | Платформа | Формат | Статус |
 | --- | --- | --- |
-| macOS arm64 | .app / ZIP | Вход/туннель/контекст и панель Chat/Work подтверждены ранее; фоновая служба 0.2.0 и запуск чата из меню через плагин — pending manual |
+| macOS arm64 | .app / ZIP | Вход/туннель/контекст и панель Chat/Work подтверждены ранее; фоновая служба 0.2.x и запуск чата из меню через плагин — pending manual |
 | Windows x64 | Portable ZIP | Реализация и fixtures проверены; native/UTM pending |
 | Ubuntu 24.04 LTS x64, X11 | tar.gz | Runtime и упаковка проверены fixtures; native/UTM pending |
 
@@ -48,6 +48,6 @@ npm run check:codex-tools
 
 Unit suite использует четыре процесса и включает backend-тесты на временных профилях с локальной fixture-страницей вместо ChatGPT. Smoke запускает скрытый in-process стенд разработки с изолированными Chromium fixtures. Executor fixtures используют настоящий Codex App Server без модельных ходов; Python-среда тестов — .harness/runtime/test-python (Python 3.13.9, requirements.txt; для Linux fixtures также mss/python-xlib). Проверки не заменяют действия пользователя в аккаунте, native VM и clean-install.
 
-[Приёмка 0.2.0 и сценарий Mac](docs/acceptance/backend-independence.md), [результаты миграции 0.1.x](docs/acceptance/migration-0.1.0.md), [архитектура и карта модулей](docs/architecture/OVERVIEW.md).
+[Приёмка 0.2.x и сценарий Mac](docs/acceptance/backend-independence.md), [результаты миграции 0.1.x](docs/acceptance/migration-0.1.0.md), [архитектура и карта модулей](docs/architecture/OVERVIEW.md).
 
 Сборка: npm run build, только в назначенной delivery-задаче после DOCS. Обязательны все три платформы из одной базы; подпись выбирается явно. Частичный комплект не публикуется.

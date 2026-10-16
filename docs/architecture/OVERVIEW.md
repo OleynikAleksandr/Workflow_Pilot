@@ -2,7 +2,7 @@
 
 ## Назначение и устройство
 
-Workflow Pilot 0.2.0 — локальные проекты, планы Workflow Kit и сессии ChatGPT Web с собственным MCP-исполнителем и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
+Workflow Pilot 0.2.1 — локальные проекты, планы Workflow Kit и сессии ChatGPT Web с собственным MCP-исполнителем и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
 
 С 0.2.0 приложение — два процесса на одном компьютере. [Backend](../modules/backend.md) — фоновая служба: Control, Execution, Kit, stores, модель Desktop, страницы ChatGPT (offscreen), MCP, туннель и мост плагина. Клиент — окно с панелями и интерактивным изображением страницы; он находит или запускает backend и работает через loopback API (bearer, Host/Origin, lease 10/45 с, журнал операций, SSE). Закрытие окна, Cmd+Q и падение клиента не останавливают работу; повторное открытие возвращает к той же странице без reload и повторного recovery. Явная остановка — через значок или меню клиента: draining до безопасной точки, без kill. Один диалог — одна живая страница в backend; продолжение того же диалога во втором браузере не штатно.
 
@@ -25,11 +25,11 @@ Control не импортирует Electron и не выполняет IO. Кл
 - [Backend и отдельный клиент](../modules/backend.md), [Desktop-клиент](../modules/desktop.md), [Browser: страницы и их представление](../modules/browser.md).
 - [Control](../modules/control.md), [workflow coordination](../modules/workflow-execution.md), [совместимость проектов и Kit](../modules/project-compatibility.md), [жизненный цикл проектов](../modules/project-lifecycle.md).
 - [Execution](../modules/execution.md), [Linux runtime](../modules/linux.md), [первый запуск](../modules/first-run-onboarding.md).
-- [Поставка](../modules/release.md), [приёмка 0.2.0](../acceptance/backend-independence.md), [приёмка миграции 0.1.x](../acceptance/migration-0.1.0.md).
+- [Поставка](../modules/release.md), [приёмка 0.2.x](../acceptance/backend-independence.md), [приёмка миграции 0.1.x](../acceptance/migration-0.1.0.md).
 - Невыпущенное: [следующие этапы backend](../planning/backend-independence-followup.md), [оркестрация](../planning/orchestrated-execution-next.md), [фазовое планирование](../planning/phased-plans-recovery-followup.md), [инструкции Review](../planning/review-instructions-followup.md).
 
 ## Запуск и проверка
 
 Запуск и обновление — [README](../../README.md). Факт сборки задаёт manifest; установка в Applications обязательна, переключение на новую версию при работающей службе выполняет пользователь ([поставка](../modules/release.md)). Автоматические проверки — изолированные fixtures без модельных ходов; fixture не означает native-tested.
 
-Подтверждено пользователем ранее: вход, туннель и контекст на Mac, панель плагина в Chat/Work, чёткость кадра транспорта backend на Retina и сохранение страницы при переподключении тестового клиента. Ожидают живой проверки 0.2.0: полный сценарий Mac (закрытие окна во время плана, reopen через Finder/Dock/Spotlight, значок, меню, clipboard, файлы, остановка), запуск нового чата из меню через плагин. Windows/Linux native и clean-install отложены. Доступен собственный Secure MCP Tunnel, VPS без собственного маршрута — setup-required. История спецификаций — в Git.
+Подтверждено пользователем ранее: вход, туннель и контекст на Mac, панель плагина в Chat/Work, чёткость кадра транспорта backend на Retina и сохранение страницы при переподключении тестового клиента. Ожидают живой проверки 0.2.1: полный сценарий Mac (закрытие окна во время плана, reopen через Finder/Dock/Spotlight, значок, меню, clipboard, файлы, остановка), запуск нового чата из меню через плагин. Windows/Linux native и clean-install отложены. Доступен собственный Secure MCP Tunnel, VPS без собственного маршрута — setup-required. История спецификаций — в Git.
