@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 161,
+  "plan_revision": 163,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Независимый frontend и постоянно работающий backend/browser на одном Mac; совместимая поставка трёх ОС.",
   "acceptance_criteria": [
     "A01: Launcher поднимает ровно один backend; конкурентный запуск безопасен",
@@ -1579,8 +1579,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T015",
@@ -1623,7 +1623,8 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1686,10 +1687,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 161
+Revision: 163
 
 ## Цель
 
@@ -1819,8 +1820,8 @@ Revision: 161
   - Файлы: release-manifest.json, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T013, DOCS
-- [TODO] T015: Опубликовать и сверить GitHub Release — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать и сверить GitHub Release
+- [DONE] T015: Опубликовать и сверить GitHub Release — Завершено
+  - Git Commit: [DONE] release: Опубликовать и сверить GitHub Release
   - Reference: workflow-pilot-backend-independence / T015 / implementation
   - Файлы: release-manifest.json, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
