@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 174,
+  "plan_revision": 176,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1877,14 +1877,15 @@
         "Установка штатным installer без пересборки; при работающей службе — pending-копия и инструкция"
       ],
       "expected_commit_message": "feat: Установить 0.2.1 в Applications",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T020",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "T021",
@@ -1981,7 +1982,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 174
+Revision: 176
 
 ## Цель
 
@@ -2147,8 +2148,8 @@ Revision: 174
   - Файлы: release-manifest.json, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T018, DOCS-2
-- [TODO] T020: Установить 0.2.1 в Applications — Ожидает
-  - Git Commit: [PENDING] feat: Установить 0.2.1 в Applications
+- [DONE] T020: Установить 0.2.1 в Applications — Завершено
+  - Git Commit: [DONE] feat: Установить 0.2.1 в Applications
   - Reference: workflow-pilot-backend-independence / T020 / implementation
   - Файлы: release-manifest.json, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение
