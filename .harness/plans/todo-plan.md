@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 206,
+  "plan_revision": 208,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -700,8 +700,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T011",
@@ -726,7 +726,8 @@
         "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
       ],
       "expected_commit_message": "release: Установить выпуск в Applications",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -790,7 +791,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 206
+Revision: 208
 
 ## Цель
 
@@ -880,8 +881,8 @@ Revision: 206
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T009, DOCS
-- [TODO] T011: Установить выпуск в Applications — Ожидает
-  - Git Commit: [PENDING] release: Установить выпуск в Applications
+- [DONE] T011: Установить выпуск в Applications — Завершено
+  - Git Commit: [DONE] release: Установить выпуск в Applications
   - Reference: workflow-pilot-remote-access / T011 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
