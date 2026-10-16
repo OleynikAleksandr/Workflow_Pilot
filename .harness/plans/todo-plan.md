@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 215,
+  "plan_revision": 217,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -873,14 +873,21 @@
         "Версия 0.3.1 согласована в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.3.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T015",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -1037,7 +1044,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 215
+Revision: 217
 
 ## Цель
 
@@ -1151,8 +1158,8 @@ Revision: 215
   - Файлы: src/backend/main.mjs, src/backend/status-menu.mjs, tests/backend-diagnostics.test.mjs, src/frontend/desktop/client.mjs, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T013
-- [TODO] T015: Подготовить версию 0.3.1 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.3.1
+- [DONE] T015: Подготовить версию 0.3.1 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.3.1
   - Reference: workflow-pilot-remote-access / T015 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
