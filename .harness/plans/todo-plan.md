@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 157,
+  "plan_revision": 159,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1471,8 +1471,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T013",
@@ -1520,7 +1520,10 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1685,7 +1688,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 157
+Revision: 159
 
 ## Цель
 
@@ -1803,8 +1806,8 @@ Revision: 157
   - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/control.md, docs/modules/execution.md, docs/modules/workflow-execution.md, docs/modules/first-run-onboarding.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/linux.md, docs/modules/project-compatibility.md, docs/acceptance/backend-independence.md, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md, docs/planning/workflow-pilot-backend-t001-evidence.md, docs/modules/chatgpt-plugin-acceptance.md, docs/acceptance/migration-0.1.0.md, docs/planning/backend-independence-followup.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T001R, T002, T003, T004, T005, T006, T006R, T007, T008, T009, T010, T011, T012
-- [TODO] T013: Собрать новый выпуск трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать новый выпуск трёх ОС
+- [DONE] T013: Собрать новый выпуск трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать новый выпуск трёх ОС
   - Reference: workflow-pilot-backend-independence / T013 / implementation
   - Файлы: release-manifest.json, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
