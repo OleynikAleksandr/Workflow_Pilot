@@ -53,7 +53,11 @@ export function configureExecutor(record,{store,inspectPlan,enabled,onChange,sig
   const activityWatch=new ProjectInputWatch({workspace:saved.workspace,onSignal:signal,
     onError:error=>{if(error){record.error=error;onChange();}}});
   activityWatch.update(['.harness/runtime/command-activity/']);
-  record.executor={flow,monitor,clock,observe:event=>{
+  record.executor={flow,monitor,clock,
+    // The orchestrator's answer reaches this executor through the same guarded send as its continuations.
+    deliver:(text,canContinue,onBeforeSend)=>automation.send({selected:selected(),page:flow.page,kind:'message',ready:canContinue,
+      perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})}),
+    observe:event=>{
     clock.observe(record.integrated?'done':event.reset||event.state?.connectionError?'unknown':event.state?.busy?'working':'waiting');
     automation.observe(selected(),event);flow.observe(event);
     const safety=JSON.stringify([event.documentId,event.state?.url,event.state?.busy,event.state?.lastMessageRole,event.state?.connectionError]);

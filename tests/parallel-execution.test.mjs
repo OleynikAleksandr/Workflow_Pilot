@@ -264,7 +264,8 @@ function orchestratedFixture(t) {
       tasks:[sequential('S1'),task('P1',['S1']),task('P2',['S1']),task('P3',['S1']),sequential('S2'),sequential('DOCS'),delivery]}};
   const control={state:'running',settled:[]},page={documentId:'doc',stopped:true,canSend:true,lastMessageRole:'assistant',
     userMessagesRevision:0,assistantRevision:0,manualSendRevision:0};
-  const pages=new Map(),calls={created:[],merged:[],sent:[],saved:[]};let sequence=0;
+  const pages=new Map(),calls={created:[],merged:[],sent:[],saved:[],corrections:[],workers:[],pauses:[]};let sequence=0;
+  const replies={correction:{state:'sent'},worker:{state:'sent'}};
   const kit={read:async()=>structuredClone(state),
     create:async(workspace,plan,task,id)=>{calls.created.push(task.id);
       const a={id,worktree:'/trees/'+id,parent_task_id:task.id,parent_scope_id:plan.scope_id,parent_root:workspace,status:'READY'};
@@ -279,7 +280,9 @@ function orchestratedFixture(t) {
     openWorker:async a=>{pages.set(a.id,{stopped:false});return {sessionId:'session-'+a.id};},
     workerState:a=>pages.get(a.id)??{stopped:false},mainState:()=>({...page}),
     save:async data=>{book=structuredClone(data);calls.saved.push(data);},uuid:()=>String(++sequence),now:()=>sequence,
-    sendCorrection:async()=>({state:'sent'}),
+    sendCorrection:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.corrections.push(text);return replies.correction;},
+    sendWorker:async(assignment,_entry,text,ready)=>{assert.ok(ready());calls.workers.push({id:assignment.id,text});return replies.worker;},
+    onPause:(_w,_s,reason,message)=>{calls.pauses.push({reason,message});if(['running','pausing'].includes(control.state))control.state='pausing';},
     sendFinalization:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.sent.push(text);return {state:'sent'};}});
   let runtime=create();runtime.observe('/main');
   t.after(()=>runtime.dispose());
@@ -291,7 +294,7 @@ function orchestratedFixture(t) {
   // The final handoff gives the remaining integrations to the orchestrator itself.
   const integrated=id=>{const a=state.assignments.find(x=>x.parent_task_id===id);a.status='INTEGRATED';
     state.plan.tasks.find(x=>x.id===id).commit_status='DONE';state.head+='-final';};
-  return {state,control,calls,page,finish,signal,reply,restart,integrated,get runtime(){return runtime;}};
+  return {state,control,calls,page,finish,signal,reply,restart,integrated,replies,pages,get runtime(){return runtime;}};
 }
 
 test('orchestrated: a sequential task runs alone, parallel tasks wait for it and respect the limit',async t=>{
@@ -369,4 +372,51 @@ test('orchestrated origin is the stored orchestrator, possibly chosen by the use
     {code:'EXECUTION_POLICY_MISMATCH'});
   assert.equal(executionOrigin({...plan,parallel_allowed:false,max_workers:1},()=>({sessionId:'original',executionSnapshot:{parallel_allowed:false,max_workers:1}})).sessionId,'original');
   assert.deepEqual(availableTasks({...plan,tasks:[{...task('D'),parallel_safe:false,verification_kind:'package'}]},[],()=>({stopped:true})),[]);
+});
+
+test('orchestrated signals: a block reaches the orchestrator once, its answer reaches the executor once',async t=>{
+  const f=orchestratedFixture(t);
+  await f.signal();const s1=f.state.assignments[0];
+  f.state.signals=[{id:'b1',kind:'task-blocked',scope_id:'scope',task_id:'S1',assignment_id:s1.id,reason:'Needs a decision'}];
+  await f.signal();
+  assert.equal(f.calls.corrections.length,1);assert.match(f.calls.corrections[0],/Needs a decision/);
+  assert.match(f.calls.corrections[0],/assignment:message --id /);assert.match(f.calls.corrections[0],/session-/);
+  await f.signal();f.restart();await f.signal();assert.equal(f.calls.corrections.length,1,'a forwarded block is never resent');
+  f.state.signals.push({id:'m1',kind:'assignment-message',scope_id:'scope',task_id:'S1',assignment_id:s1.id,text:'Use the second option'});
+  f.pages.set(s1.id,{stopped:true,canSend:true});
+  await f.signal();
+  assert.deepEqual(f.calls.workers.map(w=>w.id),[s1.id]);assert.match(f.calls.workers[0].text,/Use the second option/);
+  await f.signal();assert.equal(f.calls.workers.length,1);assert.equal(f.calls.pauses.length,0);
+});
+
+test('orchestrated signals: escalation pauses once; unknown outcomes pause and are never retried',async t=>{
+  const f=orchestratedFixture(t);
+  await f.signal();
+  f.state.signals=[{id:'e1',kind:'plan-escalated',scope_id:'scope',reason:'Cannot fix the build'}];
+  await f.signal();
+  assert.deepEqual(f.calls.pauses,[{reason:'escalation',message:'Cannot fix the build'}]);
+  f.control.state='running';await f.signal();assert.equal(f.calls.pauses.length,1,'continue is not re-paused by an old escalation');
+  // An unknown forward pauses with reason unknown and is not resent.
+  f.replies.correction={state:'unknown'};
+  f.state.signals.push({id:'b2',kind:'task-blocked',scope_id:'scope',task_id:'S1',assignment_id:f.state.assignments[0].id,reason:'Stuck'});
+  await f.signal();
+  assert.equal(f.calls.pauses.at(-1).reason,'unknown');assert.equal(f.calls.corrections.length,1);
+  f.control.state='running';await f.signal();assert.equal(f.calls.corrections.length,1);
+  // An unknown merge pauses the plan as well.
+  f.state.integration={status:'UNKNOWN',operation_id:'integration-x'};f.control.state='running';
+  await f.signal();assert.equal(f.calls.pauses.at(-1).reason,'unknown');assert.match(f.calls.pauses.at(-1).message,/слияния/);
+});
+
+test('orchestrated signals: the project watcher wakes on the journal in the main git directory',async t=>{
+  const fs=await import('node:fs/promises'),path=await import('node:path'),os=await import('node:os');
+  const {ProjectInputWatch}=await import('../src/execution/facade.mjs');
+  const workspace=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'signals-watch-')));
+  t.after(()=>fs.rm(workspace,{recursive:true,force:true}));
+  await fs.mkdir(path.join(workspace,'.git/workflow-kit'),{recursive:true});
+  let notify;const woke=new Promise((resolve,reject)=>{notify=resolve;setTimeout(()=>reject(Error('signal journal not observed')),5000);});
+  const watcher=new ProjectInputWatch({workspace,onSignal:()=>notify(),onError:()=>{}});
+  t.after(()=>watcher.close());
+  watcher.update(['.git/workflow-kit/signals.jsonl']);
+  await fs.appendFile(path.join(workspace,'.git/workflow-kit/signals.jsonl'),JSON.stringify({id:'s1'})+'\n');
+  await woke;
 });

@@ -108,6 +108,11 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   onComplete:(workspace,scope)=>orchestratedPlan(workspace)?executionControl.complete(workspace,scope)
     :projectAutoPlan.sync(workspace,scope,{complete:true,confirmed:true}),
   onSettle:(workspace,scope,facts)=>executionControl.settle(workspace,scope,facts),
+  onPause:(workspace,scope,reason,message)=>executionControl.pause(workspace,scope,reason,message??null),
+  sendWorker:(assignment,entry,text,ready,before)=>{
+    const record=liveRecord(store.project(assignment.worktree,entry?.sessionId));
+    return record?.executor?record.executor.deliver(text,ready,before):Promise.resolve({state:'cancelled',reason:'PAGE_NOT_READY'});
+  },
   orchestrator:storedOrchestrator,
   origin:(workspace,id)=>store.project(workspace,id),
   save:async book=>{parallelExecutionBook=book;await saveSettings({parallelExecutionBook:book});},

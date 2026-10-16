@@ -4,6 +4,7 @@ import { validateParallelSettings } from './parallel-settings.mjs';
 import { integrationProblem, projectExecutionPlan } from './execution-projection.mjs';
 
 const fail=(code,message)=>Object.assign(new Error(message),{code});
+const UNKNOWN_CODES=['INTEGRATION_UNKNOWN','ASSIGNMENT_UNKNOWN'];
 const issue=e=>({code:e.code??'PARALLEL_FAILED',message:String(e.message??e).slice(0,1000)});
 // A changed pause or an unrelated assistant turn is not an acknowledgement.
 // The dispatched user message must first appear in the SAME observed document;
@@ -124,9 +125,9 @@ export function deliveryText(workspace,task) {
 // delivery ledger, never a replacement for Kit's plan, assignments or Git proofs.
 export class ParallelExecution {
   constructor({kit,origin,openWorker,workerState,mainState,save,book={},onChange=()=>{},watch=()=>()=>{},
-    isEnabled=null,isIssuing=null,onSettle=()=>{},orchestrator=()=>null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID}) {
+    isEnabled=null,isIssuing=null,onSettle=()=>{},onPause=()=>{},sendWorker=null,orchestrator=()=>null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID}) {
     Object.assign(this,{isEnabled,onComplete,kit,origin,openWorker,workerState,mainState,save,book,onChange,watch,sendCorrection,restoreWorker,restoreOrigin,now,uuid});
-    Object.assign(this,{sendFinalization,sendDiagnostic,canFinalize,isIssuing,onSettle,orchestrator});
+    Object.assign(this,{sendFinalization,sendDiagnostic,canFinalize,isIssuing,onSettle,onPause,sendWorker,orchestrator});
     this.queues=new Map();this.states=new Map();this.unwatch=new Map();this.correcting=new Set();this.suspended=new Set();this.enabled=false;this.closed=false;
   }
   view(workspace){return this.states.get(workspace)??{phase:'idle',assignments:[],error:null};}
@@ -183,7 +184,12 @@ export class ParallelExecution {
     queue.promise=Promise.resolve().then(async()=>{
       do {queue.again=false;const recover=queue.recovery;queue.recovery=false;
         try {await this.reconcile(workspace,recover);}
-        catch(error){this.publish(workspace,{phase:'attention',error:issue(error)});}
+        catch(error){
+          this.publish(workspace,{phase:'attention',error:issue(error)});
+          // An unknown outcome of an orchestrated plan pauses it; nothing is retried.
+          if(UNKNOWN_CODES.includes(error.code)&&this.view(workspace).strategy==='orchestrated')
+            this.onPause(workspace,this.view(workspace).scopeId,'unknown',issue(error).message);
+        }
       }while(queue.again&&!this.closed&&!this.suspended.has(workspace));
       return this.view(workspace);
     }).finally(()=>this.queues.delete(workspace));
@@ -222,12 +228,19 @@ export class ParallelExecution {
         }catch(error){a.error=issue(error);recoveryError??=a.error;}
       }
     }
-    this.publish(workspace,{phase:'waiting',scopeId:plan.scope_id,originSessionId:origin.sessionId,
+    if(plan.execution_strategy==='orchestrated') {
+      const unknown=state.integration.status==='UNKNOWN'?'Исход слияния неизвестен.'
+        :[...(state.commands??[]),...assignments.flatMap(a=>a.commands??[])].some(c=>c.state==='unknown')?'Исход команды записи не подтверждён.'
+        :assignments.find(a=>a.status==='UNKNOWN')?.error?.message??null;
+      if(unknown)this.onPause(workspace,plan.scope_id,'unknown',unknown);
+    }
+    this.publish(workspace,{phase:'waiting',scopeId:plan.scope_id,strategy:plan.execution_strategy,originSessionId:origin.sessionId,
       objective:plan.objective,planView:projectExecutionPlan(plan,assignments,state.integration),
       assignments,integration:state.integration,correctionStatus:ledger.corrections[state.integration.operation_id]??null,
       commands:[...(state.commands??[]),...assignments.flatMap(a=>a.commands??[])],
       canCorrect:!state.commandActive&&this.mainState(origin).stopped&&this.mainState(origin).canSend,
       error:recoveryError,maxWorkers:plan.max_workers});
+    if(plan.execution_strategy==='orchestrated'&&await this.relaySignals(workspace,{...state,assignments},origin,ledger,enabled))return;
     // A pending integration owns main; AutoPlan may request one correction in its exact main chat.
     if(await this.finalize(workspace,{...state,assignments},origin,ledger,enabled))return;
     if(state.integration.status!=='IDLE') {
@@ -422,6 +435,7 @@ export class ParallelExecution {
       return true;
     }
     if(orchestrated&&final.status==='reply-observed')return this.deliver(workspace,state,origin,ledger,allowed);
+    if(orchestrated&&['sending','unknown'].includes(final.status))this.onPause(workspace,plan.scope_id,'unknown','Исход итогового поручения неизвестен.');
     if(['sending','sent','unknown','reply-observed'].includes(final.status)) {
       this.publish(workspace,{phase:final.status==='reply-observed'?'complete':'finalizing',
         error:final.status==='unknown'||final.status==='sending'?{code:'FINALIZATION_SEND_UNKNOWN',
@@ -483,6 +497,57 @@ export class ParallelExecution {
       return true;
     }catch(error){final.status='unknown';await this.persist();throw error;}
   }
+  // Signals of an orchestrated plan: a block goes to the orchestrator once, its answer to the executor once,
+  // an escalation pauses the plan. One send per pass; an unknown send pauses and is never repeated.
+  async relaySignals(workspace,state,origin,ledger,enabled) {
+    const {plan,assignments}=state,signals=state.signals??[];
+    ledger.signals??={};
+    for(const [index,signal] of signals.entries()) {
+      if(ledger.signals[signal.id]?.status==='handled')continue;
+      const handled=async()=>{ledger.signals[signal.id]={status:'handled'};await this.persist();};
+      if(signal.kind==='plan-escalated') {
+        await handled();this.onPause(workspace,plan.scope_id,'escalation',signal.reason);continue;
+      }
+      const assignment=assignments.find(a=>a.id===signal.assignment_id);
+      const done=plan.tasks.find(t=>t.id===signal.task_id)?.commit_status==='DONE';
+      const answered=signal.kind==='task-blocked'&&signals.slice(index+1).some(later=>later.kind==='assignment-message'&&later.assignment_id===signal.assignment_id);
+      if(done||answered||!assignment&&signal.kind==='assignment-message'||!['task-blocked','assignment-message'].includes(signal.kind)) {await handled();continue;}
+      const entry=ledger.signals[signal.id];
+      if(entry) {
+        if(entry.status==='pending'){delete ledger.signals[signal.id];}
+        else {
+          if(['sending','unknown'].includes(entry.status)) {
+            this.onPause(workspace,plan.scope_id,'unknown','Исход пересылки сигнала '+signal.kind+' неизвестен.');
+            await handled();
+          } else if(entry.status==='sent')await handled();
+          continue;
+        }
+      }
+      if(!enabled())return false;
+      const toWorker=signal.kind==='assignment-message';
+      const page=toWorker?this.workerState(assignment,ledger.assignments[assignment.id]):this.mainState(origin);
+      if(!page.stopped||page.canSend===false)continue;
+      const worker=assignment?this.sessionOf(assignment,ledger):null;
+      const text=toWorker?['Сообщение оркестратора по твоей задаче '+signal.task_id+':',signal.text,
+        'Продолжи задачу в своём worktree: доведи её до commit --task '+signal.task_id+' или снова task:block с причиной.'].join('\n')
+        :['Исполнитель заблокировал задачу '+signal.task_id+' плана оркестратора.','Причина исполнителя: '+signal.reason,
+          'Назначение: '+(signal.assignment_id??'нет')+(worker?'; сессия исполнителя: '+worker:'')+'. Workspace: '+JSON.stringify(workspace),
+          'Реши сбой: ответь исполнителю через ./scripts/workflow assignment:message --id '+(signal.assignment_id??'ID')+' --text "уточнение"; или добавь исправляющую задачу через plan:extend; если устранить не можешь — plan:escalate --reason "причина" и опиши проблему пользователю.'].join('\n');
+      ledger.signals[signal.id]={status:'sending'};await this.persist();
+      try {
+        const ready=()=>{const p=toWorker?this.workerState(assignment,ledger.assignments[assignment.id]):this.mainState(origin);
+          return enabled()&&(p.canContinueSend??(p.stopped&&p.canSend));};
+        const result=toWorker?await (this.sendWorker?.(assignment,ledger.assignments[assignment.id],text,ready,async()=>ready())??{state:'cancelled'})
+          :await this.sendCorrection(origin,text,ready,async()=>ready());
+        ledger.signals[signal.id]={status:result.state==='sent'?'sent':result.state==='unknown'&&result.reason!=='PAUSE_CONSUMED'?'unknown':'pending'};
+        await this.persist();
+        if(ledger.signals[signal.id].status==='unknown')this.onPause(workspace,plan.scope_id,'unknown','Исход пересылки сигнала '+signal.kind+' неизвестен.');
+      }catch(error){ledger.signals[signal.id]={status:'unknown'};await this.persist();this.onPause(workspace,plan.scope_id,'unknown',issue(error).message);}
+      return true;
+    }
+    return false;
+  }
+  sessionOf(assignment,ledger){return ledger.assignments[assignment.id]?.sessionId??null;}
   // Delivery phase of an orchestrated plan: one task at a time to the orchestrator, then the final cleanup.
   // The button pauses between steps; an unknown send or an unfinished step is never resent automatically.
   async deliver(workspace,state,origin,ledger,allowed) {
@@ -495,6 +560,7 @@ export class ParallelExecution {
       if(task?.commit_status==='DONE'||!task&&entry?.status==='reply-observed')continue;
       if(entry&&entry.status!=='pending') {
         if(['sending','unknown'].includes(entry.status)) {
+          this.onPause(workspace,plan.scope_id,'unknown','Исход поручения оркестратору неизвестен.');
           this.publish(workspace,{phase:'attention',delivery:key,error:{code:'DELIVERY_SEND_UNKNOWN',
             message:'Исход поручения оркестратору неизвестен. Проверьте его чат; повторная отправка не выполняется.'}});
           return true;

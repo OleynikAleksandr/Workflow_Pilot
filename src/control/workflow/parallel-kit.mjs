@@ -68,9 +68,13 @@ export class ParallelKit {
       :committed!==text.trim()?{code:'PLAN_UNPUBLISHED_OR_CHANGED',message:'Текущие изменения плана ещё не опубликованы в Git.'}
       :reviewPending?{code:'REVIEW_PENDING',message:'Ждём завершения согласования и публикации плана.'}:null;
     const activity=await readCommandActivity(workspace);
-    return {workspace,plan:projectVerifiedPlan(plan,proof.resolved),head,assignments,integration,confirmationError,...activity,
+    // Signals of executors and the orchestrator; every checkout appends to the main repository's journal.
+    const signalText=await fs.readFile(path.join(gitDir,'workflow-kit','signals.jsonl'),'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;});
+    const signals=signalText.split('\n').filter(Boolean).map(line=>{try{return JSON.parse(line);}catch{return null;}})
+      .filter(signal=>signal&&typeof signal.id==='string'&&signal.scope_id===plan.scope_id);
+    return {workspace,plan:projectVerifiedPlan(plan,proof.resolved),head,assignments,integration,confirmationError,...activity,signals,
       handoff:handoff&&handoff.phase!=='DONE'?handoff:null,
-      watchInputs:['operation.lock','transaction.json','task-handoff.json','integration.json','assignments/'].map(name=>path.relative(workspace,path.join(gitDir,'workflow-kit',name))+(name.endsWith('/')?'/':'')),
+      watchInputs:['operation.lock','transaction.json','task-handoff.json','integration.json','assignments/','signals.jsonl'].map(name=>path.relative(workspace,path.join(gitDir,'workflow-kit',name))+(name.endsWith('/')?'/':'')),
       mainClean:!await this.git(workspace,['status','--porcelain']),
       commandActive:activity.commandActive||await exists(path.join(gitDir,'workflow-kit','operation.lock')),
       confirmed:!confirmationError};

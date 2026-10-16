@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 242,
+  "plan_revision": 244,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -557,8 +557,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T007",
@@ -576,7 +576,8 @@
         "tests/plan-monitor.test.mjs",
         "tests/parallel-execution.test.mjs",
         "tests/execution-control.test.mjs",
-        "src/execution/files/project-input-watch.mjs"
+        "src/execution/files/project-input-watch.mjs",
+        "src/control/workflow/executor-session.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -594,7 +595,14 @@
         "Наблюдатель файлов проекта видит журнал сигналов в git-common-dir основного checkout"
       ],
       "expected_commit_message": "feat: Control передаёт сбои оркестратору",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/parallel-execution.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -908,7 +916,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 242
+Revision: 244
 
 ## Цель
 
@@ -968,10 +976,10 @@ Revision: 242
   - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-projection.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-finalization.test.mjs, src/control/workflow/execution-control.mjs, tests/execution-control.test.mjs, src/backend/desktop-model.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T005
-- [TODO] T007: Control: сигналы и эскалация сбоев — Ожидает
-  - Git Commit: [PENDING] feat: Control передаёт сбои оркестратору
+- [DONE] T007: Control: сигналы и эскалация сбоев — Завершено
+  - Git Commit: [DONE] feat: Control передаёт сбои оркестратору
   - Reference: workflow-pilot-orchestrated-execution / T007 / implementation
-  - Файлы: src/control/workflow/plan-monitor.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, tests/plan-monitor.test.mjs, tests/parallel-execution.test.mjs, tests/execution-control.test.mjs, src/execution/files/project-input-watch.mjs
+  - Файлы: src/control/workflow/plan-monitor.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, tests/plan-monitor.test.mjs, tests/parallel-execution.test.mjs, tests/execution-control.test.mjs, src/execution/files/project-input-watch.mjs, src/control/workflow/executor-session.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T006
 - [TODO] T008: Дерево планов и кнопка выполнения в интерфейсе — Ожидает
