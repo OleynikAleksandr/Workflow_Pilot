@@ -47,7 +47,7 @@ export class ControlFacade {
     };
     this.#plans = new SessionPlans({setup:this.setup, run:this.#execution.executeFile,
       files:this.#execution.files, onWorkerStart:options.onWorkerStart});
-    this.plans = Object.freeze({call:(...args)=>this.#plans.call(...args),loadContext:workspace=>this.#plans.loadContext(workspace)});
+    this.plans = Object.freeze({call:(...args)=>this.#plans.call(...args),loadContext:(workspace,role)=>this.#plans.loadContext(workspace,role)});
     const doctor = new ProjectDoctor({setup:this.setup,ensureServices:()=>this.#execution.ensureServices()});
     this.doctor = Object.freeze({run:(...args)=>doctor.run(...args)});
     return this.setup;

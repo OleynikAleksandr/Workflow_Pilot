@@ -30,6 +30,10 @@ const projectAutoPlan=new ProjectAutoPlan({identity:workspace=>store.snapshot().
 const planMonitor = new PlanMonitor({ selected: () => store.selected(),
   inspect: (workspace, sessionId) => store.inspect(workspace, sessionId), onChange: (_info, change) => {
     publish();
+    // A published orchestrated plan fixes session roles; a closed one remembers its commit.
+    const workspace=store.selected()?.workspace;
+    if (change?.semanticChanged && workspace && !store.selected()?.parentWorkspace)
+      void store.reconcileRoles(workspace).then(changed=>{if(changed)publish();}).catch(report);
     if (change?.semanticChanged || change?.recovered) void autoPlan.planChanged().catch(report);
     if (change?.semanticChanged && contextAvailable()) void getController()?.tick();
   }, onInputsChanged: () => {

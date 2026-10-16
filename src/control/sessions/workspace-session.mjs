@@ -122,7 +122,8 @@ function projectPlan(plan, scopeTitle = '') {
       planExecution = { ...validateParallelSettings({ parallel_allowed: plan.parallel_allowed, max_workers: plan.max_workers }),
         execution_strategy: plan.execution_strategy, execution_reason: plan.execution_reason,
         ...(plan.execution_origin_session_id!==undefined?{execution_origin_session_id:plan.execution_origin_session_id}:{}) };
-      if (!['sequential', 'parallel'].includes(planExecution.execution_strategy)
+      if (planExecution.execution_strategy === 'orchestrated') planExecution.release = plan.release === true;
+      if (!['sequential', 'parallel', 'orchestrated'].includes(planExecution.execution_strategy)
           || typeof planExecution.execution_reason !== 'string' || !planExecution.execution_reason.trim()
           || planExecution.execution_strategy === 'parallel' && (!planExecution.parallel_allowed || planExecution.max_workers < 2)) throw new Error('Invalid policy');
     } catch { throw new WorkspaceError('WORKFLOW_PLAN_INVALID', 'Некорректные параметры выполнения текущего плана.'); }
@@ -153,7 +154,37 @@ function projectPlan(plan, scopeTitle = '') {
 }
 
 const copy = value => structuredClone(value);
-const persistent = data => JSON.parse(JSON.stringify(data, (key, value) => ['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'watchInputs', 'planExecution'].includes(key) ? undefined : value));
+const persistent = data => JSON.parse(JSON.stringify(data, (key, value) => ['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'watchInputs', 'planExecution', 'orchestrationIssue', 'worktreeRemoved'].includes(key) ? undefined : value));
+export const SESSION_ROLES = Object.freeze(['orchestrator', 'discussion', 'executor']);
+const activeScope = status => ['ACTIVE', 'BLOCKED'].includes(status);
+export const orchestratedPlanActive = project => project?.planExecution?.execution_strategy === 'orchestrated' && activeScope(project.scopeStatus);
+// A new session is an orchestrator candidate without a plan and a discussion chat beside an orchestrated plan.
+// Beside a legacy plan it keeps the legacy behaviour and gets no role.
+export const newSessionRole = info => !activeScope(info.scopeStatus) ? 'orchestrator' : orchestratedPlanActive(info) ? 'discussion' : undefined;
+const ordinarySessions = project => project.sessions.filter(s => !s.external && !s.assignmentId);
+// The published plan names its orchestrator; every other candidate and legacy session becomes a discussion chat.
+// Orchestrators of earlier plans keep their scope. Returns whether stored roles changed.
+export function applySessionRoles(project) {
+  let changed = false;
+  const set = (session, patch) => { for (const [key, value] of Object.entries(patch)) if (session[key] !== value) { session[key] = value; changed = true; } };
+  if (!orchestratedPlanActive(project)) { project.orchestrationIssue = null; return false; }
+  const scope = project.scopeId, sessions = ordinarySessions(project);
+  const chosen = project.orchestratorChoice?.scopeId === scope ? project.orchestratorChoice.sessionId : null;
+  let orchestrator = sessions.find(s => s.role === 'orchestrator' && s.orchestratorScopeId === scope && !s.archivedAt);
+  if (!orchestrator) {
+    const origin = sessions.find(s => s.sessionId === (chosen ?? project.planExecution.execution_origin_session_id) && !s.archivedAt);
+    if (origin && (chosen || origin.role !== 'discussion' && !origin.orchestratorScopeId)) {
+      set(origin, { role: 'orchestrator', orchestratorScopeId: scope }); orchestrator = origin;
+    }
+  }
+  for (const session of sessions) if (session !== orchestrator && (session.role === undefined || session.role === 'orchestrator' && !session.orchestratorScopeId))
+    set(session, { role: 'discussion' });
+  project.orchestrationIssue = orchestrator ? null : sessions.some(s => s.sessionId === project.planExecution.execution_origin_session_id)
+    ? 'ORCHESTRATOR_LOST' : 'ORIGIN_MISMATCH';
+  return changed;
+}
+const activeOrchestrator = (project, session) => session.role === 'orchestrator' && !!session.orchestratorScopeId
+  && session.orchestratorScopeId === project.scopeId && activeScope(project.scopeStatus);
 const invalid = () => new WorkspaceError('SESSIONS_INVALID', 'Формат сохранённых проектов не поддерживается. Исходный файл сохранён.');
 const sessionFields = ['planId', 'originSessionId', 'legacyPlanId', 'lastNamedScopeId', 'sessionId', 'experience', 'chatUrl', 'manualStart', 'attempt', 'receipt', 'title', 'titleSource', 'createdAt', 'lastOpenedAt', 'archivedAt', 'executionSnapshot', 'external'];
 const explicitTitleSources = new Set(['manual', 'scope']);
@@ -202,6 +233,8 @@ function validate(data) {
         || (p.archivedAt !== null && (!Number.isFinite(p.archivedAt) || p.archivedAt <= 0))
         || !p.sessions.some(s => s?.sessionId === p.selectedSessionId && s.archivedAt === null)
         || !p.sessions.some(s => s?.archivedAt === null)) throw invalid();
+    if (p.orchestratorChoice !== undefined && (typeof p.orchestratorChoice?.scopeId !== 'string' || typeof p.orchestratorChoice.sessionId !== 'string'
+        || !p.sessions.some(s => s?.sessionId === p.orchestratorChoice.sessionId))) throw invalid();
     if (p.scopeTransition !== undefined && p.scopeTransition !== null) {
       const transition = p.scopeTransition;
       if (typeof transition.scopeId !== 'string' || !transition.scopeId
@@ -228,6 +261,11 @@ function validate(data) {
           ||typeof s.executionOriginSessionId!=='string'||p.parentWorkspace!==s.parentWorkspace
           ||(s.parentProjectId!==undefined&&(typeof s.parentProjectId!=='string'||s.parentProjectId!==p.parentProjectId)))throw invalid();
       }
+      // Additive v6 fields of orchestration: a missing role means a legacy session.
+      if (s.role !== undefined && !SESSION_ROLES.includes(s.role)) throw invalid();
+      if (s.orchestratorScopeId !== undefined && (s.role !== 'orchestrator' || typeof s.orchestratorScopeId !== 'string'
+          || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(s.orchestratorScopeId))) throw invalid();
+      if (s.closedPlanCommit !== undefined && (s.orchestratorScopeId === undefined || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(s.closedPlanCommit ?? ''))) throw invalid();
       // Additive v6 field: missing means a legacy session, never today's Settings.
       if (s.executionSnapshot !== undefined) {
         try { validateParallelSettings(s.executionSnapshot); } catch { throw invalid(); }
@@ -361,7 +399,17 @@ export class WorkspaceSessions {
   constructor(file, { inspect = readWorkspace, uuid = randomUUID, now = Date.now, planService = null,
     getExecutionSettings = () => validateParallelSettings(), git=workspaceGit } = {}) {
     Object.assign(this, { file, uuid, now, planService, getExecutionSettings, git });
-    this.inspect = (workspace, sessionId = this.project(workspace)?.sessionId) => inspect(workspace, sessionId);
+    this.inspect = async (workspace, sessionId = this.project(workspace)?.sessionId) => {
+      try { return await inspect(workspace, sessionId); }
+      catch (error) {
+        // Kit removes an integrated worktree; its executor record keeps the saved projection and the chat stays readable.
+        const stored = this.data.projects.find(p => p.workspace === workspace && p.parentWorkspace);
+        if (error?.code !== 'WORKFLOW_NOT_INSTALLED' || !stored || !this.data.projects.some(parent => ownedExecutor(stored, parent))
+          || await exists(workspace)) throw error;
+        const { sessions, archivedAt, selectedSessionId, expanded, ...saved } = stored;
+        return { ...saved, workspace, worktreeRemoved: true, inspectedSessionId: sessionId };
+      }
+    };
     this.saveTail = Promise.resolve();
     this.mutationTail = Promise.resolve();
     this.selectionGeneration = 0;
@@ -440,7 +488,7 @@ export class WorkspaceSessions {
   }
 
   save(data = this.data, isCurrent = () => true) {
-    const transient = new Set(['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'planExecution']);
+    const transient = new Set(['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'planExecution', 'orchestrationIssue', 'worktreeRemoved']);
     const text = JSON.stringify(data, (key, value) => transient.has(key) ? undefined : value, 2) + '\n';
     const operation = this.saveTail.catch(() => {}).then(async () => {
       await fs.mkdir(path.dirname(this.file), { recursive: true, mode: 0o700 });
@@ -505,6 +553,8 @@ export class WorkspaceSessions {
       if (project && project.projectId !== info.projectId) throw new WorkspaceError('PROJECT_REPLACED', 'В этой папке теперь другой проект. Сохранённые чаты оставлены без изменений.');
       if (!project) {
         const session = this.createSession(experience);
+        const role = newSessionRole(info);
+        if (role) session.role = role;
         project = { ...info, selectedSessionId: session.sessionId, sessions: [session], expanded: false, archivedAt: null };
         data.projects.unshift(project);
       } else Object.assign(project, info);
@@ -514,7 +564,7 @@ export class WorkspaceSessions {
       }
       const selected = project.sessions.find(s => s.sessionId === project.selectedSessionId);
       const owned = await this.inspect(project.workspace, selected.sessionId);
-      Object.assign(project, owned);
+      Object.assign(project, owned); applySessionRoles(project);
       selected.lastOpenedAt = this.now();
       data.selectedWorkspace = project.workspace;
       return currentView(project);
@@ -532,7 +582,7 @@ export class WorkspaceSessions {
       if (project.sessions.find(s => s.sessionId === sessionId)?.archivedAt) throw new WorkspaceError('SESSION_ARCHIVED', 'Сначала верните сессию из архива.');
       if (project.archivedAt) throw new WorkspaceError('PROJECT_ARCHIVED', 'Сначала верните проект из архива.');
       if (project.projectId !== info.projectId) throw new WorkspaceError('PROJECT_REPLACED', 'В этой папке теперь другой проект. Сохранённые чаты оставлены без изменений.');
-      Object.assign(project, info, { selectedSessionId: sessionId, expanded: expand || project.expanded });
+      Object.assign(project, info, { selectedSessionId: sessionId, expanded: expand || project.expanded }); applySessionRoles(project);
       Object.assign(project.sessions.find(s => s.sessionId === sessionId), { lastOpenedAt: this.now() });
       data.selectedWorkspace = project.workspace;
       return currentView(project);
@@ -567,6 +617,9 @@ export class WorkspaceSessions {
       project.sessions.push(session); project.selectedSessionId = session.sessionId; project.expanded = true;
       const info = await this.inspect(workspace, session.sessionId);
       Object.assign(project, info);
+      const role = newSessionRole(info);
+      if (role) session.role = role;
+      applySessionRoles(project);
       if (['ACTIVE', 'BLOCKED'].includes(info.scopeStatus) && typeof info.scopeId === 'string' && info.scopeId
           && typeof info.objective === 'string' && info.objective.trim()) {
         session.lastNamedScopeId = info.scopeId;
@@ -579,6 +632,43 @@ export class WorkspaceSessions {
   }
 
   newChat(workspace) { return this.newSession(workspace, 'chat'); }
+
+  // Called when the plan of a project changes: assigns roles after publication and remembers the closing commit.
+  reconcileRoles(workspace) {
+    return this.mutate(async data => {
+      const project = data.projects.find(p => p.workspace === workspace && !p.parentWorkspace);
+      if (!project || project.archivedAt) return false;
+      const info = await this.inspect(workspace);
+      if (info.projectId !== project.projectId) return false;
+      Object.assign(project, info);
+      let changed = applySessionRoles(project);
+      if (!activeScope(project.scopeStatus) && project.archivedScopeId) for (const session of project.sessions) {
+        if (session.role !== 'orchestrator' || session.orchestratorScopeId !== project.archivedScopeId || session.closedPlanCommit) continue;
+        const sha = await this.git(workspace, ['log', '-1', '--format=%H', '--all-match',
+          '--grep=Workflow-Scope: ' + project.archivedScopeId, '--grep=Workflow-Role: archive']).catch(() => '');
+        if (/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha)) { session.closedPlanCommit = sha; changed = true; }
+      }
+      return changed;
+    });
+  }
+
+  // The user's explicit way out when the plan names no usable orchestrator.
+  assignOrchestrator(workspace, sessionId) {
+    return this.mutate(async data => {
+      const project = data.projects.find(p => p.workspace === workspace && !p.parentWorkspace);
+      if (!project) throw new WorkspaceError('WORKSPACE_REQUIRED', 'Выберите проект из списка.');
+      if (project.archivedAt) throw new WorkspaceError('PROJECT_ARCHIVED', 'Сначала верните проект из архива.');
+      Object.assign(project, await this.inspect(workspace)); applySessionRoles(project);
+      if (!project.orchestrationIssue) throw new WorkspaceError('ORCHESTRATOR_PRESENT', 'Оркестратор текущего плана уже определён.');
+      const session = ordinarySessions(project).find(s => s.sessionId === sessionId && !s.archivedAt);
+      if (!session || session.role === 'orchestrator' && session.orchestratorScopeId && session.orchestratorScopeId !== project.scopeId)
+        throw new WorkspaceError('SESSION_NOT_FOUND', 'Выберите активную сессию проекта без своего плана.');
+      project.orchestratorChoice = { scopeId: project.scopeId, sessionId };
+      Object.assign(session, { role: 'orchestrator', orchestratorScopeId: project.scopeId });
+      applySessionRoles(project);
+      return currentView(project, sessionId);
+    });
+  }
 
   connectExternal(workspace, {projectId,requestId,conversationKey}) {
     return this.mutate(async data => {
@@ -626,7 +716,7 @@ export class WorkspaceSessions {
       }
       if(project)throw new WorkspaceError('ASSIGNMENT_OWNER','Worktree уже подключён без этого назначения.');
       const info=await this.inspect(workspace),session=this.createSession(origin.experience,origin.executionSnapshot);
-      Object.assign(session,{assignmentId:assignment.id,taskId:assignment.parent_task_id,parentWorkspace:origin.workspace,parentProjectId:parent.projectId,
+      Object.assign(session,{role:'executor',assignmentId:assignment.id,taskId:assignment.parent_task_id,parentWorkspace:origin.workspace,parentProjectId:parent.projectId,
         parentScopeId:assignment.parent_scope_id,executionOriginSessionId:origin.sessionId,
         title:sessionName(assignment.parent_task_id+' — '+assignment.title),titleSource:'manual'});
       project={...info,parentWorkspace:origin.workspace,parentProjectId:parent.projectId,ownershipState:'confirmed',parentScopeId:assignment.parent_scope_id,
@@ -753,6 +843,8 @@ export class WorkspaceSessions {
       if (!session) throw new WorkspaceError('SESSION_NOT_FOUND', 'Сессия не найдена.');
       if (archived) {
         if (session.archivedAt) return currentView(project);
+        if (activeOrchestrator(project, session))
+          throw new WorkspaceError('ORCHESTRATOR_ACTIVE', 'Оркестратор ведёт активный план и не архивируется до его закрытия.');
         const active = project.sessions.filter(item => item.archivedAt === null);
         if (active.length <= 1) throw new WorkspaceError('SESSION_LAST_ACTIVE', 'Нельзя архивировать единственную активную сессию проекта.');
         session.archivedAt = this.now();
@@ -794,6 +886,8 @@ export class WorkspaceSessions {
     return this.mutate(data => {
       const project = data.projects.find(p => p.workspace === workspace);
       if (!project || typeof archived !== 'boolean') throw new WorkspaceError('WORKSPACE_REQUIRED', 'Выберите проект из списка.');
+      if (archived && !project.archivedAt && project.sessions.some(session => activeOrchestrator(project, session)))
+        throw new WorkspaceError('PLAN_ACTIVE', 'У проекта выполняется план оркестратора. Архивирование доступно после его закрытия.');
       project.archivedAt = archived ? (project.archivedAt ?? this.now()) : null;
       if (archived && (data.selectedWorkspace === workspace||data.projects.some(p=>p.workspace===data.selectedWorkspace&&ownedExecutor(p,project)))) data.selectedWorkspace = null;
       return currentView(project);

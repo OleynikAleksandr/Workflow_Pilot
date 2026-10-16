@@ -18,6 +18,8 @@ export class ProjectsService {
   newSession(...args) { return this.#store.newSession(...args); }
   connectExternal(...args) { return this.#store.connectExternal(...args); }
   newChat(...args) { return this.#store.newChat(...args); }
+  reconcileRoles(...args) { return this.#store.reconcileRoles(...args); }
+  assignOrchestrator(...args) { return this.#store.assignOrchestrator(...args); }
   ensureExecutor(...args) { return this.#store.ensureExecutor(...args); }
   saveExecutorAutomation(...args) { return this.#store.saveExecutorAutomation(...args); }
   saveExecutorTime(...args) { return this.#store.saveExecutorTime(...args); }

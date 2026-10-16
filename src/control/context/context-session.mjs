@@ -149,7 +149,7 @@ export class ContextSession {
 
   async packetIsCurrent(packet, project) {
     if (!packetMatchesProject(packet, project)) return false;
-    if (this.contextCache) return this.contextCache.isCurrent(project.workspace, packet.cacheKey);
+    if (this.contextCache) return this.contextCache.isCurrent(project.workspace, packet.cacheKey, project.role);
     return this.now() - packet.generatedAtMs <= 300000;
   }
 
@@ -199,7 +199,7 @@ export class ContextSession {
     if (!this.contextCache || state.pending || state.started === state.requested) return;
     state.started = state.requested; state.pending = true;
     const request = state.started;
-    void Promise.resolve().then(() => this.contextCache.warm(project.workspace)).then(result => {
+    void Promise.resolve().then(() => this.contextCache.warm(project.workspace, project.role)).then(result => {
       if (!this.current(generation) || this.warmState !== state) return;
       if (result?.ok === false && state.requested === request) {
         this.emit({ phase: 'error', error: { code: result.error?.code ?? 'CONTEXT_WARM_FAILED',
@@ -387,7 +387,7 @@ export class ContextSession {
         this.emit({ phase: 'loading-context', projectInfo: info });
         const preparationStarted = performance.now();
         const packet = validateContextPacket(await (this.contextCache
-          ? this.contextCache.load(project.workspace) : this.runtime.loadContext(project.workspace)), project.workspace);
+          ? this.contextCache.load(project.workspace, project.role) : this.runtime.loadContext(project.workspace, project.role)), project.workspace);
         const preparationMs = performance.now() - preparationStarted;
         if (!this.current(generation)) return;
         info = await this.inspectProject(project.workspace, project.sessionId, generation);

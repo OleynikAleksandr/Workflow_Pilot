@@ -32,9 +32,9 @@ export class SessionPlans {
       return result;
     } finally { if (inputFile) await this.files.removeFile(inputFile).catch(() => {}); }
   }
-  async loadContext(workspace) {
+  async loadContext(workspace, role = null) {
     try {
-      return await this.call(workspace, 'recover', ['--format', 'packet']);
+      return await this.call(workspace, 'recover', ['--format', 'packet', ...(role ? ['--role', role] : [])]);
     } catch (error) {
       if (error.code !== 'SESSION_REQUIRED') throw error;
       const text = await this.files.readText(path.join(workspace, '.harness/plans/todo-plan.md'));

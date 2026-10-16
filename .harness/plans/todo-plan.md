@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 236,
+  "plan_revision": 238,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -392,8 +392,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T004",
@@ -415,7 +415,8 @@
         "tests/session-plans.test.mjs",
         "tests/context-session.test.mjs",
         "tests/control-facade.test.mjs",
-        "src/control/projects/workspace-deletion.mjs"
+        "src/control/projects/workspace-deletion.mjs",
+        "src/control/workflow/coordination.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -435,7 +436,17 @@
         "Тест: два кандидата и один оркестратор прежнего плана до и после публикации"
       ],
       "expected_commit_message": "feat: Control назначает роли сессий",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/context/context-session.mjs",
+        "src/control/context/service.mjs",
+        "src/control/facade.mjs",
+        "src/control/projects/service.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "tests/session-roles.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -878,7 +889,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 236
+Revision: 238
 
 ## Цель
 
@@ -920,10 +931,10 @@ Revision: 236
   - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/installation-files.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-package.mjs, tests/workflow-kit-recovery.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/workflow-kit-source.test.mjs, tests/migration-compatibility.test.mjs, package-lock.json, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/README.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T004: Control: роли сессий и хранилище — Ожидает
-  - Git Commit: [PENDING] feat: Control назначает роли сессий
+- [DONE] T004: Control: роли сессий и хранилище — Завершено
+  - Git Commit: [DONE] feat: Control назначает роли сессий
   - Reference: workflow-pilot-orchestrated-execution / T004 / implementation
-  - Файлы: src/control/sessions/workspace-session.mjs, src/control/sessions/session-plans.mjs, src/control/projects/service.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, src/control/context/context-session.mjs, src/control/facade.mjs, tests/session-roles.test.mjs, tests/workspace-session.test.mjs, tests/session-plans.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, src/control/projects/workspace-deletion.mjs
+  - Файлы: src/control/sessions/workspace-session.mjs, src/control/sessions/session-plans.mjs, src/control/projects/service.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, src/control/context/context-session.mjs, src/control/facade.mjs, tests/session-roles.test.mjs, tests/workspace-session.test.mjs, tests/session-plans.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, src/control/projects/workspace-deletion.mjs, src/control/workflow/coordination.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Control: состояние кнопки выполнения — Ожидает
