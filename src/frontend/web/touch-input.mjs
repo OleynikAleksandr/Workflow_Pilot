@@ -17,16 +17,23 @@ export function modifiers(event) {
 }
 
 export function attachPageInput({ target, keyboard, keyboardButton = null, view, canInput }) {
-  const send = async (type, data) => { const current = view(); if (!current?.frame || !canInput()) return; await current.input(type, data).catch(() => {}); };
+  // Input is sent strictly in order: a key up never overtakes the next key down.
+  let queue = Promise.resolve();
+  const send = (type, data) => {
+    const current = view(); if (!current?.frame || !canInput()) return queue;
+    queue = queue.then(() => current.input(type, data)).catch(() => {});
+    return queue;
+  };
   const point = (event) => {
     const current = view(), bounds = contentBounds(target);
     if (!current?.frame || !bounds) return null;
     try { return current.point(event.clientX, event.clientY, bounds); } catch { return null; }
   };
   let touch = null, lastTap = 0;
-  const click = async (at, button = 'left', clickCount = 1) => {
-    await send('pointer', { action: 'down', x: at.x, y: at.y, button, clickCount });
-    await send('pointer', { action: 'up', x: at.x, y: at.y, button, clickCount });
+  // Down and up are queued together, so another event cannot fall between them.
+  const click = (at, button = 'left', clickCount = 1) => {
+    send('pointer', { action: 'down', x: at.x, y: at.y, button, clickCount });
+    return send('pointer', { action: 'up', x: at.x, y: at.y, button, clickCount });
   };
   target.addEventListener('contextmenu', event => event.preventDefault());
   target.addEventListener('pointerdown', event => {
@@ -77,10 +84,10 @@ export function attachPageInput({ target, keyboard, keyboardButton = null, view,
 
   // Keyboard: only what the user typed reaches the page; the field stays empty.
   let composing = false;
-  const key = async (name, event) => {
+  const key = (name, event) => {
     const mods = event ? modifiers(event) : [];
-    await send('key', { action: 'down', key: name, code: event?.code || undefined, ...(mods.length ? { modifiers: mods } : {}) });
-    await send('key', { action: 'up', key: name, code: event?.code || undefined, ...(mods.length ? { modifiers: mods } : {}) });
+    send('key', { action: 'down', key: name, code: event?.code || undefined, ...(mods.length ? { modifiers: mods } : {}) });
+    return send('key', { action: 'up', key: name, code: event?.code || undefined, ...(mods.length ? { modifiers: mods } : {}) });
   };
   keyboard.addEventListener('beforeinput', event => {
     if (composing || event.isComposing) return;

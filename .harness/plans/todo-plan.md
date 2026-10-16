@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 192,
+  "plan_revision": 194,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -369,8 +369,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T005",
@@ -402,7 +402,11 @@
         "Popups и авторизация ChatGPT показываются внутри веб-клиента"
       ],
       "expected_commit_message": "feat: Ввод и файлы на удалённом устройстве",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/frontend/web/touch-input.mjs",
+        "tests/web-browser-view.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -727,7 +731,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 192
+Revision: 194
 
 ## Цель
 
@@ -775,8 +779,8 @@ Revision: 192
   - Файлы: src/frontend/web/index.html, src/frontend/web/bridge.mjs, src/frontend/web/connection.mjs, src/frontend/client/connection.mjs, src/frontend/desktop/ui/index.html, tests/web-client.test.mjs, src/backend/events.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/chat-colors.mjs, tests/web-client-electron.test.mjs, src/backend/server.mjs, src/backend/remote-gateway.mjs, src/backend/main.mjs, src/backend/remote-devices.mjs, src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/frontend/web/app.mjs, src/frontend/web/ipc.js, src/frontend/web/touch-input.mjs, tests/backend-remote-gateway.test.mjs, tests/fixtures/web-client-browser.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Изображение страницы на iPad: ввод и файлы — Ожидает
-  - Git Commit: [PENDING] feat: Ввод и файлы на удалённом устройстве
+- [DONE] T005: Изображение страницы на iPad: ввод и файлы — Завершено
+  - Git Commit: [DONE] feat: Ввод и файлы на удалённом устройстве
   - Reference: workflow-pilot-remote-access / T005 / implementation
   - Файлы: src/frontend/web/browser-view.mjs, src/frontend/web/touch-input.mjs, src/frontend/client/browser-view.mjs, tests/web-browser-view.test.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
