@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 213,
+  "plan_revision": 215,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -817,7 +817,8 @@
       "functional_paths": [
         "src/backend/main.mjs",
         "src/backend/status-menu.mjs",
-        "tests/backend-diagnostics.test.mjs"
+        "tests/backend-diagnostics.test.mjs",
+        "src/frontend/desktop/client.mjs"
       ],
       "documentation_paths": [
         "docs/planning/remote-access-0.3.1-fixes.md"
@@ -832,14 +833,19 @@
         "Перед диалогом приложение выходит на передний план и затем остаётся без плитки Dock"
       ],
       "expected_commit_message": "feat: Журналировать остановку со значка",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T014",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/main.mjs",
+        "src/frontend/desktop/client.mjs",
+        "tests/backend-diagnostics.test.mjs"
+      ]
     },
     {
       "id": "T015",
@@ -1031,7 +1037,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 213
+Revision: 215
 
 ## Цель
 
@@ -1139,10 +1145,10 @@ Revision: 213
   - Файлы: src/execution/runtime/tailscale.mjs, src/backend/remote-access.mjs, src/frontend/desktop/ui/remote-access.mjs, tests/remote-access-setup.test.mjs, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T014: Журналировать остановку со значка — Ожидает
-  - Git Commit: [PENDING] feat: Журналировать остановку со значка
+- [DONE] T014: Журналировать остановку со значка — Завершено
+  - Git Commit: [DONE] feat: Журналировать остановку со значка
   - Reference: workflow-pilot-remote-access / T014 / implementation
-  - Файлы: src/backend/main.mjs, src/backend/status-menu.mjs, tests/backend-diagnostics.test.mjs, docs/planning/remote-access-0.3.1-fixes.md
+  - Файлы: src/backend/main.mjs, src/backend/status-menu.mjs, tests/backend-diagnostics.test.mjs, src/frontend/desktop/client.mjs, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T013
 - [TODO] T015: Подготовить версию 0.3.1 — Ожидает

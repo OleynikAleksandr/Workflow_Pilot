@@ -108,7 +108,8 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
       disposeAccess=()=>access.dispose();
       const status=()=>({service:stopper.view(),pages:base.sessions.all().length,pairings:devices.view().pairings});
       stopper=createStopController({drainState:()=>desktop.drainState(),pause:value=>desktop.pause(value),stop:shutdown,
-        onChange:view=>{events.ui('service',view);statusMenu?.update(status());}});
+        onChange:view=>{events.ui('service',view);statusMenu?.update(status());
+          journal.record('service',{phase:view.phase,reasons:view.reasons.length,error:view.error?.code??null});}});
       events.ui('service',stopper.view());
       // A client is a separate process: focus a connected one or start a new one.
       // A packaged macOS client is opened through LaunchServices like a Dock
@@ -138,11 +139,16 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
       if(!fixtureRoot) {
         statusMenu=createStatusMenu({Tray:electron.Tray,Menu:electron.Menu,nativeImage:electron.nativeImage,onOpen:()=>openClient('status-menu'),
           onApprove:pairingId=>{try{devices.approve(pairingId);}catch{ /* an expired request disappears from the menu */ }},
-          onCancelStop:()=>stopper.cancel(),
+          onCancelStop:()=>{journal.record('stop-cancel-menu');stopper.cancel();},
+          // Each step of a stop from the menu bar is journaled; the confirmation
+          // is brought to the front, then the backend leaves the Dock again.
           onStop:async()=>{
+            journal.record('stop-menu');
+            try{app.focus({steal:true});}catch{ /* focus is best effort */ }
             const answer=await guardedDialog.showMessageBox({type:'question',buttons:['Остановить','Отмена'],defaultId:1,cancelId:1,
               message:'Остановить фоновую службу Workflow Pilot?',
               detail:'Новые отправки и назначения не начнутся. Текущий ответ ChatGPT, инструменты и команды Kit завершатся; затем службы остановятся.'});
+            journal.record('stop-dialog',{response:answer.response});
             if(answer.response===0)stopper.request();
           }});
         statusMenu?.update(status());

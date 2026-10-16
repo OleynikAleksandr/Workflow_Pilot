@@ -314,10 +314,11 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     const answer = await dialog.showMessageBox(window, { type: 'question', buttons: ['Остановить', 'Отмена'], defaultId: 1, cancelId: 1,
       message: 'Остановить фоновую службу Workflow Pilot?',
       detail: 'Новые отправки и назначения не начнутся. Текущий ответ ChatGPT, инструменты и команды Kit завершатся; затем службы остановятся. Принудительного завершения нет.' });
+    logClient('stop-dialog', { response: answer.response });
     if (answer.response !== 0) return;
     // Stopping needs control; an older service is stopped the same safe way.
-    if (!control) { try { await connection.acquire(); control = true; } catch (error) { return dialog.showErrorBox('Workflow Pilot', error.message); } }
-    await connection.run('service.stop').catch(error => dialog.showErrorBox('Workflow Pilot', error.message));
+    if (!control) { try { await connection.acquire(); control = true; } catch (error) { logClient('stop-failed', { code: error.code ?? null }); return dialog.showErrorBox('Workflow Pilot', error.message); } }
+    await connection.run('service.stop').then(() => logClient('stop-requested'), error => { logClient('stop-failed', { code: error.code ?? null }); dialog.showErrorBox('Workflow Pilot', error.message); });
   }
   function installMenu() {
     const draining = service.phase === 'draining';

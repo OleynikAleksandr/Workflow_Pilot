@@ -30,3 +30,21 @@ test('LaunchServices type is parsed from lsappinfo and absent elsewhere',async()
   assert.equal(await launchServicesType(1,{platform:'linux'}),null);
   if(process.platform==='darwin')assert.match(String(await launchServicesType(process.pid)),/^(null|[A-Za-z]+)$/);
 });
+
+test('the menu bar stop goes to its handler and a pending device appears with its code', async () => {
+  const { createStatusMenu } = await import('../src/backend/status-menu.mjs');
+  let template = null; const calls = [];
+  class Tray { setToolTip() {} setContextMenu(menu) { template = menu; } destroy() {} isDestroyed() { return false; } }
+  const Menu = { buildFromTemplate: items => items };
+  const nativeImage = { createFromBitmap: () => ({ setTemplateImage() {} }) };
+  const menu = createStatusMenu({ Tray, Menu, nativeImage, onOpen: () => calls.push('open'), onStop: () => calls.push('stop'),
+    onCancelStop: () => calls.push('cancel'), onApprove: id => calls.push('approve ' + id) });
+  menu.update({ service: { phase: 'running', reasons: [], error: null }, pages: 2, pairings: [{ id: 'p1', name: 'iPad', code: '123456' }] });
+  const byLabel = label => template.find(item => item.label?.startsWith(label));
+  assert.match(byLabel('Подключить').label, /iPad.*123456/);
+  byLabel('Подключить').click(); byLabel('Остановить фоновую службу').click(); byLabel('Открыть Workflow Pilot').click();
+  assert.deepEqual(calls, ['approve p1', 'stop', 'open']);
+  menu.update({ service: { phase: 'draining', reasons: [{ message: 'Ждём ответа' }], error: null } });
+  byLabel('Отменить остановку').click();
+  assert.equal(calls.at(-1), 'cancel');
+});
