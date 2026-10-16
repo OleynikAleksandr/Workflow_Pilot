@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 210,
+  "plan_revision": 211,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Интерфейс Workflow Pilot на iPad из любой точки интернета через Tailscale к backend на Mac; шаг мастера первого запуска.",
   "acceptance_criteria": [
     "R01 Удалённый доступ выключен по умолчанию; включение и выключение явные, состояние видно на Mac",
@@ -86,7 +86,8 @@
       "src/frontend/web/app.mjs",
       "src/frontend/web/ipc.js",
       "tests/fixtures/web-client-browser.mjs",
-      "src/backend/remote-access.mjs"
+      "src/backend/remote-access.mjs",
+      "tests/backend-diagnostics.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/remote-access-spec.md",
@@ -101,7 +102,8 @@
       "resources/THIRD-PARTY.md",
       "docs/modules/chatgpt-plugin.md",
       "docs/modules/remote-access.md",
-      "docs/planning/backend-independence-followup.md"
+      "docs/planning/backend-independence-followup.md",
+      "docs/planning/remote-access-0.3.1-fixes.md"
     ]
   },
   "baseline_commit": "c9cb80e1ab1a5140705afb5a234c99082da5cf2d",
@@ -120,6 +122,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/remote-access-0.3.1-fixes.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -758,6 +765,231 @@
       "expected_commit_message": "release: Опубликовать GitHub Release",
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T013",
+      "title": "Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт",
+      "why": "Живая проверка 0.3.0: служба не видела вход и HTTPS; пользователь попал в платную сеть организации.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/execution/runtime/tailscale.mjs",
+        "src/backend/remote-access.mjs",
+        "src/frontend/desktop/ui/remote-access.mjs",
+        "tests/remote-access-setup.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Все вызовы Tailscale CLI получают TAILSCALE_BE_CLI=1; причина неудачного вызова видна в Настройках",
+        "Шаги мастера и Настроек сообщают о бесплатном тарифе Personal и личном аккаунте Google/Apple/GitHub",
+        "Состояние Tailscale проверяется заново при открытии раздела"
+      ],
+      "expected_commit_message": "feat: Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-remote-access",
+        "task_id": "T013",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T014",
+      "title": "Журналировать остановку со значка",
+      "why": "Две остановки со значка не дошли до backend.",
+      "dependencies": [
+        "T013"
+      ],
+      "functional_paths": [
+        "src/backend/main.mjs",
+        "src/backend/status-menu.mjs",
+        "tests/backend-diagnostics.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Журнал записывает нажатие пункта меню, ответ диалога и запрос остановки",
+        "Перед диалогом приложение выходит на передний план и затем остаётся без плитки Dock"
+      ],
+      "expected_commit_message": "feat: Журналировать остановку со значка",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-remote-access",
+        "task_id": "T014",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T015",
+      "title": "Подготовить версию 0.3.1",
+      "why": "Подготовить версию 0.3.1",
+      "dependencies": [
+        "T014"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.3.1 согласована в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.3.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-remote-access",
+        "task_id": "T015",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-remote-access",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T013",
+        "T014",
+        "T015"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T016",
+      "title": "Собрать выпуск 0.3.1 трёх ОС",
+      "why": "Собрать выпуск 0.3.1 трёх ОС",
+      "dependencies": [
+        "T015",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Один штатный цикл трёх ОС из одного sourceCommit после DOCS; manifest совпадает"
+      ],
+      "expected_commit_message": "feat: Собрать выпуск 0.3.1 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-remote-access",
+        "task_id": "T016",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T017",
+      "title": "Установить 0.3.1 в Applications",
+      "why": "Установить 0.3.1 в Applications",
+      "dependencies": [
+        "T016",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка штатным installer без пересборки; служба остановлена штатно с согласия пользователя"
+      ],
+      "expected_commit_message": "feat: Установить 0.3.1 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-remote-access",
+        "task_id": "T017",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T018",
+      "title": "Опубликовать GitHub Release 0.3.1",
+      "why": "Опубликовать GitHub Release 0.3.1",
+      "dependencies": [
+        "T017",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.3.1 на sourceCommit, assets сверены, remote main == local HEAD"
+      ],
+      "expected_commit_message": "feat: Опубликовать GitHub Release 0.3.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-remote-access",
+        "task_id": "T018",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -789,10 +1021,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 210
+Revision: 211
 
 ## Цель
 
@@ -894,11 +1126,54 @@ Revision: 210
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T011, DOCS
+- [TODO] T013: Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт — Ожидает
+  - Git Commit: [PENDING] feat: Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт
+  - Reference: workflow-pilot-remote-access / T013 / implementation
+  - Файлы: src/execution/runtime/tailscale.mjs, src/backend/remote-access.mjs, src/frontend/desktop/ui/remote-access.mjs, tests/remote-access-setup.test.mjs, docs/planning/remote-access-0.3.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T014: Журналировать остановку со значка — Ожидает
+  - Git Commit: [PENDING] feat: Журналировать остановку со значка
+  - Reference: workflow-pilot-remote-access / T014 / implementation
+  - Файлы: src/backend/main.mjs, src/backend/status-menu.mjs, tests/backend-diagnostics.test.mjs, docs/planning/remote-access-0.3.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T013
+- [TODO] T015: Подготовить версию 0.3.1 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.3.1
+  - Reference: workflow-pilot-remote-access / T015 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/remote-access-0.3.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T014
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-remote-access / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-0.3.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T013, T014, T015
+- [TODO] T016: Собрать выпуск 0.3.1 трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать выпуск 0.3.1 трёх ОС
+  - Reference: workflow-pilot-remote-access / T016 / implementation
+  - Файлы: release-manifest.json, docs/planning/remote-access-0.3.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T015, DOCS-2
+- [TODO] T017: Установить 0.3.1 в Applications — Ожидает
+  - Git Commit: [PENDING] feat: Установить 0.3.1 в Applications
+  - Reference: workflow-pilot-remote-access / T017 / implementation
+  - Файлы: release-manifest.json, docs/planning/remote-access-0.3.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T016, DOCS-2
+- [TODO] T018: Опубликовать GitHub Release 0.3.1 — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать GitHub Release 0.3.1
+  - Reference: workflow-pilot-remote-access / T018 / implementation
+  - Файлы: release-manifest.json, docs/planning/remote-access-0.3.1-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T017, DOCS-2
 
 ## Context Pack For This Cycle
 
 - docs/planning/remote-access-spec.md
 - docs/modules/backend.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/remote-access-0.3.1-fixes.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
