@@ -2,7 +2,7 @@
 
 ## Назначение и устройство
 
-Workflow Pilot 0.3.0 — локальные проекты, планы Workflow Kit и сессии ChatGPT Web с собственным MCP-исполнителем и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
+Workflow Pilot 0.3.1 — локальные проекты, планы Workflow Kit и сессии ChatGPT Web с собственным MCP-исполнителем и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
 
 С 0.2.0 приложение — два процесса на одном компьютере. [Backend](../modules/backend.md) — фоновая служба: Control, Execution, Kit, stores, модель Desktop, страницы ChatGPT (offscreen), MCP, туннель и мост плагина. Клиент — окно с панелями и интерактивным изображением страницы; он находит или запускает backend и работает через loopback API (bearer, Host/Origin, lease 10/45 с, журнал операций, SSE). Закрытие окна, Cmd+Q и падение клиента не останавливают работу; повторное открытие возвращает к той же странице без reload и повторного recovery. Явная остановка — через значок или меню клиента: draining до безопасной точки, без kill. Один диалог — одна живая страница в backend; продолжение того же диалога во втором браузере не штатно. С 0.3.0 [удалённый доступ](../modules/remote-access.md): шлюз backend на loopback, опубликованный Tailscale Serve только внутри сети пользователя, отдаёт тот же UI в Safari на iPad; устройство подтверждается кодом на компьютере и получает своё право управления.
 

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 217,
+  "plan_revision": 219,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -128,7 +128,7 @@
       {
         "path": "docs/planning/remote-access-0.3.1-fixes.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "742f4b793868760bf6a471dea131f0e1fbc50660"
       }
     ],
     "include_last_completed_task": false,
@@ -892,8 +892,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "DOCS-2",
@@ -909,14 +909,30 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/remote-access-0.3.1-fixes.md"
+        "docs/planning/remote-access-0.3.1-fixes.md",
+        "README.md",
+        "docs/acceptance/remote-access.md",
+        "docs/modules/backend.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/release.md",
+        "docs/modules/remote-access.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/remote-access.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/backend.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/release.md",
+        "docs/modules/remote-access.md",
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ]
     },
     {
       "id": "T016",
@@ -1044,7 +1060,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 217
+Revision: 219
 
 ## Цель
 
@@ -1164,10 +1180,10 @@ Revision: 217
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T014
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-remote-access / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-0.3.1-fixes.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-0.3.1-fixes.md, README.md, docs/acceptance/remote-access.md, docs/modules/backend.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/remote-access.md
   - Параллельность: исключительное выполнение
   - Зависимости: T013, T014, T015
 - [TODO] T016: Собрать выпуск 0.3.1 трёх ОС — Ожидает
