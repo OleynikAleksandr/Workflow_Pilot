@@ -80,7 +80,8 @@ export function createRemoteAccess({ gateway, tailscale, dir, power = null, open
     const address = status.enabled && dnsName ? 'https://' + dnsName : null;
     return { enabled: status.enabled, persisted, busy, error, port: status.port,
       tailscale: tailscaleState && { installed: tailscaleState.installed, running: tailscaleState.running, loggedIn: tailscaleState.loggedIn,
-        httpsEnabled: tailscaleState.httpsEnabled, login: tailscaleState.login, dnsName: tailscaleState.dnsName },
+        httpsEnabled: tailscaleState.httpsEnabled, login: tailscaleState.login, dnsName: tailscaleState.dnsName,
+        error: tailscaleState.error ?? null, detail: tailscaleState.detail ?? null },
       serve, address, qr: address ? addressQr(address) : null };
   }
   return Object.freeze({ view, refresh,

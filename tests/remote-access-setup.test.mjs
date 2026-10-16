@@ -94,3 +94,21 @@ test('another Serve setup on HTTPS 443 stops enabling and leaves the gateway clo
   assert.equal(gateway.status().enabled, false);assert.deepEqual(tailscale.calls, [], 'nothing of the user is overwritten');
   assert.equal(addressQr(null), null);
 });
+
+test('the Tailscale CLI runs in CLI mode without a terminal and a refusal is explained', async () => {
+  const { tailscaleEnvironment } = await import('../src/execution/runtime/tailscale.mjs');
+  const env = tailscaleEnvironment({ HOME: '/Users/x', PATH: '/usr/bin' });
+  assert.equal(env.TAILSCALE_BE_CLI, '1');assert.equal(env.HOME, '/Users/x');
+  const refused = new TailscaleCli({ platform: 'darwin', exists: () => true,
+    run: async () => ({ code: 1, stdout: '', stderr: 'The Tailscale GUI failed to start: (Tailscale.CLIError error 3.)' }) });
+  const state = await refused.state();
+  assert.equal(state.installed, true);assert.equal(state.running, false);
+  assert.equal(state.error, 'TAILSCALE_COMMAND_FAILED');assert.match(state.detail, /GUI failed to start/, 'the reason reaches the settings');
+  // On a Mac with Tailscale, a service-like process without a terminal still reads the status.
+  const real = new TailscaleCli();
+  if (process.platform === 'darwin' && real.locate()) {
+    const { execFileSync } = await import('node:child_process');
+    const output = execFileSync(real.locate(), ['status', '--json'], { env: tailscaleEnvironment({ HOME: process.env.HOME }), encoding: 'utf8', timeout: 15000 });
+    assert.match(output, /"BackendState"/);
+  }
+});

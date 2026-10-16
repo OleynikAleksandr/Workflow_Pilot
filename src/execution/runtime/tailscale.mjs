@@ -10,8 +10,14 @@ export const TAILSCALE_CANDIDATES = Object.freeze({
 });
 const tailscaleError = (code, message) => Object.assign(new Error(message), { code });
 
+// The macOS app binary acts as the CLI only when it believes it runs in a
+// terminal; a background service has none, so the CLI mode is requested
+// explicitly. Other platforms ignore the variable.
+export function tailscaleEnvironment(base = process.env) {
+  return { ...base, TAILSCALE_BE_CLI: '1' };
+}
 function runFile(file, args, { timeout = 15000 } = {}) {
-  return new Promise(resolve => execFile(file, args, { timeout, maxBuffer: 4 * 1024 * 1024, windowsHide: true },
+  return new Promise(resolve => execFile(file, args, { timeout, maxBuffer: 4 * 1024 * 1024, windowsHide: true, env: tailscaleEnvironment() },
     (error, stdout, stderr) => resolve({ code: error ? (typeof error.code === 'number' ? error.code : 1) : 0, stdout: String(stdout), stderr: String(stderr) })));
 }
 
@@ -36,7 +42,8 @@ export class TailscaleCli {
     if (!cli) return { installed: false, running: false, loggedIn: false, httpsEnabled: false, login: null, dnsName: null, tailnet: null };
     let status;
     try { status = await this.#json(['status', '--json']); }
-    catch (error) { return { installed: true, running: false, loggedIn: false, httpsEnabled: false, login: null, dnsName: null, tailnet: null, error: error.code }; }
+    catch (error) { return { installed: true, running: false, loggedIn: false, httpsEnabled: false, login: null, dnsName: null, tailnet: null,
+      error: error.code, detail: String(error.message ?? '').slice(0, 200) }; }
     const backend = String(status.BackendState ?? '');
     const self = status.Self ?? {}, user = status.User?.[String(self.UserID)] ?? null;
     const dnsName = typeof self.DNSName === 'string' ? self.DNSName.replace(/\.$/, '').toLowerCase() : null;

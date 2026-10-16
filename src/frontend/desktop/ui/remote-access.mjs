@@ -66,10 +66,11 @@ export function renderRemoteSetup(state) {
     : ready ? 'Доступ включён. Компьютер не уйдёт в сон, пока доступ включён; не закрывайте крышку ноутбука без питания.'
       : 'Подключите iPad по шагам ниже. Доступ работает только внутри вашей сети Tailscale, без публичного адреса.';
   list.replaceChildren(
-    step(ts.installed, 'На компьютере: установите Tailscale', 'Загрузите приложение с официального сайта и откройте его.',
+    step(ts.installed, 'На компьютере: установите Tailscale', 'Загрузите приложение с официального сайта и откройте его. Для личного использования Tailscale бесплатен (тариф Personal) — платные тарифы, которые он предлагает, не нужны.',
       ...ts.installed ? [] : [button('Открыть страницу загрузки', act('open-download'))]),
     step(ts.loggedIn, 'На компьютере: войдите в Tailscale и включите его', ts.login ? 'Аккаунт: ' + ts.login + (ts.dnsName ? ' · компьютер: ' + ts.dnsName : '')
-      : 'Войдите через Google, Apple, Microsoft, GitHub или почту и включите подключение.'),
+      : ts.installed && ts.error ? 'Tailscale не ответил Workflow Pilot: ' + (ts.detail || ts.error) + '. Проверьте, что приложение Tailscale открыто и вход выполнен, затем «Проверить снова».'
+        : 'Войдите личным аккаунтом Google, Apple или GitHub и включите подключение. Не используйте рабочую почту на собственном домене: она создаёт сеть организации с платным пробным периодом и одобрением устройств.'),
     step(ts.httpsEnabled, 'Один раз: разрешите HTTPS в панели Tailscale', 'Раздел DNS: включите MagicDNS и HTTPS Certificates.',
       ...ts.httpsEnabled ? [] : [button('Открыть панель Tailscale', act('open-admin'))]),
     step(ready, 'Включите доступ с других устройств', 'Workflow Pilot настроит Tailscale Serve только внутри вашей сети и проверит адрес.',
@@ -85,6 +86,19 @@ export function renderRemoteSetup(state) {
   if (access.qr) { const image = qr.querySelector('img') ?? qr.appendChild(document.createElement('img')); image.alt = 'QR-код адреса'; image.width = 180; image.height = 180; image.src = access.qr; }
   $('remote-access-actions')?.replaceChildren(button('Проверить снова', act('refresh')));
 }
+
+// Opening the section checks Tailscale again, so a login made meanwhile shows.
+let checkedOnOpen = false;
+function refreshWhenShown() {
+  const panel = $('settings-panel');
+  if (!panel || remoteClient) return;
+  const visible = !panel.hidden;
+  if (visible && !checkedOnOpen) void act('refresh')();
+  checkedOnOpen = visible;
+}
+const settingsPanel = $('settings-panel');
+if (settingsPanel && typeof MutationObserver === 'function')
+  new MutationObserver(refreshWhenShown).observe(settingsPanel, { attributes: true, attributeFilter: ['hidden'] });
 
 // The optional first-run step leads to the same checked steps in Settings.
 function renderStartupStep(state) {

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 211,
+  "plan_revision": 213,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -791,14 +791,21 @@
         "Состояние Tailscale проверяется заново при открытии раздела"
       ],
       "expected_commit_message": "feat: Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T013",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/execution/runtime/tailscale.mjs",
+        "src/backend/remote-access.mjs",
+        "src/frontend/desktop/ui/remote-access.mjs",
+        "tests/remote-access-setup.test.mjs",
+        "docs/planning/remote-access-0.3.1-fixes.md"
+      ]
     },
     {
       "id": "T014",
@@ -1024,7 +1031,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 211
+Revision: 213
 
 ## Цель
 
@@ -1126,8 +1133,8 @@ Revision: 211
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T011, DOCS
-- [TODO] T013: Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт — Ожидает
-  - Git Commit: [PENDING] feat: Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт
+- [DONE] T013: Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт — Завершено
+  - Git Commit: [DONE] feat: Вызывать Tailscale CLI без терминала и подсказать бесплатный личный аккаунт
   - Reference: workflow-pilot-remote-access / T013 / implementation
   - Файлы: src/execution/runtime/tailscale.mjs, src/backend/remote-access.mjs, src/frontend/desktop/ui/remote-access.mjs, tests/remote-access-setup.test.mjs, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
