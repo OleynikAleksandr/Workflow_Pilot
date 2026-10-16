@@ -1,6 +1,6 @@
 # Приёмка: независимый backend Workflow Pilot 0.2.0
 
-Состояние на T012. Автоматические доказательства — изолированные fixtures на macOS arm64: временные профили, локальная fixture-страница вместо ChatGPT, без модельных ходов и без управления окнами пользователя. Fixture не заменяет живой ChatGPT, Windows и Linux.
+Состояние на момент выпуска 0.2.0 (до сборки и живой приёмки). Контракт — [Backend](../modules/backend.md). Автоматические доказательства — изолированные fixtures на macOS arm64: временные профили, локальная fixture-страница вместо ChatGPT, без модельных ходов и без управления окнами пользователя. Fixture не заменяет живой ChatGPT, Windows и Linux.
 
 ## Критерии A01–A14
 
@@ -19,7 +19,7 @@
 | A11 | Stop ждёт безопасной точки, без kill, подтверждение | `backend-shutdown` (draining, отмена, повтор, выход и освобождение профиля), `backend-end-to-end` | pass (fixture); значок в строке меню — pending manual |
 | A12 | Upgrade, занятый профиль/порт, старый descriptor, несовместимость, отказ записи | `backend-upgrade` (профиль 0.1.6, установщик, блокировка, режим запуска), `backend-owner-recovery`, `backend-lifecycle` (повреждённые stores, Kit journal) | pass (fixture); отказ записи диска не моделировался — pending |
 | A13 | Auth/Origin/Host, границы файлов, очереди, медленный клиент | `backend-api`, `browser-presentation` (transfers), `backend-protocol` | pass |
-| A14 | Три пакета одного sourceCommit с backend/client | `release-tooling` (fixtures) | pending: T013 сборка; Windows/Linux native — pending |
+| A14 | Три пакета одного sourceCommit с backend/client | `release-tooling` (fixtures); факт сборки — `release-manifest.json` | pending до общей сборки 0.2.0; Windows/Linux native — pending |
 
 ## Известные ограничения
 
@@ -28,10 +28,11 @@
 - macOS: activate/reopen в одном bundle, отдельный helper не создан. Reopen через Finder/Dock/Spotlight, отсутствие лишней Dock-иконки и значок проверяет пользователь.
 - Windows и Linux нативно не проверены; без системного tray статус и остановка — в меню клиента.
 - Проверки не используют настоящий ChatGPT.
+- Отложенные этапы и технический долг — [backend-independence-followup](../planning/backend-independence-followup.md).
 
 ## Сценарий пользователя на Mac
 
-Запуск из исходников: `npm start` (клиент сам поднимет фоновую службу). После T014 — `/Applications/Workflow Pilot.app`. Используется ваш настоящий профиль.
+Запуск из исходников: `npm start` (клиент сам поднимет фоновую службу). После установки выпуска — `/Applications/Workflow Pilot.app`: перед первым запуском 0.2.0 полностью завершите 0.1.6. Используется ваш настоящий профиль.
 
 1. Откройте проект и сессию с тестовым планом, включите AutoPlan.
 2. Пока агент работает, закройте окно (Cmd+Q, пункт «Закрыть окно (работа продолжится в фоне)»). В строке меню виден значок «Фоновая служба работает».

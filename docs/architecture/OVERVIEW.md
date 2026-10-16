@@ -1,35 +1,35 @@
 # Workflow Pilot
 
-Workflow Pilot 0.1.6 — локальные проекты со встроенным ChatGPT Web и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
+## Назначение и устройство
 
-Три платформы собираются из одного sourceCommit. Порядок DOCS → сборка → установка и отдельная публикация — в [поставке](../modules/release.md).
+Workflow Pilot 0.2.0 — локальные проекты, планы Workflow Kit и сессии ChatGPT Web с собственным MCP-исполнителем и [плагином ChatGPT](../modules/chatgpt-plugin.md). Репозиторий https://github.com/OleynikAleksandr/Workflow_Pilot; [донор 0.6.115](../../PROVENANCE.md) заморожен. Сохранены AutoPlan/Review/sequential/parallel встроенного клиента. Новая оркестрация отложена.
 
-## Границы и владельцы
+С 0.2.0 приложение — два процесса на одном компьютере. [Backend](../modules/backend.md) — фоновая служба: Control, Execution, Kit, stores, модель Desktop, страницы ChatGPT (offscreen), MCP, туннель и мост плагина. Клиент — окно с панелями и интерактивным изображением страницы; он находит или запускает backend и работает через loopback API (bearer, Host/Origin, lease 10/45 с, журнал операций, SSE). Закрытие окна, Cmd+Q и падение клиента не останавливают работу; повторное открытие возвращает к той же странице без reload и повторного recovery. Явная остановка — через значок или меню клиента: draining до безопасной точки, без kill. Один диалог — одна живая страница в backend; продолжение того же диалога во втором браузере не штатно.
 
-| Слой | Ответственность | Граница |
-| --- | --- | --- |
-| Frontend/Desktop | Окно, sidebar, preload/IPC, отображение и ввод | ControlFacade; bootstrap собирает зависимости, BrowserHost размещает Chromium |
-| Control | Проекты, логические сессии, привязки, recovery, настройки, AutoPlan/Review/parallel | ExecutionFacade для физических операций; snapshots отделены от stores |
-| Execution | Команды/stdin, файлы, процессы, службы, технические страницы/observer/Send | Результаты, события и ошибки; без Control/Frontend/Kit |
-| Workflow Kit | Единственный current plan и транзакции checkout/worktree | CLI и пакет 1.7.3, продолжение формата 1.7.2 |
+| Слой | Процесс | Ответственность | Граница |
+| --- | --- | --- | --- |
+| Клиент | client | Окна, sidebar, изображение страницы, ввод, диалоги своего устройства | Только API backend и `src/contracts` |
+| Backend host | backend | Identity/профиль, API, lease, события, остановка, значок, модель Desktop | ControlFacade, ExecutionFacade |
+| Control | backend | Проекты, логические сессии, привязки, recovery, настройки, AutoPlan/Review/parallel | ExecutionFacade для физических операций; snapshots отделены от stores |
+| Execution | backend | Команды/stdin, файлы, процессы, службы, страницы/observer/Send, представление страниц | Результаты, события и ошибки; без Control/Frontend/Kit |
+| Workflow Kit | CLI | Единственный current plan и транзакции checkout/worktree | CLI и пакет 1.7.3, продолжение формата 1.7.2 |
 
-src/main.mjs запускает Desktop bootstrap — точку композиции Control/Execution. src/contracts содержит сообщения и валидацию; packages/workflow-kit — Kit; tools/codex-app-server-mcp — Python MCP; resources — workers и staged ресурсы; scripts — поставка. src/frontend/plugin содержит автономную MCP App панель.
+`src/main.mjs` выбирает режим (`src/contracts/launch.mjs`): обычный запуск — клиент, `--backend-host` — backend; in-process окно (`frontend/desktop/bootstrap.mjs`) осталось только smoke-стендом разработки и недоступно packaged-сборке. `src/backend` — host и API; `src/contracts` — сообщения и валидация; `src/frontend/client` — соединение и изображение страницы; packages/workflow-kit — Kit; tools/codex-app-server-mcp — Python MCP; resources — workers и staged ресурсы; scripts — поставка; src/frontend/plugin — автономная MCP App панель.
 
-Control не импортирует Electron и не выполняет IO; renderer использует фиксированный IPC с проверкой источника. Snapshots сериализуемы и не раскрывают stores. Dependency-cruiser запрещает обход границ и циклы.
+Control не импортирует Electron и не выполняет IO. Клиент не получает CDP, JavaScript, shell, stores и пути backend; IPC клиента — фиксированный allowlist с проверкой источника, передаваемый в backend как `ui.invoke`. Мутации требуют lease и записываются в журнал до эффекта; операции прошлого boot читаются как UNKNOWN и не повторяются. UNKNOWN запрещает повтор Send; recovery отправляется один раз; выбор проекта не меняет cwd фоновой сессии. Dependency-cruiser запрещает обход границ, циклы и доступ release-путей к in-process окну.
 
-UNKNOWN запрещает повтор Send. Recovery отправляется один раз; выбор проекта не меняет cwd фоновой сессии. Освобождение страниц снимает подписки.
-
-Публичные chatgpt-dom/composer/experience и pageScript сохранены. Динамические preload/HTML/observer/workers проверяются отдельно. Плагин использует тот же Control через приватный Execution-мост; внешняя сессия не запускает браузер или AutoPlan.
+Публичные chatgpt-dom/composer/experience и pageScript сохранены. Динамические preload/HTML/observer/workers проверяются отдельно. Плагин использует тот же Control через приватный Execution-мост backend и работает без окна; внешняя сессия не запускает браузер или AutoPlan.
 
 ## Карта модулей
 
-- [Control](../modules/control.md), [workflow coordination](../modules/workflow-execution.md), [совместимость проектов и Kit](../modules/project-compatibility.md).
-- [Execution](../modules/execution.md), [Browser](../modules/browser.md), [Linux runtime](../modules/linux.md).
-- [Desktop](../modules/desktop.md), [первый запуск](../modules/first-run-onboarding.md), [жизненный цикл проектов](../modules/project-lifecycle.md).
-- [Поставка](../modules/release.md), [приёмка и ручной сценарий](../acceptance/migration-0.1.0.md), [невыполненный следующий этап](../planning/orchestrated-execution-next.md).
+- [Backend и отдельный клиент](../modules/backend.md), [Desktop-клиент](../modules/desktop.md), [Browser: страницы и их представление](../modules/browser.md).
+- [Control](../modules/control.md), [workflow coordination](../modules/workflow-execution.md), [совместимость проектов и Kit](../modules/project-compatibility.md), [жизненный цикл проектов](../modules/project-lifecycle.md).
+- [Execution](../modules/execution.md), [Linux runtime](../modules/linux.md), [первый запуск](../modules/first-run-onboarding.md).
+- [Поставка](../modules/release.md), [приёмка 0.2.0](../acceptance/backend-independence.md), [приёмка миграции 0.1.x](../acceptance/migration-0.1.0.md).
+- Невыпущенное: [следующие этапы backend](../planning/backend-independence-followup.md), [оркестрация](../planning/orchestrated-execution-next.md), [фазовое планирование](../planning/phased-plans-recovery-followup.md), [инструкции Review](../planning/review-instructions-followup.md).
 
-## Готовность и продолжение
+## Запуск и проверка
 
-Вход, туннель и контекст на Mac, быстрое открытие и обновление панели в Chat/Work подтверждены пользователем. На iPad/iPhone плагин занимает основной экран, диалог показан карточкой. В тесте 0.1.5 все пять способов открытия прежнего диалога открыли Safari; навигации по списку внутри Desktop нет. В 0.1.6 меню «Новый чат через плагин» использует одну явно подготовленную панель: ожидание команды до 45 секунд → одноразовое подтверждение → API нового разговора → контекст через MCP. DOM не используется; состояния запроса и выдачи контекста различаются. Реальный запуск и чтение контекста проверяет пользователь. Codex не входит в приёмку. Windows/Linux и clean-install отложены. Доступен собственный Secure MCP Tunnel, VPS без собственного маршрута — setup-required.
+Запуск и обновление — [README](../../README.md). Факт сборки задаёт manifest; установка в Applications обязательна, переключение на новую версию при работающей службе выполняет пользователь ([поставка](../modules/release.md)). Автоматические проверки — изолированные fixtures без модельных ходов; fixture не означает native-tested.
 
-Запуск — [README](../../README.md). Факт сборки задаёт manifest; установка в Applications обязательна, перезапускает пользователь. Fixture не означает native-tested. История спецификаций остаётся в Git.
+Подтверждено пользователем ранее: вход, туннель и контекст на Mac, панель плагина в Chat/Work, чёткость кадра транспорта backend на Retina и сохранение страницы при переподключении тестового клиента. Ожидают живой проверки 0.2.0: полный сценарий Mac (закрытие окна во время плана, reopen через Finder/Dock/Spotlight, значок, меню, clipboard, файлы, остановка), запуск нового чата из меню через плагин. Windows/Linux native и clean-install отложены. Доступен собственный Secure MCP Tunnel, VPS без собственного маршрута — setup-required. История спецификаций — в Git.
