@@ -66,8 +66,18 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
   const uiTypes=new Set(['open-archive','close-archive','open-colors','theme','layout','focus']);
   return Object.freeze({open,changed,
     ui:setUi,
-    // Requests to the client window (open archive, colours); small, ordered events.
-    uiCommand:(type,data={})=>{if(uiTypes.has(type))log.publish('ui.'+type,data);},
+    // Requests to a client window (open archive, colours, focus, layout). They
+    // are addressed: to: a clientId (the initiator), 'local' (Mac windows) or
+    // 'all'. Not part of the replayed sequence: a reconnecting window does not
+    // reopen an old archive.
+    uiCommand:(type,data={},{to='all'}={})=>{
+      if(!uiTypes.has(type))return 0;
+      const text=frame('command',{type:'ui.'+type,data});let sent=0;
+      for(const stream of streams)
+        if(to==='all'||(to==='local'&&!stream.remote)||(to!=='local'&&to!=='all'&&stream.clientId===to)){stream.write(text);sent++;}
+      return sent;
+    },
+    clientConnected:clientId=>[...streams].some(stream=>stream.clientId===clientId),
     operation:view=>log.publish('operation',view),
     // Browser notifications carry ids and generations only, never page content.
     browser:(type,data)=>{if(browserTypes.has(type))log.publish('browser.'+type,data);},
@@ -75,6 +85,7 @@ export function createBackendEvents({bootGeneration,state,heartbeatMs=15000,coal
     // A revoked device: its open streams end at once.
     closeClient:clientId=>{for(const stream of [...streams])if(stream.clientId===clientId)stream.close();},
     get clients(){return streams.size;},
+    get localClients(){return [...streams].filter(stream=>!stream.remote).length;},
     close(){clearInterval(heartbeat);if(timer)clearTimeout(timer);for(const stream of [...streams])stream.close();},
     limits:{events:BACKEND_LIMITS.pendingEvents,bufferBytes:STREAM_BUFFER_BYTES}});
 }

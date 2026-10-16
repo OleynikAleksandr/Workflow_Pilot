@@ -1,5 +1,6 @@
 import path from 'node:path';
 import os from 'node:os';
+import fsp from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
   pruneOrphanProjectSettings, validateParallelSettings, projectExecutors } from '../control/facade.mjs';
@@ -987,10 +988,20 @@ function registerIpc() {
     settingsState = null; deletion.clear(); pauseForSetup(); workspaceSetup.clear();
     setupState = { phase: 'form', mode: 'new', name: '', firstSessionRequired: true, firstSessionExperience: 'chat', parent: preferences.projectsParent };
   });
+  // A remote client has no access to the Mac's folder dialog: it sends a path
+  // of an existing folder on this computer instead, checked the same way.
+  const typedFolder = async value => {
+    if (typeof value !== 'string' || value.length > 4096 || !path.isAbsolute(value) || /[\u0000-\u001f]/.test(value))
+      throw new Error('Укажите полный путь к папке на компьютере, например /Users/имя/Projects.');
+    const folder = path.resolve(value);
+    if (!(await fsp.stat(folder).catch(() => null))?.isDirectory())
+      throw new Error('Папка не найдена на компьютере: ' + folder);
+    return { canceled: false, filePaths: [folder] };
+  };
   registerAction('pilot:choose-parent', async input => {
     if (setupState?.mode !== 'new') return;
     const name = typeof input?.name === 'string' ? input.name.slice(0, 120) : setupState.name;
-    const result = await surface.showOpenDialog({ title: 'Выбрать расположение папки для проектов', buttonLabel: 'Выбрать папку',
+    const result = input?.path !== undefined ? await typedFolder(input.path) : await surface.showOpenDialog({ title: 'Выбрать расположение папки для проектов', buttonLabel: 'Выбрать папку',
       properties: ['openDirectory'], ...(setupState.parent ? { defaultPath: setupState.parent } : {}) });
     const parent = result.canceled ? setupState.parent : result.filePaths[0];
     if (!result.canceled) {
@@ -1041,9 +1052,9 @@ function registerIpc() {
     workspaceHealth = { ...workspaceHealth, generation };
     setupState = null; publish(); void navigate(project, { generation, freshDraft: firstSessionRequired });
   });
-  registerAction('pilot:choose-workspace', async () => {
+  registerAction('pilot:choose-workspace', async input => {
     pauseForSetup();
-    const result = await surface.showOpenDialog({ title: 'Открыть папку проекта',
+    const result = input?.path !== undefined ? await typedFolder(input.path) : await surface.showOpenDialog({ title: 'Открыть папку проекта',
       buttonLabel: 'Проверить папку', properties: ['openDirectory'], defaultPath: path.join(os.homedir(), 'VSCODE') });
     if (result.canceled) { cancelSetup(); return; }
     return reviewWorkspace(result.filePaths[0]);

@@ -17,7 +17,7 @@ const SHELL_CSP="default-src 'self'; img-src 'self' blob: data:; style-src 'self
 // A Desktop UI page in a browser: the same HTML with the browser bridge in
 // place of the Electron preload, and same-origin API access allowed.
 export function remotePage(html,file) {
-  const kind=UI_PRELOAD[path.basename(file)];
+  const kind=file.split(path.sep).join('/').includes('/frontend/desktop/ui/')?UI_PRELOAD[path.basename(file)]:null;
   let page=html.replace(/connect-src 'none'/g,"connect-src 'self'").replace(/img-src 'self' data:/g,"img-src 'self' data: blob:");
   if(kind)page=page.replace('</head>',`<script src="/app/frontend/web/ipc.js"></script><script src="/app/preload/${kind}.js"></script></head>`);
   return page;

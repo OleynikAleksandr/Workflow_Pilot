@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 190,
+  "plan_revision": 192,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -82,7 +82,10 @@
       "tests/web-client-electron.test.mjs",
       "tests/web-client.test.mjs",
       "src/frontend/desktop/ui/remote-access.mjs",
-      "tests/fixtures/remote-backend.mjs"
+      "tests/fixtures/remote-backend.mjs",
+      "src/frontend/web/app.mjs",
+      "src/frontend/web/ipc.js",
+      "tests/fixtures/web-client-browser.mjs"
     ],
     "documentation_paths": [
       "docs/planning/remote-access-spec.md",
@@ -282,8 +285,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T004",
@@ -310,7 +313,17 @@
         "src/frontend/desktop/ui/chat-colors.mjs",
         "tests/web-client-electron.test.mjs",
         "src/backend/server.mjs",
-        "src/backend/remote-gateway.mjs"
+        "src/backend/remote-gateway.mjs",
+        "src/backend/main.mjs",
+        "src/backend/remote-devices.mjs",
+        "src/execution/browser/presentation/host.mjs",
+        "src/execution/browser/presentation/transport.mjs",
+        "src/frontend/client/browser-view.mjs",
+        "src/frontend/web/app.mjs",
+        "src/frontend/web/ipc.js",
+        "src/frontend/web/touch-input.mjs",
+        "tests/backend-remote-gateway.test.mjs",
+        "tests/fixtures/web-client-browser.mjs"
       ],
       "documentation_paths": [
         "docs/planning/remote-access-spec.md"
@@ -333,7 +346,27 @@
         "/v1/events принимает clientId подписчика (клиент Mac передаёт свой, шлюз — clientId устройства); оконные события уходят только потоку этого клиента"
       ],
       "expected_commit_message": "feat: Веб-клиент интерфейса Workflow Pilot",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/backend/events.mjs",
+        "src/backend/main.mjs",
+        "src/backend/remote-devices.mjs",
+        "src/backend/remote-gateway.mjs",
+        "src/backend/remote-surface.mjs",
+        "src/execution/browser/presentation/host.mjs",
+        "src/execution/browser/presentation/transport.mjs",
+        "src/frontend/client/browser-view.mjs",
+        "src/frontend/client/connection.mjs",
+        "src/frontend/web/index.html",
+        "src/frontend/web/app.mjs",
+        "src/frontend/web/ipc.js",
+        "src/frontend/web/touch-input.mjs",
+        "tests/backend-remote-gateway.test.mjs",
+        "tests/fixtures/web-client-browser.mjs",
+        "tests/web-client-electron.test.mjs",
+        "tests/web-client.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -694,7 +727,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 190
+Revision: 192
 
 ## Цель
 
@@ -736,10 +769,10 @@ Revision: 190
   - Файлы: src/backend/remote-devices.mjs, src/backend/remote-gateway.mjs, src/backend/status-menu.mjs, src/frontend/desktop/client.mjs, tests/backend-remote-devices.test.mjs, src/backend/events.mjs, src/backend/desktop-model.mjs, src/backend/control-lease.mjs, src/backend/operations.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/settings-panel.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/lifecycle.mjs, src/backend/main.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/remote-access.mjs, tests/backend-remote-gateway.test.mjs, tests/fixtures/remote-backend.mjs, tests/fixtures/remote-serve-proxy.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T004: Веб-клиент: интерфейс и состояние связи — Ожидает
-  - Git Commit: [PENDING] feat: Веб-клиент интерфейса Workflow Pilot
+- [DONE] T004: Веб-клиент: интерфейс и состояние связи — Завершено
+  - Git Commit: [DONE] feat: Веб-клиент интерфейса Workflow Pilot
   - Reference: workflow-pilot-remote-access / T004 / implementation
-  - Файлы: src/frontend/web/index.html, src/frontend/web/bridge.mjs, src/frontend/web/connection.mjs, src/frontend/client/connection.mjs, src/frontend/desktop/ui/index.html, tests/web-client.test.mjs, src/backend/events.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/chat-colors.mjs, tests/web-client-electron.test.mjs, src/backend/server.mjs, src/backend/remote-gateway.mjs, docs/planning/remote-access-spec.md
+  - Файлы: src/frontend/web/index.html, src/frontend/web/bridge.mjs, src/frontend/web/connection.mjs, src/frontend/client/connection.mjs, src/frontend/desktop/ui/index.html, tests/web-client.test.mjs, src/backend/events.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/startup.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/chat-colors.mjs, tests/web-client-electron.test.mjs, src/backend/server.mjs, src/backend/remote-gateway.mjs, src/backend/main.mjs, src/backend/remote-devices.mjs, src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/frontend/web/app.mjs, src/frontend/web/ipc.js, src/frontend/web/touch-input.mjs, tests/backend-remote-gateway.test.mjs, tests/fixtures/web-client-browser.mjs, docs/planning/remote-access-spec.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Изображение страницы на iPad: ввод и файлы — Ожидает

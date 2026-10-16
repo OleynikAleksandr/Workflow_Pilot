@@ -40,7 +40,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
     {type:details?.type,reason:details?.reason,exitCode:details?.exitCode,serviceName:details?.serviceName}));
   app.on('render-process-gone',(_event,_contents,details)=>journal.record('render-process-gone',{reason:details?.reason,exitCode:details?.exitCode}));
   for(const name of ['activate','did-become-active','browser-window-created'])app.on(name,()=>setImmediate(()=>keepAccessory(name)));
-  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null;
+  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null;
   // Every ordinary exit stops own services first, then releases the profile.
   // The owner record is removed only by the process that proved ownership.
   const shutdown=()=>{
@@ -72,7 +72,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
         }});
       // Remote devices and the gateway are bound after the API port exists.
       const remoteAccess={current:null};
-      const devices=createRemoteDevices({dir:path.join(identity.dataDir,'remote'),journal,onChange:()=>desktop?.publish(),
+      devices=createRemoteDevices({dir:path.join(identity.dataDir,'remote'),journal,onChange:()=>desktop?.publish(),
         revokeClient:clientId=>void port?.revokeClient(clientId)});
       desktop=createDesktopModel({electron:{...electron,dialog:guardedDialog},recoverCrashedPages:true,remoteAccess,sourceDir,dataDir:identity.dataDir,partition:identity.partition,smoke:false,
         eventBaseline:false,eventRuntimeChecker:false,executionServices:execution,createControl,dependencies:desktopDependencies,
@@ -85,7 +85,9 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
         setup:base.setup,sessions:base.sessions,desktop,service,
         pages:createBackendPages({sessions:base.sessions,setup:base.setup,store:base.control.projects,host}),
         onChange:listener=>desktop.onPublish(listener),restore:async()=>{},dispose:async()=>desktop.dispose()});
-      port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:sink=>{events=sink;surface.attach(sink);desktop.publish();},
+      port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:sink=>{events=sink;
+          surface.attach(sink,{holder:()=>port?.operations.leaseHolder()??null,holderIsRemote:()=>devices.isRemoteClient(port?.operations.leaseHolder())});
+          desktop.publish();},
         remoteDevices:devices,backendJournal:journal,
         onStreams:count=>journal.record('clients',{count}),onLease:view=>journal.record('lease',{held:!!view.holder,generation:view.generation}),
         leaseTtlMs:fixtureRoot&&leaseTtlMs||undefined,appVersion:app.getVersion()});
@@ -103,8 +105,8 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
       // A packaged macOS client is opened through LaunchServices like a Dock
       // click, so it belongs to the app's own Dock tile, not a tile of this process.
       const openClient=reason=>{
-        journal.record('open-client',{reason,clients:events.clients});
-        if(events.clients>0)return events.uiCommand('focus',{});
+        journal.record('open-client',{reason,clients:events.localClients});
+        if(events.localClients>0)return events.uiCommand('focus',{},{to:'local'});
         const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
         if(app.isPackaged&&process.platform==='darwin'&&!fixtureRoot) {
           const bundle=path.resolve(process.execPath,'../../..');
@@ -145,9 +147,21 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
       process.stdout.write(JSON.stringify({ready:true,port:port.port,generation:claim.generation,token:claim.token,pid:process.pid})+'\n');
       process.stdin.setEncoding('utf8');
       let buffer='';
+      // Test profiles only: stop, and the remote gateway with a fixture tailnet
+      // identity (no Tailscale is involved in fixtures).
       process.stdin.on('data',chunk=>{
         buffer+=chunk;
-        if(buffer.includes('\n') && buffer.trim()==='stop')void shutdown();
+        for(let index;(index=buffer.indexOf('\n'))>=0;) {
+          const line=buffer.slice(0,index).trim();buffer=buffer.slice(index+1);
+          if(line==='stop'){void shutdown();continue;}
+          let command;try{command=JSON.parse(line);}catch{continue;}
+          void (async()=>{
+            if(command.op==='remote-enable')return {remote:await port.remote.enable({owner:'owner@example.com',dnsName:'mac.tailnet-fixture.ts.net'})};
+            if(command.op==='remote-approve')return {approved:devices.view().pairings.map(item=>devices.approve(item.id).id)};
+            return {error:'UNKNOWN_FIXTURE_OP'};
+          })().then(value=>process.stdout.write(JSON.stringify({op:command.op,...value})+'\n'),
+            error=>process.stdout.write(JSON.stringify({op:command.op,error:error.code??error.message})+'\n'));
+        }
       });
     }
   }).catch(error=>{

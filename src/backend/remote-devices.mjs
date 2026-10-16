@@ -80,7 +80,7 @@ export function createRemoteDevices({dir,now=Date.now,onChange=()=>{},journal={r
     }
     if(req.method==='GET'&&url.pathname==='/remote/session') {
       const device=authenticate(req.headers.cookie);
-      return json(res,200,{device:device?{id:device.id,name:device.name}:null});
+      return json(res,200,{device:device?{id:device.id,name:device.name,clientId:device.clientId}:null});
     }
     throw remoteError('BACKEND_ROUTE_NOT_FOUND');
   }

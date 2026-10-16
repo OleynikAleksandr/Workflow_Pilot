@@ -69,7 +69,9 @@ export class PagePresentation {
       const timer = setTimeout(wake, waitMs); this.#frameWaiters.add(wake);
     });
   }
-  async frame({ after = null, waitMs = 0 } = {}) {
+  // format 'jpeg' with quality and maxScale serves a remote viewer: a smaller
+  // frame at a density the device needs. The Mac window keeps PNG.
+  async frame({ after = null, waitMs = 0, format = 'png', quality = 70, maxScale = null } = {}) {
     if (after !== null && after >= this.frameSequence && waitMs > 0 && this.contents.isOffscreen()) {
       await this.#paint(waitMs);
       if (after >= this.frameSequence) return null;
@@ -80,10 +82,15 @@ export class PagePresentation {
       this.frameSequence++;
     } else if (this.frameSequence === 0) await this.#paint(Math.max(waitMs, 1000)); // not painted yet
     if (this.#disposed || this.contents.isDestroyed()) throw presentationError('SESSION_RUNTIME_RELEASED', 'Страница закрыта.');
-    const sequence = this.frameSequence, image = await this.contents.capturePage();
+    const sequence = this.frameSequence;
+    let image = await this.contents.capturePage();
     if (image.isEmpty()) return null;
-    const [logicalWidth, logicalHeight] = this.window.getContentSize(), size = image.getSize();
-    return { png: image.toPNG(), meta: { browserSessionId: this.browserSessionId, documentGeneration: this.documentGeneration,
+    const [logicalWidth, logicalHeight] = this.window.getContentSize();
+    if (maxScale && image.getSize().width > Math.round(logicalWidth * maxScale))
+      image = image.resize({ width: Math.round(logicalWidth * maxScale), height: Math.round(logicalHeight * maxScale), quality: 'good' });
+    const size = image.getSize();
+    const jpeg = format === 'jpeg';
+    return { png: jpeg ? image.toJPEG(Math.max(30, Math.min(95, quality))) : image.toPNG(), mime: jpeg ? 'image/jpeg' : 'image/png', meta: { browserSessionId: this.browserSessionId, documentGeneration: this.documentGeneration,
       frameSequence: sequence, logicalWidth, logicalHeight, pixelWidth: size.width, pixelHeight: size.height,
       scale: Math.max(1, Math.min(5, size.width / Math.max(1, logicalWidth))) } };
   }

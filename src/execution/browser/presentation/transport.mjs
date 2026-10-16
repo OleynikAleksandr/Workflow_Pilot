@@ -97,9 +97,14 @@ export function createPresentationRoutes({ host, transfers, leaseGeneration, lea
       const presentation = viewerOf(url.searchParams.get('viewer'));
       const after = url.searchParams.get('after');
       if (after !== null && !/^\d{1,15}$/.test(after)) throw protocolError('BROWSER_PRESENTATION_INVALID');
-      const frame = await presentation.frame({ after: after === null ? null : Number(after), waitMs: after === null ? 0 : 1000 });
+      const format = url.searchParams.get('format') === 'jpeg' ? 'jpeg' : 'png';
+      const quality = Number(url.searchParams.get('quality') ?? 70), maxScale = Number(url.searchParams.get('maxScale') ?? 0);
+      if (!Number.isFinite(quality) || quality < 30 || quality > 95 || !Number.isFinite(maxScale) || maxScale < 0 || maxScale > 5)
+        throw protocolError('BROWSER_PRESENTATION_INVALID');
+      const frame = await presentation.frame({ after: after === null ? null : Number(after), waitMs: after === null ? 0 : 1000,
+        format, quality, maxScale: maxScale || null });
       if (!frame) { res.writeHead(204, { 'cache-control': 'no-store' }); return res.end(); }
-      res.writeHead(200, { 'content-type': 'image/png', 'content-length': frame.png.length, 'cache-control': 'no-store',
+      res.writeHead(200, { 'content-type': frame.mime ?? 'image/png', 'content-length': frame.png.length, 'cache-control': 'no-store',
         'x-browser-frame': JSON.stringify(frame.meta) });
       return res.end(frame.png);
     }

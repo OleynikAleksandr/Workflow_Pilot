@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Workflow Pilot">
+  <title>Workflow Pilot</title>
+  <style>
+    :root{--bg:#f4f6f8;--fg:#1f2d3a;--muted:#6b7b89;--line:#dbe3e8;--teal:#0b8a83;--panel:#fff}
+    @media(prefers-color-scheme:dark){:root{--bg:#1b1d22;--fg:#e6edf3;--muted:#9aa8b5;--line:#343b44;--teal:#6fcfc8;--panel:#22272d}}
+    *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:14px -apple-system,system-ui,sans-serif;overflow:hidden}
+    #pairing{max-width:460px;margin:12vh auto;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;text-align:center}
+    #pairing h1{font-size:20px;margin:0 0 10px}#pairing p{color:var(--muted);line-height:1.55}
+    #pairing-code{font-size:42px;letter-spacing:8px;font-weight:700;margin:18px 0;color:var(--teal)}
+    button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:9px;padding:9px 12px;touch-action:manipulation}
+    button.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+    #app{display:none;height:100%;grid-template-columns:var(--sidebar,330px) 1fr;grid-template-rows:44px 1fr}
+    #app.ready{display:grid}#app.collapsed{--sidebar:0px}
+    #toolbar{grid-column:1/3;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto}
+    #toolbar .status{flex:1;min-width:120px;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #sidebar{border:0;width:100%;height:100%;background:var(--bg)}#app.collapsed #sidebar{display:none}
+    #stage{position:relative;overflow:hidden;background:#fff;touch-action:none}
+    #frame{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:top left;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+    #frame-status{position:absolute;top:40%;left:0;right:0;text-align:center;color:var(--muted)}
+    #keyboard{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;border:0;padding:0;font-size:16px}
+    .overlay{position:fixed;inset:0;background:#0006;display:none;z-index:10;padding:env(safe-area-inset-top) 10px 10px}
+    .overlay.open{display:flex;flex-direction:column}.overlay .bar{display:flex;justify-content:flex-end;gap:6px;padding:8px 0}
+    .overlay iframe,.overlay .viewer{flex:1;border:0;border-radius:12px;background:var(--panel);width:100%;position:relative;overflow:hidden}
+    .overlay img{width:100%;height:100%;object-fit:contain;object-position:top left}
+    #actions{position:fixed;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:9}
+  </style>
+</head>
+<body>
+  <section id="pairing" hidden>
+    <h1>Подключение к Workflow Pilot</h1>
+    <p id="pairing-text">Подготовка подключения…</p>
+    <div id="pairing-code" aria-live="polite"></div>
+    <p class="hint">На компьютере появится запрос с этим кодом — в окне Workflow Pilot или в меню значка в строке меню. Подтвердите его там.</p>
+    <button id="pairing-retry" class="primary" hidden>Начать заново</button>
+  </section>
+  <main id="app" aria-label="Workflow Pilot">
+    <nav id="toolbar">
+      <button id="toggle-sidebar" title="Панель проектов" aria-label="Показать или скрыть панель проектов">☰</button>
+      <span id="status" class="status" role="status">Подключение…</span>
+      <button id="take-control" hidden>Взять управление</button>
+      <button id="show-keyboard" title="Клавиатура" aria-label="Показать клавиатуру">⌨︎</button>
+      <button id="copy-selection" title="Копировать выделение страницы">Копировать</button>
+      <button id="paste-text" title="Вставить текст в страницу">Вставить</button>
+    </nav>
+    <iframe id="sidebar" title="Проекты и сессии" src="/app/frontend/desktop/ui/index.html"></iframe>
+    <section id="stage" aria-label="Страница ChatGPT">
+      <img id="frame" alt="Страница ChatGPT" draggable="false">
+      <div id="frame-status">Подключение к странице…</div>
+      <textarea id="keyboard" aria-label="Ввод текста в страницу" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+    </section>
+  </main>
+  <div id="actions"></div>
+  <section id="archive-overlay" class="overlay" aria-label="Архив"><div class="bar"><button data-close="archive">Закрыть</button></div></section>
+  <section id="colors-overlay" class="overlay" aria-label="Цвета чатов"><div class="bar"><button data-close="colors">Закрыть</button></div></section>
+  <section id="popup-overlay" class="overlay" aria-label="Окно ChatGPT"><div class="bar"><button data-close="popup">Закрыть</button></div><div class="viewer"><img id="popup-frame" alt="Окно ChatGPT"></div></section>
+  <input id="file-input" type="file" hidden>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>

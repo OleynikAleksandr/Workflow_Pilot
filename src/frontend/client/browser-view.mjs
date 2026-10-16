@@ -25,15 +25,17 @@ export class BrowserView {
   }
   #viewer(){if(!this.#viewerId)throw protocolError('BROWSER_PAGE_NOT_FOUND','Зритель не подключён.');return this.#viewerId;}
   // Long-poll: resolves with a new frame, or null when nothing was painted.
-  async nextFrame({after=this.#frame?.frameSequence??null,signal}={}) {
-    const query=`?viewer=${this.#viewer()}`+(after===null?'':`&after=${after}`);
+  // format/maxScale: a compressed frame for a remote device (JPEG, density cap).
+  async nextFrame({after=this.#frame?.frameSequence??null,signal,format=null,quality=null,maxScale=null}={}) {
+    const query=`?viewer=${this.#viewer()}`+(after===null?'':`&after=${after}`)+(format?`&format=${format}`:'')
+      +(quality?`&quality=${quality}`:'')+(maxScale?`&maxScale=${maxScale}`:'');
     const response=await this.#connection.fetch('/v1/browser/frame'+query,{signal});
     if(response.status===204)return null;
     if(!response.ok)throw await remote(response);
     const meta=validateFrame(JSON.parse(response.headers.get('x-browser-frame')));
     if(meta.browserSessionId!==this.browserSessionId)throw protocolError('BROWSER_DOCUMENT_CHANGED');
     this.#frame=meta;
-    return {meta:structuredClone(meta),png:new Uint8Array(await response.arrayBuffer())};
+    return {meta:structuredClone(meta),png:new Uint8Array(await response.arrayBuffer()),mime:response.headers.get('content-type')??'image/png'};
   }
   // Client pixels -> logical page coordinates of the frame being displayed.
   point(x,y,bounds) {

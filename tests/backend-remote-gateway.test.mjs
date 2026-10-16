@@ -66,6 +66,6 @@ test('gateway serves only the web client folders with the browser bridge in plac
   for(const route of ['/app/backend/main.mjs','/app/../package.json','/app/frontend/desktop/preload.cjs','/app/contracts/.hidden.mjs','/app/%2e%2e/main.mjs'])
     assert.equal((await b.call(route)).status,404,route);
   assert.equal((await b.call('/app/contracts/remote.mjs')).status,200);
-  assert.match(remotePage('<head><meta content="connect-src \'none\'"></head>','/x/archive.html'),/preload\/archive\.js/);
+  assert.match(remotePage('<head><meta content="connect-src \'none\'"></head>','/x/frontend/desktop/ui/archive.html'),/preload\/archive\.js/);
   assert.match(remotePreload('exposeInMainWorld'),/^\(\(\)=>/);
 });

@@ -11,20 +11,24 @@ export class BackendConnection {
   #base; #token; #fetch; #identity; #randomId; #handshake=null; #lease=null; #streams=new Set(); #clientId;
   // A window keeps one clientId across reconnects, so its own earlier lease is
   // taken back at once instead of blocking it until that lease expires.
-  constructor({port,token,fetch=globalThis.fetch,identity='workflow-pilot',randomId=()=>globalThis.crypto.randomUUID(),clientId=null}) {
-    if(!Number.isSafeInteger(port)||port<1||port>65535||typeof token!=='string'||token.length<16)
+  // origin: a browser page served by the remote gateway; the device cookie
+  // authenticates it and the gateway assigns its clientId.
+  constructor({port,token,origin=null,fetch=globalThis.fetch,identity='workflow-pilot',randomId=()=>globalThis.crypto.randomUUID(),clientId=null}) {
+    if(origin!==null&&(typeof origin!=='string'||!/^https?:\/\/[^/]+$/.test(origin)))throw protocolError('BACKEND_AUTH_CONFIG');
+    if(origin===null&&(!Number.isSafeInteger(port)||port<1||port>65535||typeof token!=='string'||token.length<16))
       throw protocolError('BACKEND_AUTH_CONFIG');
     if(clientId!==null&&(typeof clientId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}$/.test(clientId)))
       throw protocolError('BACKEND_AUTH_CONFIG');
-    this.#base=`http://127.0.0.1:${port}`;this.#token=token;this.#fetch=fetch;this.#identity=identity;this.#randomId=randomId;
+    this.#base=origin??`http://127.0.0.1:${port}`;this.#token=origin?null:token;this.#fetch=fetch;this.#identity=identity;this.#randomId=randomId;
     this.#clientId=clientId??'client-'+randomId();
   }
   get clientId(){return this.#clientId;}
+  #auth(){return this.#token?{authorization:'Bearer '+this.#token}:{};}
   get bootGeneration(){return this.#handshake?.bootGeneration??null;}
   // Authenticated request to this backend only; the token never enters a URL.
   fetch(path,{method='GET',headers={},body,signal}={}) {
     if(typeof path!=='string'||!path.startsWith('/v1/'))throw protocolError('BACKEND_ROUTE_NOT_FOUND');
-    return this.#fetch(this.#base+path,{method,body,signal,headers:{...headers,authorization:'Bearer '+this.#token}});
+    return this.#fetch(this.#base+path,{method,body,signal,headers:{...headers,...this.#auth()}});
   }
   async json(path,{method='GET',body}={}) {
     const response=await this.fetch(path,{method,body:body===undefined?undefined:JSON.stringify(body),
@@ -36,7 +40,7 @@ export class BackendConnection {
   get leaseGeneration(){return this.#lease;}
   async #request(path,{method='GET',body,signal}={}) {
     const response=await this.#fetch(this.#base+path,{method,signal,
-      headers:{authorization:'Bearer '+this.#token,...body!==undefined?{'content-type':'application/json'}:{}},
+      headers:{...this.#auth(),...body!==undefined?{'content-type':'application/json'}:{}},
       body:body===undefined?undefined:JSON.stringify(body)});
     const value=await response.json().catch(()=>null);
     if(!response.ok)throw remoteError(value?.error);
@@ -123,7 +127,7 @@ export class BackendConnection {
   }
   // Events arrive in sequence order. A gap or generation change becomes a
   // fresh snapshot; already seen events are dropped by sequence.
-  subscribe({onSnapshot=()=>{},onEvent=()=>{},onUi=()=>{},onError=()=>{},retryMs=250}={}) {
+  subscribe({onSnapshot=()=>{},onEvent=()=>{},onUi=()=>{},onError=()=>{},onCommand=onEvent,retryMs=250}={}) {
     const controller=new AbortController();
     let generation=null,last=null,active=true;
     const stream={close:()=>{active=false;controller.abort();this.#streams.delete(stream);}};
@@ -135,6 +139,8 @@ export class BackendConnection {
       }
       // Desktop UI state is a latest value outside the event sequence.
       if(type==='ui'){const value=JSON.parse(data);if(typeof value?.kind==='string')onUi(value.kind,value.value);return true;}
+      // Window requests addressed to this client; not part of the sequence.
+      if(type==='command'){const value=JSON.parse(data);if(typeof value?.type==='string')onCommand({type:value.type,data:value.data??{}});return true;}
       if(type!=='event')return true;
       const event=validateEvent(JSON.parse(data));
       if(event.bootGeneration!==generation||last===null)return false;
@@ -145,9 +151,9 @@ export class BackendConnection {
     const loop=async()=>{
       while(active) {
         try {
-          const query=generation!==null&&last!==null?`?generation=${encodeURIComponent(generation)}&after=${last}`:'';
+          const query='?client='+encodeURIComponent(this.#clientId)+(generation!==null&&last!==null?`&generation=${encodeURIComponent(generation)}&after=${last}`:'');
           const response=await this.#fetch(this.#base+'/v1/events'+query,{signal:controller.signal,
-            headers:{authorization:'Bearer '+this.#token,accept:'text/event-stream'}});
+            headers:{...this.#auth(),accept:'text/event-stream'}});
           if(!response.ok)throw remoteError((await response.json().catch(()=>null))?.error);
           const reader=response.body.getReader(),decoder=new TextDecoder();
           let buffer='',resync=false;
