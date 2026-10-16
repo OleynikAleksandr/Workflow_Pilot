@@ -111,3 +111,17 @@ test('the Desktop client marks staleness and reconnects to a new backend boot wi
   client.kill('SIGTERM');
   second.child.stdin.end('stop\n');assert.equal(await second.exited,0);
 });
+
+test('a window keeps one clientId across connections, so its own lease is taken back without a takeover',()=>{
+  const first=new BackendConnection({port:4100,token:'t'.repeat(32),clientId:'client-window-0001'});
+  const second=new BackendConnection({port:4100,token:'t'.repeat(32),clientId:'client-window-0001'});
+  assert.equal(first.clientId,second.clientId);
+  assert.match(new BackendConnection({port:4100,token:'t'.repeat(32)}).clientId,/^client-/,'a standalone connection still gets its own id');
+  assert.throws(()=>new BackendConnection({port:4100,token:'t'.repeat(32),clientId:'bad'}),{code:'BACKEND_AUTH_CONFIG'});
+  let now=0;const lease=createControlLease({bootGeneration:'boot',now:()=>now});
+  const before=lease.acquire({clientId:first.clientId});
+  const after=lease.acquire({clientId:second.clientId});
+  assert.equal(after.holder,second.clientId);assert.ok(after.generation>before.generation,'the reconnected window holds a fresh generation');
+  assert.throws(()=>lease.renew({clientId:first.clientId,leaseGeneration:before.generation}),{code:'BACKEND_LEASE_STALE'});
+  lease.dispose();
+});

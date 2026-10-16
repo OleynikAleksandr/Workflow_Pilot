@@ -13,7 +13,7 @@ import {initializeBackendServices} from '../src/backend/bootstrap.mjs';
 import {configureBackendIdentity,claimBackendIdentity} from '../src/backend/identity.mjs';
 import {startBackendPort} from '../src/backend/lifecycle.mjs';
 import {createBackendEvents} from '../src/backend/events.mjs';
-import {createBackendOperations,openOperationJournal} from '../src/backend/operations.mjs';
+import {createBackendOperations,openOperationJournal,backendCatalog} from '../src/backend/operations.mjs';
 import {BackendConnection} from '../src/frontend/client/connection.mjs';
 import {WorkspaceSessions} from '../src/control/sessions/workspace-session.mjs';
 
@@ -238,4 +238,29 @@ test('pending mutation limit refuses new work without stopping accepted work',as
   assert.equal(operations.operation(accepted.operationId).status,'completed');
   assert.equal((await operations.submit(command('two'))).status,'accepted');
   await operations.idle();
+});
+
+test('a Desktop action that returns a large internal record still completes without leaking it',async t=>{
+  const root=await fsp.mkdtemp(path.join(os.tmpdir(),'wp-api-result-'));t.after(()=>fsp.rm(root,{recursive:true,force:true}));
+  const project={workspace:'/tmp/big',sessions:Array.from({length:400},(_,index)=>({sessionId:'s'+index,chatUrl:'https://chatgpt.com/c/'+index,
+    receipts:'x'.repeat(1000)}))};
+  assert.ok(JSON.stringify(project).length>256*1024,'the fixture record exceeds the message limit');
+  const calls=[];
+  const services={control:{projects:{snapshot:()=>({projects:[]}),selected:()=>null}},settings:{},
+    desktop:{invoke:async(surface,channel,input)=>{calls.push([surface,channel,input]);
+      return channel==='pilot:rename-project'?{ok:true,result:true,state:{huge:project}}:{ok:true,result:project,state:{huge:project}};}}};
+  const journal=openOperationJournal(path.join(root,'operations.jsonl'));
+  const operations=createBackendOperations({bootGeneration:'boot-a',journal,catalog:backendCatalog(services)});
+  const lease=(await operations.submit({requestId:'lease',operation:'control.acquire',args:{clientId:'client-fixture-1'},bootGeneration:'boot-a'})).value.leaseGeneration;
+  const invoke=(requestId,channel,input)=>operations.submit({requestId,operation:'ui.invoke',bootGeneration:'boot-a',leaseGeneration:lease,
+    args:{surface:'local',channel,input}});
+  const selected=await invoke('select','pilot:select-session',{workspace:'/tmp/big',sessionId:'s1'});
+  const renamed=await invoke('rename','pilot:rename-project',{workspace:'/tmp/big',name:'Big'});
+  await operations.idle();
+  const view=operations.operation(selected.operationId);
+  assert.equal(view.status,'completed','an executed action is not reported as failed because of its value');
+  assert.deepEqual(view.result.value,{ok:true,result:null},'internal records do not cross the API');
+  assert.equal(operations.operation(renamed.operationId).result.value.result,true,'small scalar results are kept');
+  assert.equal(calls.length,2);
+  assert.doesNotMatch(fs.readFileSync(path.join(root,'operations.jsonl'),'utf8'),/chatgpt\.com\/c\//,'the journal holds no chat addresses');
 });

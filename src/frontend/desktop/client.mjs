@@ -34,6 +34,15 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   const dataDir = backendRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot');
   const ownDir = clientRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot Client');
   fs.mkdirSync(ownDir, { recursive: true, mode: 0o700 });
+  // Bounded local diagnostics of this window: connection and control changes
+  // only, never tokens, chat text or page content.
+  const clientLog = path.join(ownDir, 'client-events.jsonl');
+  const logClient = (event, data = {}) => {
+    try {
+      if ((fs.statSync(clientLog, { throwIfNoEntry: false })?.size ?? 0) > 512 * 1024) fs.renameSync(clientLog, clientLog + '.1');
+      fs.appendFileSync(clientLog, JSON.stringify({ ts: new Date().toISOString(), pid: process.pid, event, ...data }) + '\n', { mode: 0o600 });
+    } catch { /* diagnostics never break the client */ }
+  };
   app.setName('Workflow Pilot');
   app.setPath('userData', ownDir);
   app.setPath('sessionData', path.join(ownDir, 'browser'));
@@ -45,6 +54,10 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   let service = { phase: 'running', reasons: [] };
   // control: this window holds the writer lease; stale: the backend is not reachable.
   let control = false, stale = false, renewTimer = null, watchdog = null, descriptorSeen = null, incompatible = null;
+  // leaseHolder: the clientId the backend last reported; another one means a real observer.
+  let acquiring = null, retryTimer = null, retryDelay = 1000, leaseHolder = null;
+  const windowClientId = 'client-' + globalThis.crypto.randomUUID();
+  const otherHolder = () => !!leaseHolder && leaseHolder !== windowClientId;
   const viewers = new Map();
   // Without a backend the sidebar still renders a complete, empty state with the reason.
   const unavailableState = error => ({ projects: [], executorRecovery: [], archives: [], settings: null, doctor: null,
@@ -86,7 +99,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
       }
       if (!descriptor) throw Object.assign(new Error('Backend Workflow Pilot не запустился.'), { code: 'BACKEND_UNAVAILABLE' });
     }
-    const next = new BackendConnection({ port: descriptor.port, token: descriptor.token });
+    const next = new BackendConnection({ port: descriptor.port, token: descriptor.token, clientId: windowClientId });
     const handshake = await next.connect();
     // A backend of another release keeps running; this client only explains the switch.
     incompatible = handshake.appVersion && handshake.appVersion !== app.getVersion() ? handshake.appVersion : null;
@@ -94,18 +107,47 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     return next;
   }
   // Control is explicit. A free lease is taken automatically; a held one only
-  // by the user's own choice. Renewal every 10 s keeps it; a refusal ends it.
-  async function takeControl({ takeover = false } = {}) {
-    if (!connection || incompatible) { showService(); installMenu(); return false; }
-    try { await connection.acquire({ takeover }); control = true; }
-    catch (error) { control = false; if (error.code !== 'BACKEND_LEASE_HELD') throw error; }
-    clearInterval(renewTimer); renewTimer = null;
-    if (control) {
-      renewTimer = setInterval(() => void connection.renew().catch(() => { control = false; clearInterval(renewTimer); renewTimer = null; showService(); installMenu(); }), RENEW_MS);
-      renewTimer.unref?.();
-    }
-    showService(); installMenu();
-    return control;
+  // by the user's own choice. Renewal every 10 s keeps it. One acquire runs at
+  // a time, so the first lease event and connect() never race two generations.
+  // A transient failure is retried; only another window's lease makes this
+  // window an observer.
+  function scheduleControlRetry() {
+    if (retryTimer || !connection || stale || incompatible || control) return;
+    retryTimer = setTimeout(() => { retryTimer = null; void takeControl().catch(() => {}); }, retryDelay);
+    retryTimer.unref?.(); retryDelay = Math.min(retryDelay * 2, 10000);
+  }
+  function takeControl({ takeover = false } = {}) {
+    if (acquiring && !takeover) return acquiring;
+    const attempt = (async () => {
+      const current = connection;
+      if (!current || incompatible || stale) { showService(); installMenu(); return false; }
+      try {
+        await current.acquire({ takeover });
+        if (current !== connection) return false;
+        control = true; leaseHolder = current.clientId; retryDelay = 1000;
+      } catch (error) {
+        if (current !== connection) return false;
+        control = false;
+        if (error.code !== 'BACKEND_LEASE_HELD') scheduleControlRetry();
+        logClient('control-acquire-failed', { code: error.code ?? 'BACKEND_UNAVAILABLE', takeover });
+      }
+      clearInterval(renewTimer); renewTimer = null;
+      if (control) {
+        renewTimer = setInterval(() => void current.renew().catch(error => {
+          if (current !== connection) return;
+          control = false; clearInterval(renewTimer); renewTimer = null; showService(); installMenu();
+          logClient('control-renew-failed', { code: error.code ?? 'BACKEND_UNAVAILABLE' });
+          // Our own lease went stale or the request failed: take it back unless another window holds it.
+          void takeControl().catch(() => {});
+        }), RENEW_MS);
+        renewTimer.unref?.();
+      }
+      showService(); installMenu();
+      return control;
+    })();
+    acquiring = attempt;
+    attempt.finally(() => { if (acquiring === attempt) acquiring = null; }).catch(() => {});
+    return attempt;
   }
 
   // One viewer per displayed backend page; frames are pulled while it is open.
@@ -224,7 +266,12 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     if (channel === 'archive:get-state') return archiveState;
     if (!connection || stale) return { ok: false, error: { code: 'BACKEND_UNAVAILABLE', message: 'Нет связи с фоновой службой Workflow Pilot. Данные могут быть устаревшими; изменения заблокированы до восстановления связи.' }, state: uiState };
     if (incompatible) return { ok: false, error: { code: 'BACKEND_VERSION_INCOMPATIBLE', message: `Работает фоновая служба Workflow Pilot ${incompatible}. Остановите её (значок или меню Workflow Pilot), затем откройте ${app.getVersion()} снова.` }, state: uiState };
-    if (!control) return { ok: false, error: { code: 'BACKEND_LEASE_HELD', message: 'Управление у другого окна Workflow Pilot. Меню Workflow Pilot → «Взять управление».' }, state: uiState };
+    if (!control) {
+      if (!otherHolder()) void takeControl().catch(() => {});
+      return { ok: false, error: { code: 'BACKEND_LEASE_HELD', message: otherHolder()
+        ? 'Управление у другого окна Workflow Pilot. Меню Workflow Pilot → «Взять управление».'
+        : 'Окно получает право управления фоновой службой. Повторите действие через несколько секунд.' }, state: uiState };
+    }
     try {
       const value = await connection.invoke(surface, channel, input);
       return { ok: value.ok, result: value.result, ...(value.error ? { error: value.error } : {}), state: surface === 'archive' ? archiveState : uiState };
@@ -260,7 +307,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
       : stale ? base + ' — нет связи, данные могут быть устаревшими'
       : service.phase === 'draining' ? base + ' — остановка: ' + (reason ?? 'ждём безопасной точки')
       : service.phase === 'stopping' ? base + ' — фоновая служба останавливается'
-      : !control ? base + ' — наблюдение (управление у другого окна)' : base);
+      : !control ? base + (otherHolder() ? ' — наблюдение (управление у другого окна)' : ' — получение управления…') : base);
   }
   async function requestStop() {
     if (!connection) return;
@@ -295,6 +342,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   async function reconnect({ start = false } = {}) {
     try {
       stream?.close(); clearInterval(renewTimer); renewTimer = null; control = false;
+      clearTimeout(retryTimer); retryTimer = null; retryDelay = 1000; acquiring = null;
       for (const contents of [...viewers.keys()]) { const entry = viewers.get(contents); entry.active = false; viewers.delete(contents); }
       for (const popup of popups.values()) popup.destroy(); popups.clear();
       connection = null;
@@ -325,16 +373,20 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
         if (kind === 'service') { service = value; showService(); installMenu(); }
         if (kind === 'lease') {
           const mine = value.holder === connection?.clientId;
+          leaseHolder = value.holder ?? null;
+          logClient('lease', { holder: mine ? 'self' : value.holder ? 'other' : null, generation: value.generation ?? null });
           if (control && !mine) { control = false; connection?.forgetLease(); clearInterval(renewTimer); renewTimer = null; }
-          // A short drop let the lease lapse: take it back only while nobody else holds it.
-          if (!value.holder && !control && !stale) void takeControl().catch(() => {});
+          // A short drop let the lease lapse, or this window's own lease survived
+          // a reconnect: take it back while no other window holds it.
+          if ((!value.holder || mine) && !control && !stale) void takeControl().catch(() => {});
           showService(); installMenu();
         }
       },
       onEvent: event => { void onEvent(event).catch(() => {}); },
-      onSnapshot: () => { if (stale) { stale = false; showService(); installMenu(); if (!control) void takeControl().catch(() => {}); } },
-      onError: () => { if (!stale) { stale = true; showService(); installMenu(); } },
+      onSnapshot: () => { if (stale) { stale = false; logClient('stream-resynced'); showService(); installMenu(); if (!control) void takeControl().catch(() => {}); } },
+      onError: () => { if (!stale) { stale = true; logClient('stream-lost'); showService(); installMenu(); } },
     });
+    logClient('connected', { bootGeneration: connection.bootGeneration, incompatible });
     await takeControl();
   }
 

@@ -110,6 +110,13 @@ const unwrap=envelope=>{
   if(envelope?.ok===false)throw Object.assign(new Error(envelope.error?.message??'Операция не выполнена.'),{code:envelope.error?.code??'BACKEND_OPERATION_FAILED'});
   return envelope?.result??null;
 };
+// A Desktop action may return an internal Control record (a whole project with
+// its sessions can exceed the message limit). The UI reads only ok/error and the
+// published state, so only small scalar results cross the API; the action has
+// already happened and must not be reported as failed because of its value.
+const actionResult=value=>typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value)
+  ||typeof value==='string'&&value.length<=1024?value:null;
+
 // With the Desktop model in the backend, product mutations go through its own
 // actions (navigation generations, setup state, title sync), not around them.
 function desktopCatalog(services,base) {
@@ -146,7 +153,7 @@ function desktopCatalog(services,base) {
       const envelope=await services.desktop.invoke(args.surface,args.channel,args.input);
       if(args.surface==='colors')return {ok:envelope.ok!==false,result:envelope.state??null,...envelope.ok===false?{error:envelope.error}:{}};
       if(/:get-state$/.test(args.channel))return {ok:true,result:null};
-      return {ok:envelope?.ok!==false,result:envelope?.result??null,...envelope?.ok===false?{error:envelope.error}:{}};},
+      return {ok:envelope?.ok!==false,result:actionResult(envelope?.result),...envelope?.ok===false?{error:envelope.error}:{}};},
   });
 }
 

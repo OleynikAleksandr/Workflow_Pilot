@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 164,
+  "plan_revision": 166,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-backend-independence",
@@ -1659,14 +1659,22 @@
         "Один acquire за раз; временная ошибка acquire/renew повторяется; наблюдение показывается только при другом владельце"
       ],
       "expected_commit_message": "feat: Исправить размер результата операций и право управления",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-backend-independence",
         "task_id": "T016",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/operations.mjs",
+        "src/frontend/client/connection.mjs",
+        "src/frontend/desktop/client.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-reconnect.test.mjs",
+        "docs/planning/backend-0.2.1-fixes.md"
+      ]
     },
     {
       "id": "T017",
@@ -1927,7 +1935,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-backend-independence
 Current Task: нет
-Revision: 164
+Revision: 166
 
 ## Цель
 
@@ -2063,8 +2071,8 @@ Revision: 164
   - Файлы: release-manifest.json, docs/planning/workflow-pilot-backend-spec-draft.md, docs/planning/workflow-pilot-backend-todo-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: T014, DOCS
-- [TODO] T016: Исправить размер результата операций и право управления — Ожидает
-  - Git Commit: [PENDING] feat: Исправить размер результата операций и право управления
+- [DONE] T016: Исправить размер результата операций и право управления — Завершено
+  - Git Commit: [DONE] feat: Исправить размер результата операций и право управления
   - Reference: workflow-pilot-backend-independence / T016 / implementation
   - Файлы: src/backend/operations.mjs, src/frontend/client/connection.mjs, src/frontend/desktop/client.mjs, tests/backend-api.test.mjs, tests/backend-reconnect.test.mjs, docs/planning/backend-0.2.1-fixes.md
   - Параллельность: исключительное выполнение

@@ -9,11 +9,15 @@ const remoteError=value=>protocolError(typeof value?.code==='string'?value.code:
 // mutation after the backend boot generation changed.
 export class BackendConnection {
   #base; #token; #fetch; #identity; #randomId; #handshake=null; #lease=null; #streams=new Set(); #clientId;
-  constructor({port,token,fetch=globalThis.fetch,identity='workflow-pilot',randomId=()=>globalThis.crypto.randomUUID()}) {
+  // A window keeps one clientId across reconnects, so its own earlier lease is
+  // taken back at once instead of blocking it until that lease expires.
+  constructor({port,token,fetch=globalThis.fetch,identity='workflow-pilot',randomId=()=>globalThis.crypto.randomUUID(),clientId=null}) {
     if(!Number.isSafeInteger(port)||port<1||port>65535||typeof token!=='string'||token.length<16)
       throw protocolError('BACKEND_AUTH_CONFIG');
+    if(clientId!==null&&(typeof clientId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}$/.test(clientId)))
+      throw protocolError('BACKEND_AUTH_CONFIG');
     this.#base=`http://127.0.0.1:${port}`;this.#token=token;this.#fetch=fetch;this.#identity=identity;this.#randomId=randomId;
-    this.#clientId='client-'+randomId();
+    this.#clientId=clientId??'client-'+randomId();
   }
   get clientId(){return this.#clientId;}
   get bootGeneration(){return this.#handshake?.bootGeneration??null;}
