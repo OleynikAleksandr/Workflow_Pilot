@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 219,
+  "plan_revision": 221,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-remote-access",
@@ -956,14 +956,17 @@
         "Один штатный цикл трёх ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
       "expected_commit_message": "feat: Собрать выпуск 0.3.1 трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-remote-access",
         "task_id": "T016",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T017",
@@ -1060,7 +1063,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-remote-access
 Current Task: нет
-Revision: 219
+Revision: 221
 
 ## Цель
 
@@ -1186,8 +1189,8 @@ Revision: 219
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/remote-access-0.3.1-fixes.md, README.md, docs/acceptance/remote-access.md, docs/modules/backend.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/remote-access.md
   - Параллельность: исключительное выполнение
   - Зависимости: T013, T014, T015
-- [TODO] T016: Собрать выпуск 0.3.1 трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать выпуск 0.3.1 трёх ОС
+- [DONE] T016: Собрать выпуск 0.3.1 трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать выпуск 0.3.1 трёх ОС
   - Reference: workflow-pilot-remote-access / T016 / implementation
   - Файлы: release-manifest.json, docs/planning/remote-access-0.3.1-fixes.md
   - Параллельность: исключительное выполнение
