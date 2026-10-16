@@ -10,6 +10,7 @@ import { createSimplePlan } from '../src/lib/simple-workflow.mjs';
 import { extendPlan } from '../src/lib/extend-plan.mjs';
 import { updateTask } from '../src/lib/task-update.mjs';
 import { readPlan, validatePlan, renderPlan, parsePlan, parallelTasksCompatible } from '../src/lib/plan.mjs';
+import { validateConfig } from '../src/lib/validate.mjs';
 import { recover } from '../src/lib/recovery.mjs';
 import { setReviewEnabled, prepareReview, readReview, respondReview, publishReview, reviewPlanDigest } from '../src/lib/plan-review.mjs';
 import { runReview, REVIEW_MODEL } from '../src/lib/claude-review.mjs';
@@ -183,7 +184,87 @@ try {
     publishReview(root);
     const published=readPlan(root);assert.equal(published.max_workers,2);assert.equal(published.tasks[0].parallel_safe,false);
   }
-  console.log('parallel-plan fixture: legacy execution, policy validation, safe/exclusive areas, amendments, recovery, Review binding and parent DONE guard passed');
+  {
+    // Orchestrated plans: mandatory DOCS, release tail, integration roles and executor context.
+    for (const schema of ['plan.schema.json','workflow.schema.json'])
+      assert.doesNotThrow(()=>JSON.parse(fs.readFileSync(new URL('../src/schemas/'+schema,import.meta.url),'utf8')),schema);
+    const {root, scope} = fixture();
+    const orchestrated = {...structuredClone(scope),parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',
+      execution_reason:'Fixture orchestration',execution_origin_session_id:'orchestrator-1',release:false};
+    const plan = build(root,orchestrated);
+    assert.deepEqual(plan.tasks.map(t=>t.id),['T001','T002','DOCS'],'DOCS is added without a release');
+    assert.deepEqual(plan.tasks[2].dependencies,['T001','T002']);
+    assert.deepEqual(parsePlan(renderPlan(plan)),plan);
+    assert.match(renderPlan(plan),/Выпуск приложения: нет/);
+    const noOrigin = structuredClone(orchestrated); delete noOrigin.execution_origin_session_id;
+    expect('PLAN_EXECUTION_ORIGIN',()=>build(root,noOrigin));
+    const noRelease = structuredClone(orchestrated); delete noRelease.release;
+    expect('PLAN_EXECUTION_POLICY',()=>build(root,noRelease));
+    expect('PLAN_EXECUTION_POLICY',()=>build(root,{...structuredClone(scope),...policy,release:false}));
+    expect('PLAN_EXECUTION_POLICY',()=>build(root,{...structuredClone(scope),release:true}));
+    const safe = structuredClone(orchestrated); safe.tasks[0].parallel_safe = true;
+    assert.equal(build(root,safe).tasks[0].parallel_safe,true);
+    for (const settings of [{parallel_allowed:false},{max_workers:1}])
+      expect('PLAN_EXECUTION_POLICY',()=>build(root,{...safe,...settings}));
+    assert.doesNotThrow(()=>build(root,{...orchestrated,parallel_allowed:false,max_workers:1}),'a fully sequential orchestrated plan is valid');
+    const done = structuredClone(plan); done.tasks[0].implementation_status='DONE'; done.tasks[0].commit_status='DONE';
+    expect('PLAN_SCHEMA',()=>validatePlan(done),'ordinary orchestrated work is accepted only by integration');
+    done.tasks[0].commit_ref={scope_id:done.scope_id,task_id:'T001',role:'integration',operation_id:'merge-1',source_commit:'b'.repeat(40)};
+    assert.doesNotThrow(()=>validatePlan(done));
+    const doneDocs = structuredClone(plan); Object.assign(doneDocs.tasks[2],{implementation_status:'DONE',commit_status:'DONE'});
+    expect('PLAN_SCHEMA',()=>validatePlan(doneDocs),'DOCS is integrated like ordinary work');
+    const withoutDocs = structuredClone(plan); withoutDocs.tasks.pop();
+    expect('DOCUMENTATION_FINAL_TASK',()=>validatePlan(withoutDocs));
+    // Release tail from the project configuration.
+    const config = JSON.parse(fs.readFileSync(path.join(root,'.harness/workflow.json'),'utf8'));
+    config.profile='DEVELOPMENT'; config.stack='Fixture';
+    config.checks=[{id:'pkg',kind:'package',executable:process.execPath,args:['-e','0'],required:false,timeout_ms:1000,evidence:'Fixture package'},
+      {id:'installed',kind:'installed',executable:process.execPath,args:['-e','0'],required:false,timeout_ms:1000,evidence:'Fixture installation'}];
+    const delivery = (id, kind, check) => ({id, title:'Deliver '+id, why:'Fixture', dependencies:[], functional_paths:['release-manifest.json'],
+      documentation_paths:[], verification_ids:[check], verification_kind:kind, acceptance_criteria:['Delivered'], expected_commit_message:'release: '+id});
+    const release = {...structuredClone(orchestrated),release:true,
+      approved_scope:{functional_paths:['release-manifest.json'],documentation_paths:orchestrated.approved_scope.documentation_paths},
+      tasks:[...structuredClone(orchestrated.tasks),delivery('R001','package','pkg'),delivery('R002','installed','installed')]};
+    const buildWith = (input, cfg) => buildScopePlan(root,input,readPlan(root),cfg);
+    expect('DELIVERY_TAIL_REQUIRED',()=>buildWith(release,config));
+    const tailed = {...config,delivery_tail:[{verification_ids:['pkg'],verification_kind:'package'},{verification_ids:['installed'],verification_kind:'installed'}]};
+    const released = buildWith(release,tailed);
+    assert.deepEqual(released.tasks.map(t=>t.id),['T001','T002','DOCS','R001','R002']);
+    const reversed = {...release,tasks:[...orchestrated.tasks,delivery('R002','installed','installed'),delivery('R001','package','pkg')]};
+    expect('DELIVERY_TAIL_MISMATCH',()=>buildWith(reversed,tailed));
+    expect('DELIVERY_TAIL_MISMATCH',()=>buildWith({...release,tasks:[...release.tasks.slice(0,3)]},tailed));
+    expect('DELIVERY_TAIL',()=>buildWith({...release,release:false},tailed));
+    const deliveredDone = structuredClone(released); Object.assign(deliveredDone.tasks[3],{implementation_status:'DONE',commit_status:'DONE'});
+    assert.doesNotThrow(()=>validatePlan(deliveredDone),'delivery stays an implementation commit in main');
+    for (const bad of [[{verification_ids:['missing'],verification_kind:'package'}],[{verification_ids:['pkg'],verification_kind:'installed'}],
+      [{verification_ids:[],verification_kind:'package'}],[{verification_ids:['pkg'],verification_kind:'package',extra:true}],{}])
+      expect('CONFIG_SCHEMA',()=>validateConfig({...config,delivery_tail:bad}));
+    // plan:create, plan:extend and task:update carry the executor context of a task.
+    write(root,'NOTES.md','# Notes\n');
+    const context = {documents:[{path:'GUIDE.md',required:true}]};
+    expect('PLAN_SCHEMA',()=>createSimplePlan(root,{id:'bad-context',spec:'docs/planning/parallel.md',objective:'Bad',
+      tasks:[{id:'T001',title:'One',files:['README.md'],context_pack:[]}]}));
+    createSimplePlan(root,{id:'simple-orchestrated',spec:'docs/planning/parallel.md',objective:'Orchestrated plan',
+      parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Fixture',
+      execution_origin_session_id:'orchestrator-1',release:false,
+      tasks:[{id:'T001',title:'One',files:['README.md'],context_pack:context},{id:'T002',title:'Two',files:['GUIDE.md']}]});
+    let current = readPlan(root);
+    assert.deepEqual(current.tasks.map(t=>t.id),['T001','T002','DOCS']);
+    assert.deepEqual(current.tasks[0].context_pack,{documents:[{path:'GUIDE.md',required:true,revision:'WORKTREE'}],include_last_completed_task:false,dependency_task_ids:[]});
+    assert.equal(current.release,false);
+    extendPlan(root,{tasks:[{id:'T003',title:'Three',files:['NOTES.md'],context_pack:{documents:[{path:'README.md',required:false}]}}]},current.plan_revision);
+    current = readPlan(root);
+    assert.deepEqual(current.tasks.map(t=>t.id),['T001','T002','T003','DOCS'],'new work stays before DOCS');
+    assert.ok(current.tasks[3].dependencies.includes('T003'));
+    assert.equal(current.tasks[2].context_pack.documents[0].path,'README.md');
+    expect('PLAN_SCHEMA',()=>extendPlan(root,{tasks:[{id:'T004',title:'Bad',files:['NOTES.md'],context_pack:{documents:[{path:'README.md',required:true}],extra:1}}]},current.plan_revision));
+    updateTask(root,'T002',{context_pack:{documents:[{path:'NOTES.md',required:true}]}},current.plan_revision);
+    current = readPlan(root);
+    assert.deepEqual(current.tasks[1].context_pack.documents.map(d=>d.path),['NOTES.md'],'task:update replaces the context');
+    startTask(root,'T001');
+    expect('TASK_UPDATE',()=>updateTask(root,'T001',{context_pack:context},readPlan(root).plan_revision));
+  }
+  console.log('parallel-plan fixture: legacy execution, orchestrated DOCS/release tail/context, policy validation, safe/exclusive areas, amendments, recovery, Review binding and parent DONE guard passed');
 } finally {
   for (const root of roots) fs.rmSync(root,{recursive:true,force:true});
 }

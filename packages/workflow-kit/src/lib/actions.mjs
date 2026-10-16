@@ -5,7 +5,7 @@ import {beginTaskFiles,handoffTaskFiles} from './task-files.mjs';
 import path from 'node:path';
 import { VERSION, PLAN, planPath, safePath, CONFIG, MANIFEST, check, readJSON, atomic, json, hash, id, textFile } from './common.mjs';
 import { emptyPlan, readPlan, parsePlan, renderPlan, writePlan, validatePlan, nextTask, projectContextPack, projectContextPaths, normalizeExecutionPolicy,
-  FINAL_DOCUMENTATION_TASK_ID, FINAL_DOCUMENTATION_TASK_TITLE, isDocumentationFinalizationTask, isDeliveryTask } from './plan.mjs';
+  FINAL_DOCUMENTATION_TASK_ID, FINAL_DOCUMENTATION_TASK_TITLE, isDocumentationFinalizationTask, isDeliveryTask, isOrchestratedPlan } from './plan.mjs';
 import { validate, validateConfig, validatePlanConfiguration, readConfig, journal, resolveReferences, taskChecks } from './validate.mjs';
 import { git, head, localPath, allChanges, identityReady, paths, gitPath } from './git.mjs';
 import { locked, commitCandidate, completedTransaction, finishTransaction } from './transaction.mjs';
@@ -38,7 +38,8 @@ function normalizeCompletionContract(plan) {
   const ordinary = pending.filter(task => task !== finalTask);
   const delivery = ordinary.filter(isDeliveryTask);
   const work = ordinary.filter(task => !isDeliveryTask(task));
-  if (!delivery.length && !finalTask) return plan;
+  // An orchestrated plan always ends its round with DOCS, with or without a release.
+  if (!delivery.length && !finalTask && !(isOrchestratedPlan(plan) && work.length)) return plan;
   if (!finalTask) {
     const iteration = Math.max(0,...history.filter(isDocumentationFinalizationTask).map(t => t.commit_ref?.iteration ?? 1)) + 1;
     const taskId = iteration === 1 ? FINAL_DOCUMENTATION_TASK_ID : FINAL_DOCUMENTATION_TASK_ID + '-' + iteration;

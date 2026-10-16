@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {check,contextPath} from './common.mjs';
-import {readPlan,isDeliveryTask,isDocumentationFinalizationTask} from './plan.mjs';
+import {readPlan,isDeliveryTask,isDocumentationFinalizationTask,taskContextPack} from './plan.mjs';
 import {readConfig,taskChecks} from './validate.mjs';
 import {applyPlan} from './actions.mjs';
 
-const TASK_FIELDS=['id','title','why','files','checks','dependencies','acceptance','commit','verification_kind','before','parallel_safe'];
+const TASK_FIELDS=['id','title','why','files','checks','dependencies','acceptance','commit','verification_kind','before','parallel_safe','context_pack'];
 const notStarted=t=>t.implementation_status==='TODO'&&t.commit_status==='PENDING';
 
 // Only new domain tasks and added dependencies enter here. applyPlan owns locking, revision and history.
@@ -38,6 +38,7 @@ export function extendPlan(root,input,expectedRevision) {
     t.files.forEach(f=>contextPath(root,f));
     const task={id,title:t.title,why:t.why??t.title,dependencies:t.dependencies??[],functional_paths:t.files.filter(f=>!f.endsWith('.md')),documentation_paths:[...new Set([...(input.spec?[input.spec]:[]),...t.files.filter(f=>f.endsWith('.md'))])],verification_ids:t.checks??[],verification_kind:t.verification_kind??'code',acceptance_criteria:t.acceptance??[t.title],expected_commit_message:t.commit??'feat: '+t.title,implementation_status:'TODO',commit_status:'PENDING',commit_ref:{scope_id:plan.scope_id,task_id:id,role:'implementation'}};
     if(Object.hasOwn(t,'parallel_safe'))task.parallel_safe=t.parallel_safe;
+    if(Object.hasOwn(t,'context_pack'))task.context_pack=taskContextPack(t.context_pack,field+'.context_pack');
     check(Array.isArray(task.verification_ids),'PLAN_SCHEMA',field+'.checks: нужен массив ID проверок.');
     try{taskChecks(task,config);}catch(error){error.message=field+'.checks ('+id+'): '+error.message;error.details={...error.details,task_id:id,field:field+'.checks',available_checks:config.checks.map(c=>c.id)};throw error;}
     if(t.before===undefined)ordered.push(task);

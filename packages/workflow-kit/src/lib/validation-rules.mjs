@@ -73,6 +73,19 @@ export function validateConfig(c) {
     check(typeof m.code === 'string' && m.code.length > 0 && !m.code.startsWith('/') && !m.code.includes('..'), 'CONFIG_SCHEMA', 'Некорректный селектор документации.');
     check(Array.isArray(m.documents), 'CONFIG_SCHEMA', 'Нужен список документов.'); m.documents.forEach(relativePath);
   }
+  if (c.delivery_tail !== undefined) {
+    check(Array.isArray(c.delivery_tail), 'CONFIG_SCHEMA', 'delivery_tail должен быть массивом шагов выпуска.');
+    for (const [index, step] of c.delivery_tail.entries()) {
+      const field = 'delivery_tail[' + index + ']';
+      check(step && typeof step === 'object' && Object.keys(step).every(k => ['verification_ids', 'verification_kind'].includes(k)), 'CONFIG_SCHEMA',
+        field + ': допустимы только verification_ids и verification_kind.', {field});
+      check(['package', 'installed'].includes(step.verification_kind), 'CONFIG_SCHEMA', field + '.verification_kind: package или installed.', {field});
+      check(Array.isArray(step.verification_ids) && step.verification_ids.length > 0 && new Set(step.verification_ids).size === step.verification_ids.length
+        && step.verification_ids.every(id => ids.has(id)), 'CONFIG_SCHEMA', field + '.verification_ids: непустой список настроенных проверок без повторов.', {field});
+      check(step.verification_ids.some(id => c.checks.find(test => test.id === id).kind === step.verification_kind), 'CONFIG_SCHEMA',
+        field + ': нужна проверка вида ' + step.verification_kind + '.', {field});
+    }
+  }
   if (c.profile === 'DEVELOPMENT') check(typeof c.stack === 'string' && c.stack.trim(), 'CONFIG_SCHEMA', 'Укажите выбранный стек.');
   return c;
 }
