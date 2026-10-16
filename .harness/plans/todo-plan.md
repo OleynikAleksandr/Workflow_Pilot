@@ -4,22 +4,178 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 227,
+  "plan_revision": 228,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
-  "scope_id": null,
-  "execution_scope_status": "NONE",
+  "scope_id": "workflow-pilot-orchestrated-execution",
+  "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
-  "objective": "Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.",
-  "acceptance_criteria": [],
+  "objective": "Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.",
+  "acceptance_criteria": [
+    "R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id",
+    "R02 Kit принимает orchestrated-план с метками parallel_safe, всегда добавляет DOCS и проверяет delivery-хвост по delivery_tail при release: true",
+    "R03 Все обычные задачи и DOCS выполняются отдельными исполнителями в worktree с проверенной интеграцией; последовательная — одна после барьера; delivery-хвост выполняет оркестратор в main после всех остальных задач; worktree и ветка удаляются после проверенного слияния, итоговую очистку выполняет оркестратор",
+    "R04 Исполнитель получает служебную часть Kit, задачу и её context_pack; оркестратор и чат обсуждения — полный recovery с блоком роли; .workflow-temp/ вне Git и recovery",
+    "R05 Одна кнопка в шапке плана: «Начать выполнение плана» → «Пауза» → «Продолжить»; пауза останавливает только новые выдачи; состояние переживает перезапуск backend без повторного Send; работает с iPad при праве управления",
+    "R06 Сбой: исполнитель → task:block → оркестратор (интеграция, assignment:message, plan:extend) → plan:escalate и автопауза; UNKNOWN — сразу автопауза без повторов",
+    "R07 Дерево: оркестраторы и чаты обсуждения, микрозадачи под оркестратором; клик по начатой задаче — сессия исполнителя, по не начатой — карточка; «Выполнено» сохраняется после archive; оркестратор активного плана нельзя архивировать",
+    "R08 Выпуск трёх ОС упаковывает платформы параллельно внутри release-all из одного sourceCommit с одним manifest",
+    "R09 Legacy sequential/parallel-планы и донорские проекты работают по прежним правилам; Kit 1.7.x обновляется до 1.8.0 с активным планом",
+    "R10 DOCS, выпуск трёх ОС, установка в Applications и GitHub Release по обычному порядку; живую приёмку выполняет пользователь"
+  ],
   "approved_scope": {
-    "functional_paths": [],
-    "documentation_paths": []
+    "functional_paths": [
+      "packages/workflow-kit/src/lib/plan.mjs",
+      "packages/workflow-kit/src/lib/validate.mjs",
+      "packages/workflow-kit/src/lib/validation-rules.mjs",
+      "packages/workflow-kit/src/lib/extend-plan.mjs",
+      "packages/workflow-kit/src/lib/actions.mjs",
+      "packages/workflow-kit/src/lib/simple-workflow.mjs",
+      "packages/workflow-kit/src/lib/task-update.mjs",
+      "packages/workflow-kit/src/lib/plan-review.mjs",
+      "packages/workflow-kit/src/lib/command-help.mjs",
+      "packages/workflow-kit/src/schemas/plan.schema.json",
+      "packages/workflow-kit/src/schemas/workflow.schema.json",
+      "packages/workflow-kit/src/WORKFLOW.md",
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+      "packages/workflow-kit/scripts/check-runtime-fixture.mjs",
+      "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+      "packages/workflow-kit/src/lib/task-assignment.mjs",
+      "packages/workflow-kit/src/lib/assignment-contract.mjs",
+      "packages/workflow-kit/src/lib/task-integration.mjs",
+      "packages/workflow-kit/src/lib/signals.mjs",
+      "packages/workflow-kit/src/cli.mjs",
+      "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+      "packages/workflow-kit/package.json",
+      "packages/workflow-kit/src/lib/integration-proof.mjs",
+      "packages/workflow-kit/src/lib/recovery.mjs",
+      "packages/workflow-kit/src/lib/installer.mjs",
+      "packages/workflow-kit/src/lib/installation-files.mjs",
+      "packages/workflow-kit/src/templates/AGENTS.md",
+      "packages/workflow-kit/src/templates/PROTOTYPE.md",
+      "packages/workflow-kit/scripts/check-project-recovery-fixture.mjs",
+      "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
+      "packages/workflow-kit/scripts/check-package.mjs",
+      "tests/workflow-kit-recovery.test.mjs",
+      "tests/workflow-kit-upgrade.test.mjs",
+      "tests/workflow-kit-source.test.mjs",
+      "tests/migration-compatibility.test.mjs",
+      "src/control/sessions/workspace-session.mjs",
+      "src/control/sessions/session-plans.mjs",
+      "src/control/projects/service.mjs",
+      "src/control/context/service.mjs",
+      "src/control/context/context-cache.mjs",
+      "src/control/context/context-session.mjs",
+      "src/control/facade.mjs",
+      "tests/session-roles.test.mjs",
+      "tests/workspace-session.test.mjs",
+      "tests/session-plans.test.mjs",
+      "tests/context-session.test.mjs",
+      "tests/control-facade.test.mjs",
+      "src/control/projects/workspace-deletion.mjs",
+      "src/control/workflow/execution-control.mjs",
+      "src/control/workflow/project-auto-plan.mjs",
+      "src/control/workflow/coordination.mjs",
+      "src/contracts/desktop.mjs",
+      "src/backend/desktop-model.mjs",
+      "src/frontend/desktop/preload.cjs",
+      "src/frontend/desktop/ipc.mjs",
+      "tests/execution-control.test.mjs",
+      "tests/project-auto-plan.test.mjs",
+      "tests/backend-desktop-model.test.mjs",
+      "tests/desktop-boundaries.test.mjs",
+      "src/control/workflow/auto-plan-state.mjs",
+      "src/control/workflow/project-session-auto-plan.mjs",
+      "src/control/workflow/parallel-execution.mjs",
+      "src/control/workflow/parallel-kit.mjs",
+      "src/control/workflow/executor-session.mjs",
+      "src/control/workflow/execution-projection.mjs",
+      "tests/parallel-execution.test.mjs",
+      "tests/parallel-execution-recovery.test.mjs",
+      "tests/parallel-finalization.test.mjs",
+      "src/control/workflow/plan-monitor.mjs",
+      "tests/plan-monitor.test.mjs",
+      "src/execution/files/project-input-watch.mjs",
+      "src/frontend/desktop/ui/sidebar.mjs",
+      "src/frontend/desktop/ui/index.html",
+      "src/frontend/desktop/ui/progress.mjs",
+      "src/contracts/workflow-view.mjs",
+      "tests/sidebar.test.mjs",
+      "tests/parallel-execution-ui.test.mjs",
+      "tests/electron-smoke.mjs",
+      "tests/web-client.test.mjs",
+      "src/frontend/desktop/ui/archive.mjs",
+      "src/frontend/desktop/ui/settings-panel.mjs",
+      "scripts/release-all.mjs",
+      "package.json",
+      "tests/release-all.test.mjs",
+      "tests/orchestrated-execution.test.mjs",
+      "package-lock.json",
+      "src/frontend/plugin/index.html",
+      "src/frontend/plugin/app.mjs",
+      "tests/backend-upgrade.test.mjs",
+      "release-manifest.json"
+    ],
+    "documentation_paths": [
+      "docs/architecture/OVERVIEW.md",
+      "docs/modules/workflow-execution.md",
+      "docs/modules/desktop.md",
+      "docs/modules/control.md",
+      "docs/modules/release.md",
+      "docs/modules/project-compatibility.md",
+      "docs/modules/remote-access.md",
+      "docs/planning/backend-independence-followup.md",
+      "README.md",
+      "AGENTS.md",
+      "docs/planning/orchestrated-execution-next.md",
+      "docs/planning/orchestrated-execution-contracts.md",
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+      "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+      "packages/workflow-kit/docs/modules/parallel-assignments.md",
+      "packages/workflow-kit/README.md",
+      "docs/acceptance/orchestrated-execution.md"
+    ]
   },
-  "baseline_commit": null,
+  "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
   "current_task_id": null,
   "context_pack": {
     "documents": [
+      {
+        "path": "docs/planning/orchestrated-execution-next.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/orchestrated-execution-contracts.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/workflow-execution.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "required": false,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/desktop.md",
+        "required": false,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/control.md",
+        "required": false,
+        "revision": "WORKTREE"
+      },
       {
         "path": "docs/architecture/OVERVIEW.md",
         "required": true,
@@ -29,40 +185,759 @@
     "include_last_completed_task": false,
     "dependency_task_ids": []
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T001",
+        "role": "implementation"
+      },
+      "dependencies": [],
+      "functional_paths": [
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "packages/workflow-kit/src/lib/validate.mjs",
+        "packages/workflow-kit/src/lib/validation-rules.mjs",
+        "packages/workflow-kit/src/lib/extend-plan.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "packages/workflow-kit/src/lib/task-update.mjs",
+        "packages/workflow-kit/src/lib/plan-review.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/schemas/plan.schema.json",
+        "packages/workflow-kit/src/schemas/workflow.schema.json",
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/scripts/check-runtime-fixture.mjs",
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "kit-check",
+        "unit-all"
+      ],
+      "id": "T001",
+      "title": "Kit: orchestrated-план, обязательная DOCS и хвост",
+      "why": "Kit должен принимать и проверять план оркестратора до изменения выполнения.",
+      "acceptance_criteria": [
+        "execution_strategy orchestrated принимают схема, валидатор, plan:create, review:prepare/publish и plan:extend; execution_origin_session_id для него обязателен; sequential/parallel-планы валидируются как раньше",
+        "Для orchestrated DONE обычной задачи и DOCS требует роли integration с operation_id и source_commit, delivery-задачи — implementation",
+        "Для orchestrated Kit всегда добавляет DOCS: без delivery — последней, с delivery — перед ним; plan:extend ставит новые задачи перед DOCS",
+        "Поле release и delivery_tail в workflow.json: при release: true состав и порядок delivery после DOCS сверяются с delivery_tail, без настройки — отказ с объяснением; при release: false delivery-задач нет",
+        "parallel_safe: true в orchestrated-плане отклоняется при parallel_allowed false или max_workers 1; для прежних стратегий правило не применяется",
+        "context_pack задачи принимают plan:create, review:prepare, plan:extend и task:update (только не начатая задача)",
+        "Fixtures покрывают принятие, отказы и legacy-планы"
+      ],
+      "expected_commit_message": "feat: Kit принимает orchestrated-план с обязательной DOCS",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T002",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T001"
+      ],
+      "functional_paths": [
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "packages/workflow-kit/src/lib/assignment-contract.mjs",
+        "packages/workflow-kit/src/lib/task-integration.mjs",
+        "packages/workflow-kit/src/lib/signals.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/integration-proof.mjs",
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "packages/workflow-kit/src/schemas/plan.schema.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "kit-check",
+        "unit-all"
+      ],
+      "id": "T002",
+      "title": "Kit: main только для delivery, барьер, сигналы и очистка worktree",
+      "why": "Обычные задачи выполняются только исполнителями в worktree, оркестратор пишет в main лишь delivery, worktree не накапливаются.",
+      "acceptance_criteria": [
+        "В orchestrated-плане task:start в main обычной задачи и DOCS отклоняется до записи; delivery-задаче разрешён только при DONE всех остальных задач, без незавершённых назначений, при IDLE интеграции, чистом main и без транзакции",
+        "Назначение parallel_safe: false задачи выдаётся только при DONE всех предыдущих задач и без незавершённых назначений; до её INTEGRATED другие назначения отклоняются",
+        "После подтверждённого INTEGRATED worktree и влитая ветка удаляются без force; отказ удаления не отменяет интеграцию и помечает назначение для итоговой очистки; невлитые worktree не удаляются",
+        "Интеграция DOCS, удалившей required-документ с ревизией WORKTREE, переносит закрепление точной ревизии в общий план main; recovery main не ссылается на удалённый файл",
+        "Worktree DOCS без проверок создаётся без npm ci",
+        "assignment:cleanup удаляет оставшиеся worktree и ветки только INTEGRATED-назначений и перечисляет остальные; повтор безопасен",
+        "task:block сохраняет blocked_reason, задача остаётся IN_PROGRESS в worktree; assignment:message и plan:escalate пишут сигналы в журнал git-common-dir основного checkout без коммита, в том числе из worktree; повтор с тем же ID не дублирует",
+        "Fixture на настоящем Git проверяет отказы, барьер, удаление после слияния, очистку, сигналы, прерывание и повтор; plan:extend во время работы исполнителя сохраняет его задачу",
+        "Коммит delivery-задачи в main поверх merge-коммитов проходит HISTORY_NOT_LINEAR"
+      ],
+      "expected_commit_message": "feat: Kit ограничивает main delivery-задачами и чистит worktree",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T003",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T002"
+      ],
+      "functional_paths": [
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/installation-files.mjs",
+        "packages/workflow-kit/src/templates/AGENTS.md",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-project-recovery-fixture.mjs",
+        "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
+        "packages/workflow-kit/scripts/check-package.mjs",
+        "tests/workflow-kit-recovery.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/workflow-kit-source.test.mjs",
+        "tests/migration-compatibility.test.mjs"
+      ],
+      "documentation_paths": [
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/README.md"
+      ],
+      "verification_ids": [
+        "kit-check",
+        "unit-all",
+        "migration-compatibility"
+      ],
+      "id": "T003",
+      "title": "Kit: recovery по ролям и версия 1.8.0",
+      "why": "Каждая роль получает свой контекст; Kit обновляется в проектах без потери активного плана.",
+      "acceptance_criteria": [
+        "recover --role orchestrator|discussion даёт полный recovery с блоком роли; executor — служебную часть, задачу и только её context_pack; без --role — прежний recovery",
+        "recover --role executor берёт задачу из локального плана worktree; recovery оркестратора и чата обсуждения и status показывают работающих исполнителей и blocked_reason; recovery без роли для orchestrated-плана не предлагает task:start обычных задач",
+        ".workflow-temp/ в управляемой секции .gitignore и вне recovery, посторонних изменений, проверок коммита и pre-push; конфликт ручной правки секции проверен в upgrade-fixture",
+        "Версия Kit 1.8.0; upgrade с 1.7.0–1.7.3 сохраняет активный план и назначения",
+        "Новые контракты описаны в orchestrated-plans.md; все документы Kit не больше 28000 байт; recovery проекта Workflow Pilot укладывается в бюджет fixture"
+      ],
+      "expected_commit_message": "feat: Kit 1.8.0 с recovery по ролям",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T004",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T003"
+      ],
+      "functional_paths": [
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/control/projects/service.mjs",
+        "src/control/context/service.mjs",
+        "src/control/context/context-cache.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/facade.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/session-plans.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/control-facade.test.mjs",
+        "src/control/projects/workspace-deletion.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T004",
+      "title": "Control: роли сессий и хранилище",
+      "why": "Приложение назначает роль сессии и запрашивает recovery по роли.",
+      "acceptance_criteria": [
+        "Новая сессия без активного плана — кандидат-оркестратор без scope_id, при активном плане — discussion; recovery запрашивается с ролью, кеш контекста учитывает роль",
+        "После публикации orchestrated-плана кандидат из execution_origin_session_id получает scope_id плана; прочие кандидаты без scope_id и сессии без роли становятся discussion; оркестраторы прежних планов со своим scope_id не меняются; несовпадение даёт «Требует внимания»",
+        "Сессия хранит роль, оркестратор — scope_id и коммит закрытия плана; запись исполнителя INTEGRATED-назначения с удалённым worktree считается завершённой, открывает чат и не попадает в восстановление исполнителей; схема хранилища мигрирует с backup; для такой записи inspect и selectSession используют сохранённую проекцию без чтения диска, страница восстанавливается по chatUrl без повторной отправки контекста, inspectOrphan не считает её пропавшей",
+        "Архивирование и удаление оркестратора активного плана и архивирование проекта при активном плане отклоняются во всех путях; «Назначить оркестратором» доступно при потерянном оркестраторе и при несовпадении origin, выбор записывается в хранилище",
+        "Тесты покрывают роли, миграцию, запреты и назначение",
+        "Внешняя сессия плагина ChatGPT роли не получает",
+        "Тест: два кандидата и один оркестратор прежнего плана до и после публикации"
+      ],
+      "expected_commit_message": "feat: Control назначает роли сессий",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T005",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T004"
+      ],
+      "functional_paths": [
+        "src/control/workflow/execution-control.mjs",
+        "src/control/workflow/project-auto-plan.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/facade.mjs",
+        "src/contracts/desktop.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ipc.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/project-auto-plan.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/desktop-boundaries.test.mjs",
+        "src/control/workflow/auto-plan-state.mjs",
+        "src/control/workflow/project-session-auto-plan.mjs",
+        "src/control/projects/workspace-deletion.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T005",
+      "title": "Control: состояние кнопки выполнения",
+      "why": "Запуск, пауза и продолжение плана оркестратора хранятся в backend.",
+      "acceptance_criteria": [
+        "Состояния not-started, running, pausing, paused, complete и причина паузы хранятся по проекту и scope и переживают перезапуск backend; публикация выполнение не запускает",
+        "Команда кнопки проходит через allowlisted ui.invoke с lease; без опубликованного и согласованного плана — отказ",
+        "Прежний ProjectAutoPlan работает для legacy-планов без изменений; для orchestrated переключатель AutoPlan и ProjectAutoPlan не используются, основной чат не получает «Продолжай» AutoPlan",
+        "Каналы кнопки и «Назначить оркестратором» есть в контракте Desktop и preload; отказы архивирования оркестратора возвращаются через pilot:archive-session и окно архива",
+        "Состояние очищается при удалении проекта и восстанавливается при старте фоновой работы",
+        "Тесты переходов, отказов, перезапуска и границ preload"
+      ],
+      "expected_commit_message": "feat: Control хранит запуск и паузу плана",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T006",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T005"
+      ],
+      "functional_paths": [
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/parallel-execution-recovery.test.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "tests/execution-control.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T006",
+      "title": "Control: волны, delivery-фаза и очистка",
+      "why": "План оркестратора выполняется автоматически от первой задачи до очистки.",
+      "acceptance_criteria": [
+        "Каждая обычная задача и DOCS получают worktree-назначение и новый чат исполнителя; параллельные — до max_workers, последовательная — одна после барьера",
+        "Пауза прекращает только новые выдачи; продолжения работающих исполнителей и интеграция готовых источников идут дальше; «Продолжить» выдаёт первую не начатую задачу",
+        "Интеграция запускается только при остановленном исполнителе без активных команд; после INTEGRATED страница исполнителя закрывается, чат открывается снова по выбору сессии",
+        "Итоговое поручение оркестратору — после DONE всех обычных задач и DOCS, delivery-задачи TODO не считаются недостающими источниками; затем execution-control по одной отправляет delivery-поручения через путь отправки оркестратору с учётом паузы, затем поручение итоговой очистки и ответа",
+        "Проекция плана показывает число назначений, ожидающих очистки",
+        "Тесты: последовательная → параллельные → последовательная, лимит, пауза, delivery-фаза, перезапуск без повторного Send"
+      ],
+      "expected_commit_message": "feat: Control ведёт план оркестратора до очистки",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T007",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T006"
+      ],
+      "functional_paths": [
+        "src/control/workflow/plan-monitor.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "tests/plan-monitor.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/execution-control.test.mjs",
+        "src/execution/files/project-input-watch.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T007",
+      "title": "Control: сигналы и эскалация сбоев",
+      "why": "Сбой сначала исправляет исполнитель, затем оркестратор, затем решает пользователь.",
+      "acceptance_criteria": [
+        "task:block приводит к одному сообщению оркестратору с задачей, причиной и сессией исполнителя; assignment:message доставляется в чат исполнителя; доставка журналируется до Send и не повторяется после неизвестного исхода",
+        "plan:escalate ставит автопаузу с причиной escalation; UNKNOWN отправки, назначения, слияния или команды записи — автопаузу с причиной unknown без повторов",
+        "Конфликт и провал проверок интеграции передаются оркестратору как прежде; исправляющая задача через plan:extend подхватывается без паузы",
+        "Тесты покрывают каждый шаг цепочки",
+        "Наблюдатель файлов проекта видит журнал сигналов в git-common-dir основного checkout"
+      ],
+      "expected_commit_message": "feat: Control передаёт сбои оркестратору",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T008",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T007"
+      ],
+      "functional_paths": [
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/progress.mjs",
+        "src/contracts/workflow-view.mjs",
+        "src/backend/desktop-model.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/web-client.test.mjs",
+        "src/frontend/desktop/ui/archive.mjs",
+        "src/frontend/desktop/ui/settings-panel.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke"
+      ],
+      "id": "T008",
+      "title": "Дерево планов и кнопка выполнения в интерфейсе",
+      "why": "Пользователь видит планы и микрозадачи и управляет выполнением одной кнопкой.",
+      "acceptance_criteria": [
+        "Под проектом — оркестраторы и чаты обсуждения; под оркестратором — микрозадачи с меткой →/∥, состоянием и таймером; группа «Исполнители» только у legacy parallel-планов",
+        "Клик по начатой задаче открывает сессию исполнителя, по не начатой — карточку задачи в правой части",
+        "Шапка плана показывает одну кнопку с подписью по состоянию; у черновика, несогласованного и выполненного плана кнопки нет; переключатель AutoPlan скрыт для планов оркестратора",
+        "Оркестратор выполненного плана помечен «Выполнено» и после archive; меню «Назначить оркестратором» при потерянном оркестраторе",
+        "Тот же интерфейс в веб-клиенте iPad; кнопка требует права управления; jsdom-тесты и изолированный smoke",
+        "Строка оркестратора показывает назначения, ожидающие очистки",
+        "Микрозадачи архивированного плана показываются под оркестратором из плана на сохранённом коммите закрытия",
+        "Клик по задаче с несколькими исполнителями открывает последнюю сессию"
+      ],
+      "expected_commit_message": "feat: Дерево планов и кнопка выполнения",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T009",
+        "role": "implementation"
+      },
+      "dependencies": [],
+      "functional_paths": [
+        "scripts/release-all.mjs",
+        "package.json",
+        "tests/release-all.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "id": "T009",
+      "title": "Параллельная упаковка платформ в release-all",
+      "why": "Выпуск трёх ОС одной транзакцией быстрее за счёт параллельной упаковки.",
+      "acceptance_criteria": [
+        "Общие ресурсы раскладываются один раз; build:mac, build:win и build:linux в совместной сборке не повторяют stage-шаги и идут одновременно в отдельные папки",
+        "Ошибка любой платформы останавливает выпуск без частичного manifest; один manifest с одним sourceCommit; проверки пакетов не ослаблены",
+        "Тесты на заглушках платформ"
+      ],
+      "expected_commit_message": "feat: Параллельная упаковка платформ выпуска",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T010",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T008",
+        "T009"
+      ],
+      "functional_paths": [
+        "tests/orchestrated-execution.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-execution-next.md",
+        "docs/planning/orchestrated-execution-contracts.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "kit-check",
+        "electron-smoke",
+        "architecture",
+        "migration-compatibility",
+        "release-tooling"
+      ],
+      "id": "T010",
+      "title": "Проверить общий результат оркестрации",
+      "why": "Сквозная проверка всех слоёв перед выпуском.",
+      "acceptance_criteria": [
+        "Изолированный сценарий: orchestrated-план из нескольких волн проходит до конца по кнопке — исполнители в worktree, delivery-фаза оркестратора, удаление worktree и итоговая очистка — с паузой, блокировкой и эскалацией, без модельных ходов",
+        "Ограничения и pending живой приёмки записаны в спецификацию"
+      ],
+      "expected_commit_message": "test: Проверить общий результат оркестрации",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T011",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T010"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "id": "T011",
+      "title": "Подготовить версию 0.4.0",
+      "why": "Номер выпуска для этапа оркестрации.",
+      "acceptance_criteria": [
+        "Версия 0.4.0 согласована в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.4.0",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "DOCS",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T001",
+        "T002",
+        "T003",
+        "T004",
+        "T005",
+        "T006",
+        "T007",
+        "T008",
+        "T009",
+        "T010",
+        "T011"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "README.md",
+        "AGENTS.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/workflow-execution.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/release.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/remote-access.md",
+        "docs/planning/backend-independence-followup.md",
+        "docs/planning/orchestrated-execution-next.md",
+        "docs/planning/orchestrated-execution-contracts.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md"
+      ],
+      "verification_ids": [],
+      "id": "DOCS",
+      "title": "Актуализация всех документов проекта",
+      "why": "Перед выпуском сверить README, OVERVIEW, AGENTS и действующие контракты модулей с результатом; обновить устаревшее.",
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git",
+        "Pending живой приёмки перенесён в docs/acceptance/orchestrated-execution.md, включая обновление Kit проекта до 1.8.0 в приложении 0.4.0 и config:apply delivery_tail (three-platform-release → release-installed → github-release)"
+      ],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T012",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T011",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "id": "T012",
+      "title": "Собрать выпуск трёх ОС",
+      "why": "Полный комплект после DOCS из одного sourceCommit.",
+      "acceptance_criteria": [
+        "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне",
+        "Длительность сборки зафиксирована в отчёте задачи и сравнена с выпуском 0.3.1; manifest для этого не меняется"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.4.0 трёх ОС",
+      "verification_kind": "package",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T013",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T012",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "id": "T013",
+      "title": "Установить выпуск в Applications",
+      "why": "Обновить установленное приложение штатным installer.",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
+      ],
+      "expected_commit_message": "release: Установить 0.4.0 в Applications",
+      "verification_kind": "installed",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T014",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T013",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "github-release"
+      ],
+      "id": "T014",
+      "title": "Опубликовать GitHub Release",
+      "why": "Опубликовать проверенный комплект.",
+      "acceptance_criteria": [
+        "Тег v0.4.0 на sourceCommit, assets сверены по размеру и digest, remote main совпадает с local HEAD",
+        "Итоговый отчёт напоминает пользователю о pending-шагах: обновление Kit проекта до 1.8.0 в приложении 0.4.0 и config:apply delivery_tail"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.0",
+      "verification_kind": "package",
+      "parallel_safe": false
+    }
+  ],
   "blocked_reason": null,
   "user_decisions": [
     {
-      "id": "c8cbb7a9-f04a-40cb-bf7e-9fa6fb351432",
-      "text": "Прямое поручение пользователя 16.10.2026: доступ с iPad через Tailscale работает («Все сработало»); «этот большой план можно закрывать… да ладно, закрывай». Выпуски 0.3.0 и 0.3.1 приняты; кнопка «Взять управление» на Mac признана достаточной.",
-      "recorded_at": "2026-10-16T11:48:48.641Z"
+      "id": "78121853-4ef7-4bf1-8478-36ca445516a8",
+      "text": "Пользователь 16.10.2026 поручил реализовать оркестрацию выполнения по согласованной в диалоге спецификации; решения пользователя: все обычные задачи в worktree, delivery-хвост и итоговая очистка — оркестратор, удаление worktree после каждого проверенного слияния. Спецификацию и план проверил субагент Fable 5.1, затем Review Kit (ON). Версия выпуска 0.4.0.",
+      "recorded_at": "2026-10-16T15:59:33.235Z"
     }
   ],
-  "archived_scope_id": "workflow-pilot-remote-access"
+  "parallel_allowed": false,
+  "max_workers": 1,
+  "execution_strategy": "sequential",
+  "execution_reason": "Этап сам вводит оркестрованное выполнение, поэтому выполняется прежним последовательным циклом Kit в main одним агентом; задачи опираются на контракты предыдущих (Kit → Control → Frontend), модельные исполнители без поручения запрещены AGENTS."
 }
 ```
 <!-- workflow-state:end -->
 
 ## Состояние
 
-Execution Scope Status: NONE
+Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
-Scope: не создан
+Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 227
+Revision: 228
 
 ## Цель
 
-Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.
+Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.
 
 ## Критерии приёмки
 
+- R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id
+- R02 Kit принимает orchestrated-план с метками parallel_safe, всегда добавляет DOCS и проверяет delivery-хвост по delivery_tail при release: true
+- R03 Все обычные задачи и DOCS выполняются отдельными исполнителями в worktree с проверенной интеграцией; последовательная — одна после барьера; delivery-хвост выполняет оркестратор в main после всех остальных задач; worktree и ветка удаляются после проверенного слияния, итоговую очистку выполняет оркестратор
+- R04 Исполнитель получает служебную часть Kit, задачу и её context_pack; оркестратор и чат обсуждения — полный recovery с блоком роли; .workflow-temp/ вне Git и recovery
+- R05 Одна кнопка в шапке плана: «Начать выполнение плана» → «Пауза» → «Продолжить»; пауза останавливает только новые выдачи; состояние переживает перезапуск backend без повторного Send; работает с iPad при праве управления
+- R06 Сбой: исполнитель → task:block → оркестратор (интеграция, assignment:message, plan:extend) → plan:escalate и автопауза; UNKNOWN — сразу автопауза без повторов
+- R07 Дерево: оркестраторы и чаты обсуждения, микрозадачи под оркестратором; клик по начатой задаче — сессия исполнителя, по не начатой — карточка; «Выполнено» сохраняется после archive; оркестратор активного плана нельзя архивировать
+- R08 Выпуск трёх ОС упаковывает платформы параллельно внутри release-all из одного sourceCommit с одним manifest
+- R09 Legacy sequential/parallel-планы и донорские проекты работают по прежним правилам; Kit 1.7.x обновляется до 1.8.0 с активным планом
+- R10 DOCS, выпуск трёх ОС, установка в Applications и GitHub Release по обычному порядку; живую приёмку выполняет пользователь
 
 ## Микрозадачи
 
+Выполнение: sequential; разрешено: false; лимит: 1
+Причина: Этап сам вводит оркестрованное выполнение, поэтому выполняется прежним последовательным циклом Kit в main одним агентом; задачи опираются на контракты предыдущих (Kit → Control → Frontend), модельные исполнители без поручения запрещены AGENTS.
+
+- [TODO] T001: Kit: orchestrated-план, обязательная DOCS и хвост — Ожидает
+  - Git Commit: [PENDING] feat: Kit принимает orchestrated-план с обязательной DOCS
+  - Reference: workflow-pilot-orchestrated-execution / T001 / implementation
+  - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/validation-rules.mjs, packages/workflow-kit/src/lib/extend-plan.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/task-update.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/schemas/workflow.schema.json, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T002: Kit: main только для delivery, барьер, сигналы и очистка worktree — Ожидает
+  - Git Commit: [PENDING] feat: Kit ограничивает main delivery-задачами и чистит worktree
+  - Reference: workflow-pilot-orchestrated-execution / T002 / implementation
+  - Файлы: packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/integration-proof.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/schemas/plan.schema.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: T001
+- [TODO] T003: Kit: recovery по ролям и версия 1.8.0 — Ожидает
+  - Git Commit: [PENDING] feat: Kit 1.8.0 с recovery по ролям
+  - Reference: workflow-pilot-orchestrated-execution / T003 / implementation
+  - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/installation-files.mjs, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-package.mjs, tests/workflow-kit-recovery.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/workflow-kit-source.test.mjs, tests/migration-compatibility.test.mjs, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/README.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T002
+- [TODO] T004: Control: роли сессий и хранилище — Ожидает
+  - Git Commit: [PENDING] feat: Control назначает роли сессий
+  - Reference: workflow-pilot-orchestrated-execution / T004 / implementation
+  - Файлы: src/control/sessions/workspace-session.mjs, src/control/sessions/session-plans.mjs, src/control/projects/service.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, src/control/context/context-session.mjs, src/control/facade.mjs, tests/session-roles.test.mjs, tests/workspace-session.test.mjs, tests/session-plans.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, src/control/projects/workspace-deletion.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T003
+- [TODO] T005: Control: состояние кнопки выполнения — Ожидает
+  - Git Commit: [PENDING] feat: Control хранит запуск и паузу плана
+  - Reference: workflow-pilot-orchestrated-execution / T005 / implementation
+  - Файлы: src/control/workflow/execution-control.mjs, src/control/workflow/project-auto-plan.mjs, src/control/workflow/coordination.mjs, src/control/facade.mjs, src/contracts/desktop.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ipc.mjs, tests/execution-control.test.mjs, tests/project-auto-plan.test.mjs, tests/backend-desktop-model.test.mjs, tests/desktop-boundaries.test.mjs, src/control/workflow/auto-plan-state.mjs, src/control/workflow/project-session-auto-plan.mjs, src/control/projects/workspace-deletion.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T004
+- [TODO] T006: Control: волны, delivery-фаза и очистка — Ожидает
+  - Git Commit: [PENDING] feat: Control ведёт план оркестратора до очистки
+  - Reference: workflow-pilot-orchestrated-execution / T006 / implementation
+  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-projection.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-finalization.test.mjs, src/control/workflow/execution-control.mjs, tests/execution-control.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T005
+- [TODO] T007: Control: сигналы и эскалация сбоев — Ожидает
+  - Git Commit: [PENDING] feat: Control передаёт сбои оркестратору
+  - Reference: workflow-pilot-orchestrated-execution / T007 / implementation
+  - Файлы: src/control/workflow/plan-monitor.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, tests/plan-monitor.test.mjs, tests/parallel-execution.test.mjs, tests/execution-control.test.mjs, src/execution/files/project-input-watch.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T006
+- [TODO] T008: Дерево планов и кнопка выполнения в интерфейсе — Ожидает
+  - Git Commit: [PENDING] feat: Дерево планов и кнопка выполнения
+  - Reference: workflow-pilot-orchestrated-execution / T008 / implementation
+  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/progress.mjs, src/contracts/workflow-view.mjs, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/parallel-execution-ui.test.mjs, tests/electron-smoke.mjs, tests/web-client.test.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/settings-panel.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T007
+- [TODO] T009: Параллельная упаковка платформ в release-all — Ожидает
+  - Git Commit: [PENDING] feat: Параллельная упаковка платформ выпуска
+  - Reference: workflow-pilot-orchestrated-execution / T009 / implementation
+  - Файлы: scripts/release-all.mjs, package.json, tests/release-all.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T010: Проверить общий результат оркестрации — Ожидает
+  - Git Commit: [PENDING] test: Проверить общий результат оркестрации
+  - Reference: workflow-pilot-orchestrated-execution / T010 / implementation
+  - Файлы: tests/orchestrated-execution.test.mjs, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T008, T009
+- [TODO] T011: Подготовить версию 0.4.0 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.4.0
+  - Reference: workflow-pilot-orchestrated-execution / T011 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T010
+- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-orchestrated-execution / DOCS / implementation
+  - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/remote-access.md, docs/planning/backend-independence-followup.md, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011
+- [TODO] T012: Собрать выпуск трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.4.0 трёх ОС
+  - Reference: workflow-pilot-orchestrated-execution / T012 / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: T011, DOCS
+- [TODO] T013: Установить выпуск в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.4.0 в Applications
+  - Reference: workflow-pilot-orchestrated-execution / T013 / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: T012, DOCS
+- [TODO] T014: Опубликовать GitHub Release — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.0
+  - Reference: workflow-pilot-orchestrated-execution / T014 / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: T013, DOCS
 
 ## Context Pack For This Cycle
 
+- docs/planning/orchestrated-execution-next.md
+- docs/planning/orchestrated-execution-contracts.md
+- docs/modules/workflow-execution.md
+- packages/workflow-kit/docs/modules/parallel-assignments.md
+- packages/workflow-kit/docs/modules/workflow-kit-package.md
+- docs/modules/desktop.md
+- docs/modules/control.md
 - docs/architecture/OVERVIEW.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
