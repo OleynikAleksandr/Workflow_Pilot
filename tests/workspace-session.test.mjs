@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
-import { WorkspaceSessions, readWorkspace, normalizeChatUrl, conversationExperience, conversationUrlCompatibleWithExperience, activeSessionsNewestFirst } from '../src/control/sessions/workspace-session.mjs';
+import { WorkspaceSessions, unsentExecutor, readWorkspace, normalizeChatUrl, conversationExperience, conversationUrlCompatibleWithExperience, activeSessionsNewestFirst } from '../src/control/sessions/workspace-session.mjs';
 import { sessionExecutionMessage } from '../src/control/context/context-session.mjs';
 
 const directoryLink = (target, link) => fs.symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir');
@@ -49,6 +49,19 @@ test('an executor of an orchestrated plan works in Chat while its orchestrator u
   await fs.writeFile(store.file,JSON.stringify(raw));
   const restarted=new WorkspaceSessions(store.file);await restarted.load();
   assert.equal((await restarted.ensureExecutor(assignment,restarted.project(main.workspace))).experience,'chat');
+  // Restore of an executor that never received anything: Chat again, nothing is resent.
+  const saved=JSON.parse(await fs.readFile(store.file,'utf8'));
+  saved.projects.find(p=>p.workspace===worktree).sessions[0].experience='work';
+  await fs.writeFile(store.file,JSON.stringify(saved));
+  const reloaded=new WorkspaceSessions(store.file);await reloaded.load();
+  const unsent=reloaded.project(worktree);
+  assert.equal(unsentExecutor(unsent),true);
+  assert.equal((await reloaded.resetUnsentExecutor(worktree,unsent.sessionId)).experience,'chat');
+  assert.equal(unsentExecutor({...unsent,attempt:{state:'prepared',sendStartedAtMs:null}}),true,'a prepared but unsent context is still unsent');
+  for(const started of [{chatUrl:'https://chatgpt.com/c/x'},{manualStart:true},{attempt:{state:'sending',sendStartedAtMs:1}},{attempt:{state:'unknown'}}])
+    assert.equal(unsentExecutor({...unsent,...started}),false,JSON.stringify(started));
+  await reloaded.updateSession(worktree,unsent.sessionId,{attempt:{protocol:'x',requestId:'r',state:'sent',sentAtMs:1}}).catch(()=>{});
+  if(reloaded.project(worktree).attempt)await assert.rejects(reloaded.resetUnsentExecutor(worktree,unsent.sessionId),{code:'ASSIGNMENT_OWNER'});
 });
 
 test('characterization: five missing executor folders remain recovery records after their parent disappears',async t=>{

@@ -23,6 +23,7 @@ export class ProjectsService {
   ensureExecutor(...args) { return this.#store.ensureExecutor(...args); }
   saveExecutorAutomation(...args) { return this.#store.saveExecutorAutomation(...args); }
   saveExecutorTime(...args) { return this.#store.saveExecutorTime(...args); }
+  resetUnsentExecutor(...args) { return this.#store.resetUnsentExecutor(...args); }
   setExpanded(...args) { return this.#store.setExpanded(...args); }
   setProjectDisplayName(...args) { return this.#store.setProjectDisplayName(...args); }
   renameSession(...args) { return this.#store.renameSession(...args); }

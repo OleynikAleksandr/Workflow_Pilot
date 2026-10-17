@@ -14,6 +14,7 @@ import { reviewBlocksExecution } from './auto-plan-state.mjs';
 import { configureExecutor, executorPageState } from './executor-session.mjs';
 import { ProjectInputWatch, ChildCommandWatches, chatGPTEntrypoint } from '../../execution/facade.mjs';
 import { removeProjectSettings, belongsToProject } from '../projects/project-state-cleanup.mjs';
+import { unsentExecutor } from '../sessions/workspace-session.mjs';
 
 // The 0.6.115 coordination rules live here. Desktop supplies presentation/readiness and persistence.
 export function createWorkflowCoordination({store, setup:workspaceSetup, plans:sessionPlans,
@@ -100,14 +101,17 @@ const storedOrchestrator=(workspace,scope)=>store.snapshot().projects.find(p=>p.
   .find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId??null;
 async function restoreExecutionPage(project,assignment=null) {
   if(liveRecord(project)?.ready&&(!assignment||liveRecord(project).executor))return project;
-  if(!project?.chatUrl||(!project.manualStart&&!project.attempt?.sendStartedAtMs&&!['sent','acknowledged'].includes(project.attempt?.state)))
+  // An executor that never received anything opens a fresh Chat draft and gets its task as usual.
+  const unsent=!!assignment&&unsentExecutor(project);
+  if(!unsent&&(!project?.chatUrl||(!project.manualStart&&!project.attempt?.sendStartedAtMs&&!['sent','acknowledged'].includes(project.attempt?.state))))
     throw Object.assign(new Error('Сохранённый адрес и отправка не подтверждены. Откройте соответствующий чат и проверьте его; автоматического Send нет.'),{code:'EXECUTOR_CHAT_UNKNOWN'});
+  if(unsent)project=await store.resetUnsentExecutor(project.workspace,project.sessionId);
   const record=liveSessions.ensure(project);
   if(assignment)configureExecutor(record,{store,enabled:executorEnabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
     inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
     signal:()=>{void execution.signal(project.parentWorkspace);},
     log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});
-  if(!record.ready){record.ready=true;await liveSessions.navigate(record,project.chatUrl);}
+  if(!record.ready||unsent){record.ready=true;await liveSessions.navigate(record,project.chatUrl??chatGPTEntrypoint(project.experience??'chat'),{freshDraft:unsent});}
   return project;
 }
 const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelExecutionBook,

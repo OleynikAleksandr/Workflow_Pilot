@@ -184,6 +184,10 @@ export function applySessionRoles(project) {
     ? 'ORCHESTRATOR_LOST' : 'ORIGIN_MISMATCH';
   return changed;
 }
+// An executor chat that never received anything: no address, no started send, no manual start.
+// Opening it again cannot repeat a message, so it is restarted instead of being treated as unknown.
+export const unsentExecutor = session => !!session?.assignmentId && !session.chatUrl && !session.manualStart
+  && !session.attempt?.sendStartedAtMs && !['sending', 'sent', 'acknowledged', 'unknown'].includes(session.attempt?.state);
 const activeOrchestrator = (project, session) => session.role === 'orchestrator' && !!session.orchestratorScopeId
   && session.orchestratorScopeId === project.scopeId && activeScope(project.scopeStatus);
 const invalid = () => new WorkspaceError('SESSIONS_INVALID', 'Формат сохранённых проектов не поддерживается. Исходный файл сохранён.');
@@ -736,6 +740,17 @@ export class WorkspaceSessions {
       if(!session.assignmentId||Object.keys(patch).some(k=>!['autoPlanCheckpoint','automationCheckpoint'].includes(k)))
         throw new WorkspaceError('ASSIGNMENT_OWNER','Нет такого исполнителя.');
       session.executionAutomation={...session.executionAutomation,...copy(patch)};
+    });
+  }
+
+  // An unsent executor of an orchestrated plan restarts in Chat (0.4.0–0.4.1 saved it in Work).
+  resetUnsentExecutor(workspace,sessionId) {
+    return this.mutate(data=>{
+      const project=data.projects.find(p=>p.workspace===workspace),session=project?.sessions.find(s=>s.sessionId===sessionId);
+      if(!session||!unsentExecutor(session))throw new WorkspaceError('ASSIGNMENT_OWNER','Исполнитель уже начал работу или не найден.');
+      const parent=data.projects.find(p=>p.workspace===project.parentWorkspace&&!p.parentWorkspace);
+      if(parent?.sessions.find(s=>s.sessionId===session.executionOriginSessionId)?.role==='orchestrator')session.experience='chat';
+      return currentView(project,sessionId);
     });
   }
 

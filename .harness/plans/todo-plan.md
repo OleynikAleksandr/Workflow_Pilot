@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 314,
+  "plan_revision": 316,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1806,7 +1806,8 @@
         "src/control/workflow/coordination.mjs",
         "src/control/sessions/workspace-session.mjs",
         "tests/workspace-session.test.mjs",
-        "tests/orchestrated-execution.test.mjs"
+        "tests/orchestrated-execution.test.mjs",
+        "src/control/projects/service.mjs"
       ],
       "documentation_paths": [
         "docs/planning/orchestrated-archive-recovery.md"
@@ -1820,14 +1821,20 @@
         "Исполнитель с адресом чата или начатой отправкой автоматически не переотправляется"
       ],
       "expected_commit_message": "fix: Исполнитель без отправки перезапускается в Chat",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T031",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/workflow/coordination.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/projects/service.mjs",
+        "tests/workspace-session.test.mjs"
+      ]
     },
     {
       "id": "T032",
@@ -2009,7 +2016,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 314
+Revision: 316
 
 ## Цель
 
@@ -2243,10 +2250,10 @@ Revision: 314
   - Файлы: src/control/sessions/workspace-session.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, tests/workspace-session.test.mjs, tests/execution-control.test.mjs, tests/sidebar.test.mjs, tests/session-roles.test.mjs, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T031: Исполнитель без отправки перезапускается — Ожидает
-  - Git Commit: [PENDING] fix: Исполнитель без отправки перезапускается в Chat
+- [DONE] T031: Исполнитель без отправки перезапускается — Завершено
+  - Git Commit: [DONE] fix: Исполнитель без отправки перезапускается в Chat
   - Reference: workflow-pilot-orchestrated-execution / T031 / implementation
-  - Файлы: src/control/workflow/coordination.mjs, src/control/sessions/workspace-session.mjs, tests/workspace-session.test.mjs, tests/orchestrated-execution.test.mjs, docs/planning/orchestrated-archive-recovery.md
+  - Файлы: src/control/workflow/coordination.mjs, src/control/sessions/workspace-session.mjs, tests/workspace-session.test.mjs, tests/orchestrated-execution.test.mjs, src/control/projects/service.mjs, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: T030
 - [TODO] T032: Подготовить версию 0.4.3 — Ожидает
