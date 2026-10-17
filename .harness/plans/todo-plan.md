@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 436,
+  "plan_revision": 438,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -227,8 +227,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T004",
@@ -259,7 +259,11 @@
         "Встроенное окно и HTTP-клиент на одной fixture-службе: выбор сессии, отправка, закрытие окна во время работы, повторное открытие",
         "Ограничения и pending живой приёмки записаны в спецификацию"
       ],
-      "expected_commit_message": "test: Проверить встроенное окно и HTTP-клиент"
+      "expected_commit_message": "test: Проверить встроенное окно и HTTP-клиент",
+      "actual_files": [
+        "docs/planning/native-window.md",
+        "tests/backend-native-window.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -434,7 +438,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 436
+Revision: 438
 
 ## Цель
 
@@ -458,8 +462,8 @@ Revision: 436
   - Git Commit: [DONE] feat: Запуск встроенного окна и окно через HTTP
   - Reference: workflow-pilot-native-window / T003 / implementation
   - Файлы: src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/backend/main.mjs, src/backend/status-menu.mjs, src/backend/native-window.mjs, tests/launch-mode.test.mjs, tests/backend-native-window.test.mjs, src/backend/operations.mjs, src/contracts/backend.mjs, src/main.mjs, tests/backend-upgrade.test.mjs, docs/planning/native-window.md
-- [TODO] T004: Проверить оба режима вместе — Ожидает
-  - Git Commit: [PENDING] test: Проверить встроенное окно и HTTP-клиент
+- [DONE] T004: Проверить оба режима вместе — Завершено
+  - Git Commit: [DONE] test: Проверить встроенное окно и HTTP-клиент
   - Reference: workflow-pilot-native-window / T004 / implementation
   - Файлы: tests/electron-smoke.mjs, tests/backend-native-window.test.mjs, docs/planning/native-window.md
 - [TODO] T005: Подготовить версию 0.5.0 — Ожидает
