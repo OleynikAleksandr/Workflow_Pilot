@@ -120,7 +120,7 @@ export function startTask(root, taskId, expectedRevision) {
     noTransaction(root); assertSingleWriter(root, PLAN); const { plan, config } = validate(root); revision(plan, expectedRevision);
     const assignment = assertAssignment(root, plan, {ready:true});
     check(plan.execution_strategy !== 'parallel' || assignment, 'PARALLEL_MAIN_READ_ONLY',
-      'Основной parallel-план выполняют назначенные исполнители. Не начинайте task:start в main; запуском управляет AutoPlan проекта. Уже начатую задачу сохраняет assignment:handoff.');
+      'Основной parallel-план выполняют назначенные исполнители. Не начинайте task:start в main; запуском управляет кнопка выполнения плана пользователя. Уже начатую задачу сохраняет assignment:handoff.');
     check(plan.execution_scope_status === 'ACTIVE', 'SCOPE_NOT_ACTIVE', 'Реализация разрешена только в ACTIVE scope.');
     const task = plan.tasks.find(t => t.id === taskId);
     check(task, 'UNKNOWN_TASK', 'Задача не найдена: ' + taskId);

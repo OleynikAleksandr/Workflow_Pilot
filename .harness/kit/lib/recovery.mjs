@@ -258,7 +258,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
     else if (isOrchestratedPlan(plan) && !plan.assignment) continuation = role==='discussion'
       ? 'Чат обсуждения: обсуждайте с пользователем, план и задачи не меняйте.'
       : 'План оркестратора выполняет приложение Workflow Pilot по кнопке пользователя: обычные задачи и DOCS — исполнители в worktree. Не начинайте их через task:start в main; delivery-задачи и assignment:cleanup — по поручению приложения.';
-    else if (plan.execution_strategy==='parallel' && !plan.assignment) continuation = 'Основной чат ведёт планирование и исправление интеграций. Все задачи, включая общую основу и исключительные, выполняют отдельные назначения Web Pilot. Не вызывайте task:start/commit задачи в main. AutoPlan выбранного проекта управляет запуском. Если осталась прежняя начатая задача main, приложение сохраняет её через assignment:handoff; при блокировке сообщите точную причину, не удаляйте правки.';
+    else if (plan.execution_strategy==='parallel' && !plan.assignment) continuation = 'Основной чат ведёт планирование и исправление интеграций. Все задачи, включая общую основу и исключительные, выполняют отдельные назначения Web Pilot. Не вызывайте task:start/commit задачи в main. Запуском управляет пользователь кнопкой выполнения плана в Workflow Pilot. Если осталась прежняя начатая задача main, приложение сохраняет её через assignment:handoff; при блокировке сообщите точную причину, не удаляйте правки.';
     else continuation = (plan.current_task_id?'Продолжить ':'Начать через task:start ')+(task?.id??'задачу после уточнения зависимостей')+'.';
     const units = [];
     const add = (label,text,metadata={}) => units.push({label,text,...metadata});
