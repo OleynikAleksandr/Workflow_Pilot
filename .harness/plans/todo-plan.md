@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 417,
+  "plan_revision": 419,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -1018,13 +1018,20 @@
         "Версия 0.4.9 в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.4.9",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T019",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-4",
@@ -1155,7 +1162,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 417
+Revision: 419
 
 ## Цель
 
@@ -1251,8 +1258,8 @@ Revision: 417
   - Git Commit: [DONE] feat: Выполненная задача to-do plan оставляет оркестратора
   - Reference: workflow-pilot-0-4-6 / T018 / implementation
   - Файлы: src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/modules/orchestrated-execution.md
-- [TODO] T019: Подготовить версию 0.4.9 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.4.9
+- [DONE] T019: Подготовить версию 0.4.9 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.4.9
   - Reference: workflow-pilot-0-4-6 / T019 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
 - [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
