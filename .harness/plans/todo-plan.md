@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 438,
+  "plan_revision": 440,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -266,8 +266,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T005",
@@ -297,7 +297,14 @@
       "acceptance_criteria": [
         "Версия 0.5.0 в package/lock и панели плагина"
       ],
-      "expected_commit_message": "feat: Подготовить версию 0.5.0"
+      "expected_commit_message": "feat: Подготовить версию 0.5.0",
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -438,7 +445,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 438
+Revision: 440
 
 ## Цель
 
@@ -466,8 +473,8 @@ Revision: 438
   - Git Commit: [DONE] test: Проверить встроенное окно и HTTP-клиент
   - Reference: workflow-pilot-native-window / T004 / implementation
   - Файлы: tests/electron-smoke.mjs, tests/backend-native-window.test.mjs, docs/planning/native-window.md
-- [TODO] T005: Подготовить версию 0.5.0 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.5.0
+- [DONE] T005: Подготовить версию 0.5.0 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.5.0
   - Reference: workflow-pilot-native-window / T005 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/native-window.md
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
