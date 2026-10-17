@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 413,
+  "plan_revision": 414,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -127,6 +127,11 @@
       },
       {
         "path": "docs/modules/desktop.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/orchestrated-execution.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -948,6 +953,38 @@
         "role": "implementation"
       },
       "actual_files": []
+    },
+    {
+      "id": "T018",
+      "title": "Выполненная задача to-do plan оставляет оркестратора",
+      "why": "Выполненная задача to-do plan оставляет оркестратора",
+      "dependencies": [],
+      "functional_paths": [
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/electron-smoke.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/orchestrated-execution.md"
+      ],
+      "verification_ids": [
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Строка выполненной задачи to-do plan не открывает сессию исполнителя; справа остаётся оркестратор",
+        "Выбор исполнителя, чей worktree удалён (в том числе сохранённый выбор после перезапуска), открывает оркестратора его плана без ошибки ENOENT",
+        "Начатая задача по-прежнему открывает своего исполнителя"
+      ],
+      "expected_commit_message": "feat: Выполненная задача to-do plan оставляет оркестратора",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T018",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -965,10 +1002,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 413
+Revision: 414
 
 ## Цель
 
@@ -1060,6 +1097,10 @@ Revision: 413
   - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.8
   - Reference: workflow-pilot-0-4-6 / T017 / implementation
   - Файлы: release-manifest.json
+- [TODO] T018: Выполненная задача to-do plan оставляет оркестратора — Ожидает
+  - Git Commit: [PENDING] feat: Выполненная задача to-do plan оставляет оркестратора
+  - Reference: workflow-pilot-0-4-6 / T018 / implementation
+  - Файлы: src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, docs/modules/orchestrated-execution.md
 
 ## Context Pack For This Cycle
 
@@ -1067,5 +1108,6 @@ Revision: 413
 - docs/architecture/OVERVIEW.md
 - docs/planning/no-autoplan.md
 - docs/modules/desktop.md
+- docs/modules/orchestrated-execution.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
