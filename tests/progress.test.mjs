@@ -13,7 +13,10 @@ test('operations show stages; idle, errors and user input waits never spin',()=>
   assert.equal(operationLabel({context:{phase:'sending'}}),'Отправляем контекст');
   assert.equal(operationLabel({context:{phase:'preparing-message'}}),'Вставляем контекст в сообщение');
   assert.equal(operationLabel({context:{phase:'sending',contextMode:'mcp'}}),'Отправляем контекст');
-  assert.equal(operationLabel({pageLoading:true}),'Открываем ChatGPT');
+  // Navigation never shows a notice: the chat pane shows the page and the sidebar stays still.
+  assert.equal(operationLabel({pageLoading:true}),null);
+  for(const action of ['selectSession','selectWorkspace','setExpanded','setTheme','closeSettings'])
+    assert.equal(operationLabel({pageLoading:true},action),null,action);
   assert.equal(operationLabel({setup:{phase:'applying'}}),'Подготавливаем проект');
   assert.equal(operationLabel({context:{phase:'delivered'},contextPreparation:{busy:true}}),'Подготавливаем контекст заранее');
   assert.equal(operationLabel({context:{phase:'error'},contextPreparation:{busy:true}}),null);
@@ -25,7 +28,7 @@ test('progress persists timer across re-renders and clears it on completion or d
   const dom=new JSDOM('<div id="progress" role="status" aria-live="polite"></div>');
   const element=dom.window.document.getElementById('progress');
   let clock=0, tick, schedules=0,cancelled=0;
-  const p=createProgress(element,{now:()=>clock,schedule:fn=>{tick=fn;schedules++;return 1;},cancel:()=>cancelled++});
+  const p=createProgress(element,{now:()=>clock,schedule:fn=>{tick=fn;schedules++;return 1;},cancel:()=>cancelled++,delay:0});
   assert.equal(element.hidden,true);
   p.show('Подготавливаем контекст');assert.equal(element.hidden,false);assert.equal(schedules,1);
   clock=2400;tick();assert.equal(element.querySelector('.operation-elapsed').textContent,'2 с');
@@ -42,7 +45,7 @@ test('Send completion and old unknown attempts hide the progress bar and stop it
     const dom=new JSDOM('<div id="progress"></div>');
     const element=dom.window.document.getElementById('progress');
     let cancelled=0;
-    const progress=createProgress(element,{schedule:()=>1,cancel:()=>cancelled++});
+    const progress=createProgress(element,{schedule:()=>1,cancel:()=>cancelled++,delay:0});
     progress.show(operationLabel({context:{phase:'sending'}}));
     assert.equal(element.hidden,false);
     progress.show(operationLabel({context:{phase},contextPreparation:{busy:true}}));
@@ -51,4 +54,21 @@ test('Send completion and old unknown attempts hide the progress bar and stop it
     assert.equal(element.querySelector('.operation-elapsed').textContent,'');
     progress.destroy();dom.window.close();
   }
+});
+
+test('A short operation never shows a notice; a long one appears after the delay and keeps its clock',()=>{
+  const dom=new JSDOM('<div id="progress"></div>');
+  const element=dom.window.document.getElementById('progress');
+  let clock=0,deferred=null,undeferred=0,schedules=0;
+  const p=createProgress(element,{now:()=>clock,schedule:()=>{schedules++;return 1;},cancel:()=>{},
+    defer:(fn,ms)=>{assert.equal(ms,1000);deferred=fn;return 7;},undefer:id=>{assert.equal(id,7);undeferred++;}});
+  p.show('Создаём сессию');assert.equal(element.hidden,true);assert.equal(schedules,0);
+  p.show(null);assert.equal(undeferred,1);assert.equal(element.hidden,true);
+  p.show('Удаляем проект с диска');clock=1000;deferred();
+  assert.equal(element.hidden,false);assert.equal(schedules,1);
+  assert.equal(element.querySelector('.operation-elapsed').textContent,'1 с');
+  // A later stage of a visible operation replaces the text without hiding it.
+  p.show('Завершаем очистку');assert.equal(element.hidden,false);assert.equal(schedules,2);
+  p.destroy();assert.equal(element.hidden,true);
+  dom.window.close();
 });

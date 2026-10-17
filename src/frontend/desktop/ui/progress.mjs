@@ -1,6 +1,6 @@
 const actionLabels = {
   runDoctor: 'Проверяем и восстанавливаем проект', continueDoctor: 'Возвращаемся к работе', reviewDoctorProject: 'Проверяем папку',
-  newSession: 'Создаём сессию', selectSession: 'Открываем сессию', selectWorkspace: 'Открываем проект',
+  newSession: 'Создаём сессию',
   reload: 'Обновляем ChatGPT', retry: 'Обновляем контекст', returnToChat: 'Возвращаемся к чату',
   previewNew: 'Проверяем новый проект',
   applySetup: 'Подготавливаем проект', refreshSetup: 'Проверяем папку',
@@ -8,12 +8,12 @@ const actionLabels = {
   openArchive: 'Открываем архив', restore: 'Восстанавливаем проекты', restoreSessions: 'Восстанавливаем сессии',
   forget: 'Убираем проекты из списка', deleteSessions: 'Удаляем локальные сессии',
   previewDelete: 'Проверяем содержимое папки', deleteProject: 'Удаляем проект с диска',
-  recoverDeletions: 'Завершаем очистку', setTheme: 'Меняем оформление',
-  setHideToolCalls: 'Обновляем отображение', copyWorkspacePath: 'Копируем путь', copyExternalClientLine: 'Копируем строку',
-  closeSettings: 'Закрываем настройки', cancelSetup: 'Завершаем подготовку',
-  cancelDelete: 'Отменяем удаление', beginCreate: 'Открываем создание проекта',
-  setExpanded: 'Обновляем список сессий', setFirstSessionExperience: 'Выбираем тип сессии',
+  recoverDeletions: 'Завершаем очистку',
+  cancelSetup: 'Завершаем подготовку', cancelDelete: 'Отменяем удаление',
 };
+// Selecting a project or session, loading its ChatGPT page and other instant UI
+// steps show no notice: the chat pane itself shows the page, and a notice would
+// only shift the sidebar.
 const phaseLabels = {
   preparing: 'Проверяем подключение и службы', 'loading-context': 'Подготавливаем контекст',
   'preparing-message': 'Вставляем контекст в сообщение', sending: 'Отправляем контекст',
@@ -27,7 +27,6 @@ export function operationLabel(state = {}, action = null) {
   if (state.setup?.phase === 'checking') return 'Проверяем папку проекта';
   if (state.setup?.phase === 'applying') return 'Подготавливаем проект';
   if (state.startup?.active) return state.startup.busy ? (state.startup.phase === 'preparing' ? 'Готовим компоненты на компьютере' : state.startup.phase === 'configuring' ? 'Настраиваем подключение' : 'Проверяем готовность') : null;
-  if (state.pageLoading) return 'Открываем ChatGPT';
   if (action && phaseLabel(state.context) && !state.context?.error) return phaseLabel(state.context);
   if (action) return actionLabels[action] ?? null; // Native file dialogs already show what they await.
   if (state.startupError || state.context?.error || state.setup || state.settings) return null;
@@ -36,24 +35,33 @@ export function operationLabel(state = {}, action = null) {
   if (state.contextPreparation?.busy) return 'Подготавливаем контекст заранее';
   return null;
 }
-export function createProgress(element, { now = Date.now, schedule = setInterval, cancel = clearInterval } = {}) {
+// A notice appears only when an operation outlasts `delay`, so short steps never
+// flash a line nobody can read and never move the sidebar.
+export function createProgress(element, { now = Date.now, schedule = setInterval, cancel = clearInterval,
+  defer = setTimeout, undefer = clearTimeout, delay = 1000 } = {}) {
   const document = element.ownerDocument;
   const spinner = document.createElement('span'); spinner.className = 'operation-spinner'; spinner.setAttribute('aria-hidden','true');
   const label = document.createElement('span'); label.className = 'operation-label';
   const elapsed = document.createElement('span'); elapsed.className = 'operation-elapsed'; elapsed.setAttribute('aria-hidden','true');
   element.replaceChildren(spinner,label,elapsed); element.hidden = true;
-  let current = null, started = 0, timer = null;
+  let current = null, started = 0, timer = null, pending = null;
   const update = () => { elapsed.textContent = Math.floor((now()-started)/1000) + ' с'; };
+  const stop = () => {
+    if (timer !== null) cancel(timer);
+    if (pending !== null) undefer(pending);
+    timer = null; pending = null;
+  };
+  const reveal = () => { pending = null; element.hidden = false; update(); timer = schedule(update,1000); };
   return {
     show(text) {
-      if (text === current) return;
-      current = text || null;
-      if (timer !== null) cancel(timer);
-      timer = null; element.hidden = !current;
-      if (!current) { label.textContent = ''; elapsed.textContent = ''; return; }
-      label.textContent = current; started = now(); update();
-      timer = schedule(update,1000);
+      if ((text || null) === current) return;
+      const shown = current !== null && !element.hidden;
+      current = text || null; stop();
+      if (!current) { element.hidden = true; label.textContent = ''; elapsed.textContent = ''; return; }
+      label.textContent = current; started = now();
+      // A stage change of an already visible operation stays visible.
+      if (shown || delay <= 0) reveal(); else { element.hidden = true; pending = defer(reveal, delay); }
     },
-    destroy() { if (timer !== null) cancel(timer); timer = null; current = null; element.hidden = true; },
+    destroy() { stop(); current = null; element.hidden = true; },
   };
 }

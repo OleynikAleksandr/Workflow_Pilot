@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 400,
+  "plan_revision": 402,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -776,13 +776,19 @@
         "Плашка прогресса появляется только у операций дольше секунды"
       ],
       "expected_commit_message": "feat: Навигация без плашек прогресса и сдвига сайдбара",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T013",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "src/frontend/desktop/ui/progress.mjs",
+        "tests/progress.test.mjs",
+        "tests/electron-smoke.mjs",
+        "docs/modules/desktop.md"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -800,10 +806,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 400
+Revision: 402
 
 ## Цель
 
@@ -871,8 +877,8 @@ Revision: 400
   - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.7
   - Reference: workflow-pilot-0-4-6 / T012 / implementation
   - Файлы: release-manifest.json
-- [TODO] T013: Навигация без плашек прогресса и сдвига сайдбара — Ожидает
-  - Git Commit: [PENDING] feat: Навигация без плашек прогресса и сдвига сайдбара
+- [DONE] T013: Навигация без плашек прогресса и сдвига сайдбара — Завершено
+  - Git Commit: [DONE] feat: Навигация без плашек прогресса и сдвига сайдбара
   - Reference: workflow-pilot-0-4-6 / T013 / implementation
   - Файлы: src/frontend/desktop/ui/progress.mjs, tests/progress.test.mjs, tests/electron-smoke.mjs, docs/modules/desktop.md
 

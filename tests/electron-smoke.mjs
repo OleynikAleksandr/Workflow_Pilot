@@ -1074,8 +1074,14 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     ? realReady(workspace,options) : new Promise((resolve,reject)=>readiness.push({resolve,reject}));
   workspaceSetup.ready = holdOpeningReadiness;
   const choose = sessionId => sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)}, ${JSON.stringify(sessionId)})`);
+  // Switching sessions shows no notice above the list and never moves it (0.4.8).
+  const sidebarStill = () => sidebar.executeJavaScript(`(() => ({progress:document.getElementById('operation-progress').hidden,
+    top:Math.round(document.getElementById('projects').getBoundingClientRect().top)}))()`);
+  const listBefore = await sidebarStill();
   await choose(first.sessionId); await choose(fourth.sessionId); await choose(first.sessionId);
+  assert.deepEqual(await sidebarStill(), listBefore, 'opening a session keeps the sidebar still');
   await waitFor(() => !snapshot().pageLoading, 'saved chat before readiness', snapshot);
+  assert.deepEqual(await sidebarStill(), listBefore, 'loading the chat keeps the sidebar still');
   assert.equal(readiness.length, 3); assert.equal(snapshot().workspaceHealth.phase, 'checking');
   assert.equal(snapshot().selected.sessionId, first.sessionId); assert.ok(snapshot().selected.planView);
   assert.equal(controller.active?.sessionId,first.sessionId,'existing live controller survives selection readiness checks'); assert.equal(packetLoads, loadsBeforeNavigation);
