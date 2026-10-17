@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 370,
+  "plan_revision": 372,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -84,8 +84,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T002",
@@ -115,7 +115,14 @@
       "acceptance_criteria": [
         "Версия 0.4.6 в package/lock и панели плагина"
       ],
-      "expected_commit_message": "feat: Подготовить версию 0.4.6"
+      "expected_commit_message": "feat: Подготовить версию 0.4.6",
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -253,7 +260,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 370
+Revision: 372
 
 ## Цель
 
@@ -269,8 +276,8 @@ Revision: 370
   - Git Commit: [DONE] fix: Раскладка строки списка проектов
   - Reference: workflow-pilot-0-4-6 / T001 / implementation
   - Файлы: src/frontend/desktop/ui/index.html, tests/electron-smoke.mjs, docs/planning/project-list-layout.md
-- [TODO] T002: Подготовить версию 0.4.6 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.4.6
+- [DONE] T002: Подготовить версию 0.4.6 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.4.6
   - Reference: workflow-pilot-0-4-6 / T002 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/project-list-layout.md
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
