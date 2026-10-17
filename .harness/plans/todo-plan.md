@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 320,
+  "plan_revision": 321,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -220,7 +220,7 @@
       {
         "path": "docs/planning/orchestrated-archive-recovery.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "0ae5407c6ffffa5363df8b1a55813d6a599e8504"
       }
     ],
     "include_last_completed_task": false,
@@ -2024,7 +2024,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 320
+Revision: 321
 
 ## Цель
 
