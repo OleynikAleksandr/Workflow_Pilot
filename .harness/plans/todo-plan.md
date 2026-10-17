@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 399,
+  "plan_revision": 400,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -76,7 +76,9 @@
       "tests/settings-parallel-execution.test.mjs",
       "tests/workspace-deletion.test.mjs",
       "tests/workspace-session.test.mjs",
-      "tests/legacy-continuation-keys.test.mjs"
+      "tests/legacy-continuation-keys.test.mjs",
+      "src/frontend/desktop/ui/progress.mjs",
+      "tests/progress.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/project-list-layout.md",
@@ -122,6 +124,11 @@
         "path": "docs/planning/no-autoplan.md",
         "required": true,
         "revision": "4fea65372b7e3dcd9caeeabc21d50c437e64ec89"
+      },
+      {
+        "path": "docs/modules/desktop.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -746,6 +753,36 @@
         "role": "implementation"
       },
       "actual_files": []
+    },
+    {
+      "id": "T013",
+      "title": "Навигация без плашек прогресса и сдвига сайдбара",
+      "why": "Навигация без плашек прогресса и сдвига сайдбара",
+      "dependencies": [],
+      "functional_paths": [
+        "src/frontend/desktop/ui/progress.mjs",
+        "tests/progress.test.mjs",
+        "tests/electron-smoke.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Клик по проекту или сессии не показывает «Открываем ChatGPT» / «Открываем сессию» и не сдвигает сайдбар",
+        "Плашка прогресса появляется только у операций дольше секунды"
+      ],
+      "expected_commit_message": "feat: Навигация без плашек прогресса и сдвига сайдбара",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T013",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -763,10 +800,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 399
+Revision: 400
 
 ## Цель
 
@@ -834,11 +871,16 @@ Revision: 399
   - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.7
   - Reference: workflow-pilot-0-4-6 / T012 / implementation
   - Файлы: release-manifest.json
+- [TODO] T013: Навигация без плашек прогресса и сдвига сайдбара — Ожидает
+  - Git Commit: [PENDING] feat: Навигация без плашек прогресса и сдвига сайдбара
+  - Reference: workflow-pilot-0-4-6 / T013 / implementation
+  - Файлы: src/frontend/desktop/ui/progress.mjs, tests/progress.test.mjs, tests/electron-smoke.mjs, docs/modules/desktop.md
 
 ## Context Pack For This Cycle
 
 - docs/planning/project-list-layout.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/no-autoplan.md
+- docs/modules/desktop.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
