@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 296,
+  "plan_revision": 297,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -128,7 +128,9 @@
       "src/backend/lifecycle.mjs",
       "src/backend/bootstrap.mjs",
       "src/frontend/client/connection.mjs",
-      "tests/backend-connection.test.mjs"
+      "tests/backend-connection.test.mjs",
+      "src/backend/main.mjs",
+      "tests/backend-shutdown.test.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -1499,11 +1501,43 @@
       "parallel_safe": false
     },
     {
+      "id": "T029",
+      "title": "Остановка службы не ждёт неотправленную подготовку контекста",
+      "why": "Живая приёмка 0.4.1: остановка фоновой службы бесконечно ждала зависшую подготовку первого сообщения исполнителя, которая ещё ничего не отправила в ChatGPT.",
+      "dependencies": [
+        "T024"
+      ],
+      "functional_paths": [
+        "src/backend/desktop-model.mjs",
+        "src/backend/main.mjs",
+        "tests/backend-shutdown.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Остановка ждёт идущий ответ, отправку и команды Kit, но не подготовку контекста без начатой отправки",
+        "Причины ожидания остановки (коды без данных) пишутся в backend-events.jsonl при изменении"
+      ],
+      "expected_commit_message": "fix: Остановка службы не ждёт неотправленную подготовку контекста",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T029",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "id": "T025",
       "title": "Подготовить версию 0.4.2",
       "why": "Номер исправляющего выпуска.",
       "dependencies": [
-        "T024"
+        "T024",
+        "T029"
       ],
       "functional_paths": [
         "package.json",
@@ -1548,6 +1582,7 @@
       "dependencies": [
         "T023",
         "T024",
+        "T029",
         "T025"
       ],
       "functional_paths": [],
@@ -1678,7 +1713,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 296
+Revision: 297
 
 ## Цель
 
@@ -1870,18 +1905,24 @@ Revision: 296
   - Файлы: src/frontend/client/connection.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/backend-connection.test.mjs, tests/sidebar.test.mjs, tests/desktop-client.test.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T023
+- [TODO] T029: Остановка службы не ждёт неотправленную подготовку контекста — Ожидает
+  - Git Commit: [PENDING] fix: Остановка службы не ждёт неотправленную подготовку контекста
+  - Reference: workflow-pilot-orchestrated-execution / T029 / implementation
+  - Файлы: src/backend/desktop-model.mjs, src/backend/main.mjs, tests/backend-shutdown.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T024
 - [TODO] T025: Подготовить версию 0.4.2 — Ожидает
   - Git Commit: [PENDING] feat: Подготовить версию 0.4.2
   - Reference: workflow-pilot-orchestrated-execution / T025 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T024
+  - Зависимости: T024, T029
 - [TODO] DOCS-5: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS-5 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T023, T024, T025
+  - Зависимости: T023, T024, T029, T025
 - [TODO] T026: Собрать выпуск 0.4.2 трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.4.2 трёх ОС
   - Reference: workflow-pilot-orchestrated-execution / T026 / implementation
