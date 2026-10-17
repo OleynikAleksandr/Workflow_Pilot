@@ -103,6 +103,12 @@ export class PagePresentation {
     return typeof text === 'string' ? text.slice(0, MAX_SELECTION) : '';
   }
   paste(text) { return this.#command('Input.insertText', { text }); }
+  // Files received from the client are dropped at a page point as a real drag:
+  // the page sees dragenter, dragover and drop with these files.
+  async drop(files, { x, y }) {
+    const data = { items: [], files, dragOperationsMask: 1 };
+    for (const type of ['dragEnter', 'dragOver', 'drop']) await this.#command('Input.dispatchDragEvent', { type, x, y, data });
+  }
   setViewport(width, height) {
     if (this.#disposed || this.window.isDestroyed()) throw presentationError('SESSION_RUNTIME_RELEASED', 'Страница закрыта.');
     this.window.setContentSize(width, height);

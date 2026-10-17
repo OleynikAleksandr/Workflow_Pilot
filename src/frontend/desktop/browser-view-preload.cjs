@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('webPilotBrowser', Object.freeze({
   cut: () => ipcRenderer.invoke('browser:cut'),
   paste: text => ipcRenderer.invoke('browser:paste', String(text)),
   contextMenu: () => ipcRenderer.invoke('browser:context-menu'),
+  // File contents only, never paths: the renderer read them from the dropped or pasted files.
+  drop: (files, point, bounds) => ipcRenderer.invoke('browser:drop', { files, x: point.x, y: point.y, bounds }),
   onFrame: callback => {
     if (typeof callback !== 'function') throw new TypeError('Expected a callback');
     const listener = (_event, frame) => callback(frame);

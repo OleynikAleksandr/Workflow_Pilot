@@ -320,6 +320,19 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     if (typeof text !== 'string' || !text) return false;
     await entry.view.paste(text.slice(0, 60 * 1024)); return true;
   }));
+  // Dropped or pasted files: contents from the renderer, sent completely, then dropped at the page point.
+  ipcMain.handle('browser:drop', pageAction('drop', async (entry, _event, { files, x, y, bounds } = {}) => {
+    if (!Array.isArray(files) || !files.length || files.length > 10) throw Object.assign(new Error('За один раз можно передать до 10 файлов.'), { code: 'BROWSER_DROP_INVALID' });
+    const ready = files.map(file => {
+      const bytes = file?.bytes instanceof Uint8Array ? file.bytes : null;
+      if (!bytes || bytes.byteLength > MAX_UPLOAD) throw Object.assign(new Error('Файл больше 32 МБ.'), { code: 'BROWSER_DROP_INVALID' });
+      const name = path.basename(String(file.name ?? '')).replace(/[\u0000-\u001f\\/]/g, '').slice(0, 180) || 'file';
+      return { name: name === '.' || name === '..' ? 'file' : name, bytes, ...(typeof file.mime === 'string' && file.mime.length <= 120 ? { mime: file.mime } : {}) };
+    });
+    const point = entry.view.point(x, y, bounds);
+    await entry.view.drop({ files: ready, x: point.x, y: point.y });
+    return true;
+  }));
   ipcMain.handle('browser:context-menu', pageAction('context-menu', async (entry, event) => {
     const selected = !!await entry.view.selection().catch(() => '');
     const run = (action, task) => () => void task().catch(error => {
@@ -496,6 +509,15 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
             if (command.op === 'paste') value = await pageView.webContents.executeJavaScript(`(() => {
               const data = new DataTransfer(); data.setData('text/plain', ${JSON.stringify(command.text)});
               return document.getElementById('keys').dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); })()`);
+            // A pasted image and dropped files, built in the renderer as the system would hand them over.
+            if (command.op === 'paste-file' || command.op === 'drop-files') value = await pageView.webContents.executeJavaScript(`(() => {
+              const data = new DataTransfer();
+              for (const file of ${JSON.stringify(command.files)}) data.items.add(new File([file.text], file.name, { type: file.type }));
+              if (${JSON.stringify(command.op)} === 'paste-file')
+                return document.getElementById('keys').dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+              const frame = document.getElementById('frame').getBoundingClientRect();
+              return document.getElementById('frame').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true,
+                clientX: frame.x + frame.width / 2, clientY: frame.y + frame.height / 2 })); })()`);
             if (command.op === 'context-menu') {
               lastContextMenu = null;
               await pageView.webContents.executeJavaScript("document.getElementById('frame').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))");

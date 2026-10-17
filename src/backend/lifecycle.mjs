@@ -45,7 +45,7 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
     let timer;
     const live=page.browser.snapshot().crashed||contents.isCrashed()?null:await Promise.race([
       contents.executeJavaScript(`({bootId:fixtureBootId,ticks:fixtureTicks,draft:document.querySelector('#draft')?.value??'',
-        menuOpen:!document.querySelector('#menu')?.hidden,selectedFile:document.querySelector('#selected-file')?.textContent??'',
+        menuOpen:!document.querySelector('#menu')?.hidden,selectedFile:document.querySelector('#selected-file')?.textContent??'',dropped:document.querySelector('#dropped')?.textContent??'',
         compositions:window.fixtureCompositions??[],mouseUps:window.fixtureMouseUps??0,keyUps:window.fixtureKeyUps??[]})`).catch(()=>null),
       new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1000);})]).finally(()=>clearTimeout(timer));
     return {...entry,webContentsId:contents.id,page:live};

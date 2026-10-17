@@ -6,7 +6,7 @@
 <button id="action">Открыть меню</button><div id="menu" hidden>Действие в меню</div>
 <button id="popup">Открыть дополнительное окно</button>
 <button id="download">Скачать результат</button>
-<input type="file" id="file"><p id="selected-file"></p><p id="counter"></p>
+<input type="file" id="file"><p id="selected-file"></p><p id="dropped"></p><p id="counter"></p>
 <script>
   window.fixtureBootId=crypto.randomUUID();
   window.fixtureTicks=0;
@@ -18,6 +18,10 @@
   setInterval(()=>{window.fixtureTicks++;document.getElementById('counter').textContent=String(window.fixtureTicks)},100);
   document.getElementById('action').onclick=()=>document.getElementById('menu').hidden=!document.getElementById('menu').hidden;
   document.getElementById('popup').onclick=()=>window.open(location.protocol==='https:'?location.origin+'/fixture-popup':'about:blank','fixture-popup','width=320,height=240');
+  // Files dropped anywhere on the page: names and sizes as the page received them.
+  addEventListener('dragover',event=>event.preventDefault());
+  addEventListener('drop',event=>{event.preventDefault();
+    document.getElementById('dropped').textContent=[...event.dataTransfer.files].map(file=>file.name+':'+file.size).join(',');});
   document.getElementById('file').onchange=event=>document.getElementById('selected-file').textContent=event.target.files[0]?.name||'';
   document.getElementById('download').onclick=()=>{
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['Результат проверки\n'],{type:'text/plain'}));

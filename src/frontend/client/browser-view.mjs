@@ -57,20 +57,30 @@ export class BrowserView {
     body:{viewerId:this.#viewer(),width,height,leaseGeneration:this.#connection.leaseGeneration}});}
   // A client file answers the page's own chooser; it is attached only after
   // every byte reached the backend.
-  async upload({chooserId,name,bytes,mime}) {
+  async #send({name,bytes,mime}) {
     const data=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
     const transferId='up-'+globalThis.crypto.randomUUID();
-    const leaseGeneration=this.#connection.leaseGeneration;
     const start=await this.#connection.json('/v1/browser/transfers',{method:'POST',
-      body:{transfer:{transferId,name,size:data.byteLength,direction:'upload',...mime?{mime}:{}},leaseGeneration}});
+      body:{transfer:{transferId,name,size:data.byteLength,direction:'upload',...mime?{mime}:{}},leaseGeneration:this.#connection.leaseGeneration}});
     const step=Math.min(start.chunkBytes,BACKEND_LIMITS.transferChunkBytes);
     for(let offset=0;offset<data.byteLength;offset+=step) {
       const response=await this.#connection.fetch(`/v1/browser/transfers/${transferId}?offset=${offset}`,{method:'PUT',
         headers:{'content-type':'application/octet-stream'},body:data.subarray(offset,offset+step)});
       if(!response.ok)throw await remote(response);
     }
+    return transferId;
+  }
+  async upload({chooserId,name,bytes,mime}) {
+    const transferId=await this.#send({name,bytes,mime});
     return this.#connection.json(`/v1/browser/transfers/${transferId}/attach`,{method:'POST',
-      body:{viewerId:this.#viewer(),chooserId,leaseGeneration}});
+      body:{viewerId:this.#viewer(),chooserId,leaseGeneration:this.#connection.leaseGeneration}});
+  }
+  // Client files dropped (or pasted) at a page point: sent completely first, then dropped together.
+  async drop({files,x,y}) {
+    const transferIds=[];
+    for(const file of files)transferIds.push(await this.#send(file));
+    return this.#connection.json('/v1/browser/drop',{method:'POST',
+      body:{viewerId:this.#viewer(),transferIds,x,y,leaseGeneration:this.#connection.leaseGeneration}});
   }
   cancelChooser(chooserId){return this.#connection.json('/v1/browser/choosers/cancel',{method:'POST',
     body:{viewerId:this.#viewer(),chooserId,leaseGeneration:this.#connection.leaseGeneration}});}

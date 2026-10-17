@@ -82,6 +82,11 @@ test('separate Desktop client starts the backend, renders it, and its crash leav
   await first.call({op:'menu-click',label:'Вырезать'});
   await until(async()=>(await pageState()).draft==='','cut removes the selection');
   assert.equal((await first.call({op:'clipboard'})).value,'Вставка из клиента','cut copies to the client clipboard');
+  // A pasted screenshot and files dropped on the page view reach the page as a drop.
+  assert.equal((await first.call({op:'paste-file',files:[{name:'image.png',type:'image/png',text:'png'}]})).value,false);
+  await until(async()=>(await pageState()).dropped==='image.png:3','pasted image reaches the page');
+  await first.call({op:'drop-files',files:[{name:'a.txt',type:'text/plain',text:'один'},{name:'b.md',type:'',text:'# b'}]});
+  await until(async()=>(await pageState()).dropped==='a.txt:8,b.md:3','dropped files reach the page');
   const renamed=(await first.call({op:'rename',workspace:selected.workspace,name:'Бета'})).value;
   assert.equal(renamed.ok,true,'a sidebar action goes through the API');
   for(let i=0;i<100;i++){probe=(await first.call({op:'probe'})).value;if(probe.sidebar.includes('Бета'))break;await settle(50);}

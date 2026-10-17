@@ -3,6 +3,8 @@ import { validateBrowserInput, verifyInputTarget } from '../../../contracts/brow
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const uuid = value => typeof value === 'string' && /^[0-9a-f-]{36}$/.test(value);
+const TRANSFER_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
+const MAX_DROP_FILES = 10;
 const notFound = () => protocolError('BROWSER_PAGE_NOT_FOUND', 'Страница или зритель не найдены.');
 
 function readBody(req, { json = true, limit = BACKEND_LIMITS.messageBytes } = {}) {
@@ -168,6 +170,18 @@ export function createPresentationRoutes({ host, transfers, leaseGeneration, lea
       // Only a completely received file is attached to the page's own chooser.
       await presentation.setFiles(body.chooserId, [file]);
       return json(res, 200, { attached: true });
+    }
+    if (req.method === 'POST' && path === '/v1/browser/drop') {
+      const body = exact(await readBody(req), ['viewerId', 'transferIds', 'x', 'y', 'leaseGeneration']);
+      leaseOf(body.leaseGeneration);
+      if (!Array.isArray(body.transferIds) || !body.transferIds.length || body.transferIds.length > MAX_DROP_FILES
+        || !body.transferIds.every(id => typeof id === 'string' && TRANSFER_ID.test(id)) || new Set(body.transferIds).size !== body.transferIds.length
+        || ![body.x, body.y].every(value => Number.isFinite(value) && value >= 0 && value <= 100000))
+        throw protocolError('BROWSER_PRESENTATION_INVALID');
+      // Every file must be completely received before the page sees the drop.
+      const presentation = viewerOf(body.viewerId), files = body.transferIds.map(id => transfers.finishUpload(id));
+      await presentation.drop(files, { x: body.x, y: body.y });
+      return json(res, 200, { dropped: files.length });
     }
     if (req.method === 'POST' && path === '/v1/browser/choosers/cancel') {
       const body = exact(await readBody(req), ['viewerId', 'chooserId', 'leaseGeneration']);

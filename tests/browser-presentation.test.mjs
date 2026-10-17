@@ -127,6 +127,15 @@ test('Electron backend page: frames, addressed input, clipboard, files, popup, r
   const chooser=await until(()=>events.find(event=>event.type==='browser.file-chooser'),'file chooser');
   await view.upload({chooserId:chooser.data.chooserId,name:'client-note.txt',bytes:new TextEncoder().encode('с клиента\n'),mime:'text/plain'});
   await until(async()=>(await state()).selectedFile==='client-note.txt','upload attached');
+  // Client files are sent completely, then dropped at a page point as a real drag.
+  const note=new TextEncoder().encode('один\n'),pixels=new Uint8Array([137,80,78,71,13,10,26,10]);
+  const target=await rect('#draft');
+  assert.deepEqual(await view.drop({files:[{name:'one.txt',bytes:note,mime:'text/plain'},{name:'shot.png',bytes:pixels,mime:'image/png'}],x:target.x,y:target.y}),{dropped:2});
+  await until(async()=>(await state()).dropped===`one.txt:${note.byteLength},shot.png:8`,'drop reaches the page');
+  await assert.rejects(client.json('/v1/browser/drop',{method:'POST',body:{viewerId:view.viewerId,transferIds:['up-missing'],x:1,y:1,
+    leaseGeneration:client.leaseGeneration}}),{code:'BACKEND_TRANSFER_NOT_FOUND'});
+  await assert.rejects(client.json('/v1/browser/drop',{method:'POST',body:{viewerId:view.viewerId,transferIds:[],x:1,y:1,
+    leaseGeneration:client.leaseGeneration}}),{code:'BROWSER_PRESENTATION_INVALID'});
   await click(await rect('#download'));
   const download=await until(()=>events.find(event=>event.type==='browser.download-ready'),'download');
   const file=await view.download(download.data.transferId);
@@ -161,6 +170,7 @@ test('Electron backend page: frames, addressed input, clipboard, files, popup, r
   await assert.rejects(observer.json('/v1/browser/input',{method:'POST',body:{viewerId:watch.viewerId,
     input:{...input,sequence:3,leaseGeneration:client.leaseGeneration-1}}}),{code:'BACKEND_LEASE_STALE'});
   await assert.rejects(watch.setViewport(1200,800),{code:'BACKEND_LEASE_STALE'});
+  await assert.rejects(watch.drop({files:[{name:'x.txt',bytes:note}],x:1,y:1}),{code:'BACKEND_LEASE_STALE'});
   // A new writer ends the previous holder's pressed input.
   const pressed=await state();
   const holder=new BrowserView(client,action.browserSessionId);await holder.attach();await until(()=>holder.nextFrame(),'frame');

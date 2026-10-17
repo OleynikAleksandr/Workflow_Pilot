@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 281,
+  "plan_revision": 283,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -124,7 +124,8 @@
       "src/frontend/client/browser-view.mjs",
       "tests/browser-presentation.test.mjs",
       "tests/fixtures/backend-browser-page.html",
-      "tests/fixtures/backend-browser-probe.mjs"
+      "tests/fixtures/backend-browser-probe.mjs",
+      "src/backend/lifecycle.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -1183,7 +1184,8 @@
         "tests/browser-presentation.test.mjs",
         "tests/fixtures/backend-browser-page.html",
         "tests/fixtures/backend-browser-probe.mjs",
-        "tests/desktop-client.test.mjs"
+        "tests/desktop-client.test.mjs",
+        "src/backend/lifecycle.mjs"
       ],
       "documentation_paths": [
         "docs/planning/client-clipboard-drop.md"
@@ -1200,14 +1202,26 @@
         "browser-presentation проверяет drop двух файлов на fixture-странице; desktop-client — вставку картинки через renderer"
       ],
       "expected_commit_message": "feat: Перетаскивание файлов и вставка картинок в клиенте",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T018",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/execution/browser/presentation/host.mjs",
+        "src/execution/browser/presentation/transport.mjs",
+        "src/frontend/client/browser-view.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/browser-view.mjs",
+        "src/frontend/desktop/browser-view-preload.cjs",
+        "tests/browser-presentation.test.mjs",
+        "tests/fixtures/backend-browser-page.html",
+        "tests/desktop-client.test.mjs",
+        "src/backend/lifecycle.mjs"
+      ]
     },
     {
       "id": "T019",
@@ -1389,7 +1403,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 281
+Revision: 283
 
 ## Цель
 
@@ -1533,10 +1547,10 @@ Revision: 281
   - Файлы: src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.mjs, src/frontend/desktop/browser-view-preload.cjs, tests/desktop-client.test.mjs, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T018: Перетаскивание файлов и вставка картинок — Ожидает
-  - Git Commit: [PENDING] feat: Перетаскивание файлов и вставка картинок в клиенте
+- [DONE] T018: Перетаскивание файлов и вставка картинок — Завершено
+  - Git Commit: [DONE] feat: Перетаскивание файлов и вставка картинок в клиенте
   - Reference: workflow-pilot-orchestrated-execution / T018 / implementation
-  - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.mjs, src/frontend/desktop/browser-view-preload.cjs, tests/browser-presentation.test.mjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/desktop-client.test.mjs, docs/planning/client-clipboard-drop.md
+  - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.mjs, src/frontend/desktop/browser-view-preload.cjs, tests/browser-presentation.test.mjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/desktop-client.test.mjs, src/backend/lifecycle.mjs, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
   - Зависимости: T017
 - [TODO] T019: Подготовить версию 0.4.1 — Ожидает
