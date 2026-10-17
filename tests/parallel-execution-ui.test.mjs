@@ -76,7 +76,7 @@ test('real sidebar renders executor group, worktree/status/time, protected actio
   assert.match(document.querySelector('.executor-row').textContent,/Готово к слиянию/);
   assert.match(document.querySelector('[data-executor-time]').textContent,/Работа 00:02 · ожидание 00:03/);
   document.querySelector('.executor-row').click();await settle();assert.deepEqual(calls.pop(),['selectSession','/tree','child']);
-  assert.equal(document.getElementById('auto-plan-message').hidden,true,'no AutoPlan status for a parallel plan');
+  assert.equal(document.getElementById('plan-continuation-message').hidden,true,'no PlanContinuation status for a parallel plan');
   assert.equal(document.getElementById('execute-tasks'),null);assert.equal(document.getElementById('reconcile-execution'),null);
   assert.equal(document.querySelectorAll('#execution-stages li').length,5);
   assert.equal(document.getElementById('execution-stages').getAttribute('aria-label'),'Проверяемые этапы завершения');
@@ -150,14 +150,14 @@ test('F01-F20/A01-A06 map to named regression cases rather than invented PASS cl
     F16:['parallel-finalization.test.mjs','F16: diagnostic pause is durable'],
     F17:['parallel-finalization.test.mjs','pending draft permits verified integration'],
     F18:['parallel-finalization.test.mjs','F18: changing pause, busy'],
-    F19:['project-auto-plan.test.mjs','A01/A02/A04/A06: two main monitors in one project'],
+    F19:['project-plan-continuation.test.mjs','A01/A02/A04/A06: two main monitors in one project'],
     F20:['parallel-execution-ui.test.mjs','F20: worker source and HTTP preview'],
-    A01:['project-auto-plan.test.mjs','A01-A05: awaitingPlan survives'],
-    A02:['project-auto-plan.test.mjs','A01/A02/A04/A06: two main monitors'],
-    A03:['project-auto-plan.test.mjs','A03/A06: only the user records manual OFF'],
-    A04:['project-auto-plan.test.mjs','A04/A05: a new archived-plan epoch'],
-    A05:['project-auto-plan.test.mjs','only confirmed completion disables'],
-    A06:['auto-plan.test.mjs','A03/A06: executor-style and Review disables'],
+    A01:['project-plan-continuation.test.mjs','A01-A05: awaitingPlan survives'],
+    A02:['project-plan-continuation.test.mjs','A01/A02/A04/A06: two main monitors'],
+    A03:['project-plan-continuation.test.mjs','A03/A06: only the user records manual OFF'],
+    A04:['project-plan-continuation.test.mjs','A04/A05: a new archived-plan epoch'],
+    A05:['project-plan-continuation.test.mjs','only confirmed completion disables'],
+    A06:['plan-continuation.test.mjs','A03/A06: executor-style and Review disables'],
   };
   assert.deepEqual(Object.keys(cases).sort(),[
     ...Array.from({length:20},(_,i)=>'F'+String(i+1).padStart(2,'0')),

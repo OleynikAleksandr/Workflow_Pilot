@@ -65,7 +65,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   // Without a backend the sidebar still renders a complete, empty state with the reason.
   const unavailableState = error => ({ projects: [], executorRecovery: [], archives: [], settings: null, doctor: null,
     parallelExecution: {}, execution: { phase: 'idle', assignments: [], commands: [], error: null },
-    conversationRecovery: { phase: 'idle', message: '', canRetry: false }, autoPlan: { enabled: false, phase: 'idle', message: '' },
+    conversationRecovery: { phase: 'idle', message: '', canRetry: false }, planContinuation: { enabled: false, phase: 'idle', message: '' },
     planReview: {}, selected: null, context: { phase: 'selected', servicesReady: false, messageSent: false }, contextPreparation: { busy: false },
     runtimeFolder: '', platform: process.platform, pluginLaunch: null,
     localRuntime: { label: '', chatgptChannel: 'secure-tunnel', service: null, vps: null }, startup: null, theme,

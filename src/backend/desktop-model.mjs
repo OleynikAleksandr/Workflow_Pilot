@@ -92,7 +92,7 @@ const workflow = control.configureWorkflow({getController:()=>store.selected()?.
   available:()=>!store.selected()?.external&&!liveSessions?.paused&&!!controller&&!controller.composer.inFlight&&!pageLoading&&!setupState&&!settingsState
     &&workspaceHealth?.ready&&workspaceHealth.workspace===store.selected()?.workspace,
   onChange:()=>publish(),report,save:overrides=>saveSettings(overrides)});
-const {projectAutoPlan,autoPlan,planMonitor,planReview,reviewContinuation,execution,executionKit}=workflow;
+const {projectPlanContinuation,planContinuation,planMonitor,planReview,reviewContinuation,execution,executionKit}=workflow;
 const configurePrimary=record=>workflow.configurePrimary(record);
 function applyObservedPage(event, record = liveSessions.visible) {
   if(!record||record.disposed)return;
@@ -252,7 +252,7 @@ function planRunView(saved) {
   if(project.planExecution?.execution_strategy==='orchestrated')
     return {workspace,scopeId:project.scopeId,...workflow.executionControl.view(workspace,project.scopeId),issue:project.orchestrationIssue??null,complete};
   // A plan of the former model: the button shows whether its continuation engine runs.
-  const running=workflow.projectAutoPlan.enabled(workspace,project.scopeId);
+  const running=workflow.projectPlanContinuation.enabled(workspace,project.scopeId);
   const started=workflow.executionControl.view(workspace,project.scopeId).state!=='not-started';
   return {workspace,scopeId:project.scopeId,state:running?'running':started?'paused':'not-started',reason:null,message:null,issue:null,complete};
 }
@@ -283,8 +283,8 @@ function snapshot() {
     execution: {...execution.view(saved?.parentWorkspace??saved?.workspace),commands:(execution.view(saved?.parentWorkspace??saved?.workspace).commands??[])
       .map(c=>({...c,projectId:store.project(c.workspace)?.projectId}))},
     conversationRecovery: saved?.external ? {phase:'idle',message:'',canRetry:false} : conversationRecovery?.view() ?? { phase: 'idle', message: '', canRetry: false },
-    autoPlan: {...(liveSessions.visible?.executor?.flow.view()??autoPlan.view()),
-      enabled:!saved?.external&&projectAutoPlan.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
+    planContinuation: {...(liveSessions.visible?.executor?.flow.view()??planContinuation.view()),
+      enabled:!saved?.external&&projectPlanContinuation.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
     planRun: planRunView(saved),
     orchestratorPlan: orchestratorPlanView(saved),
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
@@ -313,8 +313,8 @@ function publish() {
   planMonitor.observeSelection();
   planReview.observeSelection();
   reviewContinuation.update();
-  autoPlan.selectionChanged();
-  autoPlan.availabilityChanged();
+  planContinuation.selectionChanged();
+  planContinuation.availabilityChanged();
   observeStartupClipboard();
   rememberSessionTitle();
   rememberScopeTitle();
@@ -1264,7 +1264,7 @@ function dispose() {
   if (closed) return;
   closed = true;
   ++navigationId; desktopIpc.dispose(); startupClipboard?.dispose(); startupClipboard = null; startupFlow?.dispose(); startupFlow = null;
-  autoPlan.dispose(); execution.dispose(); conversationRecovery?.reset(); controller?.cancel(); planMonitor.close();
+  planContinuation.dispose(); execution.dispose(); conversationRecovery?.reset(); controller?.cancel(); planMonitor.close();
   reviewContinuation.dispose(); planReview.dispose();
   if (eventRuntimeCheckerTimer !== null) clearInterval(eventRuntimeCheckerTimer);
   eventRuntimeCheckerTimer = null; liveSessions.dispose(); contextCache.clear(); workspaceSetup.invalidateReadiness();
@@ -1305,7 +1305,7 @@ async function openWindow() {
   if (smoke) {
     await surface.runFixture({ app, browser: browser.webContents,
       store, controller, plugin, selectWorkspace, workspaceSetup, snapshot, permissionAllowed, dataDir,
-      chromiumDiagnostics, chromiumDiagnosticsFile, navigate, openArchiveWindow, chatColorStyles, eventBaseline, runtimeMetrics, pageState, autoPlan,
+      chromiumDiagnostics, chromiumDiagnosticsFile, navigate, openArchiveWindow, chatColorStyles, eventBaseline, runtimeMetrics, pageState, planContinuation,
       liveSessions,sessionView,deletion,deletionHooks,execution,continuePlan:enabled=>workflow.continuePlan(enabled),getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}),
       withStartupFixture: async (flow, run) => {
         startupFlow = flow; startupActive = true; flow.onChange = publish;

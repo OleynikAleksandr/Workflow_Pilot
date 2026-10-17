@@ -1,10 +1,10 @@
-import { AutoPlan } from './auto-plan.mjs';
+import { PlanContinuation } from './plan-continuation.mjs';
 import { AutomationSendState } from './automation-send-state.mjs';
 import { PlanMonitor } from './plan-monitor.mjs';
 
 // The same controller runs for visible and hidden main chats. Its sender,
 // watcher, checkpoint and current plan always address its own saved identity.
-export function configureProjectAutoPlan(record,{store,authorization,inspectPlan,onChange,log=()=>{}}) {
+export function configureProjectPlanContinuation(record,{store,authorization,inspectPlan,onChange,log=()=>{}}) {
   if(record.primaryAutomation||!record.identity||record.identity.assignmentId)return record.primaryAutomation;
   let monitor,flow;
   const selected=()=>{
@@ -18,11 +18,11 @@ export function configureProjectAutoPlan(record,{store,authorization,inspectPlan
   const automation=new AutomationSendState({save:checkpoint=>save({automationCheckpoint:checkpoint})});
   const complete=()=>{const project=selected();authorization.sync(project.workspace,project.scopeId,
     {complete:true,confirmed:true,planRevision:project.planRevision});};
-  flow=new AutoPlan({selected,inspectPlan,log,onChange,onComplete:complete,
+  flow=new PlanContinuation({selected,inspectPlan,log,onChange,onComplete:complete,
     available:()=>{const p=selected();return !!p&&!p.archivedAt&&!p.sessionArchivedAt&&!record.disposed&&!record.paused&&record.ready&&!record.loading
       &&!record.composer.inFlight&&!record.controller.pending&&permitted(p)&&!!monitor?.view(record.project())&&!monitor.error
       &&!['parallel','orchestrated'].includes(p.planExecution?.execution_strategy)&&['delivered','stale','manual-session'].includes(record.controller.state.phase);},
-    saveCheckpoint:checkpoint=>save({autoPlanCheckpoint:checkpoint}),
+    saveCheckpoint:checkpoint=>save({continuationCheckpoint:checkpoint}),
     send:(text,canContinue,onBeforeSend)=>automation.send({selected:selected(),page:flow.page,kind:'plan',ready:canContinue,
       perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})})});
   let savedScope;
@@ -30,7 +30,7 @@ export function configureProjectAutoPlan(record,{store,authorization,inspectPlan
     const p=selected();if(!p)return;
     const enabled=permitted(p);
     if(savedScope!==p.scopeId) {savedScope=p.scopeId;const saved=authorization.checkpoint(p.workspace,p.scopeId,p.sessionId);
-      automation.restore(saved.automationCheckpoint);flow.restore(enabled,saved.autoPlanCheckpoint);}
+      automation.restore(saved.automationCheckpoint);flow.restore(enabled,saved.continuationCheckpoint);}
     else if(enabled!==flow.enabled) {if(enabled)void flow.start();else if(flow.state.phase!=='complete')flow.disable();}
     flow.availabilityChanged();
   };
@@ -58,7 +58,7 @@ export function configureProjectAutoPlan(record,{store,authorization,inspectPlan
     onInputsChanged:()=>record.controller.projectChanged(),onError:()=>{onChange();}});
   record.primaryAutomation={flow,automation,monitor,update,changed,observe:event=>{update();automation.observe(selected(),event);flow.observe(event);}};
   const p=selected(),saved=authorization.checkpoint(p.workspace,p.scopeId,p.sessionId);
-  automation.restore(saved.automationCheckpoint);flow.restore(permitted(p),saved.autoPlanCheckpoint);
+  automation.restore(saved.automationCheckpoint);flow.restore(permitted(p),saved.continuationCheckpoint);
   monitor.observeSelection();
   record.cleanups.push(()=>{flow.dispose();monitor.close();});return record.primaryAutomation;
 }

@@ -13,7 +13,7 @@ test('execution settings reject malformed limits and return an independent snaps
   settings.max_workers = 8; assert.equal(snapshot.max_workers,3);
   for (const max_workers of [0,-1,1.5,Infinity,NaN,'2',Number.MAX_SAFE_INTEGER+1])
     assert.throws(()=>validateParallelSettings({parallel_allowed:true,max_workers}),{code:'PARALLEL_SETTINGS_INVALID'});
-  for (const value of [null,[],true,{}, {parallel_allowed:'true',max_workers:2}, {...DEFAULT_PARALLEL_SETTINGS,autoPlan:true}])
+  for (const value of [null,[],true,{}, {parallel_allowed:'true',max_workers:2}, {...DEFAULT_PARALLEL_SETTINGS,planContinuation:true}])
     assert.throws(()=>validateParallelSettings(value),{code:'PARALLEL_SETTINGS_INVALID'});
   assert.deepEqual(validateParallelSettings({parallel_allowed:true,max_workers:1}),{parallel_allowed:true,max_workers:1});
 });
@@ -78,15 +78,15 @@ test('recovery settings expose exact executor action, keep cloud-chat warning an
   assert.equal($('executor-recovery-items').children.length,0);
 });
 
-test('startup recovery metadata uses the session snapshot and never AutoPlan or current Settings', () => {
+test('startup recovery metadata uses the session snapshot and never PlanContinuation or current Settings', () => {
   const project={name:'Fixture',workspace:'/fixture',sessionId:'fixture-session',scopeStatus:'NONE',
     executionSnapshot:{parallel_allowed:true,max_workers:3}};
   const packet={parts:[{text:'Unchanged Kit recovery'}]};
   const text=startupMessage(project,'request',packet);
   assert.ok(text.includes(JSON.stringify(project.executionSnapshot)));
   assert.match(text,/при планировании оцени зависимости/);
-  assert.doesNotMatch(text,/AutoPlan/);
-  assert.equal(startupMessage({...project,autoPlanEnabled:true,parallelExecution:{parallel_allowed:false,max_workers:1}},'request',packet),text);
+  assert.doesNotMatch(text,/PlanContinuation/);
+  assert.equal(startupMessage({...project,planContinuationEnabled:true,parallelExecution:{parallel_allowed:false,max_workers:1}},'request',packet),text);
   assert.deepEqual(packet,{parts:[{text:'Unchanged Kit recovery'}]},'shared recovery is not rewritten for a session');
   for(const scopeStatus of ['ACTIVE','BLOCKED']) {
     const active=startupMessage({...project,scopeStatus,planExecution:{parallel_allowed:true,max_workers:2,execution_strategy:'parallel',execution_reason:'Independent'}},'request',packet);

@@ -4,7 +4,7 @@ import { executeFile } from '../../execution/facade.mjs';
 import { createHash } from 'node:crypto';
 import { parsePlan } from '@webpilot/workflow-kit/lib/plan';
 import { readReview } from '@webpilot/workflow-kit/lib/plan-review';
-import { reviewBlocksExecution } from './auto-plan-state.mjs';
+import { reviewBlocksExecution } from './plan-continuation-state.mjs';
 import {readCommandActivity} from './command-activity.mjs';
 
 const planFile='.harness/plans/todo-plan.md';

@@ -1,16 +1,16 @@
-import { ProjectAutoPlan } from './project-auto-plan.mjs';
-import { configureProjectAutoPlan } from './project-session-auto-plan.mjs';
-import { AutoPlan } from './auto-plan.mjs';
+import { ProjectPlanContinuation } from './project-plan-continuation.mjs';
+import { configureProjectPlanContinuation } from './project-session-plan-continuation.mjs';
+import { PlanContinuation } from './plan-continuation.mjs';
 import { PlanReviewClient } from './plan-review.mjs';
 import { ReviewContinuation } from './review-continuation.mjs';
 import { AutomationSendState } from './automation-send-state.mjs';
-import { readAutoPlanState } from './auto-plan-state.mjs';
+import { readPlanContinuationState } from './plan-continuation-state.mjs';
 import { PlanMonitor } from './plan-monitor.mjs';
 import { ParallelExecution } from './parallel-execution.mjs';
 import { ParallelKit } from './parallel-kit.mjs';
 import { ExecutionControl } from './execution-control.mjs';
 import { readReview } from '@webpilot/workflow-kit/lib/plan-review';
-import { reviewBlocksExecution } from './auto-plan-state.mjs';
+import { reviewBlocksExecution } from './plan-continuation-state.mjs';
 import { configureExecutor, executorPageState } from './executor-session.mjs';
 import { ProjectInputWatch, ChildCommandWatches, chatGPTEntrypoint } from '../../execution/facade.mjs';
 import { removeProjectSettings, belongsToProject } from '../projects/project-state-cleanup.mjs';
@@ -21,13 +21,13 @@ export function createWorkflowCoordination({store, setup:workspaceSetup, plans:s
   getController, available, contextAvailable, onChange:publish, report, save:saveSettings}) {
 let liveSessions;
 let reviewCheckpoint=null,automationCheckpoint=null,parallelExecutionBook={};
-const projectAutoPlan=new ProjectAutoPlan({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
+const projectPlanContinuation=new ProjectPlanContinuation({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
   ownsSession:(workspace,id)=>store.snapshot().projects.some(p=>p.workspace===workspace&&p.sessions.some(s=>s.sessionId===id)),onChange:workspace=>{
   for(const record of liveSessions.all()) {
     const project=record.project();
     if((project?.parentWorkspace??project?.workspace)!==workspace)continue;
     record.primaryAutomation?.update();
-    if(record.executor&&!orchestratedPlan(workspace)){record.executor.setEnabled(projectAutoPlan.enabled(workspace,project.parentScopeId));record.controller.signal();}
+    if(record.executor&&!orchestratedPlan(workspace)){record.executor.setEnabled(projectPlanContinuation.enabled(workspace,project.parentScopeId));record.controller.signal();}
   }
   void saveSettings().catch(report);void execution.signal(workspace);publish();
 }});
@@ -39,7 +39,7 @@ const applyExecutionControl=workspace=>{
     record.executor.setEnabled(executorEnabled(workspace,project.parentScopeId));record.controller.signal();
   }
 };
-// The run/pause button of orchestrated plans; legacy plans keep ProjectAutoPlan.
+// The run/pause button of orchestrated plans; legacy plans keep ProjectPlanContinuation.
 const executionControl=new ExecutionControl({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
   onChange:workspace=>{applyExecutionControl(workspace);void saveSettings().catch(report);void execution.signal(workspace);publish();}});
 const planMonitor = new PlanMonitor({ selected: () => store.selected(),
@@ -49,7 +49,7 @@ const planMonitor = new PlanMonitor({ selected: () => store.selected(),
     const workspace=store.selected()?.workspace;
     if (change?.semanticChanged && workspace && !store.selected()?.parentWorkspace)
       void store.reconcileRoles(workspace).then(changed=>{if(changed)publish();}).catch(report);
-    if (change?.semanticChanged || change?.recovered) void autoPlan.planChanged().catch(report);
+    if (change?.semanticChanged || change?.recovered) void planContinuation.planChanged().catch(report);
     if (change?.semanticChanged && contextAvailable()) void getController()?.tick();
   }, onInputsChanged: () => {
     planReview.refresh();
@@ -60,18 +60,18 @@ const automationSend = new AutomationSendState({save:async checkpoint=>{
 }});
 function sendAutomation(text,canContinue,onBeforeSend,flow) {
   const sender=liveSessions.visible?.primaryAutomation?.automation??automationSend;
-  return sender.send({selected:flow.selected(),page:flow.page,ready:canContinue,kind:flow===autoPlan?'plan':'review',
+  return sender.send({selected:flow.selected(),page:flow.page,ready:canContinue,kind:flow===planContinuation?'plan':'review',
     perform:()=>getController().composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})});
 }
-const emptyAutoPlan=new AutoPlan({selected:()=>null,inspectPlan:async()=>({}),send:async()=>({})});
-const autoPlan=new Proxy({}, {
-  get:(_target,key)=>{const flow=liveSessions.visible?.primaryAutomation?.flow??emptyAutoPlan,value=flow[key];return typeof value==='function'?value.bind(flow):value;},
-  set:(_target,key,value)=>{(liveSessions.visible?.primaryAutomation?.flow??emptyAutoPlan)[key]=value;return true;}
+const emptyPlanContinuation=new PlanContinuation({selected:()=>null,inspectPlan:async()=>({}),send:async()=>({})});
+const planContinuation=new Proxy({}, {
+  get:(_target,key)=>{const flow=liveSessions.visible?.primaryAutomation?.flow??emptyPlanContinuation,value=flow[key];return typeof value==='function'?value.bind(flow):value;},
+  set:(_target,key,value)=>{(liveSessions.visible?.primaryAutomation?.flow??emptyPlanContinuation)[key]=value;return true;}
 });
 function configurePrimary(record) {
-  return configureProjectAutoPlan(record,{store,authorization:projectAutoPlan,
-    inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
-    log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});
+  return configureProjectPlanContinuation(record,{store,authorization:projectPlanContinuation,
+    inspectPlan:selected=>readPlanContinuationState(selected,workspaceSetup.environment),onChange:()=>publish(),
+    log:(event,fields)=>record.diagnostics?.log.record('plan-continuation',event,fields)});
 }
 const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>publish()});
 const reviewContinuation=new ReviewContinuation({selected:()=>store.selected(),client:planReview,
@@ -85,7 +85,7 @@ const authorizedExecutionKit=Object.create(executionKit);
 authorizedExecutionKit.read=async workspace=>{
   const facts=await executionKit.read(workspace),plan=facts.plan;
   if(plan.execution_strategy==='parallel'&&facts.confirmed&&plan.execution_scope_status==='ACTIVE')
-    projectAutoPlan.sync(workspace,plan.scope_id,{confirmed:true,planRevision:plan.plan_revision,
+    projectPlanContinuation.sync(workspace,plan.scope_id,{confirmed:true,planRevision:plan.plan_revision,
       originSessionId:plan.execution_origin_session_id});
   return facts;
 };
@@ -96,7 +96,7 @@ const orchestratedPlan=workspace=>store.project(workspace)?.planExecution?.execu
 // a plan of the former model keeps its continuation engine as the source of truth.
 const executorEnabled=(workspace,scope)=>{
   const {state}=executionControl.view(workspace,scope),strategy=store.project(workspace)?.planExecution?.execution_strategy;
-  return strategy==='orchestrated'||(!strategy&&state!=='not-started')?['running','pausing'].includes(state):projectAutoPlan.enabled(workspace,scope);
+  return strategy==='orchestrated'||(!strategy&&state!=='not-started')?['running','pausing'].includes(state):projectPlanContinuation.enabled(workspace,scope);
 };
 const storedOrchestrator=(workspace,scope)=>store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions
   .find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId??null;
@@ -109,9 +109,9 @@ async function restoreExecutionPage(project,assignment=null) {
   if(unsent)project=await store.resetUnsentExecutor(project.workspace,project.sessionId);
   const record=liveSessions.ensure(project);
   if(assignment)configureExecutor(record,{store,enabled:executorEnabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
-    inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
+    inspectPlan:selected=>readPlanContinuationState(selected,workspaceSetup.environment),onChange:()=>publish(),
     signal:()=>{void execution.signal(project.parentWorkspace);},
-    log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});
+    log:(event,fields)=>record.diagnostics?.log.record('plan-continuation',event,fields)});
   if(!record.ready||unsent){record.ready=true;await liveSessions.navigate(record,project.chatUrl??chatGPTEntrypoint(project.experience??'chat'),{freshDraft:unsent});}
   return project;
 }
@@ -120,9 +120,9 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   isEnabled:(workspace,scope)=>!liveSessions?.paused&&executorEnabled(workspace,scope),
   // New tasks, the final handoff and delivery steps of an orchestrated plan wait while it is not running.
   isIssuing:(workspace,scope)=>!orchestratedPlan(workspace)||executionControl.issuing(workspace,scope),
-  canFinalize:(workspace,scope)=>orchestratedPlan(workspace)?executionControl.issuing(workspace,scope):projectAutoPlan.finalizationAllowed(workspace,scope),
+  canFinalize:(workspace,scope)=>orchestratedPlan(workspace)?executionControl.issuing(workspace,scope):projectPlanContinuation.finalizationAllowed(workspace,scope),
   onComplete:(workspace,scope)=>orchestratedPlan(workspace)?executionControl.complete(workspace,scope)
-    :projectAutoPlan.sync(workspace,scope,{complete:true,confirmed:true}),
+    :projectPlanContinuation.sync(workspace,scope,{complete:true,confirmed:true}),
   onSettle:(workspace,scope,facts)=>executionControl.settle(workspace,scope,facts),
   onPause:(workspace,scope,reason,message)=>executionControl.pause(workspace,scope,reason,message??null),
   sendWorker:(assignment,entry,text,ready,before)=>{
@@ -192,9 +192,9 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   openWorker:async(assignment,origin)=>{
     const project=await store.ensureExecutor(assignment,origin),record=liveSessions.ensure(project);
     configureExecutor(record,{store,enabled:executorEnabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
-      inspectPlan:selected=>readAutoPlanState(selected,workspaceSetup.environment),onChange:()=>publish(),
+      inspectPlan:selected=>readPlanContinuationState(selected,workspaceSetup.environment),onChange:()=>publish(),
       signal:()=>{void execution.signal(origin.workspace);},
-      log:(event,fields)=>record.diagnostics?.log.record('auto-plan',event,fields)});
+      log:(event,fields)=>record.diagnostics?.log.record('plan-continuation',event,fields)});
     record.ready=true;
     await liveSessions.navigate(record,project.chatUrl??chatGPTEntrypoint(project.experience),{freshDraft:!project.attempt&&!project.chatUrl});
     publish();return project;
@@ -227,7 +227,7 @@ async function setPlanExecution(running) {
     return executionControl.view(workspace,info.scopeId);
   }
   // A plan of the former model: the same button drives its continuation engine; pause is immediate.
-  const want=running??!projectAutoPlan.enabled(workspace,info.scopeId);
+  const want=running??!projectPlanContinuation.enabled(workspace,info.scopeId);
   await continuePlan(want);
   if(want&&executionControl.view(workspace,info.scopeId).state!=='running')executionControl.toggle(workspace,info.scopeId);
   if(!want)executionControl.stop(workspace,info.scopeId);
@@ -240,7 +240,7 @@ async function continuePlan(enabled) {
     const project=selected?.parentWorkspace?store.project(workspace):selected;
     if(project&&(await store.inspect(workspace)).planExecution?.execution_strategy==='orchestrated')
       throw Object.assign(new Error('План оркестратора запускается кнопкой «Начать выполнение плана».'),{code:'PLAN_EXECUTION_BUTTON'});
-    const info=project&&await readAutoPlanState(project,workspaceSetup.environment);
+    const info=project&&await readPlanContinuationState(project,workspaceSetup.environment);
     let verified=info?.confirmed===true;
     if(info?.scopeId&&info.planExecution?.execution_strategy==='parallel'){
       const kit=await executionKit.read(workspace);
@@ -249,13 +249,13 @@ async function continuePlan(enabled) {
     }
     const scope=verified?info.scopeId:null;
     const done=verified&&info.planView?.tasks?.length>0&&info.planView.tasks.every(t=>t.status==='done');
-    projectAutoPlan.sync(workspace,scope,{confirmed:verified,complete:done,
+    projectPlanContinuation.sync(workspace,scope,{confirmed:verified,complete:done,
       planRevision:info?.planRevision,originSessionId:info?.planExecution?.execution_origin_session_id});
-    const current=projectAutoPlan.state(workspace);
+    const current=projectPlanContinuation.state(workspace);
     if(scope&&current?.scopeId!==scope&&enabled===true)
       throw new Error('План изменился во время запуска. Обновите состояние проекта.');
     // Completion is an automatic OFF, never misrecord it as a manual OFF.
-    if(!(done&&enabled===true))projectAutoPlan.set(workspace,
+    if(!(done&&enabled===true))projectPlanContinuation.set(workspace,
       scope&&current?.scopeId!==scope?current.scopeId:scope,enabled===true,project?.sessionId);
     if(workspace)execution.observe(workspace);
     await saveSettings();
@@ -280,17 +280,17 @@ function observePage(event, record = liveSessions.visible) {
 }
 
 function snapshot() {
-  return structuredClone({projectAutoPlan:projectAutoPlan.snapshot(),executionControl:executionControl.snapshot(),reviewCheckpoint,automationCheckpoint,parallelExecutionBook});
+  return structuredClone({projectPlanContinuation:projectPlanContinuation.snapshot(),executionControl:executionControl.snapshot(),reviewCheckpoint,automationCheckpoint,parallelExecutionBook});
 }
 function restore(settings={}) {
-  projectAutoPlan.book=new ProjectAutoPlan({saved:settings.projectAutoPlan}).snapshot();
+  projectPlanContinuation.book=new ProjectPlanContinuation({saved:settings.projectPlanContinuation}).snapshot();
   executionControl.book=new ExecutionControl({saved:settings.executionControl}).snapshot();
   parallelExecutionBook=settings.parallelExecutionBook&&typeof settings.parallelExecutionBook==='object'&&!Array.isArray(settings.parallelExecutionBook)
     ? structuredClone(settings.parallelExecutionBook) : {};
   execution.book=parallelExecutionBook;
   reviewCheckpoint=structuredClone(settings.reviewCheckpoint??null);
   automationCheckpoint=structuredClone(settings.automationCheckpoint??null);
-  emptyAutoPlan.restore(false);
+  emptyPlanContinuation.restore(false);
   automationSend.entries.clear();automationSend.cycles.clear();automationSend.restore(automationCheckpoint);
   reviewContinuation.stops.clear();reviewContinuation.restore(reviewCheckpoint);
 }
@@ -305,7 +305,7 @@ const executionPort=Object.freeze({
 });
 return Object.freeze({
   attachSessions: sessions=>{if(liveSessions)throw new Error('WORKFLOW_SESSIONS_ALREADY_ATTACHED');liveSessions=sessions;},
-  autoPlan,
+  planContinuation,
   planMonitor:Object.freeze({
     get error(){return planMonitor.error;},get watchError(){return planMonitor.watchError;},
     get pending(){return planMonitor.pending;},get rerunRequested(){return planMonitor.rerunRequested;},
@@ -317,9 +317,9 @@ return Object.freeze({
   reviewContinuation:Object.freeze({get persistenceError(){return reviewContinuation.persistenceError;},
     get message(){return reviewContinuation.flow.state.message;},
     update:()=>reviewContinuation.update(),dispose:()=>reviewContinuation.dispose()}),
-  projectAutoPlan:Object.freeze({enabled:(...args)=>projectAutoPlan.enabled(...args),snapshot:()=>projectAutoPlan.snapshot()}),
+  projectPlanContinuation:Object.freeze({enabled:(...args)=>projectPlanContinuation.enabled(...args),snapshot:()=>projectPlanContinuation.snapshot()}),
   // Whether an executor may send its first message and continuations: the plan button for an
-  // orchestrated plan, ProjectAutoPlan for the legacy parallel plans.
+  // orchestrated plan, ProjectPlanContinuation for the legacy parallel plans.
   executorEnabled:(workspace,scope)=>executorEnabled(workspace,scope),
   executionControl:Object.freeze({view:(...args)=>executionControl.view(...args),enabled:(...args)=>executionControl.enabled(...args),
     snapshot:()=>executionControl.snapshot()}),setPlanExecution,
@@ -338,8 +338,8 @@ return Object.freeze({
 
   },
   cleanup(identities) {
-  const cleaned=removeProjectSettings({projectAutoPlan:projectAutoPlan.snapshot(),parallelExecutionBook,reviewCheckpoint,automationCheckpoint},identities);
-  projectAutoPlan.book=cleaned.projectAutoPlan;parallelExecutionBook=cleaned.parallelExecutionBook;execution.book=parallelExecutionBook;
+  const cleaned=removeProjectSettings({projectPlanContinuation:projectPlanContinuation.snapshot(),parallelExecutionBook,reviewCheckpoint,automationCheckpoint},identities);
+  projectPlanContinuation.book=cleaned.projectPlanContinuation;parallelExecutionBook=cleaned.parallelExecutionBook;execution.book=parallelExecutionBook;
   reviewCheckpoint=cleaned.reviewCheckpoint;automationCheckpoint=cleaned.automationCheckpoint;
   execution.forget(identities.map(p=>p.workspace));
   executionControl.forget(identities.map(p=>p.workspace));
@@ -352,7 +352,7 @@ return Object.freeze({
     for(const [workspace,state] of Object.entries(executionControl.book))if(['running','pausing'].includes(state.state)) {
       execution.observe(workspace);void execution.signal(workspace);
     }
-    for(const [workspace,state] of Object.entries(projectAutoPlan.book))if(state.enabled) {
+    for(const [workspace,state] of Object.entries(projectPlanContinuation.book))if(state.enabled) {
       const project=store.project(workspace,state.sessionId);
       if(project?.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt)void restoreExecutionPage(project).catch(report);
     }

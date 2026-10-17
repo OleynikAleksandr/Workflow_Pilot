@@ -5,21 +5,21 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const [settingsFile, expectedChoice, selectedKey, mode = 'busy', answerId] = process.argv.slice(2);
-const profile = path.join(path.dirname(settingsFile), 'auto-plan-restart-' + expectedChoice + '-' + mode);
+const profile = path.join(path.dirname(settingsFile), 'plan-continuation-restart-' + expectedChoice + '-' + mode);
 app.setPath('userData', profile);
-const deadline = setTimeout(() => { console.error('AutoPlan restart fixture timed out', mode); app.exit(1); }, 15000);
+const deadline = setTimeout(() => { console.error('PlanContinuation restart fixture timed out', mode); app.exit(1); }, 15000);
 app.whenReady().then(async () => {
   const root = path.resolve(__dirname, '..');
-  const { AutoPlan } = await import(pathToFileURL(path.join(root, 'src/control/workflow/auto-plan.mjs')));
-  const { readAutoPlanState } = await import(pathToFileURL(path.join(root, 'src/control/workflow/auto-plan-state.mjs')));
+  const { PlanContinuation } = await import(pathToFileURL(path.join(root, 'src/control/workflow/plan-continuation.mjs')));
+  const { readPlanContinuationState } = await import(pathToFileURL(path.join(root, 'src/control/workflow/plan-continuation-state.mjs')));
   const { PageStateSource } = await import(pathToFileURL(path.join(root, 'src/execution/browser/page-state.mjs')));
   const { connectPageState } = await import(pathToFileURL(path.join(root, 'src/execution/browser/page-state-bridge.mjs')));
   const { ChatGPTComposer } = await import(pathToFileURL(path.join(root, 'src/execution/browser/chatgpt-composer.mjs')));
   const settings = JSON.parse(await fs.readFile(settingsFile, 'utf8'));
-  const identity=JSON.parse(selectedKey),project=settings.projectAutoPlan?.[identity[0]];
-  settings.autoPlanEnabled=project?.enabled===true;settings.autoPlanCheckpoint=project?.sessions?.[identity[1]]?.autoPlanCheckpoint;
-  assert.equal(settings.autoPlanEnabled, expectedChoice === 'on');
-  const entries = [2, 3].includes(settings.autoPlanCheckpoint?.version) ? settings.autoPlanCheckpoint.entries : [settings.autoPlanCheckpoint];
+  const identity=JSON.parse(selectedKey),project=settings.projectPlanContinuation?.[identity[0]];
+  settings.planContinuationEnabled=project?.enabled===true;settings.continuationCheckpoint=project?.sessions?.[identity[1]]?.continuationCheckpoint;
+  assert.equal(settings.planContinuationEnabled, expectedChoice === 'on');
+  const entries = [2, 3].includes(settings.continuationCheckpoint?.version) ? settings.continuationCheckpoint.entries : [settings.continuationCheckpoint];
   const checkpoint = selectedKey ? entries.findLast(entry => entry.key === selectedKey) : entries.at(-1);
   const [workspace, sessionId, scopeId, chatUrl] = JSON.parse(checkpoint.key);
   const selected = { workspace, sessionId, scopeId, chatUrl };
@@ -65,13 +65,13 @@ app.whenReady().then(async () => {
     assert.deepEqual(await window.webContents.executeJavaScript('window.sent'), [], 'fresh process and repeated events never duplicate Send');
   };
   try {
-    automatic = new AutoPlan({ selected: () => selected, inspectPlan: () => readAutoPlanState(selected),
+    automatic = new PlanContinuation({ selected: () => selected, inspectPlan: () => readPlanContinuationState(selected),
       send: (text, canContinue, onBeforeSend) => composer.sendUserMessage({ text, canContinue, onBeforeSend, waitForAcknowledgement: false }) });
-    automatic.restore(settings.autoPlanEnabled, settings.autoPlanCheckpoint);
+    automatic.restore(settings.planContinuationEnabled, settings.continuationCheckpoint);
     await window.loadURL(chatUrl); await verify();
     const documentId = source.current.documentId;
     window.webContents.reload();
     await wait(() => source.current?.documentId !== documentId); await verify();
-    console.log(JSON.stringify({ autoPlanRestart: expectedChoice, mode, busy: mode === 'busy', sends: 0, reload: true, isolated: true }));
+    console.log(JSON.stringify({ planContinuationRestart: expectedChoice, mode, busy: mode === 'busy', sends: 0, reload: true, isolated: true }));
   } finally { automatic?.dispose(); unsubscribe(); disconnect(); window.destroy(); clearTimeout(deadline); app.quit(); }
 }).catch(error => { console.error(error); clearTimeout(deadline); app.exit(1); });

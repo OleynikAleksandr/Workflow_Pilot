@@ -4,10 +4,10 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 
-test('external conversation stays visibly external; there is no AutoPlan switch, only the plan button',async t=>{
+test('external conversation stays visibly external; there is no PlanContinuation switch, only the plan button',async t=>{
   const f=await fixture(t),base=f.state;
-  assert.equal(f.document.getElementById('auto-plan-toggle'),null,'no AutoPlan button at all');
-  assert.equal(typeof f.window.webPilot.setAutoPlan,'undefined');
+  assert.equal(f.document.getElementById('plan-continuation-toggle'),null,'no PlanContinuation button at all');
+  assert.equal(typeof f.window.webPilot.setPlanContinuation,'undefined');
   f.emit({...base,selected:{...base.selected,external:{provider:'chatgpt-plugin'},manualStart:true},
     context:{phase:'external-session',servicesReady:true,messageSent:true},planRun:null});
   const button=f.document.getElementById('plan-run-toggle');
@@ -18,12 +18,12 @@ test('external conversation stays visibly external; there is no AutoPlan switch,
   // A plan of the former model has the same one button.
   f.emit({...base,planRun:{state:'not-started',reason:null,issue:null,complete:false}});
   assert.equal(button.hidden,false);assert.equal(button.textContent,'Начать выполнение плана');
-  f.emit({...base,planRun:{state:'running',reason:null,issue:null,complete:false},autoPlan:{enabled:true,message:'Выполнение плана запущено. Агент работает.',continuations:2}});
+  f.emit({...base,planRun:{state:'running',reason:null,issue:null,complete:false},planContinuation:{enabled:true,message:'Выполнение плана запущено. Агент работает.',continuations:2}});
   assert.equal(button.textContent,'Пауза');
-  assert.match(f.document.getElementById('auto-plan-message').textContent,/№2.*Выполнение плана запущено/);
+  assert.match(f.document.getElementById('plan-continuation-message').textContent,/№2.*Выполнение плана запущено/);
   f.emit({...base,planRun:{state:'paused',reason:null,issue:null,complete:false}});
-  assert.equal(button.textContent,'Продолжить');assert.equal(f.document.getElementById('auto-plan-message').hidden,true);
-  assert.doesNotMatch(f.document.body.textContent,/втовыполнени/,'no text speaks of AutoPlan');
+  assert.equal(button.textContent,'Продолжить');assert.equal(f.document.getElementById('plan-continuation-message').hidden,true);
+  assert.doesNotMatch(f.document.body.textContent,/втовыполнени/,'no text speaks of PlanContinuation');
 });
 
 test('project picker searches, marks current/background work, keeps one parent and supports keyboard escape',async t=>{
@@ -357,7 +357,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
     {id:'T003',title:'Журнал',status:'pending',executionLabel:'Параллельно',target:null},
     {id:'T004',title:'Выпуск',status:'pending',executionLabel:'Оркестратор в main',target:null}]};
   const emit=(run,extra={})=>f.emit({...base,projects:[{...project,...extra}],selected:{...base.selected,scopeId:'scope',role:'orchestrator'},
-    orchestratorPlan,planRun:run,autoPlan:{enabled:false}});
+    orchestratorPlan,planRun:run,planContinuation:{enabled:false}});
   emit({state:'not-started',reason:null,issue:null,complete:false});
   const roles=[...f.document.querySelectorAll('.session-role')].map(node=>node.textContent);
   assert.deepEqual(roles,['Оркестратор · Выполняется · 1/4','Обсуждение']);
@@ -370,7 +370,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.deepEqual(f.calls.at(-1),['selectSession','/tree/b','worker-b']);
   const button=f.document.getElementById('plan-run-toggle');
   assert.equal(button.hidden,false);assert.equal(button.textContent,'Начать выполнение плана');
-  assert.equal(f.document.getElementById('auto-plan-toggle'),null,'there is no AutoPlan button');
+  assert.equal(f.document.getElementById('plan-continuation-toggle'),null,'there is no PlanContinuation button');
   button.click();await f.settle();assert.deepEqual(f.calls.at(-1),['togglePlanExecution']);
   for(const [state,label,disabled] of [['running','Пауза',false],['pausing','Пауза…',true],['paused','Продолжить',false]]) {
     emit({state,reason:null,issue:null,complete:false});
@@ -392,7 +392,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.equal(f.document.getElementById('plan-card').hidden,false,'the to-do plan stays in the sidebar');
   assert.equal(f.document.getElementById('assignment-card').hidden,true,'no separate executor card');
   assert.equal(f.document.getElementById('execution-actions').hidden,true);
-  assert.equal(f.document.getElementById('auto-plan-message').hidden,true,'no AutoPlan text in the new scheme');
+  assert.equal(f.document.getElementById('plan-continuation-message').hidden,true,'no PlanContinuation text in the new scheme');
   assert.equal(f.document.querySelector('.project').dataset.workspace,'/demo','the tree keeps the parent project');
   // Archiving a project with an active plan asks first; a refusal sends nothing.
   f.window.webPilot.archiveProject=async(workspace,options)=>{f.calls.push(['archiveProject',workspace,options]);return {state:f.state};};

@@ -164,7 +164,7 @@ test('source needs an observed final assistant pause in the exact chat, with no 
   assert.equal(executorPageState(null).stopped,false);
 });
 
-test('project-scoped AutoPlan starts first groups independently and OFF is rechecked after assignment preparation',async t=>{
+test('project-scoped PlanContinuation starts first groups independently and OFF is rechecked after assignment preparation',async t=>{
   const a=fixture(t),b=fixture(t);let allowedA=false,allowedB=true;
   a.runtime.isEnabled=(workspace,scope)=>workspace==='/main'&&scope==='scope'&&allowedA;
   b.runtime.isEnabled=(workspace,scope)=>workspace==='/main'&&scope==='scope'&&allowedB;
@@ -203,7 +203,7 @@ test('published-plan diagnostics retain actual Kit reason instead of a generic l
   }
 });
 
-test('AutoPlan requests a conflict correction once, waits for readiness and respects OFF and UNKNOWN',async t=>{
+test('PlanContinuation requests a conflict correction once, waits for readiness and respects OFF and UNKNOWN',async t=>{
   const f=fixture(t);await f.grant();
   f.state.integration={status:'CONFLICT',operation_id:'integration-auto',task_id:'A',conflicts:['src/A.mjs']};
   await f.runtime.signal('/main');assert.equal(f.calls.corrections.length,0);

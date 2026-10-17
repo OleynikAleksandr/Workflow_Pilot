@@ -103,7 +103,7 @@ export async function prepareStartup({ dataDir }) {
   clipboard.readText = () => copiedText;
   clipboard.writeText = value => { copiedText = String(value); };
   clipboard.clear = () => { copiedText = ''; };
-  await fs.writeFile(path.join(dataDir, 'settings.json'), JSON.stringify({ autoPlanEnabled: true }), { flag: 'wx' });
+  await fs.writeFile(path.join(dataDir, 'settings.json'), JSON.stringify({ planContinuationEnabled: true }), { flag: 'wx' });
 }
 
 export async function createRuntime({ browser, session }) {
@@ -212,7 +212,7 @@ async function verifyUninterruptedRequest(dataDir) {
   }
 }
 
-export async function run({ app, window, sidebar, store, plugin, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture, continuePlan }) {
+export async function run({ app, window, sidebar, store, plugin, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, planContinuation, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture, continuePlan }) {
   // Test actions follow the visible page; production controllers retain their own page.
   const currentObject=key=>new Proxy({}, {
     get:(_target,property)=>{const value=getLive()[key][property];return typeof value==='function'?value.bind(getLive()[key]):value;},
@@ -221,8 +221,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const browser=currentObject('browser'),controller=currentObject('controller'),pageState=currentObject('pageState'),chromiumDiagnostics=currentObject('chromiumDiagnostics');
   smokeDataDir = dataDir;
   const savedAutoState=async()=>{const settings=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8'));
-    const p=store.selected(),state=settings.projectAutoPlan?.[p?.parentWorkspace??p?.workspace];
-    return {autoPlanEnabled:state?.enabled===true,autoPlanCheckpoint:state?.sessions?.[p?.sessionId]?.autoPlanCheckpoint??null};};
+    const p=store.selected(),state=settings.projectPlanContinuation?.[p?.parentWorkspace??p?.workspace];
+    return {planContinuationEnabled:state?.enabled===true,continuationCheckpoint:state?.sessions?.[p?.sessionId]?.continuationCheckpoint??null};};
   // Keep frame-based fixture checks running when another desktop window covers this one.
   sidebar.setBackgroundThrottling(false);
   await verifyUninterruptedRequest(dataDir);
@@ -241,16 +241,16 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(permissionAllowed('media', 'https://example.com', { mediaTypes: ['audio'] }), false);
   const workspace = path.join(await fs.realpath(dataDir + '-projects'), 'Тестовый проект с пробелами');
   await waitFor(() => sidebar.executeJavaScript('typeof window.webPilot === "object"'), 'local IPC ready', snapshot);
-  assert.equal(autoPlan.view().enabled, false, 'legacy global ON grants no project permission');
-  assert.equal(snapshot().autoPlan.enabled, false);
+  assert.equal(planContinuation.view().enabled, false, 'legacy global ON grants no project permission');
+  assert.equal(snapshot().planContinuation.enabled, false);
   assert.deepEqual(snapshot().conversationRecovery, { phase: 'idle', message: '', canRetry: false });
-  assert.equal(await sidebar.executeJavaScript("document.getElementById('auto-plan-toggle')"), null, 'no AutoPlan button');
-  assert.equal(await sidebar.executeJavaScript("typeof window.webPilot.setAutoPlan"), 'undefined', 'no AutoPlan IPC');
-  assert.equal((await savedAutoState()).autoPlanEnabled, false);
+  assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-continuation-toggle')"), null, 'no PlanContinuation button');
+  assert.equal(await sidebar.executeJavaScript("typeof window.webPilot.setPlanContinuation"), 'undefined', 'no PlanContinuation IPC');
+  assert.equal((await savedAutoState()).planContinuationEnabled, false);
   // Continue the existing suite from its original OFF baseline through the real IPC.
   await continuePlan(false);
-  assert.equal(snapshot().autoPlan.enabled, false);
-  console.log(JSON.stringify({ mainStartup: true, savedAutoPlan: 'legacy-on-migrated-off', sidebarReady: true, isolated: true }));
+  assert.equal(snapshot().planContinuation.enabled, false);
+  console.log(JSON.stringify({ mainStartup: true, savedPlanContinuation: 'legacy-on-migrated-off', sidebarReady: true, isolated: true }));
 
 
   await chromiumDiagnostics.flush();
@@ -630,23 +630,23 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const reviewStateFile=path.join(workspace,'.harness/runtime/plan-review/state.json');
   const originalReviewState=await fs.readFile(reviewStateFile).catch(e=>{if(e.code==='ENOENT')return null;throw e;});
   await waitFor(()=>sidebar.executeJavaScript("!document.getElementById('plan-review-toggle').disabled"),'review button at NONE',snapshot);
-  const autoBeforeReview=snapshot().autoPlan.enabled;
+  const autoBeforeReview=snapshot().planContinuation.enabled;
   await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').click()");
   await waitFor(()=>snapshot().planReview.enabled,'review enabled',snapshot);
   await waitFor(()=>snapshot().context.phase==='stale','review policy invalidates delivered recovery',snapshot);
   assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').getAttribute('aria-pressed')"),'true');
   assert.equal(await sidebar.executeJavaScript("getComputedStyle(document.getElementById('plan-review-toggle')).backgroundColor"),'rgb(8, 124, 69)');
   assert.equal(JSON.parse(await fs.readFile(path.join(workspace,'.harness/runtime/plan-review/state.json'),'utf8')).enabled,true);
-  assert.equal(snapshot().autoPlan.enabled,autoBeforeReview);
+  assert.equal(snapshot().planContinuation.enabled,autoBeforeReview);
   await waitFor(()=>sidebar.executeJavaScript("!document.getElementById('plan-review-toggle').disabled"),'review toggle ready',snapshot);
   await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').click()");
   await waitFor(()=>!snapshot().planReview.enabled,'review disabled',snapshot);
 
   await continuePlan(true);
-  assert.equal(snapshot().autoPlan.enabled,true,'explicit ON waits for the first plan');
+  assert.equal(snapshot().planContinuation.enabled,true,'explicit ON waits for the first plan');
   for(const [review,auto] of [[false,false],[true,false],[false,false]]) {
     // Review stays a button; the former continuation engine has no button and is set directly.
-    if(snapshot().autoPlan.enabled!==auto)await continuePlan(auto);
+    if(snapshot().planContinuation.enabled!==auto)await continuePlan(auto);
     for(const [id,current,wanted] of [
       ['plan-review-toggle',()=>snapshot().planReview.enabled,review]]) {
       if(current()!==wanted){
@@ -655,9 +655,9 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
         await waitFor(()=>current()===wanted,'independent toggle state',snapshot);
       }
     }
-    assert.equal(snapshot().planReview.enabled,review);assert.equal(snapshot().autoPlan.enabled,auto);
+    assert.equal(snapshot().planReview.enabled,review);assert.equal(snapshot().planContinuation.enabled,auto);
     assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').getAttribute('aria-pressed')"),String(review));
-    assert.equal((await savedAutoState()).autoPlanEnabled,auto);
+    assert.equal((await savedAutoState()).planContinuationEnabled,auto);
     const restoredReview=new PlanReviewClient({selected:()=>({workspace})});
     restoredReview.observeSelection();assert.equal(restoredReview.view().enabled,review);restoredReview.dispose();
     for(const theme of ['light','dark']){
@@ -1383,7 +1383,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const countMessages = () => browser.executeJavaScript('window.fixtureMessages.length');
   const beginAnswer = async () => {
     await browser.executeJavaScript("(()=>{const b=document.createElement('button');b.id='auto-fixture-stop';b.dataset.testid='stop-button';b.textContent='Stop';b.style='position:fixed;left:20px;top:20px;z-index:99999';b.onclick=()=>b.remove();document.body.append(b)})()");
-    await waitFor(() => pageState.current?.state.busy, 'auto-plan busy transition', snapshot);
+    await waitFor(() => pageState.current?.state.busy, 'plan-continuation busy transition', snapshot);
   };
   const appendAnswer = text => browser.executeJavaScript('window.fixtureAssistant(' + JSON.stringify(text) + ')');
   const endAnswer = async (text = 'Изменение проверено и закоммичено.') => {
@@ -1391,16 +1391,16 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     await browser.executeJavaScript("document.getElementById('auto-fixture-stop')?.remove()");
   };
   const expectContinue = async (before, description) => {
-    await waitFor(async () => await countMessages() === before + 1 && !autoPlan.pending
-      && autoPlan.checkpoint?.status === 'sent', description, snapshot);
+    await waitFor(async () => await countMessages() === before + 1 && !planContinuation.pending
+      && planContinuation.checkpoint?.status === 'sent', description, snapshot);
     // 0.6.96: the continuation carries the next task of the plan after the exact first line.
     const continuation = await browser.executeJavaScript('window.fixtureMessages.at(-1).text');
     assert.match(continuation, /^Продолжай\n\nДанные текущего плана Workflow Kit — следующая задача [^\n]+\nЗадача: \S+ — .+/s);
     assert.ok(Buffer.byteLength(continuation) <= 4096, 'continuation stays within 4 KB');
   };
   const noExtraSend = async before => {
-    await Promise.all([autoPlan.planChanged(), autoPlan.planChanged(), autoPlan.recover()]);
-    autoPlan.observe(pageState.current); await autoPlan.reconcile();
+    await Promise.all([planContinuation.planChanged(), planContinuation.planChanged(), planContinuation.recover()]);
+    planContinuation.observe(pageState.current); await planContinuation.reconcile();
     assert.equal(await countMessages(), before);
   };
   const trustedClick = async selector => {
@@ -1427,14 +1427,14 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const prePlanChat = store.snapshot().projects.find(p => p.workspace === workspace).sessions
     .find(session => !session.archivedAt && session.chatUrl);
   await continuePlan(true);
-  assert.equal((await savedAutoState()).autoPlanEnabled, true, 'explicit pre-plan authorization persists');
+  assert.equal((await savedAutoState()).planContinuationEnabled, true, 'explicit pre-plan authorization persists');
   await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
   await waitFor(() => store.selected()?.sessionId !== prePlanChat.sessionId
     && snapshot().context.phase === 'delivered' && !snapshot().selected?.scopeId,
     '01TestAuto new Chat starts with NONE and saved ON', snapshot);
   const autoScopeOwner = store.selected();
-  assert.equal(await countMessages(), 1, 'only normal recovery; no AutoPlan startup instruction');
-  assert.equal(autoPlan.view().enabled, false);
+  assert.equal(await countMessages(), 1, 'only normal recovery; no PlanContinuation startup instruction');
+  assert.equal(planContinuation.view().enabled, false);
   await beginAnswer(); await noExtraSend(1);
   const legacyChats = [prePlanChat, autoScopeOwner]
     .map(session => store.project(workspace,session.sessionId))
@@ -1462,9 +1462,9 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const scopeOwnerId = new URL(scopeOwner.chatUrl).pathname.split('/').at(-1);
   await waitFor(() => fixtureConversationTitles.get(scopeOwnerId) === currentScopeTitle,
     'scope owner title is synchronized to native ChatGPT fixture', snapshot);
-  assert.equal(autoPlan.view().enabled, false);
+  assert.equal(planContinuation.view().enabled, false);
   await continuePlan(true);
-  assert.equal(autoPlan.view().enabled, true); assert.equal(await countMessages(), 1);
+  assert.equal(planContinuation.view().enabled, true); assert.equal(await countMessages(), 1);
   await endAnswer('Создан текущий план, обычный отчёт без специальной итоговой строки.');
   await expectContinue(1, '01TestAuto NONE -> ACTIVE -> idle sends exactly one Continue');
   await noExtraSend(2);
@@ -1554,13 +1554,13 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     const before = await countMessages();
     await beginAnswer();
     await sidebar.executeJavaScript("document.getElementById('plan-run-toggle').click()");
-    await waitFor(() => autoPlan.view().phase === 'running', 'ON adopts the busy answer', snapshot);
+    await waitFor(() => planContinuation.view().phase === 'running', 'ON adopts the busy answer', snapshot);
     await noExtraSend(before);
     await endAnswer();
     await expectContinue(before, 'ordinary answer continues once in ' + target.experience);
-    assert.deepEqual(autoPlan.run.completedAtStart, ['T001']);
-    assert.equal(autoPlan.view().continuations, 1);
-    await waitFor(() => sidebar.executeJavaScript("document.getElementById('auto-plan-message').textContent.includes('Продолжай» №1')"),
+    assert.deepEqual(planContinuation.run.completedAtStart, ['T001']);
+    assert.equal(planContinuation.view().continuations, 1);
+    await waitFor(() => sidebar.executeJavaScript("document.getElementById('plan-continuation-message').textContent.includes('Продолжай» №1')"),
       'confirmed counter visible in sidebar', snapshot);
     await noExtraSend(before + 1);
     if (target.experience === 'chat') {
@@ -1569,7 +1569,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
       await waitFor(()=>!pageState.current.state.busy&&pageState.current.state.manualStopRevision>0,'trusted Stop pauses automation',snapshot);
       await noExtraSend(before+1);
       assert.ok(pageState.current.state.manualStopRevision > 0);
-      assert.equal(autoPlan.view().enabled, true);
+      assert.equal(planContinuation.view().enabled, true);
       await browser.executeJavaScript("(()=>{const e=document.getElementById('prompt-textarea');e.textContent='Продолжаем после Stop';e.dispatchEvent(new Event('input',{bubbles:true}))})()");
       await trustedClick('[data-testid=send-button]');
       await waitFor(()=>pageState.current.state.manualSendRevision>0,'new user message after Stop',snapshot);
@@ -1580,16 +1580,16 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
       const draft = 'Мой сохранённый черновик';
       await browser.executeJavaScript("(()=>{const e=document.getElementById('prompt-textarea');e.textContent=" + JSON.stringify(draft) + ";e.dispatchEvent(new Event('input',{bubbles:true}))})()");
       const beforeDraft = await countMessages(); await endAnswer();
-      await waitFor(() => autoPlan.view().reason === 'DRAFT_PRESENT', 'draft waits without disabling mode', snapshot);
+      await waitFor(() => planContinuation.view().reason === 'DRAFT_PRESENT', 'draft waits without disabling mode', snapshot);
       assert.equal(await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent"), draft);
       await noExtraSend(beforeDraft);
       assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-run-toggle').textContent"), 'Пауза');
       await trustedClick('[data-testid=send-button]');
-      await waitFor(() => autoPlan.view().reason === 'USER_MESSAGE_PENDING', 'manual Send waits for new answer', snapshot);
+      await waitFor(() => planContinuation.view().reason === 'USER_MESSAGE_PENDING', 'manual Send waits for new answer', snapshot);
       assert.equal(await countMessages(), beforeDraft + 1);
       assert.equal(await browser.executeJavaScript('window.fixtureMessages.at(-1).text'), draft);
       const doc = pageState.current.documentId; browser.reload();
-      await waitFor(() => pageState.current?.documentId !== doc && autoPlan.view().reason === 'USER_MESSAGE_PENDING',
+      await waitFor(() => pageState.current?.documentId !== doc && planContinuation.view().reason === 'USER_MESSAGE_PENDING',
         'manual Send remains pending after reload', snapshot);
       await noExtraSend(beforeDraft + 1);
       await beginAnswer(); await endAnswer();
@@ -1599,22 +1599,22 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const restartFixture = async (choice, mode = 'busy') => {
     const answerId = await browser.executeJavaScript("window.fixtureTurns.findLast(turn => turn.role === 'assistant').id");
     return promisify(execFile)(process.execPath,
-      [path.join(import.meta.dirname, 'auto-plan-restart-fixture.cjs'), path.join(dataDir, 'settings.json'), choice, autoPlan.checkpoint.key, mode, answerId],
+      [path.join(import.meta.dirname, 'plan-continuation-restart-fixture.cjs'), path.join(dataDir, 'settings.json'), choice, planContinuation.checkpoint.key, mode, answerId],
       { timeout: 20000, env: { ...process.env, ELECTRON_RUN_AS_NODE: '' } });
   };
   for (const mode of ['busy', 'sent', 'sending', 'manual']) {
     const restarted = await restartFixture('on', mode);
-    assert.match(restarted.stdout, /"autoPlanRestart":"on"/);
+    assert.match(restarted.stdout, /"planContinuationRestart":"on"/);
     assert.match(restarted.stdout, /"sends":0/);
   }
   const beforeRestore = await countMessages();
   const savedAuto = await savedAutoState();
-  autoPlan.dispose(); autoPlan.restore(savedAuto.autoPlanEnabled, savedAuto.autoPlanCheckpoint);
-  await autoPlan.recover();
-  await waitFor(() => autoPlan.view().reason === 'USER_MESSAGE_PENDING', 'saved ON restores without a button click', snapshot);
+  planContinuation.dispose(); planContinuation.restore(savedAuto.planContinuationEnabled, savedAuto.continuationCheckpoint);
+  await planContinuation.recover();
+  await waitFor(() => planContinuation.view().reason === 'USER_MESSAGE_PENDING', 'saved ON restores without a button click', snapshot);
   await noExtraSend(beforeRestore);
   const beforeReloadDocument = pageState.current.documentId; browser.reload();
-  await waitFor(() => pageState.current?.documentId !== beforeReloadDocument && autoPlan.view().reason === 'USER_MESSAGE_PENDING',
+  await waitFor(() => pageState.current?.documentId !== beforeReloadDocument && planContinuation.view().reason === 'USER_MESSAGE_PENDING',
     'real reload preserves history', snapshot);
   await noExtraSend(beforeRestore);
   // OFF during busy retains the idle pause; ON at idle sends once.
@@ -1634,16 +1634,16 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await continuePlan(true);
   await noExtraSend(beforeRestore + 1);
   await endAnswer('Нужен ваш ответ. Эта строка не является клиентской командой.');
-  await expectContinue(beforeRestore + 1, 'ordinary prose does not control AutoPlan');
+  await expectContinue(beforeRestore + 1, 'ordinary prose does not control PlanContinuation');
   await beginAnswer();
-  const stalledRun = autoPlan.run, stalledEpoch = autoPlan.epoch;
-  const beforeWarning = await countMessages(), originalStall = autoPlan.stallMs;
+  const stalledRun = planContinuation.run, stalledEpoch = planContinuation.epoch;
+  const beforeWarning = await countMessages(), originalStall = planContinuation.stallMs;
   try {
-    autoPlan.stallMs = 25; autoPlan.watch(autoPlan.run);
-    await waitFor(() => autoPlan.view().warning === 'STALL_WARNING', 'busy watchdog only warns', snapshot);
-    assert.equal(autoPlan.view().phase, 'running'); assert.equal(autoPlan.run, stalledRun);
-    assert.equal(autoPlan.epoch, stalledEpoch); await noExtraSend(beforeWarning);
-    await waitFor(() => sidebar.executeJavaScript("document.getElementById('auto-plan-message').textContent.includes('ещё работает')"), 'stall warning in sidebar', snapshot);
+    planContinuation.stallMs = 25; planContinuation.watch(planContinuation.run);
+    await waitFor(() => planContinuation.view().warning === 'STALL_WARNING', 'busy watchdog only warns', snapshot);
+    assert.equal(planContinuation.view().phase, 'running'); assert.equal(planContinuation.run, stalledRun);
+    assert.equal(planContinuation.epoch, stalledEpoch); await noExtraSend(beforeWarning);
+    await waitFor(() => sidebar.executeJavaScript("document.getElementById('plan-continuation-message').textContent.includes('ещё работает')"), 'stall warning in sidebar', snapshot);
     assert.equal(snapshot().conversationRecovery.phase,'idle');
     assert.equal(await sidebar.executeJavaScript("document.getElementById('conversation-recovery').hidden"),true,'stall alone never offers recovery');
     assert.equal(await sidebar.executeJavaScript("document.getElementById('reconnect-chat').hidden"),true);
@@ -1655,16 +1655,16 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-review-indicator').dataset.state"),'working');
     assert.equal(await sidebar.executeJavaScript("document.getElementById('conversation-recovery').hidden"),true,'review wait is not a connection error');
     sidebar.send('pilot:state-changed',snapshot());
-    autoPlan.stallMs = originalStall; await appendAnswer('Продолжаю проверку');
-    await waitFor(() => autoPlan.view().warning === null && pageState.current?.state.busy, 'busy progress clears warning', snapshot);
-  } finally { autoPlan.stallMs = originalStall; }
+    planContinuation.stallMs = originalStall; await appendAnswer('Продолжаю проверку');
+    await waitFor(() => planContinuation.view().warning === null && pageState.current?.state.busy, 'busy progress clears warning', snapshot);
+  } finally { planContinuation.stallMs = originalStall; }
   await endAnswer();
   await expectContinue(beforeWarning, 'normal answer after watchdog continues');
-  assert.equal(autoPlan.run, stalledRun);
+  assert.equal(planContinuation.run, stalledRun);
   // Connection recovery resumes from its natural event without OFF/ON.
   await beginAnswer(); const beforeError = await countMessages();
   await browser.executeJavaScript("(()=>{const e=document.createElement('div');e.id='auto-fixture-error';e.setAttribute('role','alert');e.textContent='Resume stream unavailable';document.body.append(e)})()");
-  await waitFor(() => autoPlan.view().reason === 'CONNECTION_ERROR', 'connection alert blocks dispatch', snapshot);
+  await waitFor(() => planContinuation.view().reason === 'CONNECTION_ERROR', 'connection alert blocks dispatch', snapshot);
   await endAnswer(); await noExtraSend(beforeError);
   await browser.executeJavaScript("document.getElementById('auto-fixture-error').remove()");
   await expectContinue(beforeError, 'connection recovery reconsiders the idle pause');
@@ -1675,13 +1675,13 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(withSessionPlan(workspace, { sessionId: legacyChats[1].sessionId }, () => commitTask(workspace, 'T002')).ok, true);
   await waitFor(() => snapshot().selected?.planView?.state === 'awaiting-acceptance', 'single current plan completed', snapshot);
   const beforeFinal = await countMessages(); await endAnswer();
-  await waitFor(() => autoPlan.view().phase === 'complete', 'all ordinary tasks DONE sends no Continue', snapshot);
+  await waitFor(() => planContinuation.view().phase === 'complete', 'all ordinary tasks DONE sends no Continue', snapshot);
   await noExtraSend(beforeFinal);
   await continuePlan(false);
   await continuePlan(true);
-  await waitFor(() => autoPlan.view().phase === 'complete', 'ON completed plan stays complete', snapshot);
+  await waitFor(() => planContinuation.view().phase === 'complete', 'ON completed plan stays complete', snapshot);
   await noExtraSend(beforeFinal);
-  await fs.writeFile(path.join(dataDir, 'auto-plan-completed.png'), (await sidebar.capturePage()).toPNG());
+  await fs.writeFile(path.join(dataDir, 'plan-continuation-completed.png'), (await sidebar.capturePage()).toPNG());
 
 
   for (const legacy of legacyChats) {
@@ -1703,16 +1703,16 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const singleActivePlanScreenshot = path.join(dataDir, 'single-active-plan.png');
   await fs.writeFile(singleActivePlanScreenshot, (await sidebar.capturePage()).toPNG());
 
-  assert.equal(autoPlan.view().enabled, false, 'completion disables project permission across chats');
-  assert.equal((await savedAutoState()).autoPlanEnabled, false);
+  assert.equal(planContinuation.view().enabled, false, 'completion disables project permission across chats');
+  assert.equal((await savedAutoState()).planContinuationEnabled, false);
   await continuePlan(false);
   const savedOff = await savedAutoState();
-  assert.equal(savedOff.autoPlanEnabled, false);
+  assert.equal(savedOff.planContinuationEnabled, false);
   const restartedOff = await restartFixture('off');
-  assert.match(restartedOff.stdout, /"autoPlanRestart":"off"/);
-  autoPlan.dispose(); autoPlan.restore(savedOff.autoPlanEnabled, savedOff.autoPlanCheckpoint);
-  await autoPlan.recover();
-  assert.equal(autoPlan.view().enabled, false, 'disabled choice remains off after reconstruction');
+  assert.match(restartedOff.stdout, /"planContinuationRestart":"off"/);
+  planContinuation.dispose(); planContinuation.restore(savedOff.planContinuationEnabled, savedOff.continuationCheckpoint);
+  await planContinuation.recover();
+  assert.equal(planContinuation.view().enabled, false, 'disabled choice remains off after reconstruction');
   // Doctor scenarios begin after prior background recovery work has settled.
   await waitFor(() => !controller.contextCache.isPending(), 'background preparation before Doctor', snapshot);
   // Doctor operates on the isolated fixture only; the real workspace is never damaged.
@@ -1891,8 +1891,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const result = { ordinaryManualSend: true, manualRecoverySend: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, directFirstWork: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
     singleActivePlanScreenshot, mode: 'isolated-fixture', electron: process.versions.electron, chromium: process.versions.chrome,
     views: window.contentView.children.length, secureRemote: true, sidebarIpc: true, archiveRestore: true, archiveRestart: true, deleteCancel: true, localDeletion: true, cloudChatPreserved: true, workspaceCreation: true, workspaceValidation: true, cancelPreservesSession: true, startupMessages: 4, canonicalPacketLoads: packetLoads, recoveryCache: true, operationProgress: true, progressScreenshot: path.join(dataDir, 'progress-ui.png'),
-    tokenCounterRemoved: true, projectRename: true, sessionRename: true, sessionScopedTitleSync: true, restartKeepsSession: true, newChatCreatesSession: true, sessionTree: true, selectsEarlierSession: true, compactWorkspaceDetails: true, projectPathClipboard: true, sessionPlans: true, singleCurrentPlan: true, clientAutoPlan: true, autoPlan01TestAuto: true,
-    autoPlanFreshProcessModes: ['busy', 'sent', 'sending', 'manual', 'off'], autoPlanReloadNoDuplicate: true, manualChatWorkChoice: true, noAcceptanceButton: true, chromiumDiagnostics: true, contextWindowIndicatorRemoved: true, resizableSidebar: true, separateArchiveWindow: true, archiveMultiSelect: true, archiveForgetKeepsFolder: true, archiveRecoveryAfterInterrupt: true, replacementFolderProtected: true, orphanSettingsConfirmed: true, orphanUnknownRefused: true, shellTheme: true, nativeTitlebarTheme: nativeTheme.shouldUseDarkColors, toolCallFilter: true, microphonePermission: true, geolocationPermission: true, cameraPermission: false, fullContextBytes: Buffer.byteLength(fixtureContext), liveChatGPT: false, agentToolsRequired: false };
+    tokenCounterRemoved: true, projectRename: true, sessionRename: true, sessionScopedTitleSync: true, restartKeepsSession: true, newChatCreatesSession: true, sessionTree: true, selectsEarlierSession: true, compactWorkspaceDetails: true, projectPathClipboard: true, sessionPlans: true, singleCurrentPlan: true, clientPlanContinuation: true, planContinuation01TestAuto: true,
+    planContinuationFreshProcessModes: ['busy', 'sent', 'sending', 'manual', 'off'], planContinuationReloadNoDuplicate: true, manualChatWorkChoice: true, noAcceptanceButton: true, chromiumDiagnostics: true, contextWindowIndicatorRemoved: true, resizableSidebar: true, separateArchiveWindow: true, archiveMultiSelect: true, archiveForgetKeepsFolder: true, archiveRecoveryAfterInterrupt: true, replacementFolderProtected: true, orphanSettingsConfirmed: true, orphanUnknownRefused: true, shellTheme: true, nativeTitlebarTheme: nativeTheme.shouldUseDarkColors, toolCallFilter: true, microphonePermission: true, geolocationPermission: true, cameraPermission: false, fullContextBytes: Buffer.byteLength(fixtureContext), liveChatGPT: false, agentToolsRequired: false };
   await fs.writeFile(path.join(dataDir, 'smoke-result.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 }

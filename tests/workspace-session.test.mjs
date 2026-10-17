@@ -20,11 +20,11 @@ test('assignment gets one inherited session without moving selection and persist
   assert.equal(first.workspace,worktree);assert.equal(first.parentWorkspace,main.workspace);assert.equal(first.taskId,'T001');
   assert.equal(first.parentProjectId,main.projectId);
   assert.equal(first.experience,'work');assert.deepEqual(first.executionSnapshot,main.executionSnapshot);
-  await store.saveExecutorAutomation(worktree,first.sessionId,{autoPlanCheckpoint:{version:3,entries:[]}});
+  await store.saveExecutorAutomation(worktree,first.sessionId,{continuationCheckpoint:{version:3,entries:[]}});
   const restarted=new WorkspaceSessions(store.file);await restarted.load();
   assert.equal(restarted.project(worktree).assignmentId,assignment.id);
   assert.equal(restarted.project(worktree).parentProjectId,main.projectId);
-  assert.equal(restarted.project(worktree).executionAutomation.autoPlanCheckpoint.version,3);
+  assert.equal(restarted.project(worktree).executionAutomation.continuationCheckpoint.version,3);
   await assert.rejects(store.ensureExecutor({...assignment,parent_task_id:'T002'},main),{code:'ASSIGNMENT_OWNER'});
 });
 

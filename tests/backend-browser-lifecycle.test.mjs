@@ -6,8 +6,8 @@ import path from 'node:path';
 import {EventEmitter} from 'node:events';
 import {BackendBrowserHost,ExecutionFacade} from '../src/execution/facade.mjs';
 import {SessionRuntimes} from '../src/control/sessions/service.mjs';
-import {ProjectAutoPlan} from '../src/control/workflow/project-auto-plan.mjs';
-import {configureProjectAutoPlan} from '../src/control/workflow/project-session-auto-plan.mjs';
+import {ProjectPlanContinuation} from '../src/control/workflow/project-plan-continuation.mjs';
+import {configureProjectPlanContinuation} from '../src/control/workflow/project-session-plan-continuation.mjs';
 import {createBackendPages} from '../src/backend/bootstrap.mjs';
 
 const settle=(ms=25)=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -77,7 +77,7 @@ function backendFixture(t,root,{recoverCrashed=false}={}) {
   const store={project:(w,id)=>w===workspace&&(!id||id==='chat-a')?project:null,selected:()=>project,
     inspect:async()=>structuredClone(plan),recordAgentTime:async()=>{},updateSession:async(_w,_id,patch)=>Object.assign(project,patch),
     bindChat:async()=>project};
-  const auth=new ProjectAutoPlan();auth.set(workspace,'scope-a',true,'chat-a');
+  const auth=new ProjectPlanContinuation();auth.set(workspace,'scope-a',true,'chat-a');
   const execution=new ExecutionFacade();
   execution.attachBrowser({host,ipc:{},recoverCrashed,recoveryDelayMs:5,
     connect:(contents,_ipc,source)=>{
@@ -103,7 +103,7 @@ function backendFixture(t,root,{recoverCrashed=false}={}) {
       const cancel=record.controller.cancel.bind(record.controller),reset=record.recovery.reset.bind(record.recovery);
       record.controller.cancel=()=>{counts.cancel++;return cancel();};
       record.recovery.reset=()=>{counts.reset++;return reset();};
-      configureProjectAutoPlan(record,{store,authorization:auth,inspectPlan:async()=>structuredClone(plan),onChange:()=>{}});
+      configureProjectPlanContinuation(record,{store,authorization:auth,inspectPlan:async()=>structuredClone(plan),onChange:()=>{}});
     }});
   const pages=createBackendPages({sessions,store,host,setup:{ready:async()=>({ready:true})}});
   t.after(()=>sessions.dispose());
@@ -127,7 +127,7 @@ test('fixture chain continues without viewers; detach and reconnect never reload
   assert.equal(f.pages.detachViewer(viewer),true);
   assert.deepEqual(f.counts,{cancel:0,reset:0},'detach is not a page or automation event');
   assert.equal(f.pages.list()[0].viewers,0);assert.equal(contents.isDestroyed(),false);
-  // Step 1: the delivered chat pauses; AutoPlan continues with nobody watching.
+  // Step 1: the delivered chat pauses; PlanContinuation continues with nobody watching.
   f.observe(record,1,{turnId:'a1'});
   await until(()=>f.sends.length===1,'first continuation');
   f.observe(record,2,{turnId:'a1',busy:true,lastMessageRole:'user'});

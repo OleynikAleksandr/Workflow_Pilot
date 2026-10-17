@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 386,
+  "plan_revision": 388,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -33,7 +33,50 @@
       "src/backend/desktop-model.mjs",
       "src/frontend/desktop/ui/sidebar.mjs",
       "packages/workflow-kit/src/lib/installer.mjs",
-      "tests/sidebar.test.mjs"
+      "tests/sidebar.test.mjs",
+      "src/backend/bootstrap.mjs",
+      "src/backend/operations.mjs",
+      "src/control/projects/project-state-cleanup.mjs",
+      "src/control/sessions/workspace-session.mjs",
+      "src/control/settings/service.mjs",
+      "src/control/workflow/automation-send-state.mjs",
+      "src/control/workflow/executor-session.mjs",
+      "src/control/workflow/parallel-execution.mjs",
+      "src/control/workflow/parallel-kit.mjs",
+      "src/control/workflow/auto-plan-state.mjs",
+      "src/control/workflow/plan-continuation-state.mjs",
+      "src/control/workflow/auto-plan.mjs",
+      "src/control/workflow/plan-continuation.mjs",
+      "src/control/workflow/project-auto-plan.mjs",
+      "src/control/workflow/project-plan-continuation.mjs",
+      "src/control/workflow/project-session-auto-plan.mjs",
+      "src/control/workflow/project-session-plan-continuation.mjs",
+      "src/control/workflow/review-continuation.mjs",
+      "src/frontend/desktop/client.mjs",
+      "tests/backend-api.test.mjs",
+      "tests/backend-browser-lifecycle.test.mjs",
+      "tests/context-session.test.mjs",
+      "tests/control-facade.test.mjs",
+      "tests/desktop-boundaries.test.mjs",
+      "tests/execution-architecture.test.mjs",
+      "tests/execution-control.test.mjs",
+      "tests/parallel-execution-recovery.test.mjs",
+      "tests/parallel-execution-smoke-fixture.cjs",
+      "tests/parallel-execution-ui.test.mjs",
+      "tests/parallel-execution.test.mjs",
+      "tests/parallel-finalization.test.mjs",
+      "tests/auto-plan-restart-fixture.cjs",
+      "tests/plan-continuation-restart-fixture.cjs",
+      "tests/auto-plan.test.mjs",
+      "tests/plan-continuation.test.mjs",
+      "tests/plan-review.test.mjs",
+      "tests/project-auto-plan.test.mjs",
+      "tests/project-plan-continuation.test.mjs",
+      "tests/project-state-cleanup.test.mjs",
+      "tests/settings-parallel-execution.test.mjs",
+      "tests/workspace-deletion.test.mjs",
+      "tests/workspace-session.test.mjs",
+      "tests/legacy-continuation-keys.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/project-list-layout.md",
@@ -372,7 +415,53 @@
       "functional_paths": [
         "src/control/workflow/coordination.mjs",
         "src/backend/desktop-model.mjs",
-        "src/frontend/desktop/ui/sidebar.mjs"
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/backend/operations.mjs",
+        "src/control/projects/project-state-cleanup.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/settings/service.mjs",
+        "src/control/workflow/automation-send-state.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/workflow/auto-plan-state.mjs",
+        "src/control/workflow/plan-continuation-state.mjs",
+        "src/control/workflow/auto-plan.mjs",
+        "src/control/workflow/plan-continuation.mjs",
+        "src/control/workflow/project-auto-plan.mjs",
+        "src/control/workflow/project-plan-continuation.mjs",
+        "src/control/workflow/project-session-auto-plan.mjs",
+        "src/control/workflow/project-session-plan-continuation.mjs",
+        "src/control/workflow/review-continuation.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tests/backend-api.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/desktop-boundaries.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/execution-architecture.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/parallel-execution-recovery.test.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/auto-plan-restart-fixture.cjs",
+        "tests/plan-continuation-restart-fixture.cjs",
+        "tests/auto-plan.test.mjs",
+        "tests/plan-continuation.test.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/project-auto-plan.test.mjs",
+        "tests/project-plan-continuation.test.mjs",
+        "tests/project-state-cleanup.test.mjs",
+        "tests/settings-parallel-execution.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/workspace-deletion.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/legacy-continuation-keys.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/no-autoplan.md"
@@ -387,13 +476,64 @@
         "В коде приложения нет AutoPlan: механизм, файлы, состояние UI, журналы и ключи переименованы; прежние сохранённые ключи читаются и записываются под новыми именами; поведение не меняется"
       ],
       "expected_commit_message": "refactor: Убрать AutoPlan из кода приложения",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T007",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/operations.mjs",
+        "src/control/projects/project-state-cleanup.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/settings/service.mjs",
+        "src/control/workflow/automation-send-state.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/workflow/auto-plan-state.mjs",
+        "src/control/workflow/plan-continuation-state.mjs",
+        "src/control/workflow/auto-plan.mjs",
+        "src/control/workflow/plan-continuation.mjs",
+        "src/control/workflow/project-auto-plan.mjs",
+        "src/control/workflow/project-plan-continuation.mjs",
+        "src/control/workflow/project-session-auto-plan.mjs",
+        "src/control/workflow/project-session-plan-continuation.mjs",
+        "src/control/workflow/review-continuation.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/desktop-boundaries.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/execution-architecture.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/parallel-execution-recovery.test.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/auto-plan-restart-fixture.cjs",
+        "tests/plan-continuation-restart-fixture.cjs",
+        "tests/auto-plan.test.mjs",
+        "tests/plan-continuation.test.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/project-auto-plan.test.mjs",
+        "tests/project-plan-continuation.test.mjs",
+        "tests/project-state-cleanup.test.mjs",
+        "tests/settings-parallel-execution.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/workspace-deletion.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/legacy-continuation-keys.test.mjs"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -411,10 +551,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 386
+Revision: 388
 
 ## Цель
 
@@ -458,10 +598,10 @@ Revision: 386
   - Git Commit: [DONE] fix: Раскладка to-do plan и проверка проекта без сдвига
   - Reference: workflow-pilot-0-4-6 / T008 / implementation
   - Файлы: src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, tests/electron-smoke.mjs, tests/sidebar.test.mjs, docs/planning/no-autoplan.md
-- [TODO] T007: Убрать AutoPlan из кода приложения — Ожидает
-  - Git Commit: [PENDING] refactor: Убрать AutoPlan из кода приложения
+- [DONE] T007: Убрать AutoPlan из кода приложения — Завершено
+  - Git Commit: [DONE] refactor: Убрать AutoPlan из кода приложения
   - Reference: workflow-pilot-0-4-6 / T007 / implementation
-  - Файлы: src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, docs/planning/no-autoplan.md
+  - Файлы: src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/bootstrap.mjs, src/backend/operations.mjs, src/control/projects/project-state-cleanup.mjs, src/control/sessions/workspace-session.mjs, src/control/settings/service.mjs, src/control/workflow/automation-send-state.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/auto-plan-state.mjs, src/control/workflow/plan-continuation-state.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/plan-continuation.mjs, src/control/workflow/project-auto-plan.mjs, src/control/workflow/project-plan-continuation.mjs, src/control/workflow/project-session-auto-plan.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/workflow/review-continuation.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/index.html, tests/backend-api.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, tests/desktop-boundaries.test.mjs, tests/electron-smoke.mjs, tests/execution-architecture.test.mjs, tests/execution-control.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-finalization.test.mjs, tests/auto-plan-restart-fixture.cjs, tests/plan-continuation-restart-fixture.cjs, tests/auto-plan.test.mjs, tests/plan-continuation.test.mjs, tests/plan-review.test.mjs, tests/project-auto-plan.test.mjs, tests/project-plan-continuation.test.mjs, tests/project-state-cleanup.test.mjs, tests/settings-parallel-execution.test.mjs, tests/sidebar.test.mjs, tests/workspace-deletion.test.mjs, tests/workspace-session.test.mjs, tests/legacy-continuation-keys.test.mjs, docs/planning/no-autoplan.md
 
 ## Context Pack For This Cycle
 

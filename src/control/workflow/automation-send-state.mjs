@@ -33,7 +33,7 @@ export class AutomationSendState {
     const key=this.key(selected,page);
     if(!key || this.inFlight)return {state:'cancelled',reason:'AUTOMATION_BUSY'};
     const previous=this.entries.get(key);
-    // Keep AutoPlan's existing new-scope contract; the cross-automation handoff consumes the pause.
+    // Keep PlanContinuation's existing new-scope contract; the cross-automation handoff consumes the pause.
     if(previous && !(kind==='plan' && previous.kind==='plan' && previous.status==='sent' && previous.scopeId!==selected.scopeId))
       return {state:'unknown',reason:'PAUSE_CONSUMED'};
     this.inFlight=true;

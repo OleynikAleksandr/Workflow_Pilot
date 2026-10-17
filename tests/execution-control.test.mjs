@@ -89,7 +89,7 @@ test('button command: only a published orchestrated plan starts, the state is sa
     const workflow = control.configureWorkflow({ getController: () => null, available: () => false, contextAvailable: () => false,
       onChange: () => {}, report: () => {}, save: async () => {} });
     workflow.attachSessions({ all: () => live, find: () => null, visible: null, paused: true });
-    t.after(() => { workflow.autoPlan.dispose(); workflow.execution.dispose(); workflow.planMonitor.close(); workflow.planReview.dispose(); workflow.reviewContinuation.dispose(); });
+    t.after(() => { workflow.planContinuation.dispose(); workflow.execution.dispose(); workflow.planMonitor.close(); workflow.planReview.dispose(); workflow.reviewContinuation.dispose(); });
     return { control, workflow };
   };
   const { control, workflow } = create();
@@ -99,19 +99,19 @@ test('button command: only a published orchestrated plan starts, the state is sa
     tasks: [{ id: 'T001', title: 'Task', implementation_status: 'TODO', commit_status: 'PENDING' }] });
   // A plan of the former model is driven by the same button (this fixture has no real Kit to start it).
   await assert.rejects(workflow.setPlanExecution(), error => error.code !== 'PLAN_EXECUTION_UNAVAILABLE', 'the button accepts a former plan');
-  assert.equal(workflow.setAutoPlan, undefined, 'no AutoPlan switch');
+  assert.equal(workflow.setPlanContinuation, undefined, 'no PlanContinuation switch');
   await write({ scope_id: SCOPE, execution_scope_status: 'ACTIVE', plan_revision: 3, parallel_allowed: true, max_workers: 2,
     execution_strategy: 'orchestrated', execution_reason: 'Fixture', execution_origin_session_id: main.sessionId, release: false,
     tasks: [{ id: 'T001', title: 'Task', implementation_status: 'TODO', commit_status: 'PENDING' }] });
   assert.equal(workflow.executionControl.view(main.workspace, SCOPE).state, 'not-started');
-  // An executor follows the plan button only; the legacy AutoPlan switch plays no part.
+  // An executor follows the plan button only; the legacy PlanContinuation switch plays no part.
   const enabled = [];
   live.push({ project: () => ({ parentWorkspace: main.workspace, parentScopeId: SCOPE }),
     executor: { setEnabled: value => enabled.push(value) }, controller: { signal: () => {} } });
   assert.equal(workflow.executorEnabled(main.workspace, SCOPE), false, 'not started: the executor waits');
   assert.equal((await workflow.setPlanExecution()).state, 'running');
   assert.equal(workflow.executorEnabled(main.workspace, SCOPE), true);
-  assert.equal(workflow.projectAutoPlan.enabled(main.workspace, SCOPE), false, 'AutoPlan stays off');
+  assert.equal(workflow.projectPlanContinuation.enabled(main.workspace, SCOPE), false, 'PlanContinuation stays off');
   assert.deepEqual(enabled, [true], 'the live executor is enabled at once');
   live.length = 0;
   const saved = workflow.snapshot();

@@ -99,7 +99,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
   return Object.freeze({control,execution,workflow,settings,setup,sessions,pages,
     // One change listener: the backend event log. It reads state, never stores it.
     onChange:listener=>{changed=typeof listener==='function'?listener:()=>{};},
-    // Pages of AutoPlan and parallel work come back first; then the saved selection.
+    // Pages of PlanContinuation and parallel work come back first; then the saved selection.
     restore:async()=>{
       workflow.restoreBackground();
       const selected=control.projects.selected();

@@ -1,4 +1,4 @@
-import { AutoPlan } from './auto-plan.mjs';
+import { PlanContinuation } from './plan-continuation.mjs';
 import { AutomationSendState } from './automation-send-state.mjs';
 import { PlanMonitor } from './plan-monitor.mjs';
 import { ProjectInputWatch } from '../../execution/facade.mjs';
@@ -34,7 +34,7 @@ export function configureExecutor(record,{store,inspectPlan,enabled,onChange,sig
   const automation=new AutomationSendState({save:automationCheckpoint=>store.saveExecutorAutomation(
     saved.workspace,saved.sessionId,{automationCheckpoint})});
   automation.restore(checkpoint.automationCheckpoint);
-  const flow=new AutoPlan({selected,inspectPlan:async project=>{
+  const flow=new PlanContinuation({selected,inspectPlan:async project=>{
     const plan=await inspectPlan(project);
     return {...plan,confirmed:plan.confirmed&&plan.scopeId==='assignment-'+saved.assignmentId
       &&plan.planView?.tasks?.length===1&&plan.planView.tasks[0].id===saved.taskId
@@ -42,7 +42,7 @@ export function configureExecutor(record,{store,inspectPlan,enabled,onChange,sig
   },
     available:()=>!!record.project()&&!record.disposed&&!record.paused&&record.ready&&!record.loading&&!record.composer.inFlight
       &&!record.controller.pending&&['delivered','stale','manual-session'].includes(record.controller.state.phase),
-    saveCheckpoint:autoPlanCheckpoint=>store.saveExecutorAutomation(saved.workspace,saved.sessionId,{autoPlanCheckpoint}),
+    saveCheckpoint:continuationCheckpoint=>store.saveExecutorAutomation(saved.workspace,saved.sessionId,{continuationCheckpoint}),
     onChange,log,send:(text,canContinue,onBeforeSend)=>automation.send({selected:selected(),page:flow.page,
       ready:canContinue,perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,
         waitForAcknowledgement:false,cleanupOnCancel:true})})});
@@ -69,7 +69,7 @@ export function configureExecutor(record,{store,inspectPlan,enabled,onChange,sig
       if(stopped!==lastStopped){lastStopped=stopped;signal();}
     }};
   record.controller.onIdle=()=>record.executor.changed();
-  flow.restore(enabled,checkpoint.autoPlanCheckpoint);monitor.observeSelection();
+  flow.restore(enabled,checkpoint.continuationCheckpoint);monitor.observeSelection();
   record.cleanups.push(()=>{record.controller.onIdle=null;flow.dispose();monitor.close();activityWatch.close();clock.dispose();});
   return record.executor;
 }

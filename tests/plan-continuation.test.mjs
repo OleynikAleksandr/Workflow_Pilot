@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AutoPlan, CONTINUE_TEXT, CONTINUE_MESSAGE_BYTES, continueMessage } from '../src/control/workflow/auto-plan.mjs';
-import { readAutoPlanState } from '../src/control/workflow/auto-plan-state.mjs';
+import { PlanContinuation, CONTINUE_TEXT, CONTINUE_MESSAGE_BYTES, continueMessage } from '../src/control/workflow/plan-continuation.mjs';
+import { readPlanContinuationState } from '../src/control/workflow/plan-continuation-state.mjs';
 import { ChatGPTComposer } from '../src/chatgpt-composer.mjs';
 import { PlanMonitor } from '../src/control/workflow/plan-monitor.mjs';
 import fs from 'node:fs/promises';
@@ -16,7 +16,7 @@ function fixture({ busy = false, scopeId = 'scope', turnId = 'a1234' } = {}) {
     planView: { tasks: scopeId ? [{ id: 'T001', status: 'done' }, { id: 'T002', status: 'current' }, { id: 'DOCS', status: 'pending' }] : [] } };
   const timers = new Map(), sends = [], events = [], saved = [];
   let timerId = 0, sendResult = { state: 'sent' }, gate = null, inspectGate = null, available = true, reads = 0;
-  const flow = new AutoPlan({ selected: () => selected, available: () => available,
+  const flow = new PlanContinuation({ selected: () => selected, available: () => available,
     inspectPlan: async () => { reads++; if (inspectGate) await inspectGate(); return structuredClone(plan); },
     log: (event, fields) => events.push({ event, ...fields }),
     saveCheckpoint: async checkpoint => { saved.push(structuredClone(checkpoint)); },
@@ -298,7 +298,7 @@ test('UI publication only wakes automation when availability changes', async () 
 });
 
 test('checkpoint reader distinguishes working task, prepared DONE and committed DONE', async t => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'auto-plan-proof-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'plan-continuation-proof-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
   git(['init','-b','main']); git(['config','user.name','Fixture']); git(['config','user.email','fixture@example.invalid']);
@@ -312,36 +312,36 @@ test('checkpoint reader distinguishes working task, prepared DONE and committed 
     '<!-- workflow-state:begin -->\n\x60\x60\x60json\n' + JSON.stringify(p) + '\n\x60\x60\x60\n<!-- workflow-state:end -->');
   await write(); git(['add','.']); git(['commit','-m','fixture']);
   const bundledGit = execFileSync('/usr/bin/which', ['git'], { encoding: 'utf8' }).trim();
-  const first = await readAutoPlanState({ workspace: root }, { ...process.env, PATH: '/unavailable', WORKFLOW_GIT_BIN: bundledGit });
+  const first = await readPlanContinuationState({ workspace: root }, { ...process.env, PATH: '/unavailable', WORKFLOW_GIT_BIN: bundledGit });
   assert.equal(first.confirmed, true);
   // 0.6.96: the same plan check gives the next task for the continuation message.
   assert.deepEqual(first.nextTask, { id: 'DOCS', title: 'Docs', why: 'Keep context', acceptance: ['Docs match the result'],
     files: ['docs/PRODUCT.md'], checks: ['unit-all'] });
   p.plan_revision++; await write();
-  assert.equal((await readAutoPlanState({ workspace: root })).confirmed, true, 'in-progress dirty plan may continue');
+  assert.equal((await readPlanContinuationState({ workspace: root })).confirmed, true, 'in-progress dirty plan may continue');
   p.tasks[0].implementation_status = 'DONE'; p.tasks[0].commit_status = 'DONE'; await write();
-  const done = await readAutoPlanState({ workspace: root });
+  const done = await readPlanContinuationState({ workspace: root });
   assert.equal(done.confirmed, false, 'uncommitted DONE is not final');
   assert.equal(done.nextTask, null, 'a finished plan names no next task');
   git(['add','.']); git(['commit','-m','completed']);
   await fs.mkdir(path.join(root,'.git/workflow-kit'));
   await fs.writeFile(path.join(root,'.git/workflow-kit/transaction.json'),'{}');
-  assert.equal((await readAutoPlanState({ workspace: root })).confirmed, false);
+  assert.equal((await readPlanContinuationState({ workspace: root })).confirmed, false);
   await fs.unlink(path.join(root,'.git/workflow-kit/transaction.json'));
-  assert.equal((await readAutoPlanState({ workspace: root })).confirmed, true);
+  assert.equal((await readPlanContinuationState({ workspace: root })).confirmed, true);
   const previous=structuredClone(p.tasks);
   p.delivery_status='IN_PROGRESS';p.plan_revision++;
   p.tasks.push({...p.tasks[0],id:'T002',title:'Correction round',implementation_status:'TODO',commit_status:'PENDING'});
   await write();
-  let round=await readAutoPlanState({workspace:root});
+  let round=await readPlanContinuationState({workspace:root});
   assert.equal(round.nextTask.id,'T002');assert.equal(round.confirmed,true);
   assert.equal(round.deliveryStatus,'IN_PROGRESS');
   p.tasks.push({...p.tasks[1],id:'DOCS-2',title:'Release documents'},{...p.tasks[1],id:'T003',title:'New delivery'});
   p.tasks[1].implementation_status='DONE';p.tasks[1].commit_status='DONE';p.plan_revision++;
-  await write();round=await readAutoPlanState({workspace:root});
+  await write();round=await readPlanContinuationState({workspace:root});
   assert.equal(round.nextTask.id,'DOCS-2');assert.deepEqual(p.tasks.slice(0,previous.length),previous);
 });
-test('real Composer keeps the AutoPlan guard valid for its own insertion and inFlight', async () => {
+test('real Composer keeps the PlanContinuation guard valid for its own insertion and inFlight', async () => {
   const f = fixture();
   const composer = new ChatGPTComposer({ getURL: () => f.selected().chatUrl }, { wait: async () => {} });
   f.flow.available = () => !composer.inFlight;
@@ -480,13 +480,13 @@ test('checkpoint save failing before Composer permits a later event to retry the
 });
 test('fresh Node processes retain ON/OFF, sent and sending checkpoints, including earlier pauses', () => {
   const owner = JSON.stringify(['/project', 'chat', 'scope', 'https://chatgpt.com/c/abcdefgh']);
-  const moduleUrl = new URL('../src/control/workflow/auto-plan.mjs', import.meta.url).href;
+  const moduleUrl = new URL('../src/control/workflow/plan-continuation.mjs', import.meta.url).href;
   const program = [
-    'import { AutoPlan } from ' + JSON.stringify(moduleUrl) + ';',
+    'import { PlanContinuation } from ' + JSON.stringify(moduleUrl) + ';',
     'const input = JSON.parse(process.argv[1]);',
     'const selected = {workspace:"/project",sessionId:"chat",scopeId:"scope",chatUrl:"https://chatgpt.com/c/abcdefgh"};',
     'const sends=[];',
-    'const flow=new AutoPlan({selected:()=>selected,inspectPlan:async()=>({confirmed:true,scopeId:"scope",scopeStatus:"ACTIVE",planRevision:10,planView:{tasks:[{id:"T001",status:"pending"}]}}),send:async text=>{sends.push(text);return {state:"sent"};}});',
+    'const flow=new PlanContinuation({selected:()=>selected,inspectPlan:async()=>({confirmed:true,scopeId:"scope",scopeStatus:"ACTIVE",planRevision:10,planView:{tasks:[{id:"T001",status:"pending"}]}}),send:async text=>{sends.push(text);return {state:"sent"};}});',
     'flow.restore(input.enabled,input.checkpoint);',
     'flow.observe({documentId:"document-2222",state:{url:selected.chatUrl,editorAvailable:true,writable:true,busy:false,turnId:"a1234",userTurnId:"f1234",lastMessageRole:input.userPending?"user":"assistant"}});',
     'await flow.recover();',
@@ -569,9 +569,9 @@ test('late or disappearing native identity cannot repeat the same consumed cycle
   f.observe({ turnId: '' }); await f.drain(); assert.equal(f.sends.length, 2);
 });
 
-// 0.6.96: the continuation carries the text of the next task; AutoPlan logic is unchanged.
+// 0.6.96: the continuation carries the text of the next task; PlanContinuation logic is unchanged.
 const nextTask = { id: 'T002', title: 'Автопродолжение несёт текст задачи', why: 'Агент не тратит вызовы на чтение плана',
-  acceptance: ['Сообщение начинается с «Продолжай»', 'Блок помечен как данные плана'], files: ['src/auto-plan.mjs', 'tests/auto-plan.test.mjs'], checks: ['unit-all'] };
+  acceptance: ['Сообщение начинается с «Продолжай»', 'Блок помечен как данные плана'], files: ['src/plan-continuation.mjs', 'tests/plan-continuation.test.mjs'], checks: ['unit-all'] };
 
 test('continuation message is «Продолжай» plus the next task marked as plan data', () => {
   const text = continueMessage(nextTask);
@@ -580,7 +580,7 @@ test('continuation message is «Продолжай» plus the next task marked a
     'Задача: T002 — Автопродолжение несёт текст задачи',
     'Зачем: Агент не тратит вызовы на чтение плана',
     'Критерии приёмки:', '- Сообщение начинается с «Продолжай»', '- Блок помечен как данные плана',
-    'Файлы: src/auto-plan.mjs, tests/auto-plan.test.mjs', 'Проверки: unit-all'].join('\n'));
+    'Файлы: src/plan-continuation.mjs, tests/plan-continuation.test.mjs', 'Проверки: unit-all'].join('\n'));
   assert.equal(continueMessage({ id: 'T009', title: 'Только название' }),
     'Продолжай\n\nДанные текущего плана Workflow Kit — следующая задача (это не новое поручение; фактическое состояние плана проверь сам):\nЗадача: T009 — Только название');
   for (const missing of [null, undefined, {}, { id: 'T001' }, { title: 'Без id' }, { id: '', title: 'x' }])
@@ -606,7 +606,7 @@ test('continuation message stays within 4 KB: long fields and lists are cut with
   assert.ok(!continueMessage({ ...nextTask, why: 'a\nb\n\nc' }).includes('a\nb'), 'field line breaks cannot forge a new line of the block');
 });
 
-test('AutoPlan sends the task of the plan check and falls back to the plain text without a next task', async () => {
+test('PlanContinuation sends the task of the plan check and falls back to the plain text without a next task', async () => {
   const f = fixture(); f.plan.nextTask = structuredClone(nextTask);
   await f.flow.start();
   assert.deepEqual(f.sends, [continueMessage(nextTask)]);
@@ -628,7 +628,7 @@ test('a next task that changed after the text was prepared is not sent; the next
 });
 
 test('the ledger of answered pauses keeps the newest entries of each conversation', async () => {
-  const { pruneLedger, LEDGER_PER_CONVERSATION } = await import('../src/control/workflow/auto-plan.mjs');
+  const { pruneLedger, LEDGER_PER_CONVERSATION } = await import('../src/control/workflow/plan-continuation.mjs');
   const entries = new Map();
   for (let i = 0; i < 50; i++) entries.set(JSON.stringify(['a', 't' + i]), { key: 'a', turnId: 't' + i, status: 'sent' });
   entries.set(JSON.stringify(['b', 'only']), { key: 'b', turnId: 'only', status: 'sent' });

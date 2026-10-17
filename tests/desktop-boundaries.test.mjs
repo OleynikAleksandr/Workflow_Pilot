@@ -62,7 +62,7 @@ test('Control owns settings: concurrent color edits survive, failed writes roll 
     await desktopFiles.writeJson(file,value);
   }};
   const create=()=>new ControlFacade({storageFile:path.join(root,'sessions.json'),execution:{files}})
-    .configureSettings({file:path.join(root,'settings.json'),workflowSnapshot:()=>({projectAutoPlan:{},parallelExecutionBook:{}})});
+    .configureSettings({file:path.join(root,'settings.json'),workflowSnapshot:()=>({projectPlanContinuation:{},parallelExecutionBook:{}})});
   const settings=create(),before=settings.parallelExecution;
   await Promise.all([settings.setColor({key:'background',value:'#abcdef'}),settings.setColor({key:'userText',value:'#123456'}),
     settings.save({shellTheme:'dark'}),settings.save({parallelExecution:{parallel_allowed:true,max_workers:4}})]);

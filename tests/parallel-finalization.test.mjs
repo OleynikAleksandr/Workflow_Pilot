@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ParallelExecution,finalSourceState} from '../src/control/workflow/parallel-execution.mjs';
-import {ProjectAutoPlan} from '../src/control/workflow/project-auto-plan.mjs';
+import {ProjectPlanContinuation} from '../src/control/workflow/project-plan-continuation.mjs';
 import {AutomationSendState} from '../src/control/workflow/automation-send-state.mjs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -28,7 +28,7 @@ function fixture(t) {
  const page={stopped:true,canSend:true,canContinueSend:true,pauseKey:'before',manualSendRevision:0,
   documentId:'doc',lastMessageRole:'assistant',userTurnId:'user-before',userMessagesRevision:1,
   turnId:'assistant-before',assistantRevision:1,manualInputRevision:0,manualStopRevision:0};
- const auth=new ProjectAutoPlan();auth.set('/main','scope',true,'origin');
+ const auth=new ProjectPlanContinuation();auth.set('/main','scope',true,'origin');
  const calls={sent:0,merged:0,saved:[]};
  const kit={read:async()=>structuredClone(state),integrate:async()=>{
   calls.merged++;state.plan.tasks[0].commit_status='DONE';state.assignments[0].status='INTEGRATED';return {status:'INTEGRATED'};
@@ -152,9 +152,9 @@ test('a user Stop is persisted across restore, then cleared only by a new user m
  await attempt();assert.equal(sent,1);
 });
 test('authorization keeps completion OFF distinct from manual OFF after restart and between projects',()=>{
- const auth=new ProjectAutoPlan();auth.set('/a','one',true);auth.set('/b','two',true);
+ const auth=new ProjectPlanContinuation();auth.set('/a','one',true);auth.set('/b','two',true);
  auth.sync('/a','one',{complete:true,confirmed:true});
- const restored=new ProjectAutoPlan({saved:auth.snapshot()});
+ const restored=new ProjectPlanContinuation({saved:auth.snapshot()});
  assert.equal(restored.finalizationAllowed('/a','one'),true);assert.equal(restored.enabled('/b','two'),true);
  restored.set('/a','one',false);assert.equal(restored.finalizationAllowed('/a','one'),false);
  restored.sync('/a','new');assert.equal(restored.finalizationAllowed('/a','new'),false);
@@ -324,7 +324,7 @@ test('F03: real Git/Kit source, diagnostic read-only reply, terminal event, one 
   assert.equal(actual.source_commit,source);
   assert.equal(actual.commandActive,true);
   assert.equal(actual.dirty,false,'only ignored fixture-runtime files written');
-  const auth=new ProjectAutoPlan();
+  const auth=new ProjectPlanContinuation();
   auth.set(root,'parallel-fixture',true,'origin');
   const origin={workspace:root,sessionId:'origin',projectId:initial.plan.project_id,
    chatUrl:'https://chatgpt.com/c/fixture',executionSnapshot:{parallel_allowed:true,max_workers:2}};

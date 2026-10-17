@@ -174,7 +174,7 @@ test('old Kit and unreadable state are visible errors, not silently disabled rev
   assert.throws(()=>broken.setEnabled({workspace:'/fixture',enabled:false}),{code:'REVIEW_UNAVAILABLE'});
 });
 
-test('Review and AutoPlan share a conversation pause across scope change and restart',async()=>{
+test('Review and PlanContinuation share a conversation pause across scope change and restart',async()=>{
   let checkpoint;const gate=new AutomationSendState({save:async value=>{checkpoint=structuredClone(value);}});
   const selected={workspace:'/project',sessionId:'chat',chatUrl:'https://chatgpt.com/c/test',scopeId:null};
   const page={turnId:'pause-one'};let sends=0;
@@ -215,8 +215,8 @@ test('Review continuation at NONE targets its recipient, asks once and respects 
   } finally {flow.dispose();}
 });
 
-test('AutoPlan waits for confirmed reviewed publication, OFF and unrelated active plans remain ordinary',async()=>{
-  const {reviewBlocksExecution}=await import('../src/control/workflow/auto-plan-state.mjs');
+test('PlanContinuation waits for confirmed reviewed publication, OFF and unrelated active plans remain ordinary',async()=>{
+  const {reviewBlocksExecution}=await import('../src/control/workflow/plan-continuation-state.mjs');
   for(const enabled of [false,true])for(const stage of ['PUBLISHING','PUBLISHED','NEEDS_USER']){
     const s={enabled,stage,scope_id:'new'};
     assert.equal(!!reviewBlocksExecution(s,'new'),enabled && stage!=='PUBLISHED');

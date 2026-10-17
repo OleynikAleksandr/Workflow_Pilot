@@ -117,7 +117,7 @@ test('missing or mismatched saved chat blocks its source, while an independent s
   assert.equal(f.runtime.view('/main').error.code,'EXECUTOR_SESSION_MISMATCH');
 });
 
-test('known unfinished setup resumes only with AutoPlan, retaining assignment identity',async t=>{
+test('known unfinished setup resumes only with PlanContinuation, retaining assignment identity',async t=>{
   const f=fixture(t);const a=f.assignment('a','A','NEEDS_SETUP');delete f.ledger.assignments.a.sessionId;
   f.ledger.assignments.a.phase='attention';f.runtime.restoreWorker=async()=>null;
   let setups=0;f.kit.setupAssignment=async()=>{setups++;a.status='READY';return a;};

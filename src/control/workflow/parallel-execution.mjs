@@ -241,7 +241,7 @@ export class ParallelExecution {
       canCorrect:!state.commandActive&&this.mainState(origin).stopped&&this.mainState(origin).canSend,
       error:recoveryError,maxWorkers:plan.max_workers});
     if(plan.execution_strategy==='orchestrated'&&await this.relaySignals(workspace,{...state,assignments},origin,ledger,enabled))return;
-    // A pending integration owns main; AutoPlan may request one correction in its exact main chat.
+    // A pending integration owns main; PlanContinuation may request one correction in its exact main chat.
     if(await this.finalize(workspace,{...state,assignments},origin,ledger,enabled))return;
     if(state.integration.status!=='IDLE') {
       const operation=state.integration;

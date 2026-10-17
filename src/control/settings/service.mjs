@@ -3,7 +3,9 @@ import { normalizeChatColors, validateColorChange } from '../../contracts/chat-c
 import { validateParallelSettings } from '../../contracts/parallel-settings.mjs';
 import { queueProjectStatePurge } from '../projects/project-state-cleanup.mjs';
 
-const workflowKeys = ['projectAutoPlan','reviewCheckpoint','automationCheckpoint','parallelExecutionBook'];
+const workflowKeys = ['projectPlanContinuation','reviewCheckpoint','automationCheckpoint','parallelExecutionBook'];
+// Settings of 0.4.6 and earlier kept the continuation permissions under their former name.
+const legacyWorkflowKeys = { projectAutoPlan: 'projectPlanContinuation' };
 function preferences(value = {}) {
   return { chatgptChannel:['secure-tunnel','vps'].includes(value.chatgptChannel)?value.chatgptChannel:'secure-tunnel',
     shellTheme:value.shellTheme==='dark'?'dark':'light', hideToolCalls:typeof value.hideToolCalls==='boolean'?value.hideToolCalls:true,
@@ -29,6 +31,8 @@ export class SettingsService {
   get parallelExecution() { return structuredClone(this.#values.parallelExecution); }
   async load() {
     const value=await this.#files.readJson(this.#file);
+    for(const [legacy,current] of Object.entries(legacyWorkflowKeys))
+      if(value&&Object.hasOwn(value,legacy)&&!Object.hasOwn(value,current))value[current]=value[legacy];
     this.#values=preferences(value);
     return Object.fromEntries(workflowKeys.filter(key=>Object.hasOwn(value,key)).map(key=>[key,value[key]]));
   }

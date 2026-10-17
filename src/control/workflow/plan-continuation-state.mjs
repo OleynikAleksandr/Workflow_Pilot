@@ -22,7 +22,7 @@ async function readNextTask(view) {
 }
 
 // Only on relevant idle events and immediately before Send; never a Git polling loop.
-export async function readAutoPlanState(selected, environment = process.env) {
+export async function readPlanContinuationState(selected, environment = process.env) {
   const { workspace, sessionId } = selected;
   const before = await readWorkspace(workspace, sessionId);
   const git = async args => (await execute(environment.WORKFLOW_GIT_BIN || 'git', ['-C', workspace, ...args],

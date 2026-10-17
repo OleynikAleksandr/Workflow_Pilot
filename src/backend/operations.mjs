@@ -93,11 +93,11 @@ export function backendPublicState(services) {
 
 function planSnapshot(services) {
   const selected=services.control.projects.selected();
-  if(!selected)return {selected:null,plan:null,autoPlan:false};
+  if(!selected)return {selected:null,plan:null,planContinuation:false};
   const plan=services.workflow.planMonitor.view(selected);
   const workspace=selected.parentWorkspace??selected.workspace;
   return {selected:{workspace:selected.workspace,sessionId:selected.sessionId},
-    autoPlan:services.workflow.projectAutoPlan.enabled(workspace,plan?.scopeId??selected.scopeId??null),
+    planContinuation:services.workflow.projectPlanContinuation.enabled(workspace,plan?.scopeId??selected.scopeId??null),
     plan:plan?{scopeId:plan.scopeId??null,planRevision:plan.planRevision??null,scopeStatus:plan.scopeStatus??null,
       objective:typeof plan.objective==='string'?plan.objective.slice(0,2000):null,
       tasks:(plan.planView?.tasks??[]).slice(0,200).map(task=>({id:String(task.id).slice(0,40),status:String(task.status).slice(0,40),

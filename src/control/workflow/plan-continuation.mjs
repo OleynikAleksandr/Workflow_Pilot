@@ -44,7 +44,7 @@ export function pruneLedger(entries) {
   return new Map(kept.reverse());
 }
 
-export class AutoPlan {
+export class PlanContinuation {
   constructor({ selected, inspectPlan, send, onChange = () => {}, log = () => {},
     schedule = setTimeout, cancel = clearTimeout, settleMs = 500, stallMs = 180000,
     available = () => true, saveCheckpoint = async () => {}, onComplete = () => {} }) {

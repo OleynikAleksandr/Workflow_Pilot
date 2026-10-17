@@ -90,13 +90,13 @@ test('every start names its parts with a short fragment of its own request id', 
   assert.throws(() => contextPartName(part, ''), /request id/);
 });
 
-test('ordinary session contract defines one verified microtask per reply without an AutoPlan protocol', () => {
+test('ordinary session contract defines one verified microtask per reply without an PlanContinuation protocol', () => {
   const p = packet(), text = startupMessage(project, 'contract-request', p);
   assert.ok(!text.includes('Delivery-порядок'));
   assert.ok(!text.includes(p.context), 'recovery is delivered only in attachments');
-  assert.doesNotMatch(text, /AutoPlan|автовыполнения|Готов продолжать\.|Нужен ваш ответ\.|План завершён\./);
-  assert.equal(startupMessage({ ...project, autoPlanEnabled: true }, 'contract-request', p),
-    startupMessage({ ...project, autoPlanEnabled: false }, 'contract-request', p));
+  assert.doesNotMatch(text, /PlanContinuation|автовыполнения|Готов продолжать\.|Нужен ваш ответ\.|План завершён\./);
+  assert.equal(startupMessage({ ...project, planContinuationEnabled: true }, 'contract-request', p),
+    startupMessage({ ...project, planContinuationEnabled: false }, 'contract-request', p));
 });
 
 test('attachment failure keeps its request and complete payload on explicit retry',async()=>{
@@ -697,7 +697,7 @@ test('the line for an external client names the folder, AGENTS.md and the recove
   }
 });
 
-test('assigned initial recovery waits while project AutoPlan is OFF and resumes without a new attempt',async()=>{
+test('assigned initial recovery waits while project PlanContinuation is OFF and resumes without a new attempt',async()=>{
   const f=controllerFixture({chatUrl:null});let allowed=false;
   await f.store.updateSession(project.workspace,project.sessionId,{assignmentId:'assigned',taskId:'T001',parentWorkspace:'/main',parentScopeId:'scope'});
   f.controller.canSendContext=()=>allowed;

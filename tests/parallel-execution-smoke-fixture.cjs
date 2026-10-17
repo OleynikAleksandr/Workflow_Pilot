@@ -93,31 +93,31 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const record=(workspace,id)=>[...liveSessions.all()].find(r=>r.identity?.workspace===workspace&&(!id||r.identity.sessionId===id));
   const main=record(root,origin.sessionId);
   await sessionView(main).webContents.executeJavaScript('window.fixtureAssistant("Планировщик готов")');
-  // There is no AutoPlan button: before a plan exists the former engine is driven directly.
-  const clickAuto=()=>continuePlan(!snapshot().autoPlan.enabled);
+  // There is no PlanContinuation button: before a plan exists the former engine is driven directly.
+  const clickAuto=()=>continuePlan(!snapshot().planContinuation.enabled);
   const buttonReady=async()=>true;
   await wait(buttonReady,'empty-project button ready');await clickAuto();
-  await wait(()=>snapshot().autoPlan.enabled===true,'button enables before first plan');
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("auto-plan-toggle")'),null,'no AutoPlan button');
+  await wait(()=>snapshot().planContinuation.enabled===true,'button enables before first plan');
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-continuation-toggle")'),null,'no PlanContinuation button');
   assert.equal(snapshot().execution.assignments.length,0,'no assignment without a published plan');
   const otherRoot=(await run('--create',path.join(dataDir+'-projects','project-controls'))).root;
   await selectWorkspace(otherRoot);
   await wait(()=>store.selected()?.workspace===otherRoot&&snapshot().context.phase==='delivered','second project context');
-  assert.equal(snapshot().autoPlan.enabled,false);assert.equal(snapshot().planReview.enabled,false);
+  assert.equal(snapshot().planContinuation.enabled,false);assert.equal(snapshot().planReview.enabled,false);
   await wait(()=>sidebar.executeJavaScript('!document.getElementById("plan-review-toggle").disabled'),'second Review button ready');
   await sidebar.executeJavaScript('document.getElementById("plan-review-toggle").click()');
   await wait(()=>snapshot().planReview.enabled===true,'second project Review ON');
-  assert.equal(snapshot().autoPlan.enabled,false,'Review does not enable AutoPlan');
+  assert.equal(snapshot().planContinuation.enabled,false,'Review does not enable PlanContinuation');
   await ipc('selectSession',root,origin.sessionId);
-  await wait(()=>snapshot().selected?.workspace===root&&snapshot().autoPlan.enabled,'return to first project ON');
+  await wait(()=>snapshot().selected?.workspace===root&&snapshot().planContinuation.enabled,'return to first project ON');
   assert.equal(snapshot().planReview.enabled,false,'second project Review does not affect first');
   await wait(()=>sidebar.executeJavaScript('document.getElementById("plan-review-toggle").getAttribute("aria-pressed")==="false"'),'first project independent Review');
   await wait(buttonReady,'cancel pre-plan button ready');await clickAuto();
-  await wait(()=>snapshot().autoPlan.enabled===false,'button cancels pre-plan ON');
+  await wait(()=>snapshot().planContinuation.enabled===false,'button cancels pre-plan ON');
   await sessionView(main).webContents.executeJavaScript('const h=document.createElement("button");h.id="preplan-held";h.dataset.testid="stop-button";document.body.append(h)');
   await wait(()=>main.pageState.current?.state.busy,'main held before publication');
   await wait(buttonReady,'arm pre-plan button ready');await clickAuto();
-  await wait(()=>snapshot().autoPlan.enabled===true,'button arms first publication');
+  await wait(()=>snapshot().planContinuation.enabled===true,'button arms first publication');
   await run('--plan',root,origin.sessionId);
   const base=await git(root,'rev-parse','HEAD');
   await run('--legacy-start',root);
@@ -125,7 +125,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   await wait(()=>main.pageState.current?.state.lastMessageRole==='assistant','main observed pause');
   await ipc('openSettings');await ipc('setParallelExecution',{parallel_allowed:false,max_workers:1});await ipc('closeSettings');
   assert.deepEqual(store.project(root,origin.sessionId).executionSnapshot,{parallel_allowed:true,max_workers:2});
-  assert.equal(snapshot().autoPlan.enabled,true,'pre-plan ON binds to published scope');
+  assert.equal(snapshot().planContinuation.enabled,true,'pre-plan ON binds to published scope');
   await wait(()=>snapshot().execution.assignments.length===2,'two assigned worktrees');
   let assignments=snapshot().execution.assignments;
   const a=assignments.find(a=>a.parent_task_id==='T001'),b=assignments.find(a=>a.parent_task_id==='T002');
@@ -169,7 +169,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const before=await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.length');
   assert.equal(snapshot().execution.correctionStatus,null,'OFF does not request correction');
   await ipc('setPlanExecution',true);
-  await wait(()=>snapshot().execution.correctionStatus==='sent','AutoPlan requests correction without an extra button');
+  await wait(()=>snapshot().execution.correctionStatus==='sent','PlanContinuation requests correction without an extra button');
   await wait(async()=>await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.length')===before+1,'correction in exact main chat');
   const message=await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.at(-1).text');
   assert.ok(message.includes(root)&&message.includes(operation)&&message.includes('integration:continue'));
@@ -179,12 +179,12 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   await wait(()=>snapshot().execution.assignments.find(x=>x.id===a.id)?.status==='INTEGRATED','corrected merge proof');
   await finish(second);
   await wait(()=>snapshot().execution.planView.completed===2,'second integration');
-  assert.equal(snapshot().execution.assignments.length,2,'AutoPlan OFF does not dispatch the dependent task');
+  assert.equal(snapshot().execution.assignments.length,2,'PlanContinuation OFF does not dispatch the dependent task');
   const combined=await git(root,'rev-parse','HEAD');
   workspaceSetup.setRuntimeEnvironment({PATH:fullPath});
   await workspaceSetup.node();
   assert.equal((await ipc('setPlanExecution',true)).ok,true);
-  await wait(()=>snapshot().execution.assignments.length===3,'AutoPlan resumes dependent task');
+  await wait(()=>snapshot().execution.assignments.length===3,'PlanContinuation resumes dependent task');
   const c=snapshot().execution.assignments.find(x=>x.parent_task_id==='T003');assert.equal(c.base_commit,combined);
   assert.match(await fs.readFile(path.join(c.worktree,'README.md'),'utf8'),/worker-a/);
   assert.match(await fs.readFile(path.join(c.worktree,'SECOND.md'),'utf8'),/worker-b/);
@@ -205,10 +205,10 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
     const ui=await sidebar.executeJavaScript('({rows:document.querySelectorAll(".executor-row").length,text:document.querySelector(".executor-group")?.textContent,removed:!document.getElementById("reconcile-execution")&&!document.getElementById("execute-tasks")&&!document.getElementById("correct-integration")})');
     assert.equal(ui.rows,3);assert.match(ui.text,/Завершено · интеграция проверена/);assert.match(ui.text,/Работа/);assert.equal(ui.removed,true);
   }
-  assert.equal(snapshot().execution.planView.completed,3);assert.equal(snapshot().autoPlan.enabled,false,'verified parallel completion turns project OFF');
+  assert.equal(snapshot().execution.planView.completed,3);assert.equal(snapshot().planContinuation.enabled,false,'verified parallel completion turns project OFF');
   // Delete through the same archive preload/IPC used by the user, including all worker trees.
   const oldProjectId=origin.projectId,oldIds=assignments.map(a=>a.id).concat(c.id);
-  const otherBefore=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8')).projectAutoPlan[otherRoot];
+  const otherBefore=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8')).projectPlanContinuation[otherRoot];
   assert.equal((await ipc('archiveProject',root)).ok,true);
   assert.equal((await ipc('openArchive',root)).ok,true);
   await wait(()=>getArchiveWindow()&&!getArchiveWindow().isDestroyed(),'deletion archive ready');
@@ -226,9 +226,9 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   }
   assert.equal(record(root),undefined);
   const settingsAfter=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8'));
-  assert.equal(settingsAfter.projectAutoPlan[root],undefined);
+  assert.equal(settingsAfter.projectPlanContinuation[root],undefined);
   assert.equal(Object.values(settingsAfter.parallelExecutionBook).some(b=>b.workspace===root),false);
-  assert.deepEqual(settingsAfter.projectAutoPlan[otherRoot],otherBefore);
+  assert.deepEqual(settingsAfter.projectPlanContinuation[otherRoot],otherBefore);
   const {belongsToProject}=await import('../src/control/projects/project-state-cleanup.mjs');
   assert.equal(belongsToProject(settingsAfter,[{workspace:root,projectId:oldProjectId,sessionIds:[origin.sessionId]}]),false);
   getArchiveWindow().close();
@@ -237,11 +237,11 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const recreated=(await run('--create',path.dirname(root))).root;assert.equal(recreated,root);
   await selectWorkspace(root);
   await wait(()=>store.selected()?.workspace===root&&snapshot().context.phase==='delivered','recreated main context');
-  const newOrigin=store.selected();assert.notEqual(newOrigin.projectId,oldProjectId);assert.equal(snapshot().autoPlan.enabled,false);
+  const newOrigin=store.selected();assert.notEqual(newOrigin.projectId,oldProjectId);assert.equal(snapshot().planContinuation.enabled,false);
   const newMain=record(root,newOrigin.sessionId);await sessionView(newMain).webContents.executeJavaScript('window.fixtureAssistant("Новый план готов")');
   await run('--plan-five',root,newOrigin.sessionId);
   await wait(()=>snapshot().selected?.scopeId==='parallel-fixture','same scope republished');
-  assert.equal(snapshot().autoPlan.enabled,false);assert.equal(snapshot().execution.assignments.length,0);
+  assert.equal(snapshot().planContinuation.enabled,false);assert.equal(snapshot().execution.assignments.length,0);
 const httpPreview=await require('./protected-preview-fixture.cjs').start(root,path.join(dataDir,'preview-state'));
   try {
     if(httpPreview) {
@@ -333,7 +333,7 @@ const httpPreview=await require('./protected-preview-fixture.cjs').start(root,pa
     if(httpPreview)assert.match(await (await fetch(httpPreview.url+'/RESULT.md')).text(),/worker-e/);
     const report='Пять задач проверены в общем main. '+root+(httpPreview?' · '+httpPreview.url:'')+'. TEST FIXTURE; приёмку выполняет пользователь.';
     await sessionView(newMain).webContents.executeJavaScript('document.getElementById("parallel-held")?.remove();window.fixtureAssistant('+JSON.stringify(report)+')');
-    await wait(()=>snapshot().execution.finalizationStatus==='reply-observed'&&!snapshot().autoPlan.enabled,'one final report and completion OFF');
+    await wait(()=>snapshot().execution.finalizationStatus==='reply-observed'&&!snapshot().planContinuation.enabled,'one final report and completion OFF');
     const completedStages=await stageSnapshot();
     assert.equal(completedStages.stages.reply.status,'done');
     assert.match(completedStages.action,/приёмка пользователя/);

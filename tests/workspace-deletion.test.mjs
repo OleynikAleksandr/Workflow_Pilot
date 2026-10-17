@@ -116,7 +116,7 @@ test('overlapping journals complete in either order with exact persisted cleanup
       const neighbourId=store.project(neighbour).projectId,neighbourSessionId=store.project(neighbour).sessionId;
       const deleted=[{workspace:parent,projectId:parentId,sessionIds:[parentSessionId]},
         {workspace:child,projectId:childId,sessionIds:[childSessionId]}];
-      const settings={theme:'light',projectAutoPlan:Object.fromEntries([parent,child,neighbour].map(workspace=>[workspace,{enabled:true}])),
+      const settings={theme:'light',projectPlanContinuation:Object.fromEntries([parent,child,neighbour].map(workspace=>[workspace,{enabled:true}])),
         parallelExecutionBook:{parent:{workspace:parent,projectId:parentId},child:{workspace:child,projectId:childId},
           neighbour:{workspace:neighbour,projectId:neighbourId,assignments:{active:{phase:'unknown'}}}},
         reviewCheckpoint:{entries:[...deleted.map(entry=>({key:JSON.stringify([entry.workspace,entry.sessionIds[0]])})),
@@ -148,7 +148,7 @@ test('overlapping journals complete in either order with exact persisted cleanup
       await restarted.finish(first==='parent'?parentJob:childJob);
       if(first==='child'){
         const afterChild=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8'));
-        assert.ok(afterChild.projectAutoPlan[parent],'child-first cleanup cannot remove parent with same projectId');
+        assert.ok(afterChild.projectPlanContinuation[parent],'child-first cleanup cannot remove parent with same projectId');
         assert.deepEqual(Object.keys(afterChild.parallelExecutionBook),['parent','neighbour']);
       }
       assert.deepEqual(await restarted.recover(),[],'remaining journal finishes after the first one');
@@ -158,7 +158,7 @@ test('overlapping journals complete in either order with exact persisted cleanup
       assert.equal(restoredStore.project(neighbour).sessionId,neighbourSessionId);
       for(const name of ['settings.json','settings.json.v1-backup']) {
         const data=JSON.parse(await fs.readFile(path.join(dataDir,name),'utf8'));
-        assert.deepEqual(Object.keys(data.projectAutoPlan),[neighbour]);
+        assert.deepEqual(Object.keys(data.projectPlanContinuation),[neighbour]);
         assert.deepEqual(Object.keys(data.parallelExecutionBook),['neighbour']);
         assert.deepEqual(data.reviewCheckpoint.entries,[{key:JSON.stringify([neighbour,neighbourSessionId])}]);
         assert.deepEqual(data.automationCheckpoint.entries,[{sessionId:neighbourSessionId}]);
@@ -217,7 +217,7 @@ test('cascade retries after settings purge interruption preserve unrelated data'
   const child=await boundChild(store,parent,'retry-child');
   await store.setArchived(parent,true);
   const settingsFile=path.join(root,'app/settings.json');
-  await fs.writeFile(settingsFile,JSON.stringify({projectAutoPlan:{[parent]:{enabled:true},[child]:{enabled:true},[neighbour]:{enabled:true}}}));
+  await fs.writeFile(settingsFile,JSON.stringify({projectPlanContinuation:{[parent]:{enabled:true},[child]:{enabled:true},[neighbour]:{enabled:true}}}));
   let interrupted=false;
   const recovering=new WorkspaceDeletion({store,journalDir:service.journalDir,
     purgeState:async (folder,identities)=>{
@@ -231,7 +231,7 @@ test('cascade retries after settings purge interruption preserve unrelated data'
   assert.deepEqual(await restart.recover(),[]);
   assert.deepEqual(await restart.recover(),[]);
   assert.equal(store.project(parent),null);assert.equal(store.project(child),null);
-  assert.deepEqual(Object.keys(JSON.parse(await fs.readFile(settingsFile)).projectAutoPlan),[neighbour]);
+  assert.deepEqual(Object.keys(JSON.parse(await fs.readFile(settingsFile)).projectPlanContinuation),[neighbour]);
   assert.equal(await fs.readFile(path.join(neighbour,'my-file.txt'),'utf8'),'keep until confirmed');
 });
 
@@ -557,13 +557,13 @@ test('recovery completes a confirmed rename interrupted before recording removal
 test('project deletion clears settings and executor metadata; cleanup failure remains recoverable',async t=>{
   const {root,store,service,project}=await fixture(t),a=await project('A'),b=await project('B');
   const sessionId=store.project(a).sessionId,settings=path.join(root,'app/settings.json');
-  await fs.writeFile(settings,JSON.stringify({projectAutoPlan:{[a]:{enabled:true},[b]:{enabled:true}},parallelExecutionBook:{old:{workspace:a}},reviewCheckpoint:{cycles:[{key:JSON.stringify([a,sessionId])}]}}));
+  await fs.writeFile(settings,JSON.stringify({projectPlanContinuation:{[a]:{enabled:true},[b]:{enabled:true}},parallelExecutionBook:{old:{workspace:a}},reviewCheckpoint:{cycles:[{key:JSON.stringify([a,sessionId])}]}}));
   await store.setArchived(a,true);let calls=0;
   service.cleanup=async()=>{if(!calls++)throw Error('settings disk failure');};
   const p=await service.preview(a);await assert.rejects(service.apply(p.token,p.name),/settings disk failure/);
   assert.equal(service.isPending(a),true);assert.ok(store.project(a));
   const restarted=new WorkspaceDeletion({store,journalDir:service.journalDir});assert.deepEqual(await restarted.recover(),[]);
-  const data=JSON.parse(await fs.readFile(settings));assert.equal(data.projectAutoPlan[a],undefined);assert.equal(data.projectAutoPlan[b].enabled,true);
+  const data=JSON.parse(await fs.readFile(settings));assert.equal(data.projectPlanContinuation[a],undefined);assert.equal(data.projectPlanContinuation[b].enabled,true);
   assert.deepEqual(data.parallelExecutionBook,{});assert.deepEqual(data.reviewCheckpoint.cycles,[]);assert.equal(store.project(a),null);
 });
 
@@ -623,7 +623,7 @@ test('confirmed orphan removal only clears its exact local record, backup, setti
   const dataDir=path.dirname(store.file);
   const state=store.snapshot();
   await fs.writeFile(store.file+'.v2-backup',JSON.stringify(state));
-  const settings={projectAutoPlan:{[child]:{enabled:true},[neighbour]:{enabled:true}},
+  const settings={projectPlanContinuation:{[child]:{enabled:true},[neighbour]:{enabled:true}},
     reviewCheckpoint:{entries:[{sessionId:view.sessionId},{sessionId:keep}]},
     automationCheckpoint:{entries:[{sessionId:view.sessionId},{sessionId:keep}]}};
   await fs.writeFile(path.join(dataDir,'settings.json'),JSON.stringify(settings));
@@ -647,7 +647,7 @@ test('confirmed orphan removal only clears its exact local record, backup, setti
   assert.equal(restartedStore.project(parent),null);
   assert.deepEqual(JSON.parse(await fs.readFile(store.file+'.v2-backup','utf8')).projects.map(p=>p.workspace),[neighbour,parent]);
   const cleaned=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json')));
-  assert.deepEqual(Object.keys(cleaned.projectAutoPlan),[neighbour]);
+  assert.deepEqual(Object.keys(cleaned.projectPlanContinuation),[neighbour]);
   assert.deepEqual(cleaned.reviewCheckpoint.entries,[{sessionId:keep}]);
   assert.deepEqual(cleaned.automationCheckpoint.entries,[{sessionId:keep}]);
   assert.deepEqual(JSON.parse((await fs.readFile(path.join(dataDir,'diagnostics','chromium-events.jsonl'),'utf8')).trim()),{sessionId:keep});

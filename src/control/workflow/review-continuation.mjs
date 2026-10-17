@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { AutoPlan } from './auto-plan.mjs';
+import { PlanContinuation } from './plan-continuation.mjs';
 import { reviewStatus, acknowledgeReview } from '@webpilot/workflow-kit/lib/plan-review';
 
 const eligible=s=>s?.enabled && ['PREPARED','AUTHOR_PENDING','AGREED','NEEDS_USER'].includes(s.stage)
@@ -11,14 +11,14 @@ export function reviewContinueMessage(workspace,s) {
     'Workspace: '+JSON.stringify(workspace),
     'Состояние: '+s.stage+'; раунд '+s.round+'. Папка: '+JSON.stringify(path.join(workspace,'.harness/runtime/plan-review',s.run_id)),
     s.stage==='NEEDS_USER'?'Если есть успешный отзыв, сохрани содержательную позицию через review:respond. Сообщи пользователю проблему и спроси, что делать дальше. Выполни review:acknowledge перед финальным вопросом. Без ответа пользователя не повторяй вызов и не публикуй.':
-      'Прочитай полный результат, если он есть. После каждого успешного отзыва, включая approved, сохрани содержательную позицию через review:respond. Существенные решения перенеси в spec/критерии до окончательного ревью. Неизменённую согласованную пару с accept публикуй через review:publish без лишнего раунда; после изменений — prepare и новое согласие в той же Claude-сессии. При существенном споре — needs_user и вопрос пользователю. Не меняй Review или AutoPlan.',
+      'Прочитай полный результат, если он есть. После каждого успешного отзыва, включая approved, сохрани содержательную позицию через review:respond. Существенные решения перенеси в spec/критерии до окончательного ревью. Неизменённую согласованную пару с accept публикуй через review:publish без лишнего раунда; после изменений — prepare и новое согласие в той же Claude-сессии. При существенном споре — needs_user и вопрос пользователю. Не меняй Review и кнопку выполнения плана.',
     'Если цикл уже изменился, действуй по актуальному status. Не повторяй неизвестный запуск или Send.'
   ].join('\n');
 }
 export class ReviewContinuation {
   constructor({selected,client,send,available,saveCheckpoint,onChange=()=>{},status=reviewStatus,acknowledge=acknowledgeReview,...timing}) {
     Object.assign(this,{selected,client,status,acknowledge});this.stops=new Map();this.signature='';this.persistenceError=false;
-    this.flow=new AutoPlan({...timing,selected:()=>this.selection(),available:()=>available()&&!this.stops.has(owner(selected()))&&!this.persistenceError,
+    this.flow=new PlanContinuation({...timing,selected:()=>this.selection(),available:()=>available()&&!this.stops.has(owner(selected()))&&!this.persistenceError,
       inspectPlan:async()=>this.inspect(),saveCheckpoint:async checkpoint=>{
         await saveCheckpoint({...checkpoint,version:3,entries:checkpoint?.entries??[],cycles:checkpoint?.cycles??[],reviewStops:[...this.stops.values()]});
       },onChange,

@@ -446,6 +446,13 @@ export class WorkspaceSessions {
           delete session.tokenEstimate;
           removedEstimate = true;
         }
+        // An executor checkpoint saved by 0.4.6 and earlier under its former name.
+        const automation = session.executionAutomation;
+        if (automation && Object.hasOwn(automation, 'autoPlanCheckpoint')) {
+          if (!Object.hasOwn(automation, 'continuationCheckpoint')) automation.continuationCheckpoint = automation.autoPlanCheckpoint;
+          delete automation.autoPlanCheckpoint;
+          removedEstimate = true;
+        }
       }
     }
     this.data = data;
@@ -737,7 +744,7 @@ export class WorkspaceSessions {
   saveExecutorAutomation(workspace,sessionId,patch) {
     return this.mutate(data=>{
       const {session}=this.activeRecord(workspace,sessionId,data,{background:true});
-      if(!session.assignmentId||Object.keys(patch).some(k=>!['autoPlanCheckpoint','automationCheckpoint'].includes(k)))
+      if(!session.assignmentId||Object.keys(patch).some(k=>!['continuationCheckpoint','automationCheckpoint'].includes(k)))
         throw new WorkspaceError('ASSIGNMENT_OWNER','Нет такого исполнителя.');
       session.executionAutomation={...session.executionAutomation,...copy(patch)};
     });

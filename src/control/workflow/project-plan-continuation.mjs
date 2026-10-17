@@ -1,6 +1,6 @@
 // Authorization belongs to a project and its current scope. Session ledgers
 // survive OFF/restart, but never grant permission to another project or plan.
-export class ProjectAutoPlan {
+export class ProjectPlanContinuation {
   constructor({saved={},onChange=()=>{},identity=null,ownsSession=()=>true}={}) {
     this.book={};this.onChange=onChange;this.identity=identity;this.ownsSession=ownsSession;
     for(const [workspace,value] of Object.entries(saved??{}))if(workspace.startsWith('/')||/^[A-Za-z]:[\\/]/.test(workspace)) {
