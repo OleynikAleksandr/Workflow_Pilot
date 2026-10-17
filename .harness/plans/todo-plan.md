@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 383,
+  "plan_revision": 384,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -32,7 +32,8 @@
       "src/control/workflow/coordination.mjs",
       "src/backend/desktop-model.mjs",
       "src/frontend/desktop/ui/sidebar.mjs",
-      "packages/workflow-kit/src/lib/installer.mjs"
+      "packages/workflow-kit/src/lib/installer.mjs",
+      "tests/sidebar.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/project-list-layout.md",
@@ -323,11 +324,41 @@
       ]
     },
     {
+      "id": "T008",
+      "title": "Раскладка to-do plan и проверка проекта без сдвига",
+      "why": "Приёмка 0.4.6: названия задач в столбик, окно дёргалось.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/sidebar.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Строка начатой задачи to-do plan во всю ширину, название по ширине панели; проверка проекта при переключении не сдвигает карточку"
+      ],
+      "expected_commit_message": "fix: Раскладка to-do plan и проверка проекта без сдвига",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T008",
+        "role": "implementation"
+      }
+    },
+    {
       "id": "T007",
       "title": "Убрать AutoPlan из кода приложения",
       "why": "Механизм продолжения прежних планов назывался AutoPlan.",
       "dependencies": [
-        "T006"
+        "T006",
+        "T008"
       ],
       "functional_paths": [
         "src/control/workflow/coordination.mjs",
@@ -374,7 +405,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 383
+Revision: 384
 
 ## Цель
 
@@ -414,6 +445,10 @@ Revision: 383
   - Git Commit: [DONE] fix: Kit без AutoPlan — запуск плана кнопкой
   - Reference: workflow-pilot-0-4-6 / T006 / implementation
   - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/src/lib/installer.mjs, docs/planning/no-autoplan.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/docs/modules/parallel-assignments.md
+- [TODO] T008: Раскладка to-do plan и проверка проекта без сдвига — Ожидает
+  - Git Commit: [PENDING] fix: Раскладка to-do plan и проверка проекта без сдвига
+  - Reference: workflow-pilot-0-4-6 / T008 / implementation
+  - Файлы: src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, tests/electron-smoke.mjs, tests/sidebar.test.mjs
 - [TODO] T007: Убрать AutoPlan из кода приложения — Ожидает
   - Git Commit: [PENDING] refactor: Убрать AutoPlan из кода приложения
   - Reference: workflow-pilot-0-4-6 / T007 / implementation
