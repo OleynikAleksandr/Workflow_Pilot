@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 301,
+  "plan_revision": 303,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1578,14 +1578,21 @@
         "Версия 0.4.2 согласована в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.4.2",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T025",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-5",
@@ -1733,7 +1740,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 301
+Revision: 303
 
 ## Цель
 
@@ -1931,8 +1938,8 @@ Revision: 301
   - Файлы: src/backend/desktop-model.mjs, src/backend/main.mjs, tests/backend-shutdown.test.mjs, src/backend/shutdown.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T024
-- [TODO] T025: Подготовить версию 0.4.2 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.4.2
+- [DONE] T025: Подготовить версию 0.4.2 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.4.2
   - Reference: workflow-pilot-orchestrated-execution / T025 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
