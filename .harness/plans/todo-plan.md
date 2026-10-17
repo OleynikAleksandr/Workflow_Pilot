@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 277,
+  "plan_revision": 278,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.",
   "acceptance_criteria": [
     "R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id",
@@ -114,7 +114,17 @@
       "release-manifest.json",
       "packages/workflow-kit/src/lib/transaction-state.mjs",
       "packages/workflow-kit/src/lib/common.mjs",
-      "tests/release-linux.test.mjs"
+      "tests/release-linux.test.mjs",
+      "src/frontend/desktop/client.mjs",
+      "src/frontend/desktop/ui/browser-view.mjs",
+      "src/frontend/desktop/browser-view-preload.cjs",
+      "tests/desktop-client.test.mjs",
+      "src/execution/browser/presentation/host.mjs",
+      "src/execution/browser/presentation/transport.mjs",
+      "src/frontend/client/browser-view.mjs",
+      "tests/browser-presentation.test.mjs",
+      "tests/fixtures/backend-browser-page.html",
+      "tests/fixtures/backend-browser-probe.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -138,7 +148,8 @@
       "packages/workflow-kit/src/templates/PLAN.md",
       "packages/workflow-kit/src/templates/AGENTS.md",
       "packages/workflow-kit/src/templates/PROTOTYPE.md",
-      "docs/modules/orchestrated-execution.md"
+      "docs/modules/orchestrated-execution.md",
+      "docs/planning/client-clipboard-drop.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -182,6 +193,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/client-clipboard-drop.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -1107,6 +1123,241 @@
       "verification_kind": "package",
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T017",
+      "title": "Исправить вставку и добавить контекстное меню",
+      "why": "В 0.4.0 Cmd+V не вставлял текст (асинхронный clipboard Electron 44), правая кнопка не показывала меню.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/browser-view.mjs",
+        "src/frontend/desktop/browser-view-preload.cjs",
+        "tests/desktop-client.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/client-clipboard-drop.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Вставка текста идёт через событие paste скрытого поля: Cmd+V, меню Правка и контекстное меню доходят до страницы",
+        "Контекстное меню по правой кнопке: Вырезать, Копировать, Вставить, Выделить всё; Копировать и Вырезать доступны при непустом выделении",
+        "Ошибки вставки и меню пишутся в client-events и показываются статусом; clipboard основного процесса вызывается с await",
+        "Тест desktop-client проверяет вставку текста через настоящий renderer клиента и состав меню без записи в системный буфер"
+      ],
+      "expected_commit_message": "fix: Вставка и контекстное меню в отдельном клиенте",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T017",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T018",
+      "title": "Перетаскивание файлов и вставка картинок",
+      "why": "Прикрепление файлов к ChatGPT перетаскиванием и вставкой скриншота, как во встроенном браузере до 0.2.0.",
+      "dependencies": [
+        "T017"
+      ],
+      "functional_paths": [
+        "src/execution/browser/presentation/host.mjs",
+        "src/execution/browser/presentation/transport.mjs",
+        "src/frontend/client/browser-view.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/browser-view.mjs",
+        "src/frontend/desktop/browser-view-preload.cjs",
+        "tests/browser-presentation.test.mjs",
+        "tests/fixtures/backend-browser-page.html",
+        "tests/fixtures/backend-browser-probe.mjs",
+        "tests/desktop-client.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/client-clipboard-drop.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "POST /v1/browser/drop после полной передачи файлов выполняет dragEnter, dragOver и drop в точке страницы; без lease отклоняется",
+        "Перетаскивание до 10 файлов по 32 МБ на изображение страницы доходит до страницы",
+        "Картинка или файл из события paste передаётся странице в точке последнего нажатия",
+        "browser-presentation проверяет drop двух файлов на fixture-странице; desktop-client — вставку картинки через renderer"
+      ],
+      "expected_commit_message": "feat: Перетаскивание файлов и вставка картинок в клиенте",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T018",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T019",
+      "title": "Подготовить версию 0.4.1",
+      "why": "Номер исправляющего выпуска.",
+      "dependencies": [
+        "T018"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/client-clipboard-drop.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.4.1 согласована в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.4.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T019",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-4",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "DOCS-4",
+        "role": "implementation",
+        "iteration": 4
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T017",
+        "T018",
+        "T019"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/client-clipboard-drop.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T020",
+      "title": "Собрать выпуск 0.4.1 трёх ОС",
+      "why": "Полный комплект после DOCS из одного sourceCommit.",
+      "dependencies": [
+        "T019",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/client-clipboard-drop.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.4.1 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T020",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T021",
+      "title": "Установить 0.4.1 в Applications",
+      "why": "Обновить установленное приложение штатным installer.",
+      "dependencies": [
+        "T020",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/client-clipboard-drop.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
+      ],
+      "expected_commit_message": "release: Установить 0.4.1 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T021",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T022",
+      "title": "Опубликовать GitHub Release 0.4.1",
+      "why": "Опубликовать проверенный комплект.",
+      "dependencies": [
+        "T021",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/client-clipboard-drop.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.4.1 на sourceCommit, assets сверены по размеру и digest, remote main совпадает с local HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T022",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1128,10 +1379,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 277
+Revision: 278
 
 ## Цель
 
@@ -1269,6 +1520,48 @@ Revision: 277
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T013, DOCS, DOCS-2, DOCS-3
+- [TODO] T017: Исправить вставку и добавить контекстное меню — Ожидает
+  - Git Commit: [PENDING] fix: Вставка и контекстное меню в отдельном клиенте
+  - Reference: workflow-pilot-orchestrated-execution / T017 / implementation
+  - Файлы: src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.mjs, src/frontend/desktop/browser-view-preload.cjs, tests/desktop-client.test.mjs, docs/planning/client-clipboard-drop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T018: Перетаскивание файлов и вставка картинок — Ожидает
+  - Git Commit: [PENDING] feat: Перетаскивание файлов и вставка картинок в клиенте
+  - Reference: workflow-pilot-orchestrated-execution / T018 / implementation
+  - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.mjs, src/frontend/desktop/browser-view-preload.cjs, tests/browser-presentation.test.mjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/desktop-client.test.mjs, docs/planning/client-clipboard-drop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T017
+- [TODO] T019: Подготовить версию 0.4.1 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.4.1
+  - Reference: workflow-pilot-orchestrated-execution / T019 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/client-clipboard-drop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T018
+- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-orchestrated-execution / DOCS-4 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/client-clipboard-drop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T017, T018, T019
+- [TODO] T020: Собрать выпуск 0.4.1 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.4.1 трёх ОС
+  - Reference: workflow-pilot-orchestrated-execution / T020 / implementation
+  - Файлы: release-manifest.json, docs/planning/client-clipboard-drop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T019, DOCS-4
+- [TODO] T021: Установить 0.4.1 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.4.1 в Applications
+  - Reference: workflow-pilot-orchestrated-execution / T021 / implementation
+  - Файлы: release-manifest.json, docs/planning/client-clipboard-drop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T020, DOCS-4
+- [TODO] T022: Опубликовать GitHub Release 0.4.1 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.1
+  - Reference: workflow-pilot-orchestrated-execution / T022 / implementation
+  - Файлы: release-manifest.json, docs/planning/client-clipboard-drop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T021, DOCS-4
 
 ## Context Pack For This Cycle
 
@@ -1280,5 +1573,6 @@ Revision: 277
 - docs/modules/desktop.md
 - docs/modules/control.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/client-clipboard-drop.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
