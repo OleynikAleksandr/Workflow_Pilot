@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 293,
+  "plan_revision": 294,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.",
   "acceptance_criteria": [
     "R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id",
@@ -125,7 +125,10 @@
       "tests/browser-presentation.test.mjs",
       "tests/fixtures/backend-browser-page.html",
       "tests/fixtures/backend-browser-probe.mjs",
-      "src/backend/lifecycle.mjs"
+      "src/backend/lifecycle.mjs",
+      "src/backend/bootstrap.mjs",
+      "src/frontend/client/connection.mjs",
+      "tests/backend-connection.test.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -151,7 +154,8 @@
       "packages/workflow-kit/src/templates/PROTOTYPE.md",
       "docs/modules/orchestrated-execution.md",
       "docs/planning/client-clipboard-drop.md",
-      "docs/modules/browser.md"
+      "docs/modules/browser.md",
+      "docs/planning/orchestrated-executor-fixes.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -202,6 +206,11 @@
         "path": "docs/planning/client-clipboard-drop.md",
         "required": true,
         "revision": "541561d8218ac5de2d5011b6fa7ac7e7d149e8d6"
+      },
+      {
+        "path": "docs/planning/orchestrated-executor-fixes.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -1402,6 +1411,238 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T023",
+      "title": "Исполнитель запускается кнопкой плана и в режиме Chat",
+      "why": "Живая приёмка 0.4.1: исполнитель T001 ждал выключенный AutoPlan и открылся в режиме Work оркестратора.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/backend/desktop-model.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/facade.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/orchestrated-execution.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-executor-fixes.md"
+      ],
+      "verification_ids": [
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Разрешение первого сообщения и продолжений исполнителя плана оркестратора следует только кнопке плана; AutoPlan в новой схеме не участвует",
+        "Изменение состояния кнопки сразу применяется к живым исполнителям",
+        "Исполнитель плана оркестратора создаётся в Chat при оркестраторе в Work; не начатый исполнитель в Work переводится в Chat",
+        "Прежние планы AutoPlan/sequential/parallel не меняются"
+      ],
+      "expected_commit_message": "fix: Исполнитель плана оркестратора запускается кнопкой плана в режиме Chat",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T023",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T024",
+      "title": "Выбор сессий и восстановление окна после разрыва потока",
+      "why": "Живая приёмка 0.4.1: после выбора исполнителя окно осталось в состоянии «нет связи», to-do plan заменился карточкой назначения, клик по оркестратору не загружал диалог.",
+      "dependencies": [
+        "T023"
+      ],
+      "functional_paths": [
+        "src/frontend/client/connection.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/backend-connection.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/desktop-client.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-executor-fixes.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Переподключение потока по снимку или по номеру события снимает состояние «нет связи»; исключение обработчика не обрывает поток и пишется в журнал",
+        "При выборе исполнителя плана оркестратора карточка плана с to-do plan остаётся, карточка назначения скрыта",
+        "Клик по сессии оркестратора после выбора исполнителя загружает диалог оркестратора"
+      ],
+      "expected_commit_message": "fix: Выбор сессий и восстановление окна после разрыва потока",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T024",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T025",
+      "title": "Подготовить версию 0.4.2",
+      "why": "Номер исправляющего выпуска.",
+      "dependencies": [
+        "T024"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-executor-fixes.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.4.2 согласована в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.4.2",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T025",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-5",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "DOCS-5",
+        "role": "implementation",
+        "iteration": 5
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T023",
+        "T024",
+        "T025"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/orchestrated-executor-fixes.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T026",
+      "title": "Собрать выпуск 0.4.2 трёх ОС",
+      "why": "Полный комплект после DOCS из одного sourceCommit.",
+      "dependencies": [
+        "T025",
+        "DOCS-5"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-executor-fixes.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.4.2 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T026",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T027",
+      "title": "Установить 0.4.2 в Applications",
+      "why": "Обновить установленное приложение штатным installer.",
+      "dependencies": [
+        "T026",
+        "DOCS-5"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-executor-fixes.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
+      ],
+      "expected_commit_message": "release: Установить 0.4.2 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T027",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T028",
+      "title": "Опубликовать GitHub Release 0.4.2",
+      "why": "Опубликовать проверенный комплект.",
+      "dependencies": [
+        "T027",
+        "DOCS-5"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-executor-fixes.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.4.2 на sourceCommit, assets сверены по размеру и digest, remote main совпадает с local HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.2",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T028",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1423,10 +1664,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 293
+Revision: 294
 
 ## Цель
 
@@ -1606,6 +1847,48 @@ Revision: 293
   - Файлы: release-manifest.json, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
   - Зависимости: T021, DOCS-4
+- [TODO] T023: Исполнитель запускается кнопкой плана и в режиме Chat — Ожидает
+  - Git Commit: [PENDING] fix: Исполнитель плана оркестратора запускается кнопкой плана в режиме Chat
+  - Reference: workflow-pilot-orchestrated-execution / T023 / implementation
+  - Файлы: src/backend/desktop-model.mjs, src/backend/bootstrap.mjs, src/control/workflow/coordination.mjs, src/control/facade.mjs, src/control/sessions/workspace-session.mjs, tests/session-roles.test.mjs, tests/orchestrated-execution.test.mjs, docs/planning/orchestrated-executor-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T024: Выбор сессий и восстановление окна после разрыва потока — Ожидает
+  - Git Commit: [PENDING] fix: Выбор сессий и восстановление окна после разрыва потока
+  - Reference: workflow-pilot-orchestrated-execution / T024 / implementation
+  - Файлы: src/frontend/client/connection.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/backend-connection.test.mjs, tests/sidebar.test.mjs, tests/desktop-client.test.mjs, docs/planning/orchestrated-executor-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T023
+- [TODO] T025: Подготовить версию 0.4.2 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.4.2
+  - Reference: workflow-pilot-orchestrated-execution / T025 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/orchestrated-executor-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T024
+- [TODO] DOCS-5: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-orchestrated-execution / DOCS-5 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/orchestrated-executor-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T023, T024, T025
+- [TODO] T026: Собрать выпуск 0.4.2 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.4.2 трёх ОС
+  - Reference: workflow-pilot-orchestrated-execution / T026 / implementation
+  - Файлы: release-manifest.json, docs/planning/orchestrated-executor-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T025, DOCS-5
+- [TODO] T027: Установить 0.4.2 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.4.2 в Applications
+  - Reference: workflow-pilot-orchestrated-execution / T027 / implementation
+  - Файлы: release-manifest.json, docs/planning/orchestrated-executor-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T026, DOCS-5
+- [TODO] T028: Опубликовать GitHub Release 0.4.2 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.2
+  - Reference: workflow-pilot-orchestrated-execution / T028 / implementation
+  - Файлы: release-manifest.json, docs/planning/orchestrated-executor-fixes.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T027, DOCS-5
 
 ## Context Pack For This Cycle
 
@@ -1618,5 +1901,6 @@ Revision: 293
 - docs/modules/control.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/client-clipboard-drop.md
+- docs/planning/orchestrated-executor-fixes.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
