@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 374,
+  "plan_revision": 376,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -160,8 +160,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T003",
@@ -187,7 +187,10 @@
       "acceptance_criteria": [
         "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
-      "expected_commit_message": "release: Собрать выпуск 0.4.6 трёх ОС"
+      "expected_commit_message": "release: Собрать выпуск 0.4.6 трёх ОС",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -268,7 +271,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 374
+Revision: 376
 
 ## Цель
 
@@ -292,8 +295,8 @@ Revision: 374
   - Git Commit: [DONE] docs: актуализировать контекст проекта
   - Reference: workflow-pilot-0-4-6 / DOCS / implementation
   - Файлы: docs/planning/project-list-layout.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md
-- [TODO] T003: Собрать выпуск 0.4.6 трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.4.6 трёх ОС
+- [DONE] T003: Собрать выпуск 0.4.6 трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.4.6 трёх ОС
   - Reference: workflow-pilot-0-4-6 / T003 / implementation
   - Файлы: release-manifest.json, docs/planning/project-list-layout.md
 - [TODO] T004: Установить 0.4.6 в Applications — Ожидает
