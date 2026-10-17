@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 391,
+  "plan_revision": 393,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -86,7 +86,22 @@
       "docs/planning/no-autoplan.md",
       "packages/workflow-kit/src/templates/PLAN.md",
       "packages/workflow-kit/src/templates/PROTOTYPE.md",
-      "packages/workflow-kit/docs/modules/parallel-assignments.md"
+      "packages/workflow-kit/docs/modules/parallel-assignments.md",
+      "AGENTS.md",
+      "docs/acceptance/backend-independence.md",
+      "docs/acceptance/migration-0.1.0.md",
+      "docs/modules/backend.md",
+      "docs/modules/browser.md",
+      "docs/modules/control.md",
+      "docs/modules/execution.md",
+      "docs/modules/orchestrated-execution.md",
+      "docs/modules/project-compatibility.md",
+      "docs/modules/remote-access.md",
+      "docs/modules/workflow-execution.md",
+      "docs/planning/phased-plans-recovery-followup.md",
+      "packages/workflow-kit/README.md",
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+      "packages/workflow-kit/docs/modules/workflow-kit-package.md"
     ]
   },
   "baseline_commit": "b43bedbdafe67cd2a957aba9412929899c2b19cc",
@@ -106,7 +121,7 @@
       {
         "path": "docs/planning/no-autoplan.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "4fea65372b7e3dcd9caeeabc21d50c437e64ec89"
       }
     ],
     "include_last_completed_task": false,
@@ -577,8 +592,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "DOCS-2",
@@ -594,13 +609,54 @@
       ],
       "functional_paths": [],
       "documentation_paths": [
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "AGENTS.md",
+        "README.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/execution.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/remote-access.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/no-autoplan.md",
+        "docs/planning/phased-plans-recovery-followup.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
-      "expected_commit_message": "docs: актуализировать документацию проекта"
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "actual_files": [
+        "AGENTS.md",
+        "README.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/execution.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/remote-access.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/no-autoplan.md",
+        "docs/planning/phased-plans-recovery-followup.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "id": "T010",
@@ -705,7 +761,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 391
+Revision: 393
 
 ## Цель
 
@@ -757,10 +813,10 @@ Revision: 391
   - Git Commit: [DONE] feat: Подготовить версию 0.4.7
   - Reference: workflow-pilot-0-4-6 / T009 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-0-4-6 / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md
+  - Файлы: docs/architecture/OVERVIEW.md, AGENTS.md, README.md, docs/acceptance/backend-independence.md, docs/acceptance/migration-0.1.0.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/execution.md, docs/modules/orchestrated-execution.md, docs/modules/project-compatibility.md, docs/modules/remote-access.md, docs/modules/workflow-execution.md, docs/planning/no-autoplan.md, docs/planning/phased-plans-recovery-followup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md
 - [TODO] T010: Собрать выпуск 0.4.7 трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.4.7 трёх ОС
   - Reference: workflow-pilot-0-4-6 / T010 / implementation

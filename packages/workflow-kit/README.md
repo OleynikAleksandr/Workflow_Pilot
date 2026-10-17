@@ -1,6 +1,6 @@
 # Workflow Kit
 
-Пакет `@webpilot/workflow-kit` версии **1.8.0** внутри репозитория Workflow Pilot. Даёт один текущий план на Git checkout/worktree, проверяемые коммиты задач, подчинённые назначения parallel-плана и полный recovery. Пакет приватный, в npm не публикуется.
+Пакет `@webpilot/workflow-kit` версии **1.8.1** внутри репозитория Workflow Pilot. Даёт один текущий план на Git checkout/worktree, проверяемые коммиты задач, подчинённые назначения parallel-плана и полный recovery. Пакет приватный, в npm не публикуется.
 
 ## Требования
 Node.js 22+ и Git; приложение Workflow Pilot использует Node 24.21.0. На Windows установщик кладёт Node в `.harness/runtime` проекта; Git — MinGit приложения или системный.

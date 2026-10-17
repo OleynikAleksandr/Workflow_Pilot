@@ -10,7 +10,7 @@
 | A02 | Закрытие/kill клиента сохраняет страницу, состояние, работу и MCP/bridge | `desktop-client`, `backend-end-to-end` (SIGKILL клиента), `chatgpt-plugin` (мост backend без клиента) | pass (fixture); живой ChatGPT — pending manual |
 | A03 | Reconnect к той же странице/операции без reload/recovery/Send | `backend-browser-lifecycle`, `backend-end-to-end` (тот же bootId и operationId), `backend-reconnect` | pass (fixture) |
 | A04 | Независимый API-клиент без preload | `backend-api`, `backend-end-to-end` | pass |
-| A05 | Fixture-цепочка продолжается без клиента | `backend-browser-lifecycle` (AutoPlan отправляет следующие шаги при нуле зрителей) | pass (fixture уровня сессий); живой план с Kit — pending manual |
+| A05 | Fixture-цепочка продолжается без клиента | `backend-browser-lifecycle` (продолжение плана отправляет следующие шаги при нуле зрителей) | pass (fixture уровня сессий); живой план с Kit — pending manual |
 | A06 | Два клиента, один writer, старое поколение отклонено | `backend-reconnect` | pass |
 | A07 | Пропуск событий/restart/reconnect без повторов | `backend-api` (журнал, UNKNOWN, boot generation), `backend-protocol` (resync), `backend-reconnect` | pass |
 | A08 | Меню, русский и составной ввод, выделение, clipboard, файлы | `browser-presentation` (Electron e2e на fixture-странице) | pass (fixture); меню ответов ChatGPT и физическая клавиатура/IME — pending manual |

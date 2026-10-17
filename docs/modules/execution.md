@@ -2,9 +2,9 @@
 
 ## Ответственность и потребители
 
-Execution не владеет проектом, current plan, привязкой чата, Review или AutoPlan. Он выполняет физические операции и возвращает подтверждённый результат. Подготовка recovery осталась в SessionPlans/вызывающем слое; runtime больше не принимает sessionPlans и не имеет loadContext.
+Execution не владеет проектом, current plan, привязкой чата, Review или выполнением плана. Он выполняет физические операции и возвращает подтверждённый результат. Подготовка recovery осталась в SessionPlans/вызывающем слое; runtime больше не принимает sessionPlans и не имеет loadContext.
 
-`src/execution/facade.mjs` — граница физических операций для Control. Bootstrap создаёт один ExecutionFacade, передаёт executeFile/files в WorkspaceSetup и SessionPlans и присоединяет выбранный runtime. ParallelKit использует тот же исполнитель SessionPlans. Создание/открытие проекта, context worker, настройки, проверка/выбор канала через прежние IPC теперь используют эти операции. Пользовательская семантика AutoPlan/Review/sequential/parallel не меняется.
+`src/execution/facade.mjs` — граница физических операций для Control. Bootstrap создаёт один ExecutionFacade, передаёт executeFile/files в WorkspaceSetup и SessionPlans и присоединяет выбранный runtime. ParallelKit использует тот же исполнитель SessionPlans. Создание/открытие проекта, context worker, настройки, проверка/выбор канала через прежние IPC теперь используют эти операции. Пользовательская семантика выполнения планов, Review и sequential/parallel не меняется.
 
 | Реализация | Владелец |
 | --- | --- |

@@ -4,7 +4,7 @@ Workflow Pilot открывает папку проекта донора без 
 
 ## Источник и обновление
 
-`packages/workflow-kit` — единственный источник Kit 1.8.0. `scripts/stage-workflow-kit.mjs` формирует `resources/workflow-kit` и сверяет состав и SHA всех файлов с исходным пакетом. Установленный `.harness/kit` и managed-секции обновляет только installer. Изменение owned-файлов требует новой версии пакета, runtime и lockfile; формат current plan при этом не меняется.
+`packages/workflow-kit` — единственный источник Kit 1.8.1. `scripts/stage-workflow-kit.mjs` формирует `resources/workflow-kit` и сверяет состав и SHA всех файлов с исходным пакетом. Установленный `.harness/kit` и managed-секции обновляет только installer. Изменение owned-файлов требует новой версии пакета, runtime и lockfile; формат current plan при этом не меняется.
 
 ControlFacade.setup принимает выбранную папку через preview, возвращает состояние и одноразовый token; apply повторно проверяет входы и вызывает installer в процессе Execution. Для поддерживаемого 1.7.2 выполняется штатный kit-update. Сохраняются project_id, байты текущего плана, незакоммиченные изменения задачи и предшествующие Git-коммиты. Новая сессия продолжает NONE, ACTIVE или частично DONE из того же checkout. Сервисный commit обновления не завершает пользовательскую задачу.
 
