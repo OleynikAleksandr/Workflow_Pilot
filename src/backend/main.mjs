@@ -15,7 +15,9 @@ import {BackendBrowserHost,desktopDependencies,TailscaleCli} from '../execution/
 
 // macOS keeps pages as views a native window can show; elsewhere pages render offscreen.
 export const defaultPageMode=platform=>platform==='darwin'?'view':'offscreen';
-export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode=null}={}) {
+// nativeWindow(options): the entry point composes the window module (frontend) and
+// hands it in; the backend never imports frontend code itself.
+export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode=null,nativeWindow=null}={}) {
   const {app}=electron;
   let identity;
   try{identity=configureBackendIdentity(app,{testRoot:fixtureRoot});}
@@ -30,8 +32,10 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
   // The backend never owns a Dock tile. macOS may promote a process that shows a
   // dialog or is activated; the accessory policy is applied again after each
   // such event and the observed LaunchServices type is journaled.
+  let native=null;
   const keepAccessory=trigger=>{
-    if(process.platform!=='darwin')return;
+    // The open native window owns a Dock tile and the app menu.
+    if(process.platform!=='darwin'||native)return;
     try{app.setActivationPolicy('accessory');}catch{ /* not ready yet */ }
     void launchServicesType().then(type=>{
       if(type&&type!=='UIElement'){journal.record('dock-type',{type,trigger});try{app.setActivationPolicy('accessory');}catch{}}
@@ -43,16 +47,23 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
     {type:details?.type,reason:details?.reason,exitCode:details?.exitCode,serviceName:details?.serviceName}));
   app.on('render-process-gone',(_event,_contents,details)=>journal.record('render-process-gone',{reason:details?.reason,exitCode:details?.exitCode}));
   for(const name of ['activate','did-become-active','browser-window-created'])app.on(name,()=>setImmediate(()=>keepAccessory(name)));
-  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null,disposeAccess=()=>{},lastServiceEntry=null,pageHost=null;
+  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null,disposeAccess=()=>{},lastServiceEntry=null,pageHost=null,nativeControl=null;
   // Every ordinary exit stops own services first, then releases the profile.
   // The owner record is removed only by the process that proved ownership.
   const shutdown=()=>{
     // The profile lock is released explicitly so the next owner never sees a leftover lock file.
+    native?.close();
     stopping??=(port?port.stop():Promise.resolve(desktop?.dispose())).catch(()=>{})
       .finally(()=>{disposeAccess();stopper?.dispose();statusMenu?.destroy();app.releaseSingleInstanceLock();app.exit(0);});
     return stopping;
   };
-  app.on('before-quit',event=>{journal.record('quit-requested',{running:!!port});if(port){event.preventDefault();void shutdown();}});
+  // Quit from the Dock tile of the open native window closes the window only, like
+  // quitting the separate client; the service stops from its own menu or a signal.
+  app.on('before-quit',event=>{
+    journal.record('quit-requested',{running:!!port,native:!!native});
+    if(native&&!stopping){event.preventDefault();native.close();return;}
+    if(port){event.preventDefault();void shutdown();}
+  });
   for(const signal of ['SIGTERM','SIGINT','SIGHUP'])process.on(signal,()=>{journal.record('signal',{name:signal});void shutdown();});
   app.whenReady().then(async()=>{
     if(process.platform==='darwin')app.setActivationPolicy('accessory');
@@ -117,10 +128,28 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
           const entry={phase:view.phase,reasons:view.reasons.map(reason=>reason.code),error:view.error?.code??null};
           const key=JSON.stringify(entry);if(key!==lastServiceEntry){lastServiceEntry=key;journal.record('service',entry);}}});
       events.ui('service',stopper.view());
+      // The native window: the same client opened inside this process with the
+      // real page views. Fixtures open it hidden and never change the Dock.
+      const nativePages=Object.freeze({attach:(id,container,bounds)=>host.attach(id,container,bounds),
+        setBounds:(id,bounds)=>host.setBounds(id,bounds),detach:id=>host.detach(id),contents:id=>host.view(id)?.webContents??null});
+      const nativeAvailable=()=>!!nativeWindow&&host.pageMode==='view';
+      const openNative=({reason='open',hidden=!!fixtureRoot}={})=>{
+        journal.record('native-window',{reason,open:!!native});
+        if(native&&!native.closed)return native.focus();
+        if(!hidden&&process.platform==='darwin'){try{app.setActivationPolicy('regular');}catch{ /* not ready yet */ }}
+        const opened=nativeWindow({port:port.port,token:claim.token,pages:nativePages,logDir:path.join(identity.dataDir,'diagnostics'),hidden,
+          openHttpClient:()=>openClient('native-menu',{http:true}),
+          onClosed:()=>{if(native===opened)native=null;journal.record('native-window-closed',{});keepAccessory('native-closed');}});
+        native=opened;
+        return opened;
+      };
+      nativeControl={available:nativeAvailable,open:openNative};
       // A client is a separate process: focus a connected one or start a new one.
       // A packaged macOS client is opened through LaunchServices like a Dock
       // click, so it belongs to the app's own Dock tile, not a tile of this process.
-      const openClient=reason=>{
+      // On macOS the ordinary open is the native window; the HTTP client is asked for explicitly.
+      const openClient=(reason,{http=false}={})=>{
+        if(!http&&nativeAvailable())return openNative({reason});
         journal.record('open-client',{reason,clients:events.localClients});
         if(events.localClients>0)return events.uiCommand('focus',{},{to:'local'});
         const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
@@ -180,6 +209,11 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
             if(command.op==='remote-enable')return {remote:await port.remote.enable({owner:'owner@example.com',dnsName:'mac.tailnet-fixture.ts.net'})};
             if(command.op==='remote-approve')return {approved:devices.view().pairings.map(item=>devices.approve(item.id).id)};
             if(command.op==='remote-revoke')return {revoked:devices.view().devices.map(item=>devices.revoke(item.id).revoked)};
+            // The native window of a fixture backend: opened hidden, probed and closed.
+            if(command.op==='native-open'){if(!nativeControl?.available())return {error:'NATIVE_WINDOW_UNAVAILABLE'};nativeControl.open({reason:'fixture',hidden:true});return {opened:true};}
+            if(command.op==='native-probe')return {native:native?await native.probe():null,
+              attached:desktop.services.sessions.visible?!!pageHost.attached(desktop.services.sessions.visible.key):false};
+            if(command.op==='native-close'){native?.close();return {closed:true};}
             // A view-mode page moves into a hidden window container and back without a reload.
             if(command.op==='page-attach-probe') {
               const page=desktop.services.sessions.visible;

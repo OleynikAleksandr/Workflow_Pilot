@@ -118,16 +118,18 @@ export class BackendBrowserHost {
   }
   // A native window shows a view-mode page in its own container; the page is
   // moved, never reloaded, and returns to its hidden host on detach.
+  // Addressed by page id or browserSessionId, like a viewer.
+  #page(id) { return this.#pages.get(id) ?? this.#sessions.get(id); }
   attach(id, container, bounds) {
-    const page = this.#pages.get(id);
+    const page = this.#page(id);
     if (!page || page.window.isDestroyed()) throw released();
     if (!(page.window instanceof ViewFrame)) throw Object.assign(new Error('Страница не показывается в окне.'), { code: 'BROWSER_PAGE_MODE_INVALID' });
     for (const other of this.#pages.values()) if (other !== page && other.window instanceof ViewFrame && other.window.container === container) other.window.detach();
     page.window.attach(container, bounds);
   }
-  setBounds(id, bounds) { const page = this.#pages.get(id); if (page?.window instanceof ViewFrame && page.window.container) page.window.view.setBounds(bounds); }
-  detach(id) { const page = this.#pages.get(id); if (page?.window instanceof ViewFrame) page.window.detach(); }
-  attached(id) { const page = this.#pages.get(id); return page?.window instanceof ViewFrame ? page.window.container : null; }
+  setBounds(id, bounds) { const page = this.#page(id); if (page?.window instanceof ViewFrame && page.window.container) page.window.view.setBounds(bounds); }
+  detach(id) { const page = this.#page(id); if (page?.window instanceof ViewFrame) page.window.detach(); }
+  attached(id) { const page = this.#page(id); return page?.window instanceof ViewFrame ? page.window.container : null; }
   presentation(browserSessionId) { return this.#sessions.get(browserSessionId)?.presentation ?? null; }
   browserSessionId(id) { return this.#pages.get(id)?.presentation.browserSessionId ?? null; }
   pages() {

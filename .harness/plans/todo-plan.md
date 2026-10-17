@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 432,
+  "plan_revision": 434,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -122,8 +122,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T002",
@@ -139,7 +139,10 @@
         "src/backend/remote-surface.mjs",
         "src/backend/operations.mjs",
         "src/frontend/desktop/chat-colors-window.mjs",
-        "tests/backend-native-window.test.mjs"
+        "tests/backend-native-window.test.mjs",
+        "src/execution/browser/backend-host.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/main.mjs"
       ],
       "documentation_paths": [
         "docs/planning/native-window.md"
@@ -158,7 +161,15 @@
         "Действия сайдбара идут через операции службы с allowlist, журналом и lease; встроенное окно и HTTP-клиент работают одновременно с передачей управления",
         "Закрытие окна (кнопка, Cmd+W, Cmd+Q окна) возвращает страницу в окно-хост и не останавливает службу; Dock-плитка только при открытом окне"
       ],
-      "expected_commit_message": "feat: Встроенное окно фоновой службы"
+      "expected_commit_message": "feat: Встроенное окно фоновой службы",
+      "actual_files": [
+        "docs/planning/native-window.md",
+        "src/backend/main.mjs",
+        "src/execution/browser/backend-host.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/main.mjs",
+        "tests/backend-native-window.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -406,7 +417,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 432
+Revision: 434
 
 ## Цель
 
@@ -422,10 +433,10 @@ Revision: 432
   - Git Commit: [DONE] feat: Страницы службы в режиме view
   - Reference: workflow-pilot-native-window / T001 / implementation
   - Файлы: src/execution/browser/backend-host.mjs, src/execution/browser/presentation/host.mjs, src/execution/facade.mjs, src/backend/main.mjs, tests/backend-native-pages.test.mjs, tests/browser-presentation.test.mjs, src/backend/lifecycle.mjs, src/contracts/launch.mjs, src/main.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-upgrade.test.mjs, docs/planning/native-window.md
-- [TODO] T002: Встроенное окно фоновой службы — Ожидает
-  - Git Commit: [PENDING] feat: Встроенное окно фоновой службы
+- [DONE] T002: Встроенное окно фоновой службы — Завершено
+  - Git Commit: [DONE] feat: Встроенное окно фоновой службы
   - Reference: workflow-pilot-native-window / T002 / implementation
-  - Файлы: src/backend/native-window.mjs, src/backend/main.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/chat-colors-window.mjs, tests/backend-native-window.test.mjs, docs/planning/native-window.md
+  - Файлы: src/backend/native-window.mjs, src/backend/main.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/chat-colors-window.mjs, tests/backend-native-window.test.mjs, src/execution/browser/backend-host.mjs, src/frontend/desktop/client.mjs, src/main.mjs, docs/planning/native-window.md
 - [TODO] T003: Запуск встроенного окна и окно через HTTP — Ожидает
   - Git Commit: [PENDING] feat: Запуск встроенного окна и окно через HTTP
   - Reference: workflow-pilot-native-window / T003 / implementation

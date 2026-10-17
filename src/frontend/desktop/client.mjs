@@ -27,25 +27,33 @@ function readDescriptor(file) {
 
 // Separate Desktop client. Its process owns windows only: closing it, Cmd+Q or
 // a crash disconnects from the backend, which keeps pages and work running.
-export function startDesktopClient(electron, { backendRoot = null, clientRoot = null, fixture = false } = {}) {
+// embedded: the same window opened inside the backend process (macOS native
+// window). It uses the same API, lease and channels, but shows the backend's
+// real page view through `embedded.pages` instead of frames; closing it closes
+// only the window. { port, token, pages, logDir, hidden, onClosed, openHttpClient }
+export function startDesktopClient(electron, { backendRoot = null, clientRoot = null, fixture = false, embedded = null } = {}) {
   const { app, BaseWindow, BrowserWindow, WebContentsView, Menu, ipcMain, dialog, nativeTheme, clipboard } = electron;
+  if (embedded) fixture = !!embedded.hidden;
   // A file path, not URL.pathname: the packaged bundle path contains spaces.
   const desktopDir = fileURLToPath(new URL('./', import.meta.url));
   const dataDir = backendRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot');
-  const ownDir = clientRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot Client');
+  const ownDir = embedded?.logDir ?? clientRoot ?? path.join(app.getPath('appData'), 'Workflow Pilot Client');
   fs.mkdirSync(ownDir, { recursive: true, mode: 0o700 });
   // Bounded local diagnostics of this window: connection and control changes
   // only, never tokens, chat text or page content.
-  const clientLog = path.join(ownDir, 'client-events.jsonl');
+  const clientLog = path.join(ownDir, embedded ? 'native-window-events.jsonl' : 'client-events.jsonl');
   const logClient = (event, data = {}) => {
     try {
       if ((fs.statSync(clientLog, { throwIfNoEntry: false })?.size ?? 0) > 512 * 1024) fs.renameSync(clientLog, clientLog + '.1');
       fs.appendFileSync(clientLog, JSON.stringify({ ts: new Date().toISOString(), pid: process.pid, event, ...data }) + '\n', { mode: 0o600 });
     } catch { /* diagnostics never break the client */ }
   };
-  app.setName('Workflow Pilot');
-  app.setPath('userData', ownDir);
-  app.setPath('sessionData', path.join(ownDir, 'browser'));
+  // The backend process keeps its own profile paths.
+  if (!embedded) {
+    app.setName('Workflow Pilot');
+    app.setPath('userData', ownDir);
+    app.setPath('sessionData', path.join(ownDir, 'browser'));
+  }
   const sidebarUrl = pathToFileURL(path.join(desktopDir, 'ui/index.html')).href;
   const archiveUrl = pathToFileURL(path.join(desktopDir, 'ui/archive.html')).href;
   const viewerUrl = pathToFileURL(path.join(desktopDir, 'ui/browser-view.html')).href;
@@ -56,7 +64,11 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   let control = false, stale = false, renewTimer = null, watchdog = null, descriptorSeen = null, incompatible = null;
   // leaseHolder: the clientId the backend last reported; another one means a real observer.
   let acquiring = null, retryTimer = null, retryDelay = 1000, leaseHolder = null;
-  const windowClientId = 'client-' + globalThis.crypto.randomUUID();
+  const windowClientId = (embedded ? 'native-' : 'client-') + globalThis.crypto.randomUUID();
+  // The real page shown by the embedded window: its browserSessionId and context menu listener.
+  let nativePage = null;
+  const ipcChannels = [];
+  const handleIpc = (channel, action) => { ipcMain.handle(channel, action); ipcChannels.push(channel); };
   const otherHolder = () => !!leaseHolder && leaseHolder !== windowClientId;
   // Fixture mode never touches the system clipboard of the machine running the tests.
   let fixtureText = '', lastContextMenu = null;
@@ -79,6 +91,11 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   const descriptorFile = path.join(dataDir, '.backend-host', 'service.json');
   const liveDescriptor = () => { const value = readDescriptor(descriptorFile); return value && alive(value.pid) ? value : null; };
   async function backendConnection({ start = true } = {}) {
+    if (embedded) {
+      const own = new BackendConnection({ port: embedded.port, token: embedded.token, clientId: windowClientId });
+      await own.connect();
+      return own;
+    }
     let descriptor = readDescriptor(descriptorFile);
     // A descriptor left by a crashed backend is not a running service; the new
     // backend recovers that stale owner itself.
@@ -180,7 +197,49 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     entry.active = false; viewers.delete(contents.id);
     void entry.view.detach().catch(() => {});
   }
+  const pageBounds = () => {
+    const [width, height] = window.getContentSize();
+    return { x: sidebarWidth, y: 0, width: Math.max(0, width - sidebarWidth), height };
+  };
+  function detachNative() {
+    if (!nativePage) return;
+    const current = nativePage; nativePage = null;
+    current.contents?.removeListener('context-menu', current.onContextMenu);
+    embedded.pages.detach(current.browserSessionId);
+    const entry = viewers.get('native');
+    if (entry) { entry.active = false; viewers.delete('native'); void entry.view.detach().catch(() => {}); }
+  }
+  // The native page has the system clipboard, keys and drag natively; only the
+  // context menu is ours. A viewer without frames serves file choosers and downloads.
+  function attachNative(browserSessionId) {
+    detachNative();
+    embedded.pages.attach(browserSessionId, window.contentView, pageBounds());
+    const contents = embedded.pages.contents(browserSessionId);
+    const onContextMenu = (_event, params) => {
+      const flags = params?.editFlags ?? {};
+      const template = [{ label: 'Вырезать', role: 'cut', enabled: flags.canCut !== false },
+        { label: 'Копировать', role: 'copy', enabled: flags.canCopy !== false },
+        { label: 'Вставить', role: 'paste', enabled: flags.canPaste !== false }, { type: 'separator' },
+        { label: 'Выделить всё', role: 'selectAll' }];
+      lastContextMenu = template;
+      if (!fixture) Menu.buildFromTemplate(template).popup({ window });
+    };
+    contents?.on('context-menu', onContextMenu);
+    nativePage = { browserSessionId, contents, onContextMenu };
+    const view = new BrowserView(connection, browserSessionId), entry = { view, contents: null, active: true, native: true };
+    viewers.set('native', entry);
+    void view.attach().catch(() => {});
+  }
   async function showSelectedPage() {
+    if (embedded) {
+      if (!connection || !window || window.isDestroyed()) return;
+      const { pages } = await connection.json('/v1/browser/pages');
+      const selected = pages.find(page => page.selected && page.kind === 'page');
+      if (!window || window.isDestroyed()) return;
+      if (!selected) return detachNative();
+      if (nativePage?.browserSessionId !== selected.browserSessionId) attachNative(selected.browserSessionId);
+      return;
+    }
     if (!pageView || !connection) return;
     const { pages } = await connection.json('/v1/browser/pages');
     const selected = pages.find(page => page.selected && page.kind === 'page');
@@ -191,6 +250,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     syncViewport();
   }
   function syncViewport() {
+    if (embedded) return;
     const entry = pageView && viewers.get(pageView.webContents.id);
     if (!entry || !window || window.isDestroyed()) return;
     const [width, height] = window.getContentSize();
@@ -201,6 +261,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     if (!window || window.isDestroyed()) return;
     const [width, height] = window.getContentSize();
     sidebar.setBounds({ x: 0, y: 0, width: sidebarWidth, height });
+    if (embedded) { if (nativePage) embedded.pages.setBounds(nativePage.browserSessionId, pageBounds()); return; }
     pageView.setBounds({ x: sidebarWidth, y: 0, width: Math.max(0, width - sidebarWidth), height });
     syncViewport();
   }
@@ -282,7 +343,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
       return { ok: false, error: { code: error.code ?? 'BACKEND_UNAVAILABLE', message: error.message }, state: surface === 'archive' ? archiveState : uiState };
     }
   }
-  ipcMain.handle('browser:input', async (event, { type, data, bounds }) => {
+  handleIpc('browser:input', async (event, { type, data, bounds }) => {
     const entry = viewers.get(event.sender.id);
     if (!entry || !entry.view.frame) return false;
     const point = 'x' in data && 'y' in data ? entry.view.point(data.x, data.y, bounds) : null;
@@ -314,14 +375,14 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   };
   // Cut is copy on the client plus deleting the page selection; nothing happens without a selection.
   const cutSelection = async entry => { if (await copySelection(entry)) await pressKey(entry, 'Backspace', 'Backspace'); };
-  ipcMain.handle('browser:copy', pageAction('copy', async entry => !!await copySelection(entry)));
-  ipcMain.handle('browser:cut', pageAction('cut', async entry => { await cutSelection(entry); return true; }));
-  ipcMain.handle('browser:paste', pageAction('paste', async (entry, _event, text) => {
+  handleIpc('browser:copy', pageAction('copy', async entry => !!await copySelection(entry)));
+  handleIpc('browser:cut', pageAction('cut', async entry => { await cutSelection(entry); return true; }));
+  handleIpc('browser:paste', pageAction('paste', async (entry, _event, text) => {
     if (typeof text !== 'string' || !text) return false;
     await entry.view.paste(text.slice(0, 60 * 1024)); return true;
   }));
   // Dropped or pasted files: contents from the renderer, sent completely, then dropped at the page point.
-  ipcMain.handle('browser:drop', pageAction('drop', async (entry, _event, { files, x, y, bounds } = {}) => {
+  handleIpc('browser:drop', pageAction('drop', async (entry, _event, { files, x, y, bounds } = {}) => {
     if (!Array.isArray(files) || !files.length || files.length > 10) throw Object.assign(new Error('За один раз можно передать до 10 файлов.'), { code: 'BROWSER_DROP_INVALID' });
     const ready = files.map(file => {
       const bytes = file?.bytes instanceof Uint8Array ? file.bytes : null;
@@ -333,7 +394,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     await entry.view.drop({ files: ready, x: point.x, y: point.y });
     return true;
   }));
-  ipcMain.handle('browser:context-menu', pageAction('context-menu', async (entry, event) => {
+  handleIpc('browser:context-menu', pageAction('context-menu', async (entry, event) => {
     const selected = !!await entry.view.selection().catch(() => '');
     const run = (action, task) => () => void task().catch(error => {
       logClient('browser-action-failed', { action, code: error.code ?? 'ERROR' });
@@ -380,15 +441,20 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
       { label: 'Workflow Pilot', submenu: [{ role: 'about', label: 'О Workflow Pilot' }, { type: 'separator' },
         control ? { label: 'Управление у этого окна', enabled: false }
           : { label: 'Взять управление', enabled: !!connection && !stale, click: () => void takeControl({ takeover: true }).catch(() => {}) },
-        ...(!connection || stale ? [{ label: 'Запустить фоновую службу', click: () => void reconnect({ start: true }) }] : []),
+        ...((!connection || stale) && !embedded ? [{ label: 'Запустить фоновую службу', click: () => void reconnect({ start: true }) }] : []),
         draining ? { label: 'Отменить остановку фоновой службы', click: () => void connection?.run('service.cancel-stop').catch(() => {}) }
           : { label: 'Остановить фоновую службу…', enabled: service.phase === 'running' && !!connection, click: () => void requestStop() },
         { type: 'separator' },
-        { role: 'hide', label: 'Скрыть' }, { role: 'quit', label: 'Закрыть окно (работа продолжится в фоне)' }] },
+        ...(embedded ? [{ label: 'Окно через HTTP (тест)', click: () => embedded.openHttpClient?.() }, { type: 'separator' }] : []),
+        // In the backend process Cmd+Q closes the window only: quitting there would stop the service.
+        { role: 'hide', label: 'Скрыть' }, embedded ? { label: 'Закрыть окно (работа продолжится в фоне)', accelerator: 'CmdOrCtrl+Q', click: () => window?.close() }
+          : { role: 'quit', label: 'Закрыть окно (работа продолжится в фоне)' }] },
       { label: 'Правка', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' },
         { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
       { label: 'Вид', submenu: [{ label: 'Обновить ChatGPT', accelerator: 'CmdOrCtrl+R', click: () => void relay('local', 'pilot:reload') },
         { role: 'togglefullscreen' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
+      ...(embedded ? [{ label: 'Окно', submenu: [{ role: 'minimize', label: 'Свернуть' },
+        { label: 'Закрыть окно', accelerator: 'CmdOrCtrl+W', click: () => window?.close() }] }] : []),
     ]));
   }
 
@@ -408,6 +474,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     showService(); installMenu();
   }
   function watch() {
+    if (embedded) return;
     clearInterval(watchdog);
     watchdog = setInterval(() => {
       if (!stale) return;
@@ -447,21 +514,46 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     await takeControl();
   }
 
-  if (!fixture && !app.requestSingleInstanceLock()) { app.quit(); return; }
+  if (!embedded && !fixture && !app.requestSingleInstanceLock()) { app.quit(); return; }
   const focusWindow = () => { if (!window || window.isDestroyed()) return; if (window.isMinimized()) window.restore(); if (!fixture) { window.show(); window.focus(); } };
-  app.on('second-instance', focusWindow);
-  // macOS reopen of the same bundle reaches whichever process is registered.
-  app.on('activate', focusWindow);
-  // Closing the client is only a disconnect; nothing here stops the backend.
-  app.on('window-all-closed', () => app.quit());
-  app.on('before-quit', () => { stream?.close(); for (const contents of [...viewers.keys()]) viewers.get(contents)?.view.detach().catch(() => {}); });
+  // The backend process owns its app events; the embedded window only answers focus and close.
+  if (!embedded) {
+    app.on('second-instance', focusWindow);
+    // macOS reopen of the same bundle reaches whichever process is registered.
+    app.on('activate', focusWindow);
+    // Closing the client is only a disconnect; nothing here stops the backend.
+    app.on('window-all-closed', () => app.quit());
+    app.on('before-quit', () => { stream?.close(); for (const contents of [...viewers.keys()]) viewers.get(contents)?.view.detach().catch(() => {}); });
+  }
+  let closed = false;
+  // Embedded close: the page returns to its hidden host, the lease is released
+  // and the window's channels are removed; the backend keeps working.
+  function closeEmbedded() {
+    if (closed) return;
+    closed = true;
+    detachNative();
+    stream?.close(); clearInterval(renewTimer); renewTimer = null; clearTimeout(retryTimer); retryTimer = null;
+    if (control) void connection?.release().catch(() => {});
+    control = false;
+    for (const entry of viewers.values()) { entry.active = false; void entry.view.detach().catch(() => {}); }
+    viewers.clear();
+    for (const popup of popups.values()) if (!popup.isDestroyed()) popup.destroy();
+    popups.clear();
+    if (archiveWindow && !archiveWindow.isDestroyed()) archiveWindow.destroy();
+    colorEditor?.dispose?.();
+    desktopIpc.dispose();
+    for (const channel of ipcChannels.splice(0)) ipcMain.removeHandler(channel);
+    if (sidebar && !sidebar.webContents.isDestroyed()) sidebar.webContents.close({ waitForBeforeUnload: false });
+    logClient('closed');
+    try { embedded.onClosed?.(); } catch { /* the backend keeps running */ }
+  }
   app.whenReady().then(async () => {
     installMenu();
     window = new BaseWindow({ title: fixture ? 'Workflow Pilot — CLIENT FIXTURE' : 'Workflow Pilot', show: !fixture, focusable: !fixture,
       width: 1440, height: 940, minWidth: 980, minHeight: 700, backgroundColor: shellBackground[theme] });
     sidebar = new WebContentsView({ webPreferences: { preload: path.join(desktopDir, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
-    pageView = new WebContentsView({ webPreferences: { preload: path.join(desktopDir, 'browser-view-preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
-    for (const view of [sidebar, pageView]) {
+    if (!embedded) pageView = new WebContentsView({ webPreferences: { preload: path.join(desktopDir, 'browser-view-preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
+    for (const view of [sidebar, pageView].filter(Boolean)) {
       window.contentView.addChildView(view);
       view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
       view.webContents.on('will-navigate', event => event.preventDefault());
@@ -473,18 +565,18 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     for (const surface of ['local', 'archive'])
       for (const channel of DESKTOP_CHANNELS[surface]) desktopIpc.handle(surface, channel, input => relay(surface, channel, input));
     window.on('resize', layout);
-    window.on('closed', () => { window = null; detachViewer(pageView.webContents); });
+    window.on('closed', () => { if (embedded) closeEmbedded(); window = null; if (pageView) detachViewer(pageView.webContents); });
     layout();
-    await Promise.all([sidebar.webContents.loadURL(sidebarUrl), pageView.webContents.loadURL(viewerUrl)]);
+    await Promise.all([sidebar.webContents.loadURL(sidebarUrl), pageView?.webContents.loadURL(viewerUrl)]);
     watch();
     try { await connect(); }
     catch (error) {
       stale = true;
-      pageView.webContents.send('browser:status', { message: 'Нет связи с backend Workflow Pilot: ' + error.message });
+      pageView?.webContents.send('browser:status', { message: 'Нет связи с backend Workflow Pilot: ' + error.message });
       report(error.code ?? 'BACKEND_UNAVAILABLE', error.code === 'BACKEND_OWNER_CONFLICT' ? error.message
         : 'Нет связи с фоновой службой Workflow Pilot. Меню Workflow Pilot → «Запустить фоновую службу».');
     }
-    if (fixture) {
+    if (fixture && !embedded) {
       process.stdout.write(JSON.stringify({ clientReady: true, connected: !!connection, pid: process.pid }) + '\n');
       // Isolated test probes: read what the windows render, call the sidebar's own API.
       process.stdin.setEncoding('utf8');
@@ -540,9 +632,16 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     }
   }).catch(error => {
     console.error('Workflow Pilot client:', error.message);
+    // An embedded window never ends the backend process.
+    if (embedded) { logClient('open-failed', { code: error.code ?? 'ERROR' }); if (window && !window.isDestroyed()) window.close(); else closeEmbedded(); return; }
     if (!fixture) dialog.showErrorBox('Workflow Pilot', error.message);
     app.exit(1);
   });
   // Fixture probes for tests only: read what the client renders.
-  return Object.freeze({ get sidebar() { return sidebar; }, get pageView() { return pageView; }, viewers, get state() { return uiState; } });
+  return Object.freeze({ get sidebar() { return sidebar; }, get pageView() { return pageView; }, viewers, get state() { return uiState; },
+    get closed() { return closed; }, focus: focusWindow, close: () => { if (window && !window.isDestroyed()) window.close(); },
+    probe: async () => ({ open: !!window && !window.isDestroyed(), control, stale, clientId: windowClientId,
+      page: nativePage?.browserSessionId ?? null, title: window?.getTitle() ?? '',
+      sidebar: sidebar && !sidebar.webContents.isDestroyed() ? await sidebar.webContents.executeJavaScript('document.body.innerText').catch(() => '') : '',
+      menu: (lastContextMenu ?? []).filter(item => item.label).map(item => item.label) }) });
 }
