@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 352,
+  "plan_revision": 353,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -2354,7 +2354,7 @@
     {
       "id": "T043",
       "title": "Удаление проекта убирает записи его исполнителей",
-      "why": "Приёмка 0.4.4: записи исполнителей оставались.",
+      "why": "Записи исполнителей оставались.",
       "dependencies": [
         "T042"
       ],
@@ -2370,9 +2370,7 @@
       ],
       "verification_kind": "code",
       "acceptance_criteria": [
-        "«Убрать из списка» убирает записи всех исполнителей проекта, папки не трогаются",
-        "Подтверждённое удаление с диска убирает записи всех исполнителей проекта, даже без найденного worktree",
-        "Соседние проекты не затрагиваются"
+        "Убрать из списка и удаление убирают записи всех исполнителей проекта; соседи не затронуты"
       ],
       "expected_commit_message": "fix: Удаление проекта убирает записи его исполнителей",
       "implementation_status": "TODO",
@@ -2564,7 +2562,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 352
+Revision: 353
 
 ## Цель
 
