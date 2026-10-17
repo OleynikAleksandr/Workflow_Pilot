@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 285,
+  "plan_revision": 287,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -150,7 +150,8 @@
       "packages/workflow-kit/src/templates/AGENTS.md",
       "packages/workflow-kit/src/templates/PROTOTYPE.md",
       "docs/modules/orchestrated-execution.md",
-      "docs/planning/client-clipboard-drop.md"
+      "docs/planning/client-clipboard-drop.md",
+      "docs/modules/browser.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -200,7 +201,7 @@
       {
         "path": "docs/planning/client-clipboard-drop.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "541561d8218ac5de2d5011b6fa7ac7e7d149e8d6"
       }
     ],
     "include_last_completed_task": false,
@@ -1268,8 +1269,8 @@
     {
       "id": "DOCS-4",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "DOCS-4",
@@ -1285,14 +1286,24 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/client-clipboard-drop.md"
+        "docs/planning/client-clipboard-drop.md",
+        "README.md",
+        "docs/modules/browser.md",
+        "docs/modules/desktop.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/browser.md",
+        "docs/modules/desktop.md",
+        "docs/planning/client-clipboard-drop.md"
+      ]
     },
     {
       "id": "T020",
@@ -1410,7 +1421,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 285
+Revision: 287
 
 ## Цель
 
@@ -1566,10 +1577,10 @@ Revision: 285
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
   - Зависимости: T018
-- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-4: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS-4 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/client-clipboard-drop.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/client-clipboard-drop.md, README.md, docs/modules/browser.md, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: T017, T018, T019
 - [TODO] T020: Собрать выпуск 0.4.1 трёх ОС — Ожидает
