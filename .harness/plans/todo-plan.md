@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 388,
+  "plan_revision": 389,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -534,6 +534,150 @@
         "tests/workspace-session.test.mjs",
         "tests/legacy-continuation-keys.test.mjs"
       ]
+    },
+    {
+      "id": "T009",
+      "title": "Подготовить версию 0.4.7",
+      "why": "Номер выпуска.",
+      "dependencies": [
+        "T007"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.4.7 в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.4.7",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T009",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T006",
+        "T008",
+        "T007",
+        "T009"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта"
+    },
+    {
+      "id": "T010",
+      "title": "Собрать выпуск 0.4.7 трёх ОС",
+      "why": "Комплект после DOCS.",
+      "dependencies": [
+        "T009",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.4.7 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T010",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "T011",
+      "title": "Установить 0.4.7 в Applications",
+      "why": "Обновить приложение.",
+      "dependencies": [
+        "T010",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки; при работающей службе — pending"
+      ],
+      "expected_commit_message": "release: Установить 0.4.7 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T011",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "T012",
+      "title": "Опубликовать GitHub Release 0.4.7",
+      "why": "Опубликовать комплект.",
+      "dependencies": [
+        "T011",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.4.7 на sourceCommit, assets сверены, remote main = HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.7",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T012",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -551,10 +695,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 388
+Revision: 389
 
 ## Цель
 
@@ -602,6 +746,26 @@ Revision: 388
   - Git Commit: [DONE] refactor: Убрать AutoPlan из кода приложения
   - Reference: workflow-pilot-0-4-6 / T007 / implementation
   - Файлы: src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/bootstrap.mjs, src/backend/operations.mjs, src/control/projects/project-state-cleanup.mjs, src/control/sessions/workspace-session.mjs, src/control/settings/service.mjs, src/control/workflow/automation-send-state.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/auto-plan-state.mjs, src/control/workflow/plan-continuation-state.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/plan-continuation.mjs, src/control/workflow/project-auto-plan.mjs, src/control/workflow/project-plan-continuation.mjs, src/control/workflow/project-session-auto-plan.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/workflow/review-continuation.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/index.html, tests/backend-api.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, tests/desktop-boundaries.test.mjs, tests/electron-smoke.mjs, tests/execution-architecture.test.mjs, tests/execution-control.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-finalization.test.mjs, tests/auto-plan-restart-fixture.cjs, tests/plan-continuation-restart-fixture.cjs, tests/auto-plan.test.mjs, tests/plan-continuation.test.mjs, tests/plan-review.test.mjs, tests/project-auto-plan.test.mjs, tests/project-plan-continuation.test.mjs, tests/project-state-cleanup.test.mjs, tests/settings-parallel-execution.test.mjs, tests/sidebar.test.mjs, tests/workspace-deletion.test.mjs, tests/workspace-session.test.mjs, tests/legacy-continuation-keys.test.mjs, docs/planning/no-autoplan.md
+- [TODO] T009: Подготовить версию 0.4.7 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.4.7
+  - Reference: workflow-pilot-0-4-6 / T009 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-0-4-6 / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md
+- [TODO] T010: Собрать выпуск 0.4.7 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.4.7 трёх ОС
+  - Reference: workflow-pilot-0-4-6 / T010 / implementation
+  - Файлы: release-manifest.json
+- [TODO] T011: Установить 0.4.7 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.4.7 в Applications
+  - Reference: workflow-pilot-0-4-6 / T011 / implementation
+  - Файлы: release-manifest.json
+- [TODO] T012: Опубликовать GitHub Release 0.4.7 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.7
+  - Reference: workflow-pilot-0-4-6 / T012 / implementation
+  - Файлы: release-manifest.json
 
 ## Context Pack For This Cycle
 
