@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 344,
+  "plan_revision": 345,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.",
   "acceptance_criteria": [
     "R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id",
@@ -134,7 +134,8 @@
       "src/backend/shutdown.mjs",
       "src/control/workflow/auto-plan.mjs",
       "src/backend/operations.mjs",
-      "tests/parallel-execution-smoke-fixture.cjs"
+      "tests/parallel-execution-smoke-fixture.cjs",
+      "tests/backend-bootstrap.test.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -166,7 +167,8 @@
       "docs/planning/orchestrated-archive-recovery.md",
       "docs/planning/single-plan-button.md",
       "docs/modules/project-lifecycle.md",
-      "docs/acceptance/backend-independence.md"
+      "docs/acceptance/backend-independence.md",
+      "docs/planning/startup-orphan-records.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -232,6 +234,11 @@
         "path": "docs/planning/single-plan-button.md",
         "required": true,
         "revision": "4ca205b99612e9cd147487c46c9a58a43b8de7b4"
+      },
+      {
+        "path": "docs/planning/startup-orphan-records.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -2308,6 +2315,226 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T042",
+      "title": "Старт службы не зависит от битого проекта",
+      "why": "Живая приёмка 0.4.4: служба завершалась при старте из-за worktree исполнителя удалённого проекта.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/backend/bootstrap.mjs",
+        "tests/backend-bootstrap.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-orphan-records.md"
+      ],
+      "verification_ids": [
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Проект, чьё состояние транзакции Kit нельзя прочитать (нет папки, битый git), пропускается при проверке старта",
+        "Незавершённая транзакция Kit по-прежнему останавливает старт"
+      ],
+      "expected_commit_message": "fix: Старт службы не зависит от битого проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T042",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T043",
+      "title": "Удаление проекта убирает записи его исполнителей",
+      "why": "Живая приёмка 0.4.4: после удаления проекта запись его исполнителя осталась и сломала старт службы.",
+      "dependencies": [
+        "T042"
+      ],
+      "functional_paths": [
+        "src/control/sessions/workspace-session.mjs",
+        "tests/workspace-session.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-orphan-records.md"
+      ],
+      "verification_ids": [
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "«Убрать из списка» убирает записи всех исполнителей проекта, папки не трогаются",
+        "Подтверждённое удаление с диска убирает записи всех исполнителей проекта, даже без найденного worktree",
+        "Соседние проекты не затрагиваются"
+      ],
+      "expected_commit_message": "fix: Удаление проекта убирает записи его исполнителей",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T043",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T044",
+      "title": "Подготовить версию 0.4.5",
+      "why": "Номер исправляющего выпуска.",
+      "dependencies": [
+        "T043"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-orphan-records.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.4.5 согласована в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.4.5",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T044",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-8",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "DOCS-8",
+        "role": "implementation",
+        "iteration": 8
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T042",
+        "T043",
+        "T044"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/startup-orphan-records.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T045",
+      "title": "Собрать выпуск 0.4.5 трёх ОС",
+      "why": "Полный комплект после DOCS из одного sourceCommit.",
+      "dependencies": [
+        "T044",
+        "DOCS-8"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-orphan-records.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.4.5 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T045",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T046",
+      "title": "Установить 0.4.5 в Applications",
+      "why": "Обновить установленное приложение штатным installer.",
+      "dependencies": [
+        "T045",
+        "DOCS-8"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-orphan-records.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
+      ],
+      "expected_commit_message": "release: Установить 0.4.5 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T046",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T047",
+      "title": "Опубликовать GitHub Release 0.4.5",
+      "why": "Опубликовать проверенный комплект.",
+      "dependencies": [
+        "T046",
+        "DOCS-8"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-orphan-records.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.4.5 на sourceCommit, assets сверены по размеру и digest, remote main совпадает с local HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.5",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T047",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -2329,10 +2556,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 344
+Revision: 345
 
 ## Цель
 
@@ -2644,6 +2871,48 @@ Revision: 344
   - Файлы: release-manifest.json, docs/planning/single-plan-button.md
   - Параллельность: исключительное выполнение
   - Зависимости: T039, DOCS-7
+- [TODO] T042: Старт службы не зависит от битого проекта — Ожидает
+  - Git Commit: [PENDING] fix: Старт службы не зависит от битого проекта
+  - Reference: workflow-pilot-orchestrated-execution / T042 / implementation
+  - Файлы: src/backend/bootstrap.mjs, tests/backend-bootstrap.test.mjs, docs/planning/startup-orphan-records.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T043: Удаление проекта убирает записи его исполнителей — Ожидает
+  - Git Commit: [PENDING] fix: Удаление проекта убирает записи его исполнителей
+  - Reference: workflow-pilot-orchestrated-execution / T043 / implementation
+  - Файлы: src/control/sessions/workspace-session.mjs, tests/workspace-session.test.mjs, docs/planning/startup-orphan-records.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T042
+- [TODO] T044: Подготовить версию 0.4.5 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.4.5
+  - Reference: workflow-pilot-orchestrated-execution / T044 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/startup-orphan-records.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T043
+- [TODO] DOCS-8: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-orchestrated-execution / DOCS-8 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-orphan-records.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T042, T043, T044
+- [TODO] T045: Собрать выпуск 0.4.5 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.4.5 трёх ОС
+  - Reference: workflow-pilot-orchestrated-execution / T045 / implementation
+  - Файлы: release-manifest.json, docs/planning/startup-orphan-records.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T044, DOCS-8
+- [TODO] T046: Установить 0.4.5 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.4.5 в Applications
+  - Reference: workflow-pilot-orchestrated-execution / T046 / implementation
+  - Файлы: release-manifest.json, docs/planning/startup-orphan-records.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T045, DOCS-8
+- [TODO] T047: Опубликовать GitHub Release 0.4.5 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.5
+  - Reference: workflow-pilot-orchestrated-execution / T047 / implementation
+  - Файлы: release-manifest.json, docs/planning/startup-orphan-records.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T046, DOCS-8
 
 ## Context Pack For This Cycle
 
@@ -2659,5 +2928,6 @@ Revision: 344
 - docs/planning/orchestrated-executor-fixes.md
 - docs/planning/orchestrated-archive-recovery.md
 - docs/planning/single-plan-button.md
+- docs/planning/startup-orphan-records.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
