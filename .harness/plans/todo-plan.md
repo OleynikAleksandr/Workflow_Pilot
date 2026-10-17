@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 372,
+  "plan_revision": 374,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -28,7 +28,8 @@
     "documentation_paths": [
       "docs/planning/project-list-layout.md",
       "README.md",
-      "docs/architecture/OVERVIEW.md"
+      "docs/architecture/OVERVIEW.md",
+      "docs/modules/desktop.md"
     ]
   },
   "baseline_commit": "b43bedbdafe67cd2a957aba9412929899c2b19cc",
@@ -38,7 +39,7 @@
       {
         "path": "docs/planning/project-list-layout.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "46e7e9c37475325da7b5d514c6bcce08e679a02f"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -125,8 +126,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "DOCS",
@@ -140,7 +141,8 @@
       "documentation_paths": [
         "docs/planning/project-list-layout.md",
         "README.md",
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/desktop.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -149,7 +151,13 @@
       "acceptance_criteria": [
         "Документы соответствуют результату"
       ],
-      "expected_commit_message": "docs: актуализировать контекст проекта"
+      "expected_commit_message": "docs: актуализировать контекст проекта",
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/desktop.md",
+        "docs/planning/project-list-layout.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -260,7 +268,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 372
+Revision: 374
 
 ## Цель
 
@@ -280,10 +288,10 @@ Revision: 372
   - Git Commit: [DONE] feat: Подготовить версию 0.4.6
   - Reference: workflow-pilot-0-4-6 / T002 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/project-list-layout.md
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать контекст проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать контекст проекта
   - Reference: workflow-pilot-0-4-6 / DOCS / implementation
-  - Файлы: docs/planning/project-list-layout.md, README.md, docs/architecture/OVERVIEW.md
+  - Файлы: docs/planning/project-list-layout.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md
 - [TODO] T003: Собрать выпуск 0.4.6 трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.4.6 трёх ОС
   - Reference: workflow-pilot-0-4-6 / T003 / implementation
