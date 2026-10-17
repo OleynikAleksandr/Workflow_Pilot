@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 380,
+  "plan_revision": 381,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -23,13 +23,25 @@
       "src/frontend/plugin/index.html",
       "src/frontend/plugin/app.mjs",
       "tests/backend-upgrade.test.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "packages/workflow-kit/src/lib/recovery.mjs",
+      "packages/workflow-kit/src/lib/command-help.mjs",
+      "packages/workflow-kit/src/lib/actions.mjs",
+      "packages/workflow-kit/src/lib/common.mjs",
+      "packages/workflow-kit/package.json",
+      "src/control/workflow/coordination.mjs",
+      "src/backend/desktop-model.mjs",
+      "src/frontend/desktop/ui/sidebar.mjs"
     ],
     "documentation_paths": [
       "docs/planning/project-list-layout.md",
       "README.md",
       "docs/architecture/OVERVIEW.md",
-      "docs/modules/desktop.md"
+      "docs/modules/desktop.md",
+      "docs/planning/no-autoplan.md",
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "packages/workflow-kit/src/templates/PROTOTYPE.md",
+      "packages/workflow-kit/docs/modules/parallel-assignments.md"
     ]
   },
   "baseline_commit": "b43bedbdafe67cd2a957aba9412929899c2b19cc",
@@ -43,6 +55,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/no-autoplan.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -253,6 +270,74 @@
       ],
       "expected_commit_message": "release: Опубликовать GitHub Release 0.4.6",
       "actual_files": []
+    },
+    {
+      "id": "T006",
+      "title": "Kit без AutoPlan: запуск плана кнопкой",
+      "why": "Оркестратор по инструкциям Kit советовал включить AutoPlan.",
+      "dependencies": [],
+      "functional_paths": [
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/package.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/no-autoplan.md",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md"
+      ],
+      "verification_ids": [
+        "kit-check",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Kit 1.8.1: ни один текст для агента не упоминает AutoPlan; запуск, пауза и продолжение плана — кнопка выполнения плана пользователя"
+      ],
+      "expected_commit_message": "fix: Kit без AutoPlan — запуск плана кнопкой",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T006",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "T007",
+      "title": "Убрать AutoPlan из кода приложения",
+      "why": "Механизм продолжения прежних планов назывался AutoPlan.",
+      "dependencies": [
+        "T006"
+      ],
+      "functional_paths": [
+        "src/control/workflow/coordination.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/no-autoplan.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "В коде приложения нет AutoPlan: механизм, файлы, состояние UI, журналы и ключи переименованы; прежние сохранённые ключи читаются и записываются под новыми именами; поведение не меняется"
+      ],
+      "expected_commit_message": "refactor: Убрать AutoPlan из кода приложения",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T007",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -270,10 +355,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 380
+Revision: 381
 
 ## Цель
 
@@ -309,10 +394,19 @@ Revision: 380
   - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.6
   - Reference: workflow-pilot-0-4-6 / T005 / implementation
   - Файлы: release-manifest.json, docs/planning/project-list-layout.md
+- [TODO] T006: Kit без AutoPlan: запуск плана кнопкой — Ожидает
+  - Git Commit: [PENDING] fix: Kit без AutoPlan — запуск плана кнопкой
+  - Reference: workflow-pilot-0-4-6 / T006 / implementation
+  - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, docs/planning/no-autoplan.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/docs/modules/parallel-assignments.md
+- [TODO] T007: Убрать AutoPlan из кода приложения — Ожидает
+  - Git Commit: [PENDING] refactor: Убрать AutoPlan из кода приложения
+  - Reference: workflow-pilot-0-4-6 / T007 / implementation
+  - Файлы: src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, docs/planning/no-autoplan.md
 
 ## Context Pack For This Cycle
 
 - docs/planning/project-list-layout.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/no-autoplan.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
