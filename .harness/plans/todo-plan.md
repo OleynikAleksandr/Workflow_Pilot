@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 446,
+  "plan_revision": 448,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS",
   "acceptance_criteria": [
     "Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS"
@@ -424,8 +424,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T008",
@@ -451,7 +451,8 @@
       "acceptance_criteria": [
         "Тег v0.5.0 на sourceCommit, assets сверены, remote main = HEAD"
       ],
-      "expected_commit_message": "release: Опубликовать GitHub Release 0.5.0"
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.5.0",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -469,10 +470,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 446
+Revision: 448
 
 ## Цель
 
@@ -516,8 +517,8 @@ Revision: 446
   - Git Commit: [DONE] release: Установить 0.5.0 в Applications
   - Reference: workflow-pilot-native-window / T007 / implementation
   - Файлы: release-manifest.json, docs/planning/native-window.md
-- [TODO] T008: Опубликовать GitHub Release 0.5.0 — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.5.0
+- [DONE] T008: Опубликовать GitHub Release 0.5.0 — Завершено
+  - Git Commit: [DONE] release: Опубликовать GitHub Release 0.5.0
   - Reference: workflow-pilot-native-window / T008 / implementation
   - Файлы: release-manifest.json, docs/planning/native-window.md
 
