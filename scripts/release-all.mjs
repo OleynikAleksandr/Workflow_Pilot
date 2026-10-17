@@ -16,15 +16,22 @@ import { RELEASE_MATRIX, packageName, artifactRecord, assertCommittedSources, so
 export * from './release-package.mjs';
 
 const ROOT=fileURLToPath(new URL('..',import.meta.url));
-const run=(command,args,cwd)=>new Promise((resolve,reject)=>{
-  const child=spawn(command,args,{cwd,stdio:'inherit',shell:false});
+const run=(command,args,cwd,env=process.env)=>new Promise((resolve,reject)=>{
+  const child=spawn(command,args,{cwd,env,stdio:'inherit',shell:false});
   child.once('error',reject);
   child.once('exit',(code,signal)=>code===0?resolve():reject(new Error(command+' failed ('+(code??signal)+')')));
 });
 // Shared resources are staged once by releaseAll; the platforms then package concurrently into their own
 // folders. --ignore-scripts skips each platform's prebuild, which would rewrite resources/ during the others.
-export async function buildPlatforms(root,execute=run) {
-  const results=await Promise.allSettled(RELEASE_MATRIX.map(row=>execute('npm',['run','build:'+row.id,'--ignore-scripts'],root)));
+// electron-packager clears <tmpdir>/electron-packager on start, so each platform gets its own TMPDIR
+// (its --tmpdir CLI option drops the --extra-resource arguments that follow it).
+export const packagerTempDir=(root,row)=>path.join(root,'.harness/runtime/packager-tmp',row.id);
+export async function buildPlatforms(root,execute=run,{mkdir=dir=>fs.mkdir(dir,{recursive:true})}={}) {
+  for(const row of RELEASE_MATRIX)await mkdir(packagerTempDir(root,row));
+  const results=await Promise.allSettled(RELEASE_MATRIX.map(row=>{
+    const TMPDIR=packagerTempDir(root,row);
+    return execute('npm',['run','build:'+row.id,'--ignore-scripts'],root,{...process.env,TMPDIR,TMP:TMPDIR,TEMP:TMPDIR});
+  }));
   const failed=results.find(result=>result.status==='rejected');
   if(failed)throw failed.reason;
 }

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 266,
+  "plan_revision": 268,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -948,7 +948,8 @@
       "functional_paths": [
         "package.json",
         "scripts/release-all.mjs",
-        "tests/release-all.test.mjs"
+        "tests/release-all.test.mjs",
+        "tests/release-linux.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -962,14 +963,20 @@
         "Тест проверяет отдельный TMPDIR каждой платформы и отсутствие --tmpdir в скриптах"
       ],
       "expected_commit_message": "fix: Временный каталог упаковки через TMPDIR",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T016",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "scripts/release-all.mjs",
+        "tests/release-all.test.mjs",
+        "tests/release-linux.test.mjs"
+      ]
     },
     {
       "id": "DOCS-3",
@@ -1115,7 +1122,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 266
+Revision: 268
 
 ## Цель
 
@@ -1223,10 +1230,10 @@ Revision: 266
   - Файлы: docs/architecture/OVERVIEW.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/modules/release.md, docs/modules/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T015
-- [TODO] T016: Временный каталог упаковки через TMPDIR — Ожидает
-  - Git Commit: [PENDING] fix: Временный каталог упаковки через TMPDIR
+- [DONE] T016: Временный каталог упаковки через TMPDIR — Завершено
+  - Git Commit: [DONE] fix: Временный каталог упаковки через TMPDIR
   - Reference: workflow-pilot-orchestrated-execution / T016 / implementation
-  - Файлы: package.json, scripts/release-all.mjs, tests/release-all.test.mjs
+  - Файлы: package.json, scripts/release-all.mjs, tests/release-all.test.mjs, tests/release-linux.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает

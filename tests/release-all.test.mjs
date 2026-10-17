@@ -80,7 +80,8 @@ test('release snapshots detect a changed external helper and rejects nested macO
 });
 test('platforms package concurrently without re-staging, and any failure stops the release', async () => {
   const calls = [], release = [];
-  const building = buildPlatforms('/fixture', (command, args, cwd) => { calls.push([command, ...args, cwd]); return new Promise(resolve => release.push(resolve)); });
+  const noDirectories = { mkdir: async () => {} };
+  const building = buildPlatforms('/fixture', (command, args, cwd) => { calls.push([command, ...args, cwd]); return new Promise(resolve => release.push(resolve)); }, noDirectories);
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(calls, ['mac', 'win', 'linux'].map(id => ['npm', 'run', 'build:' + id, '--ignore-scripts', '/fixture']),
     'all three platforms start before any finishes, each without its prebuild staging');
@@ -89,7 +90,7 @@ test('platforms package concurrently without re-staging, and any failure stops t
   await assert.rejects(buildPlatforms('/fixture', async (_, args) => {
     if (args[1] === 'build:win') throw new Error('fixture failure');
     await new Promise(resolve => setTimeout(resolve, 5));finished.push(args[1]);
-  }), /fixture failure/);
+  }, noDirectories), /fixture failure/);
   assert.deepEqual(finished.sort(), ['build:linux', 'build:mac'], 'the release waits for running platforms and then fails');
 });
 
@@ -180,10 +181,19 @@ test('installed app identity survives a reboot: volume UUID and inode, device on
   assert.throws(() => assertSameMacDirectory({ device: 1, inode: 42 }, { device: 2, inode: 42, volumeUUID: 'VOL' }, 'legacy'));
 });
 
-test('each platform packages with its own electron-packager temp directory', async () => {
-  // electron-packager removes <tmpdir>/electron-packager on start; concurrent platforms must not share it.
+test('each platform packages with its own TMPDIR and no --tmpdir option', async t => {
+  // electron-packager removes <tmpdir>/electron-packager on start; concurrent platforms must not share it,
+  // and its --tmpdir CLI option drops the --extra-resource arguments that follow it.
   const scripts = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8')).scripts;
-  const dirs = ['mac', 'win', 'linux'].map(id => scripts['build:' + id + ':package'].match(/--tmpdir=(\S+)/)?.[1]);
-  assert.ok(dirs.every(dir => dir && dir.startsWith('.harness/runtime/')), 'temp directories stay in ignored runtime state');
-  assert.equal(new Set(dirs).size, 3);
+  for (const id of ['mac', 'win', 'linux']) assert.doesNotMatch(scripts['build:' + id + ':package'], /--tmpdir/);
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pilot-packager-tmp-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const seen = [];
+  await buildPlatforms(root, async (_command, args, cwd, env) => { seen.push([args[1], env.TMPDIR, env.TMP, env.TEMP]); });
+  assert.deepEqual(seen.map(([script]) => script), ['build:mac', 'build:win', 'build:linux']);
+  assert.equal(new Set(seen.map(([, dir]) => dir)).size, 3);
+  for (const [, dir, tmp, temp] of seen) {
+    assert.ok(dir.startsWith(path.join(root, '.harness/runtime/packager-tmp')));assert.equal(tmp, dir);assert.equal(temp, dir);
+    assert.ok((await fs.stat(dir)).isDirectory());
+  }
 });

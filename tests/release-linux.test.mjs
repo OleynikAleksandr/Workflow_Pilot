@@ -206,7 +206,7 @@ test('failed release advancement leaves canonical and previous delivery intact',
 });
 test('unknown platform result stops the release and notices use pinned bytes',async t=>{
   const seen=[];
-  await assert.rejects(buildPlatforms('/fixture',async(_,args)=>{seen.push(args[1]);if(args[1]==='build:win')throw new Error('UNKNOWN');}),/UNKNOWN/);
+  await assert.rejects(buildPlatforms('/fixture',async(_,args)=>{seen.push(args[1]);if(args[1]==='build:win')throw new Error('UNKNOWN');},{mkdir:async()=>{}}),/UNKNOWN/);
   assert.deepEqual(seen,['build:mac','build:win','build:linux'],'platforms package concurrently; any failure stops the release');
   const root=await temporary(t),data='upstream fixture',assets=[{file:'LICENSE.txt',url:'https://example.invalid/pinned',sha256:digest(data)}];
   await assert.rejects(stageVendorNotices({root,assets,download:async(_,file)=>fs.writeFile(file,'wrong')}),/SHA-256/);
