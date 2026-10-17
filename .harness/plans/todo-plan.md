@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 259,
+  "plan_revision": 261,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -891,14 +891,20 @@
         "Fixtures покрывают отдельный временный каталог платформ и отложенную delivery-задачу"
       ],
       "expected_commit_message": "fix: Исправить параллельную упаковку и отложенный выпуск",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T015",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "tests/release-all.test.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -1041,7 +1047,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 259
+Revision: 261
 
 ## Цель
 
@@ -1137,8 +1143,8 @@ Revision: 259
   - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/remote-access.md, docs/planning/backend-independence-followup.md, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md, docs/modules/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011
-- [TODO] T015: Исправить параллельную упаковку и отложенный выпуск — Ожидает
-  - Git Commit: [PENDING] fix: Исправить параллельную упаковку и отложенный выпуск
+- [DONE] T015: Исправить параллельную упаковку и отложенный выпуск — Завершено
+  - Git Commit: [DONE] fix: Исправить параллельную упаковку и отложенный выпуск
   - Reference: workflow-pilot-orchestrated-execution / T015 / implementation
   - Файлы: package.json, scripts/release-all.mjs, tests/release-all.test.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs
   - Параллельность: исключительное выполнение

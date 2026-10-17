@@ -12,6 +12,7 @@ import { updateTask } from '../src/lib/task-update.mjs';
 import { readPlan, validatePlan, renderPlan, parsePlan, parallelTasksCompatible } from '../src/lib/plan.mjs';
 import { validateConfig } from '../src/lib/validate.mjs';
 import { recover } from '../src/lib/recovery.mjs';
+import { commitTask } from '../src/lib/transaction.mjs';
 import { setReviewEnabled, prepareReview, readReview, respondReview, publishReview, reviewPlanDigest } from '../src/lib/plan-review.mjs';
 import { runReview, REVIEW_MODEL } from '../src/lib/claude-review.mjs';
 
@@ -265,7 +266,27 @@ try {
     assert.deepEqual(current.tasks[1].context_pack.documents.map(d=>d.path),['NOTES.md'],'task:update replaces the context');
     expect('ORCHESTRATED_MAIN_READ_ONLY',()=>startTask(root,'T001'));
   }
-  console.log('parallel-plan fixture: legacy execution, orchestrated DOCS/release tail/context, policy validation, safe/exclusive areas, amendments, recovery, Review binding and parent DONE guard passed');
+  {
+    // A started delivery task is deferred when ordinary work is added: a code fix goes before the release.
+    const {root} = fixture();
+    createSimplePlan(root,{id:'release-fix',spec:'docs/planning/parallel.md',objective:'Release with a late fix',stack:'Node fixture',
+      checks:[{id:'pkg',kind:'package',executable:process.execPath,args:['-e','0'],evidence:'Fixture package'}],
+      tasks:[{id:'T001',title:'Write',files:['README.md']},{id:'R001',title:'Build',files:['release.txt'],checks:['pkg'],verification_kind:'package'}]});
+    startTask(root,'T001');write(root,'README.md','# Work\n');commitTask(root,'T001');
+    startTask(root,'DOCS');write(root,'docs/planning/parallel.md','# Parallel plan fixture, updated\n');commitTask(root,'DOCS');
+    startTask(root,'R001');write(root,'release.txt','partial\n');
+    expect('DELIVERY_CHANGES_PENDING',()=>extendPlan(root,{tasks:[{id:'T002',title:'Fix the build',files:['GUIDE.md']}]},readPlan(root).plan_revision));
+    fs.rmSync(path.join(root,'release.txt'));
+    extendPlan(root,{tasks:[{id:'T002',title:'Fix the build',files:['GUIDE.md']}]},readPlan(root).plan_revision);
+    const deferred=readPlan(root);
+    assert.equal(deferred.current_task_id,null);
+    assert.deepEqual(deferred.tasks.map(item=>[item.id,item.implementation_status]),
+      [['T001','DONE'],['DOCS','DONE'],['T002','TODO'],['DOCS-2','TODO'],['R001','TODO']],'the fix and a new DOCS round precede the release');
+    assert.ok(deferred.tasks.find(item=>item.id==='R001').dependencies.includes('DOCS-2'));
+    expect('DEPENDENCY_PENDING',()=>startTask(root,'R001'));
+    startTask(root,'T002');
+  }
+  console.log('parallel-plan fixture: legacy execution, orchestrated DOCS/release tail/context, deferred delivery, policy validation, safe/exclusive areas, amendments, recovery, Review binding and parent DONE guard passed');
 } finally {
   for (const root of roots) fs.rmSync(root,{recursive:true,force:true});
 }

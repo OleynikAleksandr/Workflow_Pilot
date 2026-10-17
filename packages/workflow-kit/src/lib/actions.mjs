@@ -179,6 +179,17 @@ export function applyPlan(root, input, expectedRevision) {
       plan.tasks.find(t=>t.id===originalFinal.id).implementation_status = 'TODO';
       plan.current_task_id = null;
     }
+    // A started delivery task builds from one committed source and cannot absorb a code fix.
+    // Ordinary work added before it defers it, as an active DOCS is deferred; its own pending edits refuse this.
+    const originalCurrent = original.tasks.find(t => t.id === original.current_task_id);
+    if (!deferDocs && originalCurrent && isDeliveryTask(originalCurrent) && added.some(t => !isDeliveryTask(t))) {
+      const ownPaths = [...originalCurrent.functional_paths, ...originalCurrent.documentation_paths];
+      const pending = allChanges(root).filter(p => p !== PLAN && ownPaths.includes(p));
+      check(!pending.length, 'DELIVERY_CHANGES_PENDING', 'Начатую delivery-задачу можно отложить только без её незакоммиченных изменений.',
+        { task_id: originalCurrent.id, paths: pending });
+      plan.tasks.find(t => t.id === originalCurrent.id).implementation_status = 'TODO';
+      plan.current_task_id = null;
+    }
     normalizeCompletionContract(plan);
     if (added.some(t => t.functional_paths.length) || (input.context_pack && plan.tasks.some(t => t.functional_paths.length && t.commit_status !== 'DONE'))) requireModuleContext(plan);
     plan.delivery_status = plan.tasks.length && plan.tasks.every(t => t.commit_status === 'DONE') ? 'READY_FOR_ACCEPTANCE' : 'IN_PROGRESS';

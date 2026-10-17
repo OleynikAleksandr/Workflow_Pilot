@@ -179,3 +179,11 @@ test('installed app identity survives a reboot: volume UUID and inode, device on
   assert.throws(() => assertSameMacDirectory(before, { device: 16777230, inode: 42, volumeUUID: 'OTHER', bootSessionUUID: 'BOOT-1' }, 'app'));
   assert.throws(() => assertSameMacDirectory({ device: 1, inode: 42 }, { device: 2, inode: 42, volumeUUID: 'VOL' }, 'legacy'));
 });
+
+test('each platform packages with its own electron-packager temp directory', async () => {
+  // electron-packager removes <tmpdir>/electron-packager on start; concurrent platforms must not share it.
+  const scripts = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  const dirs = ['mac', 'win', 'linux'].map(id => scripts['build:' + id + ':package'].match(/--tmpdir=(\S+)/)?.[1]);
+  assert.ok(dirs.every(dir => dir && dir.startsWith('.harness/runtime/')), 'temp directories stay in ignored runtime state');
+  assert.equal(new Set(dirs).size, 3);
+});
