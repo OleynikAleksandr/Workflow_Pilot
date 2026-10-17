@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 357,
+  "plan_revision": 359,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -238,7 +238,7 @@
       {
         "path": "docs/planning/startup-orphan-records.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "4dafc12c3d401f4dd04637e6c428e84290983a1c"
       }
     ],
     "include_last_completed_task": false,
@@ -2432,8 +2432,8 @@
     {
       "id": "DOCS-8",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "DOCS-8",
@@ -2449,14 +2449,24 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/startup-orphan-records.md"
+        "docs/planning/startup-orphan-records.md",
+        "README.md",
+        "docs/modules/backend.md",
+        "docs/modules/project-lifecycle.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/backend.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/planning/startup-orphan-records.md"
+      ]
     },
     {
       "id": "T045",
@@ -2574,7 +2584,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 357
+Revision: 359
 
 ## Цель
 
@@ -2904,10 +2914,10 @@ Revision: 357
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение
   - Зависимости: T043
-- [TODO] DOCS-8: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-8: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS-8 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-orphan-records.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-orphan-records.md, README.md, docs/modules/backend.md, docs/modules/project-lifecycle.md
   - Параллельность: исключительное выполнение
   - Зависимости: T042, T043, T044
 - [TODO] T045: Собрать выпуск 0.4.5 трёх ОС — Ожидает
