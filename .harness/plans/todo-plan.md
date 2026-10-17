@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 268,
+  "plan_revision": 271,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -981,8 +981,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "DOCS-3",
@@ -995,14 +995,18 @@
       ],
       "functional_paths": [],
       "documentation_paths": [
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/modules/release.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1122,7 +1126,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 268
+Revision: 271
 
 ## Цель
 
@@ -1236,10 +1240,10 @@ Revision: 268
   - Файлы: package.json, scripts/release-all.mjs, tests/release-all.test.mjs, tests/release-linux.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T016
 - [TODO] T012: Собрать выпуск трёх ОС — Ожидает
