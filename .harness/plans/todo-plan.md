@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 336,
+  "plan_revision": 338,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -164,7 +164,9 @@
       "docs/planning/orchestrated-executor-fixes.md",
       "docs/modules/backend.md",
       "docs/planning/orchestrated-archive-recovery.md",
-      "docs/planning/single-plan-button.md"
+      "docs/planning/single-plan-button.md",
+      "docs/modules/project-lifecycle.md",
+      "docs/acceptance/backend-independence.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -229,7 +231,7 @@
       {
         "path": "docs/planning/single-plan-button.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "4ca205b99612e9cd147487c46c9a58a43b8de7b4"
       }
     ],
     "include_last_completed_task": false,
@@ -2163,8 +2165,8 @@
     {
       "id": "DOCS-7",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "DOCS-7",
@@ -2180,14 +2182,34 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/single-plan-button.md"
+        "docs/planning/single-plan-button.md",
+        "README.md",
+        "AGENTS.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/workflow-execution.md",
+        "docs/modules/desktop.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/acceptance/orchestrated-execution.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "AGENTS.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/workflow-execution.md",
+        "docs/modules/desktop.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/planning/single-plan-button.md"
+      ]
     },
     {
       "id": "T038",
@@ -2305,7 +2327,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 336
+Revision: 338
 
 ## Цель
 
@@ -2593,10 +2615,10 @@ Revision: 336
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/single-plan-button.md
   - Параллельность: исключительное выполнение
   - Зависимости: T036, T041
-- [TODO] DOCS-7: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-7: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS-7 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/single-plan-button.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/single-plan-button.md, README.md, AGENTS.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/acceptance/backend-independence.md, docs/acceptance/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T036, T041, T037
 - [TODO] T038: Собрать выпуск 0.4.4 трёх ОС — Ожидает
