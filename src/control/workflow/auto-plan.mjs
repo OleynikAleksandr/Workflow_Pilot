@@ -104,12 +104,12 @@ export class AutoPlan {
           && typeof cycle.busy === 'boolean')
         this.cycles.set(cycle.key, { key: cycle.key, generation: cycle.generation, busy: cycle.busy, legacy: cycle.legacy === true });
     }
-    this.set(this.enabled ? 'waiting' : 'off', this.enabled ? 'Автовыполнение включено. Ждём разговор и план.' : '');
+    this.set(this.enabled ? 'waiting' : 'off', this.enabled ? 'Выполнение плана запущено. Ждём разговор и план.' : '');
   }
   start() { this.closed = false; this.enabled = true; return this.reconcile(); }
   disable({manual=false}={}) {
     this.enabled = false; this.epoch++; this.clearTimer(); this.clearWatchdog(); this.run = null;
-    this.set('off', manual?'Автовыполнение выключено пользователем.':'Разрешение автовыполнения отсутствует.',
+    this.set('off', manual?'Выполнение плана на паузе.':'Выполнение плана не запущено.',
       false,manual?'MANUAL_OFF':'AUTHORIZATION_OFF');
   }
   // Compatibility for explicit recovery; publish uses availabilityChanged instead.
@@ -146,7 +146,7 @@ export class AutoPlan {
     if (this.run) this.run.stallWarning = false;
     this.set('waiting', message, false, reason);
   }
-  pause(message = 'Автовыполнение приостановлено.', reason = 'MANUAL_OFF') {
+  pause(message = 'Выполнение плана приостановлено.', reason = 'MANUAL_OFF') {
     this.clearTimer(); this.clearWatchdog();
     this.set('paused', message, false, reason);
   }
@@ -229,7 +229,7 @@ export class AutoPlan {
     if (p.busy) {
       if (this.watchdog === null && !run.stallWarning) this.watch(run);
       return this.set('running', run.stallWarning ? 'Агент ещё работает. Давно не было новых данных; ждём завершения ответа.'
-        : 'Автовыполнение включено. Агент работает.', true, run.stallWarning ? 'STALL_WARNING' : null);
+        : 'Выполнение плана запущено. Агент работает.', true, run.stallWarning ? 'STALL_WARNING' : null);
     }
     if (this.timer !== null) return;
     if (!p.editorAvailable || !p.writable) return this.wait('PAGE_NOT_READY', 'Ждём готовности поля ввода.');

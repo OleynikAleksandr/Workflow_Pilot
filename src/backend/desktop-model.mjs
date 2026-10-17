@@ -247,9 +247,14 @@ function orchestratorPlanView(saved) {
 // The state of the one run/pause button of the selected project's orchestrated plan.
 function planRunView(saved) {
   const workspace=saved?.parentWorkspace??saved?.workspace,project=workspace&&store.project(workspace);
-  if(!project||saved.external||project.planExecution?.execution_strategy!=='orchestrated'||!['ACTIVE','BLOCKED'].includes(project.scopeStatus))return null;
-  return {workspace,scopeId:project.scopeId,...workflow.executionControl.view(workspace,project.scopeId),issue:project.orchestrationIssue??null,
-    complete:project.planView?.tasks?.length>0&&project.planView.tasks.every(task=>task.status==='done')};
+  if(!project||saved.external||!project.scopeId||!['ACTIVE','BLOCKED'].includes(project.scopeStatus))return null;
+  const complete=project.planView?.tasks?.length>0&&project.planView.tasks.every(task=>task.status==='done');
+  if(project.planExecution?.execution_strategy==='orchestrated')
+    return {workspace,scopeId:project.scopeId,...workflow.executionControl.view(workspace,project.scopeId),issue:project.orchestrationIssue??null,complete};
+  // A plan of the former model: the button shows whether its continuation engine runs.
+  const running=workflow.projectAutoPlan.enabled(workspace,project.scopeId);
+  const started=workflow.executionControl.view(workspace,project.scopeId).state!=='not-started';
+  return {workspace,scopeId:project.scopeId,state:running?'running':started?'paused':'not-started',reason:null,message:null,issue:null,complete};
 }
 function snapshot() {
   const saved = store.selected();
@@ -910,9 +915,9 @@ function decorateSessionRuntime(record) {
 
 function registerIpc() {
   desktopIpc.handle('local', 'pilot:get-state', snapshot);
-  registerAction('pilot:auto-plan', enabled => {if(store.selected()?.external)throw new Error('Автовыполнение для внешней сессии пока не поддерживается.');return workflow.setAutoPlan(enabled);});
   registerAction('pilot:plan-review', input => planReview.setEnabled(input));
-  registerAction('pilot:plan-execution', () => workflow.setPlanExecution());
+  // One plan button: no input toggles it; {running} sets it (tests and the remote API).
+  registerAction('pilot:plan-execution', input => workflow.setPlanExecution(typeof input?.running === 'boolean' ? input.running : undefined));
   registerAction('pilot:assign-orchestrator', sessionId => {
     const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
     if(typeof sessionId!=='string'||!sessionId||!workspace)throw new Error('Выберите сессию проекта.');
@@ -1301,7 +1306,7 @@ async function openWindow() {
     await surface.runFixture({ app, browser: browser.webContents,
       store, controller, plugin, selectWorkspace, workspaceSetup, snapshot, permissionAllowed, dataDir,
       chromiumDiagnostics, chromiumDiagnosticsFile, navigate, openArchiveWindow, chatColorStyles, eventBaseline, runtimeMetrics, pageState, autoPlan,
-      liveSessions,sessionView,deletion,deletionHooks,execution,getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}),
+      liveSessions,sessionView,deletion,deletionHooks,execution,continuePlan:enabled=>workflow.continuePlan(enabled),getLive:()=>({browser:browser.webContents,controller,pageState,chromiumDiagnostics,chatColorStyles}),
       withStartupFixture: async (flow, run) => {
         startupFlow = flow; startupActive = true; flow.onChange = publish;
         flow.beginPage(navigationId); flow.finishPage(navigationId); publish();

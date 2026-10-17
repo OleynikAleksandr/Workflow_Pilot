@@ -2,7 +2,6 @@
 export const DESKTOP_CHANNELS = Object.freeze({
   "local": Object.freeze([
     "pilot:get-state",
-    "pilot:auto-plan",
     "pilot:plan-execution",
     "pilot:assign-orchestrator",
     "pilot:plan-review",

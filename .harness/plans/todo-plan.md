@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 328,
+  "plan_revision": 332,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -213,17 +213,17 @@
       },
       {
         "path": "docs/planning/client-clipboard-drop.md",
-        "required": true,
+        "required": false,
         "revision": "541561d8218ac5de2d5011b6fa7ac7e7d149e8d6"
       },
       {
         "path": "docs/planning/orchestrated-executor-fixes.md",
-        "required": true,
+        "required": false,
         "revision": "03b238701f8182c539483850347c1d4aa23c1489"
       },
       {
         "path": "docs/planning/orchestrated-archive-recovery.md",
-        "required": true,
+        "required": false,
         "revision": "0ae5407c6ffffa5363df8b1a55813d6a599e8504"
       },
       {
@@ -2033,7 +2033,8 @@
         "tests/sidebar.test.mjs",
         "tests/execution-control.test.mjs",
         "tests/electron-smoke.mjs",
-        "tests/parallel-execution-smoke-fixture.cjs"
+        "tests/parallel-execution-smoke-fixture.cjs",
+        "tests/parallel-execution-ui.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/single-plan-button.md"
@@ -2050,11 +2051,62 @@
         "Тексты состояний не упоминают автовыполнение"
       ],
       "expected_commit_message": "feat: Одна кнопка выполнения плана вместо AutoPlan",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T036",
+        "role": "implementation"
+      },
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/backend/operations.mjs",
+        "src/contracts/desktop.mjs",
+        "src/control/workflow/auto-plan.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/sidebar.test.mjs",
+        "docs/planning/single-plan-button.md"
+      ]
+    },
+    {
+      "id": "T041",
+      "title": "Архив проекта из списка без выбора",
+      "why": "Живая приёмка 0.4.3: запись проекта с очищенной папкой нельзя было убрать — архив доступен только у выбранного проекта, а выбрать его нельзя.",
+      "dependencies": [
+        "T036"
+      ],
+      "functional_paths": [
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tests/sidebar.test.mjs",
+        "tests/workspace-session.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "В списке проектов у каждой записи есть «Перенести в архив» без выбора проекта и чтения папки",
+        "Проект с активным планом архивируется из списка только после подтверждения",
+        "Запись проекта с отсутствующей или очищенной папкой архивируется и убирается из списка"
+      ],
+      "expected_commit_message": "fix: Архив проекта из списка без выбора",
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
-        "task_id": "T036",
+        "task_id": "T041",
         "role": "implementation"
       },
       "parallel_safe": false
@@ -2064,7 +2116,8 @@
       "title": "Подготовить версию 0.4.4",
       "why": "Номер выпуска.",
       "dependencies": [
-        "T036"
+        "T036",
+        "T041"
       ],
       "functional_paths": [
         "package.json",
@@ -2108,6 +2161,7 @@
       "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
       "dependencies": [
         "T036",
+        "T041",
         "T037"
       ],
       "functional_paths": [],
@@ -2238,7 +2292,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 328
+Revision: 332
 
 ## Цель
 
@@ -2508,24 +2562,30 @@ Revision: 328
   - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: T034, DOCS-6
-- [TODO] T036: Одна кнопка выполнения плана вместо AutoPlan — Ожидает
-  - Git Commit: [PENDING] feat: Одна кнопка выполнения плана вместо AutoPlan
+- [DONE] T036: Одна кнопка выполнения плана вместо AutoPlan — Завершено
+  - Git Commit: [DONE] feat: Одна кнопка выполнения плана вместо AutoPlan
   - Reference: workflow-pilot-orchestrated-execution / T036 / implementation
-  - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/parallel-execution.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tests/sidebar.test.mjs, tests/execution-control.test.mjs, tests/electron-smoke.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/planning/single-plan-button.md
+  - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/parallel-execution.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tests/sidebar.test.mjs, tests/execution-control.test.mjs, tests/electron-smoke.mjs, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-execution-ui.test.mjs, docs/planning/single-plan-button.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
+- [TODO] T041: Архив проекта из списка без выбора — Ожидает
+  - Git Commit: [PENDING] fix: Архив проекта из списка без выбора
+  - Reference: workflow-pilot-orchestrated-execution / T041 / implementation
+  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tests/sidebar.test.mjs, tests/workspace-session.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T036
 - [TODO] T037: Подготовить версию 0.4.4 — Ожидает
   - Git Commit: [PENDING] feat: Подготовить версию 0.4.4
   - Reference: workflow-pilot-orchestrated-execution / T037 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/single-plan-button.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T036
+  - Зависимости: T036, T041
 - [TODO] DOCS-7: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS-7 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/single-plan-button.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T036, T037
+  - Зависимости: T036, T041, T037
 - [TODO] T038: Собрать выпуск 0.4.4 трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.4.4 трёх ОС
   - Reference: workflow-pilot-orchestrated-execution / T038 / implementation

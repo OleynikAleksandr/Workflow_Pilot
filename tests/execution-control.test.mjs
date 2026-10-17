@@ -97,7 +97,9 @@ test('button command: only a published orchestrated plan starts, the state is sa
   await assert.rejects(workflow.setPlanExecution(), { code: 'PLAN_EXECUTION_UNAVAILABLE' });
   await write({ scope_id: 'legacy', execution_scope_status: 'ACTIVE', plan_revision: 2,
     tasks: [{ id: 'T001', title: 'Task', implementation_status: 'TODO', commit_status: 'PENDING' }] });
-  await assert.rejects(workflow.setPlanExecution(), { code: 'PLAN_EXECUTION_UNAVAILABLE' }, 'a legacy plan keeps AutoPlan');
+  // A plan of the former model is driven by the same button (this fixture has no real Kit to start it).
+  await assert.rejects(workflow.setPlanExecution(), error => error.code !== 'PLAN_EXECUTION_UNAVAILABLE', 'the button accepts a former plan');
+  assert.equal(workflow.setAutoPlan, undefined, 'no AutoPlan switch');
   await write({ scope_id: SCOPE, execution_scope_status: 'ACTIVE', plan_revision: 3, parallel_allowed: true, max_workers: 2,
     execution_strategy: 'orchestrated', execution_reason: 'Fixture', execution_origin_session_id: main.sessionId, release: false,
     tasks: [{ id: 'T001', title: 'Task', implementation_status: 'TODO', commit_status: 'PENDING' }] });
@@ -112,7 +114,6 @@ test('button command: only a published orchestrated plan starts, the state is sa
   assert.equal(workflow.projectAutoPlan.enabled(main.workspace, SCOPE), false, 'AutoPlan stays off');
   assert.deepEqual(enabled, [true], 'the live executor is enabled at once');
   live.length = 0;
-  await assert.rejects(workflow.setAutoPlan(true), { code: 'PLAN_EXECUTION_BUTTON' }, 'the legacy switch does not drive an orchestrated plan');
   const saved = workflow.snapshot();
   assert.equal(saved.executionControl[main.workspace].state, 'running');
   await control.projects.whenIdle();

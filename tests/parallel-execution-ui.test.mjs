@@ -76,7 +76,7 @@ test('real sidebar renders executor group, worktree/status/time, protected actio
   assert.match(document.querySelector('.executor-row').textContent,/Готово к слиянию/);
   assert.match(document.querySelector('[data-executor-time]').textContent,/Работа 00:02 · ожидание 00:03/);
   document.querySelector('.executor-row').click();await settle();assert.deepEqual(calls.pop(),['selectSession','/tree','child']);
-  assert.match(document.getElementById('auto-plan-message').textContent,/Автовыполнение этого проекта выключено/);
+  assert.equal(document.getElementById('auto-plan-message').hidden,true,'no AutoPlan status for a parallel plan');
   assert.equal(document.getElementById('execute-tasks'),null);assert.equal(document.getElementById('reconcile-execution'),null);
   assert.equal(document.querySelectorAll('#execution-stages li').length,5);
   assert.equal(document.getElementById('execution-stages').getAttribute('aria-label'),'Проверяемые этапы завершения');

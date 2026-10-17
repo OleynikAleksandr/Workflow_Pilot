@@ -4,17 +4,26 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 
-test('external conversation stays visibly external and cannot enable browser AutoPlan',async t=>{
+test('external conversation stays visibly external; there is no AutoPlan switch, only the plan button',async t=>{
   const f=await fixture(t),base=f.state;
+  assert.equal(f.document.getElementById('auto-plan-toggle'),null,'no AutoPlan button at all');
+  assert.equal(typeof f.window.webPilot.setAutoPlan,'undefined');
   f.emit({...base,selected:{...base.selected,external:{provider:'chatgpt-plugin'},manualStart:true},
-    context:{phase:'external-session',servicesReady:true,messageSent:true},autoPlan:{enabled:false}});
-  const button=f.document.getElementById('auto-plan-toggle');
-  assert.equal(button.disabled,true);button.click();
-  assert.equal(f.calls.length,0);
+    context:{phase:'external-session',servicesReady:true,messageSent:true},planRun:null});
+  const button=f.document.getElementById('plan-run-toggle');
+  assert.equal(button.hidden,true,'an external session has no plan button');
   assert.equal(f.document.getElementById('session-notice').hidden,false);
   assert.match(f.document.getElementById('session-notice-title').textContent,/Открыто в ChatGPT/);
   assert.equal(f.document.getElementById('new-context-session').hidden,true);
-  f.emit(base);assert.equal(button.disabled,false,'embedded sessions retain their AutoPlan control');
+  // A plan of the former model has the same one button.
+  f.emit({...base,planRun:{state:'not-started',reason:null,issue:null,complete:false}});
+  assert.equal(button.hidden,false);assert.equal(button.textContent,'Начать выполнение плана');
+  f.emit({...base,planRun:{state:'running',reason:null,issue:null,complete:false},autoPlan:{enabled:true,message:'Выполнение плана запущено. Агент работает.',continuations:2}});
+  assert.equal(button.textContent,'Пауза');
+  assert.match(f.document.getElementById('auto-plan-message').textContent,/№2.*Выполнение плана запущено/);
+  f.emit({...base,planRun:{state:'paused',reason:null,issue:null,complete:false}});
+  assert.equal(button.textContent,'Продолжить');assert.equal(f.document.getElementById('auto-plan-message').hidden,true);
+  assert.doesNotMatch(f.document.body.textContent,/втовыполнени/,'no text speaks of AutoPlan');
 });
 
 test('project picker searches, marks current/background work, keeps one parent and supports keyboard escape',async t=>{
@@ -347,7 +356,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.deepEqual(f.calls.at(-1),['selectSession','/tree/b','worker-b']);
   const button=f.document.getElementById('plan-run-toggle');
   assert.equal(button.hidden,false);assert.equal(button.textContent,'Начать выполнение плана');
-  assert.equal(f.document.getElementById('auto-plan-toggle').hidden,true,'AutoPlan is hidden for an orchestrated plan');
+  assert.equal(f.document.getElementById('auto-plan-toggle'),null,'there is no AutoPlan button');
   button.click();await f.settle();assert.deepEqual(f.calls.at(-1),['togglePlanExecution']);
   for(const [state,label,disabled] of [['running','Пауза',false],['pausing','Пауза…',true],['paused','Продолжить',false]]) {
     emit({state,reason:null,issue:null,complete:false});
@@ -369,7 +378,6 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.equal(f.document.getElementById('plan-card').hidden,false,'the to-do plan stays in the sidebar');
   assert.equal(f.document.getElementById('assignment-card').hidden,true,'no separate executor card');
   assert.equal(f.document.getElementById('execution-actions').hidden,true);
-  assert.equal(f.document.getElementById('auto-plan-toggle').hidden,true);
   assert.equal(f.document.getElementById('auto-plan-message').hidden,true,'no AutoPlan text in the new scheme');
   assert.equal(f.document.querySelector('.project').dataset.workspace,'/demo','the tree keeps the parent project');
   // Archiving a project with an active plan asks first; a refusal sends nothing.

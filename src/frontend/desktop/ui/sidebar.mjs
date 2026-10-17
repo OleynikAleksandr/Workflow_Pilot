@@ -461,7 +461,7 @@ function render(state) {
     ||['unknown'].includes(stages.diagnostic.status)||['unknown'].includes(stages.final.status));
   $('execution-message').textContent=execution.error?.message??({sending:'Поручение исправления отправляется…',sent:'Поручение исправления отправлено. Ждём основной чат.',unknown:'Исход отправки исправления неизвестен. Повтор не отправляется.'}[execution.correctionStatus])??({preparing:'Подготавливаем исполнителей…',merging:'Проверяем слияние в main…',
     complete:'Все результаты интегрированы. Ожидается приёмка.',integration:'Интеграция удерживает main. Другие слияния ждут.',
-    paused:'Автовыполнение проекта выключено. Новые задачи и сообщения не запускаются.',waiting:'Состояния исполнителей показаны в дереве. Пауза не означает вопрос пользователя.'}[execution.phase]??'Включите автовыполнение этого проекта для запуска готовых задач.');
+    paused:'Выполнение плана на паузе. Новые задачи и сообщения не запускаются.',waiting:'Состояния исполнителей показаны в дереве. Пауза не означает вопрос пользователя.'}[execution.phase]??'Нажмите «Начать выполнение плана» для запуска готовых задач.');
   if(execution.finalizationStatus&&!execution.error)$('execution-message').textContent=({
     pending:'Итоговое поручение ожидает готовности основного чата.',
     sending:'Передаём завершение основному чату…',sent:'Ждём итоговый ответ основного чата.',
@@ -478,11 +478,7 @@ function render(state) {
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
       : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '') : '';
   $('plan-run-message').hidden = !runReason; $('plan-run-message').textContent = runReason.trim();
-  $('auto-plan-toggle').hidden = !!run;
   const auto = state.autoPlan ?? { phase: 'off', active: false, message: '' };
-  $('auto-plan-toggle').textContent = auto.enabled ? 'Выключить автовыполнение' : 'Включить автовыполнение';
-  $('auto-plan-toggle').disabled = actionPending || !!selected?.external;
-  $('auto-plan-toggle').setAttribute('aria-pressed', String(auto.enabled));
   const review=state.planReview??{enabled:false,supported:false,message:''};
   $('plan-review-toggle').textContent=review.enabled?'Выключить Review':'Включить Review';
   $('plan-review-toggle').setAttribute('aria-pressed',String(review.enabled));
@@ -493,10 +489,11 @@ function render(state) {
   $('plan-review-indicator').hidden=reviewIndicator==='none';
   $('plan-review-indicator').dataset.state=reviewIndicator;
   $('plan-review-indicator').textContent=({success:'✓',attention:'!',waiting:'·'})[reviewIndicator]??'';
-  const autoMessage=parallel?(auto.enabled?'Автовыполнение этого проекта включено.':'Автовыполнение этого проекта выключено.'):auto.message;
-  const autoSent = !parallel&&auto.continuations > 0 ? `Автоматически отправлено «Продолжай» №${auto.continuations}.` : '';
-  // The new scheme has no AutoPlan: an orchestrated plan is driven by its button only.
-  $('auto-plan-message').hidden = !!run || (!autoMessage && !autoSent);
+  // One plan button and no AutoPlan switch: a running plan of the former model only reports its progress here.
+  const formerRun = !!run && !state.orchestratorPlan && !parallel && run.state === 'running';
+  const autoMessage = formerRun ? auto.message : '';
+  const autoSent = formerRun && auto.continuations > 0 ? `Автоматически отправлено «Продолжай» №${auto.continuations}.` : '';
+  $('auto-plan-message').hidden = !autoMessage && !autoSent;
   $('auto-plan-message').textContent = [autoSent, autoMessage].filter(Boolean).join(' ');
   $('auto-plan-message').dataset.reason = auto.reason ?? '';
 
@@ -582,7 +579,7 @@ function render(state) {
   $('error-banner').textContent = error ? `${error.message} (${error.code})` : '';
   for (const button of document.querySelectorAll('button')) {
     if (button.closest('#startup-panel') || button.id==='open-startup') continue;
-    button.disabled = actionPending || (button.id==='auto-plan-toggle' && !!selected?.external)
+    button.disabled = actionPending
       || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue))
       || (state.storageError && ['create-workspace', 'add-workspace', 'retry-context'].includes(button.id));
   }
@@ -612,7 +609,6 @@ $('reload-chat').addEventListener('click', () => action('reload'));
 // An outdated Kit opens the regular upgrade preview; the user confirms it there.
 $('workspace-health-retry').addEventListener('click', () => action(kitUpgradeNeeded(currentState?.workspaceHealth) ? 'retry' : 'reload'));
 $('workspace-health-doctor').addEventListener('click', () => action('openDoctor'));
-$('auto-plan-toggle').addEventListener('click', () => action('setAutoPlan', !currentState?.autoPlan?.enabled));
 $('plan-run-toggle').addEventListener('click', () => action('togglePlanExecution'));
 $('plan-review-toggle').addEventListener('click', () => action('setPlanReview', {workspace:currentState?.selected?.workspace,enabled:!currentState?.planReview?.enabled}));
 $('reconnect-chat').addEventListener('click', () => action('reconnect'));

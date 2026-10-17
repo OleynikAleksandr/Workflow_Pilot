@@ -141,8 +141,8 @@ function desktopCatalog(services,base) {
       if(args.theme!==undefined)await local('pilot:set-theme',args.theme);
       if(args.hideToolCalls!==undefined)await local('pilot:set-hide-tool-calls',args.hideToolCalls);
       return {theme:services.settings.shellTheme,hideToolCalls:services.settings.hideToolCalls};},
-    'plan.continue':async args=>{exact(args,[]);await local('pilot:auto-plan',true);return planSnapshot(services);},
-    'plan.stop':async args=>{exact(args,[]);await local('pilot:auto-plan',false);return planSnapshot(services);},
+    'plan.continue':async args=>{exact(args,[]);await local('pilot:plan-execution',{running:true});return planSnapshot(services);},
+    'plan.stop':async args=>{exact(args,[]);await local('pilot:plan-execution',{running:false});return planSnapshot(services);},
     'ui.state':args=>{exact(args,[]);return {state:services.desktop.snapshot(),archive:services.desktop.archiveSnapshot()};},
     'service.status':args=>{exact(args,[]);return services.service.view();},
     'service.stop':args=>{exact(args,[]);return services.service.request();},
@@ -198,15 +198,15 @@ function baseCatalog(services) {
       await services.settings.save(patch);
       if(args.hideToolCalls!==undefined)await Promise.all(services.sessions.all().map(record=>record.applyToolCalls?.()));
       return {theme:services.settings.shellTheme,hideToolCalls:services.settings.hideToolCalls};},
-    'plan.continue':async args=>{exact(args,[]);return setAutoPlan(services,true);},
-    'plan.stop':async args=>{exact(args,[]);return setAutoPlan(services,false);},
+    'plan.continue':async args=>{exact(args,[]);return setPlanRun(services,true);},
+    'plan.stop':async args=>{exact(args,[]);return setPlanRun(services,false);},
   });
 }
-async function setAutoPlan(services,enabled) {
+async function setPlanRun(services,running) {
   const selected=services.control.projects.selected();
   if(!selected)throw protocolError('WORKSPACE_REQUIRED','Сначала выберите проект.');
-  if(selected.external)throw protocolError('EXTERNAL_SESSION','Автовыполнение для внешней сессии пока не поддерживается.');
-  await services.workflow.setAutoPlan(enabled);
+  if(selected.external)throw protocolError('EXTERNAL_SESSION','Выполнение плана для внешней сессии пока не поддерживается.');
+  await services.workflow.setPlanExecution(running);
   return planSnapshot(services);
 }
 

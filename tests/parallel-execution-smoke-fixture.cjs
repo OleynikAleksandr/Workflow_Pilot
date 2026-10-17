@@ -61,7 +61,7 @@ module.exports.startFixtureWriter=async function(worktree,nodeExecutable=process
   }catch(error){await stop();throw error;}
 };
 
-module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow}) {
+module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow,continuePlan}) {
   const node=await workspaceSetup.node(),script=path.resolve(__dirname,'../packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs');
   const run=async(...args)=>JSON.parse((await execute(node,[script,...args],{env:workspaceSetup.environment,maxBuffer:4*1024*1024,timeout:120000})).stdout);
   const git=async(root,...args)=>(await execute('git',['-C',root,...args],{env:workspaceSetup.environment,encoding:'utf8'})).stdout.trim();
@@ -77,7 +77,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
       aria:list.getAttribute('aria-label'),role:document.getElementById('execution-next-action').getAttribute('role'),
       width:document.documentElement.clientWidth,overflow:root.scrollWidth>root.clientWidth+1,
       theme:document.documentElement.dataset.theme,
-      focusable:document.getElementById('auto-plan-toggle').tabIndex>=0};})()`);
+      focusable:document.getElementById('plan-review-toggle').tabIndex>=0};})()`);
   const root=(await run('--create',path.join(dataDir+'-projects','parallel-e2e'))).root;
   const {SessionPlans}=await import('../src/control/sessions/session-plans.mjs');
   const plans=new SessionPlans({setup:workspaceSetup});
@@ -85,7 +85,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   config.checks.find(check=>check.id==='dependency').executable='node';
   config.checks.find(check=>check.id==='dependency').args=['--test','verify.mjs'];
   await plans.call(root,'config:apply',[],config);
-  await ipc('setAutoPlan',false);await ipc('openSettings');
+  await continuePlan(false);await ipc('openSettings');
   assert.equal((await ipc('setParallelExecution',{parallel_allowed:true,max_workers:2})).ok,true);
   await ipc('closeSettings');await selectWorkspace(root);
   await wait(()=>store.selected()?.workspace===root&&snapshot().context.phase==='delivered','main context delivery');
@@ -93,11 +93,12 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const record=(workspace,id)=>[...liveSessions.all()].find(r=>r.identity?.workspace===workspace&&(!id||r.identity.sessionId===id));
   const main=record(root,origin.sessionId);
   await sessionView(main).webContents.executeJavaScript('window.fixtureAssistant("Планировщик готов")');
-  const clickAuto=()=>sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").click()');
-  const buttonReady=()=>sidebar.executeJavaScript('!document.getElementById("auto-plan-toggle").disabled');
+  // There is no AutoPlan button: before a plan exists the former engine is driven directly.
+  const clickAuto=()=>continuePlan(!snapshot().autoPlan.enabled);
+  const buttonReady=async()=>true;
   await wait(buttonReady,'empty-project button ready');await clickAuto();
   await wait(()=>snapshot().autoPlan.enabled===true,'button enables before first plan');
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").getAttribute("aria-pressed")'),'true');
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("auto-plan-toggle")'),null,'no AutoPlan button');
   assert.equal(snapshot().execution.assignments.length,0,'no assignment without a published plan');
   const otherRoot=(await run('--create',path.join(dataDir+'-projects','project-controls'))).root;
   await selectWorkspace(otherRoot);
@@ -110,7 +111,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   await ipc('selectSession',root,origin.sessionId);
   await wait(()=>snapshot().selected?.workspace===root&&snapshot().autoPlan.enabled,'return to first project ON');
   assert.equal(snapshot().planReview.enabled,false,'second project Review does not affect first');
-  await wait(()=>sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").getAttribute("aria-pressed")==="true"&&document.getElementById("plan-review-toggle").getAttribute("aria-pressed")==="false"'),'first project independent buttons');
+  await wait(()=>sidebar.executeJavaScript('document.getElementById("plan-review-toggle").getAttribute("aria-pressed")==="false"'),'first project independent Review');
   await wait(buttonReady,'cancel pre-plan button ready');await clickAuto();
   await wait(()=>snapshot().autoPlan.enabled===false,'button cancels pre-plan ON');
   await sessionView(main).webContents.executeJavaScript('const h=document.createElement("button");h.id="preplan-held";h.dataset.testid="stop-button";document.body.append(h)');
@@ -141,7 +142,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const finish=record=>sessionView(record).webContents.executeJavaScript('document.getElementById("parallel-held")?.remove();window.fixtureAssistant("Задача завершена")');
   await hold(first);await hold(second);
   await wait(()=>first.pageState.current?.state.busy&&second.pageState.current?.state.busy,'both workers busy');
-  await ipc('setAutoPlan',false);
+  await ipc('setPlanExecution',false);
   await ipc('selectSession',a.worktree,store.project(a.worktree).sessionId);
   await ipc('selectSession',b.worktree,store.project(b.worktree).sessionId);
   assert.equal(first.pageState.current.state.busy,true);
@@ -167,12 +168,12 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const operation=snapshot().execution.integration.operation_id;
   const before=await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.length');
   assert.equal(snapshot().execution.correctionStatus,null,'OFF does not request correction');
-  await ipc('setAutoPlan',true);
+  await ipc('setPlanExecution',true);
   await wait(()=>snapshot().execution.correctionStatus==='sent','AutoPlan requests correction without an extra button');
   await wait(async()=>await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.length')===before+1,'correction in exact main chat');
   const message=await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.at(-1).text');
   assert.ok(message.includes(root)&&message.includes(operation)&&message.includes('integration:continue'));
-  await ipc('setAutoPlan',false);
+  await ipc('setPlanExecution',false);
   assert.equal(await sessionView(main).webContents.executeJavaScript('window.fixtureMessages.length'),before+1,'no duplicate correction');
   await run('--correct',root,operation);await finish(main);
   await wait(()=>snapshot().execution.assignments.find(x=>x.id===a.id)?.status==='INTEGRATED','corrected merge proof');
@@ -182,7 +183,7 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
   const combined=await git(root,'rev-parse','HEAD');
   workspaceSetup.setRuntimeEnvironment({PATH:fullPath});
   await workspaceSetup.node();
-  assert.equal((await ipc('setAutoPlan',true)).ok,true);
+  assert.equal((await ipc('setPlanExecution',true)).ok,true);
   await wait(()=>snapshot().execution.assignments.length===3,'AutoPlan resumes dependent task');
   const c=snapshot().execution.assignments.find(x=>x.parent_task_id==='T003');assert.equal(c.base_commit,combined);
   assert.match(await fs.readFile(path.join(c.worktree,'README.md'),'utf8'),/worker-a/);
@@ -247,7 +248,7 @@ const httpPreview=await require('./protected-preview-fixture.cjs').start(root,pa
       assert.equal(httpPreview.writeDenied,true);
       assert.equal((await fetch(httpPreview.url+'/RESULT.md')).status,200);
     }
-    assert.equal((await ipc('setAutoPlan',true)).ok,true);
+    assert.equal((await ipc('setPlanExecution',true)).ok,true);
     await wait(()=>snapshot().execution.assignments.length===1,'exclusive foundation gets one assignment');
     const foundation=snapshot().execution.assignments[0];
     assert.equal(foundation.parent_task_id,'T001');assert.ok(!oldIds.includes(foundation.id));

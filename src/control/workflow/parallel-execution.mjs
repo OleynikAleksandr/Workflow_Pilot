@@ -266,11 +266,11 @@ export class ParallelExecution {
         code:'INTEGRATION_PENDING',message:operation.status==='UNKNOWN'?'Исход слияния неизвестен. Проверьте основной чат и integration:status; повторный merge запрещён.'
           :ledger.corrections[operation.operation_id]?'Исправление интеграции передано основному чату; ждём подтверждённого результата.'
           :enabled()?'Интеграция приостановлена. Ждём готовности основного чата для исправления.'
-          :'Интеграция приостановлена. Включите автовыполнение проекта для передачи исправления.'}});return;
+          :'Интеграция приостановлена. Продолжите выполнение плана кнопкой для передачи исправления.'}});return;
     }
     if(state.commandActive)throw fail('COMMAND_ACTIVE','В проекте ещё выполняется команда Kit. После её завершения очередь продолжится автоматически.');
     if(plan.current_task_id||state.handoff) {
-      if(!enabled()){this.publish(workspace,{phase:'paused',error:{code:'MAIN_TASK_ACTIVE',message:'В main осталась начатая задача. Включите автовыполнение проекта для безопасной передачи исполнителю.'}});return;}
+      if(!enabled()){this.publish(workspace,{phase:'paused',error:{code:'MAIN_TASK_ACTIVE',message:'В main осталась начатая задача. Продолжите выполнение плана кнопкой для безопасной передачи исполнителю.'}});return;}
       const page=this.mainState(origin);
       if(!page.stopped||page.canSend===false)throw fail('MAIN_CHAT_NOT_READY','Ждём остановки основного чата и готовности поля без черновика.');
       if(!this.kit.handoff)throw fail('HANDOFF_NOT_SUPPORTED','Для безопасной передачи задачи требуется Workflow Kit 1.7.1.');
@@ -307,7 +307,7 @@ export class ParallelExecution {
       this.queues.get(workspace).again=true;return;
     }
     if(!issuing()){this.publish(workspace,{phase:'paused'});this.settle(workspace,plan,assignments,state);return;}
-    if(!state.mainClean)throw fail('MAIN_DIRTY','В main есть незакоммиченные изменения. Автовыполнение не удаляет и не присваивает их.');
+    if(!state.mainClean)throw fail('MAIN_DIRTY','В main есть незакоммиченные изменения. Выполнение плана не удаляет и не присваивает их.');
     const mainPage=this.mainState(origin);
     if(!mainPage.stopped||mainPage.canSend===false)throw fail('MAIN_CHAT_NOT_READY','Ждём готовности основного чата без активного ответа и черновика.');
     // A known, never-opened assignment may finish setup under the same identity.

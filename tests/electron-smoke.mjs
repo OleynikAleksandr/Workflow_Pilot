@@ -212,7 +212,7 @@ async function verifyUninterruptedRequest(dataDir) {
   }
 }
 
-export async function run({ app, window, sidebar, store, plugin, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture }) {
+export async function run({ app, window, sidebar, store, plugin, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, autoPlan, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture, continuePlan }) {
   // Test actions follow the visible page; production controllers retain their own page.
   const currentObject=key=>new Proxy({}, {
     get:(_target,property)=>{const value=getLive()[key][property];return typeof value==='function'?value.bind(getLive()[key]):value;},
@@ -244,11 +244,11 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(autoPlan.view().enabled, false, 'legacy global ON grants no project permission');
   assert.equal(snapshot().autoPlan.enabled, false);
   assert.deepEqual(snapshot().conversationRecovery, { phase: 'idle', message: '', canRetry: false });
-  assert.equal(await sidebar.executeJavaScript("document.getElementById('auto-plan-toggle').getAttribute('aria-pressed')"), 'false');
+  assert.equal(await sidebar.executeJavaScript("document.getElementById('auto-plan-toggle')"), null, 'no AutoPlan button');
+  assert.equal(await sidebar.executeJavaScript("typeof window.webPilot.setAutoPlan"), 'undefined', 'no AutoPlan IPC');
   assert.equal((await savedAutoState()).autoPlanEnabled, false);
   // Continue the existing suite from its original OFF baseline through the real IPC.
-  const off = await sidebar.executeJavaScript('window.webPilot.setAutoPlan(false)');
-  assert.equal(off.ok, true);
+  await continuePlan(false);
   assert.equal(snapshot().autoPlan.enabled, false);
   console.log(JSON.stringify({ mainStartup: true, savedAutoPlan: 'legacy-on-migrated-off', sidebarReady: true, isolated: true }));
 
@@ -642,11 +642,12 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').click()");
   await waitFor(()=>!snapshot().planReview.enabled,'review disabled',snapshot);
 
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(true)');
+  await continuePlan(true);
   assert.equal(snapshot().autoPlan.enabled,true,'explicit ON waits for the first plan');
   for(const [review,auto] of [[false,false],[true,false],[false,false]]) {
+    // Review stays a button; the former continuation engine has no button and is set directly.
+    if(snapshot().autoPlan.enabled!==auto)await continuePlan(auto);
     for(const [id,current,wanted] of [
-      ['auto-plan-toggle',()=>snapshot().autoPlan.enabled,auto],
       ['plan-review-toggle',()=>snapshot().planReview.enabled,review]]) {
       if(current()!==wanted){
         await waitFor(()=>sidebar.executeJavaScript(`!document.getElementById('${id}').disabled`),'independent toggles ready',snapshot);
@@ -661,7 +662,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     restoredReview.observeSelection();assert.equal(restoredReview.view().enabled,review);restoredReview.dispose();
     for(const theme of ['light','dark']){
       await sidebar.executeJavaScript(`window.webPilot.setTheme(${JSON.stringify(theme)})`);
-      for(const [id,on] of [['auto-plan-toggle',auto],['plan-review-toggle',review]]){
+      for(const [id,on] of [['plan-review-toggle',review]]){
         const appearance=await sidebar.executeJavaScript(`(()=>{const b=document.getElementById('${id}');return {pressed:b.getAttribute('aria-pressed'),text:b.textContent,color:getComputedStyle(b).backgroundColor}})()`);
         assert.equal(appearance.pressed,String(on));assert.match(appearance.text,on?/^Выключить/:/^Включить/);
         assert.equal(appearance.color==='rgb(8, 124, 69)',on,theme+' '+id);
@@ -1409,7 +1410,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   // 01TestAuto: saved ON -> new Chat with NONE -> busy plan creation -> idle.
   const prePlanChat = store.snapshot().projects.find(p => p.workspace === workspace).sessions
     .find(session => !session.archivedAt && session.chatUrl);
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(true)');
+  await continuePlan(true);
   assert.equal((await savedAutoState()).autoPlanEnabled, true, 'explicit pre-plan authorization persists');
   await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
   await waitFor(() => store.selected()?.sessionId !== prePlanChat.sessionId
@@ -1446,7 +1447,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => fixtureConversationTitles.get(scopeOwnerId) === currentScopeTitle,
     'scope owner title is synchronized to native ChatGPT fixture', snapshot);
   assert.equal(autoPlan.view().enabled, false);
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(true)');
+  await continuePlan(true);
   assert.equal(autoPlan.view().enabled, true); assert.equal(await countMessages(), 1);
   await endAnswer('Создан текущий план, обычный отчёт без специальной итоговой строки.');
   await expectContinue(1, '01TestAuto NONE -> ACTIVE -> idle sends exactly one Continue');
@@ -1464,7 +1465,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await expectContinue(2, 'ordinary microtask report sends the next Continue');
   await noExtraSend(3);
   assert.equal(packetLoads, loadsBeforeProgress, 'plan progress never sends recovery');
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(false)');
+  await continuePlan(false);
 
 
   await sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)}, ${JSON.stringify(untouchedLegacy.sessionId)})`);
@@ -1528,15 +1529,15 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   controller.cancel();
   // Sidebar -> IPC -> real composer -> sandboxed observer in Chat and Work.
   for (const target of [currentChat, currentWork]) {
-    await sidebar.executeJavaScript('window.webPilot.setAutoPlan(false)');
+    await continuePlan(false);
     await sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)}, ${JSON.stringify(target.sessionId)})`);
     await waitFor(() => store.selected()?.sessionId === target.sessionId && !snapshot().pageLoading
       && pageState.current?.state.url === target.chatUrl && snapshot().selected?.planView?.completed === 1,
       'partial plan ready in ' + target.experience, snapshot);
-    await waitFor(() => sidebar.executeJavaScript("!document.getElementById('auto-plan-toggle').disabled"), 'auto-plan toggle ready', snapshot);
+    await waitFor(() => sidebar.executeJavaScript("(()=>{const b=document.getElementById('plan-run-toggle');return !b.disabled&&!b.hidden&&['Начать выполнение плана','Продолжить'].includes(b.textContent);})()"), 'plan button ready', snapshot);
     const before = await countMessages();
     await beginAnswer();
-    await sidebar.executeJavaScript("document.getElementById('auto-plan-toggle').click()");
+    await sidebar.executeJavaScript("document.getElementById('plan-run-toggle').click()");
     await waitFor(() => autoPlan.view().phase === 'running', 'ON adopts the busy answer', snapshot);
     await noExtraSend(before);
     await endAnswer();
@@ -1566,7 +1567,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
       await waitFor(() => autoPlan.view().reason === 'DRAFT_PRESENT', 'draft waits without disabling mode', snapshot);
       assert.equal(await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent"), draft);
       await noExtraSend(beforeDraft);
-      assert.equal(await sidebar.executeJavaScript("document.getElementById('auto-plan-toggle').getAttribute('aria-pressed')"), 'true');
+      assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-run-toggle').textContent"), 'Пауза');
       await trustedClick('[data-testid=send-button]');
       await waitFor(() => autoPlan.view().reason === 'USER_MESSAGE_PENDING', 'manual Send waits for new answer', snapshot);
       assert.equal(await countMessages(), beforeDraft + 1);
@@ -1602,19 +1603,19 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await noExtraSend(beforeRestore);
   // OFF during busy retains the idle pause; ON at idle sends once.
   await beginAnswer();
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(false)');
+  await continuePlan(false);
   await endAnswer('Проверка завершена при выключенном режиме.');
   await waitFor(() => !pageState.current.state.busy, 'OFF answer reaches idle', snapshot);
   await noExtraSend(beforeRestore);
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(true)');
+  await continuePlan(true);
   await expectContinue(beforeRestore, 'ON at suitable idle sends once');
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(false)');
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(true)');
+  await continuePlan(false);
+  await continuePlan(true);
   await noExtraSend(beforeRestore + 1);
   // OFF/ON during busy and former footer words remain ordinary prose.
   await beginAnswer();
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(false)');
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(true)');
+  await continuePlan(false);
+  await continuePlan(true);
   await noExtraSend(beforeRestore + 1);
   await endAnswer('Нужен ваш ответ. Эта строка не является клиентской командой.');
   await expectContinue(beforeRestore + 1, 'ordinary prose does not control AutoPlan');
@@ -1660,8 +1661,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const beforeFinal = await countMessages(); await endAnswer();
   await waitFor(() => autoPlan.view().phase === 'complete', 'all ordinary tasks DONE sends no Continue', snapshot);
   await noExtraSend(beforeFinal);
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(false)');
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(true)');
+  await continuePlan(false);
+  await continuePlan(true);
   await waitFor(() => autoPlan.view().phase === 'complete', 'ON completed plan stays complete', snapshot);
   await noExtraSend(beforeFinal);
   await fs.writeFile(path.join(dataDir, 'auto-plan-completed.png'), (await sidebar.capturePage()).toPNG());
@@ -1688,7 +1689,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
 
   assert.equal(autoPlan.view().enabled, false, 'completion disables project permission across chats');
   assert.equal((await savedAutoState()).autoPlanEnabled, false);
-  await sidebar.executeJavaScript('window.webPilot.setAutoPlan(false)');
+  await continuePlan(false);
   const savedOff = await savedAutoState();
   assert.equal(savedOff.autoPlanEnabled, false);
   const restartedOff = await restartFixture('off');
@@ -1838,7 +1839,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal([...liveSessions.all()].length,browserCount);
   assert.equal(packetLoads,loadsBeforeNative,'selecting external session does not resend context');
   assert.throws(()=>liveSessions.ensure(store.selected()),{code:'EXTERNAL_SESSION'});
-  await waitFor(()=>sidebar.executeJavaScript('document.getElementById("auto-plan-toggle").disabled && !document.getElementById("session-notice").hidden'),'external session notice',snapshot);
+  await waitFor(()=>sidebar.executeJavaScript('document.getElementById("plan-run-toggle").hidden && !document.getElementById("session-notice").hidden'),'external session notice',snapshot);
   const nativeRestart=new WorkspaceSessions(store.file);await nativeRestart.load();
   assert.equal(nativeRestart.selected().external.provider,'chatgpt-plugin');
   const messagesBeforeLaunch=await browser.executeJavaScript('window.fixtureMessages.length');
@@ -1869,7 +1870,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(selectEmbedded.ok,true,JSON.stringify(selectEmbedded.error));
   assert.equal(store.selected().external,undefined);
   const parallelFixture=await import('./parallel-execution-smoke-fixture.cjs');
-  await parallelFixture.default.run({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow});
+  await parallelFixture.default.run({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow,continuePlan});
   await verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,deletionHooks,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour:auxE});
   const result = { ordinaryManualSend: true, manualRecoverySend: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, directFirstWork: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
     singleActivePlanScreenshot, mode: 'isolated-fixture', electron: process.versions.electron, chromium: process.versions.chrome,

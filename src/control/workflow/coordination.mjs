@@ -92,10 +92,11 @@ authorizedExecutionKit.read=async workspace=>{
 const liveRecord=project=>project&&liveSessions.find(project);
 const orchestratedPlan=workspace=>store.project(workspace)?.planExecution?.execution_strategy==='orchestrated';
 // Executors of an orchestrated plan keep their continuations while a pause is pending.
-// A started button marks the plan as orchestrated even before the cached project view refreshes.
+// A started button marks the plan as orchestrated even before the cached project view refreshes;
+// a plan of the former model keeps its continuation engine as the source of truth.
 const executorEnabled=(workspace,scope)=>{
-  const {state}=executionControl.view(workspace,scope);
-  return orchestratedPlan(workspace)||state!=='not-started'?['running','pausing'].includes(state):projectAutoPlan.enabled(workspace,scope);
+  const {state}=executionControl.view(workspace,scope),strategy=store.project(workspace)?.planExecution?.execution_strategy;
+  return strategy==='orchestrated'||(!strategy&&state!=='not-started')?['running','pausing'].includes(state):projectAutoPlan.enabled(workspace,scope);
 };
 const storedOrchestrator=(workspace,scope)=>store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions
   .find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId??null;
@@ -208,19 +209,33 @@ function sendExecutionMessage(origin,text,canContinue,onBeforeSend,kind) {
     perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})});
 }
 // The button command: verified against the published plan, never against a chat's guess.
-async function setPlanExecution() {
+// The one plan button: start, pause and continue. running: undefined toggles, a boolean sets.
+async function setPlanExecution(running) {
   const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
-  if(!workspace||selected?.external)throw Object.assign(new Error('Выберите проект с планом оркестратора.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
+  if(!workspace||selected?.external)throw Object.assign(new Error('Выберите проект с планом.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
+  if(running!==undefined&&typeof running!=='boolean')throw Object.assign(new Error('Неверная команда кнопки плана.'),{code:'PLAN_EXECUTION_INVALID'});
   const info=await store.inspect(workspace);
-  if(info.planExecution?.execution_strategy!=='orchestrated'||!['ACTIVE','BLOCKED'].includes(info.scopeStatus))
-    throw Object.assign(new Error('Кнопка доступна у опубликованного плана оркестратора.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
+  if(!info.scopeId||!['ACTIVE','BLOCKED'].includes(info.scopeStatus))
+    throw Object.assign(new Error('Кнопка доступна у опубликованного плана.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
   if(reviewBlocksExecution(readReview(workspace),info.scopeId))
     throw Object.assign(new Error('План ещё не согласован в Review.'),{code:'PLAN_NOT_APPROVED'});
-  const view=executionControl.toggle(workspace,info.scopeId);
-  execution.observe(workspace);await saveSettings();
-  return view;
+  if(info.planExecution?.execution_strategy==='orchestrated') {
+    const {state}=executionControl.view(workspace,info.scopeId);
+    if(running===undefined||(running&&!['running','pausing'].includes(state))||(running===false&&state==='running'))
+      executionControl.toggle(workspace,info.scopeId);
+    execution.observe(workspace);await saveSettings();
+    return executionControl.view(workspace,info.scopeId);
+  }
+  // A plan of the former model: the same button drives its continuation engine; pause is immediate.
+  const want=running??!projectAutoPlan.enabled(workspace,info.scopeId);
+  await continuePlan(want);
+  if(want&&executionControl.view(workspace,info.scopeId).state!=='running')executionControl.toggle(workspace,info.scopeId);
+  if(!want)executionControl.stop(workspace,info.scopeId);
+  await saveSettings();
+  return {state:want?'running':'paused',reason:null,message:null};
 }
-async function setAutoPlan(enabled) {
+// The continuation engine of a plan of the former model; reached only through the plan button.
+async function continuePlan(enabled) {
     const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
     const project=selected?.parentWorkspace?store.project(workspace):selected;
     if(project&&(await store.inspect(workspace)).planExecution?.execution_strategy==='orchestrated')
@@ -238,7 +253,7 @@ async function setAutoPlan(enabled) {
       planRevision:info?.planRevision,originSessionId:info?.planExecution?.execution_origin_session_id});
     const current=projectAutoPlan.state(workspace);
     if(scope&&current?.scopeId!==scope&&enabled===true)
-      throw new Error('План изменился во время переключения AutoPlan. Обновите состояние проекта.');
+      throw new Error('План изменился во время запуска. Обновите состояние проекта.');
     // Completion is an automatic OFF, never misrecord it as a manual OFF.
     if(!(done&&enabled===true))projectAutoPlan.set(workspace,
       scope&&current?.scopeId!==scope?current.scopeId:scope,enabled===true,project?.sessionId);
@@ -311,7 +326,9 @@ return Object.freeze({
   // The user confirmed archiving a project with an active plan: execution pauses now; Kit is untouched.
   stopPlanExecution:workspace=>{const scope=store.project(workspace)?.scopeId;return scope?executionControl.stop(workspace,scope):null;},
   execution:executionPort,executionKit:Object.freeze({git:(...args)=>executionKit.git(...args)}),
-  configurePrimary,observePage,setAutoPlan,snapshot,restore,
+  // The continuation engine of plans of the former model; users reach it only through the plan button.
+  continuePlan,
+  configurePrimary,observePage,snapshot,restore,
   sessionChanged(record) {
     record.primaryAutomation?.update();record.executor?.changed();
     if(record.identity&&!record.identity.assignmentId&&execution.unwatch.has(record.identity.workspace)) {
