@@ -4,22 +4,57 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 429,
+  "plan_revision": 430,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
-  "scope_id": null,
-  "execution_scope_status": "NONE",
+  "scope_id": "workflow-pilot-native-window",
+  "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
-  "objective": "Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.",
-  "acceptance_criteria": [],
+  "objective": "Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS",
+  "acceptance_criteria": [
+    "Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS"
+  ],
   "approved_scope": {
-    "functional_paths": [],
-    "documentation_paths": []
+    "functional_paths": [
+      "src/execution/browser/backend-host.mjs",
+      "src/execution/browser/presentation/host.mjs",
+      "src/execution/facade.mjs",
+      "src/backend/main.mjs",
+      "tests/backend-native-pages.test.mjs",
+      "tests/browser-presentation.test.mjs",
+      "src/backend/native-window.mjs",
+      "src/backend/desktop-model.mjs",
+      "src/backend/remote-surface.mjs",
+      "src/backend/operations.mjs",
+      "src/frontend/desktop/chat-colors-window.mjs",
+      "tests/backend-native-window.test.mjs",
+      "src/contracts/launch.mjs",
+      "src/frontend/desktop/client.mjs",
+      "src/backend/status-menu.mjs",
+      "tests/launch-mode.test.mjs",
+      "tests/electron-smoke.mjs",
+      "package.json",
+      "package-lock.json",
+      "src/frontend/plugin/index.html",
+      "src/frontend/plugin/app.mjs",
+      "tests/backend-upgrade.test.mjs",
+      "release-manifest.json"
+    ],
+    "documentation_paths": [
+      "docs/planning/native-window.md",
+      "README.md",
+      "docs/architecture/OVERVIEW.md"
+    ]
   },
-  "baseline_commit": null,
+  "baseline_commit": "ecca668d094231a3b9c1afbc42ac00890d6c530e",
   "current_task_id": null,
   "context_pack": {
     "documents": [
+      {
+        "path": "docs/planning/native-window.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
       {
         "path": "docs/architecture/OVERVIEW.md",
         "required": true,
@@ -29,40 +64,380 @@
     "include_last_completed_task": false,
     "dependency_task_ids": []
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T001",
+        "role": "implementation"
+      },
+      "dependencies": [],
+      "functional_paths": [
+        "src/execution/browser/backend-host.mjs",
+        "src/execution/browser/presentation/host.mjs",
+        "src/execution/facade.mjs",
+        "src/backend/main.mjs",
+        "tests/backend-native-pages.test.mjs",
+        "tests/browser-presentation.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/native-window.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T001",
+      "title": "Страницы службы в режиме view",
+      "why": "Встроенное окно показывает настоящий WebContentsView; offscreen-страницу показать нельзя.",
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "BackendBrowserHost создаёт страницы в режиме view (WebContentsView в скрытом окне-хосте) на macOS и offscreen в остальных случаях; режим выбирается при старте службы",
+        "Страница переносится в контейнер окна и обратно без перезагрузки; CDP и перехват выбора файлов сохраняются",
+        "Fixture-служба в режиме view: страница fixture-чата в окне-хосте загружается, наблюдатель видит состояние, отправка проходит, кадры для HTTP-зрителя непустые, ввод доходит",
+        "Если режим view не проходит любую из проверок, задача блокируется и решение возвращается пользователю"
+      ],
+      "expected_commit_message": "feat: Страницы службы в режиме view"
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T002",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T001"
+      ],
+      "functional_paths": [
+        "src/backend/native-window.mjs",
+        "src/backend/main.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/remote-surface.mjs",
+        "src/backend/operations.mjs",
+        "src/frontend/desktop/chat-colors-window.mjs",
+        "tests/backend-native-window.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/native-window.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T002",
+      "title": "Встроенное окно фоновой службы",
+      "why": "Родной сайдбар и страница ChatGPT в одном окне без HTTP.",
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Служба открывает окно с сайдбаром (ui/index.html, preload.cjs по пути ресурса) и выбранной страницей справа; границы модулей не нарушены",
+        "Состояние публикуется встроенному окну и потоку событий; архив, цвета и выбор папки открываются у окна-инициатора",
+        "Действия сайдбара идут через операции службы с allowlist, журналом и lease; встроенное окно и HTTP-клиент работают одновременно с передачей управления",
+        "Закрытие окна (кнопка, Cmd+W, Cmd+Q окна) возвращает страницу в окно-хост и не останавливает службу; Dock-плитка только при открытом окне"
+      ],
+      "expected_commit_message": "feat: Встроенное окно фоновой службы"
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T003",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T002"
+      ],
+      "functional_paths": [
+        "src/contracts/launch.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/backend/main.mjs",
+        "src/backend/status-menu.mjs",
+        "src/backend/native-window.mjs",
+        "tests/launch-mode.test.mjs",
+        "tests/backend-native-window.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/native-window.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T003",
+      "title": "Запуск встроенного окна и окно через HTTP",
+      "why": "Обычный запуск открывает встроенное окно, HTTP-клиент — пунктом меню.",
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Обычный запуск на Mac запускает службу при необходимости и открывает встроенное окно; процесс запуска завершается",
+        "Работающая служба на повторный запуск, activate и пункт меню значка показывает своё окно, а не клиент",
+        "Пункт «Окно через HTTP (тест)» в меню значка и меню окна запускает прежний клиент; на Linux обычный запуск открывает клиент как раньше"
+      ],
+      "expected_commit_message": "feat: Запуск встроенного окна и окно через HTTP"
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T004",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T003"
+      ],
+      "functional_paths": [
+        "tests/electron-smoke.mjs",
+        "tests/backend-native-window.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/native-window.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "kit-check",
+        "architecture",
+        "migration-compatibility"
+      ],
+      "id": "T004",
+      "title": "Проверить оба режима вместе",
+      "why": "Сквозная проверка перед выпуском.",
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Встроенное окно и HTTP-клиент на одной fixture-службе: выбор сессии, отправка, закрытие окна во время работы, повторное открытие",
+        "Ограничения и pending живой приёмки записаны в спецификацию"
+      ],
+      "expected_commit_message": "test: Проверить встроенное окно и HTTP-клиент"
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T005",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T004"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/native-window.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "id": "T005",
+      "title": "Подготовить версию 0.5.0",
+      "why": "Номер выпуска.",
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.5.0 в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.5.0"
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "DOCS",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T001",
+        "T002",
+        "T003",
+        "T004",
+        "T005"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/planning/native-window.md",
+        "README.md",
+        "docs/architecture/OVERVIEW.md"
+      ],
+      "verification_ids": [],
+      "id": "DOCS",
+      "title": "Актуализация всех документов проекта",
+      "why": "Сохранить актуальный контекст для следующего агента",
+      "acceptance_criteria": [
+        "Документы соответствуют результату"
+      ],
+      "expected_commit_message": "docs: актуализировать контекст проекта"
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T006",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T005",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/native-window.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "id": "T006",
+      "title": "Собрать выпуск 0.5.0 трёх ОС",
+      "why": "Комплект после DOCS.",
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.5.0 трёх ОС"
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T007",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T006",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/native-window.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "id": "T007",
+      "title": "Установить 0.5.0 в Applications",
+      "why": "Обновить приложение.",
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки; при работающей службе — pending"
+      ],
+      "expected_commit_message": "release: Установить 0.5.0 в Applications"
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T008",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T007",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/native-window.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "id": "T008",
+      "title": "Опубликовать GitHub Release 0.5.0",
+      "why": "Опубликовать комплект.",
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.5.0 на sourceCommit, assets сверены, remote main = HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.5.0"
+    }
+  ],
   "blocked_reason": null,
   "user_decisions": [
     {
-      "id": "71022cdd-f003-4c22-b608-b41635b5e8fe",
-      "text": "Пользователь 17.10.2026 проверил выпуски 0.4.6–0.4.9 и поручил закрыть план",
-      "recorded_at": "2026-10-17T16:55:32.149Z"
+      "id": "ed58ba53-baf9-40e9-8a73-26a42de095ce",
+      "text": "Пользователь поручил выполнить описанную задачу и план.",
+      "recorded_at": "2026-10-17T17:12:15.167Z"
     }
-  ],
-  "archived_scope_id": "workflow-pilot-0-4-6"
+  ]
 }
 ```
 <!-- workflow-state:end -->
 
 ## Состояние
 
-Execution Scope Status: NONE
+Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
-Scope: не создан
+Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 429
+Revision: 430
 
 ## Цель
 
-Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.
+Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS
 
 ## Критерии приёмки
 
+- Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS
 
 ## Микрозадачи
 
+- [TODO] T001: Страницы службы в режиме view — Ожидает
+  - Git Commit: [PENDING] feat: Страницы службы в режиме view
+  - Reference: workflow-pilot-native-window / T001 / implementation
+  - Файлы: src/execution/browser/backend-host.mjs, src/execution/browser/presentation/host.mjs, src/execution/facade.mjs, src/backend/main.mjs, tests/backend-native-pages.test.mjs, tests/browser-presentation.test.mjs, docs/planning/native-window.md
+- [TODO] T002: Встроенное окно фоновой службы — Ожидает
+  - Git Commit: [PENDING] feat: Встроенное окно фоновой службы
+  - Reference: workflow-pilot-native-window / T002 / implementation
+  - Файлы: src/backend/native-window.mjs, src/backend/main.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/chat-colors-window.mjs, tests/backend-native-window.test.mjs, docs/planning/native-window.md
+- [TODO] T003: Запуск встроенного окна и окно через HTTP — Ожидает
+  - Git Commit: [PENDING] feat: Запуск встроенного окна и окно через HTTP
+  - Reference: workflow-pilot-native-window / T003 / implementation
+  - Файлы: src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/backend/main.mjs, src/backend/status-menu.mjs, src/backend/native-window.mjs, tests/launch-mode.test.mjs, tests/backend-native-window.test.mjs, docs/planning/native-window.md
+- [TODO] T004: Проверить оба режима вместе — Ожидает
+  - Git Commit: [PENDING] test: Проверить встроенное окно и HTTP-клиент
+  - Reference: workflow-pilot-native-window / T004 / implementation
+  - Файлы: tests/electron-smoke.mjs, tests/backend-native-window.test.mjs, docs/planning/native-window.md
+- [TODO] T005: Подготовить версию 0.5.0 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.5.0
+  - Reference: workflow-pilot-native-window / T005 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/native-window.md
+- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать контекст проекта
+  - Reference: workflow-pilot-native-window / DOCS / implementation
+  - Файлы: docs/planning/native-window.md, README.md, docs/architecture/OVERVIEW.md
+- [TODO] T006: Собрать выпуск 0.5.0 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.5.0 трёх ОС
+  - Reference: workflow-pilot-native-window / T006 / implementation
+  - Файлы: release-manifest.json, docs/planning/native-window.md
+- [TODO] T007: Установить 0.5.0 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.5.0 в Applications
+  - Reference: workflow-pilot-native-window / T007 / implementation
+  - Файлы: release-manifest.json, docs/planning/native-window.md
+- [TODO] T008: Опубликовать GitHub Release 0.5.0 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.5.0
+  - Reference: workflow-pilot-native-window / T008 / implementation
+  - Файлы: release-manifest.json, docs/planning/native-window.md
 
 ## Context Pack For This Cycle
 
+- docs/planning/native-window.md
 - docs/architecture/OVERVIEW.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
