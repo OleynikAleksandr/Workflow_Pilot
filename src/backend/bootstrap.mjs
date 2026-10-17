@@ -61,7 +61,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
   const decorate=record=>{
     workflow.configurePrimary(record);
     record.controller.canSendContext=project=>!project.assignmentId
-      ||workflow.projectAutoPlan.enabled(project.parentWorkspace,project.parentScopeId);
+      ||workflow.executorEnabled(project.parentWorkspace,project.parentScopeId);
     const contents=browser.host.view(record.key).webContents;
     const page=decorateBackendPage(contents,{colors:settings.chatColors,hideToolCalls:()=>settings.hideToolCalls});
     record.colors=page.colors;record.applyToolCalls=page.applyToolCalls;

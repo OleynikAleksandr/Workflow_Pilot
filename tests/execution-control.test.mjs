@@ -71,12 +71,13 @@ test('button command: only a published orchestrated plan starts, the state is sa
     + JSON.stringify({ schema_version: 1, project_id: 'main-id', project_name: 'Main', plan_revision: 1, scope_id: null,
       execution_scope_status: 'NONE', delivery_status: 'IN_PROGRESS', current_task_id: null, tasks: [], ...state }) + '\n```\n<!-- workflow-state:end -->');
   await write({});
+  const live = [];
   const create = () => {
     const control = new ControlFacade({ storageFile: path.join(root, 'profile/sessions.json'), execution: {} });
     control.configureProjects({});
     const workflow = control.configureWorkflow({ getController: () => null, available: () => false, contextAvailable: () => false,
       onChange: () => {}, report: () => {}, save: async () => {} });
-    workflow.attachSessions({ all: () => [], find: () => null, visible: null, paused: true });
+    workflow.attachSessions({ all: () => live, find: () => null, visible: null, paused: true });
     t.after(() => { workflow.autoPlan.dispose(); workflow.execution.dispose(); workflow.planMonitor.close(); workflow.planReview.dispose(); workflow.reviewContinuation.dispose(); });
     return { control, workflow };
   };
@@ -90,7 +91,16 @@ test('button command: only a published orchestrated plan starts, the state is sa
     execution_strategy: 'orchestrated', execution_reason: 'Fixture', execution_origin_session_id: main.sessionId, release: false,
     tasks: [{ id: 'T001', title: 'Task', implementation_status: 'TODO', commit_status: 'PENDING' }] });
   assert.equal(workflow.executionControl.view(main.workspace, SCOPE).state, 'not-started');
+  // An executor follows the plan button only; the legacy AutoPlan switch plays no part.
+  const enabled = [];
+  live.push({ project: () => ({ parentWorkspace: main.workspace, parentScopeId: SCOPE }),
+    executor: { setEnabled: value => enabled.push(value) }, controller: { signal: () => {} } });
+  assert.equal(workflow.executorEnabled(main.workspace, SCOPE), false, 'not started: the executor waits');
   assert.equal((await workflow.setPlanExecution()).state, 'running');
+  assert.equal(workflow.executorEnabled(main.workspace, SCOPE), true);
+  assert.equal(workflow.projectAutoPlan.enabled(main.workspace, SCOPE), false, 'AutoPlan stays off');
+  assert.deepEqual(enabled, [true], 'the live executor is enabled at once');
+  live.length = 0;
   await assert.rejects(workflow.setAutoPlan(true), { code: 'PLAN_EXECUTION_BUTTON' }, 'the legacy switch does not drive an orchestrated plan');
   const saved = workflow.snapshot();
   assert.equal(saved.executionControl[main.workspace].state, 'running');

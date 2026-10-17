@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 294,
+  "plan_revision": 296,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1424,7 +1424,9 @@
         "src/control/facade.mjs",
         "src/control/sessions/workspace-session.mjs",
         "tests/session-roles.test.mjs",
-        "tests/orchestrated-execution.test.mjs"
+        "tests/orchestrated-execution.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/execution-control.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/orchestrated-executor-fixes.md"
@@ -1440,14 +1442,23 @@
         "Прежние планы AutoPlan/sequential/parallel не меняются"
       ],
       "expected_commit_message": "fix: Исполнитель плана оркестратора запускается кнопкой плана в режиме Chat",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T023",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/workflow/coordination.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/execution-control.test.mjs",
+        "docs/planning/orchestrated-executor-fixes.md"
+      ]
     },
     {
       "id": "T024",
@@ -1667,7 +1678,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 294
+Revision: 296
 
 ## Цель
 
@@ -1847,10 +1858,10 @@ Revision: 294
   - Файлы: release-manifest.json, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
   - Зависимости: T021, DOCS-4
-- [TODO] T023: Исполнитель запускается кнопкой плана и в режиме Chat — Ожидает
-  - Git Commit: [PENDING] fix: Исполнитель плана оркестратора запускается кнопкой плана в режиме Chat
+- [DONE] T023: Исполнитель запускается кнопкой плана и в режиме Chat — Завершено
+  - Git Commit: [DONE] fix: Исполнитель плана оркестратора запускается кнопкой плана в режиме Chat
   - Reference: workflow-pilot-orchestrated-execution / T023 / implementation
-  - Файлы: src/backend/desktop-model.mjs, src/backend/bootstrap.mjs, src/control/workflow/coordination.mjs, src/control/facade.mjs, src/control/sessions/workspace-session.mjs, tests/session-roles.test.mjs, tests/orchestrated-execution.test.mjs, docs/planning/orchestrated-executor-fixes.md
+  - Файлы: src/backend/desktop-model.mjs, src/backend/bootstrap.mjs, src/control/workflow/coordination.mjs, src/control/facade.mjs, src/control/sessions/workspace-session.mjs, tests/session-roles.test.mjs, tests/orchestrated-execution.test.mjs, tests/workspace-session.test.mjs, tests/execution-control.test.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T024: Выбор сессий и восстановление окна после разрыва потока — Ожидает

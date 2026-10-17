@@ -28,6 +28,29 @@ test('assignment gets one inherited session without moving selection and persist
   await assert.rejects(store.ensureExecutor({...assignment,parent_task_id:'T002'},main),{code:'ASSIGNMENT_OWNER'});
 });
 
+test('an executor of an orchestrated plan works in Chat while its orchestrator uses Work',async t=>{
+  const {project,store}=await fixture(t);
+  store.getExecutionSettings=()=>({parallel_allowed:true,max_workers:2});
+  const main=await store.select(await project('Orchestrated'),{experience:'work'});
+  const planFile=path.join(main.workspace,'.harness/plans/todo-plan.md');
+  const plan=JSON.parse((await fs.readFile(planFile,'utf8')).split('```json')[1].split('```')[0]);
+  Object.assign(plan,{execution_strategy:'orchestrated',parallel_allowed:true,max_workers:2,execution_reason:'Fixture',
+    execution_origin_session_id:main.sessionId,release:false});
+  await fs.writeFile(planFile,'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify(plan)+'\n```\n<!-- workflow-state:end -->');
+  await store.reconcileRoles(main.workspace);
+  assert.equal(store.project(main.workspace).role,'orchestrator');
+  const worktree=await fs.realpath(await project('Orchestrated worker'));
+  const assignment={id:'orchestrated-worker',worktree,parent_root:main.workspace,parent_scope_id:'fixture-scope',parent_task_id:'T001',title:'Task'};
+  const executor=await store.ensureExecutor(assignment,store.project(main.workspace));
+  assert.equal(executor.experience,'chat','the executor does not inherit Work');
+  // A 0.4.0–0.4.1 executor saved in Work that has sent nothing moves to Chat when it is restored.
+  const raw=JSON.parse(await fs.readFile(store.file,'utf8'));
+  raw.projects.find(p=>p.workspace===worktree).sessions[0].experience='work';
+  await fs.writeFile(store.file,JSON.stringify(raw));
+  const restarted=new WorkspaceSessions(store.file);await restarted.load();
+  assert.equal((await restarted.ensureExecutor(assignment,restarted.project(main.workspace))).experience,'chat');
+});
+
 test('characterization: five missing executor folders remain recovery records after their parent disappears',async t=>{
   const {root,project,store}=await fixture(t);
   const parent=await store.select(await project('PL_Мастерская_файлов','deleted-parent-id'));

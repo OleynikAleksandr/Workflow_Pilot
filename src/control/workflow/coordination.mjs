@@ -26,13 +26,21 @@ const projectAutoPlan=new ProjectAutoPlan({identity:workspace=>store.snapshot().
     const project=record.project();
     if((project?.parentWorkspace??project?.workspace)!==workspace)continue;
     record.primaryAutomation?.update();
-    if(record.executor){record.executor.setEnabled(projectAutoPlan.enabled(workspace,project.parentScopeId));record.controller.signal();}
+    if(record.executor&&!orchestratedPlan(workspace)){record.executor.setEnabled(projectAutoPlan.enabled(workspace,project.parentScopeId));record.controller.signal();}
   }
   void saveSettings().catch(report);void execution.signal(workspace);publish();
 }});
+// Live executors of an orchestrated plan follow its run/pause button at once.
+const applyExecutionControl=workspace=>{
+  for(const record of liveSessions?.all()??[]) {
+    const project=record.project();
+    if(!record.executor||project?.parentWorkspace!==workspace)continue;
+    record.executor.setEnabled(executorEnabled(workspace,project.parentScopeId));record.controller.signal();
+  }
+};
 // The run/pause button of orchestrated plans; legacy plans keep ProjectAutoPlan.
 const executionControl=new ExecutionControl({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
-  onChange:workspace=>{void saveSettings().catch(report);void execution.signal(workspace);publish();}});
+  onChange:workspace=>{applyExecutionControl(workspace);void saveSettings().catch(report);void execution.signal(workspace);publish();}});
 const planMonitor = new PlanMonitor({ selected: () => store.selected(),
   inspect: (workspace, sessionId) => store.inspect(workspace, sessionId), onChange: (_info, change) => {
     publish();
@@ -83,8 +91,11 @@ authorizedExecutionKit.read=async workspace=>{
 const liveRecord=project=>project&&liveSessions.find(project);
 const orchestratedPlan=workspace=>store.project(workspace)?.planExecution?.execution_strategy==='orchestrated';
 // Executors of an orchestrated plan keep their continuations while a pause is pending.
-const executorEnabled=(workspace,scope)=>orchestratedPlan(workspace)
-  ?['running','pausing'].includes(executionControl.view(workspace,scope).state):projectAutoPlan.enabled(workspace,scope);
+// A started button marks the plan as orchestrated even before the cached project view refreshes.
+const executorEnabled=(workspace,scope)=>{
+  const {state}=executionControl.view(workspace,scope);
+  return orchestratedPlan(workspace)||state!=='not-started'?['running','pausing'].includes(state):projectAutoPlan.enabled(workspace,scope);
+};
 const storedOrchestrator=(workspace,scope)=>store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions
   .find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId??null;
 async function restoreExecutionPage(project,assignment=null) {
@@ -288,6 +299,9 @@ return Object.freeze({
     get message(){return reviewContinuation.flow.state.message;},
     update:()=>reviewContinuation.update(),dispose:()=>reviewContinuation.dispose()}),
   projectAutoPlan:Object.freeze({enabled:(...args)=>projectAutoPlan.enabled(...args),snapshot:()=>projectAutoPlan.snapshot()}),
+  // Whether an executor may send its first message and continuations: the plan button for an
+  // orchestrated plan, ProjectAutoPlan for the legacy parallel plans.
+  executorEnabled:(workspace,scope)=>executorEnabled(workspace,scope),
   executionControl:Object.freeze({view:(...args)=>executionControl.view(...args),enabled:(...args)=>executionControl.enabled(...args),
     snapshot:()=>executionControl.snapshot()}),setPlanExecution,
   execution:executionPort,executionKit:Object.freeze({git:(...args)=>executionKit.git(...args)}),

@@ -709,14 +709,18 @@ export class WorkspaceSessions {
         throw new WorkspaceError('ASSIGNMENT_OWNER','Неверная папка назначения.');
       let project=data.projects.find(p=>p.workspace===workspace);
       const existing=project?.sessions.find(s=>s.assignmentId===assignment.id);
+      // Executors of an orchestrated plan always work in Chat, whatever the orchestrator uses.
+      const orchestrated=parent.sessions.find(s=>s.sessionId===origin.sessionId)?.role==='orchestrator';
       if(existing) {
         if(!ownedExecutor(project,parent)||existing.parentProjectId!==parent.projectId||existing.taskId!==assignment.parent_task_id||existing.parentScopeId!==assignment.parent_scope_id
           ||existing.executionOriginSessionId!==origin.sessionId||existing.archivedAt||project.archivedAt)
           throw new WorkspaceError('ASSIGNMENT_OWNER','Сохранённая сессия не соответствует назначению.');
+        // 0.4.0–0.4.1 inherited Work from the orchestrator; an executor that sent nothing yet moves to Chat.
+        if(orchestrated&&existing.experience!=='chat'&&!existing.chatUrl&&!existing.attempt&&!existing.manualStart)existing.experience='chat';
         return currentView(project,existing.sessionId);
       }
       if(project)throw new WorkspaceError('ASSIGNMENT_OWNER','Worktree уже подключён без этого назначения.');
-      const info=await this.inspect(workspace),session=this.createSession(origin.experience,origin.executionSnapshot);
+      const info=await this.inspect(workspace),session=this.createSession(orchestrated?'chat':origin.experience,origin.executionSnapshot);
       Object.assign(session,{role:'executor',assignmentId:assignment.id,taskId:assignment.parent_task_id,parentWorkspace:origin.workspace,parentProjectId:parent.projectId,
         parentScopeId:assignment.parent_scope_id,executionOriginSessionId:origin.sessionId,
         title:sessionName(assignment.parent_task_id+' — '+assignment.title),titleSource:'manual'});

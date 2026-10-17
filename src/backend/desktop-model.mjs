@@ -866,7 +866,7 @@ function selectLiveSession(project=null) {
 }
 function decorateSessionRuntime(record) {
   configurePrimary(record);
-  record.controller.canSendContext=project=>!project.assignmentId||projectAutoPlan.enabled(project.parentWorkspace,project.parentScopeId);
+  record.controller.canSendContext=project=>!project.assignmentId||workflow.executorEnabled(project.parentWorkspace,project.parentScopeId);
   const contents=sessionView(record).webContents, handlers=[];
   const on=(event,fn)=>{contents.on(event,fn);handlers.push([event,fn]);};
   if(eventBaseline) {
