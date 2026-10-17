@@ -21,8 +21,12 @@ const run=(command,args,cwd)=>new Promise((resolve,reject)=>{
   child.once('error',reject);
   child.once('exit',(code,signal)=>code===0?resolve():reject(new Error(command+' failed ('+(code??signal)+')')));
 });
+// Shared resources are staged once by releaseAll; the platforms then package concurrently into their own
+// folders. --ignore-scripts skips each platform's prebuild, which would rewrite resources/ during the others.
 export async function buildPlatforms(root,execute=run) {
-  for(const row of RELEASE_MATRIX)await execute('npm',['run','build:'+row.id],root);
+  const results=await Promise.allSettled(RELEASE_MATRIX.map(row=>execute('npm',['run','build:'+row.id,'--ignore-scripts'],root)));
+  const failed=results.find(result=>result.status==='rejected');
+  if(failed)throw failed.reason;
 }
 const present=async file=>!!await fs.lstat(file).catch(e=>{if(e.code!=='ENOENT')throw e;});
 
@@ -91,6 +95,7 @@ export async function releaseAll({root=ROOT,deliveryDirectory}={}) {
     stage=await fs.mkdtemp(path.join(path.dirname(release),'.workflow-pilot-release-'));
     await stageWorkflowKit({root});
     await stageVendorNotices({root});
+    for(const stage of ['stage:page-observer','stage:chatgpt-plugin'])await run('npm',['run',stage],root);
     const kit=await verifyWorkflowKitRuntime(path.join(root,'resources/workflow-kit'));
     const sources=await sourceSnapshot(root);
     await buildPlatforms(root);

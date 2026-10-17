@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 247,
+  "plan_revision": 249,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -113,7 +113,8 @@
       "tests/backend-upgrade.test.mjs",
       "release-manifest.json",
       "packages/workflow-kit/src/lib/transaction-state.mjs",
-      "packages/workflow-kit/src/lib/common.mjs"
+      "packages/workflow-kit/src/lib/common.mjs",
+      "tests/release-linux.test.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -673,8 +674,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T009",
@@ -684,7 +685,8 @@
       "functional_paths": [
         "scripts/release-all.mjs",
         "package.json",
-        "tests/release-all.test.mjs"
+        "tests/release-all.test.mjs",
+        "tests/release-linux.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -700,7 +702,12 @@
         "Тесты на заглушках платформ"
       ],
       "expected_commit_message": "feat: Параллельная упаковка платформ выпуска",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "scripts/release-all.mjs",
+        "tests/release-all.test.mjs",
+        "tests/release-linux.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -939,7 +946,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 247
+Revision: 249
 
 ## Цель
 
@@ -1011,10 +1018,10 @@ Revision: 247
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/progress.mjs, src/contracts/workflow-view.mjs, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/parallel-execution-ui.test.mjs, tests/electron-smoke.mjs, tests/web-client.test.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/settings-panel.mjs, src/control/context/context-cache.mjs, src/control/context/service.mjs, src/control/facade.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/execution-projection.mjs, tests/parallel-execution.test.mjs, tests/session-roles.test.mjs, docs/planning/orchestrated-execution-contracts.md, docs/planning/orchestrated-execution-next.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
-- [TODO] T009: Параллельная упаковка платформ в release-all — Ожидает
-  - Git Commit: [PENDING] feat: Параллельная упаковка платформ выпуска
+- [DONE] T009: Параллельная упаковка платформ в release-all — Завершено
+  - Git Commit: [DONE] feat: Параллельная упаковка платформ выпуска
   - Reference: workflow-pilot-orchestrated-execution / T009 / implementation
-  - Файлы: scripts/release-all.mjs, package.json, tests/release-all.test.mjs
+  - Файлы: scripts/release-all.mjs, package.json, tests/release-all.test.mjs, tests/release-linux.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T010: Проверить общий результат оркестрации — Ожидает

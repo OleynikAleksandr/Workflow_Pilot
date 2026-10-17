@@ -78,13 +78,19 @@ test('release snapshots detect a changed external helper and rejects nested macO
   await createPackage(f.input, path.join(f.resources, 'app.asar'));
   await assert.rejects(verifyPackagedSources(f), /Nested app/);
 });
-test('paired build is sequential and propagates failure before the next platform', async () => {
-  const calls = [];
-  await buildPlatforms('/fixture', async (command, args, cwd) => { calls.push([command, args[1], cwd]); });
-  assert.deepEqual(calls, [['npm', 'build:mac', '/fixture'], ['npm', 'build:win', '/fixture'], ['npm','build:linux','/fixture']]);
-  const failed = [];
-  await assert.rejects(buildPlatforms('/fixture', async (_, args) => { failed.push(args[1]); throw new Error('fixture failure'); }), /fixture failure/);
-  assert.deepEqual(failed, ['build:mac']);
+test('platforms package concurrently without re-staging, and any failure stops the release', async () => {
+  const calls = [], release = [];
+  const building = buildPlatforms('/fixture', (command, args, cwd) => { calls.push([command, ...args, cwd]); return new Promise(resolve => release.push(resolve)); });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(calls, ['mac', 'win', 'linux'].map(id => ['npm', 'run', 'build:' + id, '--ignore-scripts', '/fixture']),
+    'all three platforms start before any finishes, each without its prebuild staging');
+  release.forEach(resolve => resolve());await building;
+  const finished = [];
+  await assert.rejects(buildPlatforms('/fixture', async (_, args) => {
+    if (args[1] === 'build:win') throw new Error('fixture failure');
+    await new Promise(resolve => setTimeout(resolve, 5));finished.push(args[1]);
+  }), /fixture failure/);
+  assert.deepEqual(finished.sort(), ['build:linux', 'build:mac'], 'the release waits for running platforms and then fails');
 });
 
 test('packager prunes development metadata while preserving every runtime field', async t => {
