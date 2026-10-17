@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 381,
+  "plan_revision": 383,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -31,7 +31,8 @@
       "packages/workflow-kit/package.json",
       "src/control/workflow/coordination.mjs",
       "src/backend/desktop-model.mjs",
-      "src/frontend/desktop/ui/sidebar.mjs"
+      "src/frontend/desktop/ui/sidebar.mjs",
+      "packages/workflow-kit/src/lib/installer.mjs"
     ],
     "documentation_paths": [
       "docs/planning/project-list-layout.md",
@@ -281,7 +282,9 @@
         "packages/workflow-kit/src/lib/command-help.mjs",
         "packages/workflow-kit/src/lib/actions.mjs",
         "packages/workflow-kit/src/lib/common.mjs",
-        "packages/workflow-kit/package.json"
+        "packages/workflow-kit/package.json",
+        "package-lock.json",
+        "packages/workflow-kit/src/lib/installer.mjs"
       ],
       "documentation_paths": [
         "docs/planning/no-autoplan.md",
@@ -298,13 +301,26 @@
         "Kit 1.8.1: ни один текст для агента не упоминает AutoPlan; запуск, пауза и продолжение плана — кнопка выполнения плана пользователя"
       ],
       "expected_commit_message": "fix: Kit без AutoPlan — запуск плана кнопкой",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T006",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "package-lock.json",
+        "docs/planning/no-autoplan.md",
+        "packages/workflow-kit/src/lib/installer.mjs"
+      ]
     },
     {
       "id": "T007",
@@ -358,7 +374,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 381
+Revision: 383
 
 ## Цель
 
@@ -394,10 +410,10 @@ Revision: 381
   - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.6
   - Reference: workflow-pilot-0-4-6 / T005 / implementation
   - Файлы: release-manifest.json, docs/planning/project-list-layout.md
-- [TODO] T006: Kit без AutoPlan: запуск плана кнопкой — Ожидает
-  - Git Commit: [PENDING] fix: Kit без AutoPlan — запуск плана кнопкой
+- [DONE] T006: Kit без AutoPlan: запуск плана кнопкой — Завершено
+  - Git Commit: [DONE] fix: Kit без AutoPlan — запуск плана кнопкой
   - Reference: workflow-pilot-0-4-6 / T006 / implementation
-  - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, docs/planning/no-autoplan.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/docs/modules/parallel-assignments.md
+  - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/src/lib/installer.mjs, docs/planning/no-autoplan.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/docs/modules/parallel-assignments.md
 - [TODO] T007: Убрать AutoPlan из кода приложения — Ожидает
   - Git Commit: [PENDING] refactor: Убрать AutoPlan из кода приложения
   - Reference: workflow-pilot-0-4-6 / T007 / implementation

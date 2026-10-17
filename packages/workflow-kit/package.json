@@ -1,6 +1,6 @@
 {
   "name": "@webpilot/workflow-kit",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
   "description": "Canonical Workflow Kit package for checkout-scoped plans, recovery, installation and consumer integrations",
   "type": "module",
