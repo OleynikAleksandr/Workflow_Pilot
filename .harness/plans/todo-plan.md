@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 423,
+  "plan_revision": 425,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -1115,13 +1115,14 @@
         "Установка готового комплекта без пересборки; при работающей службе — pending"
       ],
       "expected_commit_message": "release: Установить 0.4.9 в Applications",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T021",
         "role": "implementation"
-      }
+      },
+      "actual_files": []
     },
     {
       "id": "T022",
@@ -1170,7 +1171,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 423
+Revision: 425
 
 ## Цель
 
@@ -1278,8 +1279,8 @@ Revision: 423
   - Git Commit: [DONE] release: Собрать выпуск 0.4.9 трёх ОС
   - Reference: workflow-pilot-0-4-6 / T020 / implementation
   - Файлы: release-manifest.json
-- [TODO] T021: Установить 0.4.9 в Applications — Ожидает
-  - Git Commit: [PENDING] release: Установить 0.4.9 в Applications
+- [DONE] T021: Установить 0.4.9 в Applications — Завершено
+  - Git Commit: [DONE] release: Установить 0.4.9 в Applications
   - Reference: workflow-pilot-0-4-6 / T021 / implementation
   - Файлы: release-manifest.json
 - [TODO] T022: Опубликовать GitHub Release 0.4.9 — Ожидает
