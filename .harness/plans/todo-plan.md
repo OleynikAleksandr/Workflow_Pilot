@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 421,
+  "plan_revision": 423,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -1084,13 +1084,16 @@
         "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
       "expected_commit_message": "release: Собрать выпуск 0.4.9 трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T020",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T021",
@@ -1167,7 +1170,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 421
+Revision: 423
 
 ## Цель
 
@@ -1271,8 +1274,8 @@ Revision: 421
   - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-0-4-6 / DOCS-4 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, README.md
-- [TODO] T020: Собрать выпуск 0.4.9 трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.4.9 трёх ОС
+- [DONE] T020: Собрать выпуск 0.4.9 трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.4.9 трёх ОС
   - Reference: workflow-pilot-0-4-6 / T020 / implementation
   - Файлы: release-manifest.json
 - [TODO] T021: Установить 0.4.9 в Applications — Ожидает
