@@ -304,6 +304,8 @@ return Object.freeze({
   executorEnabled:(workspace,scope)=>executorEnabled(workspace,scope),
   executionControl:Object.freeze({view:(...args)=>executionControl.view(...args),enabled:(...args)=>executionControl.enabled(...args),
     snapshot:()=>executionControl.snapshot()}),setPlanExecution,
+  // The user confirmed archiving a project with an active plan: execution pauses now; Kit is untouched.
+  stopPlanExecution:workspace=>{const scope=store.project(workspace)?.scopeId;return scope?executionControl.stop(workspace,scope):null;},
   execution:executionPort,executionKit:Object.freeze({git:(...args)=>executionKit.git(...args)}),
   configurePrimary,observePage,setAutoPlan,snapshot,restore,
   sessionChanged(record) {

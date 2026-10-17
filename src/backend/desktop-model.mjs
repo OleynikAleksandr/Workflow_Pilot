@@ -1033,13 +1033,19 @@ function registerIpc() {
       void syncSelectedSessionTitle({ force: true, reason: 'manual-rename' });
     return changed;
   });
-  registerAction('pilot:archive-project', async input => {
-    const project = store.project(input);
+  registerAction('pilot:archive-project', async request => {
+    // A string, or {workspace, stopExecution:true} after the user confirmed stopping an active plan.
+    const input = typeof request === 'string' ? request : request?.workspace;
+    const stopExecution = typeof request === 'object' && request?.stopExecution === true;
+    const project = typeof input === 'string' ? store.project(input) : null;
     if (!project || project.archivedAt || storageError) throw new Error('Выберите активный проект.');
     const selected = store.selected()?.workspace === input;
     if (selected) { if(!project.external)controller.cancel(); nextNavigation(); }
     const generation = navigationId;
-    try { await store.setArchived(input, true); }
+    try {
+      if (stopExecution) workflow.stopPlanExecution(input);
+      await store.setArchived(input, true, { stopExecution });
+    }
     catch (error) { if (selected && navigationCurrent(generation)) await selectWorkspace(project.workspace, { resume: true }); throw error; }
     if (!navigationCurrent(generation)) return;
     startupError = null;

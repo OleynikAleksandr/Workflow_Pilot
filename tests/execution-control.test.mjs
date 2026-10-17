@@ -51,6 +51,17 @@ test('button: state survives a restart and never transfers to another plan or pr
   assert.throws(() => value.toggle('relative', SCOPE), { code: 'PLAN_EXECUTION_INVALID' });
 });
 
+test('button: archiving stops a started plan at once and leaves idle states alone', () => {
+  const { value } = control();
+  assert.equal(value.stop(W, SCOPE).state, 'not-started', 'a plan that never started stays not started');
+  value.toggle(W, SCOPE);
+  assert.deepEqual(value.stop(W, SCOPE), { state: 'paused', reason: 'manual', message: null }, 'no waiting for executors');
+  assert.equal(value.enabled(W, SCOPE), false);
+  assert.equal(value.toggle(W, SCOPE).state, 'running', 'the plan continues after the project returns');
+  value.complete(W, SCOPE);
+  assert.equal(value.stop(W, SCOPE).state, 'complete');
+});
+
 test('button: removing a project clears its state', () => {
   const { value } = control();
   value.toggle(W, SCOPE);

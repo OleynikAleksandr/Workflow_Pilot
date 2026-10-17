@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 312,
+  "plan_revision": 314,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1757,7 +1757,8 @@
         "src/frontend/desktop/ui/sidebar.mjs",
         "tests/workspace-session.test.mjs",
         "tests/execution-control.test.mjs",
-        "tests/sidebar.test.mjs"
+        "tests/sidebar.test.mjs",
+        "tests/session-roles.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/orchestrated-archive-recovery.md"
@@ -1773,14 +1774,26 @@
         "Боковая панель спрашивает подтверждение; отказ ничего не отправляет"
       ],
       "expected_commit_message": "fix: Архив и удаление проекта с активным планом после подтверждения",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T030",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/sidebar.test.mjs",
+        "docs/planning/orchestrated-archive-recovery.md"
+      ]
     },
     {
       "id": "T031",
@@ -1996,7 +2009,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 312
+Revision: 314
 
 ## Цель
 
@@ -2224,10 +2237,10 @@ Revision: 312
   - Файлы: release-manifest.json, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T027, DOCS-5
-- [TODO] T030: Архив и удаление проекта с активным планом — Ожидает
-  - Git Commit: [PENDING] fix: Архив и удаление проекта с активным планом после подтверждения
+- [DONE] T030: Архив и удаление проекта с активным планом — Завершено
+  - Git Commit: [DONE] fix: Архив и удаление проекта с активным планом после подтверждения
   - Reference: workflow-pilot-orchestrated-execution / T030 / implementation
-  - Файлы: src/control/sessions/workspace-session.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, tests/workspace-session.test.mjs, tests/execution-control.test.mjs, tests/sidebar.test.mjs, docs/planning/orchestrated-archive-recovery.md
+  - Файлы: src/control/sessions/workspace-session.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, tests/workspace-session.test.mjs, tests/execution-control.test.mjs, tests/sidebar.test.mjs, tests/session-roles.test.mjs, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T031: Исполнитель без отправки перезапускается — Ожидает

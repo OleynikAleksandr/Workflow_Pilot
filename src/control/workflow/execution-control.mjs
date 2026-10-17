@@ -65,6 +65,12 @@ export class ExecutionControl {
     if (entry?.state === 'pausing' && !busy) this.write(workspace, scopeId, 'paused', entry.reason, entry.message);
     return this.view(workspace, scopeId);
   }
+  // Archiving a project stops its plan at once: no waiting for executors, nothing new is sent.
+  stop(workspace, scopeId) {
+    const { state } = this.view(workspace, scopeId);
+    if (['running', 'pausing', 'paused'].includes(state)) this.write(workspace, scopeId, 'paused', 'manual');
+    return this.view(workspace, scopeId);
+  }
   complete(workspace, scopeId) { this.write(workspace, scopeId, 'complete'); return this.view(workspace, scopeId); }
   forget(workspaces) {
     let changed = false;

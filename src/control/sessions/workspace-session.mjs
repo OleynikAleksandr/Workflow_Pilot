@@ -887,12 +887,14 @@ export class WorkspaceSessions {
     });
   }
 
-  setArchived(workspace, archived) {
+  // A project with an active orchestrated plan is archived only with the user's explicit
+  // confirmation (stopExecution); the plan itself stays in Kit.
+  setArchived(workspace, archived, { stopExecution = false } = {}) {
     return this.mutate(data => {
       const project = data.projects.find(p => p.workspace === workspace);
       if (!project || typeof archived !== 'boolean') throw new WorkspaceError('WORKSPACE_REQUIRED', 'Выберите проект из списка.');
-      if (archived && !project.archivedAt && project.sessions.some(session => activeOrchestrator(project, session)))
-        throw new WorkspaceError('PLAN_ACTIVE', 'У проекта выполняется план оркестратора. Архивирование доступно после его закрытия.');
+      if (archived && !project.archivedAt && !stopExecution && project.sessions.some(session => activeOrchestrator(project, session)))
+        throw new WorkspaceError('PLAN_ACTIVE', 'У проекта выполняется план оркестратора. Подтвердите архивирование: выполнение плана будет остановлено.');
       project.archivedAt = archived ? (project.archivedAt ?? this.now()) : null;
       if (archived && (data.selectedWorkspace === workspace||data.projects.some(p=>p.workspace===data.selectedWorkspace&&ownedExecutor(p,project)))) data.selectedWorkspace = null;
       return currentView(project);

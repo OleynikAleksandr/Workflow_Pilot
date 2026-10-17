@@ -325,7 +325,14 @@ function render(state) {
       }));
       menuAction('copy-workspace-path', 'Скопировать полный путь', () => action('copyWorkspacePath', project.workspace));
       menuAction('copy-external-client-line', 'Скопировать строку для внешнего клиента', () => action('copyExternalClientLine', project.workspace));
-      menuAction('archive-project', 'Перенести в архив', () => action('archiveProject', project.workspace));
+      menuAction('archive-project', 'Перенести в архив', () => {
+        // An active orchestrated plan is stopped only after the user confirms it.
+        const active = project.sessions.some(session => session.role === 'orchestrator'
+          && !['planning', 'complete', undefined].includes(session.orchestratorState?.state));
+        if (!active) return action('archiveProject', project.workspace);
+        if (window.confirm(`В проекте «${project.name}» выполняется план оркестратора. Перенести проект в архив? Выполнение плана будет остановлено; план и работа исполнителей сохранятся, продолжить можно после возврата из архива.`))
+          action('archiveProject', project.workspace, { stopExecution: true });
+      });
       row.append(arrow, button, menuButton); item.append(row, menu);
       const sessions = document.createElement('ul'); sessions.className = 'sessions'; sessions.hidden = !project.expanded;
       sessions.dataset.workspace = project.workspace;

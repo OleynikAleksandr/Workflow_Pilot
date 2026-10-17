@@ -63,6 +63,12 @@ test('roles: the orchestrator of an active plan and its project cannot be archiv
   await assert.rejects(store.setSessionArchived(folder, orchestrator.sessionId, true), { code: 'ORCHESTRATOR_ACTIVE' });
   await assert.rejects(store.setArchived(folder, true), { code: 'PLAN_ACTIVE' });
   assert.equal((await store.setSessionArchived(folder, chat.sessionId, true)).selectedSessionId, orchestrator.sessionId);
+  // The user's confirmation archives the project; the plan file is not touched.
+  const plan = await fs.readFile(path.join(folder, '.harness/plans/todo-plan.md'), 'utf8');
+  assert.ok((await store.setArchived(folder, true, { stopExecution: true })).archivedAt);
+  assert.equal(await fs.readFile(path.join(folder, '.harness/plans/todo-plan.md'), 'utf8'), plan);
+  assert.equal((await store.setArchived(folder, false)).archivedAt, null, 'the project returns with its plan');
+  assert.equal(store.project(folder, orchestrator.sessionId).role, 'orchestrator');
 });
 
 test('roles: a closed plan keeps its orchestrator with the closing commit; the next plan gets a new one', async t => {

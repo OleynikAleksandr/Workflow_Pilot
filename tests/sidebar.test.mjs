@@ -372,6 +372,14 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.equal(f.document.getElementById('auto-plan-toggle').hidden,true);
   assert.equal(f.document.getElementById('auto-plan-message').hidden,true,'no AutoPlan text in the new scheme');
   assert.equal(f.document.querySelector('.project').dataset.workspace,'/demo','the tree keeps the parent project');
+  // Archiving a project with an active plan asks first; a refusal sends nothing.
+  f.window.webPilot.archiveProject=async(workspace,options)=>{f.calls.push(['archiveProject',workspace,options]);return {state:f.state};};
+  const archive=()=>{f.document.querySelector('.archive-project').click();};
+  const before=f.calls.length;f.window.confirm=()=>false;archive();await f.settle();
+  assert.equal(f.calls.length,before,'no archive without confirmation');
+  let question='';f.window.confirm=text=>{question=text;return true;};archive();await f.settle();
+  assert.match(question,/Выполнение плана будет остановлено/);
+  assert.equal(JSON.stringify(f.calls.at(-1)),JSON.stringify(['archiveProject','/demo',{stopExecution:true}]));
   // Back to the orchestrator: its row in the tree loads its dialog.
   f.document.querySelector('.session[data-session-id="s4"]').click();await f.settle();
   assert.deepEqual(f.calls.at(-1),['selectSession','/demo','s4']);
