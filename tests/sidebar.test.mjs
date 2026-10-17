@@ -366,4 +366,16 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   f.emit({...base,projects:[project],selected:{workspace:'/tree/b',parentWorkspace:'/demo',sessionId:'worker-b',assignmentId:'b',parentScopeId:'scope'},
     orchestratorPlan,planRun:{state:'running',reason:null,issue:null,complete:false}});
   assert.equal(f.document.querySelector('.plan-task[data-current=true] .plan-task-id').textContent,'T002');
+  assert.equal(f.document.getElementById('plan-card').hidden,false,'the to-do plan stays in the sidebar');
+  assert.equal(f.document.getElementById('assignment-card').hidden,true,'no separate executor card');
+  assert.equal(f.document.getElementById('execution-actions').hidden,true);
+  assert.equal(f.document.getElementById('auto-plan-toggle').hidden,true);
+  assert.equal(f.document.getElementById('auto-plan-message').hidden,true,'no AutoPlan text in the new scheme');
+  assert.equal(f.document.querySelector('.project').dataset.workspace,'/demo','the tree keeps the parent project');
+  // Back to the orchestrator: its row in the tree loads its dialog.
+  f.document.querySelector('.session[data-session-id="s4"]').click();await f.settle();
+  assert.deepEqual(f.calls.at(-1),['selectSession','/demo','s4']);
+  // And to another started task of the same plan.
+  f.document.querySelector('.plan-task-open').click();await f.settle();
+  assert.deepEqual(f.calls.at(-1),['selectSession','/tree/a','worker-a']);
 });

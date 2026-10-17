@@ -438,8 +438,10 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
         }
       },
       onEvent: event => { void onEvent(event).catch(() => {}); },
-      onSnapshot: () => { if (stale) { stale = false; logClient('stream-resynced'); showService(); installMenu(); if (!control) void takeControl().catch(() => {}); } },
-      onError: () => { if (!stale) { stale = true; logClient('stream-lost'); showService(); installMenu(); } },
+      // Any live stream ends the stale state: a resume by sequence carries no snapshot.
+      onOpen: () => { if (stale) { stale = false; logClient('stream-resynced'); showService(); installMenu(); if (!control) void takeControl().catch(() => {}); } },
+      onHandlerError: (kind, error) => logClient('stream-handler-failed', { kind, code: error?.code ?? error?.name ?? 'ERROR', message: String(error?.message ?? '').slice(0, 200) }),
+      onError: error => { if (!stale) { stale = true; logClient('stream-lost', { code: error?.code ?? error?.name ?? 'ERROR', message: String(error?.message ?? '').slice(0, 200) }); showService(); installMenu(); } },
     });
     logClient('connected', { bootGeneration: connection.bootGeneration, incompatible });
     await takeControl();

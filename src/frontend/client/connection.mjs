@@ -127,35 +127,42 @@ export class BackendConnection {
   }
   // Events arrive in sequence order. A gap or generation change becomes a
   // fresh snapshot; already seen events are dropped by sequence.
-  subscribe({onSnapshot=()=>{},onEvent=()=>{},onUi=()=>{},onError=()=>{},onCommand=onEvent,retryMs=250}={}) {
+  // onOpen: the stream is live again (snapshot or resume by sequence). A failing
+  // handler is reported through onHandlerError and never ends the stream.
+  subscribe({onSnapshot=()=>{},onEvent=()=>{},onUi=()=>{},onError=()=>{},onCommand=onEvent,onOpen=()=>{},onHandlerError=()=>{},retryMs=250}={}) {
     const controller=new AbortController();
     let generation=null,last=null,active=true;
     const stream={close:()=>{active=false;controller.abort();this.#streams.delete(stream);}};
     this.#streams.add(stream);
+    const handle=(kind,run)=>{try{run();}catch(error){try{onHandlerError(kind,error);}catch{ /* reporting never ends the stream */ }}};
     const accept=(type,data)=>{
       if(type==='snapshot') {
         const snapshot=validateSnapshot(JSON.parse(data));
-        generation=snapshot.bootGeneration;last=snapshot.sequence;onSnapshot(snapshot);return true;
+        generation=snapshot.bootGeneration;last=snapshot.sequence;handle('snapshot',()=>onSnapshot(snapshot));return true;
       }
       // Desktop UI state is a latest value outside the event sequence.
-      if(type==='ui'){const value=JSON.parse(data);if(typeof value?.kind==='string')onUi(value.kind,value.value);return true;}
+      if(type==='ui'){const value=JSON.parse(data);if(typeof value?.kind==='string')handle('ui:'+value.kind,()=>onUi(value.kind,value.value));return true;}
       // Window requests addressed to this client; not part of the sequence.
-      if(type==='command'){const value=JSON.parse(data);if(typeof value?.type==='string')onCommand({type:value.type,data:value.data??{}});return true;}
+      if(type==='command'){const value=JSON.parse(data);if(typeof value?.type==='string')handle('command',()=>onCommand({type:value.type,data:value.data??{}}));return true;}
       if(type!=='event')return true;
-      const event=validateEvent(JSON.parse(data));
+      // An event this client cannot read is not replayed forever: a fresh snapshot replaces it.
+      let event;
+      try{event=validateEvent(JSON.parse(data));}catch(error){handle('invalid-event',()=>{throw error;});return false;}
       if(event.bootGeneration!==generation||last===null)return false;
       if(event.sequence<=last)return true;
       if(event.sequence!==last+1)return false;
-      last=event.sequence;onEvent(event);return true;
+      last=event.sequence;handle('event',()=>onEvent(event));return true;
     };
     const loop=async()=>{
       while(active) {
+        let reader=null;
         try {
           const query='?client='+encodeURIComponent(this.#clientId)+(generation!==null&&last!==null?`&generation=${encodeURIComponent(generation)}&after=${last}`:'');
           const response=await this.#fetch(this.#base+'/v1/events'+query,{signal:controller.signal,
             headers:{...this.#auth(),accept:'text/event-stream'}});
           if(!response.ok)throw remoteError((await response.json().catch(()=>null))?.error);
-          const reader=response.body.getReader(),decoder=new TextDecoder();
+          reader=response.body.getReader();const decoder=new TextDecoder();
+          handle('open',()=>onOpen());
           let buffer='',resync=false;
           while(!resync) {
             const {value,done}=await reader.read();
@@ -170,7 +177,11 @@ export class BackendConnection {
             }
           }
           if(resync)await reader.cancel().catch(()=>{});
-        }catch(error){if(!active)return;onError(error);}
+        }catch(error){
+          // The old connection is closed, so the backend does not keep a dead stream.
+          await reader?.cancel().catch(()=>{});
+          if(!active)return;onError(error);
+        }
         if(active)await settle(retryMs);
       }
     };

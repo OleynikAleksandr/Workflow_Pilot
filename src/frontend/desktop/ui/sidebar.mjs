@@ -416,8 +416,10 @@ function render(state) {
   const collapseAll = state.projects.some(project => project.workspace===(selected?.parentWorkspace??selected?.workspace)&&project.expanded);
   $('toggle-projects').title = collapseAll ? 'Свернуть сессии проекта' : 'Раскрыть сессии проекта';
   $('toggle-projects').setAttribute('aria-label', $('toggle-projects').title);
-  $('plan-card').hidden = !selected || !!selected.assignmentId;
-  $('assignment-card').hidden = !selected?.assignmentId;
+  // An executor of an orchestrated plan keeps the plan card: the to-do plan marks the task shown on the right.
+  const planExecutor = !!selected?.assignmentId && !!state.orchestratorPlan;
+  $('plan-card').hidden = !selected || (!!selected.assignmentId && !planExecutor);
+  $('assignment-card').hidden = !selected?.assignmentId || planExecutor;
   const assigned = selected?.assignmentId && state.projects.flatMap(project => project.executors ?? [])
     .find(item => item.assignmentId === selected.assignmentId && item.workspace === selected.workspace);
   $('assignment-title').textContent = assigned?.title ?? selected?.taskId ?? '';
@@ -435,7 +437,7 @@ function render(state) {
       commandIssues.append(button);
     }
   }
-  const parallel=selected?.planExecution?.execution_strategy==='parallel'||!!selected?.assignmentId;
+  const parallel=selected?.planExecution?.execution_strategy==='parallel'||(!!selected?.assignmentId&&!planExecutor);
   $('execution-actions').hidden=!parallel;
   const stages=executionFinalStages(execution);
   const stageList=$('execution-stages');
@@ -486,7 +488,8 @@ function render(state) {
   $('plan-review-indicator').textContent=({success:'✓',attention:'!',waiting:'·'})[reviewIndicator]??'';
   const autoMessage=parallel?(auto.enabled?'Автовыполнение этого проекта включено.':'Автовыполнение этого проекта выключено.'):auto.message;
   const autoSent = !parallel&&auto.continuations > 0 ? `Автоматически отправлено «Продолжай» №${auto.continuations}.` : '';
-  $('auto-plan-message').hidden = !autoMessage && !autoSent;
+  // The new scheme has no AutoPlan: an orchestrated plan is driven by its button only.
+  $('auto-plan-message').hidden = !!run || (!autoMessage && !autoSent);
   $('auto-plan-message').textContent = [autoSent, autoMessage].filter(Boolean).join(' ');
   $('auto-plan-message').dataset.reason = auto.reason ?? '';
 

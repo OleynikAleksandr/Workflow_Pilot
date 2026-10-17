@@ -225,6 +225,8 @@ function orchestratorPlanView(saved) {
     :orchestratedPlanActive(project)?project.scopeId:null;
   if(!scope)return null;
   const orchestrator=sessions.find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope);
+  // Executors of a legacy parallel plan keep their own assignment card.
+  if(saved.parentWorkspace&&!orchestrator)return null;
   const current=project.scopeId===scope&&orchestratedPlanActive(project);
   const source=current?{objective:project.objective,tasks:(project.planExecution?.execution_strategy==='orchestrated'
     ?execution.view(workspace).planView?.tasks:null)??project.planView?.tasks??[]}

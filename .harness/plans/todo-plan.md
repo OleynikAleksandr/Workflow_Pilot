@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 297,
+  "plan_revision": 299,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1475,7 +1475,8 @@
         "src/frontend/desktop/ui/sidebar.mjs",
         "tests/backend-connection.test.mjs",
         "tests/sidebar.test.mjs",
-        "tests/desktop-client.test.mjs"
+        "tests/desktop-client.test.mjs",
+        "src/backend/desktop-model.mjs"
       ],
       "documentation_paths": [
         "docs/planning/orchestrated-executor-fixes.md"
@@ -1491,14 +1492,22 @@
         "Клик по сессии оркестратора после выбора исполнителя загружает диалог оркестратора"
       ],
       "expected_commit_message": "fix: Выбор сессий и восстановление окна после разрыва потока",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T024",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/frontend/client/connection.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/backend/desktop-model.mjs",
+        "tests/backend-connection.test.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "id": "T029",
@@ -1713,7 +1722,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 297
+Revision: 299
 
 ## Цель
 
@@ -1899,10 +1908,10 @@ Revision: 297
   - Файлы: src/backend/desktop-model.mjs, src/backend/bootstrap.mjs, src/control/workflow/coordination.mjs, src/control/facade.mjs, src/control/sessions/workspace-session.mjs, tests/session-roles.test.mjs, tests/orchestrated-execution.test.mjs, tests/workspace-session.test.mjs, tests/execution-control.test.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T024: Выбор сессий и восстановление окна после разрыва потока — Ожидает
-  - Git Commit: [PENDING] fix: Выбор сессий и восстановление окна после разрыва потока
+- [DONE] T024: Выбор сессий и восстановление окна после разрыва потока — Завершено
+  - Git Commit: [DONE] fix: Выбор сессий и восстановление окна после разрыва потока
   - Reference: workflow-pilot-orchestrated-execution / T024 / implementation
-  - Файлы: src/frontend/client/connection.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/backend-connection.test.mjs, tests/sidebar.test.mjs, tests/desktop-client.test.mjs, docs/planning/orchestrated-executor-fixes.md
+  - Файлы: src/frontend/client/connection.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/backend-connection.test.mjs, tests/sidebar.test.mjs, tests/desktop-client.test.mjs, src/backend/desktop-model.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T023
 - [TODO] T029: Остановка службы не ждёт неотправленную подготовку контекста — Ожидает
