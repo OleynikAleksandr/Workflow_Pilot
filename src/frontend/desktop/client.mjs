@@ -58,6 +58,9 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   let acquiring = null, retryTimer = null, retryDelay = 1000, leaseHolder = null;
   const windowClientId = 'client-' + globalThis.crypto.randomUUID();
   const otherHolder = () => !!leaseHolder && leaseHolder !== windowClientId;
+  // Fixture mode never touches the system clipboard of the machine running the tests.
+  let fixtureText = '', lastContextMenu = null;
+  const fixtureClipboard = { writeText: async text => { fixtureText = String(text); } };
   const viewers = new Map();
   // Without a backend the sidebar still renders a complete, empty state with the reason.
   const unavailableState = error => ({ projects: [], executorRecovery: [], archives: [], settings: null, doctor: null,
@@ -287,16 +290,54 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     return true;
   });
   // Clipboard by explicit user action only: the client device's own clipboard.
-  ipcMain.handle('browser:copy', async event => {
+  // Electron 44 clipboard calls are asynchronous; reading happens in the
+  // renderer's paste event, so the main process only writes.
+  const clipboardOf = () => fixture ? fixtureClipboard : clipboard;
+  const viewerFor = event => {
     const entry = viewers.get(event.sender.id);
-    if (!entry) return false;
-    clipboard.writeText(await entry.view.selection()); return true;
-  });
-  ipcMain.handle('browser:paste', async event => {
-    const entry = viewers.get(event.sender.id), text = clipboard.readText();
-    if (!entry || !text) return false;
+    if (!entry) throw Object.assign(new Error('Страница ещё не подключена.'), { code: 'BROWSER_VIEWER_MISSING' });
+    return entry;
+  };
+  // Failures reach the user as a short notice and the local diagnostics, never silently.
+  const pageAction = (action, run) => async (event, ...args) => {
+    try { return await run(viewerFor(event), event, ...args); }
+    catch (error) { logClient('browser-action-failed', { action, code: error.code ?? 'ERROR' }); throw error; }
+  };
+  const copySelection = async entry => {
+    const text = await entry.view.selection();
+    if (text) await clipboardOf().writeText(text);
+    return text;
+  };
+  const pressKey = async (entry, key, code, modifiers = []) => {
+    await entry.view.input('key', { action: 'down', key, code, modifiers });
+    await entry.view.input('key', { action: 'up', key, code, modifiers });
+  };
+  // Cut is copy on the client plus deleting the page selection; nothing happens without a selection.
+  const cutSelection = async entry => { if (await copySelection(entry)) await pressKey(entry, 'Backspace', 'Backspace'); };
+  ipcMain.handle('browser:copy', pageAction('copy', async entry => !!await copySelection(entry)));
+  ipcMain.handle('browser:cut', pageAction('cut', async entry => { await cutSelection(entry); return true; }));
+  ipcMain.handle('browser:paste', pageAction('paste', async (entry, _event, text) => {
+    if (typeof text !== 'string' || !text) return false;
     await entry.view.paste(text.slice(0, 60 * 1024)); return true;
-  });
+  }));
+  ipcMain.handle('browser:context-menu', pageAction('context-menu', async (entry, event) => {
+    const selected = !!await entry.view.selection().catch(() => '');
+    const run = (action, task) => () => void task().catch(error => {
+      logClient('browser-action-failed', { action, code: error.code ?? 'ERROR' });
+      if (!event.sender.isDestroyed()) event.sender.send('browser:status', { message: 'Не удалось выполнить действие: ' + error.message });
+    });
+    const template = [
+      { label: 'Вырезать', enabled: selected, click: run('cut', () => cutSelection(entry)) },
+      { label: 'Копировать', enabled: selected, click: run('copy', () => copySelection(entry)) },
+      // The native paste command hands the clipboard to the renderer's paste event.
+      { label: 'Вставить', click: () => { if (!event.sender.isDestroyed()) event.sender.paste(); } },
+      { type: 'separator' },
+      { label: 'Выделить всё', click: run('select-all', () => pressKey(entry, 'a', 'KeyA', [process.platform === 'darwin' ? 'meta' : 'control'])) },
+    ];
+    lastContextMenu = template;
+    if (!fixture) Menu.buildFromTemplate(template).popup({ window: BrowserWindow.fromWebContents(event.sender) ?? window });
+    return true;
+  }));
 
   // Status and stop of the background service, also where no tray exists.
   function showService() {
@@ -445,6 +486,27 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
               frame: await pageView.webContents.executeJavaScript("document.getElementById('frame').src.startsWith('blob:')"),
               viewers: viewers.size, state: !!uiState, control, stale, title: window?.getTitle() ?? '',
               error: uiState?.startupError?.code ?? null, incompatible };
+            // Page coordinates: a click that focuses a page element, not a test of the renderer.
+            if (command.op === 'page-click') {
+              const entry = viewers.get(pageView.webContents.id);
+              for (const action of ['down', 'up']) await entry.view.input('pointer', { action, x: command.x, y: command.y, button: 'left', clickCount: 1 });
+              value = true;
+            }
+            // The renderer's own paste and context menu handlers with test data.
+            if (command.op === 'paste') value = await pageView.webContents.executeJavaScript(`(() => {
+              const data = new DataTransfer(); data.setData('text/plain', ${JSON.stringify(command.text)});
+              return document.getElementById('keys').dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); })()`);
+            if (command.op === 'context-menu') {
+              lastContextMenu = null;
+              await pageView.webContents.executeJavaScript("document.getElementById('frame').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))");
+              for (let i = 0; i < 100 && !lastContextMenu; i++) await settle(20);
+              value = (lastContextMenu ?? []).filter(item => item.label).map(item => ({ label: item.label, enabled: item.enabled !== false }));
+            }
+            if (command.op === 'menu-click') {
+              lastContextMenu.find(item => item.label === command.label).click();
+              value = true;
+            }
+            if (command.op === 'clipboard') value = fixtureText;
             if (command.op === 'rename') value = await sidebar.webContents.executeJavaScript(
               `window.webPilot.renameProject(${JSON.stringify(command.workspace)}, ${JSON.stringify(command.name)})`);
             process.stdout.write(JSON.stringify({ op: command.op, value }) + '\n');

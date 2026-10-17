@@ -63,6 +63,25 @@ test('separate Desktop client starts the backend, renders it, and its crash leav
   for(let i=0;i<200;i++){probe=(await first.call({op:'probe'})).value;if(probe.state&&probe.frame&&probe.sidebar.includes(path.basename(workspace)))break;await settle(100);}
   assert.equal(probe.state,true);assert.match(probe.sidebar,/alpha/i,'the sidebar renders backend state');
   assert.equal(probe.frame,true,'the page view shows a backend frame');
+  // Paste and the context menu go through the client's real renderer and main process;
+  // the fixture clipboard keeps the system clipboard of the test machine untouched.
+  for(let i=0;i<100&&!probe.control;i++){await settle(100);probe=(await first.call({op:'probe'})).value;}
+  assert.equal(probe.control,true,'the client holds the writer lease');
+  const draft=await request('/v1/fixture/rect',{method:'POST',body:{selector:'#draft'}});
+  await first.call({op:'page-click',x:draft.x,y:draft.y});
+  const pageState=async()=>(await request('/v1/browser/fixture-state')).page;
+  const until=async(check,label)=>{for(let i=0;i<100;i++){const value=await check();if(value)return value;await settle(50);}throw new Error('timeout: '+label);};
+  assert.equal((await first.call({op:'paste',text:'Вставка из клиента'})).value,false,'the renderer takes over the paste event');
+  await until(async()=>(await pageState()).draft==='Вставка из клиента','paste reaches the page');
+  const menu=(await first.call({op:'context-menu'})).value;
+  assert.deepEqual(menu.map(item=>item.label),['Вырезать','Копировать','Вставить','Выделить всё']);
+  assert.deepEqual(menu.filter(item=>!item.enabled).map(item=>item.label),['Вырезать','Копировать'],'nothing is selected yet');
+  await first.call({op:'menu-click',label:'Выделить всё'});
+  const menuSelected=await until(async()=>{const items=(await first.call({op:'context-menu'})).value;return items[0].enabled&&items;},'select all');
+  assert.equal(menuSelected.every(item=>item.enabled),true);
+  await first.call({op:'menu-click',label:'Вырезать'});
+  await until(async()=>(await pageState()).draft==='','cut removes the selection');
+  assert.equal((await first.call({op:'clipboard'})).value,'Вставка из клиента','cut copies to the client clipboard');
   const renamed=(await first.call({op:'rename',workspace:selected.workspace,name:'Бета'})).value;
   assert.equal(renamed.ok,true,'a sidebar action goes through the API');
   for(let i=0;i<100;i++){probe=(await first.call({op:'probe'})).value;if(probe.sidebar.includes('Бета'))break;await settle(50);}

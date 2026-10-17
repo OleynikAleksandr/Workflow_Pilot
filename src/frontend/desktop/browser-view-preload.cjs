@@ -4,7 +4,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('webPilotBrowser', Object.freeze({
   input: (type, data, bounds) => ipcRenderer.invoke('browser:input', { type, data, bounds }),
   copy: () => ipcRenderer.invoke('browser:copy'),
-  paste: () => ipcRenderer.invoke('browser:paste'),
+  cut: () => ipcRenderer.invoke('browser:cut'),
+  paste: text => ipcRenderer.invoke('browser:paste', String(text)),
+  contextMenu: () => ipcRenderer.invoke('browser:context-menu'),
   onFrame: callback => {
     if (typeof callback !== 'function') throw new TypeError('Expected a callback');
     const listener = (_event, frame) => callback(frame);

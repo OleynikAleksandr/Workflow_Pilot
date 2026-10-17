@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 278,
+  "plan_revision": 281,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -158,12 +158,12 @@
     "documents": [
       {
         "path": "docs/planning/orchestrated-execution-next.md",
-        "required": true,
+        "required": false,
         "revision": "f6e62cc0877bc66e4287a4a0d55b974510b8b77f"
       },
       {
         "path": "docs/planning/orchestrated-execution-contracts.md",
-        "required": true,
+        "required": false,
         "revision": "f6e62cc0877bc66e4287a4a0d55b974510b8b77f"
       },
       {
@@ -1150,14 +1150,21 @@
         "Тест desktop-client проверяет вставку текста через настоящий renderer клиента и состав меню без записи в системный буфер"
       ],
       "expected_commit_message": "fix: Вставка и контекстное меню в отдельном клиенте",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T017",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/browser-view.mjs",
+        "src/frontend/desktop/browser-view-preload.cjs",
+        "tests/desktop-client.test.mjs",
+        "docs/planning/client-clipboard-drop.md"
+      ]
     },
     {
       "id": "T018",
@@ -1382,7 +1389,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 278
+Revision: 281
 
 ## Цель
 
@@ -1520,8 +1527,8 @@ Revision: 278
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T013, DOCS, DOCS-2, DOCS-3
-- [TODO] T017: Исправить вставку и добавить контекстное меню — Ожидает
-  - Git Commit: [PENDING] fix: Вставка и контекстное меню в отдельном клиенте
+- [DONE] T017: Исправить вставку и добавить контекстное меню — Завершено
+  - Git Commit: [DONE] fix: Вставка и контекстное меню в отдельном клиенте
   - Reference: workflow-pilot-orchestrated-execution / T017 / implementation
   - Файлы: src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.mjs, src/frontend/desktop/browser-view-preload.cjs, tests/desktop-client.test.mjs, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
