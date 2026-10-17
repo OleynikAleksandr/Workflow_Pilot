@@ -25,6 +25,8 @@ export const BACKEND_OPERATIONS = Object.freeze({
   'ui.state': 'read', 'ui.invoke': 'mutate',
   // Explicit stop of the background service (draining, never a kill).
   'service.status': 'read', 'service.stop': 'mutate', 'service.cancel-stop': 'mutate',
+  // Showing the backend's native window on this computer: presentation, not work.
+  'window.open': 'window',
 });
 
 export const PLUGIN_ACTION_CLASS = Object.freeze({
@@ -88,7 +90,7 @@ export function validateCommand(input) {
     && (input.revision === undefined || number(input.revision))
     && (input.leaseGeneration === undefined || number(input.leaseGeneration)), 'BACKEND_COMMAND_INVALID');
   const operationClass = BACKEND_OPERATIONS[input.operation];
-  requireWire(operationClass === 'read' || input.operation === 'control.acquire' || number(input.leaseGeneration),
+  requireWire(operationClass === 'read' || operationClass === 'window' || input.operation === 'control.acquire' || number(input.leaseGeneration),
     'BACKEND_LEASE_REQUIRED');
   return wireCopy(input);
 }

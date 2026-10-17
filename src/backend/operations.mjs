@@ -122,6 +122,9 @@ const actionResult=value=>typeof value==='boolean'||typeof value==='number'&&Num
 function desktopCatalog(services,base) {
   const local=(channel,input)=>services.desktop.invoke('local',channel,input).then(unwrap);
   return Object.freeze({...base,
+    'window.open':args=>{exact(args,[]);
+      if(!services.window)throw protocolError('NATIVE_WINDOW_UNAVAILABLE','Встроенное окно недоступно.');
+      return services.window.open();},
     'projects.open':async args=>{exact(args,['workspace']);if(!absolute(args.workspace))throw invalid();
       await local('pilot:select-workspace',args.workspace);return {selected:services.control.projects.selected()?{workspace:services.control.projects.selected().workspace,sessionId:services.control.projects.selected().sessionId}:null};},
     'projects.rename':async args=>{exact(args,['workspace','name']);if(!absolute(args.workspace)||!name(args.name))throw invalid();
@@ -258,6 +261,13 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
     const request=validateCommand(command),operationClass=BACKEND_OPERATIONS[request.operation];
     if(request.bootGeneration!==bootGeneration)throw protocolError('BACKEND_BOOT_STALE','Backend перезапущен. Обновите состояние.');
     if(operationClass==='read') {
+      if(!Object.hasOwn(catalog,request.operation))throw protocolError('BACKEND_OPERATION_NOT_AVAILABLE');
+      try{return {requestId:request.requestId,status:'completed',value:wireCopy(await catalog[request.operation](request.args)??null)};}
+      catch(error){return {requestId:request.requestId,status:'failed',error:publicError(error)};}
+    }
+    // A window opens without the lease and without the journal; never from another device.
+    if(operationClass==='window') {
+      if(remoteClient)throw protocolError('REMOTE_LOCAL_ONLY','Окно Workflow Pilot открывается только на компьютере.');
       if(!Object.hasOwn(catalog,request.operation))throw protocolError('BACKEND_OPERATION_NOT_AVAILABLE');
       try{return {requestId:request.requestId,status:'completed',value:wireCopy(await catalog[request.operation](request.args)??null)};}
       catch(error){return {requestId:request.requestId,status:'failed',error:publicError(error)};}

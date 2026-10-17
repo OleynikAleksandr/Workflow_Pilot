@@ -31,7 +31,9 @@ function readDescriptor(file) {
 // window). It uses the same API, lease and channels, but shows the backend's
 // real page view through `embedded.pages` instead of frames; closing it closes
 // only the window. { port, token, pages, logDir, hidden, onClosed, openHttpClient }
-export function startDesktopClient(electron, { backendRoot = null, clientRoot = null, fixture = false, embedded = null } = {}) {
+// launcher: start the backend if needed, ask it for its native window and exit;
+// a backend without one (another release, another platform) gets this client window.
+export function startDesktopClient(electron, { backendRoot = null, clientRoot = null, fixture = false, embedded = null, launcher = false } = {}) {
   const { app, BaseWindow, BrowserWindow, WebContentsView, Menu, ipcMain, dialog, nativeTheme, clipboard } = electron;
   if (embedded) fixture = !!embedded.hidden;
   // A file path, not URL.pathname: the packaged bundle path contains spaces.
@@ -514,8 +516,10 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     await takeControl();
   }
 
-  if (!embedded && !fixture && !app.requestSingleInstanceLock()) { app.quit(); return; }
   const focusWindow = () => { if (!window || window.isDestroyed()) return; if (window.isMinimized()) window.restore(); if (!fixture) { window.show(); window.focus(); } };
+  let closed = false;
+  function startWindow() {
+  if (!embedded && !fixture && !app.requestSingleInstanceLock()) { app.quit(); return; }
   // The backend process owns its app events; the embedded window only answers focus and close.
   if (!embedded) {
     app.on('second-instance', focusWindow);
@@ -525,7 +529,6 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     app.on('window-all-closed', () => app.quit());
     app.on('before-quit', () => { stream?.close(); for (const contents of [...viewers.keys()]) viewers.get(contents)?.view.detach().catch(() => {}); });
   }
-  let closed = false;
   // Embedded close: the page returns to its hidden host, the lease is released
   // and the window's channels are removed; the backend keeps working.
   function closeEmbedded() {
@@ -547,6 +550,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     logClient('closed');
     try { embedded.onClosed?.(); } catch { /* the backend keeps running */ }
   }
+  function openWindow() {
   app.whenReady().then(async () => {
     installMenu();
     window = new BaseWindow({ title: fixture ? 'Workflow Pilot — CLIENT FIXTURE' : 'Workflow Pilot', show: !fixture, focusable: !fixture,
@@ -637,6 +641,24 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     if (!fixture) dialog.showErrorBox('Workflow Pilot', error.message);
     app.exit(1);
   });
+  }
+  openWindow();
+  }
+  if (launcher) {
+    app.whenReady().then(async () => {
+      try {
+        const own = await backendConnection({ start: true });
+        if (incompatible) throw Object.assign(new Error('Работает фоновая служба другой версии.'), { code: 'BACKEND_VERSION_INCOMPATIBLE' });
+        await own.run('window.open');
+        own.close(); logClient('launcher-opened-native');
+        if (fixture) process.stdout.write(JSON.stringify({ launcherOpened: true }) + '\n');
+        app.quit();
+      } catch (error) {
+        logClient('launcher-fallback', { code: error.code ?? 'ERROR' });
+        incompatible = null; startWindow();
+      }
+    });
+  } else startWindow();
   // Fixture probes for tests only: read what the client renders.
   return Object.freeze({ get sidebar() { return sidebar; }, get pageView() { return pageView; }, viewers, get state() { return uiState; },
     get closed() { return closed; }, focus: focusWindow, close: () => { if (window && !window.isDestroyed()) window.close(); },

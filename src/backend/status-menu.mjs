@@ -16,7 +16,9 @@ const label=service=>service.phase==='draining'?'Остановка: ждём б
 // The status icon lives with the backend, independently of any client window.
 // Without a system tray (some Linux desktops) it is absent; the client menu
 // offers the same status and stop.
-export function createStatusMenu({Tray,Menu,nativeImage,onOpen,onStop,onCancelStop,onApprove=()=>{}}) {
+// onOpenHttp: the HTTP client beside the native window (its test window); absent where
+// the ordinary open already is the HTTP client.
+export function createStatusMenu({Tray,Menu,nativeImage,onOpen,onStop,onCancelStop,onApprove=()=>{},onOpenHttp=null}) {
   let tray;
   try{tray=new Tray(templateIcon(nativeImage));}catch{return null;}
   tray.setToolTip('Workflow Pilot');
@@ -28,6 +30,7 @@ export function createStatusMenu({Tray,Menu,nativeImage,onOpen,onStop,onCancelSt
       ...pairings.slice(0,3).map(item=>({label:`Подключить «${item.name}» · код ${item.code}`,click:()=>onApprove(item.id)})),
       {type:'separator'},
       {label:'Открыть Workflow Pilot',click:onOpen},
+      ...(onOpenHttp?[{label:'Окно через HTTP (тест)',click:onOpenHttp}]:[]),
       service.phase==='draining'?{label:'Отменить остановку',click:onCancelStop}
         :{label:'Остановить фоновую службу…',enabled:service.phase==='running',click:onStop}];
     tray.setToolTip('Workflow Pilot — '+label(service).toLowerCase());

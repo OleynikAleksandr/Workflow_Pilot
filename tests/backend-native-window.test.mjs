@@ -7,6 +7,7 @@ import readline from 'node:readline';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {BackendConnection} from '../src/frontend/client/connection.mjs';
+import {createBackendOperations} from '../src/backend/operations.mjs';
 
 const settle=(ms=25)=>new Promise(resolve=>setTimeout(resolve,ms));
 
@@ -36,7 +37,7 @@ async function startFixtureBackend(t) {
     return new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(Error('backend did not stop')),10000);
       backend.once('exit',value=>{clearTimeout(timeout);resolve(value);});});
   };
-  return {ready,until,command,stop,errors:()=>errors};
+  return {root,electron,env,ready,until,command,stop,errors:()=>errors};
 }
 
 test('native window of the backend: state, control, the real page, an HTTP client beside it, and close without stopping work',
@@ -72,5 +73,34 @@ test('native window of the backend: state, control, the real page, an HTTP clien
   // The window opens again with the same page.
   await backend.command('native-open');
   await backend.until(async()=>{const value=await backend.command('native-probe');return value.native?.open&&value.attached&&value;},'reopened window shows the page');
+  assert.equal(await backend.stop(),0,backend.errors());
+});
+
+test('window.open: presentation without the lease or the journal, refused for a remote device',async()=>{
+  const operations=createBackendOperations({bootGeneration:'boot-1',journal:{},catalog:{'window.open':()=>({opened:true})}});
+  const command={requestId:'r1',operation:'window.open',args:{},bootGeneration:'boot-1'};
+  assert.deepEqual(await operations.submit(command),{requestId:'r1',status:'completed',value:{opened:true}});
+  await assert.rejects(operations.submit({...command,requestId:'r2'},{clientId:'device-1'}),{code:'REMOTE_LOCAL_ONLY'});
+  operations.dispose();
+});
+
+test('a launch of the app asks the running backend for its native window and exits',
+  {skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:120000},async t=>{
+  const backend=await startFixtureBackend(t);
+  const launcher=spawn(backend.electron,['.','--client-fixture','--client-launcher','--client-backend-root='+backend.root,
+    '--client-root='+path.join(backend.root,'launcher')],{cwd:fileURLToPath(new URL('../',import.meta.url)),env:backend.env,stdio:['ignore','pipe','pipe']});
+  t.after(()=>{if(launcher.exitCode===null)launcher.kill('SIGKILL');});
+  let output='';launcher.stdout.setEncoding('utf8');launcher.stdout.on('data',chunk=>{output+=chunk;});
+  const code=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('launcher did not exit: '+output)),45000);
+    launcher.once('exit',value=>{clearTimeout(timer);resolve(value);});});
+  assert.equal(code,0);assert.match(output,/"launcherOpened":true/,'the launcher opened the native window, not a client window');
+  assert.doesNotMatch(output,/clientReady/);
+  await backend.until(async()=>(await backend.command('native-probe')).native?.open,'native window opened by the launch');
+  // A second launch focuses the same window.
+  const again=spawn(backend.electron,['.','--client-fixture','--client-launcher','--client-backend-root='+backend.root,
+    '--client-root='+path.join(backend.root,'launcher-2')],{cwd:fileURLToPath(new URL('../',import.meta.url)),env:backend.env,stdio:['ignore','ignore','ignore']});
+  assert.equal(await new Promise(resolve=>again.once('exit',resolve)),0);
+  const probe=await backend.command('native-probe');
+  assert.equal(probe.native.open,true);
   assert.equal(await backend.stop(),0,backend.errors());
 });

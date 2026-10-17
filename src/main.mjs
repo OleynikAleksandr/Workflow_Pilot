@@ -15,6 +15,6 @@ if(launch.mode==='in-process') {
       nativeWindow:options=>startDesktopClient(electron,{embedded:options})});
   } else {
     // Ordinary launch: a client that connects to the one backend, starting it once if needed.
-    startDesktopClient(electron,{backendRoot:launch.backendRoot,clientRoot:launch.clientRoot,fixture:launch.fixture});
+    startDesktopClient(electron,{backendRoot:launch.backendRoot,clientRoot:launch.clientRoot,fixture:launch.fixture,launcher:launch.launcher});
   }
 }

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 434,
+  "plan_revision": 436,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -41,7 +41,8 @@
       "release-manifest.json",
       "src/backend/lifecycle.mjs",
       "src/main.mjs",
-      "tests/backend-browser-lifecycle.test.mjs"
+      "tests/backend-browser-lifecycle.test.mjs",
+      "src/contracts/backend.mjs"
     ],
     "documentation_paths": [
       "docs/planning/native-window.md",
@@ -172,8 +173,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T003",
@@ -189,7 +190,11 @@
         "src/backend/status-menu.mjs",
         "src/backend/native-window.mjs",
         "tests/launch-mode.test.mjs",
-        "tests/backend-native-window.test.mjs"
+        "tests/backend-native-window.test.mjs",
+        "src/backend/operations.mjs",
+        "src/contracts/backend.mjs",
+        "src/main.mjs",
+        "tests/backend-upgrade.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/native-window.md"
@@ -207,7 +212,19 @@
         "Работающая служба на повторный запуск, activate и пункт меню значка показывает своё окно, а не клиент",
         "Пункт «Окно через HTTP (тест)» в меню значка и меню окна запускает прежний клиент; на Linux обычный запуск открывает клиент как раньше"
       ],
-      "expected_commit_message": "feat: Запуск встроенного окна и окно через HTTP"
+      "expected_commit_message": "feat: Запуск встроенного окна и окно через HTTP",
+      "actual_files": [
+        "docs/planning/native-window.md",
+        "src/backend/main.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/status-menu.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/launch.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/main.mjs",
+        "tests/backend-native-window.test.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -417,7 +434,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 434
+Revision: 436
 
 ## Цель
 
@@ -437,10 +454,10 @@ Revision: 434
   - Git Commit: [DONE] feat: Встроенное окно фоновой службы
   - Reference: workflow-pilot-native-window / T002 / implementation
   - Файлы: src/backend/native-window.mjs, src/backend/main.mjs, src/backend/desktop-model.mjs, src/backend/remote-surface.mjs, src/backend/operations.mjs, src/frontend/desktop/chat-colors-window.mjs, tests/backend-native-window.test.mjs, src/execution/browser/backend-host.mjs, src/frontend/desktop/client.mjs, src/main.mjs, docs/planning/native-window.md
-- [TODO] T003: Запуск встроенного окна и окно через HTTP — Ожидает
-  - Git Commit: [PENDING] feat: Запуск встроенного окна и окно через HTTP
+- [DONE] T003: Запуск встроенного окна и окно через HTTP — Завершено
+  - Git Commit: [DONE] feat: Запуск встроенного окна и окно через HTTP
   - Reference: workflow-pilot-native-window / T003 / implementation
-  - Файлы: src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/backend/main.mjs, src/backend/status-menu.mjs, src/backend/native-window.mjs, tests/launch-mode.test.mjs, tests/backend-native-window.test.mjs, docs/planning/native-window.md
+  - Файлы: src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/backend/main.mjs, src/backend/status-menu.mjs, src/backend/native-window.mjs, tests/launch-mode.test.mjs, tests/backend-native-window.test.mjs, src/backend/operations.mjs, src/contracts/backend.mjs, src/main.mjs, tests/backend-upgrade.test.mjs, docs/planning/native-window.md
 - [TODO] T004: Проверить оба режима вместе — Ожидает
   - Git Commit: [PENDING] test: Проверить встроенное окно и HTTP-клиент
   - Reference: workflow-pilot-native-window / T004 / implementation

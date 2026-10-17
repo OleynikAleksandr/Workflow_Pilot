@@ -97,8 +97,12 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       const base=desktop.services;
       const service=Object.freeze({view:()=>stopper?.view()??{phase:'running',reasons:[],since:null,error:null},
         request:()=>stopper.request(),cancel:()=>stopper.cancel()});
+      // window.open from a launch of the app: the native window, where this backend has one.
+      const nativeService=Object.freeze({open:()=>{
+        if(!nativeControl?.available())throw Object.assign(new Error('Встроенное окно недоступно.'),{code:'NATIVE_WINDOW_UNAVAILABLE'});
+        nativeControl.open({reason:'launch'});return {opened:true};}});
       const services=Object.freeze({control:base.control,execution:base.execution,workflow:base.workflow,settings:base.settings,
-        setup:base.setup,sessions:base.sessions,desktop,service,
+        setup:base.setup,sessions:base.sessions,desktop,service,window:nativeService,
         pages:createBackendPages({sessions:base.sessions,setup:base.setup,store:base.control.projects,host}),
         onChange:listener=>desktop.onPublish(listener),restore:async()=>{},dispose:async()=>desktop.dispose()});
       port=await startBackendPort({identity,claim,services,host,fixtureRoot,onEvents:sink=>{events=sink;
@@ -135,12 +139,14 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       const nativeAvailable=()=>!!nativeWindow&&host.pageMode==='view';
       const openNative=({reason='open',hidden=!!fixtureRoot}={})=>{
         journal.record('native-window',{reason,open:!!native});
-        if(native&&!native.closed)return native.focus();
+        // A background process brings its window to the front explicitly.
+        const front=()=>{if(!hidden){try{app.focus({steal:true});}catch{ /* focus is best effort */ }}};
+        if(native&&!native.closed){native.focus();front();return native;}
         if(!hidden&&process.platform==='darwin'){try{app.setActivationPolicy('regular');}catch{ /* not ready yet */ }}
         const opened=nativeWindow({port:port.port,token:claim.token,pages:nativePages,logDir:path.join(identity.dataDir,'diagnostics'),hidden,
           openHttpClient:()=>openClient('native-menu',{http:true}),
           onClosed:()=>{if(native===opened)native=null;journal.record('native-window-closed',{});keepAccessory('native-closed');}});
-        native=opened;
+        native=opened;front();
         return opened;
       };
       nativeControl={available:nativeAvailable,open:openNative};
@@ -155,9 +161,9 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
         const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
         if(app.isPackaged&&process.platform==='darwin'&&!fixtureRoot) {
           const bundle=path.resolve(process.execPath,'../../..');
-          spawn('/usr/bin/open',['-n','-a',bundle,'--args','--desktop-client'],{detached:true,stdio:'ignore',env}).unref();
+          spawn('/usr/bin/open',['-n','-a',bundle,'--args','--http-client'],{detached:true,stdio:'ignore',env}).unref();
         } else {
-          const args=[...(app.isPackaged?[]:[app.getAppPath()]),'--desktop-client',...(fixtureRoot?['--client-backend-root='+fixtureRoot,
+          const args=[...(app.isPackaged?[]:[app.getAppPath()]),'--http-client',...(fixtureRoot?['--client-backend-root='+fixtureRoot,
             '--client-root='+path.join(fixtureRoot,'client'),'--client-fixture']:[])];
           spawn(process.execPath,args,{detached:true,stdio:'ignore',env}).unref();
         }
@@ -173,6 +179,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       }
       if(!fixtureRoot) {
         statusMenu=createStatusMenu({Tray:electron.Tray,Menu:electron.Menu,nativeImage:electron.nativeImage,onOpen:()=>openClient('status-menu'),
+          onOpenHttp:nativeAvailable()?()=>openClient('status-menu-http',{http:true}):null,
           onApprove:pairingId=>{try{devices.approve(pairingId);}catch{ /* an expired request disappears from the menu */ }},
           onCancelStop:()=>{journal.record('stop-cancel-menu');stopper.cancel();},
           // Each step of a stop from the menu bar is journaled; the confirmation
