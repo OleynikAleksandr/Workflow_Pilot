@@ -4,10 +4,10 @@
   "stack": "Electron 44.5.1 / Node 24.21.0 / JS ES modules / Workflow Kit donor 1.7.2 / Codex App Server",
   "checks": [
     {
-      "id": "unit-all",
-      "kind": "test",
       "required": false,
       "timeout_ms": 600000,
+      "id": "unit-all",
+      "kind": "test",
       "executable": "npm",
       "args": [
         "test"
@@ -15,10 +15,10 @@
       "evidence": "Полная перенесённая Node suite; адаптация путей/identity не ослабляет assertions."
     },
     {
-      "id": "electron-smoke",
-      "kind": "test",
       "required": false,
       "timeout_ms": 600000,
+      "id": "electron-smoke",
+      "kind": "test",
       "executable": "npm",
       "args": [
         "run",
@@ -27,10 +27,10 @@
       "evidence": "Изолированный Electron TEST FIXTURE без реальных служб/модельных запросов; не заменяет живую проверку."
     },
     {
-      "id": "kit-check",
-      "kind": "test",
       "required": false,
       "timeout_ms": 600000,
+      "id": "kit-check",
+      "kind": "test",
       "executable": "npm",
       "args": [
         "run",
@@ -41,10 +41,10 @@
       "evidence": "Контракт Kit, assignments/integration/recovery/review, installer и совместимость проектов."
     },
     {
-      "id": "executor-channel",
-      "kind": "test",
       "required": false,
       "timeout_ms": 180000,
+      "id": "executor-channel",
+      "kind": "test",
       "executable": "node",
       "args": [
         "--test",
@@ -53,10 +53,10 @@
       "evidence": "Настоящий Codex App Server без модельных ходов, каталог и контракты инструментов; временный workspace."
     },
     {
-      "id": "codex-tools-live",
-      "kind": "test",
       "required": false,
       "timeout_ms": 180000,
+      "id": "codex-tools-live",
+      "kind": "test",
       "executable": "npm",
       "args": [
         "run",
@@ -65,10 +65,10 @@
       "evidence": "Закреплённые версии/определения инструментов Codex сверены; без команд модели."
     },
     {
-      "id": "architecture",
-      "kind": "test",
       "required": false,
       "timeout_ms": 180000,
+      "id": "architecture",
+      "kind": "test",
       "executable": "npm",
       "args": [
         "run",
@@ -77,10 +77,10 @@
       "evidence": "Нужный npm script создаётся в T003 на готовом анализаторе зависимостей; проверяет фасады, import boundaries и циклы; окончательный режим в T011."
     },
     {
-      "id": "migration-compatibility",
-      "kind": "test",
       "required": false,
       "timeout_ms": 600000,
+      "id": "migration-compatibility",
+      "kind": "test",
       "executable": "node",
       "args": [
         "--test",
@@ -89,10 +89,10 @@
       "evidence": "Создаётся T007: проекты донора Kit 1.7.2, NONE/ACTIVE/DONE, upgrade/recovery/продолжение без сброса, чужая транзакция/assignment."
     },
     {
-      "id": "linux-platform",
-      "kind": "test",
       "required": false,
       "timeout_ms": 600000,
+      "id": "linux-platform",
+      "kind": "test",
       "executable": "node",
       "args": [
         "--test",
@@ -102,10 +102,10 @@
       "evidence": "Создаются T009: Linux process/service/file/startup adapters и ошибки. На Mac это fixture, не native Linux."
     },
     {
-      "id": "release-tooling",
-      "kind": "test",
       "required": false,
       "timeout_ms": 600000,
+      "id": "release-tooling",
+      "kind": "test",
       "executable": "node",
       "args": [
         "--test",
@@ -116,10 +116,10 @@
       "evidence": "T010: матрица трёх ОС на fixtures, состав/исходники/manifest/установка/отказ; production build не выполняется."
     },
     {
-      "id": "three-platform-release",
-      "kind": "package",
       "required": false,
       "timeout_ms": 600000,
+      "id": "three-platform-release",
+      "kind": "package",
       "executable": "npm",
       "args": [
         "run",
@@ -128,10 +128,10 @@
       "evidence": "Общая сборка текущей версии после DOCS: macOS arm64, Windows x64, Linux x64 из одного sourceCommit; архивы, комплект и manifest проверяются. Неполный комплект запрещён."
     },
     {
-      "id": "release-installed",
-      "kind": "installed",
       "required": false,
       "timeout_ms": 600000,
+      "id": "release-installed",
+      "kind": "installed",
       "executable": "node",
       "args": [
         "scripts/check-installed-release.mjs"
@@ -139,10 +139,10 @@
       "evidence": "После каждой общей сборки готовое macOS-приложение обновлено в корне проекта и /Applications/Workflow Pilot.app: текущая версия, sourceCommit, состав, подпись и runtime сверены; без пересборки и изменения донора."
     },
     {
-      "id": "github-release",
-      "kind": "package",
       "required": false,
       "timeout_ms": 180000,
+      "id": "github-release",
+      "kind": "package",
       "executable": "node",
       "args": [
         "scripts/check-github-release.mjs"
@@ -150,10 +150,10 @@
       "evidence": "Собственный GitHub repo, remote main, тег v<version> на sourceCommit текущего manifest, полный набор assets по size/digest; без пересборки."
     },
     {
-      "id": "chatgpt-plugin",
-      "kind": "test",
       "required": false,
       "timeout_ms": 180000,
+      "id": "chatgpt-plugin",
+      "kind": "test",
       "executable": "node",
       "args": [
         "--test",
