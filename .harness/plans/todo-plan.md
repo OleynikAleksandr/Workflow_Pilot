@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 397,
+  "plan_revision": 399,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -738,13 +738,14 @@
         "Тег v0.4.7 на sourceCommit, assets сверены, remote main = HEAD"
       ],
       "expected_commit_message": "release: Опубликовать GitHub Release 0.4.7",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T012",
         "role": "implementation"
-      }
+      },
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -762,10 +763,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 397
+Revision: 399
 
 ## Цель
 
@@ -829,8 +830,8 @@ Revision: 397
   - Git Commit: [DONE] release: Установить 0.4.7 в Applications
   - Reference: workflow-pilot-0-4-6 / T011 / implementation
   - Файлы: release-manifest.json
-- [TODO] T012: Опубликовать GitHub Release 0.4.7 — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.7
+- [DONE] T012: Опубликовать GitHub Release 0.4.7 — Завершено
+  - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.7
   - Reference: workflow-pilot-0-4-6 / T012 / implementation
   - Файлы: release-manifest.json
 
