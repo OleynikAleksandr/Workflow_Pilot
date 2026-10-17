@@ -364,7 +364,9 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.equal(f.document.querySelectorAll('.executor-group').length,0,'executors of an orchestrated plan are not grouped in the tree');
   assert.equal(f.document.getElementById('plan-title').textContent,'План оркестратора');
   const rows=[...f.document.querySelectorAll('.plan-task')];
-  assert.equal(rows.length,4);assert.equal(f.document.querySelectorAll('.plan-task-open').length,2,'only started or finished tasks open a session');
+  assert.equal(rows.length,4);assert.equal(f.document.querySelectorAll('.plan-task-open').length,1,'only a started task opens a session');
+  rows[0].click();await f.settle();
+  assert.ok(!f.calls.some(call=>call[0]==='selectSession'),'a done task keeps the orchestrator in the right pane');
   assert.deepEqual(rows.map(row=>row.querySelector('.plan-task-state').textContent),['✓','●','○','○']);
   rows[1].querySelector('.plan-task-open').click();await f.settle();
   assert.deepEqual(f.calls.at(-1),['selectSession','/tree/b','worker-b']);
@@ -405,7 +407,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   // Back to the orchestrator: its row in the tree loads its dialog.
   f.document.querySelector('.session[data-session-id="s4"]').click();await f.settle();
   assert.deepEqual(f.calls.at(-1),['selectSession','/demo','s4']);
-  // And to another started task of the same plan.
+  // And to the started task of the same plan; the done one stays a plain row.
   f.document.querySelector('.plan-task-open').click();await f.settle();
-  assert.deepEqual(f.calls.at(-1),['selectSession','/tree/a','worker-a']);
+  assert.deepEqual(f.calls.at(-1),['selectSession','/tree/b','worker-b']);
 });

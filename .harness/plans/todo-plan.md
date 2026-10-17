@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 414,
+  "plan_revision": 416,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -963,7 +963,8 @@
         "src/backend/desktop-model.mjs",
         "src/frontend/desktop/ui/sidebar.mjs",
         "tests/sidebar.test.mjs",
-        "tests/electron-smoke.mjs"
+        "tests/electron-smoke.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs"
       ],
       "documentation_paths": [
         "docs/modules/orchestrated-execution.md"
@@ -978,13 +979,20 @@
         "Начатая задача по-прежнему открывает своего исполнителя"
       ],
       "expected_commit_message": "feat: Выполненная задача to-do plan оставляет оркестратора",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T018",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs",
+        "docs/modules/orchestrated-execution.md"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -1002,10 +1010,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 414
+Revision: 416
 
 ## Цель
 
@@ -1097,10 +1105,10 @@ Revision: 414
   - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.8
   - Reference: workflow-pilot-0-4-6 / T017 / implementation
   - Файлы: release-manifest.json
-- [TODO] T018: Выполненная задача to-do plan оставляет оркестратора — Ожидает
-  - Git Commit: [PENDING] feat: Выполненная задача to-do plan оставляет оркестратора
+- [DONE] T018: Выполненная задача to-do plan оставляет оркестратора — Завершено
+  - Git Commit: [DONE] feat: Выполненная задача to-do plan оставляет оркестратора
   - Reference: workflow-pilot-0-4-6 / T018 / implementation
-  - Файлы: src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, docs/modules/orchestrated-execution.md
+  - Файлы: src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/modules/orchestrated-execution.md
 
 ## Context Pack For This Cycle
 

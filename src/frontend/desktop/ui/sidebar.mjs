@@ -543,8 +543,8 @@ function render(state) {
       status.textContent=task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
       body.append(id,title,mode,status);
       if (task.time) { const time = document.createElement('span'); time.dataset.executorTime = task.target?.sessionId ?? task.id; time.executorTime = task.time; body.append(time); }
-      // A started or finished task opens its executor's session; an unstarted one only shows its row.
-      if (orchestrated && task.target) {
+      // A started task opens its executor's session; an unstarted or done one only shows its row.
+      if (orchestrated && task.target && task.status !== 'done') {
         const open = document.createElement('button'); open.type = 'button'; open.className = 'plan-task-open';
         open.title = 'Открыть сессию исполнителя ' + task.id;
         if (task.target.sessionId === selected.sessionId) { item.dataset.current = 'true'; open.setAttribute('aria-current', 'page'); }

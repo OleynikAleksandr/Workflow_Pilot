@@ -206,6 +206,14 @@ module.exports.run=async function({sidebar,store,workspaceSetup,snapshot,selectW
     assert.equal(ui.rows,3);assert.match(ui.text,/Завершено · интеграция проверена/);assert.match(ui.text,/Работа/);assert.equal(ui.removed,true);
   }
   assert.equal(snapshot().execution.planView.completed,3);assert.equal(snapshot().planContinuation.enabled,false,'verified parallel completion turns project OFF');
+  // An executor whose worktree is gone opens its parent instead of an ENOENT error.
+  const away=c.worktree+'.away';await fs.rename(c.worktree,away);
+  try {
+    await ipc('selectSession',c.worktree,store.project(c.worktree).sessionId);
+    await wait(()=>store.selected()?.workspace===root&&snapshot().workspaceHealth?.workspace===root
+      &&snapshot().workspaceHealth.phase!=='checking','retired executor opens its parent');
+    assert.notEqual(snapshot().workspaceHealth.phase,'error');
+  } finally { await fs.rename(away,c.worktree); }
   // Delete through the same archive preload/IPC used by the user, including all worker trees.
   const oldProjectId=origin.projectId,oldIds=assignments.map(a=>a.id).concat(c.id);
   const otherBefore=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8')).projectPlanContinuation[otherRoot];

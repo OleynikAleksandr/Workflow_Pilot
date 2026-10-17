@@ -217,7 +217,8 @@ function orchestratorState(workspace,session) {
   const attention=project.orchestrationIssue||view.error||run.reason==='escalation'||run.reason==='unknown';
   return {state:attention?'attention':run.state,label:(attention?'Требует внимания':orchestratorLabels[run.state])+' · '+done+'/'+total,cleanup};
 }
-// The to-do plan of the selected orchestrator: rows open the session of their executor, delivery opens the orchestrator.
+// The to-do plan of the selected orchestrator: rows of started tasks open the session of their executor,
+// delivery opens the orchestrator; a done row opens nothing, so the orchestrator stays in the right pane.
 function orchestratorPlanView(saved) {
   const workspace=saved?.parentWorkspace??saved?.workspace,project=workspace&&store.project(workspace);
   if(!project||saved.external)return null;
@@ -239,7 +240,7 @@ function orchestratorPlanView(saved) {
     tasks:source.tasks.map(task=>{
       const own=executors.filter(e=>e.taskId===task.id).sort((a,b)=>(b.createdAt??0)-(a.createdAt??0))[0];
       const delivery=task.delivery??planned.get(task.id)?.delivery??/main/.test(task.executionLabel??'');
-      const target=task.status==='pending'?null:delivery?orchestrator&&{workspace,sessionId:orchestrator.sessionId}
+      const target=['pending','done'].includes(task.status)?null:delivery?orchestrator&&{workspace,sessionId:orchestrator.sessionId}
         :own&&{workspace:own.workspace,sessionId:own.sessionId};
       return {...task,label:own&&task.status!=='done'?own.label:task.label,time:own?.time??null,target:target??null};
     })};
@@ -649,7 +650,21 @@ async function reviewWorkspace(workspace, openReady = false, { generation = null
   }
   publish(); return false;
 }
-async function openConnectedSession(input, sessionId = null, { latest = false, resume = false } = {}) {
+// An executor whose worktree is already removed has nothing to open: the orchestrator
+// of its plan (or the parent's selected session) takes the right pane instead.
+async function retiredExecutorTarget(input) {
+  const executor = typeof input === 'string' ? store.project(input) : null;
+  if (!executor?.parentWorkspace || await fsp.stat(input).then(() => true, () => false)) return null;
+  const parent = store.snapshot().projects.find(p => p.workspace === executor.parentWorkspace && !p.parentWorkspace && !p.archivedAt);
+  if (!parent) return null;
+  const orchestrator = parent.sessions.find(s => s.role === 'orchestrator' && !s.archivedAt
+    && s.orchestratorScopeId === executor.parentScopeId);
+  return { workspace: parent.workspace, sessionId: orchestrator?.sessionId ?? parent.selectedSessionId };
+}
+async function openConnectedSession(input, sessionId = null, options = {}) {
+  const retired = await retiredExecutorTarget(input);
+  if (retired) return openConnectedSession(retired.workspace, retired.sessionId, options);
+  const { latest = false, resume = false } = options;
   const explicitSession = sessionId !== null;
   const generation = nextNavigation();
   const current = () => navigationCurrent(generation);
