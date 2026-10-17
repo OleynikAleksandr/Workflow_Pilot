@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 316,
+  "plan_revision": 318,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1862,14 +1862,21 @@
         "Версия 0.4.3 согласована в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.4.3",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T032",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-6",
@@ -2016,7 +2023,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 316
+Revision: 318
 
 ## Цель
 
@@ -2256,8 +2263,8 @@ Revision: 316
   - Файлы: src/control/workflow/coordination.mjs, src/control/sessions/workspace-session.mjs, tests/workspace-session.test.mjs, tests/orchestrated-execution.test.mjs, src/control/projects/service.mjs, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: T030
-- [TODO] T032: Подготовить версию 0.4.3 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.4.3
+- [DONE] T032: Подготовить версию 0.4.3 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.4.3
   - Reference: workflow-pilot-orchestrated-execution / T032 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
