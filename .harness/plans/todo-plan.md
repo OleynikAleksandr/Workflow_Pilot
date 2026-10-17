@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 378,
+  "plan_revision": 380,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -224,8 +224,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T005",
@@ -251,7 +251,8 @@
       "acceptance_criteria": [
         "Тег v0.4.6 на sourceCommit, assets сверены, remote main = HEAD"
       ],
-      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.6"
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.6",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -269,10 +270,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 378
+Revision: 380
 
 ## Цель
 
@@ -304,8 +305,8 @@ Revision: 378
   - Git Commit: [DONE] release: Установить 0.4.6 в Applications
   - Reference: workflow-pilot-0-4-6 / T004 / implementation
   - Файлы: release-manifest.json, docs/planning/project-list-layout.md
-- [TODO] T005: Опубликовать GitHub Release 0.4.6 — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.6
+- [DONE] T005: Опубликовать GitHub Release 0.4.6 — Завершено
+  - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.6
   - Reference: workflow-pilot-0-4-6 / T005 / implementation
   - Файлы: release-manifest.json, docs/planning/project-list-layout.md
 
