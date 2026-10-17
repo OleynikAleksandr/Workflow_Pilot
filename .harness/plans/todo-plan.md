@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 416,
+  "plan_revision": 417,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа",
   "acceptance_criteria": [
     "Выпуск 0.4.6: строка списка проектов показывает название по горизонтали, «В архив» — компактная кнопка справа"
@@ -993,6 +993,148 @@
         "tests/parallel-execution-smoke-fixture.cjs",
         "docs/modules/orchestrated-execution.md"
       ]
+    },
+    {
+      "id": "T019",
+      "title": "Подготовить версию 0.4.9",
+      "why": "Номер выпуска.",
+      "dependencies": [
+        "T018"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.4.9 в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.4.9",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T019",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "DOCS-4",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "DOCS-4",
+        "role": "implementation",
+        "iteration": 4
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T018",
+        "T019"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта"
+    },
+    {
+      "id": "T020",
+      "title": "Собрать выпуск 0.4.9 трёх ОС",
+      "why": "Комплект после DOCS.",
+      "dependencies": [
+        "T019",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.4.9 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T020",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "T021",
+      "title": "Установить 0.4.9 в Applications",
+      "why": "Обновить приложение.",
+      "dependencies": [
+        "T020",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки; при работающей службе — pending"
+      ],
+      "expected_commit_message": "release: Установить 0.4.9 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T021",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "T022",
+      "title": "Опубликовать GitHub Release 0.4.9",
+      "why": "Опубликовать комплект.",
+      "dependencies": [
+        "T021",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.4.9 на sourceCommit, assets сверены, remote main = HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.9",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-0-4-6",
+        "task_id": "T022",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -1010,10 +1152,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 416
+Revision: 417
 
 ## Цель
 
@@ -1109,6 +1251,26 @@ Revision: 416
   - Git Commit: [DONE] feat: Выполненная задача to-do plan оставляет оркестратора
   - Reference: workflow-pilot-0-4-6 / T018 / implementation
   - Файлы: src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/modules/orchestrated-execution.md
+- [TODO] T019: Подготовить версию 0.4.9 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.4.9
+  - Reference: workflow-pilot-0-4-6 / T019 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
+- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-0-4-6 / DOCS-4 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md
+- [TODO] T020: Собрать выпуск 0.4.9 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.4.9 трёх ОС
+  - Reference: workflow-pilot-0-4-6 / T020 / implementation
+  - Файлы: release-manifest.json
+- [TODO] T021: Установить 0.4.9 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.4.9 в Applications
+  - Reference: workflow-pilot-0-4-6 / T021 / implementation
+  - Файлы: release-manifest.json
+- [TODO] T022: Опубликовать GitHub Release 0.4.9 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.9
+  - Reference: workflow-pilot-0-4-6 / T022 / implementation
+  - Файлы: release-manifest.json
 
 ## Context Pack For This Cycle
 
