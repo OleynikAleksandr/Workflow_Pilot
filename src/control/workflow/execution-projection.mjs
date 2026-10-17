@@ -22,12 +22,15 @@ export function projectExecutionPlan(plan,assignments,integration) {
     completed:plan.tasks.filter(t=>t.commit_status==='DONE').length,total:plan.tasks.length,
     tasks:plan.tasks.map(task=>{
       const assignment=assignments.find(a=>a.parent_task_id===task.id);
-      const status=task.commit_status==='DONE'?'done':assignment?'current':'pending';
+      const delivery=task.verification_kind==='package'||task.verification_kind==='installed';
+      // Delivery of an orchestrated plan runs in main without an assignment.
+      const status=task.commit_status==='DONE'?'done':assignment||task.implementation_status==='IN_PROGRESS'?'current':'pending';
       const merging=assignment&&integration?.assignment_id===assignment.id&&integration.status!=='IDLE';
       const label=status==='done'?'Интеграция проверена':merging
         ?integrationProblem(integration)?.message??(['CONFLICT','CHECKS_FAILED'].includes(integration.status)?'Интеграция требует исправления':'Интегрируется')
         :assignment?.status==='UNKNOWN'?'Назначение требует сверки':assignment?.status==='READY_FOR_INTEGRATION'?'Готово к интеграции':assignment?'Назначено исполнителю':null;
-      return {id:task.id,title:task.title,status,label,executionLabel:plannedExecution(task,plan.execution_strategy)};
+      return {id:task.id,title:task.title,status,...(delivery?{delivery:true}:{}),label:label??(delivery&&status==='current'?'Выполняет оркестратор':null),
+        executionLabel:plannedExecution(task,plan.execution_strategy)};
     })};
 }
 
@@ -61,7 +64,8 @@ export function projectExecutors(projects,workspace,execution,recordFor) {
     .filter(s=>s.assignmentId&&!s.archivedAt).map(session=>{
       const target={...project,...session},record=recordFor(target);
       const assignment=execution.assignments.find(a=>a.id===session.assignmentId);
-      return {workspace:project.workspace,sessionId:session.sessionId,originSessionId:session.executionOriginSessionId,
+      return {workspace:project.workspace,sessionId:session.sessionId,originSessionId:session.executionOriginSessionId,parentScopeId:session.parentScopeId,
+        createdAt:session.createdAt,
         assignmentId:session.assignmentId,taskId:session.taskId,title:session.title,experience:session.experience,
         chatUrl:session.chatUrl,worktree:true,...executorStatus(assignment,record,execution.integration),
         sourceCommit:assignment?.source_commit??null,integrationCommit:assignment?.integration_commit??null,

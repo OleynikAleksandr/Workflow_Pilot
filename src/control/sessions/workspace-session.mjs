@@ -135,6 +135,7 @@ function projectPlan(plan, scopeTitle = '') {
       throw new WorkspaceError('WORKFLOW_PLAN_INVALID', 'План проекта содержит некорректную микрозадачу.');
     }
     return { id: task.id, title: task.title, executionLabel:plannedExecution(task,plan.execution_strategy),
+      ...(['package', 'installed'].includes(task.verification_kind) ? { delivery: true } : {}),
       status: task.commit_status === 'DONE' ? 'done' : task.implementation_status === 'IN_PROGRESS' ? 'current' : 'pending' };
   });
   const current = plan.tasks.find(t => t.id === plan.current_task_id)

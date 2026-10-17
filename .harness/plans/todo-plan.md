@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 244,
+  "plan_revision": 247,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -605,8 +605,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T008",
@@ -626,9 +626,19 @@
         "tests/electron-smoke.mjs",
         "tests/web-client.test.mjs",
         "src/frontend/desktop/ui/archive.mjs",
-        "src/frontend/desktop/ui/settings-panel.mjs"
+        "src/frontend/desktop/ui/settings-panel.mjs",
+        "src/control/context/context-cache.mjs",
+        "src/control/context/service.mjs",
+        "src/control/facade.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/session-roles.test.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/orchestrated-execution-contracts.md",
+        "docs/planning/orchestrated-execution-next.md"
+      ],
       "verification_ids": [
         "unit-all",
         "electron-smoke"
@@ -637,17 +647,30 @@
       "title": "Дерево планов и кнопка выполнения в интерфейсе",
       "why": "Пользователь видит планы и микрозадачи и управляет выполнением одной кнопкой.",
       "acceptance_criteria": [
-        "Под проектом — оркестраторы и чаты обсуждения; под оркестратором — микрозадачи с меткой →/∥, состоянием и таймером; группа «Исполнители» только у legacy parallel-планов",
-        "Клик по начатой задаче открывает сессию исполнителя, по не начатой — карточку задачи в правой части",
+        "Под проектом — оркестраторы и чаты обсуждения; микрозадачи в дереве не дублируются; группа «Исполнители» только у legacy parallel-планов",
+        "To-do plan выбранного оркестратора: маркер ✓/●/○, метка →/∥/main, состояние и таймер; клик по начатой или завершённой задаче открывает сессию исполнителя (delivery — оркестратора), не начатая не кликабельна; при выбранном исполнителе показан план его оркестратора с подсвеченной задачей (решение пользователя 17.10.2026: карточка задачи не нужна)",
         "Шапка плана показывает одну кнопку с подписью по состоянию; у черновика, несогласованного и выполненного плана кнопки нет; переключатель AutoPlan скрыт для планов оркестратора",
-        "Оркестратор выполненного плана помечен «Выполнено» и после archive; меню «Назначить оркестратором» при потерянном оркестраторе",
-        "Тот же интерфейс в веб-клиенте iPad; кнопка требует права управления; jsdom-тесты и изолированный smoke",
+        "Оркестратор выполненного плана помечен «Выполнено», его to-do plan читается из коммита закрытия; меню «Назначить оркестратором» при потерянном или несовпавшем оркестраторе",
         "Строка оркестратора показывает назначения, ожидающие очистки",
-        "Микрозадачи архивированного плана показываются под оркестратором из плана на сохранённом коммите закрытия",
-        "Клик по задаче с несколькими исполнителями открывает последнюю сессию"
+        "Тот же интерфейс в веб-клиенте iPad; кнопка требует права управления; jsdom-тесты и изолированный smoke"
       ],
       "expected_commit_message": "feat: Дерево планов и кнопка выполнения",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/orchestrated-execution-contracts.md",
+        "docs/planning/orchestrated-execution-next.md",
+        "src/backend/desktop-model.mjs",
+        "src/control/context/context-cache.mjs",
+        "src/control/context/service.mjs",
+        "src/control/facade.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -916,7 +939,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 244
+Revision: 247
 
 ## Цель
 
@@ -982,10 +1005,10 @@ Revision: 244
   - Файлы: src/control/workflow/plan-monitor.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, tests/plan-monitor.test.mjs, tests/parallel-execution.test.mjs, tests/execution-control.test.mjs, src/execution/files/project-input-watch.mjs, src/control/workflow/executor-session.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T006
-- [TODO] T008: Дерево планов и кнопка выполнения в интерфейсе — Ожидает
-  - Git Commit: [PENDING] feat: Дерево планов и кнопка выполнения
+- [DONE] T008: Дерево планов и кнопка выполнения в интерфейсе — Завершено
+  - Git Commit: [DONE] feat: Дерево планов и кнопка выполнения
   - Reference: workflow-pilot-orchestrated-execution / T008 / implementation
-  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/progress.mjs, src/contracts/workflow-view.mjs, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/parallel-execution-ui.test.mjs, tests/electron-smoke.mjs, tests/web-client.test.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/settings-panel.mjs
+  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/progress.mjs, src/contracts/workflow-view.mjs, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/parallel-execution-ui.test.mjs, tests/electron-smoke.mjs, tests/web-client.test.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/settings-panel.mjs, src/control/context/context-cache.mjs, src/control/context/service.mjs, src/control/facade.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/execution-projection.mjs, tests/parallel-execution.test.mjs, tests/session-roles.test.mjs, docs/planning/orchestrated-execution-contracts.md, docs/planning/orchestrated-execution-next.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
 - [TODO] T009: Параллельная упаковка платформ в release-all — Ожидает

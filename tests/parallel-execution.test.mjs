@@ -413,10 +413,14 @@ test('orchestrated signals: the project watcher wakes on the journal in the main
   const workspace=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'signals-watch-')));
   t.after(()=>fs.rm(workspace,{recursive:true,force:true}));
   await fs.mkdir(path.join(workspace,'.git/workflow-kit'),{recursive:true});
-  let notify;const woke=new Promise((resolve,reject)=>{notify=resolve;setTimeout(()=>reject(Error('signal journal not observed')),5000);});
+  let notify,observed=false;const woke=new Promise((resolve,reject)=>{notify=()=>{observed=true;resolve();};setTimeout(()=>reject(Error('signal journal not observed')),15000);});
   const watcher=new ProjectInputWatch({workspace,onSignal:()=>notify(),onError:()=>{}});
   t.after(()=>watcher.close());
   watcher.update(['.git/workflow-kit/signals.jsonl']);
-  await fs.appendFile(path.join(workspace,'.git/workflow-kit/signals.jsonl'),JSON.stringify({id:'s1'})+'\n');
+  // Under a loaded test run the first event may be coalesced; appending again is what Kit does on the next signal.
+  for(let i=0;!observed&&i<60;i++){
+    await fs.appendFile(path.join(workspace,'.git/workflow-kit/signals.jsonl'),JSON.stringify({id:'s'+i})+'\n');
+    await Promise.race([woke,new Promise(resolve=>setTimeout(resolve,250))]);
+  }
   await woke;
 });

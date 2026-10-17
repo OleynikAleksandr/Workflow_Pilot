@@ -3,7 +3,7 @@ import os from 'node:os';
 import fsp from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
-  pruneOrphanProjectSettings, validateParallelSettings, projectExecutors } from '../control/facade.mjs';
+  pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 
@@ -189,6 +189,58 @@ function archiveSnapshot() {
     focusWorkspace: archiveState.focusWorkspace, theme: preferences.shellTheme, fixture: smoke };
 }
 function publishArchive() { surface.publishArchive(archiveSnapshot()); }
+// Tasks of a closed orchestrated plan come from its plan before the closing commit; loaded once, off the event loop.
+const closedPlans=new Map();
+function closedPlan(workspace,commit) {
+  const key=workspace+'\n'+commit,cached=closedPlans.get(key);
+  if(cached)return cached.plan??null;
+  closedPlans.set(key,{plan:null});
+  void workflow.executionKit.git(workspace,['show',commit+'^:.harness/plans/todo-plan.md']).then(text=>{
+    const plan=JSON.parse(text.match(/<!-- workflow-state:begin -->\s*```json\s*([\s\S]*?)```/)?.[1]??'');
+    closedPlans.set(key,{plan:{scopeId:plan.scope_id,objective:plan.objective??'',strategy:plan.execution_strategy,
+      tasks:plan.tasks.map(task=>({id:task.id,title:task.title,status:'done',executionLabel:plannedExecution(task,plan.execution_strategy),
+        delivery:['package','installed'].includes(task.verification_kind)}))}});
+    publish();
+  }).catch(error=>{closedPlans.set(key,{plan:{error:error.message,tasks:[]}});publish();});
+  return null;
+}
+const orchestratorLabels={'not-started':'Готов к запуску',running:'Выполняется',pausing:'Пауза…',paused:'Пауза',complete:'Выполнено'};
+function orchestratorState(workspace,session) {
+  if(session.role!=='orchestrator')return null;
+  if(!session.orchestratorScopeId)return {label:'Планирование',state:'planning'};
+  const project=store.project(workspace);
+  if(session.closedPlanCommit||project?.scopeId!==session.orchestratorScopeId)return {label:'Выполнено',state:'complete'};
+  const run=workflow.executionControl.view(workspace,session.orchestratorScopeId),view=execution.view(workspace);
+  const done=project.planView?.tasks?.filter(task=>task.status==='done').length??0,total=project.planView?.tasks?.length??0;
+  const cleanup=(view.assignments??[]).filter(a=>a.status==='INTEGRATED'&&a.cleanup?.status==='PENDING').length;
+  const attention=project.orchestrationIssue||view.error||run.reason==='escalation'||run.reason==='unknown';
+  return {state:attention?'attention':run.state,label:(attention?'Требует внимания':orchestratorLabels[run.state])+' · '+done+'/'+total,cleanup};
+}
+// The to-do plan of the selected orchestrator: rows open the session of their executor, delivery opens the orchestrator.
+function orchestratorPlanView(saved) {
+  const workspace=saved?.parentWorkspace??saved?.workspace,project=workspace&&store.project(workspace);
+  if(!project||saved.external)return null;
+  const sessions=store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions??[];
+  const scope=saved.parentWorkspace?saved.parentScopeId:saved.role==='orchestrator'?saved.orchestratorScopeId
+    :orchestratedPlanActive(project)?project.scopeId:null;
+  if(!scope)return null;
+  const orchestrator=sessions.find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope);
+  const current=project.scopeId===scope&&orchestratedPlanActive(project);
+  const source=current?{objective:project.objective,tasks:(project.planExecution?.execution_strategy==='orchestrated'
+    ?execution.view(workspace).planView?.tasks:null)??project.planView?.tasks??[]}
+    :orchestrator?.closedPlanCommit?closedPlan(workspace,orchestrator.closedPlanCommit):null;
+  if(!source)return {scopeId:scope,objective:'',tasks:[],loading:true};
+  const executors=projectExecutors(store.snapshot().projects,workspace,execution.view(workspace),liveRecord).filter(e=>e.parentScopeId===scope);
+  const planned=new Map((project.planView?.tasks??[]).map(task=>[task.id,task]));
+  return {scopeId:scope,objective:source.objective,current,error:source.error??null,
+    tasks:source.tasks.map(task=>{
+      const own=executors.filter(e=>e.taskId===task.id).sort((a,b)=>(b.createdAt??0)-(a.createdAt??0))[0];
+      const delivery=task.delivery??planned.get(task.id)?.delivery??/main/.test(task.executionLabel??'');
+      const target=task.status==='pending'?null:delivery?orchestrator&&{workspace,sessionId:orchestrator.sessionId}
+        :own&&{workspace:own.workspace,sessionId:own.sessionId};
+      return {...task,label:own&&task.status!=='done'?own.label:task.label,time:own?.time??null,target:target??null};
+    })};
+}
 // The state of the one run/pause button of the selected project's orchestrated plan.
 function planRunView(saved) {
   const workspace=saved?.parentWorkspace??saved?.workspace,project=workspace&&store.project(workspace);
@@ -211,7 +263,10 @@ function snapshot() {
       ||store.project(r.identity?.workspace)?.parentWorkspace===workspace)&&r.pageState.current?.state.busy)?'working'
       :execution.view(workspace).error||sessions.some(s=>liveRecord({workspace,sessionId:s.sessionId})?.controller.state.error)?'attention':'idle',
     executors:projectExecutors(projects,workspace,execution.view(workspace),liveRecord),
-    sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, chatUrl, title, createdAt, external }) => ({ sessionId, experience, chatUrl, title, createdAt, external:!!external })),
+    sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, chatUrl, title, createdAt, external, role, orchestratorScopeId, closedPlanCommit }) =>
+      ({ sessionId, experience, chatUrl, title, createdAt, external:!!external, role:role??null, orchestratorScopeId:orchestratorScopeId??null,
+        orchestratorState:orchestratorState(workspace,{role,orchestratorScopeId,closedPlanCommit}) })),
+    orchestrationIssue: store.project(workspace)?.orchestrationIssue ?? null,
   })),
     executorRecovery:projects.filter(p=>p.parentWorkspace&&!projects.some(parent=>parent.workspace===p.parentWorkspace&&parent.projectId===p.parentProjectId))
       .map(p=>({workspace:p.workspace,projectId:p.projectId,name:p.displayName||p.name,
@@ -223,6 +278,7 @@ function snapshot() {
     autoPlan: {...(liveSessions.visible?.executor?.flow.view()??autoPlan.view()),
       enabled:!saved?.external&&projectAutoPlan.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
     planRun: planRunView(saved),
+    orchestratorPlan: orchestratorPlanView(saved),
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true} : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
     contextPreparation: { busy: selected ? contextCache.isBuilding(selected.workspace) : false },
@@ -1123,7 +1179,11 @@ function registerIpc() {
   registerAction('pilot:remote-approve', input => localRemote().approve(String(input ?? '')));
   registerAction('pilot:remote-reject', input => localRemote().reject(String(input ?? '')));
   registerAction('pilot:remote-revoke', input => localRemote().revoke(String(input ?? '')));
-  registerAction('pilot:remote-access', input => localRemote().action(input));
+  registerAction('pilot:remote-access', input => {
+    // Opening Settings refreshes the remote status; without a remote service this is a status, not a startup error.
+    if(!remoteAccess?.current&&input?.op==='refresh')return {ok:false,error:{code:'REMOTE_DISABLED',message:'Доступ с других устройств недоступен.'}};
+    return localRemote().action(input);
+  });
   registerAction('pilot:reload', async () => { startupError = null; const current = store.selected(); if (current) await selectWorkspace(current.workspace); else void navigate(); }, { navigation: true });
 
   desktopIpc.handle('archive', 'archive:get-state', archiveSnapshot);

@@ -14,9 +14,9 @@ export { startupPlatformOptions, startupSupported } from './startup/platform.mjs
 export { publicVpsState, publicRuntimeState } from './startup/public-state.mjs';
 export { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './workflow/parallel-settings.mjs';
 export { readCommandActivity, acknowledgeUnknownCommand } from './workflow/command-activity.mjs';
-export { projectExecutors } from './workflow/execution-projection.mjs';
+export { projectExecutors, plannedExecution } from './workflow/execution-projection.mjs';
 
-export { normalizeChatUrl, activeSessionsNewestFirst } from './sessions/workspace-session.mjs';
+export { normalizeChatUrl, activeSessionsNewestFirst, orchestratedPlanActive } from './sessions/workspace-session.mjs';
 export { sessionRuntimeKey } from './sessions/service.mjs';
 export { externalClientLine } from './context/context-session.mjs';
 export { removeProjectSettings, pruneOrphanProjectSettings, belongsToProject, queueProjectStatePurge } from './projects/project-state-cleanup.mjs';

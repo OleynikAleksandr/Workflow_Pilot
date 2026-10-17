@@ -148,16 +148,20 @@ test('roles: recovery is requested with the session role and cached separately p
   assert.deepEqual(calls[0].slice(-4), ['--format', 'packet', '--role', 'discussion']);
   assert.ok(!calls[1].includes('--role'), 'a legacy session keeps the plain recovery');
   const workspace = path.join(os.tmpdir(), 'roles-context'), loads = [];
-  const packet = role => ({ ok: true, delivery_protocol: 'inline-context-v1', ack_required: false, status: 'ready', completeness: 'COMPLETE',
-    workspace, role, session_id: null, plan_id: null, plan_path: '.harness/plans/todo-plan.md', context: 'context ' + role,
-    context_bytes: Buffer.byteLength('context ' + role), context_sha256: '0'.repeat(64), parts: [], size: {}, budget: {},
-    signature: 'x', generated_at_ms: Date.now(), head: null, facts: {} });
+  const { createHash } = await import('node:crypto');
+  const sha = text => createHash('sha256').update(text, 'utf8').digest('hex');
+  const packet = role => { const context = 'context ' + role; return { ok: true, delivery_protocol: 'inline-context-v1', ack_required: false,
+    status: 'ready', completeness: 'COMPLETE', workspace, role, context, context_bytes: Buffer.byteLength(context), context_sha256: sha(context),
+    parts: [{ index: 1, total: 1, text: context, bytes: Buffer.byteLength(context), sha256: sha(context) }], budget: { document_bytes: 28000 },
+    signature: 'x', generated_at_ms: Date.now(), facts: { project_id: 'p', project_name: 'P', plan_revision: 1, scope_id: null,
+      execution_scope_status: 'NONE', delivery_status: 'IN_PROGRESS', task_id: null, task_title: null } }; };
   const service = new ContextService({ execution: { ensureServices: async () => {} }, plans: {}, getRuntime: () => null, onChange() {},
     setup: { ready: async target => ({ ready: true, workspace: target, inputKey: 'same-inputs' }) },
     loadFixture: async (target, role) => { loads.push(role); return packet(role); } });
-  await service.cache.load(workspace, 'orchestrator').catch(() => {});
-  await service.cache.load(workspace, 'discussion').catch(() => {});
-  await service.cache.load(workspace, 'orchestrator').catch(() => {});
+  const orchestrator = await service.cache.load(workspace, 'orchestrator');
+  assert.equal(orchestrator.workspace, workspace, 'the packet is validated against the folder, not the role key');
+  assert.equal((await service.cache.load(workspace, 'discussion')).role, 'discussion');
+  await service.cache.load(workspace, 'orchestrator');
   assert.deepEqual(loads.slice(0, 2), ['orchestrator', 'discussion'], 'each role gets its own packet');
   assert.equal(service.cache.isBuilding(workspace), false);
 });

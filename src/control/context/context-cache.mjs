@@ -1,9 +1,10 @@
 import { validateContextPacket } from '../../contracts/context.mjs';
 
 export class ContextCache {
-  constructor({ load, inputKey, limit = 4, onChange = () => {} }) {
+  // workspaceOf maps a cache key to its project folder when a key also carries the session role.
+  constructor({ load, inputKey, limit = 4, onChange = () => {}, workspaceOf = key => key }) {
     if (typeof inputKey !== 'function') throw new TypeError('ContextCache requires the readiness input key');
-    Object.assign(this, { loadPacket: load, inputKey, limit, onChange });
+    Object.assign(this, { loadPacket: load, inputKey, limit, onChange, workspaceOf });
     this.entries = new Map(); this.pending = new Map(); this.warming = new Map(); this.building = new Set(); this.epoch = 0;
   }
   clear() { this.epoch++; this.entries.clear(); }
@@ -41,7 +42,7 @@ export class ContextCache {
         return { ...structuredClone(cached.packet), preparation: { cacheHit: true, inputKey: key, ms: performance.now() - started } };
       }
       this.entries.delete(workspace);
-      const packet = validateContextPacket(await this.build(workspace), workspace);
+      const packet = validateContextPacket(await this.build(workspace), this.workspaceOf(workspace));
       let after;
       try { after = await this.inputKey(workspace); } catch { after = null; }
       if (key !== after || epoch !== this.epoch) continue;

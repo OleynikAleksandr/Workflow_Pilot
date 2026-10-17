@@ -347,6 +347,14 @@ function render(state) {
         const date = document.createElement('small');
         date.textContent = dateFormat.format(new Date(session.createdAt)) + (session.chatUrl || session.external ? '' : ' · новая');
         copy.append(title, date);
+        // The tree shows orchestrators and discussion chats; the tasks of a plan live in its to-do plan.
+        if (session.role === 'orchestrator' || session.role === 'discussion') {
+          const role = document.createElement('small'); role.className = 'session-role'; role.dataset.role = session.role;
+          role.dataset.state = session.orchestratorState?.state ?? '';
+          role.textContent = session.role === 'discussion' ? 'Обсуждение' : 'Оркестратор · ' + (session.orchestratorState?.label ?? 'Планирование')
+            + (session.orchestratorState?.cleanup ? ' · очистка: ' + session.orchestratorState.cleanup : '');
+          copy.append(role);
+        }
         const experience = document.createElement('span'); experience.className = 'session-experience'; experience.dataset.experience = session.experience ?? 'chat'; experience.textContent = session.external ? 'ChatGPT ↗' : session.experience === 'work' ? 'Work' : 'Chat';
         choice.title = `${session.title || 'Новая сессия'} · ${experience.textContent}\n${new Date(session.createdAt).toLocaleString('ru-RU')}`;
         choice.append(copy, experience);
@@ -361,10 +369,18 @@ function render(state) {
         const archive = document.createElement('button'); archive.className = 'secondary archive-session'; archive.textContent = 'Перенести в архив';
         archive.addEventListener('click', () => { closeTreeMenus(); action('archiveSession', project.workspace, session.sessionId); });
         menu.append(rename, archive);
+        if (project.orchestrationIssue && session.role !== 'orchestrator' && !session.external) {
+          const assign = document.createElement('button'); assign.className = 'secondary assign-orchestrator'; assign.textContent = 'Назначить оркестратором';
+          assign.addEventListener('click', () => { closeTreeMenus(); action('assignOrchestrator', session.sessionId); });
+          menu.append(assign);
+        }
         row.append(choice, menuButton); entry.append(row, menu); sessions.append(entry);
       }
       item.append(sessions);
-      const origins=[...new Set((project.executors??[]).map(executor=>executor.originSessionId))];
+      // Executors of an orchestrated plan open from its to-do plan; the group remains for legacy parallel plans.
+      const orchestratedScopes=new Set(project.sessions.filter(s=>s.role==='orchestrator'&&s.orchestratorScopeId).map(s=>s.orchestratorScopeId));
+      const legacyExecutors=(project.executors??[]).filter(executor=>!orchestratedScopes.has(executor.parentScopeId));
+      const origins=[...new Set(legacyExecutors.map(executor=>executor.originSessionId))];
       for(const origin of origins) {
         const group=document.createElement('details');group.className='executor-group';group.hidden=!project.expanded;
         group.dataset.executorGroup=project.workspace+'\n'+origin;
@@ -373,7 +389,7 @@ function render(state) {
         const source=project.sessions.find(session=>session.sessionId===origin);
         heading.textContent='Исполнители · '+(source?.title||'основная сессия');group.append(heading);
         const list=document.createElement('ul');list.className='executor-list';list.setAttribute('aria-label','Исполнители основной сессии');
-        for(const executor of project.executors.filter(entry=>entry.originSessionId===origin)) {
+        for(const executor of legacyExecutors.filter(entry=>entry.originSessionId===origin)) {
           const row=document.createElement('li'),choice=document.createElement('button');choice.className='executor-row';
           choice.dataset.sessionId=executor.sessionId;choice.dataset.phase=executor.phase;
           if(executor.sessionId===selected?.sessionId)choice.setAttribute('aria-current','page');
@@ -443,6 +459,17 @@ function render(state) {
     unknown:'Исход итоговой отправки неизвестен. Повтор не отправляется.',
     'reply-observed':'Итоговый ответ завершён. Ожидается приёмка.',
   })[execution.finalizationStatus]??$('execution-message').textContent;
+  const run = state.planRun;
+  const runLabels = { 'not-started': 'Начать выполнение плана', running: 'Пауза', pausing: 'Пауза…', paused: 'Продолжить' };
+  $('plan-run-toggle').hidden = !run || run.state === 'complete' || run.complete;
+  $('plan-run-toggle').textContent = runLabels[run?.state] ?? '';
+  $('plan-run-toggle').dataset.state = run?.state ?? '';
+  $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue;
+  const runReason = run?.issue ? 'Оркестратор плана не определён. Назначьте его в меню сессии.'
+    : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
+      : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '') : '';
+  $('plan-run-message').hidden = !runReason; $('plan-run-message').textContent = runReason.trim();
+  $('auto-plan-toggle').hidden = !!run;
   const auto = state.autoPlan ?? { phase: 'off', active: false, message: '' };
   $('auto-plan-toggle').textContent = auto.enabled ? 'Выключить автовыполнение' : 'Включить автовыполнение';
   $('auto-plan-toggle').disabled = actionPending || !!selected?.external;
@@ -464,7 +491,10 @@ function render(state) {
   $('auto-plan-message').dataset.reason = auto.reason ?? '';
 
   renderAgentTime(selected);
-  const plan = (selected?.planExecution?.execution_strategy==='parallel' ? execution.planView
+  const orchestrated = state.orchestratorPlan;
+  const plan = orchestrated ? { state: orchestrated.loading ? 'working' : orchestrated.tasks.every(t => t.status === 'done') ? 'awaiting-acceptance' : 'working',
+      completed: orchestrated.tasks.filter(t => t.status === 'done').length, total: orchestrated.tasks.length, tasks: orchestrated.tasks, blockedReason: orchestrated.error }
+    : (selected?.planExecution?.execution_strategy==='parallel' ? execution.planView
     : selected?.planView) ?? { state: 'not-created', completed: 0, total: 0, tasks: [], blockedReason: null };
   if (selected) {
     const plural = count => count % 10 === 1 && count % 100 !== 11 ? 'задача'
@@ -476,8 +506,9 @@ function render(state) {
         : plan.state === 'closed' ? 'Scope завершён и архивирован'
           : plan.state === 'not-created' ? 'План ещё не создан'
             : `В работе · ${plan.completed} из ${plan.total} выполнено`;
-    $('plan-title').hidden = !selected.scopeId;
-    $('plan-title').textContent = selected.assignmentId ? execution.objective??'Общий план проекта' : selected.scopeId ? selected.objective : '';
+    $('plan-title').hidden = !selected.scopeId && !orchestrated;
+    $('plan-title').textContent = orchestrated ? orchestrated.objective || 'План оркестратора'
+      : selected.assignmentId ? execution.objective??'Общий план проекта' : selected.scopeId ? selected.objective : '';
     $('plan-status').textContent = statusText; $('plan-status').dataset.state = plan.state;
     $('plan-note').hidden = plan.state !== 'closed';
     $('plan-note').textContent = plan.state === 'closed' ? 'Проект готов к следующему новому плану.' : '';
@@ -496,6 +527,16 @@ function render(state) {
       const status=document.createElement('small');status.className='plan-task-status';
       status.textContent=task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
       body.append(id,title,mode,status);
+      if (task.time) { const time = document.createElement('span'); time.dataset.executorTime = task.target?.sessionId ?? task.id; time.executorTime = task.time; body.append(time); }
+      // A started or finished task opens its executor's session; an unstarted one only shows its row.
+      if (orchestrated && task.target) {
+        const open = document.createElement('button'); open.type = 'button'; open.className = 'plan-task-open';
+        open.title = 'Открыть сессию исполнителя ' + task.id;
+        if (task.target.sessionId === selected.sessionId) { item.dataset.current = 'true'; open.setAttribute('aria-current', 'page'); }
+        open.append(mark, body);
+        open.addEventListener('click', () => action('selectSession', task.target.workspace, task.target.sessionId));
+        item.append(open); return item;
+      }
       item.append(mark, body); return item;
     }));
   } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; }
@@ -532,6 +573,7 @@ function render(state) {
   for (const button of document.querySelectorAll('button')) {
     if (button.closest('#startup-panel') || button.id==='open-startup') continue;
     button.disabled = actionPending || (button.id==='auto-plan-toggle' && !!selected?.external)
+      || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue))
       || (state.storageError && ['create-workspace', 'add-workspace', 'retry-context'].includes(button.id));
   }
   const recovery = state.conversationRecovery;
@@ -561,6 +603,7 @@ $('reload-chat').addEventListener('click', () => action('reload'));
 $('workspace-health-retry').addEventListener('click', () => action(kitUpgradeNeeded(currentState?.workspaceHealth) ? 'retry' : 'reload'));
 $('workspace-health-doctor').addEventListener('click', () => action('openDoctor'));
 $('auto-plan-toggle').addEventListener('click', () => action('setAutoPlan', !currentState?.autoPlan?.enabled));
+$('plan-run-toggle').addEventListener('click', () => action('togglePlanExecution'));
 $('plan-review-toggle').addEventListener('click', () => action('setPlanReview', {workspace:currentState?.selected?.workspace,enabled:!currentState?.planReview?.enabled}));
 $('reconnect-chat').addEventListener('click', () => action('reconnect'));
 $('retry-context').addEventListener('click', () => action('retry'));

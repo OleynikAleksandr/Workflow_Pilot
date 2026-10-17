@@ -319,3 +319,51 @@ test('project menu copies the line for an external client next to the full path'
   items[path + 1].click(); await f.settle();
   assert.deepEqual(f.calls, [['copyExternalClientLine', '/demo']], 'one clipboard action with the project folder, nothing else');
 });
+
+test('orchestrated plan: the tree shows roles, the to-do plan opens executor sessions, one button runs the plan',async t=>{
+  const f=await fixture(t),base=f.state;
+  f.window.webPilot.togglePlanExecution=async()=>{f.calls.push(['togglePlanExecution']);return {state:f.state};};
+  f.window.webPilot.assignOrchestrator=async sessionId=>{f.calls.push(['assignOrchestrator',sessionId]);return {state:f.state};};
+  const project={...base.projects[0],orchestrationIssue:null,sessions:[
+    {sessionId:'s4',createdAt:4000,title:'План',experience:'chat',role:'orchestrator',orchestratorScopeId:'scope',orchestratorState:{state:'running',label:'Выполняется · 1/4'}},
+    {sessionId:'s3',createdAt:3000,title:'Вопрос',experience:'chat',role:'discussion'}],
+    executors:[{workspace:'/tree/a',sessionId:'worker-a',originSessionId:'s4',parentScopeId:'scope',taskId:'T001',title:'T001',label:'Готово',phase:'done'}]};
+  const orchestratorPlan={scopeId:'scope',objective:'План оркестратора',current:true,tasks:[
+    {id:'T001',title:'Основа',status:'done',executionLabel:'Последовательно',target:{workspace:'/tree/a',sessionId:'worker-a'}},
+    {id:'T002',title:'Экран',status:'current',executionLabel:'Параллельно',target:{workspace:'/tree/b',sessionId:'worker-b'}},
+    {id:'T003',title:'Журнал',status:'pending',executionLabel:'Параллельно',target:null},
+    {id:'T004',title:'Выпуск',status:'pending',executionLabel:'Оркестратор в main',target:null}]};
+  const emit=(run,extra={})=>f.emit({...base,projects:[{...project,...extra}],selected:{...base.selected,scopeId:'scope',role:'orchestrator'},
+    orchestratorPlan,planRun:run,autoPlan:{enabled:false}});
+  emit({state:'not-started',reason:null,issue:null,complete:false});
+  const roles=[...f.document.querySelectorAll('.session-role')].map(node=>node.textContent);
+  assert.deepEqual(roles,['Оркестратор · Выполняется · 1/4','Обсуждение']);
+  assert.equal(f.document.querySelectorAll('.executor-group').length,0,'executors of an orchestrated plan are not grouped in the tree');
+  assert.equal(f.document.getElementById('plan-title').textContent,'План оркестратора');
+  const rows=[...f.document.querySelectorAll('.plan-task')];
+  assert.equal(rows.length,4);assert.equal(f.document.querySelectorAll('.plan-task-open').length,2,'only started or finished tasks open a session');
+  assert.deepEqual(rows.map(row=>row.querySelector('.plan-task-state').textContent),['✓','●','○','○']);
+  rows[1].querySelector('.plan-task-open').click();await f.settle();
+  assert.deepEqual(f.calls.at(-1),['selectSession','/tree/b','worker-b']);
+  const button=f.document.getElementById('plan-run-toggle');
+  assert.equal(button.hidden,false);assert.equal(button.textContent,'Начать выполнение плана');
+  assert.equal(f.document.getElementById('auto-plan-toggle').hidden,true,'AutoPlan is hidden for an orchestrated plan');
+  button.click();await f.settle();assert.deepEqual(f.calls.at(-1),['togglePlanExecution']);
+  for(const [state,label,disabled] of [['running','Пауза',false],['pausing','Пауза…',true],['paused','Продолжить',false]]) {
+    emit({state,reason:null,issue:null,complete:false});
+    assert.equal(button.textContent,label);assert.equal(button.disabled,disabled);
+  }
+  emit({state:'paused',reason:'escalation',message:'Сборка не проходит',issue:null,complete:false});
+  assert.match(f.document.getElementById('plan-run-message').textContent,/Сборка не проходит/);
+  emit({state:'complete',reason:null,issue:null,complete:true});assert.equal(button.hidden,true);
+  emit(null);assert.equal(button.hidden,true,'no button without a published orchestrated plan');
+  // A plan without a usable orchestrator offers the explicit choice in the session menu.
+  emit({state:'not-started',reason:null,issue:'ORIGIN_MISMATCH',complete:false},{orchestrationIssue:'ORIGIN_MISMATCH'});
+  assert.equal(button.disabled,true);
+  f.document.querySelector('.assign-orchestrator').click();await f.settle();
+  assert.deepEqual(f.calls.at(-1),['assignOrchestrator','s3']);
+  // An executor session shows its orchestrator's plan with the current task highlighted.
+  f.emit({...base,projects:[project],selected:{workspace:'/tree/b',parentWorkspace:'/demo',sessionId:'worker-b',assignmentId:'b',parentScopeId:'scope'},
+    orchestratorPlan,planRun:{state:'running',reason:null,issue:null,complete:false}});
+  assert.equal(f.document.querySelector('.plan-task[data-current=true] .plan-task-id').textContent,'T002');
+});

@@ -19,7 +19,7 @@ export class ContextService {
     const key = (workspace, role) => role ? workspace + '\u0000' + role : workspace;
     const split = value => { const [workspace, role = null] = value.split('\u0000'); return { workspace, role }; };
     this.#cache = new ContextCache({load: value => { const { workspace, role } = split(value); return this.runtime.loadContext(workspace, role); },
-      inputKey: value => readinessContextKey(setup, split(value).workspace), onChange});
+      inputKey: value => readinessContextKey(setup, split(value).workspace), workspaceOf: value => split(value).workspace, onChange});
     this.cache = Object.freeze({
       load: (workspace, role) => this.#cache.load(key(workspace, role)), warm: (workspace, role) => this.#cache.warm(key(workspace, role)),
       isCurrent: (workspace, cacheKey, role) => this.#cache.isCurrent(key(workspace, role), cacheKey), clear: () => this.#cache.clear(),

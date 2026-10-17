@@ -112,7 +112,8 @@
     .execution-next-action[data-attention=true]{border-color:#b67232}
     :root[data-theme=dark] .execution-stages li[data-status=blocked],:root[data-theme=dark] .execution-stages li[data-status=unknown]{border-left-color:#dfac74}
     :root[data-theme=dark] .execution-next-action[data-attention=true]{border-color:#dfac74}
-  </style>
+    .plan-task-open{display:flex;gap:inherit;align-items:inherit;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:6px}.plan-task-open:hover{background:rgba(127,127,127,.12)}.plan-task[data-current=true]{outline:2px solid #2f80ed;outline-offset:2px;border-radius:6px}.session-role{display:block;font-size:10px;color:var(--muted)}.session-role[data-state=attention]{color:#b3261e}.plan-run-toggle{margin:6px 0 2px}
+</style>
 </head>
 <body>
 <!-- Icons: Lucide. ISC License
@@ -423,6 +424,8 @@ SOFTWARE.
         <section id="plan-card" class="card plan-card" aria-live="polite">
           <div class="plan-head"><p class="eyebrow">Текущий план проекта</p><span id="agent-time" class="agent-time" role="timer" hidden></span></div>
           <h3 id="plan-title" class="own-plan-title"></h3>
+          <button id="plan-run-toggle" class="primary plan-run-toggle" type="button" hidden></button>
+          <p id="plan-run-message" class="description" role="status" hidden></p>
           <p id="plan-status" class="plan-status"></p>
           <p id="plan-note" class="plan-note" hidden></p>
           <p id="plan-reason" class="plan-reason" hidden></p>
