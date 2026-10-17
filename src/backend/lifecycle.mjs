@@ -58,10 +58,11 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
   const fixtureRoute=async(req,res)=>{
     if(req.method==='GET'&&req.url==='/v1/browser/fixture-state') {
       const page=await fixturePage();
-      return respond(res,200,{bootGeneration:claim.generation,visible:false,...await pageInfo(page)});
+      return respond(res,200,{bootGeneration:claim.generation,visible:false,pageMode:host.pageMode,...await pageInfo(page)});
     }
     if(req.method==='GET'&&req.url==='/v1/browser/frame') {
-      const png=(await contentsOf(await fixturePage()).capturePage()).toPNG();
+      // The page's own presentation: a view-mode page has no display surface for capturePage.
+      const page=await fixturePage(),png=(await host.presentation(host.browserSessionId(page.key)).frame()).png;
       res.writeHead(200,{'content-type':'image/png','content-length':png.length,'cache-control':'no-store'});
       res.end(png);return true;
     }

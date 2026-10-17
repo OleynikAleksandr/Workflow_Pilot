@@ -7,7 +7,9 @@ export function launchMode(argv, { packaged }) {
   const development = packaged !== true;
   if (argv.includes('--backend-host'))
     return { mode: 'backend', fixtureRoot: development ? option('--backend-fixture-root') : null,
-      leaseTtlMs: development && option('--backend-fixture-root') ? Number(option('--backend-lease-ttl-ms')) || null : null };
+      leaseTtlMs: development && option('--backend-fixture-root') ? Number(option('--backend-lease-ttl-ms')) || null : null,
+      // Development only: keep offscreen pages on a Mac to test the server mode.
+      pageMode: development && ['view', 'offscreen'].includes(option('--backend-page-mode')) ? option('--backend-page-mode') : null };
   if (development && SMOKE_FLAGS.some(flag => argv.includes(flag))) return { mode: 'in-process' };
   return { mode: 'client', backendRoot: development ? option('--client-backend-root') : null,
     clientRoot: development ? option('--client-root') : null, fixture: development && argv.includes('--client-fixture') };

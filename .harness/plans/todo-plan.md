@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 430,
+  "plan_revision": 432,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -38,7 +38,10 @@
       "src/frontend/plugin/index.html",
       "src/frontend/plugin/app.mjs",
       "tests/backend-upgrade.test.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "src/backend/lifecycle.mjs",
+      "src/main.mjs",
+      "tests/backend-browser-lifecycle.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/native-window.md",
@@ -66,8 +69,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T001",
@@ -80,7 +83,12 @@
         "src/execution/facade.mjs",
         "src/backend/main.mjs",
         "tests/backend-native-pages.test.mjs",
-        "tests/browser-presentation.test.mjs"
+        "tests/browser-presentation.test.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/contracts/launch.mjs",
+        "src/main.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-upgrade.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/native-window.md"
@@ -99,7 +107,19 @@
         "Fixture-служба в режиме view: страница fixture-чата в окне-хосте загружается, наблюдатель видит состояние, отправка проходит, кадры для HTTP-зрителя непустые, ввод доходит",
         "Если режим view не проходит любую из проверок, задача блокируется и решение возвращается пользователю"
       ],
-      "expected_commit_message": "feat: Страницы службы в режиме view"
+      "expected_commit_message": "feat: Страницы службы в режиме view",
+      "actual_files": [
+        "docs/planning/native-window.md",
+        "src/backend/lifecycle.mjs",
+        "src/backend/main.mjs",
+        "src/contracts/launch.mjs",
+        "src/execution/browser/backend-host.mjs",
+        "src/execution/browser/presentation/host.mjs",
+        "src/main.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/backend-native-pages.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -386,7 +406,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 430
+Revision: 432
 
 ## Цель
 
@@ -398,10 +418,10 @@ Revision: 430
 
 ## Микрозадачи
 
-- [TODO] T001: Страницы службы в режиме view — Ожидает
-  - Git Commit: [PENDING] feat: Страницы службы в режиме view
+- [DONE] T001: Страницы службы в режиме view — Завершено
+  - Git Commit: [DONE] feat: Страницы службы в режиме view
   - Reference: workflow-pilot-native-window / T001 / implementation
-  - Файлы: src/execution/browser/backend-host.mjs, src/execution/browser/presentation/host.mjs, src/execution/facade.mjs, src/backend/main.mjs, tests/backend-native-pages.test.mjs, tests/browser-presentation.test.mjs, docs/planning/native-window.md
+  - Файлы: src/execution/browser/backend-host.mjs, src/execution/browser/presentation/host.mjs, src/execution/facade.mjs, src/backend/main.mjs, tests/backend-native-pages.test.mjs, tests/browser-presentation.test.mjs, src/backend/lifecycle.mjs, src/contracts/launch.mjs, src/main.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-upgrade.test.mjs, docs/planning/native-window.md
 - [TODO] T002: Встроенное окно фоновой службы — Ожидает
   - Git Commit: [PENDING] feat: Встроенное окно фоновой службы
   - Reference: workflow-pilot-native-window / T002 / implementation

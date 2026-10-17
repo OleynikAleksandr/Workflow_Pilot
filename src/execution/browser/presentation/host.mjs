@@ -15,8 +15,11 @@ const MAX_SELECTION = 60 * 1024;
 // chooser. It never navigates, reloads or releases the page.
 export class PagePresentation {
   #input; #chooser = null; #attachedByUs = false; #handlers = []; #frameWaiters = new Set(); #disposed = false;
-  constructor({ window, contents = window.webContents, browserSessionId, kind = 'page', parentId = null, emit = () => {}, platform = process.platform }) {
-    Object.assign(this, { window, contents, browserSessionId, kind, parentId, emit });
+  // decodeImage (nativeImage.createFromBuffer) turns a CDP screenshot into an image: a view page in a
+  // hidden host has no display surface for capturePage, but the renderer still answers CDP.
+  constructor({ window, contents = window.webContents, browserSessionId, kind = 'page', parentId = null, emit = () => {},
+    platform = process.platform, decodeImage = null }) {
+    Object.assign(this, { window, contents, browserSessionId, kind, parentId, emit, decodeImage });
     this.documentGeneration = 0;
     this.frameSequence = 0;
     this.#input = new PageInput((method, params) => this.#command(method, params), { platform });
@@ -83,7 +86,7 @@ export class PagePresentation {
     } else if (this.frameSequence === 0) await this.#paint(Math.max(waitMs, 1000)); // not painted yet
     if (this.#disposed || this.contents.isDestroyed()) throw presentationError('SESSION_RUNTIME_RELEASED', 'Страница закрыта.');
     const sequence = this.frameSequence;
-    let image = await this.contents.capturePage();
+    let image = await this.#capture();
     if (image.isEmpty()) return null;
     const [logicalWidth, logicalHeight] = this.window.getContentSize();
     if (maxScale && image.getSize().width > Math.round(logicalWidth * maxScale))
@@ -93,6 +96,11 @@ export class PagePresentation {
     return { png: jpeg ? image.toJPEG(Math.max(30, Math.min(95, quality))) : image.toPNG(), mime: jpeg ? 'image/jpeg' : 'image/png', meta: { browserSessionId: this.browserSessionId, documentGeneration: this.documentGeneration,
       frameSequence: sequence, logicalWidth, logicalHeight, pixelWidth: size.width, pixelHeight: size.height,
       scale: Math.max(1, Math.min(5, size.width / Math.max(1, logicalWidth))) } };
+  }
+  async #capture() {
+    if (!this.decodeImage) return this.contents.capturePage();
+    const shot = await this.#command('Page.captureScreenshot', { format: 'png' });
+    return this.decodeImage(Buffer.from(shot.data, 'base64'));
   }
   dispatch(input) { return this.#input.dispatch(input); }
   release() { return this.#input.releaseAll(); }

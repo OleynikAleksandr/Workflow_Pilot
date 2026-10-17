@@ -13,7 +13,9 @@ import {createRemoteAccess} from './remote-access.mjs';
 import {spawn} from 'node:child_process';
 import {BackendBrowserHost,desktopDependencies,TailscaleCli} from '../execution/facade.mjs';
 
-export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
+// macOS keeps pages as views a native window can show; elsewhere pages render offscreen.
+export const defaultPageMode=platform=>platform==='darwin'?'view':'offscreen';
+export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode=null}={}) {
   const {app}=electron;
   let identity;
   try{identity=configureBackendIdentity(app,{testRoot:fixtureRoot});}
@@ -41,7 +43,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
     {type:details?.type,reason:details?.reason,exitCode:details?.exitCode,serviceName:details?.serviceName}));
   app.on('render-process-gone',(_event,_contents,details)=>journal.record('render-process-gone',{reason:details?.reason,exitCode:details?.exitCode}));
   for(const name of ['activate','did-become-active','browser-window-created'])app.on(name,()=>setImmediate(()=>keepAccessory(name)));
-  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null,disposeAccess=()=>{},lastServiceEntry=null;
+  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null,disposeAccess=()=>{},lastServiceEntry=null,pageHost=null;
   // Every ordinary exit stops own services first, then releases the profile.
   // The owner record is removed only by the process that proved ownership.
   const shutdown=()=>{
@@ -61,8 +63,10 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
       const preload=app.isPackaged?path.join(process.resourcesPath,'resources/chatgpt-page-observer-preload.cjs')
         :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs');
       if(fixtureRoot)await installFixtureChat(electron.session.fromPartition(identity.partition));
-      const host=new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,screen:electron.screen,partition:identity.partition,preload,
+      const host=new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,BaseWindow:electron.BaseWindow,WebContentsView:electron.WebContentsView,nativeImage:electron.nativeImage,
+        pageMode:pageMode??defaultPageMode(process.platform),screen:electron.screen,partition:identity.partition,preload,
         session:electron.session.fromPartition(identity.partition)});
+      pageHost=host;
       const {execution,createControl}=createBackendComposition();
       const surface=createRemoteSurface({host,dialog:guardedDialog,
         // Fail closed before any page, executor or automation starts.
@@ -176,6 +180,22 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
             if(command.op==='remote-enable')return {remote:await port.remote.enable({owner:'owner@example.com',dnsName:'mac.tailnet-fixture.ts.net'})};
             if(command.op==='remote-approve')return {approved:devices.view().pairings.map(item=>devices.approve(item.id).id)};
             if(command.op==='remote-revoke')return {revoked:devices.view().devices.map(item=>devices.revoke(item.id).revoked)};
+            // A view-mode page moves into a hidden window container and back without a reload.
+            if(command.op==='page-attach-probe') {
+              const page=desktop.services.sessions.visible;
+              const host=pageHost;
+              if(!page||host?.pageMode!=='view')return {error:'BROWSER_PAGE_MODE_INVALID'};
+              const contents=host.view(page.key).webContents,boot=()=>contents.executeJavaScript('fixtureBootId');
+              const before=await boot(),container=new electron.BaseWindow({show:false,focusable:false,width:900,height:700});
+              try {
+                host.attach(page.key,container.contentView,{x:200,y:0,width:700,height:700});
+                const inside=host.attached(page.key)===container.contentView&&container.contentView.children.length===1;
+                const shot=await host.presentation(host.browserSessionId(page.key)).frame();
+                host.detach(page.key);
+                return {attached:inside,returned:host.attached(page.key)===null&&container.contentView.children.length===0,
+                  reloaded:await boot()!==before,frame:!!shot?.png?.length};
+              } finally { container.destroy(); }
+            }
             return {error:'UNKNOWN_FIXTURE_OP'};
           })().then(value=>process.stdout.write(JSON.stringify({op:command.op,...value})+'\n'),
             error=>process.stdout.write(JSON.stringify({op:command.op,error:error.code??error.message})+'\n'));

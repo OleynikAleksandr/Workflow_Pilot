@@ -19,8 +19,12 @@ const settle=(ms=50)=>new Promise(resolve=>setTimeout(resolve,ms));
 
 test('packaged builds ignore every test flag; development keeps the fixture modes',()=>{
   const argv=['app','--backend-host','--backend-fixture-root=/tmp/x','--backend-lease-ttl-ms=10'];
-  assert.deepEqual(launchMode(argv,{packaged:true}),{mode:'backend',fixtureRoot:null,leaseTtlMs:null});
-  assert.deepEqual(launchMode(argv,{packaged:false}),{mode:'backend',fixtureRoot:'/tmp/x',leaseTtlMs:10});
+  assert.deepEqual(launchMode(argv,{packaged:true}),{mode:'backend',fixtureRoot:null,leaseTtlMs:null,pageMode:null});
+  assert.deepEqual(launchMode(argv,{packaged:false}),{mode:'backend',fixtureRoot:'/tmp/x',leaseTtlMs:10,pageMode:null});
+  // The page mode flag exists only in development; a release uses the platform default.
+  assert.equal(launchMode([...argv,'--backend-page-mode=offscreen'],{packaged:false}).pageMode,'offscreen');
+  assert.equal(launchMode([...argv,'--backend-page-mode=offscreen'],{packaged:true}).pageMode,null);
+  assert.equal(launchMode([...argv,'--backend-page-mode=window'],{packaged:false}).pageMode,null);
   assert.equal(launchMode(['app','--smoke'],{packaged:true}).mode,'client','no in-process smoke in a release');
   assert.equal(launchMode(['app','--smoke'],{packaged:false}).mode,'in-process');
   assert.deepEqual(launchMode(['app','--client-fixture','--client-backend-root=/tmp/b'],{packaged:true}),

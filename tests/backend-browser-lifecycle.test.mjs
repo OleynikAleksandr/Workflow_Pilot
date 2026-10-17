@@ -280,3 +280,39 @@ test('Electron backend owns the restored session page: viewer loss, reconnect an
   assert.equal(code,0);
   await assert.rejects(fs.access(path.join(root,'.backend-host','owner.json')));
 });
+
+test('view mode: a page moves between its hidden host and a window, one page per window, offscreen pages never attach',()=>{
+  const electron=fakeElectron();
+  class View {
+    constructor(container){this.parent=container;}
+    addChildView(view){view.owner?.children.delete(view);this.children.add(view);view.owner=this;}
+  }
+  class BaseWindow {
+    constructor(options){this.options=options;this.destroyed=false;this.size=[options.width,options.height];this.contentView=Object.assign(new View(),{children:new Set()});}
+    getContentSize(){return this.size;} setContentSize(w,h){this.size=[w,h];}
+    isDestroyed(){return this.destroyed;} destroy(){this.destroyed=true;}
+  }
+  class WebContentsView {
+    constructor({webPreferences}){this.webPreferences=webPreferences;this.bounds=null;
+      this.webContents=new electron.BrowserWindow({webPreferences}).webContents;this.webContents.close=()=>{this.webContents.destroyed=true;};}
+    setBounds(bounds){this.bounds=bounds;} getBounds(){return this.bounds;}
+  }
+  const host=new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,BaseWindow,WebContentsView,nativeImage:{createFromBuffer:()=>null},
+    screen:electron.screen,partition:'persist:workflow-pilot-chatgpt',preload:'/fixture/preload.cjs',pageMode:'view'});
+  const a=host.create('page-a'),b=host.create('page-b');
+  assert.equal(host.view('page-a').webContents,a);
+  assert.equal(host.attached('page-a'),null,'a new page waits in its hidden host');
+  const win=Object.assign(new View(),{children:new Set()});
+  host.attach('page-a',win,{x:300,y:0,width:900,height:700});
+  assert.equal(host.attached('page-a'),win);assert.equal(win.children.size,1);
+  host.attach('page-b',win,{x:300,y:0,width:900,height:700});
+  assert.equal(host.attached('page-a'),null,'showing another page returns the first to its host');
+  assert.equal(win.children.size,1);
+  host.detach('page-b');assert.equal(win.children.size,0);assert.equal(host.attached('page-b'),null);
+  host.close('page-a');assert.equal(a.isDestroyed(),true);
+  assert.throws(()=>host.attach('page-a',win,{x:0,y:0,width:1,height:1}),{code:'SESSION_RUNTIME_RELEASED'});
+  assert.throws(()=>new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,screen:electron.screen,partition:'p',pageMode:'view'}),
+    {code:'BROWSER_PAGE_MODE_INVALID'},'view mode needs views and image decoding');
+  const offscreen=hostOf(electron);offscreen.create('page-c');
+  assert.throws(()=>offscreen.attach('page-c',win,{x:0,y:0,width:1,height:1}),{code:'BROWSER_PAGE_MODE_INVALID'});
+});

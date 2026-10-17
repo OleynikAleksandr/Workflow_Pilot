@@ -3,7 +3,7 @@ import { launchMode } from './contracts/launch.mjs';
 const launch=launchMode(process.argv,{packaged:electron.app.isPackaged});
 if(launch.mode==='backend') {
   const {startBackend}=await import('./backend/main.mjs');
-  startBackend(electron,{fixtureRoot:launch.fixtureRoot,leaseTtlMs:launch.leaseTtlMs});
+  startBackend(electron,{fixtureRoot:launch.fixtureRoot,leaseTtlMs:launch.leaseTtlMs,pageMode:launch.pageMode});
 } else if(launch.mode==='in-process') {
   // In-process Desktop remains only for the development smoke fixtures (removed in T012).
   const {startDesktop}=await import('./frontend/desktop/bootstrap.mjs');

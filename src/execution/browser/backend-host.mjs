@@ -9,9 +9,38 @@ const httpsOnly = url => { try { return new URL(url).protocol === 'https:'; } ca
 // Authorization popups often open blank and then navigate to https.
 const popupAllowed = url => url === 'about:blank' || httpsOnly(url);
 
+// A page of the view mode lives in a hidden host window of the backend. Its
+// size is the view's own bounds; while a native window shows the page, that
+// window decides the size and a viewer's viewport is ignored.
+class ViewFrame {
+  constructor(host, view) { this.host = host; this.view = view; this.container = null; }
+  getContentSize() { const { width, height } = this.view.getBounds(); return [width, height]; }
+  setContentSize(width, height) {
+    if (this.container) return;
+    this.host.setContentSize(width, height); this.view.setBounds({ x: 0, y: 0, width, height });
+  }
+  isDestroyed() { return this.host.isDestroyed() || this.view.webContents.isDestroyed(); }
+  attach(container, bounds) { container.addChildView(this.view); this.container = container; this.view.setBounds(bounds); }
+  detach() {
+    if (!this.container) return;
+    this.container = null;
+    if (this.host.isDestroyed()) return;
+    // Adding the view to the host moves it out of the window that showed it.
+    this.host.contentView.addChildView(this.view);
+    const [width, height] = this.host.getContentSize();
+    this.view.setBounds({ x: 0, y: 0, width, height });
+  }
+  destroy() {
+    if (!this.view.webContents.isDestroyed()) this.view.webContents.close({ waitForBeforeUnload: false });
+    if (!this.host.isDestroyed()) this.host.destroy();
+  }
+}
+
 // The backend owns every page. A viewer only observes a page by its key:
 // attaching, detaching or losing every viewer never changes the page lifetime.
 // Popups (authorization, help) are backend pages too and never need a window.
+// pageMode 'view' keeps pages as WebContentsView that a native window can show;
+// 'offscreen' renders them only into frames (Linux, a server without a display).
 export class BackendBrowserHost {
   #pages = new Map();
   #sessions = new Map();
@@ -19,27 +48,29 @@ export class BackendBrowserHost {
   #selected = null;
   // emit and onDownload are assigned by the backend once its event log and
   // private transfer directory exist; until then a download is cancelled.
-  constructor({ BrowserWindow, screen, partition, preload, emit = () => {}, onDownload = null, session = null,
-    platform = process.platform }) {
-    Object.assign(this, { BrowserWindow, screen, partition, preload, emit, onDownload, platform });
+  constructor({ BrowserWindow, BaseWindow = null, WebContentsView = null, nativeImage = null, screen, partition, preload, emit = () => {}, onDownload = null,
+    session = null, platform = process.platform, pageMode = 'offscreen' }) {
+    if (!['view', 'offscreen'].includes(pageMode) || pageMode === 'view' && !(BaseWindow && WebContentsView && nativeImage))
+      throw Object.assign(new Error('Unknown page mode.'), { code: 'BROWSER_PAGE_MODE_INVALID' });
+    Object.assign(this, { BrowserWindow, BaseWindow, WebContentsView, nativeImage, screen, partition, preload, emit, onDownload, platform, pageMode });
     session?.on('will-download', (_event, item, contents) => {
       if (typeof this.onDownload !== 'function') return item.cancel();
       this.onDownload(item, this.#entryOf(contents)?.presentation.browserSessionId ?? null);
     });
   }
   #ratio() { return Math.max(1, ...this.screen.getAllDisplays().map(display => display.scaleFactor)); }
-  #preferences(preload) {
-    return { partition: this.partition, ...(preload ? { preload } : {}), offscreen: { deviceScaleFactor: this.#ratio() },
+  #preferences(preload, { offscreen = true } = {}) {
+    return { partition: this.partition, ...(preload ? { preload } : {}), ...(offscreen ? { offscreen: { deviceScaleFactor: this.#ratio() } } : {}),
       backgroundThrottling: false, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true };
   }
-  #entryOf(contents) { for (const entry of this.#pages.values()) if (entry.window.webContents === contents) return entry; return null; }
-  #register(id, window, { kind = 'page', parentId = null } = {}) {
+  #entryOf(contents) { for (const entry of this.#pages.values()) if (entry.contents === contents) return entry; return null; }
+  #register(id, window, { kind = 'page', parentId = null, contents = window.webContents, decodeImage = null } = {}) {
     const browserSessionId = (kind === 'popup' ? 'popup-' : 'page-') + randomUUID();
-    const presentation = new PagePresentation({ window, browserSessionId, kind, parentId, platform: this.platform,
-      emit: (type, data) => this.emit(type, data) });
-    const entry = { id, window, viewers: new Set(), presentation };
+    const presentation = new PagePresentation({ window, contents, browserSessionId, kind, parentId, platform: this.platform,
+      decodeImage, emit: (type, data) => this.emit(type, data) });
+    const entry = { id, window, contents, viewers: new Set(), presentation };
     this.#pages.set(id, entry); this.#sessions.set(browserSessionId, entry);
-    this.#secure(window.webContents, browserSessionId);
+    this.#secure(contents, browserSessionId);
     void presentation.start().catch(() => this.emit('presentation-error', { browserSessionId, code: 'BROWSER_CDP_UNAVAILABLE' }));
     return entry;
   }
@@ -68,14 +99,35 @@ export class BackendBrowserHost {
   }
   create(id) {
     if (this.#pages.has(id)) throw Object.assign(new Error('Страница уже принадлежит backend.'), { code: 'BROWSER_HOST_CONFLICT' });
+    if (this.pageMode === 'view') {
+      // A hidden host has no display surface: HTTP viewers get CDP screenshots instead of capturePage.
+      const host = new this.BaseWindow({ show: false, focusable: false, width: 1000, height: 760 });
+      const view = new this.WebContentsView({ webPreferences: this.#preferences(this.preload, { offscreen: false }) });
+      host.contentView.addChildView(view); view.setBounds({ x: 0, y: 0, width: 1000, height: 760 });
+      this.#register(id, new ViewFrame(host, view), { contents: view.webContents,
+        decodeImage: buffer => this.nativeImage.createFromBuffer(buffer) });
+      return view.webContents;
+    }
     const window = new this.BrowserWindow({ show: false, width: 1000, height: 760, webPreferences: this.#preferences(this.preload) });
     this.#register(id, window);
     return window.webContents;
   }
   view(id) {
     const page = this.#pages.get(id);
-    return page && !page.window.isDestroyed() ? { webContents: page.window.webContents } : undefined;
+    return page && !page.window.isDestroyed() ? { webContents: page.contents } : undefined;
   }
+  // A native window shows a view-mode page in its own container; the page is
+  // moved, never reloaded, and returns to its hidden host on detach.
+  attach(id, container, bounds) {
+    const page = this.#pages.get(id);
+    if (!page || page.window.isDestroyed()) throw released();
+    if (!(page.window instanceof ViewFrame)) throw Object.assign(new Error('Страница не показывается в окне.'), { code: 'BROWSER_PAGE_MODE_INVALID' });
+    for (const other of this.#pages.values()) if (other !== page && other.window instanceof ViewFrame && other.window.container === container) other.window.detach();
+    page.window.attach(container, bounds);
+  }
+  setBounds(id, bounds) { const page = this.#pages.get(id); if (page?.window instanceof ViewFrame && page.window.container) page.window.view.setBounds(bounds); }
+  detach(id) { const page = this.#pages.get(id); if (page?.window instanceof ViewFrame) page.window.detach(); }
+  attached(id) { const page = this.#pages.get(id); return page?.window instanceof ViewFrame ? page.window.container : null; }
   presentation(browserSessionId) { return this.#sessions.get(browserSessionId)?.presentation ?? null; }
   browserSessionId(id) { return this.#pages.get(id)?.presentation.browserSessionId ?? null; }
   pages() {
@@ -109,6 +161,7 @@ export class BackendBrowserHost {
   close(id) {
     const page = this.#forget(id);
     if (page && !page.window.isDestroyed()) page.window.destroy();
+    else if (page?.window instanceof ViewFrame) page.window.destroy();
   }
   get count() { return this.#pages.size; }
 }
