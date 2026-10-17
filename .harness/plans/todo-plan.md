@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 403,
+  "plan_revision": 405,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -814,13 +814,20 @@
         "Версия 0.4.8 в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.4.8",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T014",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-3",
@@ -951,7 +958,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 403
+Revision: 405
 
 ## Цель
 
@@ -1023,8 +1030,8 @@ Revision: 403
   - Git Commit: [DONE] feat: Навигация без плашек прогресса и сдвига сайдбара
   - Reference: workflow-pilot-0-4-6 / T013 / implementation
   - Файлы: src/frontend/desktop/ui/progress.mjs, tests/progress.test.mjs, tests/electron-smoke.mjs, docs/modules/desktop.md
-- [TODO] T014: Подготовить версию 0.4.8 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.4.8
+- [DONE] T014: Подготовить версию 0.4.8 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.4.8
   - Reference: workflow-pilot-0-4-6 / T014 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
 - [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
