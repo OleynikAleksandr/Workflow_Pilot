@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 368,
+  "plan_revision": 370,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -51,8 +51,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T001",
@@ -77,7 +77,11 @@
       "acceptance_criteria": [
         "Название проекта занимает свободную ширину строки, «В архив» — по ширине текста; smoke проверяет раскладку на настоящей боковой панели"
       ],
-      "expected_commit_message": "fix: Раскладка строки списка проектов"
+      "expected_commit_message": "fix: Раскладка строки списка проектов",
+      "actual_files": [
+        "src/frontend/desktop/ui/index.html",
+        "tests/electron-smoke.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -249,7 +253,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 368
+Revision: 370
 
 ## Цель
 
@@ -261,8 +265,8 @@ Revision: 368
 
 ## Микрозадачи
 
-- [TODO] T001: Раскладка строки списка проектов — Ожидает
-  - Git Commit: [PENDING] fix: Раскладка строки списка проектов
+- [DONE] T001: Раскладка строки списка проектов — Завершено
+  - Git Commit: [DONE] fix: Раскладка строки списка проектов
   - Reference: workflow-pilot-0-4-6 / T001 / implementation
   - Файлы: src/frontend/desktop/ui/index.html, tests/electron-smoke.mjs, docs/planning/project-list-layout.md
 - [TODO] T002: Подготовить версию 0.4.6 — Ожидает

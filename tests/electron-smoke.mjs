@@ -854,6 +854,14 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await sidebar.executeJavaScript(`document.getElementById('rename-dialog-input').value='Проект Smoke Rename'; document.getElementById('rename-dialog-save').click()`);
   await waitFor(() => snapshot().projects[0].name === 'Проект Smoke Rename', 'project rename dialog IPC', snapshot);
   assert.equal(store.project(workspace).name, 'Тестовый проект с пробелами', 'project rename keeps canonical workflow name');
+  // The project list row in the real sidebar: the name uses the free width, «В архив» stays compact.
+  const pickerLayout = await sidebar.executeJavaScript(`(()=>{const menu=document.getElementById('project-actions');const was=menu.open;menu.open=true;
+    const row=document.querySelector('#project-options .project-choice'),name=row.querySelector('[data-project-choice]'),archive=row.querySelector('.project-choice-archive');
+    const a=name.getBoundingClientRect(),b=archive.getBoundingClientRect(),line=parseFloat(getComputedStyle(name).lineHeight)||18;
+    const result={name:a.width,archive:b.width,height:a.height,line,sameRow:Math.abs(a.top-b.top)<a.height};menu.open=was;return result;})()`);
+  assert.ok(pickerLayout.name > pickerLayout.archive * 2, 'project name is not squeezed: ' + JSON.stringify(pickerLayout));
+  assert.ok(pickerLayout.height <= pickerLayout.line * 3 + 24, 'project name is not vertical: ' + JSON.stringify(pickerLayout));
+  assert.ok(pickerLayout.sameRow, 'archive button sits on the row: ' + JSON.stringify(pickerLayout));
   await sidebar.executeJavaScript('document.querySelector(".expand-project").click()');
   await waitFor(() => sidebar.executeJavaScript('!document.querySelector(".sessions").hidden && !document.querySelector(".session").disabled'), 'expand before session actions', snapshot);
   await sidebar.executeJavaScript(`{ const li=document.querySelector('[data-session-id="${first.sessionId}"]').closest('li'); li.querySelector('.session-menu-button').click(); li.querySelector('.rename-session').click(); }`);
