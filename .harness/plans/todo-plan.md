@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 353,
+  "plan_revision": 355,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -2373,14 +2373,19 @@
         "Убрать из списка и удаление убирают записи всех исполнителей проекта; соседи не затронуты"
       ],
       "expected_commit_message": "fix: Удаление проекта убирает записи его исполнителей",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T043",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/sessions/workspace-session.mjs",
+        "tests/workspace-session.test.mjs",
+        "docs/planning/startup-orphan-records.md"
+      ]
     },
     {
       "id": "T044",
@@ -2562,7 +2567,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 353
+Revision: 355
 
 ## Цель
 
@@ -2880,8 +2885,8 @@ Revision: 353
   - Файлы: src/backend/bootstrap.mjs, tests/backend-bootstrap.test.mjs, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T043: Удаление проекта убирает записи его исполнителей — Ожидает
-  - Git Commit: [PENDING] fix: Удаление проекта убирает записи его исполнителей
+- [DONE] T043: Удаление проекта убирает записи его исполнителей — Завершено
+  - Git Commit: [DONE] fix: Удаление проекта убирает записи его исполнителей
   - Reference: workflow-pilot-orchestrated-execution / T043 / implementation
   - Файлы: src/control/sessions/workspace-session.mjs, tests/workspace-session.test.mjs, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение

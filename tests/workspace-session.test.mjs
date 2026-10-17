@@ -74,6 +74,25 @@ test('a project whose folder was emptied is archived and forgotten without readi
   assert.equal(store.snapshot().projects.some(p=>p.workspace===gone.workspace),false);
 });
 
+test('forgetting or deleting a project removes the records of all its executors, not its neighbours',async t=>{
+  const {project,store}=await fixture(t);
+  for(const forget of ['list','disk']) {
+    const parent=await store.select(await project('Parent '+forget,'parent-'+forget));
+    const neighbour=await store.select(await project('Neighbour '+forget,'neighbour-'+forget));
+    const worktree=await fs.realpath(await project('Worker '+forget,'parent-'+forget));
+    await store.ensureExecutor({id:'worker-'+forget,worktree,parent_root:parent.workspace,parent_scope_id:'fixture-scope',
+      parent_task_id:'T001',title:'Worker'},store.project(parent.workspace));
+    await store.setArchived(parent.workspace,true);
+    // The worktree was not found (no related entry), still its record goes with the project.
+    if(forget==='list')await store.forgetArchived(parent.workspace,parent.projectId);
+    else await store.forgetDeletedProject(parent.workspace,parent.projectId,[]);
+    const left=store.snapshot().projects.map(p=>p.workspace);
+    assert.equal(left.includes(parent.workspace),false);assert.equal(left.includes(worktree),false,forget+': executor record removed');
+    assert.equal(left.includes(neighbour.workspace),true,forget+': neighbour stays');
+    assert.equal((await fs.stat(worktree)).isDirectory(),true,'no folder is touched');
+  }
+});
+
 test('characterization: five missing executor folders remain recovery records after their parent disappears',async t=>{
   const {root,project,store}=await fixture(t);
   const parent=await store.select(await project('PL_Мастерская_файлов','deleted-parent-id'));

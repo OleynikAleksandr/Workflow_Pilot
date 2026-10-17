@@ -920,7 +920,8 @@ export class WorkspaceSessions {
     return this.mutate(data=>{
       const project=data.projects.find(p=>p.workspace===workspace);
       if(project&&(!project.archivedAt||project.projectId!==projectId))throw new WorkspaceError('DELETE_RECORD_CHANGED','Запись удаляемого проекта изменилась.');
-      const removed=new Set(data.projects.filter(p=>p.workspace===workspace||related.some(r=>r.workspace===p.workspace
+      // Every executor record of the deleted project goes too, also one whose worktree was not found.
+      const removed=new Set(data.projects.filter(p=>p.workspace===workspace||ownedExecutor(p,{workspace,projectId})||related.some(r=>r.workspace===p.workspace
         &&r.projectId===p.projectId&&r.parentProjectId===projectId&&(ownedExecutor(p,{workspace,projectId})
           ||r.legacyVerified&&!p.parentProjectId&&p.parentWorkspace===workspace))).map(p=>p.workspace));
       data.projects=data.projects.filter(p=>!removed.has(p.workspace));
@@ -961,7 +962,9 @@ export class WorkspaceSessions {
         if (!project.archivedAt) throw new WorkspaceError('PROJECT_NOT_ARCHIVED', 'Убрать из списка можно только проект из архива.');
         return project;
       });
-      const remove = new Set(projects.map(project => project.workspace));
+      // The records of the projects' executors go with them; no folder is touched.
+      const remove = new Set(data.projects.filter(project => projects.some(parent => project === parent || ownedExecutor(project, parent)))
+        .map(project => project.workspace));
       data.projects = data.projects.filter(project => !remove.has(project.workspace));
       if (remove.has(data.selectedWorkspace)) data.selectedWorkspace = null;
       return projects.length;
