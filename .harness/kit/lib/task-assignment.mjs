@@ -2,12 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PLAN, CONFIG, check, hash, json, readJSON, safePath, withLock } from './common.mjs';
 import { git, head, localPath, allChanges, isAncestor, run, ensureIdleGit } from './git.mjs';
-import { readPlan, parallelTasksCompatible } from './plan.mjs';
+import { readPlan, parallelTasksCompatible, isOrchestratedPlan, isDeliveryTask } from './plan.mjs';
 import { validate, journal } from './validate.mjs';
 import { commitCandidate, completedTransaction, finishTransaction } from './transaction.mjs';
 import { prepareRuntime } from './platform.mjs';
 
-import { validId, commonDirectory, recordPath, childRecordPath, readAssignment, save, plainPath, binding, localPlan, ownWorktree, assertAssignment, packageDirectories, environmentStatus, preparationSteps } from './assignment-contract.mjs';
+import { assignmentRecords, validId, commonDirectory, recordPath, childRecordPath, readAssignment, save, plainPath, binding, localPlan, ownWorktree, assertAssignment, packageDirectories, environmentStatus, preparationSteps } from './assignment-contract.mjs';
 export { readAssignment, assertAssignment, assertAssignmentCommand, environmentStatus } from './assignment-contract.mjs';
 function npm(root,args,options) {
   if(process.platform!=='win32')return run('npm',args,root,options);
@@ -16,10 +16,7 @@ function npm(root,args,options) {
   check(cli,'NEEDS_SETUP','Установите npm рядом с доступным Node.js; npm.cmd не запускается через shell.');
   return run(process.execPath,[cli,...args],root,options);
 }
-function parentAssignments(root) {
-  const dir=localPath(root,'assignments');
-  return fs.existsSync(dir)?fs.readdirSync(dir).filter(file=>file.endsWith('.json')).map(file=>readJSON(path.join(dir,file))):[];
-}
+const parentAssignments=root=>assignmentRecords(root);
 function verifyInput(record,input) {
   check(record.parent_task_id===input.task_id && record.worktree===path.resolve(input.worktree)
     && record.base_commit===input.base_commit,'ASSIGNMENT_REUSE','ID уже принадлежит другому назначению.');
@@ -40,6 +37,37 @@ function assignmentStatusUnlocked(root,id) {
     source_commit:sha??null,setup,transaction_pending:!!journal(record.worktree)};
 }
 export const assignmentStatus=(root,id)=>assignmentStatusUnlocked(root,id);
+// Only a verified INTEGRATED worktree is removed, never with force; its merged branch goes with git branch -d.
+export function removeIntegratedWorktree(root,record) {
+  check(record.phase==='INTEGRATED','ASSIGNMENT_NOT_INTEGRATED','Удаляется только worktree подтверждённо интегрированного назначения.',{id:record.id});
+  const errors=[];
+  if(fs.existsSync(record.worktree)) {
+    const removed=git(root,['worktree','remove','--',record.worktree],{allowFailure:true});
+    if(removed.status!==0)errors.push(String(removed.stderr||removed.stdout).trim().slice(-1000));
+  }
+  if(!fs.existsSync(record.worktree)) {
+    git(root,['worktree','prune'],{allowFailure:true});
+    if(git(root,['show-ref','--verify','--quiet','refs/heads/'+record.branch],{allowFailure:true}).status===0) {
+      const branch=git(root,['branch','-d',record.branch],{allowFailure:true});
+      if(branch.status!==0)errors.push(String(branch.stderr||branch.stdout).trim().slice(-1000));
+    }
+  }
+  record.cleanup=errors.length?{status:'PENDING',error:errors.join('\n')}:{status:'DONE'};
+  save(recordPath(root,record.id),record);
+  return {id:record.id,task_id:record.parent_task_id,worktree:record.worktree,branch:record.branch,...record.cleanup};
+}
+// Final orchestrator sweep: integrated leftovers are removed, everything else is only reported.
+export function cleanupAssignments(root) {
+  check(!readAssignment(root),'ASSIGNMENT_READ_ONLY','Очистку выполняет оркестратор в main.');
+  return withLock(localPath(root,'operation.lock'),()=>{
+    const records=assignmentRecords(root);
+    const removed=records.filter(r=>r.phase==='INTEGRATED' && r.cleanup?.status!=='DONE').map(r=>removeIntegratedWorktree(root,r));
+    const kept=records.filter(r=>r.phase!=='INTEGRATED').map(r=>({id:r.id,task_id:r.parent_task_id,phase:r.phase,worktree:r.worktree,branch:r.branch}));
+    const pending=removed.filter(r=>r.status!=='DONE');
+    return {ok:true,removed:removed.filter(r=>r.status==='DONE'),pending,kept,
+      only_main:!pending.length && !kept.length && records.every(r=>r.cleanup?.status==='DONE'||!fs.existsSync(r.worktree))};
+  });
+}
 export function createAssignment(root,input,expectedRevision) {
   check(!readAssignment(root),'ASSIGNMENT_NESTED','Вложенные назначения запрещены.');
   root=fs.realpathSync(root);
@@ -52,12 +80,18 @@ export function createAssignment(root,input,expectedRevision) {
     }
     const {plan,resolved}=validate(root);
     check(expectedRevision!==undefined && plan.plan_revision===Number(expectedRevision),'REVISION_CHANGED','Нужна текущая revision.');
-    check(plan.execution_strategy==='parallel' && !plan.current_task_id && plan.execution_scope_status==='ACTIVE','ASSIGNMENT_POLICY','Назначения выдаются из активного parallel-плана без основной микрозадачи.');
+    check(['parallel','orchestrated'].includes(plan.execution_strategy) && !plan.current_task_id && plan.execution_scope_status==='ACTIVE','ASSIGNMENT_POLICY','Назначения выдаются из активного parallel- или orchestrated-плана без основной микрозадачи.');
     ensureIdleGit(root);
     check(!journal(root) && !allChanges(root).length,'ASSIGNMENT_DIRTY','Перед выдачей main должен быть чистым, без транзакции.');
     check(git(root,['branch','--show-current']).stdout.trim()==='main' && input.base_commit===head(root),'ASSIGNMENT_BASE','База — подтверждённый текущий SHA main.');
     const task=plan.tasks.find(t=>t.id===input.task_id);
     check(task?.implementation_status==='TODO','ASSIGNMENT_TASK','Назначается только ожидающая задача.');
+    if(isOrchestratedPlan(plan)) {
+      check(!isDeliveryTask(task),'ASSIGNMENT_TASK','Delivery-задачу плана оркестратора выполняет оркестратор в main, не исполнитель.');
+      // Wave barrier: a sequential task waits for everything before it; later work waits for an unfinished sequential task.
+      const earlier=plan.tasks.slice(0,plan.tasks.indexOf(task)).filter(t=>!task.parallel_safe||!t.parallel_safe);
+      check(earlier.every(t=>t.commit_status==='DONE'),'ASSIGNMENT_BARRIER','Последовательная задача и следующая за ней работа ждут интеграции всего предыдущего.',{task_id:task.id,pending:earlier.filter(t=>t.commit_status!=='DONE').map(t=>t.id)});
+    }
     const dependencies=task.dependencies.map(id=>{
       const dep=plan.tasks.find(t=>t.id===id), sha=resolved[id]?.sha;
       check(dep?.commit_status==='DONE' && sha && isAncestor(root,sha,input.base_commit),'DEPENDENCY_PENDING','Зависимость не интегрирована: '+id);

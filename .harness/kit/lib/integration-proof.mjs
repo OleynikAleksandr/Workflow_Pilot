@@ -1,6 +1,6 @@
 import { PLAN, check, json } from './common.mjs';
 import { git, isAncestor, commitHistory, commitPaths } from './git.mjs';
-import { parsePlan, renderPlan } from './plan.mjs';
+import { parsePlan, renderPlan, isOrchestratedPlan } from './plan.mjs';
 const planAt = (root,sha) => parsePlan(git(root,['show',sha+':'+PLAN]).stdout);
 const one = (commit,key) => {const values=commit.trailers[key];check(values?.length===1,'INTEGRATION_TRAILERS','Нужен единственный '+key);return values[0];};
 const taskContract = task => {
@@ -69,12 +69,18 @@ export function verifyIntegrationCommit(root,commit,task,plan,resolveReferences)
   const changed=git(root,['diff','--name-only','--no-renames','-z',commit.parents[0],commit.sha,'--']).stdout.split('\0').filter(Boolean);
   check(changed.includes(PLAN) && changed.every(p=>allowedFiles(task).includes(p)),'INTEGRATION_SCOPE','Merge содержит чужие файлы.');
   const after=planAt(root,commit.sha);
-  const expected=integrationPlan(before,task.id,ref.operation_id,ref.source_commit,changed.filter(p=>p!==PLAN));
+  const deleted=changed.filter(p=>p!==PLAN && git(root,['cat-file','-e',commit.sha+':'+p],{allowFailure:true}).status!==0);
+  const expected=integrationPlan(before,task.id,ref.operation_id,ref.source_commit,changed.filter(p=>p!==PLAN),{deleted,pin:commit.parents[0]});
   check(renderPlan(after)===renderPlan(expected),'INTEGRATION_PLAN','Merge изменил общий план вне своей задачи.');
   return {sha:commit.sha,parent:commit.parents[0],paths:changed,source_commit:ref.source_commit,integration_commit:commit.sha};
 }
-export function integrationPlan(before,taskId,id,source,actual) {
+// DOCS of an orchestrated plan runs in a worktree: a required document it deletes is pinned
+// in main to the revision before the merge, as a sequential commit pins it.
+export function integrationPlan(before,taskId,id,source,actual,{deleted=[],pin=null}={}) {
   const plan=structuredClone(before), task=plan.tasks.find(t=>t.id===taskId);
+  if(isOrchestratedPlan(plan) && pin && deleted.length)
+    for(const doc of [plan.context_pack,...plan.tasks.map(t=>t.context_pack)].flatMap(pack=>pack?.documents??[]))
+      if((doc.revision??'WORKTREE')==='WORKTREE' && deleted.includes(doc.path))doc.revision=pin;
   check(task?.commit_status==='PENDING' && plan.current_task_id===null,'INTEGRATION_TASK','Родительская задача уже выполняется или завершена.');
   task.implementation_status='DONE';task.commit_status='DONE';task.actual_files=actual.slice().sort();
   task.commit_ref={scope_id:plan.scope_id,task_id:task.id,role:'integration',operation_id:id,source_commit:source};

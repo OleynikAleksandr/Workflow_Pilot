@@ -8,7 +8,7 @@ export function assertIntegrationIdle(root) {
   check(!activeIntegration(root),'INTEGRATION_PENDING','main занят интеграцией; используйте integration:status/continue.');
 }
 export function assertIntegrationCommand(root,command) {
-  if(['status','validate','recover','plan:view','hook','hook:ack','git-hook','integration:status','integration:continue','integration:start','assignment:status'].includes(command))return;
+  if(['status','validate','recover','plan:view','hook','hook:ack','git-hook','integration:status','integration:continue','integration:start','assignment:status','task:block','assignment:message','plan:escalate'].includes(command))return;
   assertIntegrationIdle(root);
 }
 export const saveJournal = (root, data) => atomic(localPath(root, 'transaction.json'), json(data));
@@ -24,7 +24,7 @@ export function checkServicePaths(role, files, PLAN = ' .harness/plans/todo-plan
     archive: p => p === PLAN,
     documentation: p => p === PLAN || !p.startsWith('.harness/') && p.endsWith('.md'),
     bootstrap: p => p.startsWith('.harness/') || p.startsWith('docs/') || ['README.md','AGENTS.md', 'AGENTS.override.md', '.gitignore', '.gitattributes', '.codex/hooks.json', 'scripts/workflow', 'scripts/workflow.mjs', 'scripts/workflow.cmd'].includes(p) || p.startsWith('.husky/'),
-    'kit-update': p => p === PLAN || p.startsWith('.harness/kit/') || p.startsWith('.harness/plans/by-id/') || p.startsWith('.harness/plans/by-session/') || p.startsWith('.harness/plans/archive/') || ['.harness/kit-manifest.json', '.harness/plans/todo-plan.template.md', 'scripts/workflow', 'scripts/workflow.mjs', 'scripts/workflow.cmd', 'README.md','AGENTS.md', 'AGENTS.override.md', 'docs/architecture/OVERVIEW.md'].includes(p),
+    'kit-update': p => p === PLAN || p.startsWith('.harness/kit/') || p.startsWith('.harness/plans/by-id/') || p.startsWith('.harness/plans/by-session/') || p.startsWith('.harness/plans/archive/') || ['.harness/kit-manifest.json', '.harness/plans/todo-plan.template.md', 'scripts/workflow', 'scripts/workflow.mjs', 'scripts/workflow.cmd', 'README.md','AGENTS.md', 'AGENTS.override.md', 'docs/architecture/OVERVIEW.md', '.gitignore'].includes(p),
   };
   check(patterns[role], 'SERVICE_ROLE', 'Недопустимая служебная роль.');
   check(files.every(patterns[role]), 'SERVICE_SCOPE', 'Служебный коммит содержит недопустимые пути.', { files, role });

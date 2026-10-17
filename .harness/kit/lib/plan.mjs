@@ -35,6 +35,15 @@ export function uniqueDocuments(documents) {
   }
   return [...result.values()];
 }
+// The orchestrator chooses an executor's documents; Kit only normalizes and later validates them.
+export function taskContextPack(pack, field = 'context_pack') {
+  check(pack && typeof pack === 'object' && !Array.isArray(pack) && Array.isArray(pack.documents)
+    && pack.documents.every(doc => doc && typeof doc === 'object' && !Array.isArray(doc)), 'PLAN_SCHEMA', field + ': нужен объект с documents: [{path, required}].', {field});
+  check(Object.keys(pack).every(key => ['documents', 'include_last_completed_task', 'dependency_task_ids'].includes(key)), 'PLAN_SCHEMA',
+    field + ': допустимы documents, include_last_completed_task и dependency_task_ids.', {field});
+  return { documents: uniqueDocuments(pack.documents), include_last_completed_task: pack.include_last_completed_task ?? false,
+    dependency_task_ids: [...(pack.dependency_task_ids ?? [])] };
+}
 export const isDocumentationFinalizationTask = task => /^DOCS(?:-[2-9][0-9]*|-[1-9][0-9]+)?$/.test(task?.id ?? '')
   && task?.title === FINAL_DOCUMENTATION_TASK_TITLE;
 export const isDeliveryTask = task => ['package','installed'].includes(task?.verification_kind);
@@ -55,23 +64,38 @@ export function parallelTasksCompatible(left, right) {
   return a.length > 0 && b.length > 0 && [...a, ...b].every(concreteWritePath)
     && !a.some(x => b.some(y => x === y || x.startsWith(y + '/') || y.startsWith(x + '/')));
 }
+export const EXECUTION_STRATEGIES = Object.freeze(['sequential', 'parallel', 'orchestrated']);
+export const isOrchestratedPlan = plan => plan?.execution_strategy === 'orchestrated';
+// Ordinary work and DOCS of an orchestrated plan are accepted into main only by integration.
+export const requiresIntegration = (plan, task) => plan.execution_strategy === 'parallel'
+  || isOrchestratedPlan(plan) && !isDeliveryTask(task);
 function validateExecutionPolicy(plan) {
   if (Object.hasOwn(plan,'execution_origin_session_id')) check(typeof plan.execution_origin_session_id==='string'
     && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(plan.execution_origin_session_id),
     'PLAN_EXECUTION_ORIGIN','Некорректная сессия происхождения параметров выполнения.');
+  check(!Object.hasOwn(plan, 'release') || isOrchestratedPlan(plan), 'PLAN_EXECUTION_POLICY', 'Поле release используется только в плане оркестратора.');
   if (!hasExecutionPolicy(plan)) {
     check(plan.tasks.every(task => !Object.hasOwn(task, 'parallel_safe')), 'PLAN_EXECUTION_POLICY', 'parallel_safe требует полного набора параметров выполнения плана.');
     return;
   }
   check(typeof plan.parallel_allowed === 'boolean' && Number.isSafeInteger(plan.max_workers) && plan.max_workers >= 1,
     'PLAN_EXECUTION_POLICY', 'Нужны parallel_allowed:boolean и положительный целый max_workers.');
-  check(['sequential', 'parallel'].includes(plan.execution_strategy) && typeof plan.execution_reason === 'string' && plan.execution_reason.trim(),
-    'PLAN_EXECUTION_POLICY', 'Нужны execution_strategy sequential/parallel и непустая execution_reason.');
+  check(EXECUTION_STRATEGIES.includes(plan.execution_strategy) && typeof plan.execution_reason === 'string' && plan.execution_reason.trim(),
+    'PLAN_EXECUTION_POLICY', 'Нужны execution_strategy sequential/parallel/orchestrated и непустая execution_reason.');
   check(plan.execution_strategy !== 'parallel' || plan.parallel_allowed && plan.max_workers > 1,
     'PLAN_EXECUTION_POLICY', 'Параллельное выполнение требует разрешения и max_workers > 1.');
+  const parallelPermitted = plan.parallel_allowed && plan.max_workers > 1;
+  if (isOrchestratedPlan(plan)) {
+    check(typeof plan.execution_origin_session_id === 'string', 'PLAN_EXECUTION_ORIGIN',
+      'План оркестратора требует execution_origin_session_id: Session ID этой сессии из recovery.');
+    check(typeof plan.release === 'boolean', 'PLAN_EXECUTION_POLICY',
+      'План оркестратора требует release:boolean — меняет ли план выпускаемое приложение.');
+  }
   const positions = new Map(plan.tasks.map((task, index) => [task.id, index]));
   for (const task of plan.tasks) {
     check(typeof task.parallel_safe === 'boolean', 'PLAN_EXECUTION_POLICY', 'Нужен parallel_safe:boolean у ' + task.id);
+    check(!isOrchestratedPlan(plan) || !task.parallel_safe || parallelPermitted, 'PLAN_EXECUTION_POLICY',
+      'При запрете параллельности или max_workers 1 все задачи плана оркестратора последовательные: ' + task.id);
     check(!task.parallel_safe || knownWritePaths(task).every(concreteWritePath),
       'PLAN_WRITE_SCOPE', 'parallel_safe требует конкретных путей записи без glob и неизвестной области: ' + task.id);
     check(task.dependencies.every(dep => positions.get(dep) < positions.get(task.id)),
@@ -155,9 +179,9 @@ export function validatePlan(p) {
     check(!t.functional_paths.some(f => t.documentation_paths.includes(f)), 'PLAN_SCHEMA', 'Файл не может быть одновременно функциональным и документационным.');
 
     for (const dep of t.dependencies) check(dep !== t.id && byId.has(dep), 'PLAN_SCHEMA', 'Неизвестная или циклическая зависимость: ' + dep);
-    const integrated = p.execution_strategy === 'parallel' && t.commit_status === 'DONE';
+    const integrated = requiresIntegration(p, t) && t.commit_status === 'DONE';
     check(t.commit_ref?.scope_id === p.scope_id && t.commit_ref?.task_id === t.id && t.commit_ref?.role === (integrated ? 'integration' : 'implementation'),
-      'PLAN_SCHEMA', 'Некорректная ссылка коммита; parallel DONE требует интеграции: ' + t.id);
+      'PLAN_SCHEMA', 'Некорректная ссылка коммита; DONE parallel-задачи и обычной задачи оркестратора требует интеграции: ' + t.id);
     if (integrated) {
       check(typeof t.commit_ref.operation_id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(t.commit_ref.operation_id)
         && typeof t.commit_ref.source_commit === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(t.commit_ref.source_commit),
@@ -188,6 +212,13 @@ export function validatePlan(p) {
       && finalTask.dependencies.every(id => beforeDocs.some(t => t.id === id)),
       'DOCUMENTATION_FINAL_TASK', 'DOCS зависит от работы своего раунда и не ссылается вперёд.');
   }
+  if (isOrchestratedPlan(p) && p.execution_scope_status !== 'NONE') {
+    const lastDocs = p.tasks.findLastIndex(isDocumentationFinalizationTask);
+    check(lastDocs >= 0, 'DOCUMENTATION_FINAL_TASK', 'План оркестратора всегда заканчивается задачей DOCS.');
+    check(p.tasks.slice(lastDocs + 1).every(isDeliveryTask), 'DOCUMENTATION_FINAL_TASK',
+      'После последней DOCS плана оркестратора допустимы только delivery-задачи.');
+    check(p.release || !p.tasks.some(isDeliveryTask), 'DELIVERY_TAIL', 'План без выпуска (release: false) не содержит delivery-задач.');
+  }
   for (const [index, task] of p.tasks.entries()) if (isDeliveryTask(task) && !p.assignment) {
     const docs = p.tasks.slice(0,index).findLast(isDocumentationFinalizationTask);
     check(docs && task.dependencies.includes(docs.id), 'DOCUMENTATION_FINAL_TASK',
@@ -203,7 +234,7 @@ export function renderPlan(p) {
     'Scope: ' + (p.scope_id ?? 'не создан'), 'Current Task: ' + (p.current_task_id ?? 'нет'), 'Revision: ' + p.plan_revision, '',
     '## Цель', '', p.objective || PROJECT_CONTINUATION_OBJECTIVE, '', '## Критерии приёмки', '', ...p.acceptance_criteria.map(c => '- ' + c), '', '## Микрозадачи', ''];
   if (hasExecutionPolicy(p)) lines.push('Выполнение: ' + p.execution_strategy + '; разрешено: ' + p.parallel_allowed + '; лимит: ' + p.max_workers,
-    'Причина: ' + p.execution_reason, '');
+    ...(isOrchestratedPlan(p) ? ['Выпуск приложения: ' + (p.release ? 'да' : 'нет')] : []), 'Причина: ' + p.execution_reason, '');
   for (const t of p.tasks) {
     lines.push('- [' + t.implementation_status + '] ' + t.id + ': ' + t.title + ' — ' + label[t.implementation_status],
       '  - Git Commit: [' + t.commit_status + '] ' + t.expected_commit_message,

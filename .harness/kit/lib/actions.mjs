@@ -1,11 +1,13 @@
 import fs from 'node:fs';
-import { assertAssignment, assertAssignmentCommand } from './assignment-contract.mjs';
+import { assertAssignment, assertAssignmentCommand, assertOrchestratedMain } from './assignment-contract.mjs';
+import { activeIntegration } from './transaction-state.mjs';
+import { blockedTasks } from './signals.mjs';
 import { assertReviewPublication, finishReviewPublication, cleanupReview } from './review-state.mjs';
 import {beginTaskFiles,handoffTaskFiles} from './task-files.mjs';
 import path from 'node:path';
 import { VERSION, PLAN, planPath, safePath, CONFIG, MANIFEST, check, readJSON, atomic, json, hash, id, textFile } from './common.mjs';
 import { emptyPlan, readPlan, parsePlan, renderPlan, writePlan, validatePlan, nextTask, projectContextPack, projectContextPaths, normalizeExecutionPolicy,
-  FINAL_DOCUMENTATION_TASK_ID, FINAL_DOCUMENTATION_TASK_TITLE, isDocumentationFinalizationTask, isDeliveryTask } from './plan.mjs';
+  FINAL_DOCUMENTATION_TASK_ID, FINAL_DOCUMENTATION_TASK_TITLE, isDocumentationFinalizationTask, isDeliveryTask, isOrchestratedPlan } from './plan.mjs';
 import { validate, validateConfig, validatePlanConfiguration, readConfig, journal, resolveReferences, taskChecks } from './validate.mjs';
 import { git, head, localPath, allChanges, identityReady, paths, gitPath } from './git.mjs';
 import { locked, commitCandidate, completedTransaction, finishTransaction } from './transaction.mjs';
@@ -24,7 +26,10 @@ function requireModuleContext(planLike) {
   check(docs.some(d => /^docs\/(modules|planning)\/.+\.md$/i.test(d.path)), 'MODULE_CONTEXT_REQUIRED', 'Укажите планировочный документ в context_pack.documents с required:true (docs/planning/ или docs/modules/).');
 }
 function normalizeCompletionContract(plan) {
-  const foundation = projectContextPaths();
+  // DOCS of an orchestrated plan runs in a worktree and may retire its specifications, so it owns them explicitly.
+  const specifications = isOrchestratedPlan(plan) ? (plan.context_pack?.documents ?? [])
+    .map(doc => doc.path).filter(file => /^docs\/planning\/.+\.md$/i.test(file)) : [];
+  const foundation = [...new Set([...projectContextPaths(), ...specifications])];
   plan.context_pack = projectContextPack(plan.context_pack);
   plan.approved_scope = { ...plan.approved_scope,
     documentation_paths: [...new Set([...(plan.approved_scope?.documentation_paths ?? []), ...foundation])] };
@@ -38,7 +43,8 @@ function normalizeCompletionContract(plan) {
   const ordinary = pending.filter(task => task !== finalTask);
   const delivery = ordinary.filter(isDeliveryTask);
   const work = ordinary.filter(task => !isDeliveryTask(task));
-  if (!delivery.length && !finalTask) return plan;
+  // An orchestrated plan always ends its round with DOCS, with or without a release.
+  if (!delivery.length && !finalTask && !(isOrchestratedPlan(plan) && work.length)) return plan;
   if (!finalTask) {
     const iteration = Math.max(0,...history.filter(isDocumentationFinalizationTask).map(t => t.commit_ref?.iteration ?? 1)) + 1;
     const taskId = iteration === 1 ? FINAL_DOCUMENTATION_TASK_ID : FINAL_DOCUMENTATION_TASK_ID + '-' + iteration;
@@ -118,6 +124,10 @@ export function startTask(root, taskId, expectedRevision) {
     check(plan.execution_scope_status === 'ACTIVE', 'SCOPE_NOT_ACTIVE', 'Реализация разрешена только в ACTIVE scope.');
     const task = plan.tasks.find(t => t.id === taskId);
     check(task, 'UNKNOWN_TASK', 'Задача не найдена: ' + taskId);
+    if (isOrchestratedPlan(plan) && !assignment && plan.current_task_id !== taskId) {
+      assertOrchestratedMain(root, plan, task);
+      check(!activeIntegration(root), 'INTEGRATION_PENDING', 'Сначала завершите текущую интеграцию.');
+    }
     const started=()=>{
       const cleanup=cleanupReview(root,plan), result=recover(root);
       if(cleanup?.error)result.facts.review_cleanup_error=cleanup.error;
@@ -167,6 +177,17 @@ export function applyPlan(root, input, expectedRevision) {
       deferredTransfer={from:originalFinal,to:recipient,files:transferred};
       recipient.documentation_paths = [...new Set([...recipient.documentation_paths, ...transferred])];
       plan.tasks.find(t=>t.id===originalFinal.id).implementation_status = 'TODO';
+      plan.current_task_id = null;
+    }
+    // A started delivery task builds from one committed source and cannot absorb a code fix.
+    // Ordinary work added before it defers it, as an active DOCS is deferred; its own pending edits refuse this.
+    const originalCurrent = original.tasks.find(t => t.id === original.current_task_id);
+    if (!deferDocs && originalCurrent && isDeliveryTask(originalCurrent) && added.some(t => !isDeliveryTask(t))) {
+      const ownPaths = [...originalCurrent.functional_paths, ...originalCurrent.documentation_paths];
+      const pending = allChanges(root).filter(p => p !== PLAN && ownPaths.includes(p));
+      check(!pending.length, 'DELIVERY_CHANGES_PENDING', 'Начатую delivery-задачу можно отложить только без её незакоммиченных изменений.',
+        { task_id: originalCurrent.id, paths: pending });
+      plan.tasks.find(t => t.id === originalCurrent.id).implementation_status = 'TODO';
       plan.current_task_id = null;
     }
     normalizeCompletionContract(plan);
@@ -383,6 +404,7 @@ export function status(root) {
   return { ok: true, project_path: root, project_name: plan.project_name, version: VERSION, project_id: plan.project_id,
     scope_status: plan.execution_scope_status, delivery_status: plan.delivery_status, scope_id: plan.scope_id, objective: plan.objective,
     current_task_id: plan.current_task_id, next_task_id: nextTask(plan)?.id ?? null, plan_revision: plan.plan_revision,
+    ...(isOrchestratedPlan(plan) && !plan.assignment ? {blocked_tasks: blockedTasks(root, plan)} : {}),
     tasks_done: plan.tasks.filter(t => t.commit_status === 'DONE').length, tasks_total: plan.tasks.length,
     profile: config.profile, stack: config.stack, head: state.snapshot.head,
     changes: [...new Set([...state.snapshot.staged, ...state.snapshot.unstaged, ...state.snapshot.untracked])].sort(), resolved,

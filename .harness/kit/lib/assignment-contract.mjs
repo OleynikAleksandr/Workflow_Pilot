@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PLAN, CONFIG, check, hash, json, atomic, readJSON, safePath } from './common.mjs';
 import { git, head, repoRoot, localPath, isAncestor } from './git.mjs';
-import { parsePlan } from './plan.mjs';
+import { parsePlan, isDeliveryTask } from './plan.mjs';
 import { taskChecks } from './validation-rules.mjs';
 export const validId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(value);
 export const commonDirectory = root => fs.realpathSync(git(root, ['rev-parse','--path-format=absolute','--git-common-dir']).stdout.trim());
@@ -10,6 +10,19 @@ export const recordPath = (root, id) => { check(validId(id),'ASSIGNMENT_ID','Н�
 export const childRecordPath = root => localPath(root,'assignment.json');
 export const readAssignment = root => fs.existsSync(childRecordPath(root)) ? readJSON(childRecordPath(root)) : null;
 export const save = (file, record) => atomic(file, json(record), 0o600);
+export function assignmentRecords(root) {
+  const dir = localPath(root,'assignments');
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter(file => file.endsWith('.json')).map(file => readJSON(path.join(dir,file))) : [];
+}
+export const unfinishedAssignments = (root, scopeId) => assignmentRecords(root).filter(r => r.parent_scope_id === scopeId && r.phase !== 'INTEGRATED');
+// In an orchestrated plan only the orchestrator writes main, and only for delivery after all other work.
+export function assertOrchestratedMain(root, plan, task) {
+  check(isDeliveryTask(task), 'ORCHESTRATED_MAIN_READ_ONLY',
+    'Обычные задачи и DOCS плана оркестратора выполняют исполнители в своих worktree; task:start в main допустим только для delivery-задачи.',{task_id:task.id});
+  check(plan.tasks.filter(t => !isDeliveryTask(t)).every(t => t.commit_status === 'DONE'), 'DELIVERY_NOT_READY',
+    'Delivery начинается после интеграции всех обычных задач и DOCS.',{task_id:task.id});
+  check(!unfinishedAssignments(root, plan.scope_id).length, 'DELIVERY_NOT_READY', 'Есть незавершённые назначения исполнителей.',{task_id:task.id});
+}
 export function plainPath(target) {
   check(typeof target==='string' && path.isAbsolute(target),'ASSIGNMENT_PATH','Нужен абсолютный путь worktree.');
   let current = path.parse(target).root;
@@ -49,6 +62,8 @@ export function immutableContract(plan) {
   const p=structuredClone(plan);
   for(const key of ['plan_revision','current_task_id','delivery_status'])delete p[key];
   for(const task of p.tasks)for(const key of ['implementation_status','commit_status','actual_files'])delete task[key];
+  // A commit that deletes a required document pins its revision; the pin is not a contract change.
+  for(const pack of [p.context_pack,...p.tasks.map(task=>task.context_pack)])for(const doc of pack?.documents??[])delete doc.revision;
   return json(p);
 }
 export function ownWorktree(root, record) {
@@ -79,7 +94,7 @@ export function assertAssignment(root, plan, {ready=false,role,files}={}) {
 }
 export function assertAssignmentCommand(root, command) {
   if(!readAssignment(root))return;
-  check(['status','validate','recover','plan:view','task:start','commit','repair','hook','hook:ack','git-hook','assignment:status'].includes(command),
+  check(['status','validate','recover','plan:view','task:start','commit','repair','hook','hook:ack','git-hook','assignment:status','task:block'].includes(command),
     'ASSIGNMENT_READ_ONLY','Исполнитель выполняет назначение; изменение плана, вложенные назначения и публикация запрещены.');
 }
 export function packageDirectories(root, record) {

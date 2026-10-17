@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 257,
+  "plan_revision": 258,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -142,7 +142,7 @@
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
-  "current_task_id": null,
+  "current_task_id": "T012",
   "context_pack": {
     "documents": [
       {
@@ -867,7 +867,7 @@
       ]
     },
     {
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
@@ -977,8 +977,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
-Current Task: нет
-Revision: 257
+Current Task: T012
+Revision: 258
 
 ## Цель
 
@@ -1074,7 +1074,7 @@ Revision: 257
   - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/remote-access.md, docs/planning/backend-independence-followup.md, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md, docs/modules/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011
-- [TODO] T012: Собрать выпуск трёх ОС — Ожидает
+- [IN_PROGRESS] T012: Собрать выпуск трёх ОС — В работе
   - Git Commit: [PENDING] release: Собрать выпуск 0.4.0 трёх ОС
   - Reference: workflow-pilot-orchestrated-execution / T012 / implementation
   - Файлы: release-manifest.json

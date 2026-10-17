@@ -5,6 +5,7 @@
 .harness/settings/settings.json
 node_modules/
 dist/
+.workflow-temp/
 # workflow-kit:end
 
 # Workflow Pilot generated files and local runtime

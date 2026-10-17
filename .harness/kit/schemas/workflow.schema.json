@@ -105,6 +105,19 @@
         }
       }
     },
+    "delivery_tail": {
+      "description": "Ordered release steps an orchestrated plan with release: true repeats after DOCS.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["verification_ids", "verification_kind"],
+        "properties": {
+          "verification_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+          "verification_kind": {"enum": ["package", "installed"]}
+        }
+      }
+    },
     "documentation": {
       "type": "object",
       "required": [

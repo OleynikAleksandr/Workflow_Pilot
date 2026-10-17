@@ -7,14 +7,14 @@ import { status } from './actions.mjs';
 import { readPlan, emptyPlan, writePlan, projectContextPaths } from './plan.mjs';
 import { journal, locked } from './transaction-state.mjs';
 import { commitCandidate } from './transaction.mjs';
-import { payload, hooksDirectory, hookContent, installationManifest, HOOK_COMMAND, BLOCK_START, BLOCK_END, MD_START, MD_END } from './installation-files.mjs';
+import { payload, hooksDirectory, hookContent, installationManifest, HOOK_COMMAND, BLOCK_START, BLOCK_END, MD_START, MD_END, GITIGNORE_SECTION } from './installation-files.mjs';
 import { prepareRuntime, launcherCommand, windows } from './platform.mjs';
 import { inspectionInputs } from './inspection-inputs.mjs';
 
 const hookNames = ['pre-commit', 'commit-msg', 'post-commit', 'pre-push'];
 const hookName = entry => path.posix.basename(entry.path.replaceAll('\\', '/'));
 // Versions this installer upgrades in place. Consumers (Web Pilot Workspace Setup) read the same list.
-export const upgradeFrom = new Set(['1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.4.2', '1.4.3', '1.4.4', '1.4.5', '1.4.6', '1.4.7', '1.4.8', '1.4.9', '1.4.10', '1.4.11', '1.4.12', '1.4.13', '1.5.0', '1.5.1', '1.5.2', '1.5.3', '1.5.4', '1.5.5', '1.5.6', '1.6.0', '1.6.1', '1.6.2', '1.6.3', '1.6.4', '1.7.0', '1.7.1', '1.7.2']);
+export const upgradeFrom = new Set(['1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.4.2', '1.4.3', '1.4.4', '1.4.5', '1.4.6', '1.4.7', '1.4.8', '1.4.9', '1.4.10', '1.4.11', '1.4.12', '1.4.13', '1.5.0', '1.5.1', '1.5.2', '1.5.3', '1.5.4', '1.5.5', '1.5.6', '1.6.0', '1.6.1', '1.6.2', '1.6.3', '1.6.4', '1.7.0', '1.7.1', '1.7.2', '1.7.3']);
 function migrateNonePlanForContinuity(root) {
   const file = path.join(root, PLAN);
   if (!fs.existsSync(file)) return false;
@@ -243,6 +243,13 @@ function upgradeInstallation(root, preview) {
       const current = fs.readFileSync(manifestTarget(root, agentEntry), 'utf8');
       const template = desiredMap.get('.harness/kit/templates/AGENTS.md')?.content; check(template, 'UPGRADE_PAYLOAD', 'Новый комплект не содержит AGENTS template.');
       const next = replaceOwnedSection(current, agentEntry, template); write({ ...agentEntry, path: agentEntry.path, external: false, kind: 'managed' }, next);
+    }
+    const ignoreEntry = old.files.find(e => e.kind === 'managed' && e.path === '.gitignore');
+    if (ignoreEntry) {
+      // A user-edited Kit section stops the upgrade with MODIFIED_INTEGRATION, like AGENTS.md.
+      const current = fs.readFileSync(manifestTarget(root, ignoreEntry), 'utf8');
+      const next = replaceOwnedSection(current, ignoreEntry, GITIGNORE_SECTION, BLOCK_START, BLOCK_END);
+      if (next !== current) write({ ...ignoreEntry, path: '.gitignore', external: false, kind: 'managed' }, next);
     }
     for (const name of projectContextPaths()) {
       const entry = desiredMap.get(name); check(entry, 'UPGRADE_PAYLOAD', 'Новый комплект не содержит ' + name);

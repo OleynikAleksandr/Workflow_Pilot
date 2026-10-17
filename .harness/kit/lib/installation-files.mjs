@@ -10,6 +10,8 @@ import { windowsHookCommand, windowsLauncher } from './platform.mjs';
 export const kitRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const HOOK_COMMAND = '"$(git rev-parse --show-toplevel)/scripts/workflow" hook session-start';
 export const BLOCK_START = '# workflow-kit:begin';
+// .workflow-temp/ holds documents a discussion chat writes on request, outside Git and recovery.
+export const GITIGNORE_SECTION = '.harness/runtime/\n.harness/sessions/\n.harness/settings/settings.json\nnode_modules/\ndist/\n.workflow-temp/\n';
 export const BLOCK_END = '# workflow-kit:end';
 export const MD_START = '<!-- workflow-kit:begin -->';
 export const MD_END = '<!-- workflow-kit:end -->';
@@ -77,7 +79,7 @@ export function payload(root, name, hookLocation) {
   if (!fs.existsSync(path.join(root, 'README.md'))) add('README.md', '# ' + name + '\n\n## Назначение\nУточняется при обсуждении проекта.\n\n## Версия\nНе задана.\n\n## Установка и запуск\nУточняются вместе с первым работающим результатом.\n', 'editable');
   if (!fs.existsSync(path.join(root, 'docs/architecture/OVERVIEW.md'))) add('docs/architecture/OVERVIEW.md', OVERVIEW_TEMPLATE, 'editable');
   const ignore = fs.existsSync(path.join(root, '.gitignore')) ? fs.readFileSync(path.join(root, '.gitignore'), 'utf8') : '';
-  add('.gitignore', addSection(ignore, '.harness/runtime/\n.harness/sessions/\n.harness/settings/settings.json\nnode_modules/\ndist/\n', BLOCK_START, BLOCK_END), 'managed');
+  add('.gitignore', addSection(ignore, GITIGNORE_SECTION, BLOCK_START, BLOCK_END), 'managed');
   const attributes = fs.existsSync(path.join(root, '.gitattributes')) ? fs.readFileSync(path.join(root, '.gitattributes'), 'utf8') : '';
   add('.gitattributes', addSection(attributes, '/.harness/** -text\n/scripts/workflow* -text\n', BLOCK_START, BLOCK_END), 'managed');
   const hooksFile = path.join(root, '.codex/hooks.json');

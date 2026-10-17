@@ -2,7 +2,8 @@
 import fs from 'node:fs';
 import { handoffParallelTask, assertHandoffCommand } from './lib/task-handoff.mjs';
 import { startIntegration, continueIntegration, integrationStatus, assertIntegrationCommand } from './lib/task-integration.mjs';
-import { createAssignment, assignmentStatus, setupAssignment, assertAssignmentCommand } from './lib/task-assignment.mjs';
+import { createAssignment, assignmentStatus, setupAssignment, cleanupAssignments, assertAssignmentCommand } from './lib/task-assignment.mjs';
+import { blockTask, messageAssignment, escalatePlan } from './lib/signals.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { errorResult, check, readJSON, json, withPlanFile, PLAN } from './lib/common.mjs';
@@ -75,6 +76,10 @@ export async function main(argv = process.argv.slice(2)) {
       case 'assignment:create': result = createAssignment(root,input(),opts['expected-revision']); break;
       case 'assignment:status': result = assignmentStatus(root,opts.id); break;
       case 'assignment:setup': result = setupAssignment(root,opts.id,{npmCi:!!opts['npm-ci']}); break;
+      case 'assignment:cleanup': result = cleanupAssignments(root); break;
+      case 'assignment:message': result = messageAssignment(root,opts.id,opts.text,opts['signal-id']); break;
+      case 'task:block': result = blockTask(root,opts.task,opts.reason,opts['signal-id']); break;
+      case 'plan:escalate': result = escalatePlan(root,opts.reason,opts['signal-id']); break;
       case 'review:status': result = reviewStatus(root); break;
       case 'review:acknowledge': result = acknowledgeReview(root,opts.run); break;
       case 'review:prepare': result = prepareReview(root,input()); break;
@@ -84,7 +89,7 @@ export async function main(argv = process.argv.slice(2)) {
       case 'review:publish': result = publishReview(root); break;
       case 'status': { result = status(root); if (!opts.full) { delete result.recovery_text; delete result.last_hook_execution; delete result.resolved; } break; }
       case 'validate': { const r = validate(root); result = { ok: true, message: 'План и Git согласованы.', plan_revision: r.plan.plan_revision, resolved: r.resolved, transaction_pending: !!r.transaction }; break; }
-      case 'recover': { if (opts.format === 'packet') return { value: contextPacket(root), json: true }; const p = recover(root); return { value: opts.format === 'json' || opts.json ? p : p.text, json: opts.format === 'json' || !!opts.json }; }
+      case 'recover': { if (opts.format === 'packet') return { value: contextPacket(root,{role:opts.role}), json: true }; const p = recover(root,'manual',{role:opts.role}); return { value: opts.format === 'json' || opts.json ? p : p.text, json: opts.format === 'json' || !!opts.json }; }
       case 'plan:view': result = sessionPlanView(root, opts.session); break;
       case 'plan:prepare':
       case 'plan:bind':
