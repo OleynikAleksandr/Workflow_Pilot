@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 376,
+  "plan_revision": 378,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -193,8 +193,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T004",
@@ -220,7 +220,8 @@
       "acceptance_criteria": [
         "Установка готового комплекта без пересборки; при работающей службе — pending"
       ],
-      "expected_commit_message": "release: Установить 0.4.6 в Applications"
+      "expected_commit_message": "release: Установить 0.4.6 в Applications",
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -271,7 +272,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 376
+Revision: 378
 
 ## Цель
 
@@ -299,8 +300,8 @@ Revision: 376
   - Git Commit: [DONE] release: Собрать выпуск 0.4.6 трёх ОС
   - Reference: workflow-pilot-0-4-6 / T003 / implementation
   - Файлы: release-manifest.json, docs/planning/project-list-layout.md
-- [TODO] T004: Установить 0.4.6 в Applications — Ожидает
-  - Git Commit: [PENDING] release: Установить 0.4.6 в Applications
+- [DONE] T004: Установить 0.4.6 в Applications — Завершено
+  - Git Commit: [DONE] release: Установить 0.4.6 в Applications
   - Reference: workflow-pilot-0-4-6 / T004 / implementation
   - Файлы: release-manifest.json, docs/planning/project-list-layout.md
 - [TODO] T005: Опубликовать GitHub Release 0.4.6 — Ожидает
