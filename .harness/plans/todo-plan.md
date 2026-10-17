@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 359,
+  "plan_revision": 361,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -2490,14 +2490,17 @@
         "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
       "expected_commit_message": "release: Собрать выпуск 0.4.5 трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T045",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T046",
@@ -2584,7 +2587,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 359
+Revision: 361
 
 ## Цель
 
@@ -2920,8 +2923,8 @@ Revision: 359
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-orphan-records.md, README.md, docs/modules/backend.md, docs/modules/project-lifecycle.md
   - Параллельность: исключительное выполнение
   - Зависимости: T042, T043, T044
-- [TODO] T045: Собрать выпуск 0.4.5 трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.4.5 трёх ОС
+- [DONE] T045: Собрать выпуск 0.4.5 трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.4.5 трёх ОС
   - Reference: workflow-pilot-orchestrated-execution / T045 / implementation
   - Файлы: release-manifest.json, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение
