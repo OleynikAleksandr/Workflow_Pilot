@@ -33,7 +33,7 @@ test('handshake carries a validated product version for an explicit switch',()=>
   assert.equal(validateHandshake({...base,appVersion:'0.2.0'}).appVersion,'0.2.0');
   assert.equal(validateHandshake(base).appVersion,undefined);
   assert.throws(()=>validateHandshake({...base,appVersion:'0.2.0; rm -rf'}),{code:'BACKEND_HANDSHAKE_INVALID'});
-  assert.equal(JSON.parse(fs.readFileSync(path.join(project,'package.json'),'utf8')).version,'0.4.0');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(project,'package.json'),'utf8')).version,'0.4.1');
 });
 
 test('no source resolves its own folder through URL.pathname (packaged paths contain spaces)',async()=>{
@@ -102,7 +102,7 @@ test('a 0.1.6 profile is used in place with the same schema for rollback; a fore
   const ready=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('startup timeout '+errors)),30000);
     readline.createInterface({input:backend.stdout}).on('line',line=>{try{const value=JSON.parse(line);if(value.ready){clearTimeout(timer);resolve(value);}}catch{}});});
   const client=new BackendConnection({port:ready.port,token:ready.token});
-  const handshake=await client.connect();assert.equal(handshake.appVersion,'0.4.0');
+  const handshake=await client.connect();assert.equal(handshake.appVersion,'0.4.1');
   const projects=(await client.read('projects.list')).projects;
   assert.equal(projects[0].projectId,'legacy','the 0.1.6 project list is used in place');
   assert.equal((await client.read('settings.get')).theme,'dark');

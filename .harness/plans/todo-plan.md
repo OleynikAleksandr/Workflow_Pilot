@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 283,
+  "plan_revision": 285,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1249,14 +1249,21 @@
         "Версия 0.4.1 согласована в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.4.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T019",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-4",
@@ -1403,7 +1410,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 283
+Revision: 285
 
 ## Цель
 
@@ -1553,8 +1560,8 @@ Revision: 283
   - Файлы: src/execution/browser/presentation/host.mjs, src/execution/browser/presentation/transport.mjs, src/frontend/client/browser-view.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/browser-view.mjs, src/frontend/desktop/browser-view-preload.cjs, tests/browser-presentation.test.mjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/desktop-client.test.mjs, src/backend/lifecycle.mjs, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
   - Зависимости: T017
-- [TODO] T019: Подготовить версию 0.4.1 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.4.1
+- [DONE] T019: Подготовить версию 0.4.1 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.4.1
   - Reference: workflow-pilot-orchestrated-execution / T019 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
