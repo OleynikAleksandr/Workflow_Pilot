@@ -574,7 +574,8 @@ function render(state) {
   if (state.fixture) $('connection-detail').textContent = 'TEST FIXTURE · без реального аккаунта и MCP';
   const health = state.workspaceHealth;
   const checking = health?.phase === 'checking', unhealthy = health?.phase === 'error';
-  $('workspace-health').hidden = !checking && !unhealthy;
+  // A background check of the project is silent: only its failure is shown, so switching sessions never shifts the plan card.
+  $('workspace-health').hidden = !unhealthy;
   const kitUpgrade = kitUpgradeNeeded(health);
   $('workspace-health-message').textContent = checking ? 'Проверяем проект в фоне…'
     : unhealthy ? (health.error?.message ?? health.issues?.[0]?.reason ?? (kitUpgrade

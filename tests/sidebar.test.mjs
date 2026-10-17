@@ -55,6 +55,15 @@ test('project picker searches, marks current/background work, keeps one parent a
   f.emit(base);assert.equal(f.document.querySelector('.project').dataset.workspace,'/demo');
 });
 
+test('a background project check is silent; only its failure is shown',async t=>{
+  const f=await fixture(t),base=f.state;
+  f.emit({...base,workspaceHealth:{workspace:'/demo',phase:'checking',ready:false}});
+  assert.equal(f.document.getElementById('workspace-health').hidden,true,'switching sessions does not shift the plan card');
+  f.emit({...base,workspaceHealth:{workspace:'/demo',phase:'error',ready:false,error:{message:'Git недоступен'}}});
+  assert.equal(f.document.getElementById('workspace-health').hidden,false);
+  assert.match(f.document.getElementById('workspace-health-message').textContent,/Git недоступен/);
+});
+
 test('sidebar settings reserve an accessible recovery block separate from project/archive lists',async t=>{
   const f=await fixture(t);
   const section=f.document.getElementById('executor-recovery');

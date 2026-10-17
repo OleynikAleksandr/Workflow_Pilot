@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 384,
+  "plan_revision": 386,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -334,7 +334,9 @@
         "tests/electron-smoke.mjs",
         "tests/sidebar.test.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/no-autoplan.md"
+      ],
       "verification_ids": [
         "unit-all",
         "electron-smoke"
@@ -344,13 +346,20 @@
         "Строка начатой задачи to-do plan во всю ширину, название по ширине панели; проверка проекта при переключении не сдвигает карточку"
       ],
       "expected_commit_message": "fix: Раскладка to-do plan и проверка проекта без сдвига",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T008",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/sidebar.test.mjs",
+        "docs/planning/no-autoplan.md"
+      ]
     },
     {
       "id": "T007",
@@ -405,7 +414,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 384
+Revision: 386
 
 ## Цель
 
@@ -445,10 +454,10 @@ Revision: 384
   - Git Commit: [DONE] fix: Kit без AutoPlan — запуск плана кнопкой
   - Reference: workflow-pilot-0-4-6 / T006 / implementation
   - Файлы: packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/src/lib/installer.mjs, docs/planning/no-autoplan.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/docs/modules/parallel-assignments.md
-- [TODO] T008: Раскладка to-do plan и проверка проекта без сдвига — Ожидает
-  - Git Commit: [PENDING] fix: Раскладка to-do plan и проверка проекта без сдвига
+- [DONE] T008: Раскладка to-do plan и проверка проекта без сдвига — Завершено
+  - Git Commit: [DONE] fix: Раскладка to-do plan и проверка проекта без сдвига
   - Reference: workflow-pilot-0-4-6 / T008 / implementation
-  - Файлы: src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, tests/electron-smoke.mjs, tests/sidebar.test.mjs
+  - Файлы: src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, tests/electron-smoke.mjs, tests/sidebar.test.mjs, docs/planning/no-autoplan.md
 - [TODO] T007: Убрать AutoPlan из кода приложения — Ожидает
   - Git Commit: [PENDING] refactor: Убрать AutoPlan из кода приложения
   - Reference: workflow-pilot-0-4-6 / T007 / implementation

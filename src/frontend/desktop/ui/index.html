@@ -115,7 +115,7 @@
     .execution-next-action[data-attention=true]{border-color:#b67232}
     :root[data-theme=dark] .execution-stages li[data-status=blocked],:root[data-theme=dark] .execution-stages li[data-status=unknown]{border-left-color:#dfac74}
     :root[data-theme=dark] .execution-next-action[data-attention=true]{border-color:#dfac74}
-    .plan-task-open{display:flex;gap:inherit;align-items:inherit;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:6px}.plan-task-open:hover{background:rgba(127,127,127,.12)}.plan-task[data-current=true]{outline:2px solid #2f80ed;outline-offset:2px;border-radius:6px}.session-role{display:block;font-size:10px;color:var(--muted)}.session-role[data-state=attention]{color:#b3261e}.plan-run-toggle{margin:6px 0 2px}
+    .plan-task-open{grid-column:1/-1;display:grid;grid-template-columns:24px minmax(0,1fr);gap:inherit;align-items:inherit;width:100%;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:6px}.plan-task-open:hover{background:rgba(127,127,127,.12)}.plan-task[data-current=true]{outline:2px solid #2f80ed;outline-offset:2px;border-radius:6px}.session-role{display:block;font-size:10px;color:var(--muted)}.session-role[data-state=attention]{color:#b3261e}.plan-run-toggle{margin:6px 0 2px}
 </style>
 </head>
 <body>

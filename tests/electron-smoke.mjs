@@ -862,6 +862,14 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.ok(pickerLayout.name > pickerLayout.archive * 2, 'project name is not squeezed: ' + JSON.stringify(pickerLayout));
   assert.ok(pickerLayout.height <= pickerLayout.line * 3 + 24, 'project name is not vertical: ' + JSON.stringify(pickerLayout));
   assert.ok(pickerLayout.sameRow, 'archive button sits on the row: ' + JSON.stringify(pickerLayout));
+  // A started task of the to-do plan (the row is a button) uses the same two columns as an ordinary row.
+  const taskLayout = await sidebar.executeJavaScript(`(()=>{const box=document.createElement('div');box.style.cssText='position:absolute;left:0;top:0;width:420px';
+    box.innerHTML='<ul class="plan-tasks"><li class="plan-task"><button class="plan-task-open" type="button"><span class="plan-task-state">●</span><div><span class="plan-task-id">T002</span><strong>Подсчёт строк, слов, символов и средней длины</strong></div></button></li>'
+      +'<li class="plan-task"><span class="plan-task-state">○</span><div><span class="plan-task-id">T004</span><strong>Подсчёт строк, слов, символов и средней длины</strong></div></li></ul>';
+    document.body.append(box);const [open,plain]=[...box.querySelectorAll('strong')].map(node=>node.getBoundingClientRect());box.remove();
+    return {open:{width:open.width,height:open.height},plain:{width:plain.width,height:plain.height}};})()`);
+  assert.ok(Math.abs(taskLayout.open.width - taskLayout.plain.width) < 2 && taskLayout.open.height <= taskLayout.plain.height + 1,
+    'a started task wraps like an ordinary one: ' + JSON.stringify(taskLayout));
   await sidebar.executeJavaScript('document.querySelector(".expand-project").click()');
   await waitFor(() => sidebar.executeJavaScript('!document.querySelector(".sessions").hidden && !document.querySelector(".session").disabled'), 'expand before session actions', snapshot);
   await sidebar.executeJavaScript(`{ const li=document.querySelector('[data-session-id="${first.sessionId}"]').closest('li'); li.querySelector('.session-menu-button').click(); li.querySelector('.rename-session').click(); }`);
