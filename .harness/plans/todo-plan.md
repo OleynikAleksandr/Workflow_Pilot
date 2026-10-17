@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 273,
+  "plan_revision": 275,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1044,8 +1044,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T013",
@@ -1072,7 +1072,8 @@
       ],
       "expected_commit_message": "release: Установить 0.4.0 в Applications",
       "verification_kind": "installed",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -1129,7 +1130,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 273
+Revision: 275
 
 ## Цель
 
@@ -1255,8 +1256,8 @@ Revision: 273
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T011, DOCS, DOCS-2, DOCS-3
-- [TODO] T013: Установить выпуск в Applications — Ожидает
-  - Git Commit: [PENDING] release: Установить 0.4.0 в Applications
+- [DONE] T013: Установить выпуск в Applications — Завершено
+  - Git Commit: [DONE] release: Установить 0.4.0 в Applications
   - Reference: workflow-pilot-orchestrated-execution / T013 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
