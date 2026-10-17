@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 289,
+  "plan_revision": 291,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1361,14 +1361,15 @@
         "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
       ],
       "expected_commit_message": "release: Установить 0.4.1 в Applications",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T021",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "T022",
@@ -1424,7 +1425,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 289
+Revision: 291
 
 ## Цель
 
@@ -1592,8 +1593,8 @@ Revision: 289
   - Файлы: release-manifest.json, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
   - Зависимости: T019, DOCS-4
-- [TODO] T021: Установить 0.4.1 в Applications — Ожидает
-  - Git Commit: [PENDING] release: Установить 0.4.1 в Applications
+- [DONE] T021: Установить 0.4.1 в Applications — Завершено
+  - Git Commit: [DONE] release: Установить 0.4.1 в Applications
   - Reference: workflow-pilot-orchestrated-execution / T021 / implementation
   - Файлы: release-manifest.json, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
