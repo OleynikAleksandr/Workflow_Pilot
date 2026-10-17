@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 393,
+  "plan_revision": 395,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -678,13 +678,16 @@
         "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
       "expected_commit_message": "release: Собрать выпуск 0.4.7 трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T010",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T011",
@@ -761,7 +764,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 393
+Revision: 395
 
 ## Цель
 
@@ -817,8 +820,8 @@ Revision: 393
   - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-0-4-6 / DOCS-2 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, AGENTS.md, README.md, docs/acceptance/backend-independence.md, docs/acceptance/migration-0.1.0.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/execution.md, docs/modules/orchestrated-execution.md, docs/modules/project-compatibility.md, docs/modules/remote-access.md, docs/modules/workflow-execution.md, docs/planning/no-autoplan.md, docs/planning/phased-plans-recovery-followup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md
-- [TODO] T010: Собрать выпуск 0.4.7 трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.4.7 трёх ОС
+- [DONE] T010: Собрать выпуск 0.4.7 трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.4.7 трёх ОС
   - Reference: workflow-pilot-0-4-6 / T010 / implementation
   - Файлы: release-manifest.json
 - [TODO] T011: Установить 0.4.7 в Applications — Ожидает
