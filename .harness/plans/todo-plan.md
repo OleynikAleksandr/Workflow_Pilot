@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 287,
+  "plan_revision": 289,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1327,14 +1327,17 @@
         "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
       ],
       "expected_commit_message": "release: Собрать выпуск 0.4.1 трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T020",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T021",
@@ -1421,7 +1424,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 287
+Revision: 289
 
 ## Цель
 
@@ -1583,8 +1586,8 @@ Revision: 287
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/client-clipboard-drop.md, README.md, docs/modules/browser.md, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: T017, T018, T019
-- [TODO] T020: Собрать выпуск 0.4.1 трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.4.1 трёх ОС
+- [DONE] T020: Собрать выпуск 0.4.1 трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.4.1 трёх ОС
   - Reference: workflow-pilot-orchestrated-execution / T020 / implementation
   - Файлы: release-manifest.json, docs/planning/client-clipboard-drop.md
   - Параллельность: исключительное выполнение
