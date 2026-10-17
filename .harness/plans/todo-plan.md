@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 254,
+  "plan_revision": 257,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -137,7 +137,8 @@
       "packages/workflow-kit/src/WORKFLOW.md",
       "packages/workflow-kit/src/templates/PLAN.md",
       "packages/workflow-kit/src/templates/AGENTS.md",
-      "packages/workflow-kit/src/templates/PROTOTYPE.md"
+      "packages/workflow-kit/src/templates/PROTOTYPE.md",
+      "docs/modules/orchestrated-execution.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -147,12 +148,12 @@
       {
         "path": "docs/planning/orchestrated-execution-next.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "f6e62cc0877bc66e4287a4a0d55b974510b8b77f"
       },
       {
         "path": "docs/planning/orchestrated-execution-contracts.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "f6e62cc0877bc66e4287a4a0d55b974510b8b77f"
       },
       {
         "path": "docs/modules/workflow-execution.md",
@@ -794,8 +795,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "DOCS",
@@ -836,7 +837,8 @@
         "packages/workflow-kit/src/WORKFLOW.md",
         "packages/workflow-kit/src/templates/PLAN.md",
         "packages/workflow-kit/src/templates/AGENTS.md",
-        "packages/workflow-kit/src/templates/PROTOTYPE.md"
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "docs/modules/orchestrated-execution.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -847,7 +849,22 @@
         "Pending живой приёмки перенесён в docs/acceptance/orchestrated-execution.md, включая обновление Kit проекта до 1.8.0 в приложении 0.4.0 и config:apply delivery_tail (three-platform-release → release-installed → github-release)"
       ],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "AGENTS.md",
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/backend-independence-followup.md",
+        "docs/planning/orchestrated-execution-contracts.md",
+        "docs/planning/orchestrated-execution-next.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -961,7 +978,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 254
+Revision: 257
 
 ## Цель
 
@@ -1051,10 +1068,10 @@ Revision: 254
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T010
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS / implementation
-  - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/remote-access.md, docs/planning/backend-independence-followup.md, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md
+  - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/remote-access.md, docs/planning/backend-independence-followup.md, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md, docs/modules/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011
 - [TODO] T012: Собрать выпуск трёх ОС — Ожидает
