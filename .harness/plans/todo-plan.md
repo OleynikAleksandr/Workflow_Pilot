@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 305,
+  "plan_revision": 307,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1661,14 +1661,17 @@
         "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
       ],
       "expected_commit_message": "release: Собрать выпуск 0.4.2 трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T026",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T027",
@@ -1755,7 +1758,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 305
+Revision: 307
 
 ## Цель
 
@@ -1965,8 +1968,8 @@ Revision: 305
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/orchestrated-executor-fixes.md, README.md, docs/modules/orchestrated-execution.md, docs/modules/desktop.md, docs/modules/backend.md, docs/acceptance/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T023, T024, T029, T025
-- [TODO] T026: Собрать выпуск 0.4.2 трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.4.2 трёх ОС
+- [DONE] T026: Собрать выпуск 0.4.2 трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.4.2 трёх ОС
   - Reference: workflow-pilot-orchestrated-execution / T026 / implementation
   - Файлы: release-manifest.json, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
