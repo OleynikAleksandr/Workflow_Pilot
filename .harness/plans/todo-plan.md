@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 332,
+  "plan_revision": 334,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -2102,14 +2102,20 @@
         "Запись проекта с отсутствующей или очищенной папкой архивируется и убирается из списка"
       ],
       "expected_commit_message": "fix: Архив проекта из списка без выбора",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T041",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tests/sidebar.test.mjs",
+        "tests/workspace-session.test.mjs"
+      ]
     },
     {
       "id": "T037",
@@ -2292,7 +2298,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 332
+Revision: 334
 
 ## Цель
 
@@ -2568,8 +2574,8 @@ Revision: 332
   - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/parallel-execution.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tests/sidebar.test.mjs, tests/execution-control.test.mjs, tests/electron-smoke.mjs, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-execution-ui.test.mjs, docs/planning/single-plan-button.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T041: Архив проекта из списка без выбора — Ожидает
-  - Git Commit: [PENDING] fix: Архив проекта из списка без выбора
+- [DONE] T041: Архив проекта из списка без выбора — Завершено
+  - Git Commit: [DONE] fix: Архив проекта из списка без выбора
   - Reference: workflow-pilot-orchestrated-execution / T041 / implementation
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tests/sidebar.test.mjs, tests/workspace-session.test.mjs
   - Параллельность: исключительное выполнение

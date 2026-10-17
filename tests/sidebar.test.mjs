@@ -37,6 +37,11 @@ test('project picker searches, marks current/background work, keeps one parent a
   const search=f.document.getElementById('project-search'),menu=f.document.getElementById('project-actions');
   menu.open=true;search.value='другой';search.dispatchEvent(new f.window.Event('input'));
   assert.equal(f.document.querySelectorAll('[data-project-choice]').length,1);
+  // Any project, also one whose folder is gone and cannot be selected, is archived from the list.
+  const archiveCalls=[];f.window.webPilot.archiveProject=async(workspace,options)=>{archiveCalls.push([workspace,options]);return {state:f.state};};
+  f.document.querySelector('.project-choice-archive').click();await f.settle();
+  assert.equal(archiveCalls.length,1);assert.equal(archiveCalls[0][0],'/other');assert.equal(archiveCalls[0][1],undefined,'no plan: no confirmation needed');
+  assert.equal(f.document.querySelector('.project-choice-archive').getAttribute('aria-label'),'Перенести в архив: Другой');
   search.focus();search.dispatchEvent(new f.window.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));
   assert.equal(f.document.activeElement.dataset.projectChoice,'/other');
   f.document.activeElement.dispatchEvent(new f.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));

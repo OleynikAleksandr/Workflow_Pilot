@@ -95,6 +95,15 @@ $('toggle-projects').addEventListener('click', async () => {
   const project=currentState.projects.find(p=>p.workspace===root);
   if(project)await action('setExpanded',project.workspace,!project.expanded);
 });
+// Archive needs neither the project's folder nor its selection; an active orchestrated
+// plan is stopped only after the user confirms it.
+function archiveProject(project) {
+  const active = project.sessions.some(session => session.role === 'orchestrator'
+    && !['planning', 'complete', undefined].includes(session.orchestratorState?.state));
+  if (!active) return action('archiveProject', project.workspace);
+  if (window.confirm(`В проекте «${project.name}» выполняется план оркестратора. Перенести проект в архив? Выполнение плана будет остановлено; план и работа исполнителей сохранятся, продолжить можно после возврата из архива.`))
+    action('archiveProject', project.workspace, { stopExecution: true });
+}
 let pickerSignature='';
 function renderProjectChoices(state) {
   const selected=state.selected?.parentWorkspace??state.selected?.workspace,query=$('project-search').value.trim().toLocaleLowerCase();
@@ -112,7 +121,13 @@ function renderProjectChoices(state) {
     status.textContent=[project.workspace===selected?'Выбран':null,project.activity==='working'?'Работает в фоне':project.activity==='attention'?'Требует внимания':null].filter(Boolean).join(' · ');
     button.append(title);if(status.textContent)button.append(status);
     button.addEventListener('click',()=>{$('project-actions').open=false;action('selectWorkspace',project.workspace);});
-    return button;
+    // A project whose folder is gone cannot be selected, so its record is archived from here.
+    const archive=document.createElement('button');archive.type='button';archive.className='project-choice-archive';
+    archive.textContent='В архив';archive.title='Перенести в архив';archive.setAttribute('aria-label','Перенести в архив: '+project.name);
+    archive.addEventListener('click',()=>{$('project-actions').open=false;
+      archiveProject(currentState?.projects.find(p=>p.workspace===project.workspace)??project);});
+    const row=document.createElement('div');row.className='project-choice';row.append(button,archive);
+    return row;
   }));
   $('project-search-empty').hidden=choices.length>0;
   if(focused)[...$('project-options').children].find(b=>b.dataset.projectChoice===focused)?.focus();
@@ -122,7 +137,7 @@ $('project-archive').addEventListener('click',()=>{$('project-actions').open=fal
 $('project-actions').addEventListener('keydown',event=>{
   if(!['ArrowDown','ArrowUp','Escape'].includes(event.key))return;
   if(event.key==='Escape'){$('project-actions').open=false;$('project-actions').querySelector('summary').focus();return;}
-  const choices=[...$('project-options').querySelectorAll('button')];if(!choices.length)return;
+  const choices=[...$('project-options').querySelectorAll('[data-project-choice]')];if(!choices.length)return;
   event.preventDefault();const position=choices.indexOf(document.activeElement),direction=event.key==='ArrowDown'?1:-1;
   choices[(position+direction+choices.length)%choices.length].focus();
 });
@@ -325,14 +340,7 @@ function render(state) {
       }));
       menuAction('copy-workspace-path', 'Скопировать полный путь', () => action('copyWorkspacePath', project.workspace));
       menuAction('copy-external-client-line', 'Скопировать строку для внешнего клиента', () => action('copyExternalClientLine', project.workspace));
-      menuAction('archive-project', 'Перенести в архив', () => {
-        // An active orchestrated plan is stopped only after the user confirms it.
-        const active = project.sessions.some(session => session.role === 'orchestrator'
-          && !['planning', 'complete', undefined].includes(session.orchestratorState?.state));
-        if (!active) return action('archiveProject', project.workspace);
-        if (window.confirm(`В проекте «${project.name}» выполняется план оркестратора. Перенести проект в архив? Выполнение плана будет остановлено; план и работа исполнителей сохранятся, продолжить можно после возврата из архива.`))
-          action('archiveProject', project.workspace, { stopExecution: true });
-      });
+      menuAction('archive-project', 'Перенести в архив', () => archiveProject(project));
       row.append(arrow, button, menuButton); item.append(row, menu);
       const sessions = document.createElement('ul'); sessions.className = 'sessions'; sessions.hidden = !project.expanded;
       sessions.dataset.workspace = project.workspace;

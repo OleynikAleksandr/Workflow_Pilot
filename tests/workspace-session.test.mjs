@@ -64,6 +64,16 @@ test('an executor of an orchestrated plan works in Chat while its orchestrator u
   if(reloaded.project(worktree).attempt)await assert.rejects(reloaded.resetUnsentExecutor(worktree,unsent.sessionId),{code:'ASSIGNMENT_OWNER'});
 });
 
+test('a project whose folder was emptied is archived and forgotten without reading the folder',async t=>{
+  const {project,store}=await fixture(t);
+  const gone=await store.select(await project('Emptied'));
+  await fs.rm(path.join(gone.workspace,'.harness'),{recursive:true,force:true});await fs.rm(path.join(gone.workspace,'scripts'),{recursive:true,force:true});
+  await assert.rejects(store.selectSession(gone.workspace,gone.sessionId),'the record cannot be selected any more');
+  assert.ok((await store.setArchived(gone.workspace,true)).archivedAt);
+  await store.forgetArchived(gone.workspace,gone.projectId);
+  assert.equal(store.snapshot().projects.some(p=>p.workspace===gone.workspace),false);
+});
+
 test('characterization: five missing executor folders remain recovery records after their parent disappears',async t=>{
   const {root,project,store}=await fixture(t);
   const parent=await store.select(await project('PL_Мастерская_файлов','deleted-parent-id'));
