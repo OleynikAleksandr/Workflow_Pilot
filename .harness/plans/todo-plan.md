@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 261,
+  "plan_revision": 264,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -909,8 +909,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "DOCS-2",
@@ -923,14 +923,22 @@
       ],
       "functional_paths": [],
       "documentation_paths": [
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "docs/modules/release.md",
+        "docs/modules/orchestrated-execution.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/release.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1047,7 +1055,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 261
+Revision: 264
 
 ## Цель
 
@@ -1149,10 +1157,10 @@ Revision: 261
   - Файлы: package.json, scripts/release-all.mjs, tests/release-all.test.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md
+  - Файлы: docs/architecture/OVERVIEW.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/modules/release.md, docs/modules/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T015
 - [TODO] T012: Собрать выпуск трёх ОС — Ожидает
