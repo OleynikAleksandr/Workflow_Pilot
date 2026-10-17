@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 258,
+  "plan_revision": 259,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -142,7 +142,7 @@
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
-  "current_task_id": "T012",
+  "current_task_id": null,
   "context_pack": {
     "documents": [
       {
@@ -867,7 +867,67 @@
       ]
     },
     {
-      "implementation_status": "IN_PROGRESS",
+      "id": "T015",
+      "title": "Исправить параллельную упаковку и отложенный выпуск",
+      "why": "Реальная сборка T012 показала: параллельные electron-packager очищают общий временный каталог; начатую delivery-задачу Kit не мог отложить для исправления кода.",
+      "dependencies": [],
+      "functional_paths": [
+        "package.json",
+        "scripts/release-all.mjs",
+        "tests/release-all.test.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-tooling",
+        "kit-check",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Каждая платформа упаковывается со своим временным каталогом electron-packager; параллельная упаковка не стирает чужие временные файлы",
+        "Добавление обычной работы откладывает начатую delivery-задачу без её незакоммиченных изменений: она возвращается в TODO, Kit добавляет следующий раунд DOCS, delivery зависит от него",
+        "Fixtures покрывают отдельный временный каталог платформ и отложенную delivery-задачу"
+      ],
+      "expected_commit_message": "fix: Исправить параллельную упаковку и отложенный выпуск",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T015",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T015"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
@@ -876,7 +936,8 @@
       },
       "dependencies": [
         "T011",
-        "DOCS"
+        "DOCS",
+        "DOCS-2"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -906,7 +967,8 @@
       },
       "dependencies": [
         "T012",
-        "DOCS"
+        "DOCS",
+        "DOCS-2"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -935,7 +997,8 @@
       },
       "dependencies": [
         "T013",
-        "DOCS"
+        "DOCS",
+        "DOCS-2"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -977,8 +1040,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
-Current Task: T012
-Revision: 258
+Current Task: нет
+Revision: 259
 
 ## Цель
 
@@ -1074,24 +1137,36 @@ Revision: 258
   - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/remote-access.md, docs/planning/backend-independence-followup.md, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/AGENTS.md, packages/workflow-kit/src/templates/PROTOTYPE.md, docs/modules/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011
-- [IN_PROGRESS] T012: Собрать выпуск трёх ОС — В работе
+- [TODO] T015: Исправить параллельную упаковку и отложенный выпуск — Ожидает
+  - Git Commit: [PENDING] fix: Исправить параллельную упаковку и отложенный выпуск
+  - Reference: workflow-pilot-orchestrated-execution / T015 / implementation
+  - Файлы: package.json, scripts/release-all.mjs, tests/release-all.test.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-orchestrated-execution / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T015
+- [TODO] T012: Собрать выпуск трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.4.0 трёх ОС
   - Reference: workflow-pilot-orchestrated-execution / T012 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T011, DOCS
+  - Зависимости: T011, DOCS, DOCS-2
 - [TODO] T013: Установить выпуск в Applications — Ожидает
   - Git Commit: [PENDING] release: Установить 0.4.0 в Applications
   - Reference: workflow-pilot-orchestrated-execution / T013 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T012, DOCS
+  - Зависимости: T012, DOCS, DOCS-2
 - [TODO] T014: Опубликовать GitHub Release — Ожидает
   - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.0
   - Reference: workflow-pilot-orchestrated-execution / T014 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T013, DOCS
+  - Зависимости: T013, DOCS, DOCS-2
 
 ## Context Pack For This Cycle
 
