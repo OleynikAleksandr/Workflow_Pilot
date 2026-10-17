@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 325,
+  "plan_revision": 327,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.",
   "acceptance_criteria": [
     "R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id",
@@ -1996,14 +1996,15 @@
         "Тег v0.4.3 на sourceCommit, assets сверены по размеру и digest, remote main совпадает с local HEAD"
       ],
       "expected_commit_message": "release: Опубликовать GitHub Release 0.4.3",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T035",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -2025,10 +2026,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 325
+Revision: 327
 
 ## Цель
 
@@ -2292,8 +2293,8 @@ Revision: 325
   - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: T033, DOCS-6
-- [TODO] T035: Опубликовать GitHub Release 0.4.3 — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.3
+- [DONE] T035: Опубликовать GitHub Release 0.4.3 — Завершено
+  - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.3
   - Reference: workflow-pilot-orchestrated-execution / T035 / implementation
   - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
