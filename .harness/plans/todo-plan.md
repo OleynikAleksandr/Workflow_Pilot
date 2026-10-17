@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 264,
+  "plan_revision": 266,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -941,6 +941,63 @@
       ]
     },
     {
+      "id": "T016",
+      "title": "Временный каталог упаковки через TMPDIR",
+      "why": "Опция --tmpdir CLI electron-packager ломает разбор следующих аргументов: --extra-resource теряется, пакеты Windows и Linux выходят без ресурсов.",
+      "dependencies": [],
+      "functional_paths": [
+        "package.json",
+        "scripts/release-all.mjs",
+        "tests/release-all.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Скрипты упаковки снова без --tmpdir; buildPlatforms запускает каждую платформу со своим TMPDIR в .harness/runtime/packager-tmp/<платформа>",
+        "Одиночная упаковка платформы содержит extra-resource (resources, codex-app-server-mcp и toolchain)",
+        "Тест проверяет отдельный TMPDIR каждой платформы и отсутствие --tmpdir в скриптах"
+      ],
+      "expected_commit_message": "fix: Временный каталог упаковки через TMPDIR",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T016",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T016"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -951,7 +1008,8 @@
       "dependencies": [
         "T011",
         "DOCS",
-        "DOCS-2"
+        "DOCS-2",
+        "DOCS-3"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -982,7 +1040,8 @@
       "dependencies": [
         "T012",
         "DOCS",
-        "DOCS-2"
+        "DOCS-2",
+        "DOCS-3"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -1012,7 +1071,8 @@
       "dependencies": [
         "T013",
         "DOCS",
-        "DOCS-2"
+        "DOCS-2",
+        "DOCS-3"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -1055,7 +1115,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 264
+Revision: 266
 
 ## Цель
 
@@ -1163,24 +1223,36 @@ Revision: 264
   - Файлы: docs/architecture/OVERVIEW.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/modules/release.md, docs/modules/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T015
+- [TODO] T016: Временный каталог упаковки через TMPDIR — Ожидает
+  - Git Commit: [PENDING] fix: Временный каталог упаковки через TMPDIR
+  - Reference: workflow-pilot-orchestrated-execution / T016 / implementation
+  - Файлы: package.json, scripts/release-all.mjs, tests/release-all.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-orchestrated-execution / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T016
 - [TODO] T012: Собрать выпуск трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.4.0 трёх ОС
   - Reference: workflow-pilot-orchestrated-execution / T012 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T011, DOCS, DOCS-2
+  - Зависимости: T011, DOCS, DOCS-2, DOCS-3
 - [TODO] T013: Установить выпуск в Applications — Ожидает
   - Git Commit: [PENDING] release: Установить 0.4.0 в Applications
   - Reference: workflow-pilot-orchestrated-execution / T013 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T012, DOCS, DOCS-2
+  - Зависимости: T012, DOCS, DOCS-2, DOCS-3
 - [TODO] T014: Опубликовать GitHub Release — Ожидает
   - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.0
   - Reference: workflow-pilot-orchestrated-execution / T014 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
-  - Зависимости: T013, DOCS, DOCS-2
+  - Зависимости: T013, DOCS, DOCS-2, DOCS-3
 
 ## Context Pack For This Cycle
 
