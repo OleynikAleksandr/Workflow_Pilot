@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 299,
+  "plan_revision": 301,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -130,7 +130,8 @@
       "src/frontend/client/connection.mjs",
       "tests/backend-connection.test.mjs",
       "src/backend/main.mjs",
-      "tests/backend-shutdown.test.mjs"
+      "tests/backend-shutdown.test.mjs",
+      "src/backend/shutdown.mjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -1519,9 +1520,12 @@
       "functional_paths": [
         "src/backend/desktop-model.mjs",
         "src/backend/main.mjs",
-        "tests/backend-shutdown.test.mjs"
+        "tests/backend-shutdown.test.mjs",
+        "src/backend/shutdown.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/orchestrated-executor-fixes.md"
+      ],
       "verification_ids": [
         "unit-all"
       ],
@@ -1531,14 +1535,21 @@
         "Причины ожидания остановки (коды без данных) пишутся в backend-events.jsonl при изменении"
       ],
       "expected_commit_message": "fix: Остановка службы не ждёт неотправленную подготовку контекста",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T029",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/shutdown.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/main.mjs",
+        "tests/backend-shutdown.test.mjs",
+        "docs/planning/orchestrated-executor-fixes.md"
+      ]
     },
     {
       "id": "T025",
@@ -1722,7 +1733,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 299
+Revision: 301
 
 ## Цель
 
@@ -1914,10 +1925,10 @@ Revision: 299
   - Файлы: src/frontend/client/connection.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/backend-connection.test.mjs, tests/sidebar.test.mjs, tests/desktop-client.test.mjs, src/backend/desktop-model.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T023
-- [TODO] T029: Остановка службы не ждёт неотправленную подготовку контекста — Ожидает
-  - Git Commit: [PENDING] fix: Остановка службы не ждёт неотправленную подготовку контекста
+- [DONE] T029: Остановка службы не ждёт неотправленную подготовку контекста — Завершено
+  - Git Commit: [DONE] fix: Остановка службы не ждёт неотправленную подготовку контекста
   - Reference: workflow-pilot-orchestrated-execution / T029 / implementation
-  - Файлы: src/backend/desktop-model.mjs, src/backend/main.mjs, tests/backend-shutdown.test.mjs
+  - Файлы: src/backend/desktop-model.mjs, src/backend/main.mjs, tests/backend-shutdown.test.mjs, src/backend/shutdown.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T024
 - [TODO] T025: Подготовить версию 0.4.2 — Ожидает

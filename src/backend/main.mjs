@@ -41,7 +41,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
     {type:details?.type,reason:details?.reason,exitCode:details?.exitCode,serviceName:details?.serviceName}));
   app.on('render-process-gone',(_event,_contents,details)=>journal.record('render-process-gone',{reason:details?.reason,exitCode:details?.exitCode}));
   for(const name of ['activate','did-become-active','browser-window-created'])app.on(name,()=>setImmediate(()=>keepAccessory(name)));
-  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null,disposeAccess=()=>{};
+  let port=null,desktop=null,stopping=null,events=null,stopper=null,statusMenu=null,devices=null,disposeAccess=()=>{},lastServiceEntry=null;
   // Every ordinary exit stops own services first, then releases the profile.
   // The owner record is removed only by the process that proved ownership.
   const shutdown=()=>{
@@ -109,7 +109,9 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null}={}) {
       const status=()=>({service:stopper.view(),pages:base.sessions.all().length,pairings:devices.view().pairings});
       stopper=createStopController({drainState:()=>desktop.drainState(),pause:value=>desktop.pause(value),stop:shutdown,
         onChange:view=>{events.ui('service',view);statusMenu?.update(status());
-          journal.record('service',{phase:view.phase,reasons:view.reasons.length,error:view.error?.code??null});}});
+          // Codes only, and only when they change: a long wait does not flood the journal.
+          const entry={phase:view.phase,reasons:view.reasons.map(reason=>reason.code),error:view.error?.code??null};
+          const key=JSON.stringify(entry);if(key!==lastServiceEntry){lastServiceEntry=key;journal.record('service',entry);}}});
       events.ui('service',stopper.view());
       // A client is a separate process: focus a connected one or start a new one.
       // A packaged macOS client is opened through LaunchServices like a Dock

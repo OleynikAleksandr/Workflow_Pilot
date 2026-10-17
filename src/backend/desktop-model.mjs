@@ -6,6 +6,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
   pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
+import { drainReasons } from './shutdown.mjs';
 
 // The Desktop product model: projects, sessions, settings, archive, Doctor,
 // onboarding and workflow. It owns no window; a surface presents its state
@@ -1372,16 +1373,11 @@ async function start() {
 // nothing here cancels an answer, a tool or a Kit command.
 function drainState() {
   const name = record => { const project = record.project(); return project ? (project.displayName || project.name || path.basename(project.workspace)) : 'ChatGPT'; };
-  const reasons = [];
-  for (const record of liveSessions.all()) {
-    if (record.pageState.current?.state.busy) reasons.push({ code: 'ANSWER_RUNNING', message: `Ждём завершения ответа ChatGPT: ${name(record)}.` });
-    else if (record.composer.inFlight) reasons.push({ code: 'SEND_RUNNING', message: `Ждём завершения отправки: ${name(record)}.` });
-    else if (record.controller.pending) reasons.push({ code: 'CONTEXT_RUNNING', message: `Ждём подготовки контекста: ${name(record)}.` });
-  }
-  for (const state of execution.allStates())
-    if ((state.commands ?? []).some(command => command.state && command.state !== 'completed'))
-      reasons.push({ code: 'COMMAND_RUNNING', message: `Ждём завершения команды Kit: ${path.basename(state.workspace ?? '') || 'проект'}.` });
-  return reasons;
+  return drainReasons({
+    sessions: [...liveSessions.all()].map(record => ({ name: name(record), busy: !!record.pageState.current?.state.busy,
+      sending: !!record.composer.inFlight, preparing: record.controller.state?.phase ?? null })),
+    states: execution.allStates().map(state => ({ name: path.basename(state.workspace ?? '') || 'проект', commands: state.commands })),
+  });
 }
 function pause(value) {
   liveSessions.pause(value === true);

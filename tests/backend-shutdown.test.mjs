@@ -5,7 +5,7 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {EventEmitter} from 'node:events';
-import {createStopController} from '../src/backend/shutdown.mjs';
+import {createStopController,drainReasons} from '../src/backend/shutdown.mjs';
 import {createStatusMenu} from '../src/backend/status-menu.mjs';
 import {SessionRuntimes} from '../src/control/sessions/service.mjs';
 import {ExecutionFacade} from '../src/execution/facade.mjs';
@@ -101,4 +101,16 @@ test('Electron backend stops through the API at a safe point and confirms by exi
   assert.equal(await Promise.race([exited,settle(15000).then(()=>'timeout')]),0,'the backend confirms the stop by exiting');
   assert.equal(fs.existsSync(path.join(root,'.backend-host','owner.json')),false);
   assert.equal(fs.existsSync(path.join(root,'.backend-host','service.json')),false);
+});
+
+test('a stop waits for answers, sends and Kit commands, never for context preparation that sent nothing',()=>{
+  const reasons=drainReasons({sessions:[
+    {name:'Оркестратор',busy:true,sending:false,preparing:'waiting-chat'},
+    {name:'T001',busy:false,sending:false,preparing:'loading-context'},
+    {name:'T002',busy:false,sending:false,preparing:'sending'},
+    {name:'T003',busy:false,sending:true,preparing:null}],
+    states:[{name:'Проект',commands:[{state:'running'}]},{name:'Готово',commands:[{state:'completed'}]}]});
+  assert.deepEqual(reasons.map(reason=>reason.code),['ANSWER_RUNNING','SEND_RUNNING','SEND_RUNNING','COMMAND_RUNNING']);
+  assert.equal(reasons.some(reason=>/T001/.test(reason.message)),false,'a stuck preparation does not hold the stop');
+  assert.deepEqual(drainReasons({sessions:[{name:'T001',busy:false,sending:false,preparing:'preparing-message'}]}),[]);
 });
