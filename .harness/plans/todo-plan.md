@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 405,
+  "plan_revision": 407,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -832,8 +832,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "DOCS-3",
@@ -847,13 +847,18 @@
       ],
       "functional_paths": [],
       "documentation_paths": [
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "README.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
-      "expected_commit_message": "docs: актуализировать документацию проекта"
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md"
+      ]
     },
     {
       "id": "T015",
@@ -958,7 +963,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 405
+Revision: 407
 
 ## Цель
 
@@ -1034,10 +1039,10 @@ Revision: 405
   - Git Commit: [DONE] feat: Подготовить версию 0.4.8
   - Reference: workflow-pilot-0-4-6 / T014 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-0-4-6 / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md
+  - Файлы: docs/architecture/OVERVIEW.md, README.md
 - [TODO] T015: Собрать выпуск 0.4.8 трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.4.8 трёх ОС
   - Reference: workflow-pilot-0-4-6 / T015 / implementation
