@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 389,
+  "plan_revision": 391,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-0-4-6",
@@ -559,13 +559,20 @@
         "Версия 0.4.7 в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.4.7",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-0-4-6",
         "task_id": "T009",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -698,7 +705,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-0-4-6
 Current Task: нет
-Revision: 389
+Revision: 391
 
 ## Цель
 
@@ -746,8 +753,8 @@ Revision: 389
   - Git Commit: [DONE] refactor: Убрать AutoPlan из кода приложения
   - Reference: workflow-pilot-0-4-6 / T007 / implementation
   - Файлы: src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/bootstrap.mjs, src/backend/operations.mjs, src/control/projects/project-state-cleanup.mjs, src/control/sessions/workspace-session.mjs, src/control/settings/service.mjs, src/control/workflow/automation-send-state.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/auto-plan-state.mjs, src/control/workflow/plan-continuation-state.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/plan-continuation.mjs, src/control/workflow/project-auto-plan.mjs, src/control/workflow/project-plan-continuation.mjs, src/control/workflow/project-session-auto-plan.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/workflow/review-continuation.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/ui/index.html, tests/backend-api.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, tests/desktop-boundaries.test.mjs, tests/electron-smoke.mjs, tests/execution-architecture.test.mjs, tests/execution-control.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-finalization.test.mjs, tests/auto-plan-restart-fixture.cjs, tests/plan-continuation-restart-fixture.cjs, tests/auto-plan.test.mjs, tests/plan-continuation.test.mjs, tests/plan-review.test.mjs, tests/project-auto-plan.test.mjs, tests/project-plan-continuation.test.mjs, tests/project-state-cleanup.test.mjs, tests/settings-parallel-execution.test.mjs, tests/sidebar.test.mjs, tests/workspace-deletion.test.mjs, tests/workspace-session.test.mjs, tests/legacy-continuation-keys.test.mjs, docs/planning/no-autoplan.md
-- [TODO] T009: Подготовить версию 0.4.7 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.4.7
+- [DONE] T009: Подготовить версию 0.4.7 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.4.7
   - Reference: workflow-pilot-0-4-6 / T009 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
