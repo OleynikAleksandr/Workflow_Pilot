@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 361,
+  "plan_revision": 363,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -2524,14 +2524,15 @@
         "Установка готового комплекта без пересборки; при работающей службе — pending"
       ],
       "expected_commit_message": "release: Установить 0.4.5 в Applications",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T046",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "T047",
@@ -2587,7 +2588,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 361
+Revision: 363
 
 ## Цель
 
@@ -2929,8 +2930,8 @@ Revision: 361
   - Файлы: release-manifest.json, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение
   - Зависимости: T044, DOCS-8
-- [TODO] T046: Установить 0.4.5 в Applications — Ожидает
-  - Git Commit: [PENDING] release: Установить 0.4.5 в Applications
+- [DONE] T046: Установить 0.4.5 в Applications — Завершено
+  - Git Commit: [DONE] release: Установить 0.4.5 в Applications
   - Reference: workflow-pilot-orchestrated-execution / T046 / implementation
   - Файлы: release-manifest.json, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение
