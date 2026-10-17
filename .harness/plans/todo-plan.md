@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 303,
+  "plan_revision": 305,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -158,7 +158,8 @@
       "docs/modules/orchestrated-execution.md",
       "docs/planning/client-clipboard-drop.md",
       "docs/modules/browser.md",
-      "docs/planning/orchestrated-executor-fixes.md"
+      "docs/planning/orchestrated-executor-fixes.md",
+      "docs/modules/backend.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -213,7 +214,7 @@
       {
         "path": "docs/planning/orchestrated-executor-fixes.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "03b238701f8182c539483850347c1d4aa23c1489"
       }
     ],
     "include_last_completed_task": false,
@@ -1597,8 +1598,8 @@
     {
       "id": "DOCS-5",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "DOCS-5",
@@ -1615,14 +1616,28 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/orchestrated-executor-fixes.md"
+        "docs/planning/orchestrated-executor-fixes.md",
+        "README.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/desktop.md",
+        "docs/modules/backend.md",
+        "docs/acceptance/orchestrated-execution.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/desktop.md",
+        "docs/modules/backend.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/planning/orchestrated-executor-fixes.md"
+      ]
     },
     {
       "id": "T026",
@@ -1740,7 +1755,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 303
+Revision: 305
 
 ## Цель
 
@@ -1944,10 +1959,10 @@ Revision: 303
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T024, T029
-- [TODO] DOCS-5: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-5: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-orchestrated-execution / DOCS-5 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/orchestrated-executor-fixes.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/orchestrated-executor-fixes.md, README.md, docs/modules/orchestrated-execution.md, docs/modules/desktop.md, docs/modules/backend.md, docs/acceptance/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T023, T024, T029, T025
 - [TODO] T026: Собрать выпуск 0.4.2 трёх ОС — Ожидает
