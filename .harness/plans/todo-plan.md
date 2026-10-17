@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 355,
+  "plan_revision": 357,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -2413,14 +2413,21 @@
         "Версия 0.4.5 в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.4.5",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T044",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-8",
@@ -2567,7 +2574,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 355
+Revision: 357
 
 ## Цель
 
@@ -2891,8 +2898,8 @@ Revision: 355
   - Файлы: src/control/sessions/workspace-session.mjs, tests/workspace-session.test.mjs, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение
   - Зависимости: T042
-- [TODO] T044: Подготовить версию 0.4.5 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.4.5
+- [DONE] T044: Подготовить версию 0.4.5 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.4.5
   - Reference: workflow-pilot-orchestrated-execution / T044 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение
