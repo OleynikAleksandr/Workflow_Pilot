@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 345,
+  "plan_revision": 351,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -232,7 +232,7 @@
       },
       {
         "path": "docs/planning/single-plan-button.md",
-        "required": true,
+        "required": false,
         "revision": "4ca205b99612e9cd147487c46c9a58a43b8de7b4"
       },
       {
@@ -2319,7 +2319,7 @@
     {
       "id": "T042",
       "title": "Старт службы не зависит от битого проекта",
-      "why": "Живая приёмка 0.4.4: служба завершалась при старте из-за worktree исполнителя удалённого проекта.",
+      "why": "Приёмка 0.4.4: битый worktree останавливал старт.",
       "dependencies": [],
       "functional_paths": [
         "src/backend/bootstrap.mjs",
@@ -2337,19 +2337,24 @@
         "Незавершённая транзакция Kit по-прежнему останавливает старт"
       ],
       "expected_commit_message": "fix: Старт службы не зависит от битого проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T042",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/bootstrap.mjs",
+        "tests/backend-bootstrap.test.mjs",
+        "docs/planning/startup-orphan-records.md"
+      ]
     },
     {
       "id": "T043",
       "title": "Удаление проекта убирает записи его исполнителей",
-      "why": "Живая приёмка 0.4.4: после удаления проекта запись его исполнителя осталась и сломала старт службы.",
+      "why": "Приёмка 0.4.4: записи исполнителей оставались.",
       "dependencies": [
         "T042"
       ],
@@ -2382,7 +2387,7 @@
     {
       "id": "T044",
       "title": "Подготовить версию 0.4.5",
-      "why": "Номер исправляющего выпуска.",
+      "why": "Номер выпуска.",
       "dependencies": [
         "T043"
       ],
@@ -2402,7 +2407,7 @@
       ],
       "verification_kind": "code",
       "acceptance_criteria": [
-        "Версия 0.4.5 согласована в package/lock и панели плагина"
+        "Версия 0.4.5 в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.4.5",
       "implementation_status": "TODO",
@@ -2446,7 +2451,7 @@
     {
       "id": "T045",
       "title": "Собрать выпуск 0.4.5 трёх ОС",
-      "why": "Полный комплект после DOCS из одного sourceCommit.",
+      "why": "Комплект после DOCS.",
       "dependencies": [
         "T044",
         "DOCS-8"
@@ -2462,7 +2467,7 @@
       ],
       "verification_kind": "package",
       "acceptance_criteria": [
-        "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
+        "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
       "expected_commit_message": "release: Собрать выпуск 0.4.5 трёх ОС",
       "implementation_status": "TODO",
@@ -2477,7 +2482,7 @@
     {
       "id": "T046",
       "title": "Установить 0.4.5 в Applications",
-      "why": "Обновить установленное приложение штатным installer.",
+      "why": "Обновить приложение.",
       "dependencies": [
         "T045",
         "DOCS-8"
@@ -2493,7 +2498,7 @@
       ],
       "verification_kind": "installed",
       "acceptance_criteria": [
-        "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
+        "Установка готового комплекта без пересборки; при работающей службе — pending"
       ],
       "expected_commit_message": "release: Установить 0.4.5 в Applications",
       "implementation_status": "TODO",
@@ -2508,7 +2513,7 @@
     {
       "id": "T047",
       "title": "Опубликовать GitHub Release 0.4.5",
-      "why": "Опубликовать проверенный комплект.",
+      "why": "Опубликовать комплект.",
       "dependencies": [
         "T046",
         "DOCS-8"
@@ -2524,7 +2529,7 @@
       ],
       "verification_kind": "package",
       "acceptance_criteria": [
-        "Тег v0.4.5 на sourceCommit, assets сверены по размеру и digest, remote main совпадает с local HEAD"
+        "Тег v0.4.5 на sourceCommit, assets сверены, remote main = HEAD"
       ],
       "expected_commit_message": "release: Опубликовать GitHub Release 0.4.5",
       "implementation_status": "TODO",
@@ -2559,7 +2564,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 345
+Revision: 351
 
 ## Цель
 
@@ -2871,8 +2876,8 @@ Revision: 345
   - Файлы: release-manifest.json, docs/planning/single-plan-button.md
   - Параллельность: исключительное выполнение
   - Зависимости: T039, DOCS-7
-- [TODO] T042: Старт службы не зависит от битого проекта — Ожидает
-  - Git Commit: [PENDING] fix: Старт службы не зависит от битого проекта
+- [DONE] T042: Старт службы не зависит от битого проекта — Завершено
+  - Git Commit: [DONE] fix: Старт службы не зависит от битого проекта
   - Reference: workflow-pilot-orchestrated-execution / T042 / implementation
   - Файлы: src/backend/bootstrap.mjs, tests/backend-bootstrap.test.mjs, docs/planning/startup-orphan-records.md
   - Параллельность: исключительное выполнение

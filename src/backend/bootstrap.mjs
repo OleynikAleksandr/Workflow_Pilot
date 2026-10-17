@@ -25,11 +25,15 @@ export function assertProfileStores(dataDir) {
 }
 
 // An unfinished Kit transaction is recovered by Kit, never run over by the backend.
-export function assertNoPendingKitTransactions(projects) {
+// A checkout whose transaction state cannot be read (folder gone, broken git or worktree)
+// does not stop the service: that project shows its own error when it is selected.
+export function assertNoPendingKitTransactions(projects,{readJournal=journal}={}) {
   for(const workspace of new Set(projects.map(project=>project.workspace))) {
     if(typeof workspace!=='string'||!path.isAbsolute(workspace)
       || !fs.existsSync(path.join(workspace,'.harness','workflow.json')))continue;
-    if(journal(workspace))throw Object.assign(new Error('Kit transaction requires recovery before backend starts.'),
+    let pending;
+    try{pending=readJournal(workspace);}catch{continue;}
+    if(pending)throw Object.assign(new Error('Kit transaction requires recovery before backend starts.'),
       {code:'BACKEND_KIT_TRANSACTION_PENDING'});
   }
 }
