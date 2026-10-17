@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 275,
+  "plan_revision": 277,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.",
   "acceptance_criteria": [
     "R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id",
@@ -1076,8 +1076,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T014",
@@ -1105,7 +1105,8 @@
       ],
       "expected_commit_message": "release: Опубликовать GitHub Release 0.4.0",
       "verification_kind": "package",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1127,10 +1128,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 275
+Revision: 277
 
 ## Цель
 
@@ -1262,8 +1263,8 @@ Revision: 275
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: T012, DOCS, DOCS-2, DOCS-3
-- [TODO] T014: Опубликовать GitHub Release — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.0
+- [DONE] T014: Опубликовать GitHub Release — Завершено
+  - Git Commit: [DONE] release: Опубликовать GitHub Release 0.4.0
   - Reference: workflow-pilot-orchestrated-execution / T014 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
