@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 323,
+  "plan_revision": 325,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -1964,14 +1964,15 @@
         "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
       ],
       "expected_commit_message": "release: Установить 0.4.3 в Applications",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T034",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "T035",
@@ -2027,7 +2028,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 323
+Revision: 325
 
 ## Цель
 
@@ -2285,8 +2286,8 @@ Revision: 323
   - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: T032, DOCS-6
-- [TODO] T034: Установить 0.4.3 в Applications — Ожидает
-  - Git Commit: [PENDING] release: Установить 0.4.3 в Applications
+- [DONE] T034: Установить 0.4.3 в Applications — Завершено
+  - Git Commit: [DONE] release: Установить 0.4.3 в Applications
   - Reference: workflow-pilot-orchestrated-execution / T034 / implementation
   - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
