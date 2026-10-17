@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 440,
+  "plan_revision": 442,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -47,7 +47,13 @@
     "documentation_paths": [
       "docs/planning/native-window.md",
       "README.md",
-      "docs/architecture/OVERVIEW.md"
+      "docs/architecture/OVERVIEW.md",
+      "AGENTS.md",
+      "docs/acceptance/backend-independence.md",
+      "docs/modules/backend.md",
+      "docs/modules/browser.md",
+      "docs/modules/desktop.md",
+      "docs/modules/native-window.md"
     ]
   },
   "baseline_commit": "ecca668d094231a3b9c1afbc42ac00890d6c530e",
@@ -57,7 +63,7 @@
       {
         "path": "docs/planning/native-window.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "9cad16bb8c3fd585f755cb69220fe5ef25c08c62"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -307,8 +313,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "DOCS",
@@ -325,7 +331,13 @@
       "documentation_paths": [
         "docs/planning/native-window.md",
         "README.md",
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "AGENTS.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/desktop.md",
+        "docs/modules/native-window.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -334,7 +346,18 @@
       "acceptance_criteria": [
         "Документы соответствуют результату"
       ],
-      "expected_commit_message": "docs: актуализировать контекст проекта"
+      "expected_commit_message": "docs: актуализировать контекст проекта",
+      "actual_files": [
+        "AGENTS.md",
+        "README.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/desktop.md",
+        "docs/planning/native-window.md",
+        "docs/modules/native-window.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -445,7 +468,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 440
+Revision: 442
 
 ## Цель
 
@@ -477,10 +500,10 @@ Revision: 440
   - Git Commit: [DONE] feat: Подготовить версию 0.5.0
   - Reference: workflow-pilot-native-window / T005 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/native-window.md
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать контекст проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать контекст проекта
   - Reference: workflow-pilot-native-window / DOCS / implementation
-  - Файлы: docs/planning/native-window.md, README.md, docs/architecture/OVERVIEW.md
+  - Файлы: docs/planning/native-window.md, README.md, docs/architecture/OVERVIEW.md, AGENTS.md, docs/acceptance/backend-independence.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/native-window.md
 - [TODO] T006: Собрать выпуск 0.5.0 трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.5.0 трёх ОС
   - Reference: workflow-pilot-native-window / T006 / implementation

@@ -10,14 +10,14 @@
 
 | Компонент | Код | Ответственность |
 | --- | --- | --- |
-| Точка входа | `src/main.mjs`, `src/contracts/launch.mjs` | Выбор режима: backend, клиент или in-process smoke (только разработка) |
+| Точка входа | `src/main.mjs`, `src/contracts/launch.mjs` | Выбор режима: backend (с фабрикой встроенного окна), клиент (на macOS — процесс запуска), HTTP-клиент (`--http-client`) или in-process smoke (только разработка) |
 | Backend host | `src/backend/main.mjs` | Identity, lock, композиция, API-порт, значок, остановка, открытие клиента |
 | Профиль и владелец | `src/backend/identity.mjs` | `owner.json`/`service.json`, восстановление после падения |
 | Композиция | `src/backend/bootstrap.mjs`, `desktop-model.mjs`, `remote-surface.mjs` | Control/Execution; модель Desktop без окна |
 | API | `src/backend/{server,operations,events,protocol,control-lease,transfers}.mjs` | HTTP-команды, журнал, SSE, lease, передачи файлов |
 | Остановка и значок | `src/backend/{shutdown,status-menu}.mjs` | Draining и системный значок |
 | Диагностика | `src/backend/diagnostics.mjs` | Ограниченный журнал процессов backend, тип LaunchServices |
-| Клиент | `src/frontend/desktop/client.mjs`, `src/frontend/client/*` | Окно, запуск/подключение backend, кадры и ввод |
+| Клиент | `src/frontend/desktop/client.mjs`, `src/frontend/client/*` | Окно, запуск/подключение backend, кадры и ввод; режим embedded — [встроенное окно Mac](native-window.md) |
 
 Модель Desktop (`desktop-model.mjs`) — прежняя логика `application.mjs`, перенесённая в backend с теми же каналами pilot:*/archive:*/colors и снимками состояния; поведение 0.1.6 сохранено. Окно ей не нужно: состояние уходит в поток событий, просьбы открыть архив, редактор цветов, сменить тему или раскладку адресуются подключённому клиенту. Путь проекта выбирает диалог backend: это папка компьютера backend, а не файловый диалог удалённого клиента.
 
@@ -31,7 +31,7 @@
 
 Обычный запуск — клиент. Он читает `service.json`; если descriptor отсутствует или его процесс завершён, запускает `--backend-host` отдельным detached-процессом в своей группе и ждёт descriptor до 30 с. Конкурентные запуски сходятся на одном backend: проигравший получает отказ lock (код выхода 2) и подключается к descriptor победителя. Если через 5 с после такого отказа живого descriptor нет, профиль занят другой копией (например, 0.1.6) — клиент показывает `BACKEND_OWNER_CONFLICT` и просит закрыть её.
 
-macOS: выбрана топология activate/reopen в одном bundle, отдельный helper не создан. Backend работает без Dock-иконки (`accessory`). С 0.2.1 политика `accessory` повторно применяется после каждого диалога backend, `activate`, `did-become-active` и создания окна; тип процесса в LaunchServices проверяется, а появление Foreground записывается в журнал. Packaged-клиент backend открывает через LaunchServices (`open -n -a <bundle> --args --desktop-client`), как щелчок в Dock, а не прямым запуском исполняемого файла. Повторное открытие `.app` через Finder/Dock/Spotlight доставляет `activate` уже запущенному процессу bundle: backend фокусирует подключённый клиент или запускает новый. Новый процесс-клиент при уже открытом окне передаёт фокус ему: у клиента собственный single-instance lock в своём профиле, независимый от lock backend; запуск в режиме backend при живом владельце вызывает в нём `second-instance` с тем же результатом. Fixtures не реагируют на события ОС.
+macOS: выбрана топология activate/reopen в одном bundle, отдельный helper не создан. Backend работает без Dock-иконки (`accessory`), кроме времени, когда открыто его [встроенное окно](native-window.md). С 0.2.1 политика `accessory` повторно применяется после каждого диалога backend, `activate`, `did-become-active` и создания окна; тип процесса в LaunchServices проверяется, а появление Foreground записывается в журнал. Packaged-клиент backend открывает через LaunchServices (`open -n -a <bundle> --args --http-client`, с 0.5.0 на macOS — только для «Окно через HTTP (тест)»), как щелчок в Dock, а не прямым запуском исполняемого файла. Повторное открытие `.app` через Finder/Dock/Spotlight доставляет `activate` уже запущенному процессу bundle: backend показывает встроенное окно (macOS, с 0.5.0) либо фокусирует подключённый клиент или запускает новый. Новый процесс-клиент при уже открытом окне передаёт фокус ему: у клиента собственный single-instance lock в своём профиле, независимый от lock backend; запуск в режиме backend при живом владельце вызывает в нём `second-instance` с тем же результатом. Fixtures не реагируют на события ОС.
 
 Системный значок принадлежит backend и живёт без клиента: состояние «Фоновая служба работает · страниц: N», причины ожидания остановки, «Открыть Workflow Pilot», «Остановить фоновую службу…» с подтверждением, «Отменить остановку». Где системного tray нет (часть Linux-окружений), те же статус и остановка находятся в меню клиента.
 
