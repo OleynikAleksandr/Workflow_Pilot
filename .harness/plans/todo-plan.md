@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 311,
+  "plan_revision": 312,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.",
   "acceptance_criteria": [
     "R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id",
@@ -159,7 +159,8 @@
       "docs/planning/client-clipboard-drop.md",
       "docs/modules/browser.md",
       "docs/planning/orchestrated-executor-fixes.md",
-      "docs/modules/backend.md"
+      "docs/modules/backend.md",
+      "docs/planning/orchestrated-archive-recovery.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -215,6 +216,11 @@
         "path": "docs/planning/orchestrated-executor-fixes.md",
         "required": true,
         "revision": "03b238701f8182c539483850347c1d4aa23c1489"
+      },
+      {
+        "path": "docs/planning/orchestrated-archive-recovery.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -1736,6 +1742,236 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T030",
+      "title": "Архив и удаление проекта с активным планом",
+      "why": "Живая приёмка 0.4.2: проект с застрявшим планом оркестратора нельзя было ни архивировать, ни удалить.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/sidebar.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-archive-recovery.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Архив проекта с активным планом без подтверждения отвечает PLAN_ACTIVE, после подтверждения выполняется",
+        "Подтверждённый архив сразу ставит выполнение плана на паузу; план и назначения Kit не меняются; возврат из архива оставляет паузу",
+        "Боковая панель спрашивает подтверждение; отказ ничего не отправляет"
+      ],
+      "expected_commit_message": "fix: Архив и удаление проекта с активным планом после подтверждения",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T030",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T031",
+      "title": "Исполнитель без отправки перезапускается",
+      "why": "Живая приёмка 0.4.2: исполнитель без единой отправки после перезапуска считался неизвестным и вечно держал паузу.",
+      "dependencies": [
+        "T030"
+      ],
+      "functional_paths": [
+        "src/control/workflow/coordination.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/orchestrated-execution.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-archive-recovery.md"
+      ],
+      "verification_ids": [
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Исполнитель без адреса чата, начатой отправки и ручного старта при восстановлении открывается заново в Chat с новым черновиком и получает задачу по кнопке плана",
+        "Исполнитель с адресом чата или начатой отправкой автоматически не переотправляется"
+      ],
+      "expected_commit_message": "fix: Исполнитель без отправки перезапускается в Chat",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T031",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T032",
+      "title": "Подготовить версию 0.4.3",
+      "why": "Номер исправляющего выпуска.",
+      "dependencies": [
+        "T031"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-archive-recovery.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.4.3 согласована в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.4.3",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T032",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-6",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "DOCS-6",
+        "role": "implementation",
+        "iteration": 6
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T030",
+        "T031",
+        "T032"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/orchestrated-archive-recovery.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T033",
+      "title": "Собрать выпуск 0.4.3 трёх ОС",
+      "why": "Полный комплект после DOCS из одного sourceCommit.",
+      "dependencies": [
+        "T032",
+        "DOCS-6"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-archive-recovery.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.4.3 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T033",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T034",
+      "title": "Установить 0.4.3 в Applications",
+      "why": "Обновить установленное приложение штатным installer.",
+      "dependencies": [
+        "T033",
+        "DOCS-6"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-archive-recovery.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
+      ],
+      "expected_commit_message": "release: Установить 0.4.3 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T034",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T035",
+      "title": "Опубликовать GitHub Release 0.4.3",
+      "why": "Опубликовать проверенный комплект.",
+      "dependencies": [
+        "T034",
+        "DOCS-6"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/orchestrated-archive-recovery.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.4.3 на sourceCommit, assets сверены по размеру и digest, remote main совпадает с local HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.3",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T035",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1757,10 +1993,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 311
+Revision: 312
 
 ## Цель
 
@@ -1988,6 +2224,48 @@ Revision: 311
   - Файлы: release-manifest.json, docs/planning/orchestrated-executor-fixes.md
   - Параллельность: исключительное выполнение
   - Зависимости: T027, DOCS-5
+- [TODO] T030: Архив и удаление проекта с активным планом — Ожидает
+  - Git Commit: [PENDING] fix: Архив и удаление проекта с активным планом после подтверждения
+  - Reference: workflow-pilot-orchestrated-execution / T030 / implementation
+  - Файлы: src/control/sessions/workspace-session.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, tests/workspace-session.test.mjs, tests/execution-control.test.mjs, tests/sidebar.test.mjs, docs/planning/orchestrated-archive-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T031: Исполнитель без отправки перезапускается — Ожидает
+  - Git Commit: [PENDING] fix: Исполнитель без отправки перезапускается в Chat
+  - Reference: workflow-pilot-orchestrated-execution / T031 / implementation
+  - Файлы: src/control/workflow/coordination.mjs, src/control/sessions/workspace-session.mjs, tests/workspace-session.test.mjs, tests/orchestrated-execution.test.mjs, docs/planning/orchestrated-archive-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T030
+- [TODO] T032: Подготовить версию 0.4.3 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.4.3
+  - Reference: workflow-pilot-orchestrated-execution / T032 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/orchestrated-archive-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T031
+- [TODO] DOCS-6: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-orchestrated-execution / DOCS-6 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/orchestrated-archive-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T030, T031, T032
+- [TODO] T033: Собрать выпуск 0.4.3 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.4.3 трёх ОС
+  - Reference: workflow-pilot-orchestrated-execution / T033 / implementation
+  - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T032, DOCS-6
+- [TODO] T034: Установить 0.4.3 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.4.3 в Applications
+  - Reference: workflow-pilot-orchestrated-execution / T034 / implementation
+  - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T033, DOCS-6
+- [TODO] T035: Опубликовать GitHub Release 0.4.3 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.3
+  - Reference: workflow-pilot-orchestrated-execution / T035 / implementation
+  - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T034, DOCS-6
 
 ## Context Pack For This Cycle
 
@@ -2001,5 +2279,6 @@ Revision: 311
 - docs/architecture/OVERVIEW.md
 - docs/planning/client-clipboard-drop.md
 - docs/planning/orchestrated-executor-fixes.md
+- docs/planning/orchestrated-archive-recovery.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
