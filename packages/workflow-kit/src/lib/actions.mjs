@@ -26,7 +26,10 @@ function requireModuleContext(planLike) {
   check(docs.some(d => /^docs\/(modules|planning)\/.+\.md$/i.test(d.path)), 'MODULE_CONTEXT_REQUIRED', 'Укажите планировочный документ в context_pack.documents с required:true (docs/planning/ или docs/modules/).');
 }
 function normalizeCompletionContract(plan) {
-  const foundation = projectContextPaths();
+  // DOCS of an orchestrated plan runs in a worktree and may retire its specifications, so it owns them explicitly.
+  const specifications = isOrchestratedPlan(plan) ? (plan.context_pack?.documents ?? [])
+    .map(doc => doc.path).filter(file => /^docs\/planning\/.+\.md$/i.test(file)) : [];
+  const foundation = [...new Set([...projectContextPaths(), ...specifications])];
   plan.context_pack = projectContextPack(plan.context_pack);
   plan.approved_scope = { ...plan.approved_scope,
     documentation_paths: [...new Set([...(plan.approved_scope?.documentation_paths ?? []), ...foundation])] };

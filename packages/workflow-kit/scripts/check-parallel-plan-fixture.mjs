@@ -195,6 +195,7 @@ try {
     const plan = build(root,orchestrated);
     assert.deepEqual(plan.tasks.map(t=>t.id),['T001','T002','DOCS'],'DOCS is added without a release');
     assert.deepEqual(plan.tasks[2].dependencies,['T001','T002']);
+    assert.ok(plan.tasks[2].documentation_paths.includes('docs/planning/parallel.md'),'DOCS owns the specification it may retire in its worktree');
     assert.deepEqual(parsePlan(renderPlan(plan)),plan);
     assert.match(renderPlan(plan),/Выпуск приложения: нет/);
     const noOrigin = structuredClone(orchestrated); delete noOrigin.execution_origin_session_id;

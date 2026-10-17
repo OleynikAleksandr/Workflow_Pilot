@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 249,
+  "plan_revision": 251,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
@@ -710,8 +710,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-orchestrated-execution",
         "task_id": "T010",
@@ -722,7 +722,9 @@
         "T009"
       ],
       "functional_paths": [
-        "tests/orchestrated-execution.test.mjs"
+        "tests/orchestrated-execution.test.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs"
       ],
       "documentation_paths": [
         "docs/planning/orchestrated-execution-next.md",
@@ -744,7 +746,13 @@
         "Ограничения и pending живой приёмки записаны в спецификацию"
       ],
       "expected_commit_message": "test: Проверить общий результат оркестрации",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/orchestrated-execution-contracts.md",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "tests/orchestrated-execution.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -946,7 +954,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 249
+Revision: 251
 
 ## Цель
 
@@ -1024,10 +1032,10 @@ Revision: 249
   - Файлы: scripts/release-all.mjs, package.json, tests/release-all.test.mjs, tests/release-linux.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T010: Проверить общий результат оркестрации — Ожидает
-  - Git Commit: [PENDING] test: Проверить общий результат оркестрации
+- [DONE] T010: Проверить общий результат оркестрации — Завершено
+  - Git Commit: [DONE] test: Проверить общий результат оркестрации
   - Reference: workflow-pilot-orchestrated-execution / T010 / implementation
-  - Файлы: tests/orchestrated-execution.test.mjs, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md
+  - Файлы: tests/orchestrated-execution.test.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/src/lib/actions.mjs, docs/planning/orchestrated-execution-next.md, docs/planning/orchestrated-execution-contracts.md
   - Параллельность: исключительное выполнение
   - Зависимости: T008, T009
 - [TODO] T011: Подготовить версию 0.4.0 — Ожидает
