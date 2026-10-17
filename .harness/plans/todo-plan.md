@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 442,
+  "plan_revision": 444,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -360,8 +360,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T006",
@@ -387,7 +387,10 @@
       "acceptance_criteria": [
         "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
-      "expected_commit_message": "release: Собрать выпуск 0.5.0 трёх ОС"
+      "expected_commit_message": "release: Собрать выпуск 0.5.0 трёх ОС",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -468,7 +471,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 442
+Revision: 444
 
 ## Цель
 
@@ -504,8 +507,8 @@ Revision: 442
   - Git Commit: [DONE] docs: актуализировать контекст проекта
   - Reference: workflow-pilot-native-window / DOCS / implementation
   - Файлы: docs/planning/native-window.md, README.md, docs/architecture/OVERVIEW.md, AGENTS.md, docs/acceptance/backend-independence.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/native-window.md
-- [TODO] T006: Собрать выпуск 0.5.0 трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.5.0 трёх ОС
+- [DONE] T006: Собрать выпуск 0.5.0 трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.5.0 трёх ОС
   - Reference: workflow-pilot-native-window / T006 / implementation
   - Файлы: release-manifest.json, docs/planning/native-window.md
 - [TODO] T007: Установить 0.5.0 в Applications — Ожидает
