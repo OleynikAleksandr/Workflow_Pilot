@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 327,
+  "plan_revision": 328,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-orchestrated-execution",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Оркестрованное выполнение плана 0.4.0: сессия без плана — оркестратор; одна кнопка запуска/паузы; обычные задачи и DOCS — исполнителями в worktree (последовательные после барьера, параллельные до max_workers), delivery-хвост и итоговая очистка — оркестратором в main; дерево проекта по планам.",
   "acceptance_criteria": [
     "R01 Новая сессия проекта без активного плана — оркестратор, при активном плане — чат обсуждения; роль назначает приложение, оркестратор плана подтверждается по execution_origin_session_id",
@@ -131,7 +131,10 @@
       "tests/backend-connection.test.mjs",
       "src/backend/main.mjs",
       "tests/backend-shutdown.test.mjs",
-      "src/backend/shutdown.mjs"
+      "src/backend/shutdown.mjs",
+      "src/control/workflow/auto-plan.mjs",
+      "src/backend/operations.mjs",
+      "tests/parallel-execution-smoke-fixture.cjs"
     ],
     "documentation_paths": [
       "docs/architecture/OVERVIEW.md",
@@ -160,7 +163,8 @@
       "docs/modules/browser.md",
       "docs/planning/orchestrated-executor-fixes.md",
       "docs/modules/backend.md",
-      "docs/planning/orchestrated-archive-recovery.md"
+      "docs/planning/orchestrated-archive-recovery.md",
+      "docs/planning/single-plan-button.md"
     ]
   },
   "baseline_commit": "f2420803fca7b20789055f2e8743a60882260ff0",
@@ -221,6 +225,11 @@
         "path": "docs/planning/orchestrated-archive-recovery.md",
         "required": true,
         "revision": "0ae5407c6ffffa5363df8b1a55813d6a599e8504"
+      },
+      {
+        "path": "docs/planning/single-plan-button.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -2005,6 +2014,206 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T036",
+      "title": "Одна кнопка выполнения плана вместо AutoPlan",
+      "why": "Решение пользователя: AutoPlan как отдельной функции и кнопки нет; у любого плана одна кнопка запуска, паузы и продолжения.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/auto-plan.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/operations.mjs",
+        "src/contracts/desktop.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tests/sidebar.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/parallel-execution-smoke-fixture.cjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/single-plan-button.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Переключателя и канала AutoPlan нет в интерфейсе, preload и DESKTOP_CHANNELS",
+        "Одна кнопка у любого активного плана; без плана, во время планирования и после выполнения её нет",
+        "Прежний план запускается, ставится на паузу и продолжается той же кнопкой; план оркестратора — без изменений",
+        "Тексты состояний не упоминают автовыполнение"
+      ],
+      "expected_commit_message": "feat: Одна кнопка выполнения плана вместо AutoPlan",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T036",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T037",
+      "title": "Подготовить версию 0.4.4",
+      "why": "Номер выпуска.",
+      "dependencies": [
+        "T036"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/single-plan-button.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.4.4 согласована в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.4.4",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T037",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-7",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "DOCS-7",
+        "role": "implementation",
+        "iteration": 7
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T036",
+        "T037"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/single-plan-button.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "T038",
+      "title": "Собрать выпуск 0.4.4 трёх ОС",
+      "why": "Полный комплект после DOCS из одного sourceCommit.",
+      "dependencies": [
+        "T037",
+        "DOCS-7"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/single-plan-button.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Один штатный цикл macOS arm64, Windows x64, Linux x64 из одного sourceCommit после DOCS; manifest совпадает в staging, Downloads и корне"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.4.4 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T038",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T039",
+      "title": "Установить 0.4.4 в Applications",
+      "why": "Обновить установленное приложение штатным installer.",
+      "dependencies": [
+        "T038",
+        "DOCS-7"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/single-plan-button.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки и без перезапуска backend; при работающей службе — pending-копия и инструкция пользователю"
+      ],
+      "expected_commit_message": "release: Установить 0.4.4 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T039",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T040",
+      "title": "Опубликовать GitHub Release 0.4.4",
+      "why": "Опубликовать проверенный комплект.",
+      "dependencies": [
+        "T039",
+        "DOCS-7"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/single-plan-button.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.4.4 на sourceCommit, assets сверены по размеру и digest, remote main совпадает с local HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.4.4",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-orchestrated-execution",
+        "task_id": "T040",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -2026,10 +2235,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-orchestrated-execution
 Current Task: нет
-Revision: 327
+Revision: 328
 
 ## Цель
 
@@ -2299,6 +2508,42 @@ Revision: 327
   - Файлы: release-manifest.json, docs/planning/orchestrated-archive-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: T034, DOCS-6
+- [TODO] T036: Одна кнопка выполнения плана вместо AutoPlan — Ожидает
+  - Git Commit: [PENDING] feat: Одна кнопка выполнения плана вместо AutoPlan
+  - Reference: workflow-pilot-orchestrated-execution / T036 / implementation
+  - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/auto-plan.mjs, src/control/workflow/parallel-execution.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tests/sidebar.test.mjs, tests/execution-control.test.mjs, tests/electron-smoke.mjs, tests/parallel-execution-smoke-fixture.cjs, docs/planning/single-plan-button.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T037: Подготовить версию 0.4.4 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.4.4
+  - Reference: workflow-pilot-orchestrated-execution / T037 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/planning/single-plan-button.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T036
+- [TODO] DOCS-7: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-orchestrated-execution / DOCS-7 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/single-plan-button.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T036, T037
+- [TODO] T038: Собрать выпуск 0.4.4 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.4.4 трёх ОС
+  - Reference: workflow-pilot-orchestrated-execution / T038 / implementation
+  - Файлы: release-manifest.json, docs/planning/single-plan-button.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T037, DOCS-7
+- [TODO] T039: Установить 0.4.4 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.4.4 в Applications
+  - Reference: workflow-pilot-orchestrated-execution / T039 / implementation
+  - Файлы: release-manifest.json, docs/planning/single-plan-button.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T038, DOCS-7
+- [TODO] T040: Опубликовать GitHub Release 0.4.4 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.4.4
+  - Reference: workflow-pilot-orchestrated-execution / T040 / implementation
+  - Файлы: release-manifest.json, docs/planning/single-plan-button.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T039, DOCS-7
 
 ## Context Pack For This Cycle
 
@@ -2313,5 +2558,6 @@ Revision: 327
 - docs/planning/client-clipboard-drop.md
 - docs/planning/orchestrated-executor-fixes.md
 - docs/planning/orchestrated-archive-recovery.md
+- docs/planning/single-plan-button.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
