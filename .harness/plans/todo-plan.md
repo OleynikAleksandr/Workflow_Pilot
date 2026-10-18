@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 451,
+  "plan_revision": 453,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -527,13 +527,20 @@
         "Версия 0.5.1 в package/lock и панели плагина"
       ],
       "expected_commit_message": "feat: Подготовить версию 0.5.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T010",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -671,7 +678,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 451
+Revision: 453
 
 ## Цель
 
@@ -723,8 +730,8 @@ Revision: 451
   - Git Commit: [DONE] feat: Встроенное окно на всех трёх ОС
   - Reference: workflow-pilot-native-window / T009 / implementation
   - Файлы: src/backend/main.mjs, src/contracts/launch.mjs, tests/backend-native-pages.test.mjs, tests/backend-upgrade.test.mjs, src/execution/browser/backend-host.mjs, docs/modules/native-window.md
-- [TODO] T010: Подготовить версию 0.5.1 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.5.1
+- [DONE] T010: Подготовить версию 0.5.1 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.5.1
   - Reference: workflow-pilot-native-window / T010 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/modules/native-window.md
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
