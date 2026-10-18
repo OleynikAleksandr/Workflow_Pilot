@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { validateContextPacket } from '../../contracts/context.mjs';
 import { PluginLaunch } from './launch.mjs';
+import { PluginCommunication } from './communication.mjs';
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const key = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
@@ -16,6 +17,7 @@ export class PluginProjects {
   constructor({ projects, loadContext, onChange = () => {} }) {
     Object.assign(this, { projects, loadContext, onChange });
     this.launch = new PluginLaunch({onChange});
+    this.communication = new PluginCommunication();
   }
   list() {
     return { projects: this.projects.snapshot().projects.filter(p => !p.archivedAt && !p.parentWorkspace)

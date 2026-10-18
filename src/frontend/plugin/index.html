@@ -12,6 +12,17 @@ details{margin-top:24px;border-top:1px solid #809090;padding-top:16px}summary{cu
 <section id="project-detail" hidden><h2 id="project-name"></h2><button id="new-session" type="button" disabled>Новая сессия</button><p>Откроется новый разговор в ChatGPT. Его режим выбирает приложение ChatGPT.</p><ul id="sessions" aria-label="Сессии проекта"></ul></section>
 <p id="capability">Этот клиент не предоставил возможность создания нового разговора. Откройте панель в поддерживаемом режиме ChatGPT Desktop.</p>
 <p id="status" role="status" aria-live="polite">Подключаем Workflow Pilot…</p>
+<section aria-labelledby="communication-title">
+<h2 id="communication-title">Связь участников · communication-v1-t001</h2>
+<p>Сначала попросите агента выполнить workflow_communication_join. Вставьте возвращённые идентификаторы. Тестовая версия: данные пока хранятся до перезапуска службы.</p>
+<p><label>Запуск <input id="communication-run" autocomplete="off"></label></p>
+<p><label>Участник <input id="communication-participant" autocomplete="off"></label></p>
+<button id="communication-bind" type="button">Подтвердить привязку</button>
+<button id="communication-enable" type="button" disabled>Включить связь</button>
+<button id="communication-stop" type="button" disabled>Остановить связь</button>
+<p id="communication-status" role="status" aria-live="polite">Связь выключена. Привязка ещё не подтверждена.</p>
+<ol id="communication-events" aria-label="События связи"></ol>
+</section>
 <details id="desktop-launch"><summary>Запуск из Workflow Pilot · 0.5.1</summary>
 <p>Для проверки откройте эту панель в ChatGPT Desktop. Подготовьте один запуск, затем в отдельном приложении Workflow Pilot выберите «Новый чат через плагин» в меню нужного проекта.</p>
 <button id="launch-arm" type="button" disabled>Подготовить запуск из приложения</button>

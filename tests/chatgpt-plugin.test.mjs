@@ -16,6 +16,7 @@ import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 import {mountNavigationProbe,conversationUrl} from '../src/frontend/plugin/navigation-probe.mjs';
 import {mountLaunch} from '../src/frontend/plugin/launch.mjs';
 import {PluginLaunch} from '../src/control/plugin/launch.mjs';
+import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../src/control/plugin/communication.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
 const digest=text=>createHash('sha256').update(text).digest('hex');
@@ -59,6 +60,7 @@ async function fixture(t){
 }
 async function bridge(t,f){
   const b=await startPluginBridge({directory:f.directory,list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
+    communication:f.plugin.communication,
     wait:(id,signal)=>f.plugin.launch.wait(id,signal),claim:i=>f.plugin.launch.claim(i),report:i=>f.plugin.launch.report(i)});
   t.after(()=>b.close());
   return JSON.parse(await fs.readFile(path.join(f.directory,'plugin-bridge.json'),'utf8'));
@@ -73,6 +75,120 @@ async function client(t,f){
   return c;
 }
 async function eventually(check){for(let i=0;i<200;i++){if(check())return;await delay(10);}assert.ok(check(),'async UI completed');}
+
+const communicationTools=['bind','claim','enable','join','journal','probe','read_message','report','send_message','status','stop','verify','wait'];
+test('communication MCP contracts reject missing identity, wrong binding and stale protocol; Stop cancels probe',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  const tools=(await c.listTools()).tools;
+  const appOnly=['bind','claim','enable','report','stop','verify','wait'];
+  for(const suffix of communicationTools){const tool=tools.find(t=>t.name==='workflow_communication_'+suffix);
+    assert.ok(tool);assert.equal(tool._meta.ui.resourceUri,undefined,'data operations cannot recreate UI');
+    assert.deepEqual(tool._meta.ui.visibility,appOnly.includes(suffix)?['app']:['journal','status'].includes(suffix)?['app','model']:['model']);
+    assert.equal(tool.annotations.readOnlyHint,['journal','status'].includes(suffix));
+    assert.equal(tool.inputSchema.properties.ctx,undefined);
+  }
+  const call=(name,args,meta=metadata)=>c.callTool({name:'workflow_communication_'+name,arguments:args,_meta:meta});
+  assert.equal((await call('join',{run_id:'contract',role:'O'},{})).structuredContent.error.code,'PLUGIN_COMMUNICATION_IDENTITY_REQUIRED');
+  const joined=(await call('join',{run_id:'contract',role:'O'})).structuredContent;
+  const binding={run_id:'contract',participant_id:joined.participant_id,panel_instance_id:randomUUID(),
+    protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
+  const secondMeta={...metadata,'openai/session':'different'};
+  assert.equal((await call('bind',{binding},secondMeta)).structuredContent.error.code,'PLUGIN_COMMUNICATION_BINDING');
+  assert.equal((await call('bind',{binding:{...binding,build_id:'old'}})).structuredContent.error.code,'PLUGIN_COMMUNICATION_VERSION');
+  assert.equal((await call('bind',{binding})).isError,false);
+  assert.equal((await call('enable',{binding,message_supported:false})).structuredContent.error.code,'PLUGIN_COMMUNICATION_UNSUPPORTED');
+  const enabled=(await call('enable',{binding,message_supported:true})).structuredContent;
+  binding.permission_generation=enabled.permission_generation;
+  const model={run_id:binding.run_id,participant_id:binding.participant_id};
+  assert.equal((await call('probe',{...model,delay_ms:150})).isError,false);
+  assert.equal((await call('stop',{binding})).isError,false);
+  await delay(180);
+  const state=(await call('status',model)).structuredContent;
+  assert.deepEqual(state.messages,[]);assert.equal(state.stopped,true);
+  const events=(await call('journal',model)).structuredContent.events;
+  assert.ok(events.some(e=>e.event_type==='probe.cancelled'));
+  assert.ok(!JSON.stringify(events).includes('conversation-fixture'));
+});
+
+async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{}}={}) {
+  const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
+  const errors=[],calls=[],messages=[];let initialized=false,currentMetadata=hostMetadata;
+  const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
+  const dom=new JSDOM(html,{url:'https://communication-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
+    beforeParse(window){
+      window.TextEncoder=TextEncoder;window.TextDecoder=TextDecoder;
+      window.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
+      window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+      const deliver=data=>window.dispatchEvent(new window.MessageEvent('message',{source:window,data}));
+      window.postMessage=async request=>{
+        try{
+          if(request.method==='ui/initialize')queueMicrotask(()=>deliver({jsonrpc:'2.0',id:request.id,result:{
+            protocolVersion:request.params.protocolVersion,hostInfo:{name:'Isolated communication host',version:'1'},
+            hostContext:{theme:'light'},hostCapabilities:{serverTools:{},experimental:messageSupported?{'openai/message':{}}:{}}}}));
+          else if(request.method==='ui/notifications/initialized')initialized=true;
+          else if(request.method==='tools/call'){
+            calls.push(request.params.name);
+            const result=await c.callTool({...request.params,_meta:currentMetadata});
+            deliver({jsonrpc:'2.0',id:request.id,result});
+          }else if(request.method==='ui/message'){
+            messages.push(request.params);await onMessage(request.params);
+            deliver({jsonrpc:'2.0',id:request.id,result:{}});
+          }
+        }catch(e){errors.push(e.message);deliver({jsonrpc:'2.0',id:request.id,error:{code:-32000,message:'Fixture failed'}});}
+      };
+    }});
+  t.after(()=>{dom.window.dispatchEvent(new dom.window.Event('pagehide'));dom.window.close();});
+  await eventually(()=>initialized||errors.length);assert.deepEqual(errors,[]);
+  const $=id=>dom.window.document.getElementById('communication-'+id);
+  return {dom,$,errors,calls,messages,setMetadata(meta){currentMetadata=meta;}};
+}
+
+test('real staged SDK -> Python MCP -> bridge -> Control: bind/enable/probe/wait/claim/verify/Send/report/read',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  const modelCall=(name,args)=>c.callTool({name:'workflow_communication_'+name,arguments:args,_meta:metadata});
+  const joined=(await modelCall('join',{run_id:'real-sdk',role:'O'})).structuredContent;
+  const model={run_id:'real-sdk',participant_id:joined.participant_id};let read;
+  const ui=await communicationHtml(t,c,{onMessage:async request=>{
+    assert.deepEqual(JSON.parse(JSON.stringify(request._meta)),{'openai/message':{target:'active',send:true}});
+    const match=request.content[0].text.match(/аргументами (\{[^}]+\})/);
+    read=await modelCall('read_message',JSON.parse(match[1]));assert.equal(read.isError,false);
+  }});
+  const selected=f.store.selected();ui.$('run').value=model.run_id;ui.$('participant').value=model.participant_id;
+  ui.$('bind').click();await eventually(()=>ui.$('status').textContent.includes('Привязка подтверждена'));
+  ui.$('enable').click();await eventually(()=>ui.calls.includes('workflow_communication_wait'));
+  assert.equal((await modelCall('probe',{...model,delay_ms:50})).isError,false);
+  await eventually(()=>ui.calls.includes('workflow_communication_report'));
+  await eventually(()=>f.plugin.communication.status({...model,metadata}).messages[0]?.delivery==='accepted');
+  assert.equal(ui.messages.length,1);assert.equal(read.structuredContent.kind,'probe');
+  assert.equal(f.store.selected().sessionId,selected.sessionId,'sidebar is not addressing');
+  assert.equal(f.plugin.communication.status({...model,metadata}).messages[0].read,true,'late report preserves read');
+  const events=(await modelCall('journal',model)).structuredContent.events.map(e=>e.event_type);
+  for(const expected of ['join.confirmed','binding.confirmed','permission.enabled','probe.scheduled','probe.fired','claim.granted','binding.verified','send.intent','send.report','message.read'])assert.ok(events.includes(expected),expected);
+  ui.$('stop').click();await eventually(()=>ui.$('status').textContent.includes('подтвердила Stop'));
+  assert.deepEqual(ui.errors,[]);
+});
+
+test('fresh app-only metadata gates delivery, unsupported SDK cannot enable',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  const args={run_id:'changed-host',role:'O'};
+  const joined=(await c.callTool({name:'workflow_communication_join',arguments:args,_meta:metadata})).structuredContent;
+  const ui=await communicationHtml(t,c,{messageSupported:false});
+  ui.$('run').value=args.run_id;ui.$('participant').value=joined.participant_id;ui.$('bind').click();
+  await eventually(()=>ui.$('status').textContent.includes('Привязка подтверждена'));
+  assert.equal(ui.$('enable').disabled,true);assert.equal(ui.messages.length,0);
+  const binding={run_id:args.run_id,participant_id:joined.participant_id,panel_instance_id:randomUUID(),
+    protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
+  const comm=f.plugin.communication;comm.bind({...binding,metadata});
+  binding.permission_generation=comm.enable({...binding,metadata,message_supported:true}).permission_generation;
+  await comm.probe({...binding,metadata,delay_ms:25});await delay(40);
+  const message_id=comm.status({...binding,metadata}).messages[0].message_id;
+  const ticket=comm.claim({...binding,metadata,message_id});
+  const changed=await c.callTool({name:'workflow_communication_verify',arguments:{binding,...ticket},_meta:{'openai/session':'new-location'}});
+  assert.equal(changed.structuredContent.error.code,'PLUGIN_COMMUNICATION_BINDING');
+  comm.stop({...binding,metadata});
+  assert.throws(()=>comm.verify({...binding,metadata,...ticket}),{code:'PLUGIN_COMMUNICATION_STOPPED'});
+  assert.equal(comm.status({...binding,metadata}).messages[0].delivery,'claimed','no automatic requeue after an uncertain boundary');
+});
 
 test('external conversation is durable, idempotent and cannot take over another project',async t=>{
   const f=await fixture(t),projectId='Первый',requestId=randomUUID(),input={projectId,requestId,metadata};

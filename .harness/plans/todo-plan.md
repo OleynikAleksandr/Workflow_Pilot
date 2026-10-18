@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 477,
+  "plan_revision": 479,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -89,8 +89,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "T001",
@@ -153,7 +153,22 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/modules/chatgpt-plugin.md",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "tests/backend-end-to-end.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -670,7 +685,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 477
+Revision: 479
 
 ## Цель
 
@@ -688,8 +703,8 @@ Revision: 477
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: По прямому поручению пользователя 18.10.2026 один агент выполняет весь план в основном checkout без назначений. Прежний исполнитель отменён до реализации; объём, проверки, DOCS и поставка сохранены.
 
-- [TODO] T001: Контракт и минимальный сквозной путь связи — Ожидает
-  - Git Commit: [PENDING] feat: Контракт и минимальный сквозной путь связи
+- [DONE] T001: Контракт и минимальный сквозной путь связи — Завершено
+  - Git Commit: [DONE] feat: Контракт и минимальный сквозной путь связи
   - Reference: workflow-pilot-plugin-communication / T001 / implementation
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/control/plugin/service.mjs, src/control/plugin/communication.mjs, src/control/facade.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-server.py, tests/codex-app-server-mcp.test.mjs, tests/backend-end-to-end.test.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение

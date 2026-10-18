@@ -9,12 +9,36 @@ from uuid import uuid4
 
 from mcp.server.fastmcp import Context
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 UI_URI = "ui://workflow-pilot/projects-v1.html"
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 CONNECT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 LAUNCH = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
+
+RunId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$", description="Exact identifier of the communication experiment run.")]
+ParticipantId = Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Participant returned by join; identity is verified against host metadata, never against this id alone.")]
+MessageId = Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact message or delivery attempt identifier returned by this server.")]
+
+
+class CommunicationBinding(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    run_id: RunId
+    participant_id: ParticipantId
+    panel_instance_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Fresh id for this mounted panel; never restored after reload.")]
+    protocol_version: Annotated[int, Field(description="Protocol implemented by the staged panel.")]
+    build_id: Annotated[str, Field(max_length=128, description="Exact build of the staged panel.")]
+    permission_generation: Annotated[int | None, Field(ge=0, description="Generation returned by enable; required before delivery.")] = None
+
+
+Binding = Annotated[CommunicationBinding, Field(description="Panel binding and permission; host metadata is obtained separately for every call.")]
+
+
+def host_metadata(ctx: Context) -> dict[str, str]:
+    meta = ctx.request_context.meta
+    values = meta.model_dump(by_alias=True) if meta else {}
+    return {key: values[key] for key in ("openai/session", "openai/subject", "openai/organization")
+            if isinstance(values.get(key), str) and len(values[key]) <= 512}
 
 
 class PluginBridge:
@@ -67,6 +91,85 @@ def result(data: dict[str, Any]) -> CallToolResult:
 def register_plugin(mcp, state_root: Path):
     bridge = PluginBridge(state_root)
     ui = {"resourceUri": UI_URI}
+
+    async def communication(action, ctx, **args):
+        binding = args.pop("binding", None)
+        if binding is not None:
+            args.update(binding.model_dump())
+        return result(await asyncio.to_thread(bridge.call, {**args, "action": "communication." + action,
+                                                           "metadata": host_metadata(ctx)}))
+
+    @mcp.tool(name="workflow_communication_join", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def join(run_id: RunId, role: Annotated[str, Field(pattern=r"^(O|E)$", description="Role O or E; two different conversations are required.")], ctx: Context) -> CallToolResult:
+        """Join a communication run in this conversation. Return the participant id for binding the existing panel. Does not enable delivery or send to a model. Missing host identity is an explicit refusal."""
+        return await communication("join", ctx, run_id=run_id, role=role)
+
+    @mcp.tool(name="workflow_communication_send_message", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def send_message(run_id: RunId, participant_id: ParticipantId, recipient_id: ParticipantId,
+                           kind: Annotated[str, Field(pattern=r"^(question|answer|result)$", description="Finite exchange: question, answer or final result.")],
+                           body: Annotated[str, Field(min_length=1, max_length=4096, description="Experiment text, at most 4096 UTF-8 bytes; never secrets.")],
+                           idempotency_key: RunId, ctx: Context,
+                           in_reply_to: Annotated[str | None, Field(max_length=128, description="Received message id; required for answer/result.")] = None) -> CallToolResult:
+        """Queue an addressed experiment message. Same key/content returns the same message; conflicting content is rejected. Queue acceptance is not SDK acceptance or model reading. End your turn after sending; never call app-only wait."""
+        return await communication("send", ctx, run_id=run_id, participant_id=participant_id, recipient_id=recipient_id,
+                                   kind=kind, body=body, idempotency_key=idempotency_key, in_reply_to=in_reply_to)
+
+    @mcp.tool(name="workflow_communication_read_message", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def read_message(run_id: RunId, participant_id: ParticipantId, message_id: MessageId, ctx: Context) -> CallToolResult:
+        """Read an addressed message and record its receipt. Identity must match the recipient. Reading is a mutation, separate from host acceptance, and never causes another notification. No UI resource is returned."""
+        return await communication("read", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id)
+
+    @mcp.tool(name="workflow_communication_probe", annotations=LAUNCH, meta={"ui": {"visibility": ["model"]}})
+    async def probe(run_id: RunId, participant_id: ParticipantId,
+                    delay_ms: Annotated[int, Field(ge=25, le=60000, description="One-shot delay in milliseconds. Enable the panel first, then end your turn.")], ctx: Context) -> CallToolResult:
+        """Schedule one control message to yourself for an explicitly enabled panel. Stop cancels it. No general scheduler and no active-model wait. A fixture success does not prove ChatGPT wakeup."""
+        return await communication("probe", ctx, run_id=run_id, participant_id=participant_id, delay_ms=delay_ms)
+
+    @mcp.tool(name="workflow_communication_status", annotations=READ, meta={"ui": {"visibility": ["app", "model"]}})
+    async def status(run_id: RunId, participant_id: ParticipantId, ctx: Context) -> CallToolResult:
+        """Read this participant's communication state without launching a model or returning UI."""
+        return await communication("status", ctx, run_id=run_id, participant_id=participant_id)
+
+    @mcp.tool(name="workflow_communication_journal", annotations=READ, meta={"ui": {"visibility": ["app", "model"]}})
+    async def journal(run_id: RunId, participant_id: ParticipantId, ctx: Context) -> CallToolResult:
+        """Read the run's ordered diagnostic events after verifying membership. No raw host metadata or transport credentials are returned."""
+        return await communication("journal", ctx, run_id=run_id, participant_id=participant_id)
+
+    @mcp.tool(name="workflow_communication_bind", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
+    async def bind(binding: Binding, ctx: Context) -> CallToolResult:
+        """App-only: compare fresh host metadata with the model's join. Does not enable sending. Rebind each new panel instance; a sidebar selection is not an address."""
+        return await communication("bind", ctx, binding=binding)
+
+    @mcp.tool(name="workflow_communication_enable", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
+    async def enable(binding: Binding, message_supported: Annotated[bool, Field(description="The real SDK exposes experimental openai/message on this host.")], ctx: Context) -> CallToolResult:
+        """App-only explicit user permission for ten minutes. Returns a fresh generation; never restore permission automatically on reload."""
+        return await communication("enable", ctx, binding=binding, message_supported=message_supported)
+
+    @mcp.tool(name="workflow_communication_stop", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
+    async def stop(binding: Binding, ctx: Context) -> CallToolResult:
+        """App-only revoke sending and pending probe. Cannot cancel a request already handed to the host. A local stop is separate from this server acknowledgment."""
+        return await communication("stop", ctx, binding=binding)
+
+    @mcp.tool(name="workflow_communication_wait", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
+    async def wait(binding: Binding, after_seq: Annotated[int, Field(ge=0, description="Last event sequence seen by this panel; one outstanding wait per instance.")], ctx: Context) -> CallToolResult:
+        """App-only long poll, up to 25 seconds; timeout may be repeated. Carries events and one pending delivery. Never call from a model turn."""
+        return await communication("wait", ctx, binding=binding, after_seq=after_seq)
+
+    @mcp.tool(name="workflow_communication_claim", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
+    async def claim(binding: Binding, message_id: MessageId, ctx: Context) -> CallToolResult:
+        """App-only consume-once delivery claim. A lost claim result is never retried or returned to pending. Requires current permission and fresh matching host metadata."""
+        return await communication("claim", ctx, binding=binding, message_id=message_id)
+
+    @mcp.tool(name="workflow_communication_verify", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
+    async def verify(binding: Binding, message_id: MessageId, delivery_attempt_id: MessageId, ctx: Context) -> CallToolResult:
+        """App-only final identity/permission check and one-shot send intent immediately before SDK target:active/send:true. Missing or changed host metadata forbids Send. This is not proof that the SDK was invoked."""
+        return await communication("verify", ctx, binding=binding, message_id=message_id, delivery_attempt_id=delivery_attempt_id)
+
+    @mcp.tool(name="workflow_communication_report", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
+    async def report(binding: Binding, message_id: MessageId, delivery_attempt_id: MessageId,
+                     outcome: Annotated[str, Field(pattern=r"^(accepted|rejected|unknown)$", description="Observed host outcome; acceptance is not a read receipt.")], ctx: Context) -> CallToolResult:
+        """App-only record an SDK outcome without retrying delivery. Unknown is terminal for this attempt. A late report never revokes an existing read receipt."""
+        return await communication("report", ctx, binding=binding, message_id=message_id, delivery_attempt_id=delivery_attempt_id, outcome=outcome)
 
     @mcp.resource(UI_URI, name="workflow_pilot_projects", title="Workflow Pilot",
                   mime_type="text/html;profile=mcp-app",

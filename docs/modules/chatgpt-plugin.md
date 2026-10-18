@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot для ChatGPT — первый прототип
 
-Плагин входит в выпуск с 0.1.6. С 0.2.0 мост плагина и MCP принадлежат фоновой службе ([backend](backend.md)): окно Workflow Pilot для работы плагина и агентских инструментов открытым держать не нужно. Готовность пакетов подтверждает release-manifest.json, установку — delivery-проверка. Целевые режимы — Chat и Work в ChatGPT Desktop; Codex исключён пользователем из приёмки.
+Мост плагина и MCP принадлежат фоновой службе ([backend](backend.md)) и работают без окна. Комплект подтверждает release-manifest.json, установку — delivery-проверка. Приёмка: Chat и Work в ChatGPT Desktop; Codex исключён пользователем.
 
 ## Назначение и границы
 
@@ -9,6 +9,49 @@
 Для проверки MCP отдельно от интерфейса можно подключить уже открытый разговор прямой просьбой агенту. Плагин не переносит историю, не обнаруживает автоматически все разговоры ChatGPT, не управляет его окнами. Существующие внешние сессии пока показаны списком без перехода по ссылке: анонимизированный идентификатор разговора не является URL. Режим нового разговора выбирает хост; переключение Chat/Work/Codex не реализовано. Автовыполнение через DOM для внешних сессий не поддерживается. Встроенный браузер и прежние сессии сохраняются.
 
 ## Контракт
+
+### Невыпущенная связь участников: минимальный путь T001
+
+Следующий выпуск готовит эксперимент связи по [спецификации](../planning/plugin-communication-panel.md). Текущий этап добавляет канал в **тот же** MCP и ресурс `ui://workflow-pilot/projects-v1.html`. Старый интерфейс временно сохранён до T003. Протокол `1`, build `communication-v1-t001`; это метка реализации, не новый выпущенный номер приложения. В T001 состояние только в памяти; сохраняемое состояние и восстановление относятся к T002. Не использовать этот этап для живого опыта или поставки.
+
+Control `PluginCommunication` владеет участниками, разрешениями, сообщениями, probe и событиями; он не читает файлы, проекты, Kit или Electron. Backend создаёт его вместе с `PluginProjects`. Execution обслуживает только классифицированные действия приватного моста, включая отмену ожидания при закрытии соединения. Python проверяет схемы и отдельно извлекает host metadata каждого MCP-запроса. Frontend вызывает MCP через настоящий `App.callServerTool` и отправляет уведомление через `OpenAIExtensions.message.send`.
+
+Установленный `@openai/mcp-extensions` 0.2.0 проверяет `hostCapabilities.experimental["openai/message"]`; транспорт запроса — `ui/message`, расширение задаётся в `_meta`. Отправка: `{role:"user", content:[{type:"text",text}], _meta:{"openai/message":{target:"active",send:true}}}`. Наличие стандартного `ui/message` без расширения недостаточно. SDK подтверждает форму, но не поддержку хостом и не чтение агентом. См. [спецификацию расширения](https://github.com/openai/mcp-extensions/blob/main/docs/spec.md) и [справочник metadata](https://developers.openai.com/plugins/reference).
+
+**Привязка.** Модель вызывает join с run и ролью O/E; одна роль принадлежит одному разговору, две роли требуют разных разговоров. Панель получает новый случайный `panel_instance_id` при каждом монтировании. Пользователь вводит возвращённые run/participant и нажимает «Подтвердить привязку». App-only bind сравнивает SHA-256 нормализованного массива `[openai/organization, openai/subject, openai/session]` с модельным join. Исходные значения не записываются и не возвращаются. Каждый следующий вызов, включая claim и verify, заново проверяет metadata текущего запроса; переданные аргументами IDs не заменяют проверку. За доверенный транспорт отвечает существующее подключение MCP и приватный мост, metadata сами по себе не являются удостоверением личности пользователя.
+
+Перед каждым Send выполняется отдельный verify: свежая привязка, срок, поколение и одноразовое намерение. Frontend проверяет своё локальное поколение после каждого ожидания и непосредственно перед синхронным началом SDK-вызова. `hostcontextchanged`, `pagehide` и dispose прекращают локальную отправку и запрашивают Stop. Неизвестный/изменённый conversation key или отсутствующий `openai/session` запрещают отправку; выбор в sidebar ни на что не влияет.
+
+**Граница доказательства.** Официальный справочник описывает `openai/session` как корреляцию разговора, а не атомарную адресацию SDK. Внешний P0 должен отдельно установить, что metadata app-only вызовов действительно отражает активный разговор, а не прежний разговор открытия панели. Привязка подтверждает только наблюдаемый момент. Между последним verify и внешним Send остаётся гонка; необъявленная хостом навигация не обнаруживается автоматически. Нет предполагаемого API busy, черновика или закрепления target за conversation id. Fixtures с обновляемыми metadata не доказывают эти свойства настоящего ChatGPT.
+
+Все имена ниже имеют префикс `workflow_communication_`. `binding` — объект `{run_id,participant_id,panel_instance_id,protocol_version,build_id,permission_generation?}`; generation обязателен для доставки, остальные поля — для любой операции панели. `run_id` и ключ идемпотентности — до 128 ASCII-символов `[A-Za-z0-9_.:-]`, первый символ буквенно-цифровой; participant/panel/message/attempt — UUID. Дополнительные поля binding отклоняются. Ошибки возвращаются как `isError:true` и `structuredContent.error`.
+
+| Операция | Доступ и параметры помимо ctx | Результат / эффект |
+| --- | --- | --- |
+| join | model: run_id, role O/E | participant_id, role, хеш привязки, protocol/build; повтор той же роли/разговора сохраняет участника |
+| send_message | model: run_id, participant_id, recipient_id, kind question/answer/result, body, idempotency_key, in_reply_to? | message_id; текст до 4096 байт UTF-8, без усечения; тот же ключ/текст возвращает прежнее, конфликт отклоняется |
+| read_message | model: run_id, participant_id, message_id | адресованное сообщение и read-квитанция; повтор не уведомляет заново |
+| probe | model: run_id, participant_id, delay_ms 25–60000 | due_at; одна отложенная probe себе после явного enable, Stop отменяет таймер |
+| status / journal | model и app: run_id, participant_id | состояние/сообщения своего участника либо события своего run; без UI и запуска модели |
+| bind | app: binding | подтверждение model/app metadata без разрешения Send |
+| enable | app: binding, message_supported | ручное разрешение на 10 минут, новое generation, expires_at; не восстанавливается из прежней панели |
+| stop | app: binding | отзывает разрешение и probe; локальный Stop виден отдельно от ответа сервера |
+| wait | app: binding, after_seq | одно ожидание до 25 секунд, события и message_id либо пустой ответ; timeout можно повторять |
+| claim | app: binding, message_id | одноразовый delivery_attempt_id, состояние claimed |
+| verify | app: binding, message_id, delivery_attempt_id | повторная привязка/разрешение, send.intent; повтор не разрешён |
+| report | app: binding, message_id, delivery_attempt_id, outcome accepted/rejected/unknown | отдельный исход SDK; поздний report сохраняет read |
+
+Только status/journal имеют `readOnlyHint:true`; read, wait, claim и остальные мутации — false. Join/send/read/probe объявлены model-only, действия управления доставкой app-only. Ни один ответ данных не прикладывает UI resource. Общие инструменты MCP-исполнителя и прежние внешние сессии сохраняются.
+
+Сообщения содержат run/message/sender/recipient, kind, body, created_at, in_reply_to и idempotency_key. Answer/result должны ссылаться на полученное от адресата сообщение. Доставка `pending → claimed → accepted/rejected/unknown`, read — независимый флаг. Claimed после неопределённости не возвращается в очередь; SDK и потерянный report не повторяются. На этом этапе enqueue означает только запись в память, а не сохранение на диск. В журнале это `message.queued`, не `persisted`.
+
+Базовые события содержат schema/event/seq/run, component, severity, server_time UTC, backend_instance_id; далее — нужные хеши/IDs. Различаются join, binding, enable, wait, probe, claim, binding.verified, send.intent, send.report, message.read и stop.confirmed. `send.intent` не доказывает SDK invocation, `accepted` не доказывает read. Полный сохраняемый журнал, telemetry и экспорт реализуются T002/T003.
+
+Отказы: `PLUGIN_COMMUNICATION_IDENTITY_REQUIRED` — отсутствуют host metadata; `BINDING` — чужой/сменившийся разговор, занятая роль или неподтверждённая панель; `VERSION` — старый HTML; `UNSUPPORTED` — нет расширения; `STOPPED` — Stop, expiry или generation; `CLAIM_DENIED` — чужая/повторная попытка; `READ_DENIED`, `REPLY`, `CONFLICT`, `INPUT`, `CURSOR`, `WAIT_ACTIVE`, `PROBE_PENDING`, `RUN_REQUIRED` — соответствующая проверка контракта. Полный префикс каждого кода — `PLUGIN_COMMUNICATION_`. Общие ошибки приватного моста остаются прежними.
+
+Fixture исполняет настоящий HTML из MCP и SDK через кнопки bind/enable, Python, мост и Control до probe/wait/claim/verify/Send/report/read. P0/P1 — NOT_RUN; сохраняемость, полная матрица и окончательная панель относятся к следующим задачам.
+
+### Выпущенное подключение проектов (до замены панели)
 
 - `workflow_pilot_panel {project_id?}` — список зарегистрированных активных корневых проектов и панель `ui://workflow-pilot/projects-v1.html`. При точном project_id также проверяет identity и возвращает выбранный проект со свежими сессиями; недоступный проект возвращает ошибку. Без аргумента сохраняется прежний список. Объявлены global/thread entrypoints.
 - `workflow_open_project {project_id}` — открытие существующего проекта в панели, проверка его identity. Не меняет выбранную в Desktop сессию.
@@ -45,11 +88,9 @@ Control остаётся единственным владельцем workspace
 
 `npm run stage:chatgpt-plugin` и `node --test tests/chatgpt-plugin.test.mjs` проверяют настоящий Python FastMCP, JS MCP Client, loopback-мост и Control с изолированным профилем. Проверены metadata, контекст, идемпотентность, конкуренция, restart, повреждение пакета, мост backend без клиента и потеря backend. Полный HTML, полученный через MCP resources/read, исполняется в jsdom с настоящим SDK: handshake через postMessage, список проектов, открытие проекта и ui/message target:new. Хост тестовый; это не приёмка ChatGPT. Отдельный regression сохраняет $&, $`, $' и $$ буквально. Сборка отказывает при синтаксически неверном JavaScript до записи ресурса. Electron smoke проверяет выбор внешней сессии без нового браузера/отправки контекста.
 
-Проверки панели подтверждают порядок инструкций, выбранный проект в новом HTML, свежие сессии после подключения/обновления, сброс пропавшего проекта и отказ неизвестного project_id.
-
 Для MCP-тестов требуется изолированный `.harness/runtime/test-python` с зависимостями `tools/codex-app-server-mcp/requirements.txt`, как в существующих проверках проекта. `stage:chatgpt-plugin` собирает автономный HTML с лицензиями; он вызывается перед start/test/smoke и общей/платформенной сборкой. Generated HTML не хранится в Git, входит в существующий комплект tools MCP и копируется штатным Runtime.syncSource. Перед production build документацию и результаты живой приёмки актуализировать; затем выпускать три платформы из одного sourceCommit и выполнять отдельную macOS delivery-задачу.
 
-Проверки запуска из меню исполняют настоящий SDK из MCP HTML: явная подготовка, команда Control, одноразовый claim, один message.send и полный контекст через настоящий MCP с проверкой размера/хеша. Проверены конкуренция, истечение ожидания, закрытие панели, UNKNOWN без повторной отправки. Electron smoke проходит новое меню/preload/IPC и доказывает отсутствие DOM Send и нового браузера в этом пути. Каталог настоящего MCP проверяет описания параметров и сохранность прежних инструментов. Модельные ходы не выполняются; живую проверку проводит пользователь.
+Проверки меню покрывают конкуренцию, expiry, закрытие панели и UNKNOWN без повторной отправки; Electron smoke — меню/preload/IPC без DOM Send. Каталог MCP проверяет схемы и сохранность инструментов исполнителя. Живые модельные ходы не выполняются.
 
 ## Ручная приёмка
 Подключение для живой проверки, матрица ручной приёмки и проверка переходов 0.1.5 — в [chatgpt-plugin-acceptance.md](chatgpt-plugin-acceptance.md).

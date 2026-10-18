@@ -957,7 +957,12 @@ test('App Server MCP answers a stale session id without initialize after a resta
   assert.deepEqual(tools.map(tool => tool.name).sort(), [
     'apply_patch', 'bridge_status', 'computer_capture_screen', 'computer_capture_window',
     'computer_list_windows', 'exec_command',
-    'turn_watchdog', 'view_image', 'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel',
+    'turn_watchdog', 'view_image',
+    'workflow_communication_bind', 'workflow_communication_claim', 'workflow_communication_enable',
+    'workflow_communication_join', 'workflow_communication_journal', 'workflow_communication_probe',
+    'workflow_communication_read_message', 'workflow_communication_report', 'workflow_communication_send_message',
+    'workflow_communication_status', 'workflow_communication_stop', 'workflow_communication_verify', 'workflow_communication_wait',
+    'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel',
     'workflow_plugin_claim', 'workflow_plugin_report', 'workflow_plugin_wait', 'write_stdin',
   ]);
   for (const tool of tools) {
@@ -1158,6 +1163,10 @@ print(json.dumps(out, ensure_ascii=False))
   assert.doesNotMatch(out.instructions, /Workflow Kit|recover|context|part=|after key/i);
   assert.deepEqual(out.tools, ['apply_patch', 'bridge_status', 'computer_capture_screen', 'computer_capture_window',
     'computer_list_windows', 'exec_command', 'turn_watchdog', 'view_image',
+    'workflow_communication_bind', 'workflow_communication_claim', 'workflow_communication_enable',
+    'workflow_communication_join', 'workflow_communication_journal', 'workflow_communication_probe',
+    'workflow_communication_read_message', 'workflow_communication_report', 'workflow_communication_send_message',
+    'workflow_communication_status', 'workflow_communication_stop', 'workflow_communication_verify', 'workflow_communication_wait',
     'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel',
     'workflow_plugin_claim', 'workflow_plugin_report', 'workflow_plugin_wait', 'write_stdin']);
 });

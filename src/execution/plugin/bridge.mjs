@@ -5,7 +5,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { PLUGIN_ACTION_CLASS } from '../../contracts/backend.mjs';
 
 // Private transport to the single desktop owner. The MCP service never opens its store.
-export async function startPluginBridge({ directory, list, open, connect, wait, claim, report }) {
+export async function startPluginBridge({ directory, list, open, connect, wait, claim, report, communication }) {
   const token=randomBytes(32).toString('hex'), file=path.join(directory,'plugin-bridge.json');
   const server=http.createServer(async(req,res)=>{
     const reply=(status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
@@ -20,6 +20,13 @@ export async function startPluginBridge({ directory, list, open, connect, wait, 
       // Only the classified plugin actions exist; agent MCP channels are not bridge actions.
       if(!['read','ui-mutation'].includes(PLUGIN_ACTION_CLASS[input?.action]))
         return reply(400,{error:{code:'PLUGIN_ACTION_INVALID',message:'Неизвестное действие плагина.'}});
+      if(input.action.startsWith('communication.') && communication) {
+        const operation=input.action.slice('communication.'.length),abort=new AbortController();
+        const closed=()=>abort.abort();res.once('close',closed);
+        try{const value=await communication[operation](input,abort.signal);if(!res.destroyed)reply(200,value);}
+        finally{res.off('close',closed);}
+        return;
+      }
       if(input.action==='list')return reply(200,await list());
       if(input.action==='open')return reply(200,await open(input.projectId));
       if(input.action==='connect')return reply(200,await connect(input));
@@ -55,6 +62,7 @@ export async function startPluginBridge({ directory, list, open, connect, wait, 
     finally{await fs.rm(temporary,{force:true});}
   }catch(error){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));throw error;}
   return { async close(){
+    communication?.dispose();
     server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
     const current=await fs.readFile(file,'utf8').then(JSON.parse).catch(()=>null);
     if(current?.token===token)await fs.rm(file,{force:true});

@@ -92,6 +92,10 @@ test('launcher → work → client crash → work continues → reconnect to the
       path.join(project,'tools/codex-app-server-mcp'),path.join(root,'plugin')],stderr:'pipe'}));
     const panel=await mcp.callTool({name:'workflow_pilot_panel',arguments:{}});
     assert.equal(panel.isError,false);assert.deepEqual(panel.structuredContent.projects.map(item=>item.id),['e2e-alpha']);
+    const joined=await mcp.callTool({name:'workflow_communication_join',arguments:{run_id:'backend-e2e',role:'O'},
+      _meta:{'openai/session':'isolated-backend-e2e'}});
+    assert.equal(joined.isError,false);assert.equal(joined.structuredContent.role,'O');
+    assert.ok(joined.structuredContent.participant_id,'communication also belongs to the backend without a desktop client');
     await mcp.close();
   }
   // A new client reconnects to the same backend and page; control returns only when released.

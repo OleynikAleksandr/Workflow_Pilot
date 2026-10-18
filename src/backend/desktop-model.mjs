@@ -1386,6 +1386,7 @@ async function start() {
   // isolated fixture names its own directory instead of the user's runtime folder.
   if(plugin&&!smoke&&(!offline||pluginDirectory)) {
     await executionServices.attachPlugin({directory:pluginDirectory??runtimeFolder,list:()=>plugin.list(),
+      communication:plugin.communication,
       open:id=>plugin.open(id),connect:input=>plugin.connect(input),
       wait:(id,signal)=>plugin.launch.wait(id,signal),claim:input=>plugin.launch.claim(input),report:input=>plugin.launch.report(input)})
       .catch(()=>{startupError={code:'PLUGIN_BRIDGE_UNAVAILABLE',message:'Не удалось включить подключение панели ChatGPT. Проверьте, не открыта ли другая копия Workflow Pilot.'};});

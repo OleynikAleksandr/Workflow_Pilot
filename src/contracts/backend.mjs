@@ -32,6 +32,11 @@ export const BACKEND_OPERATIONS = Object.freeze({
 export const PLUGIN_ACTION_CLASS = Object.freeze({
   list: 'read', wait: 'read', open: 'ui-mutation', connect: 'ui-mutation',
   claim: 'ui-mutation', report: 'ui-mutation',
+  'communication.join':'ui-mutation', 'communication.bind':'ui-mutation',
+  'communication.enable':'ui-mutation', 'communication.stop':'ui-mutation',
+  'communication.send':'ui-mutation', 'communication.read':'ui-mutation', 'communication.probe':'ui-mutation',
+  'communication.wait':'ui-mutation', 'communication.claim':'ui-mutation', 'communication.verify':'ui-mutation',
+  'communication.report':'ui-mutation', 'communication.status':'read', 'communication.journal':'read',
   // The separate MCP executor channel is NOT an operation of the UI API.
   'mcp.context': 'agent-independent', 'mcp.tools': 'agent-independent',
 });
