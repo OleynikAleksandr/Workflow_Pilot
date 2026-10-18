@@ -1,18 +1,18 @@
 # Единая поставка Workflow Pilot
 
-Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.3.1 (исправления доступа с iPad) порядок: DOCS-2 → общая сборка T016 → установка в `/Applications` T017 → GitHub Release T018. Выпуски 0.2.x и 0.3.0 шли тем же порядком. Если при установке работает служба прежней версии, её останавливает пользователь (меню окна или значок) или агент — только с его согласия и штатно, через `service.stop` с draining. Каждый пакет содержит одно приложение с тремя режимами запуска — клиент, backend (`--backend-host`) и ресурсы/MCP-инструменты; отдельного helper-bundle нет ([Backend](backend.md)). Packaged-сборка отвергает тестовые флаги. Codex исключён из приёмки, Windows/Linux native отложены. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
+Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.5.2 порядок: DOCS → RELEASE (общая сборка) → INSTALL (готовая копия в /Applications) → PUBLISH (GitHub Release). Работающую службу останавливает пользователь; installer сохраняет новую копию pending и не запускает приложение. Каждый пакет содержит одно приложение с тремя режимами запуска — клиент, backend (`--backend-host`) и ресурсы/MCP-инструменты; отдельного helper-bundle нет ([Backend](backend.md)). Packaged-сборка отвергает тестовые флаги. Codex исключён из приёмки, Windows/Linux native отложены. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
 
 ## Матрица и состав
 
-Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.3.1. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
+Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.5.2. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
 
 `npm run build` один раз раскладывает общие ресурсы (Kit, observer, плагин, vendor-notices), затем параллельно упаковывает macOS arm64, Windows x64 и Linux x64 в отдельные папки; `--ignore-scripts` не даёт prebuild-шагам платформ повторно переписывать `resources/`; у каждой платформы свой `TMPDIR` в `.harness/runtime/packager-tmp/<platform>`, потому что electron-packager при старте очищает свой временный каталог; опция CLI `--tmpdir` не используется — она теряет следующие за ней `--extra-resource`. Ошибка любой платформы останавливает выпуск после завершения остальных. Используются существующие Electron Packager, ASAR, системные ditto/tar. Linux-бинарники на Mac не запускаются. Ошибка/неизвестный исход платформы останавливает сборку; отдельный успешный пакет не считается выпуском.
 
-Семь assets версии 0.3.1:
+Семь assets версии 0.5.2:
 
-- Workflow-Pilot-0.3.1-macOS-arm64.zip
-- Workflow-Pilot-0.3.1-Windows-x64.zip
-- Workflow-Pilot-0.3.1-Linux-x64.tar.gz
+- Workflow-Pilot-0.5.2-macOS-arm64.zip
+- Workflow-Pilot-0.5.2-Windows-x64.zip
+- Workflow-Pilot-0.5.2-Linux-x64.tar.gz
 - Windows-Codex-Local-2026-09-10.zip
 - SHA256SUMS.txt
 - INSTALL.txt
@@ -24,7 +24,9 @@ URL vendor: https://github.com/OleynikAleksandr/Project-Web-Pilot/releases/downl
 
 ## Сборка и доказательства
 
-Исходники, scripts, package/lock и packages/workflow-kit должны быть закоммичены. Сборка фиксирует HEAD, снимок исходников и хеши locks, затем повторно проверяет их перед завершением. Generated Kit/observer/notices и автономный plugin-ui.html подготавливаются из закреплённых источников. HTML плагина с лицензиями SDK и plugin.py входят в tools MCP всех платформ и сверяются по digest. Версии приложения, Node/Electron, Kit и sourceCommit общие для трёх пакетов.
+Исходники, scripts, package/lock и packages/workflow-kit должны быть закоммичены. Сборка фиксирует HEAD, снимок исходников и хеши locks, затем повторно проверяет их перед завершением. Generated Kit/observer/notices и автономный plugin-ui.html подготавливаются из закреплённых источников. Схемы executor-инструментов сверены с официальным Codex 0.163.0; их хеши совпадают с 0.162.1. Это проверка схем, а не обновление поставляемого Linux Codex 0.162.1: version_matches в диагностике сравнивает версии буквально и может быть false. Linux native остаётся pending.
+
+HTML плагина с лицензиями SDK и plugin.py входят в tools MCP всех платформ и сверяются по digest. Версии приложения, Node/Electron, Kit и sourceCommit общие для трёх пакетов.
 
 stage-chatgpt-plugin вставляет JavaScript буквально через callback String.replace и до записи проверяет синтаксис. Regression запускает собранный HTML, возвращённый MCP, с handshake SDK и кнопками панели; совпадение digest само по себе не доказывает работоспособность UI.
 
@@ -52,7 +54,7 @@ Manifest schemaVersion 2 содержит version/sourceCommit, source snapshot,
 
 Сертификат нового продукта выбирается явно: WORKFLOW_PILOT_MAC_SIGNING_IDENTITY либо собственный `.harness/runtime/mac-signing.json`, точный SHA-1 Apple Development. Автовыбора из Keychain нет; конфигурация донора не копируется. Это локальная development-подпись без notarization, не обещание отсутствия Gatekeeper на другом Mac.
 
-`build:mac` подготавливает, упаковывает и подписывает только staging. `release-mac.mjs` создаёт отдельный проверенный ZIP без установки/доставки общего комплекта. После каждого готового общего выпуска установка обязательна: delivery-задача установки вызывает `node scripts/check-installed-release.mjs --install`, затем тот же script без аргументов проверяет установленное. `/Applications/Workflow Pilot.app` всегда обновляется готовой распакованной копией нового проверенного комплекта. Installer не завершает, не останавливает и не перезапускает приложение или фоновую службу.
+`build:mac` подготавливает, упаковывает и подписывает только staging. `release-mac.mjs` создаёт отдельный проверенный ZIP без установки/доставки общего комплекта. После каждого готового общего выпуска установка обязательна: delivery-задача установки вызывает `node scripts/check-installed-release.mjs --install`, затем тот же script без аргументов проверяет установленные копии. Проверка без --install не считает pending установленной версией: до завершения переключения она должна отказать. `/Applications/Workflow Pilot.app` всегда обновляется готовой распакованной копией нового проверенного комплекта. Installer не завершает, не останавливает и не перезапускает приложение или фоновую службу.
 
 С 0.2.0 закрытие окна не завершает Workflow Pilot: фоновая служба продолжает работать из своего bundle. Если работающий backend запущен из целевого `.app`, installer не заменяет его runtime: проверенная новая копия кладётся в pending-слот backup-каталога, результат — `pending: true, reason: BACKEND_RUNNING` с инструкцией. Переключение пользователя: дождаться завершения работы, остановить службу (значок → «Остановить фоновую службу…» или меню клиента; draining дождётся безопасной точки), повторить установку тем же готовым комплектом, затем открыть новую версию. Прежняя 0.1.6 — обычное приложение без службы: её достаточно полностью завершить. Клиент новой версии, подключившийся к службе другой версии, только объясняет переход и ничего не меняет.
 
@@ -60,6 +62,6 @@ Manifest schemaVersion 2 содержит version/sourceCommit, source snapshot,
 
 ## GitHub и приёмка
 
-Delivery-задача публикации (для 0.3.1 — T018) выпускает в OleynikAleksandr/Workflow_Pilot штатным fast-forward процессом: draft → загрузка семи assets → сверка → публикация. Проверяющий script сам ничего не публикует. Он проверяет собственный origin, remote main == local HEAD, tag v<version> == manifest.sourceCommit, отсутствие draft/prerelease и все размеры/digest. Main может включать более поздние delivery-коммиты; тег остаётся на исходниках сборки.
+Delivery-задача PUBLISH выпускает в OleynikAleksandr/Workflow_Pilot штатным fast-forward процессом: draft → загрузка семи assets → сверка → публикация. Проверяющий script сам ничего не публикует. Он проверяет собственный origin, remote main == local HEAD, tag v<version> == manifest.sourceCommit, отсутствие draft/prerelease и все размеры/digest. Main может включать более поздние delivery-коммиты; тег остаётся на исходниках сборки.
 
 Fixtures проверяют нормальный комплект, пропавшую платформу, повреждение архива, ошибку копирования, несовпадающий manifest, UNKNOWN, ресурсы трёх layouts, ELF/права/Unicode/симлинки, явную подпись, rollback и неизменность manifest при проверке GitHub. Native Linux/Windows и чистая VM не объявляются проверенными. Ubuntu требует X11 и штатный sandbox; root/Wayland/обход sandbox не являются способом запуска.

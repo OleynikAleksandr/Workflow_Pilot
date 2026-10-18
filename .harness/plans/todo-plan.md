@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 487,
+  "plan_revision": 489,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -78,7 +78,7 @@
       {
         "path": "docs/planning/plugin-communication-panel.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -142,7 +142,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -223,7 +224,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -316,7 +318,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -430,7 +433,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -493,7 +497,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -514,8 +519,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "DOCS",
@@ -560,7 +565,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -577,7 +583,19 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/release.md",
+        "docs/planning/executor-readiness-recovery.md",
+        "docs/planning/native-startup-followup.md",
+        "docs/planning/plan-start-recovery.md",
+        "docs/planning/plugin-communication-panel.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -610,7 +628,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/release.md",
@@ -658,7 +677,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/release.md",
@@ -706,7 +726,8 @@
         "documents": [
           {
             "path": "docs/planning/plugin-communication-panel.md",
-            "required": true
+            "required": true,
+            "revision": "048478b6a9dc37ea95f9105606bcbdc5165b35a4"
           },
           {
             "path": "docs/modules/release.md",
@@ -750,7 +771,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 487
+Revision: 489
 
 ## Цель
 
@@ -798,8 +819,8 @@ Revision: 487
   - Файлы: docs/modules/plugin-communication-handoff.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: Актуализация всех документов проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: Актуализация всех документов проекта
   - Reference: workflow-pilot-plugin-communication / DOCS / implementation
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md, docs/planning/plugin-communication-panel.md, docs/planning/native-startup-followup.md, docs/planning/executor-readiness-recovery.md, docs/planning/plan-start-recovery.md, docs/modules/desktop.md, docs/modules/control.md
   - Параллельность: исключительное выполнение
