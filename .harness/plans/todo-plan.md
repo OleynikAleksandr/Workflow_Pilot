@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 508,
+  "plan_revision": 509,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Подготовить существующую панель Workflow Pilot к внешнему эксперименту связи агентов: модификация, автоматические тесты, поставка и передача; приёмка по результатам пользователя.",
   "acceptance_criteria": [
     "Тот же плагин и подключение: новый UI связи, подтверждённая адресация, сохраняемые сообщения/Stop, однократная доставка и полный очищенный журнал.",
@@ -91,6 +91,11 @@
         "path": "docs/planning/plugin-panel-recovery.md",
         "required": true,
         "revision": "723ae93f131b4e3b817a616413def73f032c4005"
+      },
+      {
+        "path": "docs/modules/chatgpt-plugin.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -959,6 +964,138 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T007",
+      "title": "Исправить восстановление при старом результате вызова; версия 0.5.4",
+      "why": "Исправить восстановление при старом результате вызова; версия 0.5.4",
+      "dependencies": [
+        "PUBLISH-2"
+      ],
+      "functional_paths": [
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "src/contracts/backend.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "electron-smoke",
+        "executor-channel"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Сохранённый host tool-result старой версии, протокола или ошибки не блокирует свежий recover и не меняет подтверждённую привязку/разрешение.",
+        "Реальные staged HTML/SDK/Python MCP проверяют результат до подключения, во время recover, после bind и при включённой связи; поля восстанавливаются без нового вызова/ручного recover, pending передаётся однократно только после Enable.",
+        "Свежий recover при настоящем несовпадении build/protocol и серверный bind старого HTML по-прежнему отказывают; успешный исторический результат не отменяет свежую ошибку.",
+        "Версия 0.5.4 согласована в package/lock/backend; рабочий профиль и живые модели не изменяются. Fixture не объявлен живой приёмкой."
+      ],
+      "expected_commit_message": "fix: Восстановить панель независимо от исторического результата вызова",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "T007",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-3",
+      "title": "Собрать единый выпуск 0.5.4",
+      "why": "Собрать единый выпуск 0.5.4",
+      "dependencies": [
+        "T007"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "После новой DOCS три платформы из одного sourceCommit, полный проверенный комплект в Downloads; без перезаписи 0.5.3."
+      ],
+      "expected_commit_message": "release: Собрать единый выпуск 0.5.4",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "RELEASE-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-3",
+      "title": "Установить проверенный macOS-комплект 0.5.4",
+      "why": "Установить проверенный macOS-комплект 0.5.4",
+      "dependencies": [
+        "RELEASE-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Штатный installer готового комплекта проверяет Applications/собственную копию, manifest/подпись/откат; работающая служба не останавливается, pending сообщается честно."
+      ],
+      "expected_commit_message": "release: Установить проверенный macOS-комплект 0.5.4",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "INSTALL-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-3",
+      "title": "Опубликовать проверенный выпуск 0.5.4",
+      "why": "Опубликовать проверенный выпуск 0.5.4",
+      "dependencies": [
+        "INSTALL-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Собственный GitHub Release и полный состав assets проверены; пользователь получает версию, установку и точный сценарий повторного теста. Приёмка и закрытие плана не выполняются."
+      ],
+      "expected_commit_message": "release: Опубликовать проверенный выпуск 0.5.4",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "PUBLISH-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -985,10 +1122,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 508
+Revision: 509
 
 ## Цель
 
@@ -1090,11 +1227,36 @@ Revision: 508
   - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL-2, DOCS-2
+- [TODO] T007: Исправить восстановление при старом результате вызова; версия 0.5.4 — Ожидает
+  - Git Commit: [PENDING] fix: Восстановить панель независимо от исторического результата вызова
+  - Reference: workflow-pilot-plugin-communication / T007 / implementation
+  - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/contracts/backend.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PUBLISH-2
+- [TODO] RELEASE-3: Собрать единый выпуск 0.5.4 — Ожидает
+  - Git Commit: [PENDING] release: Собрать единый выпуск 0.5.4
+  - Reference: workflow-pilot-plugin-communication / RELEASE-3 / implementation
+  - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T007
+- [TODO] INSTALL-3: Установить проверенный macOS-комплект 0.5.4 — Ожидает
+  - Git Commit: [PENDING] release: Установить проверенный macOS-комплект 0.5.4
+  - Reference: workflow-pilot-plugin-communication / INSTALL-3 / implementation
+  - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-3
+- [TODO] PUBLISH-3: Опубликовать проверенный выпуск 0.5.4 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать проверенный выпуск 0.5.4
+  - Reference: workflow-pilot-plugin-communication / PUBLISH-3 / implementation
+  - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-3
 
 ## Context Pack For This Cycle
 
 - docs/planning/plugin-communication-panel.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/plugin-panel-recovery.md
+- docs/modules/chatgpt-plugin.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
