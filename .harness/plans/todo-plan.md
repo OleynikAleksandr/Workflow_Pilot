@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 473,
+  "plan_revision": 474,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-startup-fixes",
@@ -94,7 +94,14 @@
       "tests/mac-toolchain.test.mjs",
       "tests/sign-mac-bundle.test.mjs",
       "tests/parallel-execution-recovery.test.mjs",
-      "tests/parallel-execution-ui.test.mjs"
+      "tests/parallel-execution-ui.test.mjs",
+      "src/control/projects/workspace-readiness.mjs",
+      "src/control/sessions/service.mjs",
+      "src/control/workflow/executor-session.mjs",
+      "tests/workspace-readiness.test.mjs",
+      "tests/backend-desktop-model.test.mjs",
+      "tests/session-runtime.test.mjs",
+      "tests/session-opening-performance.test.mjs"
     ],
     "documentation_paths": [
       "docs/acceptance/backend-independence.md",
@@ -114,7 +121,8 @@
       "packages/workflow-kit/src/templates/CONTINUE.md",
       "docs/modules/orchestrated-execution.md",
       "docs/modules/execution.md",
-      "docs/modules/project-lifecycle.md"
+      "docs/modules/project-lifecycle.md",
+      "docs/planning/executor-readiness-recovery.md"
     ]
   },
   "baseline_commit": "b17ed180c3871809e8f5d613ed128d24cf375cc4",
@@ -133,6 +141,11 @@
       },
       {
         "path": "docs/planning/plan-start-recovery.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/executor-readiness-recovery.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -368,6 +381,76 @@
       }
     },
     {
+      "id": "T000D",
+      "title": "Автоматически восстанавливать готовность занятого исполнителя",
+      "why": "Автоматически восстанавливать готовность занятого исполнителя",
+      "dependencies": [
+        "T000C"
+      ],
+      "functional_paths": [
+        "src/control/projects/workspace-readiness.mjs",
+        "src/control/projects/workspace-setup.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/workspace-readiness.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/sidebar.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/executor-readiness-recovery.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Выбор работающего исполнителя при operation/transaction даёт временное ожидание, не отменяет controller, не теряет ответ/команду и не перезагружает страницу; настоящие блокировки новой записи сохраняются.",
+        "После освобождения папки существующие watchers автоматически выполняют одну адресную проверку; учтены identity/epoch, смена сессии, уничтожение record и restart. Нет вечного READINESS_BUSY или применения ответа к чужому назначению.",
+        "Успех снимает только transient ошибку, не скрывает failed tests, не создаёт дубль и не повторяет Send. Настоящие ошибки готовности сохраняют диагностику.",
+        "Обычная занятость не требует «Доктор проекта / Повторить проверку»; сообщение соответствует фактам. Native/HTTP и обе темы согласованы.",
+        "Ручная пауза сохраняется: текущая работа/интеграция завершается, следующая не запускается, затем доступно «Продолжить». Тесты покрывают busy→ready, test failure, повторный lock, гонки навигации, restart и повреждённый проект.",
+        "Использовать существующие WorkspaceReadiness/watchers/проекцию без нового сервиса, бесконечного polling, удаления locks или подмены результата."
+      ],
+      "expected_commit_message": "feat: Автоматически восстанавливать готовность занятого исполнителя",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-startup-fixes",
+        "task_id": "T000D",
+        "role": "implementation"
+      },
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/executor-readiness-recovery.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/orchestrated-execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/desktop.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -378,7 +461,8 @@
       "dependencies": [
         "T000A",
         "T000B",
-        "T000C"
+        "T000C",
+        "T000D"
       ],
       "functional_paths": [
         "src/main.mjs",
@@ -439,7 +523,8 @@
       },
       "dependencies": [
         "T000B",
-        "T000C"
+        "T000C",
+        "T000D"
       ],
       "functional_paths": [
         "src/control/workflow/plan-review.mjs",
@@ -632,6 +717,7 @@
         "T000A",
         "T000B",
         "T000C",
+        "T000D",
         "T001",
         "T002",
         "T003",
@@ -656,7 +742,8 @@
         "packages/workflow-kit/src/templates/CONTINUE.md",
         "docs/modules/orchestrated-execution.md",
         "docs/modules/execution.md",
-        "docs/modules/project-lifecycle.md"
+        "docs/modules/project-lifecycle.md",
+        "docs/planning/executor-readiness-recovery.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -861,7 +948,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-startup-fixes
 Current Task: нет
-Revision: 473
+Revision: 474
 
 ## Цель
 
@@ -901,18 +988,24 @@ Workflow Pilot 0.5.2: восстановимый запуск плана, про
   - Файлы: scripts/prepare-mac-toolchain.mjs, scripts/release-mac.mjs, scripts/release-package.mjs, scripts/release-archive.mjs, scripts/sign-mac-bundle.mjs, src/control/projects/workspace-setup.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, tests/mac-toolchain.test.mjs, tests/release-mac.test.mjs, tests/sign-mac-bundle.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-ui.test.mjs, tests/sidebar.test.mjs, docs/planning/plan-start-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: T000B
+- [TODO] T000D: Автоматически восстанавливать готовность занятого исполнителя — Ожидает
+  - Git Commit: [PENDING] feat: Автоматически восстанавливать готовность занятого исполнителя
+  - Reference: workflow-pilot-native-startup-fixes / T000D / implementation
+  - Файлы: src/control/projects/workspace-readiness.mjs, src/control/projects/workspace-setup.mjs, src/control/sessions/service.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-projection.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/workspace-readiness.test.mjs, tests/backend-desktop-model.test.mjs, tests/session-runtime.test.mjs, tests/session-opening-performance.test.mjs, tests/parallel-execution-ui.test.mjs, tests/sidebar.test.mjs, docs/planning/executor-readiness-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T000C
 - [TODO] T001: Устранить дубли Dock при запуске Workflow Pilot — Ожидает
   - Git Commit: [PENDING] fix: Устранить дубли Dock при запуске Workflow Pilot
   - Reference: workflow-pilot-native-startup-fixes / T001 / implementation
   - Файлы: src/main.mjs, src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/backend/main.mjs, src/backend/diagnostics.mjs, resources/mac-permissions.plist, tests/backend-launcher.test.mjs, tests/backend-native-window.test.mjs, tests/backend-upgrade.test.mjs, tests/backend-owner-recovery.test.mjs, tests/backend-diagnostics.test.mjs
   - Параллельность: допустима при непересекающихся областях
-  - Зависимости: T000A, T000B, T000C
+  - Зависимости: T000A, T000B, T000C, T000D
 - [TODO] T002: Убрать строку о публикации завершённого Review — Ожидает
   - Git Commit: [PENDING] fix: скрыть устаревшее сообщение о публикации Review
   - Reference: workflow-pilot-native-startup-fixes / T002 / implementation
   - Файлы: src/control/workflow/plan-review.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/plan-review.test.mjs, tests/sidebar.test.mjs
   - Параллельность: допустима при непересекающихся областях
-  - Зависимости: T000B, T000C
+  - Зависимости: T000B, T000C, T000D
 - [TODO] T003: Убрать светлую вспышку перед диалогом — Ожидает
   - Git Commit: [PENDING] fix: Убрать светлую вспышку перед диалогом
   - Reference: workflow-pilot-native-startup-fixes / T003 / implementation
@@ -928,9 +1021,9 @@ Workflow Pilot 0.5.2: восстановимый запуск плана, про
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] fix: Актуализация всех документов проекта
   - Reference: workflow-pilot-native-startup-fixes / DOCS / implementation
-  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/native-window.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, docs/acceptance/backend-independence.md, docs/planning/native-startup-followup.md, docs/modules/workflow-execution.md, docs/modules/chatgpt-plugin.md, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md, docs/modules/orchestrated-execution.md, docs/modules/execution.md, docs/modules/project-lifecycle.md
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/native-window.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, docs/acceptance/backend-independence.md, docs/planning/native-startup-followup.md, docs/modules/workflow-execution.md, docs/modules/chatgpt-plugin.md, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md, docs/modules/orchestrated-execution.md, docs/modules/execution.md, docs/modules/project-lifecycle.md, docs/planning/executor-readiness-recovery.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T000A, T000B, T000C, T001, T002, T003, T004
+  - Зависимости: T000A, T000B, T000C, T000D, T001, T002, T003, T004
 - [TODO] T005: Собрать общий выпуск Workflow Pilot 0.5.2 — Ожидает
   - Git Commit: [PENDING] release: Собрать общий выпуск Workflow Pilot 0.5.2
   - Reference: workflow-pilot-native-startup-fixes / T005 / implementation
@@ -955,5 +1048,6 @@ Workflow Pilot 0.5.2: восстановимый запуск плана, про
 - docs/planning/native-startup-followup.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/plan-start-recovery.md
+- docs/planning/executor-readiness-recovery.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
