@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 515,
+  "plan_revision": 517,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -1081,14 +1081,17 @@
         "После новой DOCS три платформы из одного sourceCommit, полный проверенный комплект в Downloads; без перезаписи 0.5.3."
       ],
       "expected_commit_message": "release: Собрать единый выпуск 0.5.4",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "RELEASE-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-3",
@@ -1180,7 +1183,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 515
+Revision: 517
 
 ## Цель
 
@@ -1294,8 +1297,8 @@ Revision: 515
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, README.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md, docs/planning/plugin-plan-lifetime.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
-- [TODO] RELEASE-3: Собрать единый выпуск 0.5.4 — Ожидает
-  - Git Commit: [PENDING] release: Собрать единый выпуск 0.5.4
+- [DONE] RELEASE-3: Собрать единый выпуск 0.5.4 — Завершено
+  - Git Commit: [DONE] release: Собрать единый выпуск 0.5.4
   - Reference: workflow-pilot-plugin-communication / RELEASE-3 / implementation
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
