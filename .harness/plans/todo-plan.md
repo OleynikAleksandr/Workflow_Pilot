@@ -4,21 +4,60 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 469,
+  "plan_revision": 470,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-startup-fixes",
   "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
-  "objective": "Workflow Pilot 0.5.2 открывается без дополнительных значков Dock и белой вспышки перед диалогом; устаревшее сообщение о публикации Review убрано.",
+  "objective": "Workflow Pilot 0.5.2: восстановимый запуск плана, проверка старых операций до планирования, отсутствие дублей Dock и белой вспышки, актуальное представление Review.",
   "acceptance_criteria": [
     "Один видимый Workflow Pilot в штатном запуске macOS, один backend; новые дубли Dock/recent-apps не создаются.",
     "Первый показ и повторное открытие окна без светлой вспышки в тёмной теме, с работоспособным состоянием ожидания и ошибок.",
     "Строка и зелёная галочка о PUBLISHED скрыты, текущий Review и его ошибки остаются видимыми; review state не очищается.",
-    "Закрытие окна не завершает backend, не перезагружает живые страницы; проверки, DOCS, три платформы, macOS installer и GitHub Release завершены с честным указанием pending ручной приёмки/установки."
+    "Закрытие окна не завершает backend, не перезагружает живые страницы; проверки, DOCS, три платформы, macOS installer и GitHub Release завершены с честным указанием pending ручной приёмки/установки.",
+    "Нет зависшего pausing при неизвестной операции без активной работы; разбор доступен и восстановление не запускает задания автоматически.",
+    "Проблемы прошлых операций разбираются до нового планирования; признанная история не блокирует новый scope. Живые writers общих файлов и новые ошибки текущего плана сохраняют предметную защиту.",
+    "Совместимый Kit 1.8.2 включён в поставку 0.5.2; Electron/Node без обновления."
   ],
   "approved_scope": {
     "functional_paths": [
+      "src/control/workflow/parallel-execution.mjs",
+      "src/control/workflow/execution-control.mjs",
+      "src/control/workflow/coordination.mjs",
+      "src/control/workflow/command-activity.mjs",
+      "src/control/workflow/parallel-kit.mjs",
+      "src/control/projects/lifecycle.mjs",
+      "src/backend/desktop-model.mjs",
+      "src/frontend/desktop/ui/sidebar.mjs",
+      "src/frontend/desktop/ui/index.html",
+      "tests/parallel-execution.test.mjs",
+      "tests/execution-control.test.mjs",
+      "tests/command-activity.test.mjs",
+      "tests/sidebar.test.mjs",
+      "tests/orchestrated-execution.test.mjs",
+      "tools/codex-app-server-mcp/server.py",
+      "src/control/workflow/plan-review.mjs",
+      "src/control/sessions/session-plans.mjs",
+      "src/control/sessions/conversation-recovery.mjs",
+      "packages/workflow-kit/src/lib/command-activity.mjs",
+      "packages/workflow-kit/src/lib/actions.mjs",
+      "packages/workflow-kit/src/lib/simple-workflow.mjs",
+      "packages/workflow-kit/src/lib/plan-review.mjs",
+      "packages/workflow-kit/src/lib/recovery.mjs",
+      "packages/workflow-kit/src/lib/command-help.mjs",
+      "packages/workflow-kit/package.json",
+      "packages/workflow-kit/scripts/check-command-activity-fixture.mjs",
+      "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
+      "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+      "package.json",
+      "package-lock.json",
+      "tests/codex-app-server-mcp.test.mjs",
+      "tests/session-plans.test.mjs",
+      "tests/plan-review.test.mjs",
+      "scripts/check-workflow-kit-dependency.mjs",
+      "scripts/check-workflow-kit-staging.mjs",
+      "scripts/check-workflow-kit-archive.mjs",
       "src/main.mjs",
       "src/contracts/launch.mjs",
       "src/frontend/desktop/client.mjs",
@@ -30,11 +69,6 @@
       "tests/backend-upgrade.test.mjs",
       "tests/backend-owner-recovery.test.mjs",
       "tests/backend-diagnostics.test.mjs",
-      "src/control/workflow/plan-review.mjs",
-      "src/frontend/desktop/ui/sidebar.mjs",
-      "tests/plan-review.test.mjs",
-      "tests/sidebar.test.mjs",
-      "src/frontend/desktop/ui/index.html",
       "src/frontend/desktop/ui/browser-view.html",
       "src/frontend/desktop/ui/browser-view.mjs",
       "src/execution/browser/backend-host.mjs",
@@ -43,41 +77,11 @@
       "tests/native-startup-theme.test.mjs",
       "tests/backend-native-pages.test.mjs",
       "tests/desktop-client.test.mjs",
-      "package.json",
-      "package-lock.json",
       "src/frontend/plugin/index.html",
       "tests/release-all.test.mjs",
       "tests/release-mac.test.mjs",
       "src/frontend/plugin/app.mjs",
-      "release-manifest.json",
-      "src/control/workflow/parallel-execution.mjs",
-      "src/control/workflow/execution-control.mjs",
-      "src/control/workflow/coordination.mjs",
-      "src/control/workflow/command-activity.mjs",
-      "src/control/workflow/parallel-kit.mjs",
-      "src/control/projects/lifecycle.mjs",
-      "src/backend/desktop-model.mjs",
-      "tests/parallel-execution.test.mjs",
-      "tests/execution-control.test.mjs",
-      "tests/command-activity.test.mjs",
-      "tests/orchestrated-execution.test.mjs",
-      "tools/codex-app-server-mcp/server.py",
-      "src/control/sessions/session-plans.mjs",
-      "src/control/sessions/conversation-recovery.mjs",
-      "packages/workflow-kit/src/lib/command-activity.mjs",
-      "packages/workflow-kit/src/lib/actions.mjs",
-      "packages/workflow-kit/src/lib/simple-workflow.mjs",
-      "packages/workflow-kit/src/lib/plan-review.mjs",
-      "packages/workflow-kit/src/lib/plan-review-publish.mjs",
-      "packages/workflow-kit/src/lib/recovery.mjs",
-      "packages/workflow-kit/src/lib/command-help.mjs",
-      "packages/workflow-kit/package.json",
-      "packages/workflow-kit/scripts/check-command-activity-fixture.mjs",
-      "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
-      "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
-      "scripts/check-workflow-kit-delivery.mjs",
-      "tests/codex-app-server-mcp.test.mjs",
-      "tests/session-plans.test.mjs"
+      "release-manifest.json"
     ],
     "documentation_paths": [
       "docs/acceptance/backend-independence.md",
@@ -94,7 +98,10 @@
       "docs/planning/plan-start-recovery.md",
       "packages/workflow-kit/src/templates/PLAN.md",
       "packages/workflow-kit/src/templates/SPEC.md",
-      "packages/workflow-kit/src/templates/CONTINUE.md"
+      "packages/workflow-kit/src/templates/CONTINUE.md",
+      "docs/modules/orchestrated-execution.md",
+      "docs/modules/execution.md",
+      "docs/modules/project-lifecycle.md"
     ]
   },
   "baseline_commit": "b17ed180c3871809e8f5d613ed128d24cf375cc4",
@@ -204,7 +211,6 @@
         "packages/workflow-kit/src/lib/actions.mjs",
         "packages/workflow-kit/src/lib/simple-workflow.mjs",
         "packages/workflow-kit/src/lib/plan-review.mjs",
-        "packages/workflow-kit/src/lib/plan-review-publish.mjs",
         "packages/workflow-kit/src/lib/recovery.mjs",
         "packages/workflow-kit/src/lib/command-help.mjs",
         "packages/workflow-kit/package.json",
@@ -213,14 +219,16 @@
         "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
         "package.json",
         "package-lock.json",
-        "scripts/check-workflow-kit-delivery.mjs",
         "tests/command-activity.test.mjs",
         "tests/codex-app-server-mcp.test.mjs",
         "tests/session-plans.test.mjs",
         "tests/plan-review.test.mjs",
         "tests/orchestrated-execution.test.mjs",
         "tests/parallel-execution.test.mjs",
-        "tests/sidebar.test.mjs"
+        "tests/sidebar.test.mjs",
+        "scripts/check-workflow-kit-dependency.mjs",
+        "scripts/check-workflow-kit-staging.mjs",
+        "scripts/check-workflow-kit-archive.mjs"
       ],
       "documentation_paths": [
         "docs/planning/plan-start-recovery.md",
@@ -481,7 +489,8 @@
         "architecture",
         "release-tooling",
         "kit-check",
-        "codex-tools-live"
+        "codex-tools-live",
+        "executor-channel"
       ],
       "id": "T004",
       "title": "Проверить общий результат и подготовить версию 0.5.2",
@@ -489,9 +498,10 @@
       "verification_kind": "code",
       "acceptance_criteria": [
         "Совместный сценарий запуска, закрытия/повторного открытия окна, темы, HTTP-клиента и статусов Review проверен в изоляции; итог включает число pass/fail и реальные ограничения.",
-        "Версия приложения, lock-файла, подписи HTML панели и SDK App в src/frontend/plugin/app.mjs согласованы на 0.5.2; tests/backend-upgrade.test.mjs и остальные тесты с жёсткой текущей версией обновлены. Версии Electron/Node/Kit не меняются; production build пока не выполняется.",
+        "Версия приложения, lock-файла, подписи HTML панели и SDK App в src/frontend/plugin/app.mjs согласованы на 0.5.2; tests/backend-upgrade.test.mjs и остальные тесты с жёсткой текущей версией обновлены. Версии Electron/Node не меняются; поставляемый Kit согласован на 1.8.2 после T000B; production build пока не выполняется.",
         "Сценарий ручной проверки содержит cold/warm launch через Finder/Dock/Spotlight, один backend и отсутствие новых дубликатов recent-apps без чистки Dock; dark/light/custom chat background, медленная сеть, окно без проекта, смена сессии и закрытие во время загрузки. Ранее накопленные записи Dock отделяются от новых.",
-        "Если общий прогон выявил дефект реализации, передать оркестратору точную причину для исправляющего назначения через plan:extend, не расширять эту задачу скрытой переработкой runtime."
+        "Если общий прогон выявил дефект реализации, передать оркестратору точную причину для исправляющего назначения через plan:extend, не расширять эту задачу скрытой переработкой runtime.",
+        "Проверен полный сценарий: исторические операции обнаруживаются до нового планирования (Review ON/OFF), признанная история не блокирует следующий scope, новые writers защищены, пауза завершается и разбор доступен; сборка содержит Kit 1.8.2."
       ],
       "expected_commit_message": "fix: Проверить общий результат и подготовить версию 0.5.2",
       "parallel_safe": false,
@@ -507,6 +517,10 @@
           },
           {
             "path": "docs/modules/release.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/plan-start-recovery.md",
             "required": true
           }
         ],
@@ -546,7 +560,10 @@
         "docs/planning/plan-start-recovery.md",
         "packages/workflow-kit/src/templates/PLAN.md",
         "packages/workflow-kit/src/templates/SPEC.md",
-        "packages/workflow-kit/src/templates/CONTINUE.md"
+        "packages/workflow-kit/src/templates/CONTINUE.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/execution.md",
+        "docs/modules/project-lifecycle.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -557,7 +574,8 @@
         "До сборки сверены README/OVERVIEW и действующие контракты запуска, окна, browser и release; устаревшие текущие версии/пути в release.md исправлены на фактические.",
         "Существенные решения перенесены из спецификации в контракты, выполненная временная спецификация удалена без архивной копии; незавершённое сохранено. Required context удалённого файла имеет точный существующий Git blob; каждый документ <=28000 байт.",
         "Живая приёмка пользователя по плагину сохранена; новые Dock/визуальные сценарии не объявлены выполненными до подтверждения. Документационные проверки Kit пройдены.",
-        "Инструкция текущей панели chatgpt-plugin.md соответствует 0.5.2; историческое подтверждение работы на 0.5.1 не переписывается."
+        "Инструкция текущей панели chatgpt-plugin.md соответствует 0.5.2; историческое подтверждение работы на 0.5.1 не переписывается.",
+        "Контракты исполнения, оркестрации и жизненного цикла описывают проверку до планирования, принадлежность операций и восстановление; обе временные спецификации после переноса выполненного удалены с точными Git-ссылками. Поставляемый Kit 1.8.2 указан согласованно."
       ],
       "expected_commit_message": "fix: Актуализация всех документов проекта",
       "parallel_safe": false,
@@ -573,6 +591,10 @@
           },
           {
             "path": "docs/modules/release.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/plan-start-recovery.md",
             "required": true
           }
         ],
@@ -723,6 +745,11 @@
       "id": "104c7c45-3d56-4229-ae64-71f301013965",
       "text": "Пользователь поручил подготовить спецификацию и to-do план двух исправлений запуска и дополнительно убрать строку «Согласованный план опубликован» с зелёной галочкой. Выполнение — только по кнопке пользователя.",
       "recorded_at": "2026-10-18T08:19:24.781Z"
+    },
+    {
+      "id": "plan-start-recovery-20261018",
+      "text": "Пользователь разрешил вручную признать старые операции и восстановить текущий запуск, затем добавить исправления первыми задачами. Исторические проблемы разбираются до нового планирования. Порядок T000A→T000B→параллельные T001/T002→T003→T004→DOCS→delivery; первые две последовательны из-за общих Control/UI и зависимости проверки от разбора. Снимок сессии и отдельные чаты/worktree сохранены. Дополнение ACTIVE через plan:extend; опубликованный Review не переоткрывается (Kit допускает prepare только NONE).",
+      "recorded_at": "2026-10-18T08:34:45+00:00"
     }
   ],
   "parallel_allowed": true,
@@ -741,11 +768,11 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-startup-fixes
 Current Task: нет
-Revision: 469
+Revision: 470
 
 ## Цель
 
-Workflow Pilot 0.5.2 открывается без дополнительных значков Dock и белой вспышки перед диалогом; устаревшее сообщение о публикации Review убрано.
+Workflow Pilot 0.5.2: восстановимый запуск плана, проверка старых операций до планирования, отсутствие дублей Dock и белой вспышки, актуальное представление Review.
 
 ## Критерии приёмки
 
@@ -753,6 +780,9 @@ Workflow Pilot 0.5.2 открывается без дополнительных 
 - Первый показ и повторное открытие окна без светлой вспышки в тёмной теме, с работоспособным состоянием ожидания и ошибок.
 - Строка и зелёная галочка о PUBLISHED скрыты, текущий Review и его ошибки остаются видимыми; review state не очищается.
 - Закрытие окна не завершает backend, не перезагружает живые страницы; проверки, DOCS, три платформы, macOS installer и GitHub Release завершены с честным указанием pending ручной приёмки/установки.
+- Нет зависшего pausing при неизвестной операции без активной работы; разбор доступен и восстановление не запускает задания автоматически.
+- Проблемы прошлых операций разбираются до нового планирования; признанная история не блокирует новый scope. Живые writers общих файлов и новые ошибки текущего плана сохраняют предметную защиту.
+- Совместимый Kit 1.8.2 включён в поставку 0.5.2; Electron/Node без обновления.
 
 ## Микрозадачи
 
@@ -769,7 +799,7 @@ Workflow Pilot 0.5.2 открывается без дополнительных 
 - [TODO] T000B: Разбирать старые операции до планирования и отделить историю scope — Ожидает
   - Git Commit: [PENDING] feat: Разбирать старые операции до планирования и отделить историю scope
   - Reference: workflow-pilot-native-startup-fixes / T000B / implementation
-  - Файлы: tools/codex-app-server-mcp/server.py, src/control/workflow/command-activity.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/plan-review.mjs, src/control/sessions/session-plans.mjs, src/control/sessions/conversation-recovery.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/command-activity.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/plan-review-publish.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-command-activity-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, package.json, package-lock.json, scripts/check-workflow-kit-delivery.mjs, tests/command-activity.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/session-plans.test.mjs, tests/plan-review.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution.test.mjs, tests/sidebar.test.mjs, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md
+  - Файлы: tools/codex-app-server-mcp/server.py, src/control/workflow/command-activity.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/plan-review.mjs, src/control/sessions/session-plans.mjs, src/control/sessions/conversation-recovery.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/command-activity.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-command-activity-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, package.json, package-lock.json, tests/command-activity.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/session-plans.test.mjs, tests/plan-review.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution.test.mjs, tests/sidebar.test.mjs, scripts/check-workflow-kit-dependency.mjs, scripts/check-workflow-kit-staging.mjs, scripts/check-workflow-kit-archive.mjs, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md
   - Параллельность: исключительное выполнение
   - Зависимости: T000A
 - [TODO] T001: Устранить дубли Dock при запуске Workflow Pilot — Ожидает
@@ -799,7 +829,7 @@ Workflow Pilot 0.5.2 открывается без дополнительных 
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] fix: Актуализация всех документов проекта
   - Reference: workflow-pilot-native-startup-fixes / DOCS / implementation
-  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/native-window.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, docs/acceptance/backend-independence.md, docs/planning/native-startup-followup.md, docs/modules/workflow-execution.md, docs/modules/chatgpt-plugin.md, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/native-window.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, docs/acceptance/backend-independence.md, docs/planning/native-startup-followup.md, docs/modules/workflow-execution.md, docs/modules/chatgpt-plugin.md, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md, docs/modules/orchestrated-execution.md, docs/modules/execution.md, docs/modules/project-lifecycle.md
   - Параллельность: исключительное выполнение
   - Зависимости: T000A, T000B, T001, T002, T003, T004
 - [TODO] T005: Собрать общий выпуск Workflow Pilot 0.5.2 — Ожидает
