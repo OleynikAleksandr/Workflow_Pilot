@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 455,
+  "plan_revision": 457,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -609,13 +609,16 @@
         "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
       ],
       "expected_commit_message": "release: Собрать выпуск 0.5.1 трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T011",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "T012",
@@ -696,7 +699,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 455
+Revision: 457
 
 ## Цель
 
@@ -756,8 +759,8 @@ Revision: 455
   - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-native-window / DOCS-2 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/native-window.md, AGENTS.md, README.md, docs/acceptance/backend-independence.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/linux.md
-- [TODO] T011: Собрать выпуск 0.5.1 трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.5.1 трёх ОС
+- [DONE] T011: Собрать выпуск 0.5.1 трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.5.1 трёх ОС
   - Reference: workflow-pilot-native-window / T011 / implementation
   - Файлы: release-manifest.json, docs/modules/native-window.md
 - [TODO] T012: Установить 0.5.1 в Applications — Ожидает
