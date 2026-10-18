@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 459,
+  "plan_revision": 461,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS",
   "acceptance_criteria": [
     "Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS"
@@ -673,13 +673,14 @@
         "Тег v0.5.1 на sourceCommit, assets сверены, remote main = HEAD"
       ],
       "expected_commit_message": "release: Опубликовать GitHub Release 0.5.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T013",
         "role": "implementation"
-      }
+      },
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -697,10 +698,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 459
+Revision: 461
 
 ## Цель
 
@@ -768,8 +769,8 @@ Revision: 459
   - Git Commit: [DONE] release: Установить 0.5.1 в Applications
   - Reference: workflow-pilot-native-window / T012 / implementation
   - Файлы: release-manifest.json, docs/modules/native-window.md
-- [TODO] T013: Опубликовать GitHub Release 0.5.1 — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.5.1
+- [DONE] T013: Опубликовать GitHub Release 0.5.1 — Завершено
+  - Git Commit: [DONE] release: Опубликовать GitHub Release 0.5.1
   - Reference: workflow-pilot-native-window / T013 / implementation
   - Файлы: release-manifest.json, docs/modules/native-window.md
 
