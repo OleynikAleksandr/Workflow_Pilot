@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 457,
+  "plan_revision": 459,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -642,13 +642,14 @@
         "Установка готового комплекта без пересборки; при работающей службе — pending"
       ],
       "expected_commit_message": "release: Установить 0.5.1 в Applications",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T012",
         "role": "implementation"
-      }
+      },
+      "actual_files": []
     },
     {
       "id": "T013",
@@ -699,7 +700,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 457
+Revision: 459
 
 ## Цель
 
@@ -763,8 +764,8 @@ Revision: 457
   - Git Commit: [DONE] release: Собрать выпуск 0.5.1 трёх ОС
   - Reference: workflow-pilot-native-window / T011 / implementation
   - Файлы: release-manifest.json, docs/modules/native-window.md
-- [TODO] T012: Установить 0.5.1 в Applications — Ожидает
-  - Git Commit: [PENDING] release: Установить 0.5.1 в Applications
+- [DONE] T012: Установить 0.5.1 в Applications — Завершено
+  - Git Commit: [DONE] release: Установить 0.5.1 в Applications
   - Reference: workflow-pilot-native-window / T012 / implementation
   - Файлы: release-manifest.json, docs/modules/native-window.md
 - [TODO] T013: Опубликовать GitHub Release 0.5.1 — Ожидает
