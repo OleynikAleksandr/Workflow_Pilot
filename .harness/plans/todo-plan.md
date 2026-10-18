@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 518,
+  "plan_revision": 520,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -1115,14 +1115,15 @@
         "Штатный installer готового комплекта проверяет Applications/собственную копию, manifest/подпись/откат; работающая служба не останавливается, pending сообщается честно."
       ],
       "expected_commit_message": "release: Установить проверенный macOS-комплект 0.5.4",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "INSTALL-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-3",
@@ -1183,7 +1184,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 518
+Revision: 520
 
 ## Цель
 
@@ -1303,8 +1304,8 @@ Revision: 518
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007, DOCS-3
-- [TODO] INSTALL-3: Установить проверенный macOS-комплект 0.5.4 — Ожидает
-  - Git Commit: [PENDING] release: Установить проверенный macOS-комплект 0.5.4
+- [DONE] INSTALL-3: Установить проверенный macOS-комплект 0.5.4 — Завершено
+  - Git Commit: [DONE] release: Установить проверенный macOS-комплект 0.5.4
   - Reference: workflow-pilot-plugin-communication / INSTALL-3 / implementation
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
