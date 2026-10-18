@@ -188,8 +188,6 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       if(contextBlocked||disposed||suspended)return;contextBlocked=true;
       record('host.context_changed',{error_code:'CONTEXT_CHANGED'});void stop('Контекст хоста изменился; восстановите привязку.');ready();},
     visibilityChanged(){record('visibility.changed');},
-    hostResult(value){if(value?.error){serverError=value.error.code;status(value.error.message,'error');}
-      else if(value?.communication&&(value.communication.build_id!==BUILD||value.communication.protocol_version!==PROTOCOL)){serverError='Несовместимая панель. Переоткройте Workflow Pilot.';localStop(serverError,'error');}ready();},
     connectionError(){connected=false;serverError='SDK не подключён.';void stop('Не удалось подключить панель. Переоткройте её внутри ChatGPT.');ready();},
     suspend(){if(disposed||suspended)return;record('panel.pagehide');suspended=true;void stop('Панель приостановлена.');ready();},
     resume(){if(disposed||!suspended)return;suspended=false;record('panel.resume');resumePending=true;ready();},

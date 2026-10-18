@@ -112,7 +112,7 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.ok(!JSON.stringify(events).includes('conversation-fixture'));
 });
 
-async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms}={}) {
+async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms,initialToolResult}={}) {
   const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
   const errors=[],calls=[],messages=[];let initialized=false,currentMetadata=hostMetadata,notify,activeWaits=0,maxWaits=0;
   const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
@@ -126,9 +126,12 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
       notify=deliver;
       window.postMessage=async request=>{
         try{
-          if(request.method==='ui/initialize')queueMicrotask(()=>deliver({jsonrpc:'2.0',id:request.id,result:{
+          if(request.method==='ui/initialize')queueMicrotask(()=>{
+            if(initialToolResult)deliver(initialToolResult);
+            deliver({jsonrpc:'2.0',id:request.id,result:{
             protocolVersion:request.params.protocolVersion,hostInfo:{name:'Isolated communication host',version:'1'},
-            hostContext:{theme},hostCapabilities:{serverTools:{},experimental:messageSupported?{'openai/message':{}}:{}}}}));
+            hostContext:{theme},hostCapabilities:{serverTools:{},experimental:messageSupported?{'openai/message':{}}:{}}}});
+          });
           else if(request.method==='ui/notifications/initialized')initialized=true;
           else if(request.method==='tools/call'){
             calls.push(request.params.name);
@@ -231,11 +234,22 @@ test('served SDK panel renders themes, queue, filters, complete export and host-
   });
 });
 
-test('a cached panel/backend mismatch is visible and cannot enable delivery',async t=>{
-  const f=await fixture(t);await bridge(t,f);const c=await client(t,f),ui=await communicationHtml(t,c);
-  ui.notify({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:{content:[],structuredContent:{communication:{protocol_version:1,build_id:'old'}}}});
-  await eventually(()=>ui.$('status').textContent.includes('Несовместимая панель'));
-  assert.equal(ui.$('enable').disabled,true);assert.equal(ui.messages.length,0);
+const historicalToolResult=structuredContent=>({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:{content:[],structuredContent}});
+
+test('fresh backend incompatibility blocks recovery even after a matching historical result',async t=>{
+  for(const mismatch of [{build_id:'other-build'},{protocol_version:999}])await t.test(JSON.stringify(mismatch),async t=>{
+    const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+    await modelTool(c,metadata,'join',{run_id:'incompatible-backend',role:'E'});
+    const ui=await communicationHtml(t,c,{toolReply:async(request,result)=>request.name==='workflow_communication_recover'?
+      {...result,structuredContent:{...result.structuredContent,...mismatch}}:result});
+    await eventually(()=>ui.$('status').textContent.includes('Несовместимая панель'));
+    ui.notify(historicalToolResult({communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD}}));
+    await delay(30);
+    assert.match(ui.$('enable-reason').textContent,/Несовместимая панель/);
+    assert.equal(ui.$('run').value,'');assert.equal(ui.$('participant').value,'');
+    assert.equal(ui.calls.includes('workflow_communication_bind'),false);
+    assert.equal(ui.$('enable').disabled,true);assert.equal(ui.messages.length,0);assert.deepEqual(ui.errors,[]);
+  });
 });
 
 const modelTool=(c,meta,name,args)=>c.callTool({name:'workflow_communication_'+name,arguments:args,_meta:meta}).then(result=>{
@@ -247,6 +261,54 @@ async function bindAndEnable(ui,model){
   ui.$('enable').click();await eventually(()=>ui.calls.includes('workflow_communication_wait'));
 }
 const notificationArgs=request=>JSON.parse(request.content[0].text.match(/аргументами (\{[^}]+\})/)[1]);
+
+test('real SDK: historical tool results cannot cancel restoration or stop an enabled panel',async t=>{
+  const oldResult={communication:{build_id:'0.5.3-communication-1',protocol_version:COMMUNICATION_PROTOCOL}};
+  const cases=[
+    {phase:'before initialize',value:oldResult},
+    {phase:'during recover',value:oldResult},
+    {phase:'after bind',value:oldResult},
+    {phase:'while enabled',value:oldResult},
+    {phase:'during recover',value:{communication:{build_id:'0.5.2-communication-1',protocol_version:COMMUNICATION_PROTOCOL}}},
+    {phase:'during recover',value:{communication:{build_id:COMMUNICATION_BUILD,protocol_version:999}}},
+    {phase:'during recover',value:{error:{code:'PLUGIN_UNAVAILABLE',message:'Historical unavailable'}}},
+    {phase:'after bind',value:{error:{code:'PLUGIN_UNAVAILABLE',message:'Historical unavailable'}}},
+  ];
+  for(const {phase,value} of cases)await t.test(phase+' '+JSON.stringify(value),async t=>{
+    const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+    const recipient=await modelTool(c,metadata,'join',{run_id:'historical-reopen',role:'E'});
+    const senderMeta={...metadata,'openai/session':'historical-sender'};
+    const sender=await modelTool(c,senderMeta,'join',{run_id:recipient.run_id,role:'O'});
+    const message=await modelTool(c,senderMeta,'send_message',{run_id:sender.run_id,participant_id:sender.participant_id,
+      recipient_id:recipient.participant_id,kind:'question',body:'Pending across history replay',idempotency_key:'historical-pending'});
+    let release,reached=false;const gate=new Promise(resolve=>{release=resolve;});t.after(()=>release());
+    const notification=historicalToolResult(value);
+    const ui=await communicationHtml(t,c,{
+      initialToolResult:phase==='before initialize'?notification:undefined,
+      toolReply:async(request,result)=>{if(phase==='during recover'&&request.name==='workflow_communication_recover'){reached=true;await gate;}return result;},
+      onMessage:request=>modelTool(c,metadata,'read_message',notificationArgs(request)).then(()=>({})),
+    });
+    if(phase==='during recover'){await eventually(()=>reached);ui.notify(notification);await delay(30);release();}
+    await eventually(()=>!ui.$('enable').disabled);
+    if(phase==='after bind'){ui.notify(notification);await delay(30);}
+    assert.equal(ui.$('run').value,recipient.run_id);assert.equal(ui.$('participant').value,recipient.participant_id);
+    assert.equal(ui.calls.filter(name=>name==='workflow_communication_recover').length,1,'no manual recovery or new panel call');
+    assert.equal(ui.calls.filter(name=>name==='workflow_communication_bind').length,1);
+    assert.equal(ui.calls.includes('workflow_communication_enable'),false);assert.equal(ui.messages.length,0);
+    assert.equal(ui.$('enable').disabled,false);assert.match(ui.$('diagnostics').textContent,/SDK: подключён/);
+    ui.$('enable').click();await eventually(()=>ui.calls.includes('workflow_communication_wait'));
+    if(phase==='while enabled'){ui.notify(notification);await delay(30);}
+    await eventually(async()=>(await f.plugin.communication.status({...recipient,metadata})).messages[0]?.read);
+    await eventually(()=>ui.calls.includes('workflow_communication_report'));
+    const state=await f.plugin.communication.status({...recipient,metadata});
+    assert.equal(state.stopped,false);assert.equal(ui.messages.length,1);
+    assert.equal(notificationArgs(ui.messages[0]).message_id,message.message_id);
+    assert.match(ui.$('diagnostics').textContent,/Ожидание: запущено/);
+    assert.equal(ui.calls.includes('workflow_communication_stop'),false);assert.equal(ui.maxWaits,1);
+    ui.$('stop').click();await eventually(()=>ui.$('status').textContent.includes('подтвердила Stop'));
+    assert.deepEqual(ui.errors,[]);
+  });
+});
 
 test('real SDK: reopen restores fields and delivers old pending exactly once only after user Enable',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);

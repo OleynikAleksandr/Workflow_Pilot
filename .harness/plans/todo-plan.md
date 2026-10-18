@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 509,
+  "plan_revision": 511,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -998,14 +998,23 @@
         "Версия 0.5.4 согласована в package/lock/backend; рабочий профиль и живые модели не изменяются. Fixture не объявлен живой приёмкой."
       ],
       "expected_commit_message": "fix: Восстановить панель независимо от исторического результата вызова",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "T007",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "id": "RELEASE-3",
@@ -1125,7 +1134,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 509
+Revision: 511
 
 ## Цель
 
@@ -1227,8 +1236,8 @@ Revision: 509
   - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL-2, DOCS-2
-- [TODO] T007: Исправить восстановление при старом результате вызова; версия 0.5.4 — Ожидает
-  - Git Commit: [PENDING] fix: Восстановить панель независимо от исторического результата вызова
+- [DONE] T007: Исправить восстановление при старом результате вызова; версия 0.5.4 — Завершено
+  - Git Commit: [DONE] fix: Восстановить панель независимо от исторического результата вызова
   - Reference: workflow-pilot-plugin-communication / T007 / implementation
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/contracts/backend.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение

@@ -10,7 +10,8 @@ const communication=mountCommunication({document,getMessage:()=>extensions.messa
 function theme(){const context=app.getHostContext();if(context?.theme)applyDocumentTheme(context.theme);
   if(context?.styles?.variables)applyHostStyleVariables(context.styles.variables);}
 app.addEventListener('hostcontextchanged',context=>{theme();communication.contextChanged(Object.keys(context));communication.ready();});
-app.ontoolresult=result=>communication.hostResult(result.structuredContent);
+// Tool results can be replayed from chat history. Only fresh recover/bind
+// responses may establish backend compatibility or change communication state.
 window.addEventListener('pagehide',()=>communication.suspend());
 window.addEventListener('pageshow',()=>communication.resume());
 app.onteardown=async()=>{communication.dispose();return {};};
