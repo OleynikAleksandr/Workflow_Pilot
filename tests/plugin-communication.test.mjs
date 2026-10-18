@@ -27,6 +27,38 @@ async function enable(comm,input){input.permission_generation=(await comm.enable
 const send=(comm,a,b,extra={})=>comm.send({...a,recipient_id:b.participant_id,kind:'question',body:'What is 2 + 2?',idempotency_key:'question-1',...extra});
 const error=code=>({code:'PLUGIN_COMMUNICATION_'+code});
 
+test('recovery discovers only the current identity and never restores a permission',async t=>{
+  const {comm,O,E}=await fixture(t);await enable(comm,O);
+  const second=await comm.join({run_id:'second',role:'E',metadata:O.metadata});
+  const recovered=await comm.recover({metadata:O.metadata});
+  assert.deepEqual(recovered.participants,[{run_id:O.run_id,participant_id:O.participant_id,role:'O'},
+    {run_id:'second',participant_id:second.participant_id,role:'E'}]);
+  assert.doesNotMatch(JSON.stringify(recovered),new RegExp(E.participant_id+'|secret-session|permission_generation'));
+  assert.deepEqual((await comm.recover({metadata:{'openai/session':'stranger'}})).participants,[]);
+  await assert.rejects(comm.recover({metadata:{}}),error('IDENTITY_REQUIRED'));
+});
+
+test('permission lasts thirty minutes, remains live past ten, and expires at the deadline',async t=>{
+  let now=Date.now();const start=now,{comm,E}=await fixture(t,{now:()=>now});await enable(comm,E);
+  assert.equal((await comm.status(E)).expires_at,start+1800000);
+  for(const elapsed of [600001,1799999]){now=start+elapsed;assert.equal((await comm.status(E)).stopped,false);}
+  now=start+1800000;assert.equal((await comm.status(E)).stopped,true);
+  await assert.rejects(comm.probe({...E,delay_ms:25}),error('STOPPED'));
+});
+
+test('automatic Stop is generation-fenced; explicit Stop stays global and repeated Stop is idempotent',async t=>{
+  const {comm,E}=await fixture(t);await enable(comm,E);
+  const fresh={...E,panel_instance_id:randomUUID()};await comm.bind(fresh);await enable(comm,fresh);
+  const generation=fresh.permission_generation;
+  const ignored=await comm.stop({...E,scope:'panel'});assert.equal(ignored.stop_applied,false);
+  assert.equal(ignored.stopped,false);assert.equal(ignored.permission_generation,generation);
+  await Promise.all(Array.from({length:29},()=>comm.stop({...E,scope:'participant'})));
+  const stopped=await comm.status(fresh);assert.equal(stopped.stopped,true);assert.equal(stopped.permission_generation,generation+1);
+  assert.equal((await comm.journal(E)).events.filter(e=>e.event_type==='stop.confirmed').length,1);
+  await enable(comm,fresh);
+  assert.equal((await comm.stop({...fresh,permission_generation:generation,scope:'panel'})).stopped,false);
+});
+
 test('durable two-participant exchange: authorization, idempotency, reply chain and independent late read',async t=>{
   const {comm,O,E,directory}=await fixture(t);await enable(comm,E);
   const q=await send(comm,O,E);assert.equal((await send(comm,O,E)).message_id,q.message_id);
@@ -55,7 +87,7 @@ test('second panel invalidates old permission, Stop fences claim/verify and expi
   await assert.rejects(comm.claim({...E,...q}),error('STOPPED'));
   const ticket=await comm.claim({...second,...q});await comm.stop(second);
   await assert.rejects(comm.verify({...second,...ticket}),error('STOPPED'));
-  await enable(comm,second);now+=600001;
+  await enable(comm,second);now+=1800001;
   await assert.rejects(comm.verify({...second,...ticket}),error('STOPPED'));
   await assert.rejects(comm.probe({...second,delay_ms:25}),error('STOPPED'));
   assert.equal((await comm.status(E)).messages[0].delivery,'claimed');
@@ -126,7 +158,7 @@ test('one wait per panel: timeout, delivery, cancellation and Stop are distinct 
 test('Stop and replacement enable cancel a fired but unclaimed probe; status reflects expiry without a waiter',async t=>{
   let now=Date.now();const {comm,O}=await fixture(t,{now:()=>now});await enable(comm,O);
   const model={run_id:O.run_id,participant_id:O.participant_id,metadata:O.metadata};
-  assert.equal((await comm.status(model)).expires_at,now+600000);
+  assert.equal((await comm.status(model)).expires_at,now+1800000);
   for(const action of ['stop','enable']){
     await comm.probe({...O,delay_ms:25});await delay(60);
     const probe=(await comm.status(O)).messages.at(-1);assert.equal(probe.delivery,'pending');
@@ -134,7 +166,7 @@ test('Stop and replacement enable cancel a fired but unclaimed probe; status ref
     assert.equal((await comm.status(O)).messages.at(-1).delivery,'rejected');
     await assert.rejects(comm.claim({...O,message_id:probe.message_id}),error('CLAIM_DENIED'));
   }
-  now+=600001;assert.equal((await comm.status(model)).stopped,true);
+  now+=1800001;assert.equal((await comm.status(model)).stopped,true);
   await assert.rejects(comm.probe({...O,delay_ms:25}),error('STOPPED'));
   assert.equal((await comm.journal(O)).events.filter(e=>e.event_type==='permission.expired').length,1);
   await enable(comm,O);assert.equal((await comm.status(model)).stopped,false);

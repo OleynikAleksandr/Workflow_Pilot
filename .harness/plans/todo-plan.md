@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 496,
+  "plan_revision": 498,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -793,14 +793,29 @@
         "Версия 0.5.3, без изменения Kit/донора/рабочего профиля и запуска живых опытов."
       ],
       "expected_commit_message": "feat: Восстановление панели, устойчивый Stop и разрешение на 30 минут",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "T006",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -950,7 +965,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 496
+Revision: 498
 
 ## Цель
 
@@ -1022,8 +1037,8 @@ Revision: 496
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS, INSTALL
-- [TODO] T006: Восстановление панели, устойчивый Stop и разрешение на 30 минут — Ожидает
-  - Git Commit: [PENDING] feat: Восстановление панели, устойчивый Stop и разрешение на 30 минут
+- [DONE] T006: Восстановление панели, устойчивый Stop и разрешение на 30 минут — Завершено
+  - Git Commit: [DONE] feat: Восстановление панели, устойчивый Stop и разрешение на 30 минут
   - Reference: workflow-pilot-plugin-communication / T006 / implementation
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/control/plugin/communication.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение

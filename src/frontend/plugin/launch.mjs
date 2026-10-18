@@ -2,18 +2,28 @@ import {mountPanel} from './panel.mjs';
 import {COMMUNICATION_PROTOCOL as PROTOCOL,COMMUNICATION_BUILD as BUILD} from '../../contracts/backend.mjs';
 const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|VERSION|STOPPED|STORE_|CLOSED|LIMIT)/.test(code??'');
 export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=10000}) {
-  const ui=mountPanel({document}),$=ui.$,panelId=uuid(),clock=()=>document.defaultView.performance.now(),started=clock();
+  const ui=mountPanel({document}),$=ui.$,clock=()=>document.defaultView.performance.now(),started=clock();let panelId=uuid();
   let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false,stopping=false,loop=null,expiry=null,expiresAt=0;
   let clientSequence=0,telemetry=[],flushing=null,dropped=0,exported='',exportRun='',serverError=null;
+  let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false;
   const status=(text,state)=>{if(!disposed)ui.status(text,state);};
   const ready=()=>{
-    $('bind').disabled=disposed||busy||enabled||!!binding;
-    $('enable').disabled=disposed||busy||stopping||!!loop||enabled||!binding||!getMessage()||!!serverError;
+    const unavailable=disposed||suspended||!connected;
+    const reason=disposed?'Панель завершена. Откройте её заново.':suspended?'Панель приостановлена до возвращения.':
+      !connected?'SDK не подключён. Переоткройте панель, если подключение не завершится.':serverError?serverError:
+      contextBlocked?'Контекст изменился. Нажмите «Восстановить данные».':busy?'Восстанавливаем данные или выполняем действие…':
+      stopping?'Ждём подтверждения остановки.':!binding?'Привязка не подтверждена. Восстановите данные или выберите запуск.':
+      !getMessage()?'Хост не предоставил openai/message. Отправка недоступна.':enabled?'Связь включена.':loop?'Завершаем прежнее ожидание…':'Можно включить связь на 30 минут.';
+    $('bind').disabled=unavailable||busy||enabled||!!binding||contextBlocked;
+    $('recover').disabled=unavailable||busy||stopping||enabled;
+    $('runs').disabled=unavailable||busy||enabled||!!binding;
+    $('enable').disabled=unavailable||contextBlocked||busy||stopping||!!loop||enabled||!binding||!getMessage()||!!serverError;
     $('stop').disabled=disposed||!binding||stopping;
     $('refresh').disabled=disposed||busy||enabled||!binding;
     $('export').disabled=disposed||busy||!binding;
     $('run').disabled=$('participant').disabled=!!binding||busy;
-    if(!disposed)ui.diagnostics(`SDK openai/message: ${getMessage()?'доступен':'не предоставлен; отправка недоступна'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\n${serverError??'Привязка проверяется перед каждой отправкой.'}`);
+    if(!disposed){$('enable-reason').textContent=reason;ui.diagnostics(`SDK: ${connected?'подключён':'не подключён'}; openai/message: ${getMessage()?'доступен':'не предоставлен'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\nПривязка: ${binding&&!contextBlocked?'подтверждена':'не подтверждена'}. Ожидание: ${enabled&&loop?'запущено':'остановлено'}.\n${reason}`);}
+    if(resumePending&&!busy&&!recovery&&!stopping&&!suspended&&!disposed){resumePending=false;queueMicrotask(()=>recover());}
   };
   const call=async(name,args={},options={})=>{
     const result=await callTool('workflow_communication_'+name,args,{timeout:35000,...options});
@@ -22,32 +32,40 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   };
   function flush(){
     if(flushing||!binding||!telemetry.length)return flushing;
-    flushing=(async()=>{while(telemetry.length){const event=telemetry[0];
-      try{await call('telemetry',{binding,event});telemetry.shift();}catch{break;}
+    flushing=(async()=>{while(telemetry.length){const entry=telemetry[0];
+      if(!entry.binding){if(entry.panelId!==panelId){telemetry.shift();dropped++;continue;}entry.binding={...binding};}
+      try{await call('telemetry',{binding:entry.binding,event:entry.event});telemetry.shift();}catch{break;}
       if(!disposed)ui.localEvents(telemetry.length,dropped);
     }})().finally(()=>{flushing=null;});return flushing;
   }
   function record(event_type,fields={}){
-    if(!binding)return;
     const event={event_id:uuid(),event_type,client_sequence:++clientSequence,client_time:new Date().toISOString(),duration_ms:clock()-started,...fields};
-    if(telemetry.length>=64)dropped++;else telemetry.push(event);
+    if(telemetry.length>=64)dropped++;else telemetry.push({event,panelId,binding:binding?{...binding}:null});
     if(!disposed)ui.localEvents(telemetry.length,dropped);void flush();
   }
   function localStop(text,state='idle'){
     enabled=false;epoch++;abort?.abort();clearTimeout(expiry);status(text,state);ready();
   }
-  async function stop(text='Остановлено локально; ждём подтверждения службы.',finalText=null,finalState='unknown'){
-    localStop(text);if(!binding)return;stopping=true;ready();record('stop.local');
-    try{const result=await call('stop',{binding});if(!disposed)ui.snapshot({...result,expires_at:0});status(finalText??'Связь остановлена. Служба подтвердила Stop.',finalText?finalState:'idle');}
-    catch{record('stop.failed',{error_code:'NETWORK_ERROR'});status((finalText?finalText+' ':'')+'Остановлено локально. Подтверждение службы не получено.','error');}
-    finally{stopping=false;ready();}
+  function stop(text='Остановлено локально; ждём подтверждения службы.',finalText=null,finalState='unknown',scope='panel'){
+    if(stopPromise)return stopPromise;
+    localStop(text);if(!binding)return Promise.resolve();const current={...binding},generation=epoch;
+    if(scope==='panel'&&current.permission_generation===undefined)return Promise.resolve();
+    stopping=true;ready();record('stop.local');
+    stopPromise=(async()=>{
+      try{const result=await call('stop',{binding:current,scope});if(epoch!==generation)return;
+        if(!disposed)ui.snapshot({...result,expires_at:0});status(finalText??'Связь остановлена. Служба подтвердила Stop.',finalText?finalState:'idle');}
+      catch{record('stop.failed',{error_code:'NETWORK_ERROR'});if(epoch===generation)status((finalText?finalText+' ':'')+'Остановлено локально. Подтверждение службы не получено.','error');}
+      finally{stopping=false;stopPromise=null;ready();}
+    })();return stopPromise;
   }
   async function refresh(reset=false){
-    const value=await call('status',{run_id:binding.run_id,participant_id:binding.participant_id});
+    const current=binding,generation=epoch;
+    const value=await call('status',{run_id:current.run_id,participant_id:current.participant_id});
+    if(binding!==current||epoch!==generation||disposed||suspended)return value;
     if(!disposed){ui.snapshot({...value,expires_at:value.stopped?0:expiresAt});if(value.critical_error){serverError=value.critical_error;localStop('Журнал недоступен. Отправка заблокирована.','error');}}
     if(reset){let cursor=Math.max(0,value.seq-200);ui.feed([],cursor);
-      while(cursor<value.seq){const page=await call('journal',{run_id:binding.run_id,participant_id:binding.participant_id,after_seq:cursor});
-        if(disposed)return;ui.feed(page.events);cursor=page.seq;}seq=cursor;
+      while(cursor<value.seq){const page=await call('journal',{run_id:current.run_id,participant_id:current.participant_id,after_seq:cursor});
+        if(disposed||binding!==current||epoch!==generation)return;ui.feed(page.events);cursor=page.seq;}seq=cursor;
     }return value;
   }
   async function deliver(message_id,generation,signal){
@@ -102,25 +120,53 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       if(current())try{await refresh();}catch{status('Не удалось обновить состояния. Журнал остаётся в службе.','error');}
     }
   }
-  $('bind').addEventListener('click',async()=>{
-    if(busy||binding||disposed)return;busy=true;ready();
+  async function bind(){
+    if(binding||disposed||suspended||contextBlocked)return;
+    const generation=epoch;
     const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,protocol_version:PROTOCOL,build_id:BUILD};
-    try{const result=await call('bind',{binding:next});if(disposed)return;binding=next;serverError=result.critical_error;
+    try{const result=await call('bind',{binding:next});if(disposed||suspended||epoch!==generation)return;binding=next;serverError=result.critical_error;
       record('host.handshake',{message_supported:!!getMessage()});await refresh(true);
+      if(disposed||suspended||epoch!==generation)return;
       status('Привязка подтверждена: '+result.role+'. '+(getMessage()?'Включите связь вручную.':'Хост не поддерживает openai/message; отправка недоступна.'));}
-    catch(error){status(error.message,'error');}finally{busy=false;ready();}
+    catch(error){if(epoch===generation)status(error.message,'error');}finally{ready();}
+  }
+  function choose(value){$('run').value=value.run_id;$('participant').value=value.participant_id;}
+  function recover(){
+    if(recovery||disposed||suspended||!connected||busy)return recovery;
+    localStop('Восстанавливаем данные текущего разговора…');const generation=epoch;
+    busy=true;serverError=null;contextBlocked=false;ready();
+    recovery=(async()=>{
+      await stopPromise;await loop;
+      if(disposed||suspended||epoch!==generation)return;
+      if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;expiresAt=0;seq=0;ui.unbound();
+      const result=await call('recover');
+      if(disposed||suspended||epoch!==generation)return;
+      if(result.build_id!==BUILD||result.protocol_version!==PROTOCOL)throw Error('Несовместимая панель. Переоткройте Workflow Pilot.');
+      serverError=result.critical_error;candidates=result.participants;ui.candidates(candidates);
+      if(candidates.length===1){choose(candidates[0]);await bind();}
+      else status(candidates.length?'Найдено несколько запусков. Выберите нужный.':'В этом разговоре участник ещё не зарегистрирован. Выполните join и нажмите «Восстановить данные».');
+    })().catch(error=>{if(epoch===generation){serverError=error.message;status('Не удалось восстановить данные: '+error.message,'error');}})
+      .finally(()=>{recovery=null;busy=false;ready();});return recovery;
+  }
+  $('recover').addEventListener('click',()=>void recover());
+  $('runs').addEventListener('change',async()=>{
+    const selected=candidates.find(c=>c.run_id===$('runs').value);if(!selected||busy||binding)return;
+    choose(selected);busy=true;ready();try{await bind();}finally{busy=false;ready();}
+  });
+  $('bind').addEventListener('click',async()=>{
+    if(busy||binding||disposed||suspended||!connected)return;busy=true;ready();try{await bind();}finally{busy=false;ready();}
   });
   $('enable').addEventListener('click',async()=>{
-    if(busy||stopping||loop||enabled||disposed||!binding||!getMessage()||serverError)return;busy=true;ready();const current=++epoch;
-    try{const result=await call('enable',{binding,message_supported:true});
-      if(disposed||epoch!==current){void stop();return;}
+    if(busy||stopping||loop||enabled||disposed||suspended||contextBlocked||!connected||!binding||!getMessage()||serverError)return;busy=true;ready();const current=++epoch,requested={...binding};
+    try{const result=await call('enable',{binding:requested,message_supported:true});
+      if(disposed||suspended||epoch!==current){await call('stop',{binding:{...requested,permission_generation:result.permission_generation},scope:'panel'});return;}
       binding={...binding,permission_generation:result.permission_generation};expiresAt=result.expires_at;enabled=true;ui.snapshot(result);
       status('Связь включена. Ожидаем сообщение…','waiting');
       expiry=setTimeout(()=>void stop('Срок разрешения истёк.','Срок разрешения истёк. Служба подтвердила Stop.','expired'),Math.max(0,result.expires_at-Date.now()));
       loop=listen(current).finally(()=>{loop=null;ready();});
     }catch(error){status(error.message,'error');}finally{busy=false;ready();}
   });
-  $('stop').addEventListener('click',()=>void stop());
+  $('stop').addEventListener('click',()=>void stop(undefined,null,'unknown','participant'));
   $('refresh').addEventListener('click',async()=>{if(!binding||busy||enabled)return;busy=true;ready();try{await flush();await refresh(true);}catch{status('Не удалось обновить журнал. Повторите вручную.','error');}finally{busy=false;ready();}});
   $('export').addEventListener('click',async()=>{
     if(!binding||busy)return;busy=true;ready();let after_seq=0,through_seq,parts=[],summary;
@@ -135,11 +181,18 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       const link=document.createElement('a');link.href=url;link.download='workflow-communication-'+exportRun+'.jsonl';link.click();setTimeout(()=>window.URL.revokeObjectURL(url),1000);}
     catch{status('Хост не разрешил скачивание. Используйте «Выделить журнал» и сохраните текст.','error');}
   });
-  ready();return {ready,contextChanged(){record('host.context_changed',{error_code:'CONTEXT_CHANGED'});if(binding)void stop('Контекст хоста изменился; связь остановлена.');},
+  record('panel.mount');ready();return {ready,recover,connected(){connected=true;ready();return recover();},
+    contextChanged(fields=[]){
+      const presentation=new Set(['theme','styles','containerDimensions','displayMode','availableDisplayModes','safeAreaInsets']);
+      if(fields.length&&fields.every(field=>presentation.has(field)))return;
+      if(contextBlocked||disposed||suspended)return;contextBlocked=true;
+      record('host.context_changed',{error_code:'CONTEXT_CHANGED'});void stop('Контекст хоста изменился; восстановите привязку.');ready();},
     visibilityChanged(){record('visibility.changed');},
     hostResult(value){if(value?.error){serverError=value.error.code;status(value.error.message,'error');}
       else if(value?.communication&&(value.communication.build_id!==BUILD||value.communication.protocol_version!==PROTOCOL)){serverError='Несовместимая панель. Переоткройте Workflow Pilot.';localStop(serverError,'error');}ready();},
-    connectionError(){serverError='SDK не подключён.';status('Не удалось подключить панель. Откройте её внутри ChatGPT.','error');ready();},
+    connectionError(){connected=false;serverError='SDK не подключён.';void stop('Не удалось подключить панель. Переоткройте её внутри ChatGPT.');ready();},
+    suspend(){if(disposed||suspended)return;record('panel.pagehide');suspended=true;void stop('Панель приостановлена.');ready();},
+    resume(){if(disposed||!suspended)return;suspended=false;record('panel.resume');resumePending=true;ready();},
     dispose(reason='dispose'){if(disposed)return;record(reason==='pagehide'?'panel.pagehide':'panel.dispose');disposed=true;void stop('Панель закрывается; связь остановлена локально.');},
   };
 }

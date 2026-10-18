@@ -2,8 +2,9 @@
 // No Electron, filesystem, shell, store or secret crosses this boundary.
 export const BACKEND_API_VERSION = 1;
 export const COMMUNICATION_PROTOCOL = 1;
-export const COMMUNICATION_APP_VERSION = '0.5.2';
-export const COMMUNICATION_BUILD = '0.5.2-communication-1';
+export const COMMUNICATION_APP_VERSION = '0.5.3';
+export const COMMUNICATION_BUILD = '0.5.3-communication-1';
+export const COMMUNICATION_PERMISSION_MS = 30 * 60 * 1000;
 export const BACKEND_LIMITS = Object.freeze({
   messageBytes: 64 * 1024,
   pendingEvents: 256,
@@ -39,7 +40,7 @@ export const PLUGIN_ACTION_CLASS = Object.freeze({
   'communication.send':'ui-mutation', 'communication.read':'ui-mutation', 'communication.probe':'ui-mutation',
   'communication.wait':'ui-mutation', 'communication.claim':'ui-mutation', 'communication.verify':'ui-mutation',
   'communication.report':'ui-mutation', 'communication.status':'read', 'communication.journal':'read',
-  'communication.telemetry':'ui-mutation', 'communication.export':'read',
+  'communication.telemetry':'ui-mutation', 'communication.export':'read', 'communication.recover':'read',
   // The separate MCP executor channel is NOT an operation of the UI API.
   'mcp.context': 'agent-independent', 'mcp.tools': 'agent-independent',
 });

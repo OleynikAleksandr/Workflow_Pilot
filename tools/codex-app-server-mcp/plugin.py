@@ -37,7 +37,7 @@ Binding = Annotated[CommunicationBinding, Field(description="Panel binding and p
 class CommunicationEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_id: MessageId
-    event_type: Annotated[str, Field(pattern=r"^(sdk\.(invoked|accepted|rejected|timeout|error)|report\.failed|stop\.(local|failed)|host\.(handshake|context_changed)|visibility\.changed|panel\.(pagehide|dispose)|wait\.error|connection\.restored)$")]
+    event_type: Annotated[str, Field(pattern=r"^(sdk\.(invoked|accepted|rejected|timeout|error)|report\.failed|stop\.(local|failed)|host\.(handshake|context_changed)|visibility\.changed|panel\.(pagehide|dispose|mount|resume)|wait\.error|connection\.restored)$")]
     client_sequence: Annotated[int, Field(ge=1)]
     client_time: Annotated[str, Field(max_length=40)]
     duration_ms: Annotated[float, Field(ge=0, le=86400000)]
@@ -168,15 +168,21 @@ def register_plugin(mcp, state_root: Path):
         """App-only: compare fresh host metadata with the model's join. Does not enable sending. Rebind each new panel instance; a sidebar selection is not an address."""
         return await communication("bind", ctx, binding=binding)
 
+    @mcp.tool(name="workflow_communication_recover", annotations=READ, meta={"ui": {"visibility": ["app"]}})
+    async def recover(ctx: Context) -> CallToolResult:
+        """App-only discover run/participant/role belonging to fresh host identity. No caller-supplied identity, permission, UI or model turn. Select explicitly if multiple runs exist, bind a fresh panel, then require a user Enable click."""
+        return await communication("recover", ctx)
+
     @mcp.tool(name="workflow_communication_enable", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def enable(binding: Binding, message_supported: Annotated[bool, Field(description="The real SDK exposes experimental openai/message on this host.")], ctx: Context) -> CallToolResult:
-        """App-only explicit user permission for ten minutes. Returns a fresh generation; never restore permission automatically on reload."""
+        """App-only explicit user permission for thirty minutes. Returns a fresh generation; never restore permission automatically on reload."""
         return await communication("enable", ctx, binding=binding, message_supported=message_supported)
 
     @mcp.tool(name="workflow_communication_stop", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
-    async def stop(binding: Binding, ctx: Context) -> CallToolResult:
-        """App-only revoke sending and pending probe. Cannot cancel a request already handed to the host. A local stop is separate from this server acknowledgment."""
-        return await communication("stop", ctx, binding=binding)
+    async def stop(binding: Binding, ctx: Context,
+                   scope: Annotated[str, Field(pattern=r"^(participant|panel)$", description="participant for explicit user Stop; panel for lifecycle/expiry, fenced by permission_generation.")] = "participant") -> CallToolResult:
+        """App-only revoke sending and pending probe. Repeated stopped calls are idempotent; automatic panel Stop cannot revoke a newer generation. Explicit user Stop is global for this participant. Already handed-off requests cannot be cancelled."""
+        return await communication("stop", ctx, binding=binding, scope=scope)
 
     @mcp.tool(name="workflow_communication_wait", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def wait(binding: Binding, after_seq: Annotated[int, Field(ge=0, description="Last event sequence seen by this panel; one outstanding wait per instance.")], ctx: Context) -> CallToolResult:

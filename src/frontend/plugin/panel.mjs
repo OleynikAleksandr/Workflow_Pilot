@@ -18,6 +18,12 @@ export function mountPanel({document}) {
   }
   for(const id of ['filter-message','filter-participant','filter-errors'])$(id).addEventListener('input',renderEvents);
   return {$,status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
+    unbound(){text('identity','Участник не подтверждён');text('binding','Проверяем принадлежность текущему разговору.');
+      $('run').value='';$('participant').value='';text('permission','Разрешение не выдано');text('queue','Очередь пока недоступна');
+      text('last','Сообщений пока нет.');$('messages').replaceChildren();$('export-result').hidden=true;events=[];last=0;renderEvents();},
+    candidates(values){$('run-selection').hidden=values.length<2;$('runs').replaceChildren();
+      const empty=document.createElement('option');empty.value='';empty.textContent='Выберите запуск';$('runs').append(empty);
+      for(const value of values){const option=document.createElement('option');option.value=value.run_id;option.textContent=value.run_id+' · '+value.role;$('runs').append(option);}},
     diagnostics:value=>text('diagnostics',value),localEvents:(pending,dropped)=>text('local-events',
       `Событий без подтверждения: ${pending}. Потеряно локальным буфером: ${dropped}. Последние события закрытой панели могут быть ненаблюдаемы.`),
     feed(values,base){

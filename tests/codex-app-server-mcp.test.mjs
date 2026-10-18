@@ -961,7 +961,7 @@ test('App Server MCP answers a stale session id without initialize after a resta
     'workflow_communication_bind', 'workflow_communication_claim', 'workflow_communication_enable',
     'workflow_communication_export',
     'workflow_communication_join', 'workflow_communication_journal', 'workflow_communication_probe',
-    'workflow_communication_read_message', 'workflow_communication_report', 'workflow_communication_send_message',
+    'workflow_communication_read_message', 'workflow_communication_recover', 'workflow_communication_report', 'workflow_communication_send_message',
     'workflow_communication_status', 'workflow_communication_stop', 'workflow_communication_telemetry', 'workflow_communication_verify', 'workflow_communication_wait',
     'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel',
     'write_stdin',
@@ -1167,7 +1167,7 @@ print(json.dumps(out, ensure_ascii=False))
     'workflow_communication_bind', 'workflow_communication_claim', 'workflow_communication_enable',
     'workflow_communication_export',
     'workflow_communication_join', 'workflow_communication_journal', 'workflow_communication_probe',
-    'workflow_communication_read_message', 'workflow_communication_report', 'workflow_communication_send_message',
+    'workflow_communication_read_message', 'workflow_communication_recover', 'workflow_communication_report', 'workflow_communication_send_message',
     'workflow_communication_status', 'workflow_communication_stop', 'workflow_communication_telemetry', 'workflow_communication_verify', 'workflow_communication_wait',
     'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel',
     'write_stdin']);

@@ -78,15 +78,15 @@ async function client(t,f){
 }
 async function eventually(check){for(let i=0;i<200;i++){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
 
-const communicationTools=['bind','claim','enable','export','join','journal','probe','read_message','report','send_message','status','stop','telemetry','verify','wait'];
+const communicationTools=['bind','claim','enable','export','join','journal','probe','read_message','recover','report','send_message','status','stop','telemetry','verify','wait'];
 test('communication MCP contracts reject missing identity, wrong binding and stale protocol; Stop cancels probe',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const tools=(await c.listTools()).tools;
-  const appOnly=['bind','claim','enable','report','stop','telemetry','verify','wait'];
+  const appOnly=['bind','claim','enable','recover','report','stop','telemetry','verify','wait'];
   for(const suffix of communicationTools){const tool=tools.find(t=>t.name==='workflow_communication_'+suffix);
     assert.ok(tool);assert.equal(tool._meta.ui.resourceUri,undefined,'data operations cannot recreate UI');
     assert.deepEqual(tool._meta.ui.visibility,appOnly.includes(suffix)?['app']:['journal','status','export'].includes(suffix)?['app','model']:['model']);
-    assert.equal(tool.annotations.readOnlyHint,['journal','status','export'].includes(suffix));
+    assert.equal(tool.annotations.readOnlyHint,['journal','status','export','recover'].includes(suffix));
     assert.equal(tool.inputSchema.properties.ctx,undefined);
   }
   const call=(name,args,meta=metadata)=>c.callTool({name:'workflow_communication_'+name,arguments:args,_meta:meta});
@@ -222,6 +222,9 @@ test('served SDK panel renders themes, queue, filters, complete export and host-
     for(const type of ['host.handshake','send.intent','sdk.invoked','sdk.accepted','send.report'])assert.ok(events.some(e=>e.event_type===type),type);
     assert.doesNotMatch(ui.$('export-text').value,/conversation-fixture|user-fixture/);
     ui.notify({jsonrpc:'2.0',method:'ui/notifications/host-context-changed',params:{theme:theme==='dark'?'light':'dark'}});
+    await eventually(()=>ui.dom.window.document.documentElement.getAttribute('data-theme')!==theme);
+    assert.equal((await f.plugin.communication.status({...model,metadata})).stopped,false);
+    ui.notify({jsonrpc:'2.0',method:'ui/notifications/host-context-changed',params:{locale:'en'}});
     await eventually(()=>ui.$('status').textContent.includes('подтвердила Stop'));
     assert.equal((await f.plugin.communication.status({...model,metadata})).stopped,true);
     assert.deepEqual(ui.errors,[]);
@@ -244,6 +247,71 @@ async function bindAndEnable(ui,model){
   ui.$('enable').click();await eventually(()=>ui.calls.includes('workflow_communication_wait'));
 }
 const notificationArgs=request=>JSON.parse(request.content[0].text.match(/аргументами (\{[^}]+\})/)[1]);
+
+test('real SDK: reopen restores fields and delivers old pending exactly once only after user Enable',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  const recipient=await modelTool(c,metadata,'join',{run_id:'reopen-pending',role:'E'});
+  const senderMeta={...metadata,'openai/session':'reopen-sender'};
+  const sender=await modelTool(c,senderMeta,'join',{run_id:recipient.run_id,role:'O'});
+  const first=await communicationHtml(t,c);await eventually(()=>!first.$('enable').disabled);
+  assert.equal(first.$('run').value,recipient.run_id);assert.equal(first.$('participant').value,recipient.participant_id);
+  first.$('enable').click();await eventually(()=>first.calls.includes('workflow_communication_wait'));
+  first.dom.window.dispatchEvent(new first.dom.window.Event('pagehide'));
+  await eventually(async()=>(await f.plugin.communication.status({...recipient,metadata})).stopped);
+  const message=await modelTool(c,senderMeta,'send_message',{run_id:sender.run_id,participant_id:sender.participant_id,
+    recipient_id:recipient.participant_id,kind:'question',body:'Saved while closed',idempotency_key:'closed-question'});
+  const next=await communicationHtml(t,c,{onMessage:request=>modelTool(c,metadata,'read_message',notificationArgs(request)).then(()=>({}))});
+  await eventually(()=>!next.$('enable').disabled);assert.equal(next.$('run').value,recipient.run_id);
+  assert.equal(next.$('participant').value,recipient.participant_id);assert.equal(next.messages.length,0);
+  assert.equal(next.calls.includes('workflow_communication_enable'),false);assert.match(next.$('queue').textContent,/1 ожидают/);
+  next.$('enable').click();await eventually(async()=>(await f.plugin.communication.status({...recipient,metadata})).messages[0]?.read);
+  await eventually(()=>next.calls.includes('workflow_communication_report'));
+  assert.equal(next.messages.length,1);assert.equal(notificationArgs(next.messages[0]).message_id,message.message_id);
+  // Closing an older instance after the new permission must not revoke it.
+  first.dom.window.dispatchEvent(new first.dom.window.Event('pageshow'));
+  await eventually(()=>first.calls.filter(x=>x==='workflow_communication_recover').length===2);
+  await eventually(()=>!first.$('enable').disabled);
+  first.dom.window.dispatchEvent(new first.dom.window.Event('pagehide'));
+  assert.equal((await f.plugin.communication.status({...recipient,metadata})).stopped,false);
+  next.$('stop').click();await eventually(async()=>(await f.plugin.communication.status({...recipient,metadata})).stopped);
+  assert.equal(next.maxWaits,1);assert.deepEqual(next.errors,[]);
+});
+
+test('real SDK: pageshow restores the same document; multiple runs require a choice and unknown identity exposes none',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  const one=await modelTool(c,metadata,'join',{run_id:'choice-one',role:'O'});
+  const two=await modelTool(c,metadata,'join',{run_id:'choice-two',role:'E'});
+  const ui=await communicationHtml(t,c);await eventually(()=>!ui.$('run-selection').hidden);
+  assert.equal(ui.$('run').value,'');assert.equal(ui.$('enable').disabled,true);
+  ui.$('runs').value=two.run_id;ui.$('runs').dispatchEvent(new ui.dom.window.Event('change'));
+  await eventually(()=>!ui.$('enable').disabled);assert.equal(ui.$('participant').value,two.participant_id);
+  ui.dom.window.dispatchEvent(new ui.dom.window.Event('pagehide'));ui.dom.window.dispatchEvent(new ui.dom.window.Event('pageshow'));
+  await eventually(()=>ui.calls.filter(x=>x==='workflow_communication_recover').length===2&&!ui.$('runs').disabled);
+  ui.$('runs').value=one.run_id;ui.$('runs').dispatchEvent(new ui.dom.window.Event('change'));
+  await eventually(()=>!ui.$('enable').disabled);assert.equal(ui.$('participant').value,one.participant_id);
+  assert.equal(ui.calls.includes('workflow_communication_enable'),false);
+  const foreign=await communicationHtml(t,c,{hostMetadata:{'openai/session':'foreign'}});
+  await eventually(()=>foreign.$('status').textContent.includes('ещё не зарегистрирован'));
+  assert.equal(foreign.$('runs').options.length,1);assert.equal(foreign.$('participant').value,'');
+});
+
+test('real SDK: repeated unknown context produces one Stop; late enable cannot stop a newer panel',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);let release,reached=false;
+  const joined=await modelTool(c,metadata,'join',{run_id:'late-enable',role:'O'}),gate=new Promise(resolve=>{release=resolve;});
+  const old=await communicationHtml(t,c,{toolReply:async(request,result)=>{
+    if(request.name==='workflow_communication_enable'){reached=true;await gate;}return result;
+  }});
+  await eventually(()=>!old.$('enable').disabled);old.$('enable').click();await eventually(()=>reached);
+  old.dom.window.dispatchEvent(new old.dom.window.Event('pagehide'));
+  const fresh=await communicationHtml(t,c);await bindAndEnable(fresh,joined);release();
+  await eventually(()=>old.calls.includes('workflow_communication_stop'));
+  await delay(40);assert.equal((await f.plugin.communication.status({...joined,metadata})).stopped,false);
+  for(let i=0;i<29;i++)fresh.notify({jsonrpc:'2.0',method:'ui/notifications/host-context-changed',params:{locale:'en'}});
+  await eventually(()=>fresh.$('status').textContent.includes('подтвердила Stop'));
+  assert.equal(fresh.calls.filter(x=>x==='workflow_communication_stop').length,1);
+  assert.match(fresh.$('enable-reason').textContent,/Восстановить данные/);
+  fresh.$('recover').click();await eventually(()=>!fresh.$('enable').disabled);
+});
 
 test('real SDK: finite two-conversation question/answer/result, each notification read once',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f),people={},panels={};

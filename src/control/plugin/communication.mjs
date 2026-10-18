@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
+import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS} from '../../contracts/backend.mjs';
 export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
 const fail = (code, message) => Object.assign(new Error(message), {code:'PLUGIN_COMMUNICATION_'+code});
 const requireValue = (yes, code, message) => { if (!yes) throw fail(code,message); };
@@ -16,7 +16,7 @@ export function communicationIdentity(metadata) {
 const MUTATIONS=['join','bind','enable','stop','send','probe','claim','verify','report','read','telemetry'];
 const SECRET=/(?:Bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{12,}|(?:authorization|cookie|api[_-]?key|password|(?:access[_-]?)?token)\s*[:=]\s*\S+|https?:\/\/[^\s/:]+:[^\s/@]+@)/i;
 const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','report.failed',
-  'stop.local','stop.failed','host.handshake','host.context_changed','visibility.changed','panel.pagehide','panel.dispose',
+  'stop.local','stop.failed','host.handshake','host.context_changed','visibility.changed','panel.pagehide','panel.dispose','panel.mount','panel.resume',
   'wait.error','connection.restored']);
 const ERROR_CODES=new Set(['SDK_TIMEOUT','SDK_REJECTED','SDK_ERROR','MCP_ERROR','NETWORK_ERROR','CONTEXT_CHANGED','DISPOSED']);
 const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
@@ -166,16 +166,23 @@ export class PluginCommunication {
     const {run,member,panel}=this.panel(input);
     requireValue(input.message_supported===true,'UNSUPPORTED','Хост не предоставил openai/message.');
     this.cancelProbes(run,member);
-    member.generation++;member.stopped=false;panel.generation=member.generation;panel.expiresAt=this.now()+600000;
+    member.generation++;member.stopped=false;panel.generation=member.generation;panel.expiresAt=this.now()+COMMUNICATION_PERMISSION_MS;
     this.event(run,'permission.enabled',{participant_id:member.id,panel_instance_id:input.panel_instance_id,
       permission_generation:member.generation,expires_at:panel.expiresAt});
     return this._status(input);
   }
   _stop(input) {
-    const {run,member}=this.panel(input);member.stopped=true;member.generation++;
+    const {run,member,panel}=this.panel(input),scope=input.scope??'participant';
+    requireValue(['participant','panel'].includes(scope),'INPUT','Некорректная область остановки.');
+    // Only an explicit user Stop is global. A retiring instance may not revoke
+    // a newer instance's permission, including an enable response arriving late.
+    if(member.stopped || scope==='panel' && (panel.generation!==member.generation || input.permission_generation!==member.generation))
+      return {...this._status(input),stop_applied:false};
+    member.stopped=true;member.generation++;
     this.cancelProbes(run,member);
-    this.event(run,'stop.confirmed',{participant_id:member.id,permission_generation:member.generation});
-    return this._status(input);
+    this.event(run,'stop.confirmed',{participant_id:member.id,panel_instance_id:input.panel_instance_id,
+      permission_generation:member.generation,scope});
+    return {...this._status(input),stop_applied:true};
   }
   deadline(run,member) {
     return Math.max(0,...[...this.panels.values()].filter(p=>p.runId===run.id&&p.memberId===member.id&&p.generation===member.generation).map(p=>p.expiresAt));
@@ -340,6 +347,12 @@ export class PluginCommunication {
     return {seq:run.events.length};
   }
   async status(input){await this.ready;await this.tail;return structuredClone(this._status(input));}
+  async recover(input){
+    await this.ready;await this.tail;const identity=communicationIdentity(input.metadata),participants=[];
+    for(const run of this.runs.values())for(const member of Object.values(run.members))if(member.identity===identity)
+      participants.push({run_id:run.id,participant_id:member.id,role:member.role});
+    return {participants,build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,critical_error:this.critical};
+  }
   async journal(input){await this.ready;await this.tail;const {run}=this.member(input);
     const after=input.after_seq??0;requireValue(Number.isSafeInteger(after)&&after>=0&&after<=run.events.length,'CURSOR','Некорректный курсор.');
     return {events:structuredClone(run.events.slice(after,after+100)),seq:Math.min(after+100,run.events.length),total_seq:run.events.length,critical_error:this.critical};}

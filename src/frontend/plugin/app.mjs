@@ -9,8 +9,10 @@ const communication=mountCommunication({document,getMessage:()=>extensions.messa
   callTool:(name,args,options)=>app.callServerTool({name,arguments:args},options)});
 function theme(){const context=app.getHostContext();if(context?.theme)applyDocumentTheme(context.theme);
   if(context?.styles?.variables)applyHostStyleVariables(context.styles.variables);}
-app.addEventListener('hostcontextchanged',()=>{theme();communication.contextChanged();communication.ready();});
+app.addEventListener('hostcontextchanged',context=>{theme();communication.contextChanged(Object.keys(context));communication.ready();});
 app.ontoolresult=result=>communication.hostResult(result.structuredContent);
-window.addEventListener('pagehide',()=>communication.dispose('pagehide'),{once:true});
+window.addEventListener('pagehide',()=>communication.suspend());
+window.addEventListener('pageshow',()=>communication.resume());
+app.onteardown=async()=>{communication.dispose();return {};};
 document.addEventListener('visibilitychange',()=>communication.visibilityChanged());
-app.connect().then(()=>{theme();communication.ready();}).catch(()=>communication.connectionError());
+app.connect().then(()=>{theme();communication.connected();}).catch(()=>communication.connectionError());
