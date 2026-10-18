@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 493,
+  "plan_revision": 495,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Подготовить существующую панель Workflow Pilot к внешнему эксперименту связи агентов: модификация, автоматические тесты, поставка и передача; приёмка по результатам пользователя.",
   "acceptance_criteria": [
     "Тот же плагин и подключение: новый UI связи, подтверждённая адресация, сохраняемые сообщения/Stop, однократная доставка и полный очищенный журнал.",
@@ -699,8 +699,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "PUBLISH",
@@ -745,7 +745,8 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -772,10 +773,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 493
+Revision: 495
 
 ## Цель
 
@@ -841,8 +842,8 @@ Revision: 493
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS, RELEASE
-- [TODO] PUBLISH: Опубликовать проверенный выпуск — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать проверенный выпуск
+- [DONE] PUBLISH: Опубликовать проверенный выпуск — Завершено
+  - Git Commit: [DONE] release: Опубликовать проверенный выпуск
   - Reference: workflow-pilot-plugin-communication / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
