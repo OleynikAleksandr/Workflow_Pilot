@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 520,
+  "plan_revision": 522,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Подготовить существующую панель Workflow Pilot к внешнему эксперименту связи агентов: модификация, автоматические тесты, поставка и передача; приёмка по результатам пользователя.",
   "acceptance_criteria": [
     "Тот же плагин и подключение: новый UI связи, подтверждённая адресация, сохраняемые сообщения/Stop, однократная доставка и полный очищенный журнал.",
@@ -1147,14 +1147,15 @@
         "Собственный GitHub Release и полный состав assets проверены; пользователь получает версию, установку и точный сценарий повторного теста. Приёмка и закрытие плана не выполняются."
       ],
       "expected_commit_message": "release: Опубликовать проверенный выпуск 0.5.4",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "PUBLISH-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1181,10 +1182,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 520
+Revision: 522
 
 ## Цель
 
@@ -1310,8 +1311,8 @@ Revision: 520
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-3, DOCS-3
-- [TODO] PUBLISH-3: Опубликовать проверенный выпуск 0.5.4 — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать проверенный выпуск 0.5.4
+- [DONE] PUBLISH-3: Опубликовать проверенный выпуск 0.5.4 — Завершено
+  - Git Commit: [DONE] release: Опубликовать проверенный выпуск 0.5.4
   - Reference: workflow-pilot-plugin-communication / PUBLISH-3 / implementation
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
