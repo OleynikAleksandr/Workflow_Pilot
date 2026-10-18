@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 506,
+  "plan_revision": 508,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Подготовить существующую панель Workflow Pilot к внешнему эксперименту связи агентов: модификация, автоматические тесты, поставка и передача; приёмка по результатам пользователя.",
   "acceptance_criteria": [
     "Тот же плагин и подключение: новый UI связи, подтверждённая адресация, сохраняемые сообщения/Stop, однократная доставка и полный очищенный журнал.",
@@ -950,14 +950,15 @@
         "Собственный GitHub Release, тег sourceCommit, все assets size/digest; итоговая передача пользователю, приёмка восстановления pending."
       ],
       "expected_commit_message": "release: Опубликовать проверенный выпуск 0.5.3",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "PUBLISH-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -984,10 +985,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 506
+Revision: 508
 
 ## Цель
 
@@ -1083,8 +1084,8 @@ Revision: 506
   - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-2, DOCS-2
-- [TODO] PUBLISH-2: Опубликовать проверенный выпуск 0.5.3 — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать проверенный выпуск 0.5.3
+- [DONE] PUBLISH-2: Опубликовать проверенный выпуск 0.5.3 — Завершено
+  - Git Commit: [DONE] release: Опубликовать проверенный выпуск 0.5.3
   - Reference: workflow-pilot-plugin-communication / PUBLISH-2 / implementation
   - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение
