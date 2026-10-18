@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 468,
+  "plan_revision": 469,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-startup-fixes",
@@ -49,7 +49,35 @@
       "tests/release-all.test.mjs",
       "tests/release-mac.test.mjs",
       "src/frontend/plugin/app.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "src/control/workflow/parallel-execution.mjs",
+      "src/control/workflow/execution-control.mjs",
+      "src/control/workflow/coordination.mjs",
+      "src/control/workflow/command-activity.mjs",
+      "src/control/workflow/parallel-kit.mjs",
+      "src/control/projects/lifecycle.mjs",
+      "src/backend/desktop-model.mjs",
+      "tests/parallel-execution.test.mjs",
+      "tests/execution-control.test.mjs",
+      "tests/command-activity.test.mjs",
+      "tests/orchestrated-execution.test.mjs",
+      "tools/codex-app-server-mcp/server.py",
+      "src/control/sessions/session-plans.mjs",
+      "src/control/sessions/conversation-recovery.mjs",
+      "packages/workflow-kit/src/lib/command-activity.mjs",
+      "packages/workflow-kit/src/lib/actions.mjs",
+      "packages/workflow-kit/src/lib/simple-workflow.mjs",
+      "packages/workflow-kit/src/lib/plan-review.mjs",
+      "packages/workflow-kit/src/lib/plan-review-publish.mjs",
+      "packages/workflow-kit/src/lib/recovery.mjs",
+      "packages/workflow-kit/src/lib/command-help.mjs",
+      "packages/workflow-kit/package.json",
+      "packages/workflow-kit/scripts/check-command-activity-fixture.mjs",
+      "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
+      "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+      "scripts/check-workflow-kit-delivery.mjs",
+      "tests/codex-app-server-mcp.test.mjs",
+      "tests/session-plans.test.mjs"
     ],
     "documentation_paths": [
       "docs/acceptance/backend-independence.md",
@@ -62,7 +90,11 @@
       "docs/modules/release.md",
       "docs/planning/native-startup-followup.md",
       "docs/modules/workflow-execution.md",
-      "docs/modules/chatgpt-plugin.md"
+      "docs/modules/chatgpt-plugin.md",
+      "docs/planning/plan-start-recovery.md",
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "packages/workflow-kit/src/templates/SPEC.md",
+      "packages/workflow-kit/src/templates/CONTINUE.md"
     ]
   },
   "baseline_commit": "b17ed180c3871809e8f5d613ed128d24cf375cc4",
@@ -78,12 +110,165 @@
         "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/plan-start-recovery.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
     "dependency_task_ids": []
   },
   "tasks": [
+    {
+      "id": "T000A",
+      "title": "Устранить зависшую паузу и открыть разбор неизвестных операций",
+      "why": "Устранить зависшую паузу и открыть разбор неизвестных операций",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/command-activity.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/projects/lifecycle.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tests/parallel-execution.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/command-activity.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/orchestrated-execution.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/plan-start-recovery.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Неизвестная блокирующая операция при нуле исполнителей/интеграций приводит к paused, без зависшего pausing при раннем выходе или COMMAND_ACTIVE; активная работа сохраняет штатное завершение до паузы.",
+        "Разбор конкретной операции доступен orchestrated/legacy, native/HTTP, обе темы; правильные projectId/id/digest, повторная проверка состояния и подтверждение. Живой процесс не признаётся завершённым и журнал не удаляется.",
+        "После признания последней блокировки watcher убирает устаревшую причину и разрешает кнопку «Продолжить», без автоматического запуска или повторной отправки; остающаяся блокировка объясняется без цикла running→pausing.",
+        "Unknown доказанно readOnly не считается writer; сохранена отдельная защита удаления. Изолированные тесты покрывают две записи, гонку подтверждения, живой PID, перезапуск и ноль назначений."
+      ],
+      "expected_commit_message": "feat: Устранить зависшую паузу и открыть разбор неизвестных операций",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-startup-fixes",
+        "task_id": "T000A",
+        "role": "implementation"
+      },
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/plan-start-recovery.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/orchestrated-execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
+    },
+    {
+      "id": "T000B",
+      "title": "Разбирать старые операции до планирования и отделить историю scope",
+      "why": "Разбирать старые операции до планирования и отделить историю scope",
+      "dependencies": [
+        "T000A"
+      ],
+      "functional_paths": [
+        "tools/codex-app-server-mcp/server.py",
+        "src/control/workflow/command-activity.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/plan-review.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/control/sessions/conversation-recovery.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "packages/workflow-kit/src/lib/command-activity.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "packages/workflow-kit/src/lib/plan-review.mjs",
+        "packages/workflow-kit/src/lib/plan-review-publish.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-command-activity-fixture.mjs",
+        "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+        "package.json",
+        "package-lock.json",
+        "scripts/check-workflow-kit-delivery.mjs",
+        "tests/command-activity.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/session-plans.test.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/orchestrated-execution.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/sidebar.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/plan-start-recovery.md",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/templates/SPEC.md",
+        "packages/workflow-kit/src/templates/CONTINUE.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "executor-channel",
+        "kit-check",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Новая запись фиксирует проверяемую identity проекта/scope в момент начала, явное отсутствие scope и назначение при наличии. Legacy не приписывается текущему плану по времени/чату; смена проекта в том же пути не перепривязывает историю.",
+        "Незакрытые прежние операции видны до начала планирования в приложении/recovery и препятствуют plan:create/scope:create/review:prepare до разбора; одинаково при Review ON/OFF. Перед публикацией повторная проверка, неизвестный исход не становится completed.",
+        "Завершённые и признанные исторические операции не блокируют и не показываются как ошибки нового плана. Живой или потенциально живой writer общих файлов остаётся препятствием независимо от scope; новые ошибки текущего плана сохраняют защиту и доступный разбор T000A.",
+        "Собственная команда предварительной проверки исключается только по доказанной точной identity, не по всем PID/workspace; чужие параллельные операции, повреждённые записи и ошибки чтения не скрываются. Нет TTL-очистки, повторного выполнения или нового сервиса.",
+        "Тесты покрывают OLD→NEW, legacy, NONE, текущий unknown, previous boot, живой writer прошлого scope, замену проекта, гонку prepare/publish, собственную команду и чужую одновременную. Существующие boot/deletion гарантии сохраняются.",
+        "Поставляемый Kit получает совместимый patch 1.8.2 через исходники packages/workflow-kit; package/consumer/upgrade fixtures и lock согласованы, managed .harness/kit вручную не меняется. Версии Electron/Node не меняются, production build выполняется только в delivery."
+      ],
+      "expected_commit_message": "feat: Разбирать старые операции до планирования и отделить историю scope",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-startup-fixes",
+        "task_id": "T000B",
+        "role": "implementation"
+      },
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/plan-start-recovery.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/orchestrated-execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
+    },
     {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
@@ -92,7 +277,10 @@
         "task_id": "T001",
         "role": "implementation"
       },
-      "dependencies": [],
+      "dependencies": [
+        "T000A",
+        "T000B"
+      ],
       "functional_paths": [
         "src/main.mjs",
         "src/contracts/launch.mjs",
@@ -150,7 +338,9 @@
         "task_id": "T002",
         "role": "implementation"
       },
-      "dependencies": [],
+      "dependencies": [
+        "T000B"
+      ],
       "functional_paths": [
         "src/control/workflow/plan-review.mjs",
         "src/frontend/desktop/ui/sidebar.mjs",
@@ -333,6 +523,8 @@
         "role": "implementation"
       },
       "dependencies": [
+        "T000A",
+        "T000B",
         "T001",
         "T002",
         "T003",
@@ -350,7 +542,11 @@
         "docs/acceptance/backend-independence.md",
         "docs/planning/native-startup-followup.md",
         "docs/modules/workflow-execution.md",
-        "docs/modules/chatgpt-plugin.md"
+        "docs/modules/chatgpt-plugin.md",
+        "docs/planning/plan-start-recovery.md",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/templates/SPEC.md",
+        "packages/workflow-kit/src/templates/CONTINUE.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -545,7 +741,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-startup-fixes
 Current Task: нет
-Revision: 468
+Revision: 469
 
 ## Цель
 
@@ -564,18 +760,30 @@ Workflow Pilot 0.5.2 открывается без дополнительных 
 Выпуск приложения: да
 Причина: T001 (Dock) и T002 (представление Review) имеют разные области записи и могут выполняться параллельно, максимум 4 исполнителя. T003 (первый показ) зависит от обеих: пересекается с T001 в client/backend и с T002 в sidebar. Затем общая проверка, DOCS и delivery последовательно. Каждый обычный пункт и DOCS — отдельный чат/worktree.
 
+- [TODO] T000A: Устранить зависшую паузу и открыть разбор неизвестных операций — Ожидает
+  - Git Commit: [PENDING] feat: Устранить зависшую паузу и открыть разбор неизвестных операций
+  - Reference: workflow-pilot-native-startup-fixes / T000A / implementation
+  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/coordination.mjs, src/control/workflow/command-activity.mjs, src/control/workflow/parallel-kit.mjs, src/control/projects/lifecycle.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tests/parallel-execution.test.mjs, tests/execution-control.test.mjs, tests/command-activity.test.mjs, tests/sidebar.test.mjs, tests/orchestrated-execution.test.mjs, docs/planning/plan-start-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T000B: Разбирать старые операции до планирования и отделить историю scope — Ожидает
+  - Git Commit: [PENDING] feat: Разбирать старые операции до планирования и отделить историю scope
+  - Reference: workflow-pilot-native-startup-fixes / T000B / implementation
+  - Файлы: tools/codex-app-server-mcp/server.py, src/control/workflow/command-activity.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/plan-review.mjs, src/control/sessions/session-plans.mjs, src/control/sessions/conversation-recovery.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/command-activity.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/plan-review-publish.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-command-activity-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, package.json, package-lock.json, scripts/check-workflow-kit-delivery.mjs, tests/command-activity.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/session-plans.test.mjs, tests/plan-review.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution.test.mjs, tests/sidebar.test.mjs, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T000A
 - [TODO] T001: Устранить дубли Dock при запуске Workflow Pilot — Ожидает
   - Git Commit: [PENDING] fix: Устранить дубли Dock при запуске Workflow Pilot
   - Reference: workflow-pilot-native-startup-fixes / T001 / implementation
   - Файлы: src/main.mjs, src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/backend/main.mjs, src/backend/diagnostics.mjs, resources/mac-permissions.plist, tests/backend-launcher.test.mjs, tests/backend-native-window.test.mjs, tests/backend-upgrade.test.mjs, tests/backend-owner-recovery.test.mjs, tests/backend-diagnostics.test.mjs
   - Параллельность: допустима при непересекающихся областях
-  - Зависимости: нет
+  - Зависимости: T000A, T000B
 - [TODO] T002: Убрать строку о публикации завершённого Review — Ожидает
   - Git Commit: [PENDING] fix: скрыть устаревшее сообщение о публикации Review
   - Reference: workflow-pilot-native-startup-fixes / T002 / implementation
   - Файлы: src/control/workflow/plan-review.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/plan-review.test.mjs, tests/sidebar.test.mjs
   - Параллельность: допустима при непересекающихся областях
-  - Зависимости: нет
+  - Зависимости: T000B
 - [TODO] T003: Убрать светлую вспышку перед диалогом — Ожидает
   - Git Commit: [PENDING] fix: Убрать светлую вспышку перед диалогом
   - Reference: workflow-pilot-native-startup-fixes / T003 / implementation
@@ -591,9 +799,9 @@ Workflow Pilot 0.5.2 открывается без дополнительных 
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] fix: Актуализация всех документов проекта
   - Reference: workflow-pilot-native-startup-fixes / DOCS / implementation
-  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/native-window.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, docs/acceptance/backend-independence.md, docs/planning/native-startup-followup.md, docs/modules/workflow-execution.md, docs/modules/chatgpt-plugin.md
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/native-window.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, docs/acceptance/backend-independence.md, docs/planning/native-startup-followup.md, docs/modules/workflow-execution.md, docs/modules/chatgpt-plugin.md, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T001, T002, T003, T004
+  - Зависимости: T000A, T000B, T001, T002, T003, T004
 - [TODO] T005: Собрать общий выпуск Workflow Pilot 0.5.2 — Ожидает
   - Git Commit: [PENDING] release: Собрать общий выпуск Workflow Pilot 0.5.2
   - Reference: workflow-pilot-native-startup-fixes / T005 / implementation
@@ -617,5 +825,6 @@ Workflow Pilot 0.5.2 открывается без дополнительных 
 
 - docs/planning/native-startup-followup.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/plan-start-recovery.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
