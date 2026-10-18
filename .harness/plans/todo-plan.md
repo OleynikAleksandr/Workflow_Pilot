@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 491,
+  "plan_revision": 493,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -649,8 +649,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "INSTALL",
@@ -695,7 +695,8 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "verification_kind": "installed"
+      "verification_kind": "installed",
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -774,7 +775,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 491
+Revision: 493
 
 ## Цель
 
@@ -834,8 +835,8 @@ Revision: 491
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить проверенный macOS-комплект — Ожидает
-  - Git Commit: [PENDING] release: Установить проверенный macOS-комплект
+- [DONE] INSTALL: Установить проверенный macOS-комплект — Завершено
+  - Git Commit: [DONE] release: Установить проверенный macOS-комплект
   - Reference: workflow-pilot-plugin-communication / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
