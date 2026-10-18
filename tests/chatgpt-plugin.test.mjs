@@ -36,7 +36,13 @@ function packet(workspace,name){
 }
 async function fixture(t){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-plugin-')));
-  t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+  let plugin;
+  t.after(async()=>{
+    // UI Stop/telemetry may still be settling when a test returns. Drain the
+    // writer before removing its directory, including after a failed assertion.
+    plugin?.communication.dispose();await plugin?.communication.ready;await plugin?.communication.tail;
+    plugin?.communication.dispose();await fs.rm(directory,{recursive:true,force:true});
+  });
   const file=path.join(directory,'sessions.json');
   const control=new ControlFacade({storageFile:file,execution:{}});
   const store=control.projects;await store.load();
@@ -52,7 +58,7 @@ async function fixture(t){
   }
   const loadContext=async workspace=>packet(workspace,path.basename(workspace));
   let changes=0;
-  const plugin=control.createPlugin({loadContext,onChange:()=>changes++,communicationStore:await openCommunicationStore(path.join(directory,'communication'))});
+  plugin=control.createPlugin({loadContext,onChange:()=>changes++,communicationStore:await openCommunicationStore(path.join(directory,'communication'))});
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
 async function bridge(t,f){
@@ -106,12 +112,13 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.ok(!JSON.stringify(events).includes('conversation-fixture'));
 });
 
-async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light'}={}) {
+async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms}={}) {
   const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
   const errors=[],calls=[],messages=[];let initialized=false,currentMetadata=hostMetadata,notify,activeWaits=0,maxWaits=0;
   const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
   const dom=new JSDOM(html,{url:'https://communication-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
     beforeParse(window){
+      const nativeTimeout=window.setTimeout.bind(window);window.setTimeout=(fn,ms,...args)=>nativeTimeout(fn,timerMs(ms),...args);
       window.TextEncoder=TextEncoder;window.TextDecoder=TextDecoder;
       window.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
       window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
@@ -126,12 +133,13 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
           else if(request.method==='tools/call'){
             calls.push(request.params.name);
             if(request.params.name==='workflow_communication_wait')maxWaits=Math.max(maxWaits,++activeWaits);
-            const result=await c.callTool({...request.params,_meta:currentMetadata});
+            const result=await toolReply(request.params,await c.callTool({...request.params,_meta:currentMetadata}));
             if(request.params.name==='workflow_communication_wait')activeWaits--;
-            deliver({jsonrpc:'2.0',id:request.id,result});
+            if(result?.transportError)deliver({jsonrpc:'2.0',id:request.id,error:{code:-32000,message:'Response connection lost'}});
+            else deliver({jsonrpc:'2.0',id:request.id,result});
           }else if(request.method==='ui/message'){
-            messages.push(request.params);await onMessage(request.params);
-            deliver({jsonrpc:'2.0',id:request.id,result:{}});
+            messages.push(request.params);const result=await onMessage(request.params);
+            if(!result?.drop)deliver({jsonrpc:'2.0',id:request.id,result:result??{}});
           }
         }catch(e){errors.push(e.message);deliver({jsonrpc:'2.0',id:request.id,error:{code:-32000,message:'Fixture failed'}});}
       };
@@ -225,6 +233,148 @@ test('a cached panel/backend mismatch is visible and cannot enable delivery',asy
   ui.notify({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:{content:[],structuredContent:{communication:{protocol_version:1,build_id:'old'}}}});
   await eventually(()=>ui.$('status').textContent.includes('Несовместимая панель'));
   assert.equal(ui.$('enable').disabled,true);assert.equal(ui.messages.length,0);
+});
+
+const modelTool=(c,meta,name,args)=>c.callTool({name:'workflow_communication_'+name,arguments:args,_meta:meta}).then(result=>{
+  assert.equal(result.isError,false,JSON.stringify(result.structuredContent));return result.structuredContent;
+});
+async function bindAndEnable(ui,model){
+  ui.$('run').value=model.run_id;ui.$('participant').value=model.participant_id;ui.$('bind').click();
+  await eventually(()=>ui.$('status').textContent.includes('Привязка подтверждена'));
+  ui.$('enable').click();await eventually(()=>ui.calls.includes('workflow_communication_wait'));
+}
+const notificationArgs=request=>JSON.parse(request.content[0].text.match(/аргументами (\{[^}]+\})/)[1]);
+
+test('real SDK: finite two-conversation question/answer/result, each notification read once',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f),people={},panels={};
+  for(const role of ['O','E']){
+    const meta={...metadata,'openai/session':'chain-'+role};
+    people[role]={meta,...await modelTool(c,meta,'join',{run_id:'finite-chain',role})};
+  }
+  const received=[];
+  for(const role of ['O','E']){
+    const own=people[role],other=people[role==='O'?'E':'O'];
+    panels[role]=await communicationHtml(t,c,{hostMetadata:own.meta,onMessage:async request=>{
+      const message=await modelTool(c,own.meta,'read_message',notificationArgs(request));received.push(message.kind);
+      if(message.kind!=='result')await modelTool(c,own.meta,'send_message',{run_id:own.run_id,participant_id:own.participant_id,
+        recipient_id:other.participant_id,kind:message.kind==='question'?'answer':'result',body:message.kind==='question'?'4':'Correct. End.',
+        idempotency_key:'reply-'+message.kind,in_reply_to:message.message_id});
+    }});
+    await bindAndEnable(panels[role],own);
+  }
+  await modelTool(c,people.O.meta,'send_message',{run_id:people.O.run_id,participant_id:people.O.participant_id,
+    recipient_id:people.E.participant_id,kind:'question',body:'What is 2 + 2?',idempotency_key:'first'});
+  await eventually(async()=>{const value=await f.plugin.communication.status({...people.O,metadata:people.O.meta});
+    return value.messages.length===3&&value.messages.every(m=>m.read&&m.delivery==='accepted');});
+  await delay(80);assert.deepEqual(received,['question','answer','result']);
+  assert.equal(panels.O.messages.length+panels.E.messages.length,3);
+  for(const ui of Object.values(panels)){assert.equal(ui.maxWaits,1);assert.deepEqual(ui.errors,[]);ui.$('stop').click();}
+});
+
+test('real SDK: lost claim/report response never retries delivery, and late read survives',async t=>{
+  for(const boundary of ['claim','report'])await t.test(boundary,async t=>{
+    const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+    const joined=await modelTool(c,metadata,'join',{run_id:'lost-'+boundary,role:'O'});
+    const ui=await communicationHtml(t,c,{toolReply:async(request,result)=>request.name==='workflow_communication_'+boundary?{transportError:true}:result,
+      onMessage:request=>modelTool(c,metadata,'read_message',notificationArgs(request)).then(()=>({}))});
+    await bindAndEnable(ui,joined);await modelTool(c,metadata,'probe',{run_id:joined.run_id,participant_id:joined.participant_id,delay_ms:25});
+    await eventually(()=>ui.$('status').textContent.includes('Исход попытки'));
+    await delay(60);const state=await f.plugin.communication.status({...joined,metadata});
+    assert.equal(state.stopped,true);assert.equal(ui.messages.length,boundary==='claim'?0:1);
+    assert.equal(state.messages[0].delivery,boundary==='claim'?'claimed':'accepted');
+    assert.equal(state.messages[0].read,boundary==='report');
+    assert.equal(ui.calls.filter(n=>n==='workflow_communication_claim').length,1);
+    if(boundary==='report')await eventually(async()=>(await f.plugin.communication.journal({...joined,metadata})).events.some(e=>e.event_type==='report.failed'));
+    assert.deepEqual(ui.errors,[]);
+  });
+});
+
+test('real SDK: missing Send response becomes unknown; a rejection is distinct, neither repeats',async t=>{
+  for(const outcome of ['unknown','rejected'])await t.test(outcome,async t=>{
+    const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+    const joined=await modelTool(c,metadata,'join',{run_id:'sdk-'+outcome,role:'O'});
+    const ui=await communicationHtml(t,c,{timerMs:ms=>ms===10000?80:ms,onMessage:async()=>outcome==='unknown'?{drop:true}:{isError:true}});
+    await bindAndEnable(ui,joined);await modelTool(c,metadata,'probe',{run_id:joined.run_id,participant_id:joined.participant_id,delay_ms:25});
+    await eventually(async()=>(await f.plugin.communication.status({...joined,metadata})).messages[0]?.delivery===outcome);
+    await delay(100);assert.equal(ui.messages.length,1);
+    const events=(await f.plugin.communication.journal({...joined,metadata})).events;
+    assert.ok(events.some(e=>e.event_type===(outcome==='unknown'?'sdk.timeout':'sdk.rejected')));
+    ui.$('stop').click();assert.deepEqual(ui.errors,[]);
+  });
+});
+
+test('real SDK: context change between claim and verify prevents Send',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  const joined=await modelTool(c,metadata,'join',{run_id:'navigation-boundary',role:'O'});let ui;
+  ui=await communicationHtml(t,c,{toolReply:async(request,result)=>{
+    if(request.name==='workflow_communication_claim')ui.setMetadata({...metadata,'openai/session':'changed'});return result;
+  }});
+  await bindAndEnable(ui,joined);await modelTool(c,metadata,'probe',{run_id:joined.run_id,participant_id:joined.participant_id,delay_ms:25});
+  await eventually(()=>ui.$('status').textContent.includes('Подтверждение службы не получено'));
+  assert.equal(ui.messages.length,0);assert.equal(ui.calls.filter(n=>n==='workflow_communication_verify').length,1);
+  assert.deepEqual(ui.errors,[]);
+});
+
+test('real SDK: Stop before Send prevents invocation; Stop after invocation preserves outcome and read',async t=>{
+  for(const boundary of ['before','after'])await t.test(boundary,async t=>{
+    const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+    const joined=await modelTool(c,metadata,'join',{run_id:'stop-'+boundary,role:'O'});let ui,release;
+    const gate=new Promise(resolve=>{release=resolve;});let reached=false;
+    ui=await communicationHtml(t,c,{toolReply:async(request,result)=>{
+      if(boundary==='before'&&request.name==='workflow_communication_verify'){reached=true;await gate;}return result;
+    },onMessage:async request=>{if(boundary==='after'){reached=true;await gate;await modelTool(c,metadata,'read_message',notificationArgs(request));}return {};}});
+    await bindAndEnable(ui,joined);await modelTool(c,metadata,'probe',{run_id:joined.run_id,participant_id:joined.participant_id,delay_ms:25});
+    await eventually(()=>reached);ui.$('stop').click();await eventually(()=>ui.$('status').textContent.includes('подтвердила Stop'));release();
+    if(boundary==='after')await eventually(async()=>(await f.plugin.communication.status({...joined,metadata})).messages[0]?.delivery==='accepted');
+    await delay(50);const state=await f.plugin.communication.status({...joined,metadata});
+    assert.equal(state.stopped,true);assert.equal(ui.messages.length,boundary==='before'?0:1);
+    assert.equal(state.messages[0].read,boundary==='after');assert.deepEqual(ui.errors,[]);
+  });
+});
+
+test('real SDK: two panels share one delivery; pagehide revokes permission and new panel remains stopped',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  const joined=await modelTool(c,metadata,'join',{run_id:'two-panels',role:'O'});
+  const first=await communicationHtml(t,c);await bindAndEnable(first,joined);
+  const second=await communicationHtml(t,c);await bindAndEnable(second,joined);
+  await modelTool(c,metadata,'probe',{run_id:joined.run_id,participant_id:joined.participant_id,delay_ms:25});
+  await eventually(()=>second.messages.length===1);assert.equal(first.messages.length,0);
+  second.dom.window.dispatchEvent(new second.dom.window.Event('pagehide'));
+  await eventually(async()=>(await f.plugin.communication.status({...joined,metadata})).stopped);
+  const third=await communicationHtml(t,c);third.$('run').value=joined.run_id;third.$('participant').value=joined.participant_id;third.$('bind').click();
+  await eventually(()=>third.$('status').textContent.includes('Привязка подтверждена'));
+  assert.equal(third.calls.includes('workflow_communication_enable'),false);assert.equal(third.messages.length,0);
+  for(const ui of [first,second,third]){assert.ok(ui.maxWaits<=1);assert.deepEqual(ui.errors,[]);}
+});
+
+test('real SDK: export response failure is visible and keeps the previous export and server journal',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);let fail=false;
+  const joined=await modelTool(c,metadata,'join',{run_id:'export-failure',role:'O'});
+  const ui=await communicationHtml(t,c,{toolReply:async(request,result)=>fail&&request.name==='workflow_communication_export'?{transportError:true}:result});
+  await bindAndEnable(ui,joined);ui.$('stop').click();await eventually(()=>ui.$('status').textContent.includes('подтвердила Stop'));
+  ui.$('export').click();await eventually(()=>!ui.$('export-result').hidden);const previous=ui.$('export-text').value;
+  fail=true;ui.$('export').click();await eventually(()=>ui.$('status').textContent.includes('Экспорт не завершён'));
+  assert.equal(ui.$('export-text').value,previous);assert.ok((await f.plugin.communication.export({...joined,metadata})).through_seq>0);
+  fail=false;ui.$('export').click();await eventually(()=>!ui.$('export').disabled);assert.ok(ui.$('export-text').value.length>=previous.length);
+  assert.deepEqual(ui.errors,[]);
+});
+
+test('real SDK: failed wait reconnects with one waiter, while local expiry and pagehide stop waiting',async t=>{
+  for(const ending of ['expiry','pagehide'])await t.test(ending,async t=>{
+    const f=await fixture(t);f.plugin.communication.waitMs=30;await bridge(t,f);const c=await client(t,f);let lost=false;
+    const joined=await modelTool(c,metadata,'join',{run_id:'wait-'+ending,role:'O'});
+    const ui=await communicationHtml(t,c,{timerMs:ms=>ending==='expiry'&&ms>590000?650:ms,toolReply:async(request,result)=>{
+      if(request.name==='workflow_communication_wait'&&!lost){lost=true;return {transportError:true};}return result;
+    }});
+    await bindAndEnable(ui,joined);
+    await eventually(async()=>(await f.plugin.communication.journal({...joined,metadata})).events.some(e=>e.event_type==='connection.restored'));
+    if(ending==='pagehide')ui.dom.window.dispatchEvent(new ui.dom.window.Event('pagehide'));
+    await eventually(async()=>(await f.plugin.communication.status({...joined,metadata})).stopped);
+    await delay(60);const waits=ui.calls.filter(n=>n==='workflow_communication_wait').length;await delay(80);
+    assert.equal(ui.calls.filter(n=>n==='workflow_communication_wait').length,waits);assert.equal(ui.messages.length,0);assert.equal(ui.maxWaits,1);
+    if(ending==='expiry')assert.match(ui.$('status').textContent,/Срок разрешения истёк/);
+    assert.deepEqual(ui.errors,[]);
+  });
 });
 
 test('external conversation is durable, idempotent and cannot take over another project',async t=>{

@@ -1,6 +1,5 @@
 import {mountPanel} from './panel.mjs';
-
-const PROTOCOL=1,BUILD='communication-v1-t001';
+import {COMMUNICATION_PROTOCOL as PROTOCOL,COMMUNICATION_BUILD as BUILD} from '../../contracts/backend.mjs';
 const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|VERSION|STOPPED|STORE_|CLOSED|LIMIT)/.test(code??'');
 export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=10000}) {
   const ui=mountPanel({document}),$=ui.$,panelId=uuid(),clock=()=>document.defaultView.performance.now(),started=clock();
@@ -70,7 +69,8 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       record('sdk.invoked',{message_id});
       const response=await Promise.race([pending,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('timeout'),{code:'SDK_TIMEOUT'})),sendTimeoutMs);})]);
       outcome=response?.isError?'rejected':'accepted';record('sdk.'+outcome,{message_id});
-    }catch(error){record(error.code==='SDK_TIMEOUT'?'sdk.timeout':'sdk.error',{message_id,error_code:error.code==='SDK_TIMEOUT'?'SDK_TIMEOUT':'SDK_ERROR'});}
+    }catch(error){const timeout=error.code==='SDK_TIMEOUT'||error.code===-32001;
+      record(timeout?'sdk.timeout':'sdk.error',{message_id,error_code:timeout?'SDK_TIMEOUT':'SDK_ERROR'});}
     finally{clearTimeout(timer);}
     try{await call('report',{...args,outcome});}catch(error){record('report.failed',{message_id,error_code:'MCP_ERROR'});throw error;}
     if(!enabled||disposed||epoch!==generation)return;

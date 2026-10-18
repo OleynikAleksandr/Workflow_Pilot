@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "repository": "openai/codex",
-  "codex_version": "0.162.1",
-  "tag": "rust-v0.162.1",
-  "verified_with_github_at": "2026-10-10T08:20:47.583Z",
+  "codex_version": "0.163.0",
+  "tag": "rust-v0.163.0",
+  "verified_with_github_at": "2026-10-18T15:05:04.544Z",
   "files": [
     {
       "path": "codex-rs/core/src/tools/handlers/shell_spec.rs",

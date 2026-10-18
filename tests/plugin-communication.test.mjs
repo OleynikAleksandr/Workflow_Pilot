@@ -122,3 +122,29 @@ test('one wait per panel: timeout, delivery, cancellation and Stop are distinct 
   const types=(await comm.journal(E)).events.map(e=>e.event_type);
   for(const type of ['wait.started','wait.event','wait.timeout','wait.cancel','stop.confirmed'])assert.ok(types.includes(type),type);
 });
+
+test('Stop and replacement enable cancel a fired but unclaimed probe; status reflects expiry without a waiter',async t=>{
+  let now=Date.now();const {comm,O}=await fixture(t,{now:()=>now});await enable(comm,O);
+  const model={run_id:O.run_id,participant_id:O.participant_id,metadata:O.metadata};
+  assert.equal((await comm.status(model)).expires_at,now+600000);
+  for(const action of ['stop','enable']){
+    await comm.probe({...O,delay_ms:25});await delay(60);
+    const probe=(await comm.status(O)).messages.at(-1);assert.equal(probe.delivery,'pending');
+    if(action==='stop'){await comm.stop(O);await enable(comm,O);}else await enable(comm,O);
+    assert.equal((await comm.status(O)).messages.at(-1).delivery,'rejected');
+    await assert.rejects(comm.claim({...O,message_id:probe.message_id}),error('CLAIM_DENIED'));
+  }
+  now+=600001;assert.equal((await comm.status(model)).stopped,true);
+  await assert.rejects(comm.probe({...O,delay_ms:25}),error('STOPPED'));
+  assert.equal((await comm.journal(O)).events.filter(e=>e.event_type==='permission.expired').length,1);
+  await enable(comm,O);assert.equal((await comm.status(model)).stopped,false);
+});
+
+test('a failed message append is not acknowledged or visible after restart',async t=>{
+  const {comm,O,E,store,directory}=await fixture(t);
+  comm.store={load:store.load,append:async()=>{throw Error('private disk details');}};
+  await assert.rejects(send(comm,O,E),error('STORE_WRITE'));
+  assert.deepEqual((await comm.status(E)).messages,[]);comm.dispose();
+  const next=new PluginCommunication({store:await openCommunicationStore(directory)});t.after(()=>next.dispose());
+  assert.deepEqual((await next.status(E)).messages,[]);
+});

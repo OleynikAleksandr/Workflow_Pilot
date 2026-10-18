@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-export const COMMUNICATION_PROTOCOL = 1;
-export const COMMUNICATION_BUILD = 'communication-v1-t001';
+import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
+export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
 const fail = (code, message) => Object.assign(new Error(message), {code:'PLUGIN_COMMUNICATION_'+code});
 const requireValue = (yes, code, message) => { if (!yes) throw fail(code,message); };
 const identifier = value => typeof value==='string' && /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(value);
@@ -60,6 +60,7 @@ export class PluginCommunication {
       if(old)this.runs.set(input.run_id,structuredClone(old));
       const offset=old?.events.length??0;
       try {
+        if(old)this.expire(this.runs.get(input.run_id));
         const result=this['_'+name](input),run=this.runs.get(input.run_id);
         if(run){await this.persist(run,offset);this.syncTimers(run);this.wake(run,run.events.slice(offset));}
         return structuredClone(result);
@@ -67,9 +68,10 @@ export class PluginCommunication {
         this.panels=panels;if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
         if(!this.critical&&old) {
           const denied=structuredClone(old);
+          this.expire(denied);
           this.event(denied,name==='claim'?'claim.denied':name==='send'&&error.code==='PLUGIN_COMMUNICATION_CONFLICT'?'message.conflict':'operation.denied',
             {operation:name,error_code:/^PLUGIN_COMMUNICATION_[A-Z_]+$/.test(error.code??'')?error.code:'PLUGIN_COMMUNICATION_INPUT',severity:'warning'});
-          try{await this.persist(denied,old.events.length);this.runs.set(input.run_id,denied);}catch{}
+          try{await this.persist(denied,old.events.length);this.runs.set(input.run_id,denied);this.syncTimers(denied);this.wake(denied,denied.events.slice(old.events.length));}catch{}
         }
         throw error;
       }
@@ -151,18 +153,19 @@ export class PluginCommunication {
     return this._status(input);
   }
   _status(input) {
-    const {run,member}=this.member(input),panel=this.panels.get(input.panel_instance_id);
+    const {run,member}=this.member(input),expiresAt=this.deadline(run,member);
     return {run_id:run.id,participant_id:member.id,role:member.role,conversation_key:member.identity,
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
-      permission_generation:member.generation,stopped:member.stopped,
+      permission_generation:member.generation,stopped:member.stopped||expiresAt<=this.now(),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
-      expires_at:panel?.runId===run.id && panel.memberId===member.id?panel.expiresAt:0,
+      expires_at:expiresAt,
       seq:run.events.length,messages:run.messages.filter(m=>m.recipient_id===member.id||m.sender_id===member.id)
         .map(({idempotency_key,...message})=>structuredClone(message))};
   }
   _enable(input) {
     const {run,member,panel}=this.panel(input);
     requireValue(input.message_supported===true,'UNSUPPORTED','Хост не предоставил openai/message.');
+    this.cancelProbes(run,member);
     member.generation++;member.stopped=false;panel.generation=member.generation;panel.expiresAt=this.now()+600000;
     this.event(run,'permission.enabled',{participant_id:member.id,panel_instance_id:input.panel_instance_id,
       permission_generation:member.generation,expires_at:panel.expiresAt});
@@ -170,9 +173,24 @@ export class PluginCommunication {
   }
   _stop(input) {
     const {run,member}=this.panel(input);member.stopped=true;member.generation++;
-    if(run.probes[member.id]){delete run.probes[member.id];this.event(run,'probe.cancelled',{participant_id:member.id});}
+    this.cancelProbes(run,member);
     this.event(run,'stop.confirmed',{participant_id:member.id,permission_generation:member.generation});
     return this._status(input);
+  }
+  deadline(run,member) {
+    return Math.max(0,...[...this.panels.values()].filter(p=>p.runId===run.id&&p.memberId===member.id&&p.generation===member.generation).map(p=>p.expiresAt));
+  }
+  cancelProbes(run,member) {
+    if(run.probes[member.id]){delete run.probes[member.id];this.event(run,'probe.cancelled',{participant_id:member.id});}
+    for(const message of run.messages)if(message.kind==='probe'&&message.recipient_id===member.id&&message.delivery==='pending'){
+      message.delivery='rejected';this.event(run,'probe.cancelled',{participant_id:member.id,message_id:message.message_id});
+    }
+  }
+  expire(run) {
+    for(const member of Object.values(run.members))if(!member.stopped&&this.deadline(run,member)<=this.now()){
+      member.stopped=true;member.generation++;this.cancelProbes(run,member);
+      this.event(run,'permission.expired',{participant_id:member.id,permission_generation:member.generation});
+    }
   }
   _send(input) {
     const {run,member}=this.member(input),recipient=Object.values(run.members).find(m=>m.id===input.recipient_id);
@@ -249,8 +267,7 @@ export class PluginCommunication {
     return {seq:run.events.length,expires_at:panel.expiresAt};
   }
   _waitEnd(input) {
-    const {run,member,panel}=this.panel(input);
-    if(panel.expiresAt<=this.now()&&!member.stopped){member.stopped=true;member.generation++;this.event(run,'permission.expired',{participant_id:member.id});}
+    const {run,member}=this.panel(input);
     this.event(run,'wait.'+({timeout:'timeout',cancel:'cancel',event:'event'}[input.reason]??'cancel'),{participant_id:member.id,panel_instance_id:input.panel_instance_id});
     return {};
   }
@@ -332,7 +349,8 @@ export class PluginCommunication {
     const events=run.events.slice(after,Math.min(after+100,through)),next=events.at(-1)?.seq??after;
     return {jsonl:events.map(e=>JSON.stringify(e)).join('\n')+(events.length?'\n':''),after_seq:next,through_seq:through,complete:next===through,
       summary:{run_id:run.id,events:through,protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
-        sdk_versions:SDK_VERSIONS,gaps:run.events.slice(0,through).filter(e=>e.event_type==='frontend.gap'),critical_error:this.critical}};}
+        sdk_versions:SDK_VERSIONS,gaps:run.events.slice(0,through).filter(e=>e.event_type==='frontend.gap')
+          .map(({seq,panel_instance_id,from,to})=>({seq,panel_instance_id,from,to})),critical_error:this.critical}};}
   dispose(){this.disposed=true;for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
 }
 for(const name of MUTATIONS)PluginCommunication.prototype[name]=function(input){return this.mutate(name,input);};

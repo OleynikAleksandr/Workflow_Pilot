@@ -1,8 +1,9 @@
 import { App, applyDocumentTheme, applyHostStyleVariables } from '@modelcontextprotocol/ext-apps';
 import { OpenAIExtensions } from '@openai/mcp-extensions/app';
 import { mountCommunication } from './launch.mjs';
+import {COMMUNICATION_APP_VERSION} from '../../contracts/backend.mjs';
 
-const app=new App({name:'Workflow Pilot',version:'0.5.1'});
+const app=new App({name:'Workflow Pilot',version:COMMUNICATION_APP_VERSION});
 const extensions=new OpenAIExtensions(app);
 const communication=mountCommunication({document,getMessage:()=>extensions.message,
   callTool:(name,args,options)=>app.callServerTool({name,arguments:args},options)});
