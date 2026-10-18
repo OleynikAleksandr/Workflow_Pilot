@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 485,
+  "plan_revision": 487,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -461,8 +461,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "T005",
@@ -506,7 +506,12 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/plugin-communication-handoff.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -745,7 +750,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 485
+Revision: 487
 
 ## Цель
 
@@ -787,8 +792,8 @@ Revision: 485
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/control/plugin/service.mjs, src/control/plugin/communication.mjs, src/control/facade.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-server.py, src/execution/plugin/communication-store.mjs, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/frontend/plugin/navigation-probe.mjs, src/control/plugin/launch.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/preload.cjs, src/contracts/desktop.mjs, src/backend/protocol.mjs, scripts/stage-chatgpt-plugin.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, tests/backend-protocol.test.mjs, package.json, package-lock.json, tests/codex-app-server-mcp.test.mjs, tests/backend-end-to-end.test.mjs, src/frontend/desktop/ui/index.html, tests/backend-upgrade.test.mjs, tools/codex-app-server-mcp/codex-tools.lock.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Инструкция передачи и запуска внешнего эксперимента — Ожидает
-  - Git Commit: [PENDING] feat: Инструкция передачи и запуска внешнего эксперимента
+- [DONE] T005: Инструкция передачи и запуска внешнего эксперимента — Завершено
+  - Git Commit: [DONE] feat: Инструкция передачи и запуска внешнего эксперимента
   - Reference: workflow-pilot-plugin-communication / T005 / implementation
   - Файлы: docs/modules/plugin-communication-handoff.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение

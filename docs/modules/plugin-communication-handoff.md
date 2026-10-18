@@ -1,0 +1,97 @@
+# Workflow Pilot 0.5.2 — передача внешнего эксперимента
+
+Это инструкция исследовательскому агенту, а не поручение запускать опыт в основном проекте. Здесь подготовлены реализация, автоматические fixtures и поставка. P0/P1: **NOT_RUN** до результатов пользователя. Техническое DONE означает «готово к эксперименту; приёмка ожидается».
+
+## Место и границы
+
+Живые опыты выполняются только в `/Users/oleksandroliinyk/VSCODE/Workflow_Pilot_Plugin_Communication_Experiment`, в отдельных разговорах ChatGPT. Исходники `/Users/oleksandroliinyk/VSCODE/Workflow_Pilot` из исследовательского workspace не менять. Пользователь переносит сюда результаты и поручения исправления; автоматической связи между агентами нет. Дефекты исправляются новым `plan:extend` в основном проекте по поручению пользователя. План закрывается только после его явной приёмки.
+
+Использовать существующее подключение Workflow Pilot, его MCP endpoint и ресурс `ui://workflow-pilot/projects-v1.html`. Второе подключение, новый туннель и DOM-обходы не нужны. Целевая версия приложения и SDK App — `0.5.2`, протокол `1`, build `0.5.2-communication-1`. SDK: ext-apps `1.7.5`, mcp-extensions `0.2.0`, MCP `1.32.1`. Состав выпуска и sourceCommit проверяются по `release-manifest.json`, а не по этому документу.
+
+## Установка и фактическая версия
+
+1. Комплект: `/Users/oleksandroliinyk/Downloads/WorkflowPilot-0.5.2`. Установка использует готовый проверенный macOS bundle без пересборки/переподписи. Installer сохраняет прежнюю Contents для отката.
+2. Если старая служба ещё работает, пользователь выбирает «Остановить фоновую службу…» в меню/значке и дожидается завершения. Закрытие окна недостаточно. Если остановка застряла, сохранить отображаемую причину и передать её сюда; не стирать журналы и не объявлять неизвестную команду завершённой.
+3. При `pending: true, reason: BACKEND_RUNNING` новая копия только подготовлена. После остановки службы выполнить в основном checkout:
+
+```bash
+cd /Users/oleksandroliinyk/VSCODE/Workflow_Pilot
+node scripts/check-installed-release.mjs --install
+node scripts/check-installed-release.mjs
+```
+
+Проверка без `--install` подтверждает именно установленные копии и завершится ошибкой, пока старая версия остаётся в целевом bundle. Ошибки signature, sourceCommit, digest или версии передать сюда; обходить проверки нельзя.
+
+4. Пользователь самостоятельно открывает `/Applications/Workflow Pilot.app`. Проверить версию работающей службы через её handshake/интерфейс и совпадение с установленной версией. Успех installer не доказывает запуск новой службы. Приложение обновляет собственный runtime MCP при старте; старый процесс MCP/старая сессия ChatGPT могут сохранять прежний каталог.
+5. Обновить существующее подключение штатным доступным действием хоста и переоткрыть ту же панель Workflow Pilot. Названия пунктов зависят от фактического клиента; не выдумывать меню. Если нужного каталога нет, зафиксировать состояние и перезапустить подключение/создать новую сессию после обновления, без нового туннеля.
+6. Проверить `workflow_pilot_panel {}`: результат `communication.protocol_version=1`, `build_id=0.5.2-communication-1`, `storage=durable`, `critical_error=null`; в HTML та же метка. Поля `projects` и прежних кнопок создания чатов больше нет. Одного видимого названия панели для проверки версии недостаточно.
+
+## Фактический каталог
+
+Все операции таблицы имеют префикс `workflow_communication_`. Аргументы ниже — JSON инструмента; `ctx` и host metadata агент не задаёт. `binding` — `{run_id,participant_id,panel_instance_id,protocol_version,build_id,permission_generation?}`. IDs участника, панели, сообщения и попытки — возвращённые UUID; panel_instance_id создаёт панель при каждом монтировании. Generation возвращает enable. Дополнительные поля binding отклоняются.
+
+| Операция | Аргументы | Доступ / результат |
+| --- | --- | --- |
+| join | run_id, role: O или E | model; participant_id, conversation_key (хеш), версии |
+| send_message | run_id, participant_id, recipient_id, kind: question/answer/result, body, idempotency_key, in_reply_to? | model; message_id, сохранение до подтверждения |
+| read_message | run_id, participant_id, message_id | model; текст и независимая read-квитанция |
+| probe | run_id, participant_id, delay_ms: 25..60000 | model; due_at, одна контрольная probe себе |
+| status | run_id, participant_id | model/app; состояние, сообщения, Stop, срок, версии, critical_error |
+| journal | run_id, participant_id, after_seq=0 | model/app; до 100 событий, seq, total_seq |
+| export | run_id, participant_id, after_seq=0, through_seq? | model/app; jsonl, after_seq, through_seq, complete, summary |
+| bind | binding | app; проверка привязки без разрешения Send |
+| enable | binding, message_supported: true | app; новое поколение, expires_at, разрешение на 10 минут |
+| stop | binding | app; отзыв разрешения и probe |
+| wait | binding, after_seq | app; один long-poll до 25 секунд, события и message_id |
+| claim | binding, message_id | app; одноразовый delivery_attempt_id |
+| verify | binding, message_id, delivery_attempt_id | app; новая проверка и сохранённый send.intent |
+| report | binding, message_id, delivery_attempt_id, outcome: accepted/rejected/unknown | app; исход SDK отдельно от read |
+| telemetry | binding, event | app; очищенное событие, повтор event_id дедуплицируется |
+
+`event`: event_id, event_type, client_sequence≥1, client_time UTC, duration_ms 0..86400000; optional message_id/error_code/message_supported. Разрешённые типы: sdk.invoked/accepted/rejected/timeout/error, report.failed, stop.local/failed, host.handshake/context_changed, visibility.changed, panel.pagehide/dispose, wait.error, connection.restored. Произвольный payload/stack trace не принимается. Полный контракт — [chatgpt-plugin.md](chatgpt-plugin.md).
+
+Только status/journal/export помечены readOnly. Модель не вызывает app-only управление, не ждёт в wait и не имитирует нажатие Enable. Данные не возвращают UI resource. Общий каталог MCP файлов/команд сохранён. Прямое подключение проекта отдельно: `workflow_open_project {}` возвращает список, `{project_id}` — сведения; `workflow_connect_project {project_id,request_id?}` связывает уже открытый разговор и возвращает полный recovery. Эти операции не создают разговоры.
+
+run_id/idempotency_key: до 128 ASCII `[A-Za-z0-9_.:-]`, первый символ буквенно-цифровой. body: непустой текст до 4096 байт UTF-8, без секретов. Один ключ с тем же содержимым возвращает то же сообщение; другое содержимое — CONFLICT. Answer/result обязательно ссылается на полученное от адресата сообщение через in_reply_to. В одном run две роли из разных разговоров. Общий run_id/participant_id не разрешает чужую отправку или чтение.
+
+## P0 — возможность и адресат
+
+**До P1 установить фактический контракт хоста.** Версия схемы SDK сама по себе не доказывает поддержку ChatGPT. Записывать версию клиента, Chat/Work, состояние вкладки/панели и время каждого шага. Chat и Work проверять раздельно; Codex не считается их приёмкой.
+
+1. В одном новом разговоре O открыть панель через `workflow_pilot_panel {}`. Модель вызывает `workflow_communication_join {"run_id":"p0-20261018-01","role":"O"}` (пример; при повторе выбрать новый ASCII run_id) и возвращает фактический participant_id. Пользователь вводит run/participant в панель и нажимает «Подтвердить привязку». Проверить роль O, хеш и отсутствие critical_error.
+2. Диагностика должна показывать поддержку `openai/message`. Только пользователь нажимает «Включить связь»; фиксируются generation и expires_at. При unsupported/missing metadata не обходить запрет.
+3. Модель ставит ровно одну `workflow_communication_probe` с теми же run/participant и `delay_ms:30000`, сообщает due_at и **заканчивает ход**. Если ход не завершился до due_at, результат не доказывает пробуждение простаивающей модели; Stop и новый отдельный опыт.
+4. После due_at пользователь не вводит «продолжай». Ожидается один новый ход в том же разговоре с вызовом read_message по аргументам уведомления. Модель читает probe один раз и заканчивает ход без ответной probe/сообщения. Фиксировать отдельно: очередь сохранена; SDK вызван; хост принял; новый ход реально начался; read сохранён.
+5. Если нового хода нет, после заранее выбранного окна наблюдения (например, 60 секунд от due_at) пользователь останавливает связь и выгружает журнал. Не делать автоматические повторы. Accepted без read — только принятое SDK уведомление; отсутствие read не доказывает зависание модели.
+6. Проверка адресата — отдельный опыт с новым run. Сопоставить хеши модельного join и app-only bind в исходном разговоре. Затем при помощи пользователя проверить смену активного разговора, включая сохранённую/перемонтированную панель. Ожидается наблюдаемый hostcontextchanged/Stop либо отказ свежих claim/verify по изменённой metadata; в чужой разговор уведомление попасть не должно. Проверять только несекретным контрольным текстом.
+7. Если app-only metadata продолжает обозначать прежний разговор, а target:active уже означает другой, или навигация не наблюдается, адресация **не доказана**. Это блокирует P1. Metadata коррелирует разговор, но не даёт атомарного адресного Send. Не считать совпадение полей моментального bind доказательством неизменности адресата.
+8. Повторить базовую probe после ручного Stop/re-enable и после переоткрытия панели: новая панель требует bind/Enable. Закрытый/уничтоженный iframe не обещает работу в фоне. Фоновая вкладка, свёрнутая панель и busy/черновик — отдельные наблюдения, без выдуманного API определения этих состояний.
+
+Нужные события: backend.start/restart, join.confirmed, binding.confirmed, host.handshake с capability/версиями, permission.enabled, probe.scheduled/fired, message.persisted, claim.granted, binding.verified, send.intent, sdk.invoked, sdk.accepted/rejected/timeout/error, send.report, read.requested/message.read/read.returned. Intent не доказывает SDK invocation, accepted не доказывает read. Пропуск этапа — факт наблюдения, не выдуманная причина.
+
+## P1 — конечный обмен O/E
+
+Только после подтверждённого P0. Два отдельных разговора, один новый run_id. В каждом открыть прежнюю панель, вызвать join со своей ролью, передать пользователю participant_id. Пользователь передаёт IDs между разговорами, подтверждает обе привязки и вручную включает обе панели. Каждый агент знает только свой participant_id и переданный recipient_id другого участника.
+
+1. O сохраняет question «Сколько будет 2 + 2?» с уникальным idempotency_key и recipient_id E, затем заканчивает ход.
+2. E пробуждается уведомлением, вызывает read_message с точными аргументами, сохраняет answer «4» адресату O с in_reply_to на question и собственным уникальным ключом, затем заканчивает ход.
+3. O читает answer, сохраняет result «Верно. Опыт завершён.» адресату E с in_reply_to на answer и отдельным ключом, затем заканчивает ход.
+4. E читает result и заканчивает ход. Никаких подтверждений подтверждений. Пользователь нажимает Stop в обеих панелях и выгружает run.
+
+Ожидается ровно 3 message_id, 3 однократные SDK-доставки и 3 read-квитанции, корректная цепочка ссылок, без уведомлений в других разговорах. Повтор read не создаёт новую доставку. Не перезапускать accepted/rejected/unknown или потерянный claim автоматически.
+
+## Матрица после базовых опытов
+
+Проверять отдельными run: две панели одного участника; неверный participant/разговор; Stop до claim, перед Send и после начала; истечение 10 минут; pagehide/reload; restart backend; разрыв связи; кэш старого HTML/каталога; экспорт. Разрушительные ошибки диска не воспроизводить на рабочем профиле: они уже проверяются изолированными fixtures. Сохранять фактический результат, а не присваивать PASS по ожидаемому поведению.
+
+Stop до синхронного начала SDK блокирует новый Send. Уже переданный хосту запрос отменить нельзя; поздний report/read сохраняется. При потере сети локальный Stop и подтверждение службы различаются. Повторное Enable отменяет прежнее поколение и ещё не claimed probe. Restart останавливает участников, claimed становится unknown, probe не воспроизводится. Смена темы тоже вызывает консервативный Stop, если хост сообщил hostcontextchanged.
+
+## Журнал и возврат результатов
+
+В панели: фильтры сообщения/участника/ошибок, последние 200 событий. Полный журнал — «Выгрузить журнал»: JSONL, сводка и скачивание/выделение текста, если download запрещён хостом. Через MCP первая export задаёт through_seq; все следующие страницы используют тот же through_seq и after_seq предыдущего ответа до complete=true. Не сбрасывать верхнюю границу между страницами. Журнал остаётся в службе при ошибке экспорта.
+
+Хранение: `plugin-communication` собственного профиля Workflow Pilot, append-only JSONL. Контрольный текст сохраняется; cookies, токены, исходные host metadata, bridge descriptor, произвольные payload и stack traces не включать. Экспорт доступен участникам выбранного run. frontend.gap и локальный счётчик потерянных событий обозначают неполноту; уничтоженный iframe может потерять хвост телеметрии. Порядок задаёт seq, часы клиентов не синхронизируют события.
+
+Основные коды имеют префикс PLUGIN_COMMUNICATION_: IDENTITY_REQUIRED/BINDING — адресация не доказана; VERSION — старый HTML; UNSUPPORTED — capability отсутствует; STOPPED — Stop/срок/поколение; CLAIM_DENIED — повтор/чужая попытка; READ_DENIED/REPLY/CONFLICT — нарушение контракта; STORE_* — ошибка сохранения/восстановления, новые Send заблокированы; LIMIT — нужен новый отдельный опыт. SDK_TIMEOUT означает unknown, не повтор. PLUGIN_DESKTOP_REQUIRED/UNAVAILABLE — недоступна фоновая служба.
+
+Пользователь возвращает: версию клиента/режим; версию службы и build панели; run/participant/message/attempt IDs и хеши привязки; шаги и фактическую адресацию; статусы P0/P1 PASS/FAIL/NOT_RUN; очищенный JSONL и summary; наблюдаемые gaps; тексты кодов ошибок; было ли ручное вмешательство, навигация, busy, закрытие панели или restart. Не прикладывать токены/сырые metadata. Ограничение платформы тоже допустимый результат исследования; оно не маскируется обходом.
