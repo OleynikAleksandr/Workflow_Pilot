@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 467,
+  "plan_revision": 468,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-startup-fixes",
@@ -545,7 +545,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-startup-fixes
 Current Task: нет
-Revision: 467
+Revision: 468
 
 ## Цель
 
