@@ -160,6 +160,37 @@
         "tests/chatgpt-plugin.test.mjs"
       ],
       "evidence": "Полный HTML через настоящий MCP и SDK на изолированном host fixture; живую навигацию ChatGPT проверяет пользователь. Перед проверкой stage:chatgpt-plugin."
+    },
+    {
+      "id": "native-startup-dock",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/backend-launcher.test.mjs",
+        "tests/backend-native-window.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/backend-owner-recovery.test.mjs",
+        "tests/backend-diagnostics.test.mjs"
+      ],
+      "timeout_ms": 600000,
+      "evidence": "Изолированные fixtures: запуск/повторный запуск, один owner, закрытие окна без остановки службы, маршруты native/HTTP. Dock реальной macOS подтверждает пользователь."
+    },
+    {
+      "id": "native-startup-theme",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/native-startup-theme.test.mjs",
+        "tests/backend-native-pages.test.mjs",
+        "tests/backend-native-window.test.mjs",
+        "tests/desktop-client.test.mjs"
+      ],
+      "timeout_ms": 600000,
+      "evidence": "Тест создаётся T002: тема и фон до первого показа, задержка/ошибка загрузки, закрытие во время ожидания, native/HTTP, сохранение живой страницы. Визуальную вспышку проверяет пользователь."
     }
   ],
   "budget": {
@@ -168,5 +199,25 @@
   },
   "documentation": {
     "mappings": []
-  }
+  },
+  "delivery_tail": [
+    {
+      "verification_kind": "package",
+      "verification_ids": [
+        "three-platform-release"
+      ]
+    },
+    {
+      "verification_kind": "installed",
+      "verification_ids": [
+        "release-installed"
+      ]
+    },
+    {
+      "verification_kind": "package",
+      "verification_ids": [
+        "github-release"
+      ]
+    }
+  ]
 }
