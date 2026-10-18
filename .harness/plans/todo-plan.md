@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 471,
+  "plan_revision": 472,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-startup-fixes",
@@ -81,7 +81,20 @@
       "tests/release-all.test.mjs",
       "tests/release-mac.test.mjs",
       "src/frontend/plugin/app.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "scripts/prepare-mac-toolchain.mjs",
+      "scripts/release-mac.mjs",
+      "scripts/release-package.mjs",
+      "scripts/release-archive.mjs",
+      "scripts/sign-mac-bundle.mjs",
+      "src/control/projects/workspace-setup.mjs",
+      "src/control/workflow/execution-projection.mjs",
+      "packages/workflow-kit/src/lib/task-assignment.mjs",
+      "packages/workflow-kit/scripts/check-task-assignment-fixture.mjs",
+      "tests/mac-toolchain.test.mjs",
+      "tests/sign-mac-bundle.test.mjs",
+      "tests/parallel-execution-recovery.test.mjs",
+      "tests/parallel-execution-ui.test.mjs"
     ],
     "documentation_paths": [
       "docs/acceptance/backend-independence.md",
@@ -278,6 +291,83 @@
       }
     },
     {
+      "id": "T000C",
+      "title": "Включить npm в macOS-поставку и исправить статусы подготовки исполнителя",
+      "why": "Включить npm в macOS-поставку и исправить статусы подготовки исполнителя",
+      "dependencies": [
+        "T000B"
+      ],
+      "functional_paths": [
+        "scripts/prepare-mac-toolchain.mjs",
+        "scripts/release-mac.mjs",
+        "scripts/release-package.mjs",
+        "scripts/release-archive.mjs",
+        "scripts/sign-mac-bundle.mjs",
+        "src/control/projects/workspace-setup.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "packages/workflow-kit/scripts/check-task-assignment-fixture.mjs",
+        "tests/mac-toolchain.test.mjs",
+        "tests/release-mac.test.mjs",
+        "tests/sign-mac-bundle.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/parallel-execution-recovery.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/sidebar.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/plan-start-recovery.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "release-tooling",
+        "kit-check",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Из уже закреплённого официального архива Node в macOS-комплект включён штатный npm с зависимостями/относительными bin-ссылками; проверка SHA256, права, лицензии, подпись и архивирование сохранены. Без нового менеджера окружений, глобальной установки, отдельной загрузки npm или зависимости от Homebrew.",
+        "Изолированная проверка готового комплекта с минимальным GUI PATH и bundled Node/npm выполняет npm --version, npm ci и стандартный подготовительный скрипт локального fixture без сети и login shell; версии Node/Electron прежние, Windows/Linux не меняют штатное поведение.",
+        "До создания сессии статус отражает подготовку/ошибку/готовность, не обещает назначенного исполнителя. Конкретная причина ENOENT/ненулевой exit сохраняется. Пункт открывает правильную сессию только после её появления; native/HTTP и обе темы согласованы.",
+        "Повтор использует тот же assignment/worktree без дубля и повторного Send; успешная подготовка убирает старую ошибку. Пауза во время подготовки предотвращает запуск нового исполнителя, работающий продолжает штатно. Регрессии покрывают отсутствие npm, неуспешный ci, READY без сессии и появление сессии.",
+        "Используются существующая подготовка и поля статуса; без новой службы/автомата/retry-цикла. Изменения Kit входят в уже согласованный patch 1.8.2; build/install пользовательского приложения выполняются только в delivery."
+      ],
+      "expected_commit_message": "feat: Включить npm в macOS-поставку и исправить статусы подготовки исполнителя",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-startup-fixes",
+        "task_id": "T000C",
+        "role": "implementation"
+      },
+      "parallel_safe": false,
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/plan-start-recovery.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/orchestrated-execution.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/modules/release.md",
+            "required": true,
+            "revision": "WORKTREE"
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -287,7 +377,8 @@
       },
       "dependencies": [
         "T000A",
-        "T000B"
+        "T000B",
+        "T000C"
       ],
       "functional_paths": [
         "src/main.mjs",
@@ -347,7 +438,8 @@
         "role": "implementation"
       },
       "dependencies": [
-        "T000B"
+        "T000B",
+        "T000C"
       ],
       "functional_paths": [
         "src/control/workflow/plan-review.mjs",
@@ -539,6 +631,7 @@
       "dependencies": [
         "T000A",
         "T000B",
+        "T000C",
         "T001",
         "T002",
         "T003",
@@ -768,7 +861,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-startup-fixes
 Current Task: нет
-Revision: 471
+Revision: 472
 
 ## Цель
 
@@ -802,18 +895,24 @@ Workflow Pilot 0.5.2: восстановимый запуск плана, про
   - Файлы: tools/codex-app-server-mcp/server.py, src/control/workflow/command-activity.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/plan-review.mjs, src/control/sessions/session-plans.mjs, src/control/sessions/conversation-recovery.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/command-activity.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-command-activity-fixture.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, package.json, package-lock.json, tests/command-activity.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/session-plans.test.mjs, tests/plan-review.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution.test.mjs, tests/sidebar.test.mjs, scripts/check-workflow-kit-dependency.mjs, scripts/check-workflow-kit-staging.mjs, scripts/check-workflow-kit-archive.mjs, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md
   - Параллельность: исключительное выполнение
   - Зависимости: T000A
+- [TODO] T000C: Включить npm в macOS-поставку и исправить статусы подготовки исполнителя — Ожидает
+  - Git Commit: [PENDING] feat: Включить npm в macOS-поставку и исправить статусы подготовки исполнителя
+  - Reference: workflow-pilot-native-startup-fixes / T000C / implementation
+  - Файлы: scripts/prepare-mac-toolchain.mjs, scripts/release-mac.mjs, scripts/release-package.mjs, scripts/release-archive.mjs, scripts/sign-mac-bundle.mjs, src/control/projects/workspace-setup.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, tests/mac-toolchain.test.mjs, tests/release-mac.test.mjs, tests/sign-mac-bundle.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-ui.test.mjs, tests/sidebar.test.mjs, docs/planning/plan-start-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T000B
 - [TODO] T001: Устранить дубли Dock при запуске Workflow Pilot — Ожидает
   - Git Commit: [PENDING] fix: Устранить дубли Dock при запуске Workflow Pilot
   - Reference: workflow-pilot-native-startup-fixes / T001 / implementation
   - Файлы: src/main.mjs, src/contracts/launch.mjs, src/frontend/desktop/client.mjs, src/backend/main.mjs, src/backend/diagnostics.mjs, resources/mac-permissions.plist, tests/backend-launcher.test.mjs, tests/backend-native-window.test.mjs, tests/backend-upgrade.test.mjs, tests/backend-owner-recovery.test.mjs, tests/backend-diagnostics.test.mjs
   - Параллельность: допустима при непересекающихся областях
-  - Зависимости: T000A, T000B
+  - Зависимости: T000A, T000B, T000C
 - [TODO] T002: Убрать строку о публикации завершённого Review — Ожидает
   - Git Commit: [PENDING] fix: скрыть устаревшее сообщение о публикации Review
   - Reference: workflow-pilot-native-startup-fixes / T002 / implementation
   - Файлы: src/control/workflow/plan-review.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/plan-review.test.mjs, tests/sidebar.test.mjs
   - Параллельность: допустима при непересекающихся областях
-  - Зависимости: T000B
+  - Зависимости: T000B, T000C
 - [TODO] T003: Убрать светлую вспышку перед диалогом — Ожидает
   - Git Commit: [PENDING] fix: Убрать светлую вспышку перед диалогом
   - Reference: workflow-pilot-native-startup-fixes / T003 / implementation
@@ -831,7 +930,7 @@ Workflow Pilot 0.5.2: восстановимый запуск плана, про
   - Reference: workflow-pilot-native-startup-fixes / DOCS / implementation
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/native-window.md, docs/modules/backend.md, docs/modules/desktop.md, docs/modules/browser.md, docs/modules/release.md, docs/acceptance/backend-independence.md, docs/planning/native-startup-followup.md, docs/modules/workflow-execution.md, docs/modules/chatgpt-plugin.md, docs/planning/plan-start-recovery.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/SPEC.md, packages/workflow-kit/src/templates/CONTINUE.md, docs/modules/orchestrated-execution.md, docs/modules/execution.md, docs/modules/project-lifecycle.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T000A, T000B, T001, T002, T003, T004
+  - Зависимости: T000A, T000B, T000C, T001, T002, T003, T004
 - [TODO] T005: Собрать общий выпуск Workflow Pilot 0.5.2 — Ожидает
   - Git Commit: [PENDING] release: Собрать общий выпуск Workflow Pilot 0.5.2
   - Reference: workflow-pilot-native-startup-fixes / T005 / implementation
