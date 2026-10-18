@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 502,
+  "plan_revision": 504,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -884,14 +884,17 @@
         "После новой DOCS три платформы из одного sourceCommit, архивы/manifest/digests проверены, полный комплект в Downloads."
       ],
       "expected_commit_message": "release: Собрать единый выпуск 0.5.3",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "RELEASE-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-2",
@@ -983,7 +986,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 502
+Revision: 504
 
 ## Цель
 
@@ -1067,8 +1070,8 @@ Revision: 502
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/plugin-panel-recovery.md, docs/planning/plugin-plan-lifetime.md, README.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006
-- [TODO] RELEASE-2: Собрать единый выпуск 0.5.3 — Ожидает
-  - Git Commit: [PENDING] release: Собрать единый выпуск 0.5.3
+- [DONE] RELEASE-2: Собрать единый выпуск 0.5.3 — Завершено
+  - Git Commit: [DONE] release: Собрать единый выпуск 0.5.3
   - Reference: workflow-pilot-plugin-communication / RELEASE-2 / implementation
   - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение
