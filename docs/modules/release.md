@@ -1,18 +1,18 @@
 # Единая поставка Workflow Pilot
 
-Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.5.2 порядок: DOCS → RELEASE (общая сборка) → INSTALL (готовая копия в /Applications) → PUBLISH (GitHub Release). Работающую службу останавливает пользователь; installer сохраняет новую копию pending и не запускает приложение. Каждый пакет содержит одно приложение с тремя режимами запуска — клиент, backend (`--backend-host`) и ресурсы/MCP-инструменты; отдельного helper-bundle нет ([Backend](backend.md)). Packaged-сборка отвергает тестовые флаги. Codex исключён из приёмки, Windows/Linux native отложены. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
+Общая поставка создаёт macOS arm64, Windows x64 и Linux x64 из одного sourceCommit. Для 0.5.3 порядок: DOCS → RELEASE (общая сборка) → INSTALL (готовая копия в /Applications) → PUBLISH (GitHub Release). Работающую службу останавливает пользователь; installer сохраняет новую копию pending и не запускает приложение. Каждый пакет содержит одно приложение с тремя режимами запуска — клиент, backend (`--backend-host`) и ресурсы/MCP-инструменты; отдельного helper-bundle нет ([Backend](backend.md)). Packaged-сборка отвергает тестовые флаги. Codex исключён из приёмки, Windows/Linux native отложены. Правила переносимых Linux-ссылок и штатных ресурсов Electron macOS сохраняются.
 
 ## Матрица и состав
 
-Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.5.2. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
+Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`; текущая версия исходников — 0.5.3. Перед записью проверяются цели и симлинки. Полный комплект допускает READY_FOR_ACCEPTANCE с явно указанными pending native/VM/clean проверками; отсутствие хотя бы одной платформы запрещает объявлять полный выпуск. Первую живую проверку пользователь выполняет на Mac, затем Windows x64 и Ubuntu x64 X11.
 
 `npm run build` один раз раскладывает общие ресурсы (Kit, observer, плагин, vendor-notices), затем параллельно упаковывает macOS arm64, Windows x64 и Linux x64 в отдельные папки; `--ignore-scripts` не даёт prebuild-шагам платформ повторно переписывать `resources/`; у каждой платформы свой `TMPDIR` в `.harness/runtime/packager-tmp/<platform>`, потому что electron-packager при старте очищает свой временный каталог; опция CLI `--tmpdir` не используется — она теряет следующие за ней `--extra-resource`. Ошибка любой платформы останавливает выпуск после завершения остальных. Используются существующие Electron Packager, ASAR, системные ditto/tar. Linux-бинарники на Mac не запускаются. Ошибка/неизвестный исход платформы останавливает сборку; отдельный успешный пакет не считается выпуском.
 
-Семь assets версии 0.5.2:
+Семь assets версии 0.5.3:
 
-- Workflow-Pilot-0.5.2-macOS-arm64.zip
-- Workflow-Pilot-0.5.2-Windows-x64.zip
-- Workflow-Pilot-0.5.2-Linux-x64.tar.gz
+- Workflow-Pilot-0.5.3-macOS-arm64.zip
+- Workflow-Pilot-0.5.3-Windows-x64.zip
+- Workflow-Pilot-0.5.3-Linux-x64.tar.gz
 - Windows-Codex-Local-2026-09-10.zip
 - SHA256SUMS.txt
 - INSTALL.txt

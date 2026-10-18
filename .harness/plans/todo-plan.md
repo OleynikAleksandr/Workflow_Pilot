@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 499,
+  "plan_revision": 502,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -69,7 +69,8 @@
       "docs/planning/plan-start-recovery.md",
       "docs/modules/desktop.md",
       "docs/modules/control.md",
-      "docs/planning/plugin-panel-recovery.md"
+      "docs/planning/plugin-panel-recovery.md",
+      "docs/planning/plugin-plan-lifetime.md"
     ]
   },
   "baseline_commit": "e9c0d92cab215e3761bcaa36d5e719cd6f854db5",
@@ -89,7 +90,7 @@
       {
         "path": "docs/planning/plugin-panel-recovery.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "723ae93f131b4e3b817a616413def73f032c4005"
       }
     ],
     "include_last_completed_task": false,
@@ -820,8 +821,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "DOCS-2",
@@ -835,14 +836,31 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/plugin-panel-recovery.md"
+        "docs/planning/plugin-panel-recovery.md",
+        "docs/planning/plugin-plan-lifetime.md",
+        "README.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
-        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git.",
+        "Текущее восстановление и 30 минут отражены в контракте/инструкции; результаты 0.5.2 не подменяют приёмку 0.5.3. Согласованная связь до завершения плана сохранена как отложенное требование."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/plugin-panel-recovery.md",
+        "docs/planning/plugin-plan-lifetime.md"
+      ]
     },
     {
       "id": "RELEASE-2",
@@ -965,7 +983,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 499
+Revision: 502
 
 ## Цель
 
@@ -1043,10 +1061,10 @@ Revision: 499
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/control/plugin/communication.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: PUBLISH
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-plugin-communication / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/plugin-panel-recovery.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/plugin-panel-recovery.md, docs/planning/plugin-plan-lifetime.md, README.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006
 - [TODO] RELEASE-2: Собрать единый выпуск 0.5.3 — Ожидает
