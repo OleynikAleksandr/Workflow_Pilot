@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 511,
+  "plan_revision": 512,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -1017,11 +1017,39 @@
       ]
     },
     {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T007"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
       "id": "RELEASE-3",
       "title": "Собрать единый выпуск 0.5.4",
       "why": "Собрать единый выпуск 0.5.4",
       "dependencies": [
-        "T007"
+        "T007",
+        "DOCS-3"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -1032,7 +1060,7 @@
       "verification_ids": [
         "three-platform-release"
       ],
-      "verification_kind": "code",
+      "verification_kind": "package",
       "acceptance_criteria": [
         "После новой DOCS три платформы из одного sourceCommit, полный проверенный комплект в Downloads; без перезаписи 0.5.3."
       ],
@@ -1051,7 +1079,8 @@
       "title": "Установить проверенный macOS-комплект 0.5.4",
       "why": "Установить проверенный macOS-комплект 0.5.4",
       "dependencies": [
-        "RELEASE-3"
+        "RELEASE-3",
+        "DOCS-3"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -1062,7 +1091,7 @@
       "verification_ids": [
         "release-installed"
       ],
-      "verification_kind": "code",
+      "verification_kind": "installed",
       "acceptance_criteria": [
         "Штатный installer готового комплекта проверяет Applications/собственную копию, manifest/подпись/откат; работающая служба не останавливается, pending сообщается честно."
       ],
@@ -1081,7 +1110,8 @@
       "title": "Опубликовать проверенный выпуск 0.5.4",
       "why": "Опубликовать проверенный выпуск 0.5.4",
       "dependencies": [
-        "INSTALL-3"
+        "INSTALL-3",
+        "DOCS-3"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -1092,7 +1122,7 @@
       "verification_ids": [
         "github-release"
       ],
-      "verification_kind": "code",
+      "verification_kind": "package",
       "acceptance_criteria": [
         "Собственный GitHub Release и полный состав assets проверены; пользователь получает версию, установку и точный сценарий повторного теста. Приёмка и закрытие плана не выполняются."
       ],
@@ -1134,7 +1164,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 511
+Revision: 512
 
 ## Цель
 
@@ -1242,24 +1272,30 @@ Revision: 511
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/contracts/backend.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: PUBLISH-2
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-plugin-communication / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T007
 - [TODO] RELEASE-3: Собрать единый выпуск 0.5.4 — Ожидает
   - Git Commit: [PENDING] release: Собрать единый выпуск 0.5.4
   - Reference: workflow-pilot-plugin-communication / RELEASE-3 / implementation
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T007
+  - Зависимости: T007, DOCS-3
 - [TODO] INSTALL-3: Установить проверенный macOS-комплект 0.5.4 — Ожидает
   - Git Commit: [PENDING] release: Установить проверенный macOS-комплект 0.5.4
   - Reference: workflow-pilot-plugin-communication / INSTALL-3 / implementation
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
-  - Зависимости: RELEASE-3
+  - Зависимости: RELEASE-3, DOCS-3
 - [TODO] PUBLISH-3: Опубликовать проверенный выпуск 0.5.4 — Ожидает
   - Git Commit: [PENDING] release: Опубликовать проверенный выпуск 0.5.4
   - Reference: workflow-pilot-plugin-communication / PUBLISH-3 / implementation
   - Файлы: release-manifest.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
-  - Зависимости: INSTALL-3
+  - Зависимости: INSTALL-3, DOCS-3
 
 ## Context Pack For This Cycle
 
