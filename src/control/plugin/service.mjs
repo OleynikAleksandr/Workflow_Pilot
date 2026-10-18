@@ -14,10 +14,10 @@ export function pluginConversationKey(metadata) {
 
 // Both frontends use the same ProjectsService. No profile copies or browser operations.
 export class PluginProjects {
-  constructor({ projects, loadContext, onChange = () => {} }) {
+  constructor({ projects, loadContext, communicationStore = null, onChange = () => {} }) {
     Object.assign(this, { projects, loadContext, onChange });
     this.launch = new PluginLaunch({onChange});
-    this.communication = new PluginCommunication();
+    this.communication = new PluginCommunication({store:communicationStore});
   }
   list() {
     return { projects: this.projects.snapshot().projects.filter(p => !p.archivedAt && !p.parentWorkspace)

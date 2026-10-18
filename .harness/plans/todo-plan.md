@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 479,
+  "plan_revision": 481,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -171,8 +171,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "T002",
@@ -234,7 +234,21 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/modules/chatgpt-plugin.md",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/plugin/communication-store.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/plugin-communication-store.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -685,7 +699,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 479
+Revision: 481
 
 ## Цель
 
@@ -709,8 +723,8 @@ Revision: 479
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/control/plugin/service.mjs, src/control/plugin/communication.mjs, src/control/facade.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-server.py, tests/codex-app-server-mcp.test.mjs, tests/backend-end-to-end.test.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Сохраняемые сообщения, привязка, Stop и журнал — Ожидает
-  - Git Commit: [PENDING] feat: Сохраняемые сообщения, привязка, Stop и журнал
+- [DONE] T002: Сохраняемые сообщения, привязка, Stop и журнал — Завершено
+  - Git Commit: [DONE] feat: Сохраняемые сообщения, привязка, Stop и журнал
   - Reference: workflow-pilot-plugin-communication / T002 / implementation
   - Файлы: src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/execution/plugin/communication-store.mjs, src/execution/plugin/bridge.mjs, src/control/facade.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-server.py, tests/codex-app-server-mcp.test.mjs, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение

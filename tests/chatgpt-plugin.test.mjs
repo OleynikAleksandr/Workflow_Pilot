@@ -17,6 +17,7 @@ import {mountNavigationProbe,conversationUrl} from '../src/frontend/plugin/navig
 import {mountLaunch} from '../src/frontend/plugin/launch.mjs';
 import {PluginLaunch} from '../src/control/plugin/launch.mjs';
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../src/control/plugin/communication.mjs';
+import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
 const digest=text=>createHash('sha256').update(text).digest('hex');
@@ -55,7 +56,7 @@ async function fixture(t){
   }
   const loadContext=async workspace=>packet(workspace,path.basename(workspace));
   let changes=0;
-  const plugin=control.createPlugin({loadContext,onChange:()=>changes++});
+  const plugin=control.createPlugin({loadContext,onChange:()=>changes++,communicationStore:await openCommunicationStore(path.join(directory,'communication'))});
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
 async function bridge(t,f){
@@ -74,17 +75,17 @@ async function client(t,f){
   try{await c.connect(transport);}catch(error){throw new Error(error.message+'\n'+stderr);}
   return c;
 }
-async function eventually(check){for(let i=0;i<200;i++){if(check())return;await delay(10);}assert.ok(check(),'async UI completed');}
+async function eventually(check){for(let i=0;i<200;i++){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
 
-const communicationTools=['bind','claim','enable','join','journal','probe','read_message','report','send_message','status','stop','verify','wait'];
+const communicationTools=['bind','claim','enable','export','join','journal','probe','read_message','report','send_message','status','stop','telemetry','verify','wait'];
 test('communication MCP contracts reject missing identity, wrong binding and stale protocol; Stop cancels probe',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const tools=(await c.listTools()).tools;
-  const appOnly=['bind','claim','enable','report','stop','verify','wait'];
+  const appOnly=['bind','claim','enable','report','stop','telemetry','verify','wait'];
   for(const suffix of communicationTools){const tool=tools.find(t=>t.name==='workflow_communication_'+suffix);
     assert.ok(tool);assert.equal(tool._meta.ui.resourceUri,undefined,'data operations cannot recreate UI');
-    assert.deepEqual(tool._meta.ui.visibility,appOnly.includes(suffix)?['app']:['journal','status'].includes(suffix)?['app','model']:['model']);
-    assert.equal(tool.annotations.readOnlyHint,['journal','status'].includes(suffix));
+    assert.deepEqual(tool._meta.ui.visibility,appOnly.includes(suffix)?['app']:['journal','status','export'].includes(suffix)?['app','model']:['model']);
+    assert.equal(tool.annotations.readOnlyHint,['journal','status','export'].includes(suffix));
     assert.equal(tool.inputSchema.properties.ctx,undefined);
   }
   const call=(name,args,meta=metadata)=>c.callTool({name:'workflow_communication_'+name,arguments:args,_meta:meta});
@@ -158,10 +159,10 @@ test('real staged SDK -> Python MCP -> bridge -> Control: bind/enable/probe/wait
   ui.$('enable').click();await eventually(()=>ui.calls.includes('workflow_communication_wait'));
   assert.equal((await modelCall('probe',{...model,delay_ms:50})).isError,false);
   await eventually(()=>ui.calls.includes('workflow_communication_report'));
-  await eventually(()=>f.plugin.communication.status({...model,metadata}).messages[0]?.delivery==='accepted');
+  await eventually(async()=>(await f.plugin.communication.status({...model,metadata})).messages[0]?.delivery==='accepted');
   assert.equal(ui.messages.length,1);assert.equal(read.structuredContent.kind,'probe');
   assert.equal(f.store.selected().sessionId,selected.sessionId,'sidebar is not addressing');
-  assert.equal(f.plugin.communication.status({...model,metadata}).messages[0].read,true,'late report preserves read');
+  assert.equal((await f.plugin.communication.status({...model,metadata})).messages[0].read,true,'late report preserves read');
   const events=(await modelCall('journal',model)).structuredContent.events.map(e=>e.event_type);
   for(const expected of ['join.confirmed','binding.confirmed','permission.enabled','probe.scheduled','probe.fired','claim.granted','binding.verified','send.intent','send.report','message.read'])assert.ok(events.includes(expected),expected);
   ui.$('stop').click();await eventually(()=>ui.$('status').textContent.includes('подтвердила Stop'));
@@ -178,16 +179,16 @@ test('fresh app-only metadata gates delivery, unsupported SDK cannot enable',asy
   assert.equal(ui.$('enable').disabled,true);assert.equal(ui.messages.length,0);
   const binding={run_id:args.run_id,participant_id:joined.participant_id,panel_instance_id:randomUUID(),
     protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
-  const comm=f.plugin.communication;comm.bind({...binding,metadata});
-  binding.permission_generation=comm.enable({...binding,metadata,message_supported:true}).permission_generation;
+  const comm=f.plugin.communication;await comm.bind({...binding,metadata});
+  binding.permission_generation=(await comm.enable({...binding,metadata,message_supported:true})).permission_generation;
   await comm.probe({...binding,metadata,delay_ms:25});await delay(40);
-  const message_id=comm.status({...binding,metadata}).messages[0].message_id;
-  const ticket=comm.claim({...binding,metadata,message_id});
+  const message_id=(await comm.status({...binding,metadata})).messages[0].message_id;
+  const ticket=await comm.claim({...binding,metadata,message_id});
   const changed=await c.callTool({name:'workflow_communication_verify',arguments:{binding,...ticket},_meta:{'openai/session':'new-location'}});
   assert.equal(changed.structuredContent.error.code,'PLUGIN_COMMUNICATION_BINDING');
-  comm.stop({...binding,metadata});
-  assert.throws(()=>comm.verify({...binding,metadata,...ticket}),{code:'PLUGIN_COMMUNICATION_STOPPED'});
-  assert.equal(comm.status({...binding,metadata}).messages[0].delivery,'claimed','no automatic requeue after an uncertain boundary');
+  await comm.stop({...binding,metadata});
+  await assert.rejects(comm.verify({...binding,metadata,...ticket}),{code:'PLUGIN_COMMUNICATION_STOPPED'});
+  assert.equal((await comm.status({...binding,metadata})).messages[0].delivery,'claimed','no automatic requeue after an uncertain boundary');
 });
 
 test('external conversation is durable, idempotent and cannot take over another project',async t=>{
@@ -309,7 +310,7 @@ test('MCP reports a closed desktop without creating a separate project store',as
   const f=await fixture(t),c=await client(t,f);
   const response=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
   assert.equal(response.isError,true);assert.equal(response.structuredContent.error.code,'PLUGIN_DESKTOP_REQUIRED');
-  assert.deepEqual((await fs.readdir(f.directory)).sort(),['Second','sessions.json','Первый'].sort());
+  assert.deepEqual((await fs.readdir(f.directory)).sort(),['Second','communication','sessions.json','Первый'].sort());
 });
 
 test('served bundled HTML starts the actual SDK and handles project and new-session buttons',async t=>{

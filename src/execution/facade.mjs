@@ -3,6 +3,7 @@ import { desktopFiles } from './files/adapter.mjs';
 import { RuntimeError } from '../contracts/errors.mjs';
 import { BrowserSessions } from './browser/session-runtime.mjs';
 import { startPluginBridge } from './plugin/bridge.mjs';
+export { openCommunicationStore } from './plugin/communication-store.mjs';
 export { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from './browser/chatgpt-experience.mjs';
 export { desktopFiles, exists } from './files/adapter.mjs';
 export { ProjectInputWatch, ChildCommandWatches } from './files/project-input-watch.mjs';

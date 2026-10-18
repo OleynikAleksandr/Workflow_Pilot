@@ -13,20 +13,86 @@ export function communicationIdentity(metadata) {
     .map(key=>typeof metadata[key]==='string' && metadata[key].length<=512?metadata[key]:''))).digest('hex');
 }
 
-// Control owns the protocol; it does not access profiles, files, projects or the SDK.
-// T001 is intentionally volatile. Persistence and crash recovery follow in T002.
+const MUTATIONS=['join','bind','enable','stop','send','probe','claim','verify','report','read','telemetry'];
+const SECRET=/(?:Bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{12,}|(?:authorization|cookie|api[_-]?key|password|(?:access[_-]?)?token)\s*[:=]\s*\S+|https?:\/\/[^\s/:]+:[^\s/@]+@)/i;
+const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','report.failed',
+  'stop.local','stop.failed','host.handshake','host.context_changed','visibility.changed','panel.pagehide','panel.dispose',
+  'wait.error','connection.restored']);
+const ERROR_CODES=new Set(['SDK_TIMEOUT','SDK_REJECTED','SDK_ERROR','MCP_ERROR','NETWORK_ERROR','CONTEXT_CHANGED','DISPOSED']);
+const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
+
+// Control owns the protocol. Every acknowledged mutation follows the adapter's
+// durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000}={}) {
-    Object.assign(this,{now,makeId,waitMs});
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null}={}) {
+    Object.assign(this,{now,makeId,waitMs,store});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
-    this.backendId=makeId();
+    this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
+    this.ready=this.restore();
+  }
+  async restore() {
+    const loaded=this.store?.load()??{runs:[],issues:[]};this.recoveryIssues=loaded.issues;
+    for(const run of loaded.runs)this.runs.set(run.id,run);
+    if(loaded.issues.length){this.critical=loaded.issues[0].error_code;return;}
+    for(const run of this.runs.values()) {
+      const offset=run.events.length;
+      for(const member of Object.values(run.members)){member.stopped=true;member.generation++;}
+      for(const message of run.messages) {
+        if(message.delivery==='claimed'){message.delivery='unknown';this.event(run,'send.unknown',{message_id:message.message_id});}
+        if(message.kind==='probe'&&message.delivery==='pending'){message.delivery='rejected';this.event(run,'probe.cancelled',{message_id:message.message_id});}
+      }
+      for(const probe of Object.values(run.probes??{}))this.event(run,'probe.cancelled',{participant_id:probe.memberId});
+      run.probes={};this.event(run,'backend.restart',{build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,sdk_versions:SDK_VERSIONS});
+      try{await this.persist(run,offset);}catch{break;}
+    }
+  }
+  async persist(run,offset) {
+    const {events,...state}=run;
+    try{if(events.length>offset)await this.store?.append(state,events.slice(offset));}
+    catch(error){this.critical=error.code??'PLUGIN_COMMUNICATION_STORE_WRITE';throw fail('STORE_WRITE','Не удалось сохранить журнал. Отправка заблокирована.');}
+  }
+  mutate(name,input) {
+    const work=this.tail.then(async()=>{
+      await this.ready;
+      requireValue(!this.disposed,'CLOSED','Служба связи закрывается.');
+      requireValue(!this.critical,'STORE_BLOCKED','Критическая ошибка журнала. Отправка заблокирована.');
+      const old=this.runs.get(input.run_id),panels=structuredClone(this.panels);
+      if(old)this.runs.set(input.run_id,structuredClone(old));
+      const offset=old?.events.length??0;
+      try {
+        const result=this['_'+name](input),run=this.runs.get(input.run_id);
+        if(run){await this.persist(run,offset);this.syncTimers(run);this.wake(run,run.events.slice(offset));}
+        return structuredClone(result);
+      }catch(error) {
+        this.panels=panels;if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
+        if(!this.critical&&old) {
+          const denied=structuredClone(old);
+          this.event(denied,name==='claim'?'claim.denied':name==='send'&&error.code==='PLUGIN_COMMUNICATION_CONFLICT'?'message.conflict':'operation.denied',
+            {operation:name,error_code:/^PLUGIN_COMMUNICATION_[A-Z_]+$/.test(error.code??'')?error.code:'PLUGIN_COMMUNICATION_INPUT',severity:'warning'});
+          try{await this.persist(denied,old.events.length);this.runs.set(input.run_id,denied);}catch{}
+        }
+        throw error;
+      }
+    });this.tail=work.catch(()=>{});return work;
+  }
+  wake(run,events) {
+    if(events.some(e=>!e.event_type.startsWith('wait.')))for(const waiter of this.waiters.values())if(waiter.runId===run.id)waiter.wake('event');
+  }
+  syncTimers(run) {
+    for(const [key,timer] of this.probes)if(timer.runId===run.id&&!Object.values(run.probes??{}).some(p=>p.id===key)){
+      clearTimeout(timer.timer);this.probes.delete(key);
+    }
+    for(const probe of Object.values(run.probes??{}))if(!this.probes.has(probe.id)) {
+      const timer=setTimeout(()=>void this.mutate('fire',{run_id:run.id,probe_id:probe.id}).catch(()=>{}),Math.max(0,probe.due-this.now()));
+      timer.unref?.();this.probes.set(probe.id,{runId:run.id,timer});
+    }
   }
   event(run,type,fields={}) {
+    requireValue(run.events.length<20000,'LIMIT','Лимит журнала достигнут. Начните отдельный опыт.');
     const entry={schema_version:1,event_id:this.makeId(),seq:run.events.length+1,run_id:run.id,
       component:'control',event_type:type,severity:'info',server_time:new Date(this.now()).toISOString(),
       backend_instance_id:this.backendId,...fields};
     run.events.push(entry);
-    for(const waiter of this.waiters.values())if(waiter.run===run)waiter.wake();
     return entry;
   }
   run(input) {
@@ -54,13 +120,14 @@ export class PluginCommunication {
       && input.permission_generation===member.generation,'STOPPED','Связь остановлена или срок разрешения истёк.');
     return context;
   }
-  join(input) {
+  _join(input) {
     requireValue(identifier(input.run_id) && ['O','E'].includes(input.role),'INPUT','Укажите run_id и роль O/E.');
     const identity=communicationIdentity(input.metadata);
     let run=this.runs.get(input.run_id);
     if(!run) {
-      run={id:input.run_id,members:{},messages:[],events:[]};this.runs.set(run.id,run);
-      this.event(run,'backend.start',{build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL});
+      requireValue(this.runs.size<100,'LIMIT','Лимит запусков достигнут.');
+      run={id:input.run_id,members:{},messages:[],events:[],probes:{},clientSequences:{},clientEvents:{}};this.runs.set(run.id,run);
+      this.event(run,'backend.start',{build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,sdk_versions:SDK_VERSIONS});
     }
     const previous=run.members[input.role];
     requireValue(!previous || previous.identity===identity,'BINDING','Роль уже занята другим разговором.');
@@ -72,7 +139,7 @@ export class PluginCommunication {
     return {run_id:run.id,participant_id:member.id,role:member.role,conversation_key:identity,
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
   }
-  bind(input) {
+  _bind(input) {
     const {run,member}=this.member(input);
     requireValue(uuid(input.panel_instance_id),'INPUT','Некорректный экземпляр панели.');
     requireValue(input.protocol_version===COMMUNICATION_PROTOCOL && input.build_id===COMMUNICATION_BUILD,
@@ -81,38 +148,38 @@ export class PluginCommunication {
     requireValue(!previous || previous.runId===run.id && previous.memberId===member.id,'BINDING','Панель уже связана с другим участником.');
     if(!previous)this.panels.set(input.panel_instance_id,{runId:run.id,memberId:member.id,identity:member.identity,generation:0,expiresAt:0});
     this.event(run,'binding.confirmed',{participant_id:member.id,panel_instance_id:input.panel_instance_id});
-    return this.status(input);
+    return this._status(input);
   }
-  status(input) {
+  _status(input) {
     const {run,member}=this.member(input),panel=this.panels.get(input.panel_instance_id);
     return {run_id:run.id,participant_id:member.id,role:member.role,conversation_key:member.identity,
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       permission_generation:member.generation,stopped:member.stopped,
+      storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:panel?.runId===run.id && panel.memberId===member.id?panel.expiresAt:0,
       seq:run.events.length,messages:run.messages.filter(m=>m.recipient_id===member.id||m.sender_id===member.id)
         .map(({idempotency_key,...message})=>structuredClone(message))};
   }
-  enable(input) {
+  _enable(input) {
     const {run,member,panel}=this.panel(input);
     requireValue(input.message_supported===true,'UNSUPPORTED','Хост не предоставил openai/message.');
     member.generation++;member.stopped=false;panel.generation=member.generation;panel.expiresAt=this.now()+600000;
     this.event(run,'permission.enabled',{participant_id:member.id,panel_instance_id:input.panel_instance_id,
       permission_generation:member.generation,expires_at:panel.expiresAt});
-    return this.status(input);
+    return this._status(input);
   }
-  stop(input) {
+  _stop(input) {
     const {run,member}=this.panel(input);member.stopped=true;member.generation++;
-    for(const [key,probe] of this.probes)if(probe.run===run && probe.member===member) {
-      clearTimeout(probe.timer);this.probes.delete(key);this.event(run,'probe.cancelled',{participant_id:member.id});
-    }
+    if(run.probes[member.id]){delete run.probes[member.id];this.event(run,'probe.cancelled',{participant_id:member.id});}
     this.event(run,'stop.confirmed',{participant_id:member.id,permission_generation:member.generation});
-    return this.status(input);
+    return this._status(input);
   }
-  send(input) {
+  _send(input) {
     const {run,member}=this.member(input),recipient=Object.values(run.members).find(m=>m.id===input.recipient_id);
     requireValue(recipient && recipient!==member && ['question','answer','result'].includes(input.kind),'INPUT','Некорректный адресат или вид сообщения.');
     requireValue(typeof input.body==='string' && input.body.trim() && Buffer.byteLength(input.body)<=4096
       && identifier(input.idempotency_key),'INPUT','Сообщение должно содержать до 4096 байт и ключ идемпотентности.');
+    requireValue(!SECRET.test(input.body),'SECRET_INPUT','Не включайте ключи, cookies или заголовки авторизации в контрольный текст.');
     const parent=run.messages.find(m=>m.message_id===input.in_reply_to);
     requireValue(input.kind==='question'?!input.in_reply_to:parent && parent.recipient_id===member.id && parent.sender_id===recipient.id,
       'REPLY','Ответ должен ссылаться на полученное сообщение другого участника.');
@@ -125,44 +192,75 @@ export class PluginCommunication {
     return this.enqueue(run,member,value,input.idempotency_key);
   }
   enqueue(run,member,value,idempotencyKey) {
+    requireValue(run.messages.length<256,'LIMIT','Лимит сообщений запуска достигнут.');
     const message={...value,run_id:run.id,message_id:this.makeId(),created_at:new Date(this.now()).toISOString(),
       idempotency_key:idempotencyKey,delivery:'pending',read:false};
-    run.messages.push(message);this.event(run,'message.queued',{participant_id:member.id,message_id:message.message_id});
+    run.messages.push(message);this.event(run,this.store?'message.persisted':'message.queued',{participant_id:member.id,message_id:message.message_id,
+      sender_id:message.sender_id,recipient_id:message.recipient_id,kind:message.kind,body:message.body,in_reply_to:message.in_reply_to});
     return {message_id:message.message_id};
   }
-  probe(input) {
+  _probe(input) {
     const {run,member}=this.member(input);
     requireValue(Number.isSafeInteger(input.delay_ms) && input.delay_ms>=25 && input.delay_ms<=60000,'INPUT','Задержка probe: от 25 до 60000 мс.');
     requireValue(!member.stopped,'STOPPED','Сначала включите связь в подтверждённой панели.');
-    const key=run.id+':'+member.id;
-    requireValue(!this.probes.has(key),'PROBE_PENDING','Одна probe уже ожидает.');
+    requireValue([...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.generation===member.generation&&p.expiresAt>this.now()),'STOPPED','Нет действующего разрешения панели.');
+    requireValue(!run.probes[member.id],'PROBE_PENDING','Одна probe уже ожидает.');
     const due=this.now()+input.delay_ms,generation=member.generation;
-    const timer=setTimeout(()=>{
-      this.probes.delete(key);
-      if(member.stopped||member.generation!==generation)return;
-      this.event(run,'probe.fired',{participant_id:member.id});
-      this.enqueue(run,member,{sender_id:member.id,recipient_id:member.id,kind:'probe',body:'Контрольное сообщение Workflow Pilot',in_reply_to:null},this.makeId());
-    },input.delay_ms);timer.unref?.();
-    this.probes.set(key,{run,member,timer});this.event(run,'probe.scheduled',{participant_id:member.id,due_at:due});
+    run.probes[member.id]={id:this.makeId(),memberId:member.id,due,generation};
+    this.event(run,'probe.scheduled',{participant_id:member.id,due_at:due});
     return {due_at:due};
   }
-  async wait(input,signal) {
-    const {run,member}=this.allowed(input),key=input.panel_instance_id;
-    requireValue(!this.waiters.has(key),'WAIT_ACTIVE','У этой панели уже есть ожидание.');
-    requireValue(Number.isSafeInteger(input.after_seq) && input.after_seq>=0 && input.after_seq<=run.events.length,'CURSOR','Некорректный курсор журнала.');
-    const pending=()=>run.messages.find(m=>m.recipient_id===member.id && m.delivery==='pending' && !m.read);
-    const result=()=>({message_id:pending()?.message_id??null,events:run.events.slice(input.after_seq),seq:run.events.length,
-      stopped:member.stopped || member.generation!==input.permission_generation});
-    if(pending()||run.events.length>input.after_seq)return result();
-    this.event(run,'wait.started',{participant_id:member.id,panel_instance_id:key});
-    return new Promise(resolve=>{
-      let timer;
-      const finish=()=>{clearTimeout(timer);signal?.removeEventListener('abort',finish);this.waiters.delete(key);resolve(result());};
-      this.waiters.set(key,{run,wake:finish});timer=setTimeout(finish,this.waitMs);timer.unref?.();
-      signal?.addEventListener('abort',finish,{once:true});if(signal?.aborted)finish();
-    });
+  _fire(input) {
+    const run=this.run(input),probe=Object.values(run.probes).find(p=>p.id===input.probe_id);
+    if(!probe)return {cancelled:true};
+    const member=Object.values(run.members).find(m=>m.id===probe.memberId);delete run.probes[member.id];
+    if(member.stopped||member.generation!==probe.generation||![...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.generation===member.generation&&p.expiresAt>this.now())){
+      this.event(run,'probe.cancelled',{participant_id:member.id});return {cancelled:true};
+    }
+    this.event(run,'probe.fired',{participant_id:member.id});
+    return this.enqueue(run,member,{sender_id:member.id,recipient_id:member.id,kind:'probe',body:'Контрольное сообщение Workflow Pilot',in_reply_to:null},probe.id);
   }
-  claim(input) {
+  async wait(input,signal) {
+    await this.ready;await this.tail;const key=input.panel_instance_id;
+    requireValue(!this.waiters.has(key),'WAIT_ACTIVE','У этой панели уже есть ожидание.');
+    // Reserve before persistence so two simultaneous waits cannot pass together.
+    const holder={runId:input.run_id,wake:()=>{}};this.waiters.set(key,holder);
+    try {
+      const prepared=await this.mutate('waitStart',input);
+      if(prepared.immediate)return this.waitResult(input);
+      await new Promise(resolve=>{
+        let timer;
+        const finish=reason=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);holder.reason=reason;resolve();};
+        const cancel=()=>finish('cancel');holder.wake=finish;
+        timer=setTimeout(()=>finish('timeout'),Math.min(this.waitMs,prepared.expires_at-this.now()));timer.unref?.();
+        signal?.addEventListener('abort',cancel,{once:true});
+        if(signal?.aborted)cancel();
+        else if(this.runs.get(input.run_id).events.length>prepared.seq)finish('event');
+      });
+      if(!this.disposed&&!this.critical)await this.mutate('waitEnd',{...input,reason:holder.reason});
+      await this.tail;return this.waitResult(input);
+    }finally{this.waiters.delete(key);}
+  }
+  _waitStart(input) {
+    const {run,panel}=this.allowed(input);
+    requireValue(Number.isSafeInteger(input.after_seq)&&input.after_seq>=0&&input.after_seq<=run.events.length,'CURSOR','Некорректный курсор журнала.');
+    const value=this.waitResult(input);if(value.message_id||run.events.length>input.after_seq)return {immediate:true};
+    this.event(run,'wait.started',{participant_id:input.participant_id,panel_instance_id:input.panel_instance_id});
+    return {seq:run.events.length,expires_at:panel.expiresAt};
+  }
+  _waitEnd(input) {
+    const {run,member,panel}=this.panel(input);
+    if(panel.expiresAt<=this.now()&&!member.stopped){member.stopped=true;member.generation++;this.event(run,'permission.expired',{participant_id:member.id});}
+    this.event(run,'wait.'+({timeout:'timeout',cancel:'cancel',event:'event'}[input.reason]??'cancel'),{participant_id:member.id,panel_instance_id:input.panel_instance_id});
+    return {};
+  }
+  waitResult(input) {
+    const {run,member}=this.member(input),pending=run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
+    const events=run.events.slice(input.after_seq,input.after_seq+100);
+    return {message_id:pending?.message_id??null,events,seq:events.at(-1)?.seq??input.after_seq,
+      stopped:member.stopped||member.generation!==input.permission_generation,critical_error:this.critical};
+  }
+  _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read,'CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
     message.delivery='claimed';message.delivery_attempt_id=this.makeId();message.panel_instance_id=input.panel_instance_id;
@@ -177,7 +275,7 @@ export class PluginCommunication {
       && message.delivery_attempt_id===input.delivery_attempt_id,'CLAIM_DENIED','Нет подходящей попытки доставки.');
     return {...context,message};
   }
-  verify(input) {
+  _verify(input) {
     const {run,member,message}=this.attempt(input);
     requireValue(message.delivery==='claimed' && !message.intent && message.permission_generation===member.generation,
       'CLAIM_DENIED','Намерение отправки уже было подтверждено. Повтор запрещён.');
@@ -186,7 +284,7 @@ export class PluginCommunication {
     this.event(run,'send.intent',{participant_id:member.id,message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
     return {message_id:message.message_id,permission_generation:member.generation,expires_at:this.panels.get(input.panel_instance_id).expiresAt};
   }
-  report(input) {
+  _report(input) {
     const {run,message}=this.attempt(input,false);
     requireValue(['accepted','rejected','unknown'].includes(input.outcome) && message.intent,'INPUT','Некорректный результат отправки.');
     requireValue(message.delivery==='claimed'||message.delivery===input.outcome,'CONFLICT','Результат доставки уже записан.');
@@ -194,12 +292,47 @@ export class PluginCommunication {
     this.event(run,'send.report',{message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id,outcome:input.outcome});
     return {delivery:message.delivery,read:message.read};
   }
-  read(input) {
+  _read(input) {
     const {run,member}=this.member(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id,'READ_DENIED','Сообщение недоступно этому участнику.');
+    this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id});}
+    this.event(run,'read.returned',{participant_id:member.id,message_id:message.message_id});
     const {idempotency_key,...value}=message;return structuredClone(value);
   }
-  journal(input) {const {run}=this.member(input);return {events:structuredClone(run.events),seq:run.events.length};}
-  dispose() {for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake();}
+  _telemetry(input) {
+    const {run}=this.panel(input),data=input.event;
+    requireValue(data&&uuid(data.event_id)&&CLIENT_EVENTS.has(data.event_type)&&Number.isSafeInteger(data.client_sequence)
+      &&data.client_sequence>=1&&typeof data.client_time==='string'&&!Number.isNaN(Date.parse(data.client_time))
+      &&Number.isFinite(data.duration_ms)&&data.duration_ms>=0&&data.duration_ms<=86400000,'INPUT','Некорректное событие панели.');
+    const safe={event_id:data.event_id,event_type:data.event_type,client_sequence:data.client_sequence,client_time:new Date(data.client_time).toISOString(),duration_ms:data.duration_ms,
+      ...(data.error_code?{error_code:ERROR_CODES.has(data.error_code)?data.error_code:'MCP_ERROR'}:{})};
+    if(data.event_type==='host.handshake')Object.assign(safe,{message_supported:data.message_supported===true,
+      build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,sdk_versions:SDK_VERSIONS});
+    if(data.message_id){requireValue(run.messages.some(m=>m.message_id===data.message_id&&m.recipient_id===input.participant_id),'INPUT','Неизвестное сообщение события.');safe.message_id=data.message_id;}
+    const signature=JSON.stringify({panel_instance_id:input.panel_instance_id,...safe}),previous=run.clientEvents[data.event_id];
+    requireValue(!previous||previous===signature,'CONFLICT','ID события уже использован.');
+    if(previous)return {duplicate:true};
+    requireValue(!run.events.some(e=>e.event_id===data.event_id),'CONFLICT','ID события уже использован журналом.');
+    const last=run.clientSequences[input.panel_instance_id]??0;
+    requireValue(data.client_sequence>last,'CURSOR','Порядок событий панели нарушен.');
+    if(data.client_sequence!==last+1)this.event(run,'frontend.gap',{panel_instance_id:input.panel_instance_id,from:last+1,to:data.client_sequence-1,severity:'warning'});
+    run.clientSequences[input.panel_instance_id]=data.client_sequence;run.clientEvents[data.event_id]=signature;
+    this.event(run,safe.event_type,{...safe,component:'frontend',server_received_at:new Date(this.now()).toISOString(),
+      panel_instance_id:input.panel_instance_id,participant_id:input.participant_id});
+    return {seq:run.events.length};
+  }
+  async status(input){await this.ready;await this.tail;return structuredClone(this._status(input));}
+  async journal(input){await this.ready;await this.tail;const {run}=this.member(input);
+    const after=input.after_seq??0;requireValue(Number.isSafeInteger(after)&&after>=0&&after<=run.events.length,'CURSOR','Некорректный курсор.');
+    return {events:structuredClone(run.events.slice(after,after+100)),seq:Math.min(after+100,run.events.length),total_seq:run.events.length,critical_error:this.critical};}
+  async export(input){await this.ready;await this.tail;const {run}=this.member(input);
+    const after=input.after_seq??0,through=input.through_seq??run.events.length;
+    requireValue(Number.isSafeInteger(after)&&Number.isSafeInteger(through)&&after>=0&&after<=through&&through<=run.events.length,'CURSOR','Некорректные границы экспорта.');
+    const events=run.events.slice(after,Math.min(after+100,through)),next=events.at(-1)?.seq??after;
+    return {jsonl:events.map(e=>JSON.stringify(e)).join('\n')+(events.length?'\n':''),after_seq:next,through_seq:through,complete:next===through,
+      summary:{run_id:run.id,events:through,protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
+        sdk_versions:SDK_VERSIONS,gaps:run.events.slice(0,through).filter(e=>e.event_type==='frontend.gap'),critical_error:this.critical}};}
+  dispose(){this.disposed=true;for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
 }
+for(const name of MUTATIONS)PluginCommunication.prototype[name]=function(input){return this.mutate(name,input);};

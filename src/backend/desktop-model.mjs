@@ -7,6 +7,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import { drainReasons } from './shutdown.mjs';
+import { openCommunicationStore } from '../execution/facade.mjs';
 
 // The Desktop product model: projects, sessions, settings, archive, Doctor,
 // onboarding and workflow. It owns no window; a surface presents its state
@@ -1380,8 +1381,15 @@ async function start() {
     const origin = details?.securityOrigin ?? requestingOrigin ?? details?.requestingUrl;
     return permissionAllowed(permission, origin, details, _contents);
   });
-  if(!storageError)plugin=control.createPlugin({onChange:()=>publish(),
-    ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
+  if(!storageError) {
+    const communicationStore=await openCommunicationStore(path.join(dataDir,'plugin-communication')).catch(error=>({
+      load:()=>({runs:[],issues:[{error_code:error.code?.startsWith('PLUGIN_COMMUNICATION_')?error.code:'PLUGIN_COMMUNICATION_STORE_OPEN'}]}),
+      append:async()=>{throw error;},
+    }));
+    plugin=control.createPlugin({onChange:()=>publish(),communicationStore,
+      ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
+    await plugin.communication.ready;
+  }
   // The plugin bridge belongs to whoever runs the model (the backend); an
   // isolated fixture names its own directory instead of the user's runtime folder.
   if(plugin&&!smoke&&(!offline||pluginDirectory)) {

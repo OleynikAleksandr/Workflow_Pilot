@@ -34,6 +34,18 @@ class CommunicationBinding(BaseModel):
 Binding = Annotated[CommunicationBinding, Field(description="Panel binding and permission; host metadata is obtained separately for every call.")]
 
 
+class CommunicationEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_id: MessageId
+    event_type: Annotated[str, Field(pattern=r"^(sdk\.(invoked|accepted|rejected|timeout|error)|report\.failed|stop\.(local|failed)|host\.(handshake|context_changed)|visibility\.changed|panel\.(pagehide|dispose)|wait\.error|connection\.restored)$")]
+    client_sequence: Annotated[int, Field(ge=1)]
+    client_time: Annotated[str, Field(max_length=40)]
+    duration_ms: Annotated[float, Field(ge=0, le=86400000)]
+    message_id: MessageId | None = None
+    error_code: Annotated[str | None, Field(max_length=80)] = None
+    message_supported: bool | None = None
+
+
 def host_metadata(ctx: Context) -> dict[str, str]:
     meta = ctx.request_context.meta
     values = meta.model_dump(by_alias=True) if meta else {}
@@ -131,9 +143,25 @@ def register_plugin(mcp, state_root: Path):
         return await communication("status", ctx, run_id=run_id, participant_id=participant_id)
 
     @mcp.tool(name="workflow_communication_journal", annotations=READ, meta={"ui": {"visibility": ["app", "model"]}})
-    async def journal(run_id: RunId, participant_id: ParticipantId, ctx: Context) -> CallToolResult:
+    async def journal(run_id: RunId, participant_id: ParticipantId, ctx: Context,
+                      after_seq: Annotated[int, Field(ge=0, description="Last sequence received; returns up to 100 events.")] = 0) -> CallToolResult:
         """Read the run's ordered diagnostic events after verifying membership. No raw host metadata or transport credentials are returned."""
-        return await communication("journal", ctx, run_id=run_id, participant_id=participant_id)
+        return await communication("journal", ctx, run_id=run_id, participant_id=participant_id, after_seq=after_seq)
+
+    @mcp.tool(name="workflow_communication_export", annotations=READ, meta={"ui": {"visibility": ["app", "model"]}})
+    async def export(run_id: RunId, participant_id: ParticipantId, ctx: Context,
+                     after_seq: Annotated[int, Field(ge=0, description="Last exported sequence; pages contain up to 100 events.")] = 0,
+                     through_seq: Annotated[int | None, Field(ge=0, description="Freeze at the first response's through_seq until complete.")] = None) -> CallToolResult:
+        """Export only this joined run as UTF-8 JSONL pages and a summary. No arbitrary filesystem path, raw host metadata or credentials. Preserve through_seq between pages."""
+        args = {"run_id": run_id, "participant_id": participant_id, "after_seq": after_seq}
+        if through_seq is not None:
+            args["through_seq"] = through_seq
+        return await communication("export", ctx, **args)
+
+    @mcp.tool(name="workflow_communication_telemetry", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
+    async def telemetry(binding: Binding, event: Annotated[CommunicationEvent, Field(description="One sanitized panel event; fixed event types and monotonic client sequence.")], ctx: Context) -> CallToolResult:
+        """App-only record a bounded diagnostic event. Event IDs deduplicate retries and sequence gaps remain visible. Never include raw SDK responses, credentials or arbitrary errors."""
+        return await communication("telemetry", ctx, binding=binding, event=event.model_dump(exclude_none=True))
 
     @mcp.tool(name="workflow_communication_bind", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
     async def bind(binding: Binding, ctx: Context) -> CallToolResult:
