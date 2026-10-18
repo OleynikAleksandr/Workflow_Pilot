@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 498,
+  "plan_revision": 499,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -965,7 +965,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 498
+Revision: 499
 
 ## Цель
 
