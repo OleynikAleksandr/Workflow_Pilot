@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 495,
+  "plan_revision": 496,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Подготовить существующую панель Workflow Pilot к внешнему эксперименту связи агентов: модификация, автоматические тесты, поставка и передача; приёмка по результатам пользователя.",
   "acceptance_criteria": [
     "Тот же плагин и подключение: новый UI связи, подтверждённая адресация, сохраняемые сообщения/Stop, однократная доставка и полный очищенный журнал.",
@@ -68,7 +68,8 @@
       "docs/planning/executor-readiness-recovery.md",
       "docs/planning/plan-start-recovery.md",
       "docs/modules/desktop.md",
-      "docs/modules/control.md"
+      "docs/modules/control.md",
+      "docs/planning/plugin-panel-recovery.md"
     ]
   },
   "baseline_commit": "e9c0d92cab215e3761bcaa36d5e719cd6f854db5",
@@ -82,6 +83,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/plugin-panel-recovery.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -747,6 +753,174 @@
       },
       "verification_kind": "package",
       "actual_files": []
+    },
+    {
+      "id": "T006",
+      "title": "Восстановление панели, устойчивый Stop и разрешение на 30 минут",
+      "why": "Восстановление панели, устойчивый Stop и разрешение на 30 минут",
+      "dependencies": [
+        "PUBLISH"
+      ],
+      "functional_paths": [
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "src/frontend/plugin/index.html",
+        "src/control/plugin/communication.mjs",
+        "src/contracts/backend.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/plugin-communication.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/plugin-panel-recovery.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "electron-smoke",
+        "executor-channel"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Новый mount и pageshow восстанавливают собственные run/participant по свежей identity; несколько run требуют выбора, разрешение только по клику.",
+        "30 минут согласованы в backend/HTML/MCP; истечение и ручной Stop проверены. Автоматический Stop устаревшего экземпляра не отзывает новое поколение, повторный Stop идемпотентен.",
+        "Настоящий staged SDK/MCP проверяет pending после reopen, отсутствие дублей, смену контекста, ошибки и причины блокировки; общий каталог сохранён.",
+        "Версия 0.5.3, без изменения Kit/донора/рабочего профиля и запуска живых опытов."
+      ],
+      "expected_commit_message": "feat: Восстановление панели, устойчивый Stop и разрешение на 30 минут",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "T006",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T006"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/plugin-panel-recovery.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-2",
+      "title": "Собрать единый выпуск 0.5.3",
+      "why": "Собрать единый выпуск 0.5.3",
+      "dependencies": [
+        "T006",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/plugin-panel-recovery.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После новой DOCS три платформы из одного sourceCommit, архивы/manifest/digests проверены, полный комплект в Downloads."
+      ],
+      "expected_commit_message": "release: Собрать единый выпуск 0.5.3",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "RELEASE-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-2",
+      "title": "Установить готовое macOS-приложение 0.5.3",
+      "why": "Установить готовое macOS-приложение 0.5.3",
+      "dependencies": [
+        "RELEASE-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/plugin-panel-recovery.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer без пересборки; Applications и собственная копия проверены. При работающей службе оставить pending и сообщить пользователю."
+      ],
+      "expected_commit_message": "release: Установить готовое macOS-приложение 0.5.3",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "INSTALL-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-2",
+      "title": "Опубликовать проверенный выпуск 0.5.3",
+      "why": "Опубликовать проверенный выпуск 0.5.3",
+      "dependencies": [
+        "INSTALL-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/plugin-panel-recovery.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Собственный GitHub Release, тег sourceCommit, все assets size/digest; итоговая передача пользователю, приёмка восстановления pending."
+      ],
+      "expected_commit_message": "release: Опубликовать проверенный выпуск 0.5.3",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-plugin-communication",
+        "task_id": "PUBLISH-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -773,10 +947,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 495
+Revision: 496
 
 ## Цель
 
@@ -848,10 +1022,41 @@ Revision: 495
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS, INSTALL
+- [TODO] T006: Восстановление панели, устойчивый Stop и разрешение на 30 минут — Ожидает
+  - Git Commit: [PENDING] feat: Восстановление панели, устойчивый Stop и разрешение на 30 минут
+  - Reference: workflow-pilot-plugin-communication / T006 / implementation
+  - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/control/plugin/communication.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, docs/planning/plugin-panel-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PUBLISH
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-plugin-communication / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/plugin-panel-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T006
+- [TODO] RELEASE-2: Собрать единый выпуск 0.5.3 — Ожидает
+  - Git Commit: [PENDING] release: Собрать единый выпуск 0.5.3
+  - Reference: workflow-pilot-plugin-communication / RELEASE-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T006, DOCS-2
+- [TODO] INSTALL-2: Установить готовое macOS-приложение 0.5.3 — Ожидает
+  - Git Commit: [PENDING] release: Установить готовое macOS-приложение 0.5.3
+  - Reference: workflow-pilot-plugin-communication / INSTALL-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-2, DOCS-2
+- [TODO] PUBLISH-2: Опубликовать проверенный выпуск 0.5.3 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать проверенный выпуск 0.5.3
+  - Reference: workflow-pilot-plugin-communication / PUBLISH-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-2, DOCS-2
 
 ## Context Pack For This Cycle
 
 - docs/planning/plugin-communication-panel.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/plugin-panel-recovery.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
