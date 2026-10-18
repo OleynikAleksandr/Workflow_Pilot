@@ -1,74 +1,47 @@
-export function newSessionMessage(projectId,requestId) {
-  const panelArgs=JSON.stringify({project_id:projectId});
-  const text='Подключи этот разговор к локальному проекту Workflow Pilot. Первым вызовом инструмента выполни workflow_pilot_panel с аргументами '+
-    panelArgs+', чтобы сразу открыть панель проекта рядом с этим разговором, до получения и чтения контекста. '+
-    'Затем вызови workflow_connect_project с аргументами '+JSON.stringify({project_id:projectId,request_id:requestId})+
-    '. После успешного подключения прочитай весь полученный контекст. '+
-    'Затем повторно вызови workflow_pilot_panel с аргументами '+panelArgs+', чтобы обновить список сессий после подключения этого разговора. '+
-    'После этого кратко подтверди готовность: назови проект, полноту контекста, текущую задачу и перечисли полученные разделы контекста. '+
-    'Если подключение или открытие панели не удалось, сообщи об ошибке; не утверждай, что панель видна, только по успеху инструмента. '+
-    'Не создавай другой разговор и не начинай реализацию без моей задачи.';
-  return {role:'user',content:[{type:'text',text}],_meta:{'openai/message':{target:'new',send:true}}};
-}
-// UI logic depends on an MCP App port, so fixture hosts exercise the same buttons.
-export function mountPanel({document,callTool,getMessage,uuid=()=>crypto.randomUUID()}) {
-  const $=id=>document.getElementById(id);
-  let selected=null,busy=false,created=false;
-  function status(text){$('status').textContent=text;}
-  function controls(){
-    $('new-session').disabled=busy||!selected||!getMessage()||created;
-    $('refresh').disabled=busy;
-    for(const button of $('projects').querySelectorAll('button'))button.disabled=busy;
-    $('capability').hidden=!!getMessage();
-  }
-  function showProject(data){
-    selected=data.project;
-    $('project-name').textContent=selected.name;
-    $('project-detail').hidden=false;
-    $('sessions').replaceChildren();
-    for(const session of data.sessions??[]){const li=document.createElement('li');li.textContent=session.title;$('sessions').append(li);}
-  }
-  function render(data){
-    if(data?.error){status(data.error.message);return;}
-    if(data?.project){
-      if(Array.isArray(data.projects))render({projects:data.projects});
-      showProject(data);status('Проект открыт. Можно создать сессию.');controls();return;
+const delivery={pending:'В очереди',claimed:'Попытка начата',accepted:'Принято хостом',rejected:'Отклонено',unknown:'Исход неизвестен'};
+// Rendering only; participant authorization and durable state belong to Control.
+export function mountPanel({document}) {
+  const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
+  const $=id=>nodes.get('communication-'+id);let events=[],last=0,trimmed=false;
+  const text=(id,value)=>{$(id).textContent=value;};
+  function renderEvents(){
+    const message=$('filter-message').value.trim(),participant=$('filter-participant').value.trim(),errors=$('filter-errors').checked;
+    $('events').replaceChildren();
+    for(const event of events.filter(e=>(!message||e.message_id?.includes(message))&&(!participant||e.participant_id?.includes(participant))&&
+      (!errors||e.severity!=='info'||e.error_code||/unknown|failed|error|rejected|gap/.test(e.event_type)))) {
+      const li=document.createElement('li'),head=document.createElement('strong'),detail=document.createElement('span');
+      head.textContent=event.seq+' · '+event.event_type;
+      detail.textContent=[event.server_time,event.participant_id,event.message_id,event.error_code].filter(Boolean).join(' · ');
+      li.append(head,detail);$('events').append(li);
     }
-    if(!Array.isArray(data?.projects))return;
-    $('projects').replaceChildren();
-    const current=selected&&data.projects.find(p=>p.id===selected.id);
-    if(current)showProject({project:current,sessions:current.sessions});
-    else if(selected){selected=null;created=false;$('project-detail').hidden=true;$('sessions').replaceChildren();}
-    for(const p of data.projects){
-      const button=document.createElement('button');button.type='button';button.textContent=p.name;
-      button.addEventListener('click',()=>run(async()=>{
-        const result=await callTool('workflow_open_project',{project_id:p.id});
-        if(result.isError)throw new Error(result.structuredContent?.error?.message??'Не удалось открыть проект.');
-        created=false;showProject(result.structuredContent);status('Проект открыт. Можно создать сессию.');
-      }));
-      $('projects').append(button);
-    }
-    if(!data.projects.length)status('Сначала откройте локальный проект в приложении Workflow Pilot, затем обновите список.');
-    else status(selected?'Данные проекта обновлены.':'Выберите проект.');
-    controls();
+    text('event-count',`${events.length} событий в ленте${trimmed?' · показаны последние 200':''}. Полный журнал — в экспорте.`);
   }
-  async function run(action){if(busy)return;busy=true;controls();try{await action();}catch(error){status(error.message||'Не удалось выполнить действие.');}finally{busy=false;controls();}}
-  $('refresh').addEventListener('click',()=>run(async()=>{
-    const result=await callTool('workflow_pilot_panel',{});render(result.structuredContent);
-    if(result.isError)status(result.structuredContent?.error?.message??'Workflow Pilot недоступен.');
-  }));
-  $('new-session').addEventListener('click',()=>run(async()=>{
-    const message=getMessage();if(!selected||!message||created)return;
-    const requestId=uuid();
-    // Never retry an uncertain send: the host may already have created the conversation.
-    created=true;
-    status('Создаём разговор…');
-    try {
-      const result=await message.send(newSessionMessage(selected.id,requestId));
-      if(result?.isError)throw new Error('Клиент отклонил создание разговора.');
-      status('Запрос передан ChatGPT. Сессия появится в Workflow Pilot после подключения агента к проекту.');
-    }catch {status('Результат отправки не подтверждён. Проверьте новые разговоры в ChatGPT; повторно сообщение не отправлено.');}
-  }));
-  controls();
-  return {render,ready:controls,error:message=>status(message)};
+  for(const id of ['filter-message','filter-participant','filter-errors'])$(id).addEventListener('input',renderEvents);
+  return {$,status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
+    diagnostics:value=>text('diagnostics',value),localEvents:(pending,dropped)=>text('local-events',
+      `Событий без подтверждения: ${pending}. Потеряно локальным буфером: ${dropped}. Последние события закрытой панели могут быть ненаблюдаемы.`),
+    feed(values,base){
+      if(base!==undefined){events=[];last=base;trimmed=base>0;}
+      for(const event of values??[]){if(event.seq<=last)continue;
+        if(event.seq!==last+1)text('gap',`Пробел журнала: ожидалось ${last+1}, получено ${event.seq}. Сохраните экспорт.`);
+        last=event.seq;events.push(event);
+      }
+      if(events.length>200){events=events.slice(-200);trimmed=true;}renderEvents();
+    },
+    snapshot(value){
+      text('identity',`Роль ${value.role} · участник ${value.participant_id}`);
+      text('binding',`Привязка подтверждена · ${value.conversation_key}`);
+      text('permission',`Поколение ${value.permission_generation} · ${value.expires_at?'до '+new Date(value.expires_at).toLocaleTimeString('ru'):'разрешение не выдано'}`);
+      const incoming=value.messages.filter(m=>m.recipient_id===value.participant_id);
+      text('queue',`${incoming.filter(m=>!m.read).length} непрочитанных · ${incoming.filter(m=>m.delivery==='pending'&&!m.read).length} ожидают уведомления`);
+      const lastMessage=value.messages.at(-1);
+      text('last',lastMessage?`${lastMessage.kind} · ${delivery[lastMessage.delivery]} · ${lastMessage.read?'прочитано':'чтение не подтверждено'}\n${lastMessage.body}`:'Сообщений пока нет.');
+      $('messages').replaceChildren();
+      for(const message of value.messages.slice(-30)){
+        const li=document.createElement('li');li.textContent=`${message.kind} · ${delivery[message.delivery]} · ${message.read?'прочитано':'не прочитано'} · ${message.message_id}`;
+        $('messages').append(li);
+      }
+    },
+    exportResult(value,summary){$('export-text').value=value;text('export-summary',JSON.stringify(summary,null,2));$('export-result').hidden=false;},
+  };
 }

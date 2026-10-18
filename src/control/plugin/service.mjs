@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { validateContextPacket } from '../../contracts/context.mjs';
-import { PluginLaunch } from './launch.mjs';
-import { PluginCommunication } from './communication.mjs';
+import { PluginCommunication, COMMUNICATION_BUILD, COMMUNICATION_PROTOCOL } from './communication.mjs';
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const key = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
@@ -16,8 +15,12 @@ export function pluginConversationKey(metadata) {
 export class PluginProjects {
   constructor({ projects, loadContext, communicationStore = null, onChange = () => {} }) {
     Object.assign(this, { projects, loadContext, onChange });
-    this.launch = new PluginLaunch({onChange});
     this.communication = new PluginCommunication({store:communicationStore});
+  }
+  async panel() {
+    await this.communication.ready;
+    return {communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
+      storage:this.communication.store?'durable':'memory',critical_error:this.communication.critical}};
   }
   list() {
     return { projects: this.projects.snapshot().projects.filter(p => !p.archivedAt && !p.parentWorkspace)
@@ -38,12 +41,11 @@ export class PluginProjects {
       sessions: this.list().projects.find(v => v.id === p.projectId).sessions };
   }
   async connect({ projectId, requestId, metadata }) {
-    if (!/^[0-9a-f-]{36}$/i.test(requestId ?? '')) throw fail('PLUGIN_REQUEST_INVALID', 'Создайте сессию кнопкой в панели Workflow Pilot.');
+    if (!/^[0-9a-f-]{36}$/i.test(requestId ?? '')) throw fail('PLUGIN_REQUEST_INVALID', 'Некорректный идентификатор подключения.');
     const conversationKey = pluginConversationKey(metadata), p = this.project(projectId);
     const packet = validateContextPacket(await this.loadContext(p.workspace), p.workspace);
     if (packet.facts.project_id !== p.projectId) throw fail('PROJECT_REPLACED', 'Контекст принадлежит другому проекту.');
     const session = await this.projects.connectExternal(p.workspace, { projectId, requestId, conversationKey });
-    this.launch.connected({projectId,requestId,contextBytes:packet.context_bytes,contextSha256:packet.context_sha256});
     this.onChange();
     return { project: { id: p.projectId, name: p.displayName || p.name }, sessionId: session.sessionId,
       workspace: p.workspace, context: packet.context, contextSha256: packet.context_sha256,

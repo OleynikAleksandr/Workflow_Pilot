@@ -81,7 +81,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     parallelExecution: {}, execution: { phase: 'idle', assignments: [], commands: [], error: null },
     conversationRecovery: { phase: 'idle', message: '', canRetry: false }, planContinuation: { enabled: false, phase: 'idle', message: '' },
     planReview: {}, selected: null, context: { phase: 'selected', servicesReady: false, messageSent: false }, contextPreparation: { busy: false },
-    runtimeFolder: '', platform: process.platform, pluginLaunch: null,
+    runtimeFolder: '', platform: process.platform,
     localRuntime: { label: '', chatgptChannel: 'secure-tunnel', service: null, vps: null }, startup: null, theme,
     hideToolCalls: true, sidebarWidth, sidebarMinWidth: 312, pageLoading: false, startupError: error, storageError: false,
     setup: null, workspaceHealth: null, version: app.getVersion(), fixture });

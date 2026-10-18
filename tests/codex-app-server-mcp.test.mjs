@@ -964,7 +964,7 @@ test('App Server MCP answers a stale session id without initialize after a resta
     'workflow_communication_read_message', 'workflow_communication_report', 'workflow_communication_send_message',
     'workflow_communication_status', 'workflow_communication_stop', 'workflow_communication_telemetry', 'workflow_communication_verify', 'workflow_communication_wait',
     'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel',
-    'workflow_plugin_claim', 'workflow_plugin_report', 'workflow_plugin_wait', 'write_stdin',
+    'write_stdin',
   ]);
   for (const tool of tools) {
     assert.ok(tool.description?.trim(), `${tool.name} description is required`);
@@ -1170,7 +1170,7 @@ print(json.dumps(out, ensure_ascii=False))
     'workflow_communication_read_message', 'workflow_communication_report', 'workflow_communication_send_message',
     'workflow_communication_status', 'workflow_communication_stop', 'workflow_communication_telemetry', 'workflow_communication_verify', 'workflow_communication_wait',
     'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel',
-    'workflow_plugin_claim', 'workflow_plugin_report', 'workflow_plugin_wait', 'write_stdin']);
+    'write_stdin']);
 });
 
 test('pid identity forces C locale for stable Terminal ownership checks', async () => {

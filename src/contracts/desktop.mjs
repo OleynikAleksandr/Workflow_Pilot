@@ -44,7 +44,6 @@ export const DESKTOP_CHANNELS = Object.freeze({
     "pilot:select-session",
     "pilot:set-expanded",
     "pilot:new-session",
-    "pilot:new-plugin-session",
     "pilot:return-chat",
     "pilot:retry",
     "pilot:reload",

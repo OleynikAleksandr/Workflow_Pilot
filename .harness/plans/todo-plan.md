@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 481,
+  "plan_revision": 483,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -251,8 +251,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "T003",
@@ -285,7 +285,8 @@
         "tests/backend-protocol.test.mjs",
         "tests/codex-app-server-mcp.test.mjs",
         "tests/backend-end-to-end.test.mjs",
-        "src/frontend/desktop/ui/index.html"
+        "src/frontend/desktop/ui/index.html",
+        "src/execution/plugin/bridge.mjs"
       ],
       "documentation_paths": [
         "docs/modules/chatgpt-plugin.md"
@@ -326,7 +327,33 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/modules/chatgpt-plugin.md",
+        "src/backend/desktop-model.mjs",
+        "src/backend/protocol.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/desktop.mjs",
+        "src/control/plugin/launch.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/navigation-probe.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/backend-end-to-end.test.mjs",
+        "tests/backend-protocol.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/sidebar.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -699,7 +726,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 481
+Revision: 483
 
 ## Цель
 
@@ -729,10 +756,10 @@ Revision: 481
   - Файлы: src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/execution/plugin/communication-store.mjs, src/execution/plugin/bridge.mjs, src/control/facade.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-server.py, tests/codex-app-server-mcp.test.mjs, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Новая панель и удаление прежнего эксперимента — Ожидает
-  - Git Commit: [PENDING] feat: Новая панель и удаление прежнего эксперимента
+- [DONE] T003: Новая панель и удаление прежнего эксперимента — Завершено
+  - Git Commit: [DONE] feat: Новая панель и удаление прежнего эксперимента
   - Reference: workflow-pilot-plugin-communication / T003 / implementation
-  - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/index.html, src/frontend/plugin/navigation-probe.mjs, src/control/plugin/launch.mjs, src/control/plugin/service.mjs, src/control/facade.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/preload.cjs, src/contracts/desktop.mjs, src/contracts/backend.mjs, src/backend/desktop-model.mjs, src/backend/protocol.mjs, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, tests/backend-protocol.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/backend-end-to-end.test.mjs, src/frontend/desktop/ui/index.html, docs/modules/chatgpt-plugin.md
+  - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/index.html, src/frontend/plugin/navigation-probe.mjs, src/control/plugin/launch.mjs, src/control/plugin/service.mjs, src/control/facade.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/preload.cjs, src/contracts/desktop.mjs, src/contracts/backend.mjs, src/backend/desktop-model.mjs, src/backend/protocol.mjs, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, tests/backend-protocol.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/backend-end-to-end.test.mjs, src/frontend/desktop/ui/index.html, src/execution/plugin/bridge.mjs, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
 - [TODO] T004: Матрица ошибок, регрессии и версия 0.5.2 — Ожидает

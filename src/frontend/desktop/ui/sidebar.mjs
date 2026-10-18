@@ -272,11 +272,6 @@ function render(state) {
   progress.show(operationLabel(state ?? {}, pendingAction));
   if (!state) return;
   $('prototype-version').textContent = state.version ?? '';
-  const launch=state.pluginLaunch;
-  $('plugin-launch-notice').hidden=!launch?.message;
-  $('plugin-launch-notice').textContent=launch?.message
-    ?(launch.projectName?launch.projectName+' · ':'')+launch.message+
-      (launch.contextBytes?' Контекст: '+launch.contextBytes+' байт.':'')+' Канал: плагин / MCP; отправка через DOM не используется.':'';
   renderProjectChoices(state);
   for (const list of $('projects').querySelectorAll('.sessions')) {
     if (!list.closest('[hidden]')) sessionScroll.set(list.dataset.workspace, list.scrollTop);
@@ -333,7 +328,6 @@ function render(state) {
       };
       menuAction('new-project-chat', 'Новый Chat', () => action('newSession', project.workspace, 'chat'));
       menuAction('new-project-work', 'Новый Work', () => action('newSession', project.workspace, 'work'));
-      menuAction('new-project-plugin', 'Новый чат через плагин', () => action('newPluginSession', project.workspace));
       const separator = document.createElement('div'); separator.className = 'menu-separator'; separator.setAttribute('aria-hidden', 'true'); menu.append(separator);
       menuAction('rename-project', 'Переименовать', () => openRenameDialog({
         kind: 'project', workspace: project.workspace, value: project.name,

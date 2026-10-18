@@ -5,7 +5,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { PLUGIN_ACTION_CLASS } from '../../contracts/backend.mjs';
 
 // Private transport to the single desktop owner. The MCP service never opens its store.
-export async function startPluginBridge({ directory, list, open, connect, wait, claim, report, communication }) {
+export async function startPluginBridge({ directory, panel, list, open, connect, communication }) {
   const token=randomBytes(32).toString('hex'), file=path.join(directory,'plugin-bridge.json');
   const server=http.createServer(async(req,res)=>{
     const reply=(status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
@@ -28,17 +28,9 @@ export async function startPluginBridge({ directory, list, open, connect, wait, 
         return;
       }
       if(input.action==='list')return reply(200,await list());
+      if(input.action==='panel')return reply(200,await panel());
       if(input.action==='open')return reply(200,await open(input.projectId));
       if(input.action==='connect')return reply(200,await connect(input));
-      if(input.action==='wait' && wait) {
-        const abort=new AbortController();
-        const closed=()=>abort.abort();res.once('close',closed);
-        try {const value=await wait(input.receiverId,abort.signal);if(!res.destroyed)reply(200,value);}
-        finally {res.off('close',closed);}
-        return;
-      }
-      if(input.action==='claim' && claim)return reply(200,await claim(input));
-      if(input.action==='report' && report)return reply(200,await report(input));
       reply(400,{error:{code:'PLUGIN_ACTION_INVALID',message:'Неизвестное действие плагина.'}});
     }catch(error){reply(400,{error:{code:typeof error.code==='string'?error.code:'PLUGIN_FAILED',
       message:typeof error.code==='string'&&/^(PLUGIN_|PROJECT_|MCP_|WORKSPACE_)/.test(error.code)?error.message:'Не удалось обработать запрос. Проверьте проект в Workflow Pilot.'}});}

@@ -1,127 +1,145 @@
-import { newSessionMessage } from './panel.mjs';
+import {mountPanel} from './panel.mjs';
 
-export function mountLaunch({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=10000}) {
-  const button=document.getElementById('launch-arm'),status=document.getElementById('launch-status');
-  let busy=false,disposed=false,abort;
-  const ready=()=>{button.disabled=busy||disposed||!getMessage();};
-  const read=async(name,args,options)=>{
-    const result=await callTool(name,args,options);
-    if(result.isError)throw new Error('MCP rejected request');
-    return result.structuredContent;
-  };
-  button.addEventListener('click',async()=>{
-    if(busy||disposed||!getMessage())return;
-    busy=true;ready();const receiverId=uuid();abort=new AbortController();
-    status.textContent='Ожидаем одну команду до 45 секунд. В Workflow Pilot выберите проект → «Новый чат через плагин». Оставьте эту панель открытой.';
-    try {
-      const pending=await read('workflow_plugin_wait',{receiver_id:receiverId},{timeout:50000,signal:abort.signal});
-      if(disposed)return;
-      if(pending.expired){status.textContent='Время ожидания закончилось. Ничего не отправлено.';return;}
-      const request=await read('workflow_plugin_claim',{receiver_id:receiverId,request_id:pending.requestId},{timeout:10000,signal:abort.signal});
-      if(disposed)return;
-      let outcome='unknown',timer;
-      status.textContent='Отправляем начальные инструкции через API ChatGPT…';
-      try {
-        // Losing the response is UNKNOWN, never permission to send a second time.
-        const result=await Promise.race([
-          getMessage().send(newSessionMessage(request.projectId,request.requestId),{timeout:sendTimeoutMs}),
-          new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('timeout')),sendTimeoutMs);})
-        ]);
-        if(!result?.isError)outcome='accepted';
-      }catch {}finally{clearTimeout(timer);}
-      if(!disposed)status.textContent=outcome==='accepted'
-        ?'ChatGPT принял запрос. Перейдите в новый разговор через Open или историю. Контекст придёт через MCP.'
-        :'Исход отправки неизвестен. Проверьте новые разговоры ChatGPT. Повтор не выполнялся.';
-      await read('workflow_plugin_report',{receiver_id:receiverId,request_id:request.requestId,outcome},{timeout:10000});
-    }catch {
-      if(!disposed)status.textContent='Проверка не завершена. Проверьте состояние в Workflow Pilot и новые разговоры ChatGPT. Автоматического повтора нет.';
-    }finally {busy=false;ready();}
-  });
-  ready();return {ready,dispose(){disposed=true;abort?.abort();ready();}};
-}
-
-// Independent communication UI; legacy launch is removed in T003.
+const PROTOCOL=1,BUILD='communication-v1-t001';
+const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|VERSION|STOPPED|STORE_|CLOSED|LIMIT)/.test(code??'');
 export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=10000}) {
-  const $=id=>document.getElementById('communication-'+id);
-  const panelId=uuid();let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false;
-  const status=text=>{$('status').textContent=text;};
+  const ui=mountPanel({document}),$=ui.$,panelId=uuid(),clock=()=>document.defaultView.performance.now(),started=clock();
+  let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false,stopping=false,loop=null,expiry=null,expiresAt=0;
+  let clientSequence=0,telemetry=[],flushing=null,dropped=0,exported='',exportRun='',serverError=null;
+  const status=(text,state)=>{if(!disposed)ui.status(text,state);};
   const ready=()=>{
-    $('bind').disabled=disposed||busy||enabled;
-    $('enable').disabled=disposed||busy||enabled||!binding||!getMessage();
-    $('stop').disabled=disposed||!binding;
+    $('bind').disabled=disposed||busy||enabled||!!binding;
+    $('enable').disabled=disposed||busy||stopping||!!loop||enabled||!binding||!getMessage()||!!serverError;
+    $('stop').disabled=disposed||!binding||stopping;
+    $('refresh').disabled=disposed||busy||enabled||!binding;
+    $('export').disabled=disposed||busy||!binding;
+    $('run').disabled=$('participant').disabled=!!binding||busy;
+    if(!disposed)ui.diagnostics(`SDK openai/message: ${getMessage()?'доступен':'не предоставлен; отправка недоступна'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\n${serverError??'Привязка проверяется перед каждой отправкой.'}`);
   };
   const call=async(name,args={},options={})=>{
     const result=await callTool('workflow_communication_'+name,args,{timeout:35000,...options});
-    if(result.isError)throw new Error(result.structuredContent?.error?.message??'MCP отклонил запрос.');
+    if(result.isError)throw Object.assign(new Error(result.structuredContent?.error?.message??'MCP отклонил запрос.'),{code:result.structuredContent?.error?.code});
     return result.structuredContent;
   };
-  function localStop(text) {enabled=false;epoch++;abort?.abort();status(text);ready();}
-  async function stop(text='Остановлено локально; ждём подтверждения службы.') {
-    localStop(text);if(!binding)return;
-    try{await call('stop',{binding});status('Связь остановлена. Служба подтвердила Stop.');}
-    catch{status('Остановлено локально. Подтверждение службы не получено.');}
+  function flush(){
+    if(flushing||!binding||!telemetry.length)return flushing;
+    flushing=(async()=>{while(telemetry.length){const event=telemetry[0];
+      try{await call('telemetry',{binding,event});telemetry.shift();}catch{break;}
+      if(!disposed)ui.localEvents(telemetry.length,dropped);
+    }})().finally(()=>{flushing=null;});return flushing;
   }
-  function feed(events=[]) {
-    for(const event of events){const li=document.createElement('li');li.textContent=event.seq+' · '+event.event_type;$('events').append(li);}
+  function record(event_type,fields={}){
+    if(!binding)return;
+    const event={event_id:uuid(),event_type,client_sequence:++clientSequence,client_time:new Date().toISOString(),duration_ms:clock()-started,...fields};
+    if(telemetry.length>=64)dropped++;else telemetry.push(event);
+    if(!disposed)ui.localEvents(telemetry.length,dropped);void flush();
   }
-  async function listen(generation) {
-    abort=new AbortController();let failures=0;
-    while(enabled&&!disposed&&epoch===generation) {
-      try {
-        const update=await call('wait',{binding,after_seq:seq},{signal:abort.signal});
-        if(!enabled||disposed||epoch!==generation)return;
-        feed(update.events);seq=update.seq;
-        if(update.stopped){localStop('Разрешение отозвано.');return;}
-        if(!update.message_id){failures=0;continue;}
-        const ticket=await call('claim',{binding,message_id:update.message_id},{signal:abort.signal});
-        if(!enabled||disposed||epoch!==generation)return;
-        const args={binding,message_id:ticket.message_id,delivery_attempt_id:ticket.delivery_attempt_id};
-        const verified=await call('verify',args,{signal:abort.signal});
-        if(!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
-        status('Передаём запрос текущему разговору…');
-        let outcome='unknown',timer;
-        try {
-          // No await between the final local checks and starting the real SDK.
-          const pending=getMessage().send({role:'user',content:[{type:'text',text:
-            'Для включённого пользователем опыта Workflow Pilot вызови workflow_communication_read_message с аргументами '+
-            JSON.stringify({run_id:binding.run_id,participant_id:binding.participant_id,message_id:ticket.message_id})+
-            '. Не открывай другую панель и не повторяй уведомление. Чтение сообщения — отдельная квитанция.'}],
-            _meta:{'openai/message':{target:'active',send:true}}},{timeout:sendTimeoutMs});
-          const response=await Promise.race([pending,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('timeout')),sendTimeoutMs);})]);
-          outcome=response?.isError?'rejected':'accepted';
-        }catch{}finally{clearTimeout(timer);}
-        await call('report',{...args,outcome});
-        if(!enabled||disposed||epoch!==generation)return;
-        status(outcome==='accepted'?'Хост принял запрос; чтение агентом ещё не подтверждено.':
-          outcome==='rejected'?'Хост отклонил запрос. Повтора нет.':'Исход отправки неизвестен. Повтора нет.');
-        failures=0;
-      }catch(error) {
-        if(!enabled||disposed||epoch!==generation)return;
-        // A failed claim/verify/report is never repeated. Only wait resumes.
-        status(error.message);failures++;
-        await new Promise(resolve=>{const timer=setTimeout(resolve,Math.min(5000,250*2**Math.min(failures,5)));
-          abort.signal.addEventListener('abort',()=>{clearTimeout(timer);resolve();},{once:true});});
+  function localStop(text,state='idle'){
+    enabled=false;epoch++;abort?.abort();clearTimeout(expiry);status(text,state);ready();
+  }
+  async function stop(text='Остановлено локально; ждём подтверждения службы.',finalText=null,finalState='unknown'){
+    localStop(text);if(!binding)return;stopping=true;ready();record('stop.local');
+    try{const result=await call('stop',{binding});if(!disposed)ui.snapshot({...result,expires_at:0});status(finalText??'Связь остановлена. Служба подтвердила Stop.',finalText?finalState:'idle');}
+    catch{record('stop.failed',{error_code:'NETWORK_ERROR'});status((finalText?finalText+' ':'')+'Остановлено локально. Подтверждение службы не получено.','error');}
+    finally{stopping=false;ready();}
+  }
+  async function refresh(reset=false){
+    const value=await call('status',{run_id:binding.run_id,participant_id:binding.participant_id});
+    if(!disposed){ui.snapshot({...value,expires_at:value.stopped?0:expiresAt});if(value.critical_error){serverError=value.critical_error;localStop('Журнал недоступен. Отправка заблокирована.','error');}}
+    if(reset){let cursor=Math.max(0,value.seq-200);ui.feed([],cursor);
+      while(cursor<value.seq){const page=await call('journal',{run_id:binding.run_id,participant_id:binding.participant_id,after_seq:cursor});
+        if(disposed)return;ui.feed(page.events);cursor=page.seq;}seq=cursor;
+    }return value;
+  }
+  async function deliver(message_id,generation,signal){
+    const current={...binding};
+    const ticket=await call('claim',{binding:current,message_id},{signal});
+    if(!enabled||disposed||epoch!==generation)return;
+    const args={binding:current,message_id:ticket.message_id,delivery_attempt_id:ticket.delivery_attempt_id};
+    const verified=await call('verify',args,{signal});
+    if(!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
+    status('Передаём запрос текущему разговору…','sending');
+    let outcome='unknown',timer;
+    try {
+      // These checks and the SDK invocation have no intervening await.
+      const pending=getMessage().send({role:'user',content:[{type:'text',text:
+        'Для включённого пользователем опыта Workflow Pilot вызови workflow_communication_read_message с аргументами '+
+        JSON.stringify({run_id:current.run_id,participant_id:current.participant_id,message_id})+
+        '. Не открывай другую панель и не повторяй уведомление. Чтение сообщения — отдельная квитанция.'}],
+        _meta:{'openai/message':{target:'active',send:true}}},{timeout:sendTimeoutMs});
+      record('sdk.invoked',{message_id});
+      const response=await Promise.race([pending,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('timeout'),{code:'SDK_TIMEOUT'})),sendTimeoutMs);})]);
+      outcome=response?.isError?'rejected':'accepted';record('sdk.'+outcome,{message_id});
+    }catch(error){record(error.code==='SDK_TIMEOUT'?'sdk.timeout':'sdk.error',{message_id,error_code:error.code==='SDK_TIMEOUT'?'SDK_TIMEOUT':'SDK_ERROR'});}
+    finally{clearTimeout(timer);}
+    try{await call('report',{...args,outcome});}catch(error){record('report.failed',{message_id,error_code:'MCP_ERROR'});throw error;}
+    if(!enabled||disposed||epoch!==generation)return;
+    status(outcome==='accepted'?'Хост принял запрос; чтение агентом проверяется отдельно.':
+      outcome==='rejected'?'Хост отклонил запрос. Повтора нет.':'Исход отправки неизвестен. Повтора нет.',outcome==='unknown'?'unknown':'waiting');
+  }
+  async function listen(generation){
+    const controller=new AbortController();abort=controller;let failures=0;
+    const current=()=>enabled&&!disposed&&epoch===generation;
+    while(current()){
+      let update;
+      try{update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});}
+      catch(error){
+        if(!current())return;
+        if(terminal(error.code)){localStop(error.message,'error');return;}
+        record('wait.error',{error_code:'NETWORK_ERROR'});status('Связь со службой потеряна. Повторяем только ожидание…','error');failures++;
+        await new Promise(resolve=>{const finish=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',finish);resolve();};
+          const timer=setTimeout(finish,Math.min(5000,250*2**Math.min(failures-1,5)));controller.signal.addEventListener('abort',finish,{once:true});if(controller.signal.aborted)finish();});
+        continue;
       }
+      if(!current())return;
+      if(failures){record('connection.restored');status('Связь восстановлена. Ожидаем сообщение…','waiting');}failures=0;
+      ui.feed(update.events);seq=update.seq;void flush();
+      if(update.stopped||update.critical_error){localStop(update.critical_error?'Ошибка журнала. Отправка запрещена.':'Разрешение отозвано.','error');return;}
+      if(update.message_id){
+        try{await deliver(update.message_id,generation,controller.signal);}
+        catch{if(current())await stop('Доставка остановлена локально.','Исход попытки или отчёт не подтверждён. Повтора нет.');return;}
+      }
+      if(current())try{await refresh();}catch{status('Не удалось обновить состояния. Журнал остаётся в службе.','error');}
     }
   }
   $('bind').addEventListener('click',async()=>{
-    if(busy||enabled||disposed)return;busy=true;ready();
-    const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,
-      protocol_version:1,build_id:'communication-v1-t001'};
-    try{const result=await call('bind',{binding:next});binding=next;seq=result.seq;
+    if(busy||binding||disposed)return;busy=true;ready();
+    const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,protocol_version:PROTOCOL,build_id:BUILD};
+    try{const result=await call('bind',{binding:next});if(disposed)return;binding=next;serverError=result.critical_error;
+      record('host.handshake',{message_supported:!!getMessage()});await refresh(true);
       status('Привязка подтверждена: '+result.role+'. '+(getMessage()?'Включите связь вручную.':'Хост не поддерживает openai/message; отправка недоступна.'));}
-    catch(error){binding=null;status(error.message);}finally{busy=false;ready();}
+    catch(error){status(error.message,'error');}finally{busy=false;ready();}
   });
   $('enable').addEventListener('click',async()=>{
-    if(busy||enabled||disposed||!binding||!getMessage())return;busy=true;ready();const current=++epoch;
-    try{const result=await call('enable',{binding,message_supported:!!getMessage()});
-      if(disposed||epoch!==current)return;
-      binding={...binding,permission_generation:result.permission_generation};seq=result.seq;enabled=true;
-      status('Связь включена до '+new Date(result.expires_at).toLocaleTimeString('ru')+'. Ожидаем сообщение…');
-      void listen(current);
-    }catch(error){status(error.message);}finally{busy=false;ready();}
+    if(busy||stopping||loop||enabled||disposed||!binding||!getMessage()||serverError)return;busy=true;ready();const current=++epoch;
+    try{const result=await call('enable',{binding,message_supported:true});
+      if(disposed||epoch!==current){void stop();return;}
+      binding={...binding,permission_generation:result.permission_generation};expiresAt=result.expires_at;enabled=true;ui.snapshot(result);
+      status('Связь включена. Ожидаем сообщение…','waiting');
+      expiry=setTimeout(()=>void stop('Срок разрешения истёк.','Срок разрешения истёк. Служба подтвердила Stop.','expired'),Math.max(0,result.expires_at-Date.now()));
+      loop=listen(current).finally(()=>{loop=null;ready();});
+    }catch(error){status(error.message,'error');}finally{busy=false;ready();}
   });
   $('stop').addEventListener('click',()=>void stop());
-  ready();return {ready,contextChanged(){if(binding)void stop('Контекст хоста изменился; связь остановлена.');},
-    dispose(){if(disposed)return;disposed=true;void stop('Панель закрывается; связь остановлена локально.');}};
+  $('refresh').addEventListener('click',async()=>{if(!binding||busy||enabled)return;busy=true;ready();try{await flush();await refresh(true);}catch{status('Не удалось обновить журнал. Повторите вручную.','error');}finally{busy=false;ready();}});
+  $('export').addEventListener('click',async()=>{
+    if(!binding||busy)return;busy=true;ready();let after_seq=0,through_seq,parts=[],summary;
+    try{do{const result=await call('export',{run_id:binding.run_id,participant_id:binding.participant_id,after_seq,...(through_seq===undefined?{}:{through_seq})});
+      if(disposed)return;parts.push(result.jsonl);after_seq=result.after_seq;through_seq=result.through_seq;summary=result.summary;if(result.complete)break;
+    }while(true);exported=parts.join('');exportRun=binding.run_id;ui.exportResult(exported,summary);}
+    catch{status('Экспорт не завершён. Журнал сохранён в службе; повторите экспорт.','error');}finally{busy=false;ready();}
+  });
+  $('select').addEventListener('click',()=>{$('export-text').focus();$('export-text').select();});
+  $('download').addEventListener('click',()=>{
+    try{const window=document.defaultView,url=window.URL.createObjectURL(new window.Blob([exported],{type:'application/x-ndjson;charset=utf-8'}));
+      const link=document.createElement('a');link.href=url;link.download='workflow-communication-'+exportRun+'.jsonl';link.click();setTimeout(()=>window.URL.revokeObjectURL(url),1000);}
+    catch{status('Хост не разрешил скачивание. Используйте «Выделить журнал» и сохраните текст.','error');}
+  });
+  ready();return {ready,contextChanged(){record('host.context_changed',{error_code:'CONTEXT_CHANGED'});if(binding)void stop('Контекст хоста изменился; связь остановлена.');},
+    visibilityChanged(){record('visibility.changed');},
+    hostResult(value){if(value?.error){serverError=value.error.code;status(value.error.message,'error');}
+      else if(value?.communication&&(value.communication.build_id!==BUILD||value.communication.protocol_version!==PROTOCOL)){serverError='Несовместимая панель. Переоткройте Workflow Pilot.';localStop(serverError,'error');}ready();},
+    connectionError(){serverError='SDK не подключён.';status('Не удалось подключить панель. Откройте её внутри ChatGPT.','error');ready();},
+    dispose(reason='dispose'){if(disposed)return;record(reason==='pagehide'?'panel.pagehide':'panel.dispose');disposed=true;void stop('Панель закрывается; связь остановлена локально.');},
+  };
 }

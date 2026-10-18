@@ -12,10 +12,6 @@ import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {ControlFacade} from '../src/control/facade.mjs';
 import {startPluginBridge} from '../src/execution/plugin/bridge.mjs';
-import {mountPanel} from '../src/frontend/plugin/panel.mjs';
-import {mountNavigationProbe,conversationUrl} from '../src/frontend/plugin/navigation-probe.mjs';
-import {mountLaunch} from '../src/frontend/plugin/launch.mjs';
-import {PluginLaunch} from '../src/control/plugin/launch.mjs';
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 
@@ -60,9 +56,8 @@ async function fixture(t){
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
 async function bridge(t,f){
-  const b=await startPluginBridge({directory:f.directory,list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
-    communication:f.plugin.communication,
-    wait:(id,signal)=>f.plugin.launch.wait(id,signal),claim:i=>f.plugin.launch.claim(i),report:i=>f.plugin.launch.report(i)});
+  const b=await startPluginBridge({directory:f.directory,panel:()=>f.plugin.panel(),list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
+    communication:f.plugin.communication});
   t.after(()=>b.close());
   return JSON.parse(await fs.readFile(path.join(f.directory,'plugin-bridge.json'),'utf8'));
 }
@@ -111,9 +106,9 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.ok(!JSON.stringify(events).includes('conversation-fixture'));
 });
 
-async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{}}={}) {
+async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light'}={}) {
   const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
-  const errors=[],calls=[],messages=[];let initialized=false,currentMetadata=hostMetadata;
+  const errors=[],calls=[],messages=[];let initialized=false,currentMetadata=hostMetadata,notify,activeWaits=0,maxWaits=0;
   const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
   const dom=new JSDOM(html,{url:'https://communication-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
     beforeParse(window){
@@ -121,15 +116,18 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
       window.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
       window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
       const deliver=data=>window.dispatchEvent(new window.MessageEvent('message',{source:window,data}));
+      notify=deliver;
       window.postMessage=async request=>{
         try{
           if(request.method==='ui/initialize')queueMicrotask(()=>deliver({jsonrpc:'2.0',id:request.id,result:{
             protocolVersion:request.params.protocolVersion,hostInfo:{name:'Isolated communication host',version:'1'},
-            hostContext:{theme:'light'},hostCapabilities:{serverTools:{},experimental:messageSupported?{'openai/message':{}}:{}}}}));
+            hostContext:{theme},hostCapabilities:{serverTools:{},experimental:messageSupported?{'openai/message':{}}:{}}}}));
           else if(request.method==='ui/notifications/initialized')initialized=true;
           else if(request.method==='tools/call'){
             calls.push(request.params.name);
+            if(request.params.name==='workflow_communication_wait')maxWaits=Math.max(maxWaits,++activeWaits);
             const result=await c.callTool({...request.params,_meta:currentMetadata});
+            if(request.params.name==='workflow_communication_wait')activeWaits--;
             deliver({jsonrpc:'2.0',id:request.id,result});
           }else if(request.method==='ui/message'){
             messages.push(request.params);await onMessage(request.params);
@@ -141,7 +139,7 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
   t.after(()=>{dom.window.dispatchEvent(new dom.window.Event('pagehide'));dom.window.close();});
   await eventually(()=>initialized||errors.length);assert.deepEqual(errors,[]);
   const $=id=>dom.window.document.getElementById('communication-'+id);
-  return {dom,$,errors,calls,messages,setMetadata(meta){currentMetadata=meta;}};
+  return {dom,$,errors,calls,messages,notify,get maxWaits(){return maxWaits;},setMetadata(meta){currentMetadata=meta;}};
 }
 
 test('real staged SDK -> Python MCP -> bridge -> Control: bind/enable/probe/wait/claim/verify/Send/report/read',async t=>{
@@ -191,6 +189,44 @@ test('fresh app-only metadata gates delivery, unsupported SDK cannot enable',asy
   assert.equal((await comm.status({...binding,metadata})).messages[0].delivery,'claimed','no automatic requeue after an uncertain boundary');
 });
 
+test('served SDK panel renders themes, queue, filters, complete export and host-context Stop',async t=>{
+  for(const theme of ['light','dark'])await t.test(theme,async t=>{
+    const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+    const joined=(await c.callTool({name:'workflow_communication_join',arguments:{run_id:'ui-'+theme,role:'O'},_meta:metadata})).structuredContent;
+    const model={run_id:joined.run_id,participant_id:joined.participant_id};
+    const ui=await communicationHtml(t,c,{theme});
+    assert.equal(ui.dom.window.document.documentElement.getAttribute('data-theme'),theme);
+    assert.equal(ui.dom.window.document.getElementById('projects'),null);
+    ui.$('run').value=model.run_id;ui.$('participant').value=model.participant_id;ui.$('bind').click();
+    await eventually(()=>ui.$('status').textContent.includes('Привязка подтверждена'));
+    assert.match(ui.$('identity').textContent,/Роль O/);assert.equal(ui.$('run').disabled,true);
+    ui.$('enable').click();await eventually(()=>ui.calls.includes('workflow_communication_wait'));
+    await c.callTool({name:'workflow_communication_probe',arguments:{...model,delay_ms:25},_meta:metadata});
+    await eventually(()=>ui.$('last').textContent.includes('Принято хостом'));
+    assert.equal(ui.messages.length,1);assert.equal(ui.maxWaits,1);assert.match(ui.$('queue').textContent,/1 непрочитанных/);
+    ui.$('filter-message').value='missing-message';ui.$('filter-message').dispatchEvent(new ui.dom.window.Event('input'));
+    assert.equal(ui.$('events').children.length,0);
+    ui.$('filter-message').value='';ui.$('filter-message').dispatchEvent(new ui.dom.window.Event('input'));
+    assert.ok(ui.$('events').children.length>0);
+    ui.$('export').click();await eventually(()=>!ui.$('export-result').hidden);
+    const events=ui.$('export-text').value.trim().split('\n').map(JSON.parse);
+    assert.ok(events.every((event,i)=>event.seq===i+1&&event.run_id===model.run_id));
+    for(const type of ['host.handshake','send.intent','sdk.invoked','sdk.accepted','send.report'])assert.ok(events.some(e=>e.event_type===type),type);
+    assert.doesNotMatch(ui.$('export-text').value,/conversation-fixture|user-fixture/);
+    ui.notify({jsonrpc:'2.0',method:'ui/notifications/host-context-changed',params:{theme:theme==='dark'?'light':'dark'}});
+    await eventually(()=>ui.$('status').textContent.includes('подтвердила Stop'));
+    assert.equal((await f.plugin.communication.status({...model,metadata})).stopped,true);
+    assert.deepEqual(ui.errors,[]);
+  });
+});
+
+test('a cached panel/backend mismatch is visible and cannot enable delivery',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f),ui=await communicationHtml(t,c);
+  ui.notify({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:{content:[],structuredContent:{communication:{protocol_version:1,build_id:'old'}}}});
+  await eventually(()=>ui.$('status').textContent.includes('Несовместимая панель'));
+  assert.equal(ui.$('enable').disabled,true);assert.equal(ui.messages.length,0);
+});
+
 test('external conversation is durable, idempotent and cannot take over another project',async t=>{
   const f=await fixture(t),projectId='Первый',requestId=randomUUID(),input={projectId,requestId,metadata};
   const selected=f.store.selected();const count=()=>f.store.snapshot().projects.flatMap(p=>p.sessions).length;
@@ -237,16 +273,19 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   assert.equal(panel.inputSchema.required?.length??0,0);
   assert.equal(tools.find(v=>v.name==='workflow_connect_project').annotations.idempotentHint,true);
   assert.equal(tools.find(v=>v.name==='workflow_connect_project').inputSchema.properties.ctx,undefined);
-  for(const name of ['workflow_plugin_wait','workflow_plugin_claim','workflow_plugin_report'])
-    assert.deepEqual(tools.find(v=>v.name===name)._meta.ui.visibility,['app']);
+  for(const name of ['workflow_plugin_wait','workflow_plugin_claim','workflow_plugin_report'])assert.equal(tools.find(v=>v.name===name),undefined);
+  assert.equal(tools.find(v=>v.name==='workflow_open_project')._meta?.ui?.resourceUri,undefined);
   const resource=await c.readResource({uri:panel._meta.ui.resourceUri});
   assert.equal(resource.contents[0].mimeType,'text/html;profile=mcp-app');
-  assert.match(resource.contents[0].text,/Новая сессия/);assert.match(resource.contents[0].text,/<script>/);
+  assert.match(resource.contents[0].text,/Связь участников/);assert.match(resource.contents[0].text,/<script>/);
+  assert.doesNotMatch(resource.contents[0].text,/navigation-probe|launch-arm|target:\s*["']new/);
   assert.doesNotMatch(resource.contents[0].text,/<script[^>]+src=/);
   const bundled=new JSDOM(resource.contents[0].text);
   for(const script of bundled.window.document.scripts)new Script(script.textContent);
   bundled.window.close();
-  const listing=await c.callTool({name:'workflow_pilot_panel',arguments:{}});assert.equal(listing.structuredContent.projects.length,2);
+  const panelResult=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
+  assert.equal(panelResult.structuredContent.communication.build_id,COMMUNICATION_BUILD);assert.equal(panelResult.structuredContent.projects,undefined);
+  const listing=await c.callTool({name:'workflow_open_project',arguments:{}});assert.equal(listing.structuredContent.projects.length,2);
   const args={project_id:'Первый',request_id:randomUUID()};
   const missing=await c.callTool({name:'workflow_connect_project',arguments:args});
   assert.equal(missing.isError,true);assert.equal(missing.structuredContent.error.code,'PLUGIN_SESSION_REQUIRED');
@@ -257,53 +296,11 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   assert.equal(repeated.structuredContent.sessionId,connected.structuredContent.sessionId);
   const manual=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый'},_meta:metadata});
   assert.equal(manual.structuredContent.sessionId,connected.structuredContent.sessionId,'ordinary chat can connect without a panel request');
-  const focused=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'Первый'}});
+  const focused=await c.callTool({name:'workflow_open_project',arguments:{project_id:'Первый'}});
   assert.equal(focused.isError,false);assert.equal(focused.structuredContent.project.id,'Первый');
-  assert.equal(focused.structuredContent.projects.length,2);
   assert.ok(focused.structuredContent.sessions.some(s=>s.id===connected.structuredContent.sessionId));
-  const absent=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'missing'}});
+  const absent=await c.callTool({name:'workflow_open_project',arguments:{project_id:'missing'}});
   assert.equal(absent.isError,true);assert.equal(absent.structuredContent.error.code,'PLUGIN_PROJECT_UNAVAILABLE');
-});
-
-test('panel buttons traverse real MCP and Control; unsupported hosts cannot create conversations',async t=>{
-  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
-  const dom=new JSDOM(await fs.readFile(path.join(root,'src/frontend/plugin/index.html'),'utf8'));t.after(()=>dom.window.close());
-  let message=null,sends=0,result;
-  const requestId=randomUUID();
-  const ui=mountPanel({document:dom.window.document,getMessage:()=>message,uuid:()=>requestId,
-    callTool:(name,args)=>c.callTool({name,arguments:args})});
-  ui.render((await c.callTool({name:'workflow_pilot_panel',arguments:{}})).structuredContent);
-  const $=id=>dom.window.document.getElementById(id);
-  const first=()=>[...$('projects').querySelectorAll('button')].find(b=>b.textContent==='Первый');
-  first().click();
-  await eventually(()=>$('status').textContent.includes('Проект открыт'));
-  assert.equal($('new-session').disabled,true);assert.equal($('capability').hidden,false);
-  message={send:async payload=>{
-    sends++;assert.deepEqual(payload._meta,{'openai/message':{target:'new',send:true}});
-    assert.match(payload.content[0].text,new RegExp(requestId));
-    const text=payload.content[0].text;
-    assert.ok(text.indexOf('workflow_pilot_panel')<text.indexOf('workflow_connect_project'),'panel is requested before connecting or reading recovery');
-    assert.ok(text.lastIndexOf('workflow_pilot_panel')>text.indexOf('прочитай весь полученный контекст'),'refresh after recovery');
-    result=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый',request_id:requestId},_meta:metadata});
-    return {};
-  }};
-  ui.ready();$('new-session').click();$('new-session').click();
-  await eventually(()=>$('status').textContent.includes('Запрос передан'));
-  assert.equal(sends,1);assert.equal(result.isError,false);
-  assert.equal(f.store.snapshot().projects.find(p=>p.projectId==='Первый').sessions.filter(s=>s.external).length,1);
-  assert.equal($('new-session').disabled,true);
-  $('refresh').click();await eventually(()=>$('status').textContent==='Данные проекта обновлены.');
-  assert.equal($('sessions').children.length,result?f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length:0);
-  assert.equal($('new-session').disabled,true,'refresh must not re-enable an uncertain send');
-  ui.render({projects:[]});
-  assert.equal($('project-detail').hidden,true);assert.equal($('sessions').children.length,0);
-  ui.render((await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'Первый'}})).structuredContent);
-  assert.equal($('project-detail').hidden,false);assert.equal($('projects').children.length,2);
-  // An uncertain host response must not create a second conversation on a repeated click.
-  first().click();await eventually(()=>$('new-session').disabled===false);
-  message={send:async()=>{sends++;throw new Error('timeout');}};
-  $('new-session').click();await eventually(()=>$('status').textContent.includes('не подтверждён'));
-  $('new-session').click();assert.equal(sends,2);assert.equal($('new-session').disabled,true);
 });
 
 test('MCP reports a closed desktop without creating a separate project store',async t=>{
@@ -311,159 +308,6 @@ test('MCP reports a closed desktop without creating a separate project store',as
   const response=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
   assert.equal(response.isError,true);assert.equal(response.structuredContent.error.code,'PLUGIN_DESKTOP_REQUIRED');
   assert.deepEqual((await fs.readdir(f.directory)).sort(),['Second','communication','sessions.json','Первый'].sort());
-});
-
-test('served bundled HTML starts the actual SDK and handles project and new-session buttons',async t=>{
-  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
-  const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
-  const listing=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'Первый'}});
-  const errors=[],calls=[],messages=[],links=[],compatLinks=[];let initialized=false;
-  const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
-  const dom=new JSDOM(html,{url:'https://plugin-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
-    beforeParse(window){
-      window.openai={openExternal:params=>{compatLinks.push(params);return {};}};
-      window.TextEncoder=TextEncoder;window.TextDecoder=TextDecoder;
-      window.ResizeObserver=class {observe(){} unobserve(){} disconnect(){}};
-      window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
-      const deliver=data=>window.dispatchEvent(new window.MessageEvent('message',{source:window,data}));
-      window.postMessage=async request=>{
-        try{
-          if(request.method==='ui/initialize'){
-            queueMicrotask(()=>deliver({jsonrpc:'2.0',id:request.id,result:{protocolVersion:request.params.protocolVersion,
-              hostInfo:{name:'Fixture Host',version:'1'},hostContext:{theme:'dark'},
-              hostCapabilities:{openLinks:{},serverTools:{},experimental:{'openai/message':{}}}}}));
-          }else if(request.method==='ui/notifications/initialized'){
-            initialized=true;deliver({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:listing});
-          }else if(request.method==='tools/call'){
-            calls.push(request.params.name);
-            deliver({jsonrpc:'2.0',id:request.id,result:await c.callTool(request.params)});
-          }else if(request.method==='ui/message'){
-            messages.push(request.params);deliver({jsonrpc:'2.0',id:request.id,result:{}});
-          }else if(request.method==='ui/open-link'){
-            links.push(request.params);deliver({jsonrpc:'2.0',id:request.id,result:{isError:links.length>1}});
-          }
-        }catch(e){errors.push(e.message);}
-      };
-    }});
-  t.after(()=>dom.window.close());const $=id=>dom.window.document.getElementById(id);
-  await eventually(()=>initialized||errors.length>0);assert.deepEqual(errors,[]);
-  await eventually(()=>$('projects').querySelectorAll('button').length===2);
-  assert.equal(dom.window.document.querySelector('h1').textContent,'Workflow Pilot');
-  assert.equal($('project-detail').hidden,false,'focused tool result opens project on a fresh panel');
-  await eventually(()=>$('new-session').disabled===false).catch(error=>{
-    throw new Error(error.message+'; status='+$('status').textContent+'; calls='+JSON.stringify(calls)+'; errors='+JSON.stringify(errors));
-  });
-  assert.equal($('project-name').textContent,'Первый');
-  const url='https://chatgpt.com/c/12345678-1234-1234-1234-123456789abc';
-  $('probe-url').value=url;$('probe-url').dispatchEvent(new dom.window.Event('input'));
-  assert.equal($('probe-sdk').disabled,false);
-  $('probe-sdk').click();await eventually(()=>$('probe-status').textContent.includes('API вернул'));
-  assert.equal(links[0].url,url);assert.equal(messages.length,0,'navigation does not send a message');
-  $('probe-sdk').click();await eventually(()=>$('probe-status').textContent.includes('отклонил'));
-  $('probe-compat').click();await eventually(()=>compatLinks.length===1&&!$('probe-compat').disabled);
-  $('probe-compat-direct').click();await eventually(()=>compatLinks.length===2&&!$('probe-compat-direct').disabled);
-  assert.deepEqual(JSON.parse(JSON.stringify(compatLinks)),[{href:url},{href:url,redirectUrl:false}]);
-  for(const [id,target] of [['anchor-blank','_blank'],['anchor-top','_top']]){
-    const anchor=$('probe-'+id);assert.equal(anchor.href,url);assert.equal(anchor.target,target);
-    anchor.addEventListener('click',e=>e.preventDefault(),{once:true});anchor.click();
-    assert.equal(JSON.parse($('probe-report').value).events.at(-1).method,id);
-  }
-  $('probe-outcome').value='browser';$('probe-save').click();
-  assert.equal(JSON.parse($('probe-report').value).events.at(-1).outcome,'browser');
-  assert.ok(!$('probe-report').value.includes('12345678'));
-  assert.ok(!dom.window.localStorage.getItem('workflow-pilot-navigation-probe-v1').includes(url));
-  $('probe-url').value='https://chatgpt.com/share/123';$('probe-url').dispatchEvent(new dom.window.Event('input'));
-  assert.equal($('probe-sdk').disabled,true);assert.equal($('probe-anchor-top').hasAttribute('href'),false);
-  $('new-session').click();await eventually(()=>messages.length===1);
-  assert.deepEqual(JSON.parse(JSON.stringify(messages[0]._meta)),{'openai/message':{target:'new',send:true}});
-  assert.match(messages[0].content[0].text,/workflow_connect_project/);
-  const requestId=messages[0].content[0].text.match(/"request_id":"([^"]+)"/)[1];
-  const connected=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый',request_id:requestId},_meta:metadata});
-  assert.equal(connected.isError,false);
-  $('refresh').click();await eventually(()=>$('sessions').children.length===f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length);
-  assert.deepEqual(calls,['workflow_pilot_panel']);assert.deepEqual(errors,[]);
-  const selected=f.store.selected(),count=f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length;
-  $('launch-arm').click();$('launch-arm').click();
-  await eventually(()=>f.plugin.launch.snapshot().phase==='ready');
-  const ticket=f.plugin.launch.request((await f.plugin.open('Первый')).project);
-  await eventually(()=>messages.length===2 && f.plugin.launch.snapshot().phase==='accepted');
-  assert.match(messages[1].content[0].text,new RegExp(ticket.requestId));
-  assert.equal(messages[1]._meta['openai/message'].target,'new');
-  assert.equal(f.store.selected().sessionId,selected.sessionId,'launch never selects a browser session');
-  assert.equal(f.plugin.list().projects.find(p=>p.id==='Первый').sessions.length,count,'host acceptance alone does not bind a session');
-  const launched=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый',request_id:ticket.requestId},
-    _meta:{...metadata,'openai/session':'fresh-launch-conversation'}});
-  assert.equal(launched.isError,false,JSON.stringify(launched));
-  assert.equal(launched.content[1].text,(await f.loadContext(path.join(f.directory,'Первый'))).context);
-  assert.equal(f.plugin.launch.snapshot().phase,'context-delivered');
-  assert.equal(f.plugin.launch.snapshot().contextBytes,Buffer.byteLength(launched.content[1].text));
-  assert.equal(f.plugin.launch.snapshot().contextSha256,digest(launched.content[1].text));
-  assert.equal(f.plugin.launch.snapshot().domUsed,false);
-  assert.deepEqual(calls.slice(1),['workflow_plugin_wait','workflow_plugin_claim','workflow_plugin_report']);
-  assert.deepEqual(errors,[]);
-});
-
-test('one-shot launch rejects missing receiver, duplicate claims, wrong tickets and expired waits',async()=>{
-  let now=1000;const launch=new PluginLaunch({waitMs:10,now:()=>now});
-  const receiverId=randomUUID(),project={id:'one',name:'Project'};
-  assert.throws(()=>launch.request(project),{code:'PLUGIN_RECEIVER_REQUIRED'});
-  const expired=launch.wait(receiverId);
-  assert.throws(()=>launch.wait(randomUUID()),{code:'PLUGIN_RECEIVER_BUSY'});
-  assert.deepEqual(await expired,{expired:true});
-  assert.equal(launch.snapshot().phase,'expired');
-  const abort=new AbortController(),cancelled=launch.wait(receiverId,abort.signal);abort.abort();
-  assert.deepEqual(await cancelled,{expired:true});
-  const waiting=launch.wait(receiverId),ticket=launch.request(project);
-  assert.deepEqual(await waiting,{...ticket,projectId:'one'});
-  assert.throws(()=>launch.request(project),{code:'PLUGIN_RECEIVER_REQUIRED'});
-  assert.throws(()=>launch.claim({...ticket,receiverId:randomUUID()}),{code:'PLUGIN_LAUNCH_EXPIRED'});
-  now+=16000;
-  assert.throws(()=>launch.claim({...ticket,receiverId}),{code:'PLUGIN_LAUNCH_EXPIRED'});
-  // A separate receiver represents an explicit subsequent experiment.
-  const other=new PluginLaunch({waitMs:100});
-  const ready=other.wait(receiverId),next=other.request(project);await ready;
-  other.claim({...next,receiverId});
-  assert.throws(()=>other.claim({...next,receiverId}),{code:'PLUGIN_LAUNCH_EXPIRED'});
-  other.connected({...next,projectId:'other',contextBytes:20,contextSha256:'hash'});
-  assert.equal(other.snapshot().phase,'sending');
-  other.connected({...next,projectId:'one',contextBytes:20,contextSha256:'hash'});
-  other.report({...next,receiverId,outcome:'accepted'});
-  assert.equal(other.snapshot().phase,'context-delivered','late API response cannot downgrade context delivery');
-});
-
-test('launch UI times out once, does not resend and disposes before dispatch',async t=>{
-  const dom=new JSDOM(await fs.readFile(path.join(root,'src/frontend/plugin/index.html'),'utf8'));t.after(()=>dom.window.close());
-  let sends=0;const outcomes=[];
-  const request={projectId:'one',requestId:randomUUID()};
-  const ui=mountLaunch({document:dom.window.document,sendTimeoutMs:5,
-    getMessage:()=>({send:()=>{sends++;return new Promise(()=>{});}}),
-    callTool:async(name,args)=>{if(name==='workflow_plugin_report')outcomes.push(args.outcome);return {structuredContent:request};}});
-  const button=dom.window.document.getElementById('launch-arm');button.click();button.click();
-  await eventually(()=>outcomes.length===1);
-  assert.equal(sends,1);assert.deepEqual(outcomes,['unknown']);ui.dispose();button.click();assert.equal(sends,1);
-  const second=new JSDOM(await fs.readFile(path.join(root,'src/frontend/plugin/index.html'),'utf8'));t.after(()=>second.window.close());
-  let resolve;
-  const closed=mountLaunch({document:second.window.document,getMessage:()=>({send:()=>sends++}),
-    callTool:()=>new Promise(r=>{resolve=r;})});
-  second.window.document.getElementById('launch-arm').click();closed.dispose();resolve({structuredContent:request});
-  await delay(0);assert.equal(sends,1,'unmounted panel does not claim or send');
-});
-
-test('navigation probe rejects unrelated URLs, limits waiting and restores only safe journal fields',async t=>{
-  for(const value of ['javascript:alert(1)','https://evil.test/c/a','https://chatgpt.com.evil.test/c/a',
-    'https://user:pass@chatgpt.com/c/a','https://chatgpt.com/share/a','https://chatgpt.com/c/a?token=secret',
-    'https://chatgpt.com/c/a#secret','http://chatgpt.com/c/a'])assert.equal(conversationUrl(value),null);
-  assert.equal(conversationUrl(' https://chatgpt.com/g/g-p-test/c/abc '),'https://chatgpt.com/g/g-p-test/c/abc');
-  const dom=new JSDOM(await fs.readFile(path.join(root,'src/frontend/plugin/index.html'),'utf8'));t.after(()=>dom.window.close());
-  const $=id=>dom.window.document.getElementById(id);let sent=0;
-  let stored=JSON.stringify([{method:'sdk',phase:'attempt',time:1,secret:'sensitive value'}]);
-  const ui=mountNavigationProbe({document:dom.window.document,storage:{getItem:()=>stored,setItem:(_k,v)=>{stored=v;}},
-    timeoutMs:5,getPorts:()=>({sdk:()=>{sent++;return new Promise(()=>{});}})});
-  assert.equal($('probe-compat').disabled,true);assert.ok(!$('probe-report').value.includes('sensitive value'));
-  $('probe-url').value='https://chatgpt.com/c/test';ui.ready();$('probe-sdk').click();$('probe-sdk').click();
-  await eventually(()=>$('probe-status').textContent.includes('не подтверждён'));
-  assert.equal(sent,1);assert.equal(JSON.parse(stored).at(-1).phase,'unknown');
-  assert.equal($('probe-sdk').disabled,false);
 });
 
 test('backend owns the plugin bridge: MCP lists projects with no frontend and reports backend loss',{skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:90000},async t=>{
@@ -500,8 +344,8 @@ test('backend owns the plugin bridge: MCP lists projects with no frontend and re
   const c=await client(t,{directory});
   const panel=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
   assert.equal(panel.isError,false,JSON.stringify(panel.structuredContent));
-  assert.deepEqual(panel.structuredContent.projects.map(project=>project.id),['backend-project']);
-  const opened=await c.callTool({name:'workflow_pilot_panel',arguments:{project_id:'backend-project'}});
+  assert.equal(panel.structuredContent.projects,undefined);assert.equal(panel.structuredContent.communication.build_id,COMMUNICATION_BUILD);
+  const opened=await c.callTool({name:'workflow_open_project',arguments:{project_id:'backend-project'}});
   assert.equal(opened.isError,false);assert.equal(opened.structuredContent.project.id,'backend-project');
   backend.kill('SIGKILL');await new Promise(resolve=>backend.once('exit',resolve));
   const lost=await c.callTool({name:'workflow_pilot_panel',arguments:{}});

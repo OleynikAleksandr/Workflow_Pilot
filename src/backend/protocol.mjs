@@ -43,8 +43,8 @@ export function verifyControlLease(command,lease) {
   return true;
 }
 
-// Plugin UI commands go through the same writer lease as desktop mutations.
-// The independent agent MCP channel does not acquire or depend on that lease.
+// Classify the private plugin protocol separately from desktop control leases.
+// Communication authenticates each participant using fresh host metadata.
 export function pluginPermission(action) {
   if(!Object.hasOwn(PLUGIN_ACTION_CLASS,action))throw protocolError('PLUGIN_ACTION_INVALID');
   return PLUGIN_ACTION_CLASS[action];

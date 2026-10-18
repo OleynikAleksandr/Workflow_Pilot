@@ -117,7 +117,6 @@ async function fixture(t) {
     async selectWorkspace(workspace) { calls.push(['selectWorkspace', workspace]); state.selected = { workspace, sessionId: state.projects[0].sessions[0].sessionId }; state.projects[0].expanded = true; return { state: structuredClone(state) }; },
     async setExpanded(workspace, expanded) { calls.push(['setExpanded', workspace, expanded]); state.projects.find(p => p.workspace === workspace).expanded = expanded; return { state: structuredClone(state) }; },
     async chooseWorkspace() { calls.push(['chooseWorkspace']); return { state: structuredClone(state) }; },
-    async newPluginSession(workspace) { calls.push(['newPluginSession',workspace]);return {state:structuredClone(state)}; },
   };
   window.webPilot = api;
   window.eval(`const createProgress = () => ({show(){},destroy(){}}); const operationLabel = () => ''; const settingsPanelView = () => ({render(){}}); const workspaceSetupView = () => ({render(state){document.getElementById('projects').hidden=!!state.setup;}});\n`
@@ -127,13 +126,11 @@ async function fixture(t) {
   return { window, document, calls, emit, get state() { return structuredClone(state); }, settle };
 }
 
-test('project menu sends plugin launch through its own port and shows delivery evidence',async t=>{
+test('retired plugin launch is absent while the normal project menu remains',async t=>{
   const f=await fixture(t);
-  f.document.querySelector('.new-project-plugin').click();await f.settle();
-  assert.deepEqual(f.calls,[['newPluginSession','/demo']]);
-  f.emit({...f.state,pluginLaunch:{phase:'context-delivered',message:'Полный контекст выдан через MCP.',projectName:'Проект',contextBytes:1250}});
-  assert.match(f.document.getElementById('plugin-launch-notice').textContent,/1250/);
-  assert.equal(f.document.getElementById('plugin-launch-notice').hidden,false);
+  assert.equal(f.document.querySelector('.new-project-plugin'),null);
+  assert.equal(f.document.getElementById('plugin-launch-notice'),null);
+  assert.ok(f.document.getElementById('project-actions'));
 });
 
 test('native project actions stay open after focus changes, close on outside click and invoke existing action', async t => {

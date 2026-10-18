@@ -203,66 +203,28 @@ def register_plugin(mcp, state_root: Path):
                   mime_type="text/html;profile=mcp-app",
                   meta={"openai/ui": {"preferredDisplayMode": "fullscreen", "availableDisplayModes": ["inline", "fullscreen"]},
                         "ui": {"csp": {"connectDomains": [], "resourceDomains": []}},
-                        "openai/widgetCSP": {"connect_domains": [], "resource_domains": [],
-                                             "redirect_domains": ["https://chatgpt.com"]}})
+                        "openai/widgetCSP": {"connect_domains": [], "resource_domains": []}})
     def panel_resource() -> str:
         return (Path(__file__).parent / "plugin-ui.html").read_text(encoding="utf-8")
 
-    @mcp.tool(name="workflow_plugin_wait", title="Ожидать запуск из Workflow Pilot", annotations=LAUNCH,
-              meta={"ui": {"visibility": ["app"]}})
-    async def wait_launch(receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Unique receiver id for this explicitly prepared panel instance.")]) -> CallToolResult:
-        """App-only, explicit one-shot wait, at most 45 seconds. Never call automatically or poll. Does not launch a model or create a conversation. Keep this panel open; the user triggers one request from the local Workflow Pilot menu."""
-        return result(await asyncio.to_thread(bridge.call, {"action": "wait", "receiverId": receiver_id}))
-
-    @mcp.tool(name="workflow_plugin_claim", title="Принять одну команду запуска", annotations=LAUNCH,
-              meta={"ui": {"visibility": ["app"]}})
-    async def claim_launch(
-        receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact receiver id used by the waiting panel.")],
-        request_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact one-shot request id returned by workflow_plugin_wait.")],
-    ) -> CallToolResult:
-        """App-only consume-once launch ticket. After success the panel may send one new-conversation message through the host API. Never retry claim or send after an uncertain result. No DOM operations."""
-        return result(await asyncio.to_thread(bridge.call, {"action": "claim", "receiverId": receiver_id, "requestId": request_id}))
-
-    @mcp.tool(name="workflow_plugin_report", title="Результат запроса нового разговора", annotations=CONNECT,
-              meta={"ui": {"visibility": ["app"]}})
-    async def report_launch(
-        receiver_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact receiver id used to claim this request.")],
-        request_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact claimed one-shot request id.")],
-        outcome: Annotated[str, Field(pattern=r"^(accepted|unknown)$", description="Host API result: accepted or unknown; neither proves navigation or context reading.")],
-    ) -> CallToolResult:
-        """App-only report of host API outcome. Accepted does not prove visible navigation or context delivery. Never creates a conversation or retries a send."""
-        return result(await asyncio.to_thread(bridge.call, {"action": "report", "receiverId": receiver_id,
-                                                            "requestId": request_id, "outcome": outcome}))
-
     @mcp.tool(name="workflow_pilot_panel", title="Workflow Pilot", annotations=READ,
               meta={"ui": ui, "openai/ui": {"entrypoints": [{"type": "global"}, {"type": "thread"}]}})
-    async def panel(
-        project_id: Annotated[str | None, Field(min_length=1, max_length=512, description="Optional exact project id from the project list or successful workflow_connect_project result. Opens that project with its current sessions.")] = None,
-    ) -> CallToolResult:
-        """Open Workflow Pilot's panel beside this conversation. Lists registered local projects; with project_id also shows that project's current sessions. When starting from the panel's new-session message, call this FIRST with the supplied project_id, before workflow_connect_project and reading recovery. After connecting and reading recovery, call it again with the same project_id to refresh the session list before confirming readiness. Does not create another conversation, switch the embedded browser, or pin the panel across conversations. Tool success does not prove that the host has visibly rendered the panel."""
-        selected = {}
-        if project_id is not None:
-            selected = await asyncio.to_thread(bridge.call, {"action": "open", "projectId": project_id})
-            if "error" in selected:
-                return result(selected)
-        listing = await asyncio.to_thread(bridge.call, {"action": "list"})
-        if "error" in listing:
-            return result(listing)
-        return result({**listing, **selected})
+    async def panel() -> CallToolResult:
+        """Open the existing Workflow Pilot communication panel beside this conversation. Join with workflow_communication_join, then enter run/participant in the panel and explicitly enable delivery. Tool success does not prove visible rendering or ChatGPT wakeup. This panel neither creates conversations nor selects projects."""
+        return result(await asyncio.to_thread(bridge.call, {"action": "panel"}))
 
-    @mcp.tool(name="workflow_open_project", title="Открыть проект Workflow Pilot", annotations=READ,
-              meta={"ui": {**ui, "visibility": ["app", "model"]}})
-    async def open_project(project_id: Annotated[str, Field(min_length=1, max_length=512, description="Project id returned by workflow_pilot_panel.")]) -> CallToolResult:
-        """Open a registered project in the plugin panel. Does not switch the embedded browser or create a ChatGPT project."""
-        return result(await asyncio.to_thread(bridge.call, {"action": "open", "projectId": project_id}))
+    @mcp.tool(name="workflow_open_project", title="Сведения о проектах Workflow Pilot", annotations=READ)
+    async def open_project(project_id: Annotated[str | None, Field(min_length=1, max_length=512, description="Omit to list local projects; otherwise use an exact id from that list.")] = None) -> CallToolResult:
+        """Read local projects or one project's current sessions for direct conversation binding. Returns data without UI; does not switch a sidebar, create a conversation or change cloud project membership."""
+        return result(await asyncio.to_thread(bridge.call, {"action": "list"} if project_id is None else {"action": "open", "projectId": project_id}))
 
     @mcp.tool(name="workflow_connect_project", title="Подключить сессию к проекту", annotations=CONNECT)
     async def connect_project(
-        project_id: Annotated[str, Field(min_length=1, max_length=512, description="Project id from the Workflow Pilot panel.")],
+        project_id: Annotated[str, Field(min_length=1, max_length=512, description="Exact project id from workflow_open_project.")],
         ctx: Context,
-        request_id: Annotated[str | None, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Exact request id from the panel's new-session message; reuse on retries. Omit when the user asks to connect this existing conversation directly.")] = None,
+        request_id: Annotated[str | None, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Optional connection request UUID; reuse on retries, or omit for a new direct connection.")] = None,
     ) -> CallToolResult:
-        """Bind this conversation to a local Workflow Pilot project and return its complete recovery context. Use when the user asks to connect the current conversation or starts a session from the panel. List projects first; do not guess the project id. Read the entire returned context before acting. No model turns are launched. Repeated calls do not create duplicate sessions. Requires the host's openai/session metadata; never invent a conversation id. The conversation may remain in ChatGPT Recents; this only records ownership in Workflow Pilot."""
+        """Bind this existing conversation to a local project at the user's request and return its complete recovery. Discover the exact project id with workflow_open_project first. Read all returned context before acting. Repeated calls do not duplicate sessions. Requires host openai/session metadata; never invent a conversation id. No model turn or new conversation is launched; cloud membership is unchanged."""
         meta = ctx.request_context.meta
         metadata = meta.model_dump(by_alias=True) if meta else {}
         metadata = {key: metadata[key] for key in ("openai/session", "openai/subject", "openai/organization")

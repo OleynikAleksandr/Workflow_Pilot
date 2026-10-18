@@ -30,8 +30,7 @@ export const BACKEND_OPERATIONS = Object.freeze({
 });
 
 export const PLUGIN_ACTION_CLASS = Object.freeze({
-  list: 'read', wait: 'read', open: 'ui-mutation', connect: 'ui-mutation',
-  claim: 'ui-mutation', report: 'ui-mutation',
+  panel: 'read', list: 'read', open: 'read', connect: 'ui-mutation',
   'communication.join':'ui-mutation', 'communication.bind':'ui-mutation',
   'communication.enable':'ui-mutation', 'communication.stop':'ui-mutation',
   'communication.send':'ui-mutation', 'communication.read':'ui-mutation', 'communication.probe':'ui-mutation',
