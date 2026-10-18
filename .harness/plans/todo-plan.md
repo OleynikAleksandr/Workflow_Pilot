@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 448,
+  "plan_revision": 449,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS",
   "acceptance_criteria": [
     "Выпуск 0.5.0: на Mac обычный запуск открывает встроенное окно фоновой службы с родным сайдбаром и настоящей страницей ChatGPT; HTTP-клиент остаётся для теста, iPad и будущего VPS"
@@ -67,6 +67,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/native-window.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -453,6 +458,190 @@
       ],
       "expected_commit_message": "release: Опубликовать GitHub Release 0.5.0",
       "actual_files": []
+    },
+    {
+      "id": "T009",
+      "title": "Встроенное окно на всех трёх ОС",
+      "why": "Выпуски macOS, Windows и Linux всегда одинаковы по интерфейсу.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/backend/main.mjs",
+        "src/contracts/launch.mjs",
+        "tests/backend-native-pages.test.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/native-window.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Страницы службы в режиме view и встроенное окно на macOS, Windows и Linux; offscreen только по флагу разработки",
+        "Обычный запуск на любой ОС открывает встроенное окно, «Окно через HTTP (тест)» — HTTP-клиент на всех трёх",
+        "Мак-специфичное (Dock, activation policy) остаётся только на macOS"
+      ],
+      "expected_commit_message": "feat: Встроенное окно на всех трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T009",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "T010",
+      "title": "Подготовить версию 0.5.1",
+      "why": "Номер выпуска.",
+      "dependencies": [
+        "T009"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/app.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/native-window.md"
+      ],
+      "verification_ids": [
+        "release-tooling",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.5.1 в package/lock и панели плагина"
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.5.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T010",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T009",
+        "T010"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/native-window.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта"
+    },
+    {
+      "id": "T011",
+      "title": "Собрать выпуск 0.5.1 трёх ОС",
+      "why": "Комплект после DOCS.",
+      "dependencies": [
+        "T010",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/native-window.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС из одного sourceCommit после DOCS; manifest совпадает"
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.5.1 трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T011",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "T012",
+      "title": "Установить 0.5.1 в Applications",
+      "why": "Обновить приложение.",
+      "dependencies": [
+        "T011",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/native-window.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка готового комплекта без пересборки; при работающей службе — pending"
+      ],
+      "expected_commit_message": "release: Установить 0.5.1 в Applications",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T012",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "T013",
+      "title": "Опубликовать GitHub Release 0.5.1",
+      "why": "Опубликовать комплект.",
+      "dependencies": [
+        "T012",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/native-window.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Тег v0.5.1 на sourceCommit, assets сверены, remote main = HEAD"
+      ],
+      "expected_commit_message": "release: Опубликовать GitHub Release 0.5.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-native-window",
+        "task_id": "T013",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -470,10 +659,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 448
+Revision: 449
 
 ## Цель
 
@@ -521,10 +710,35 @@ Revision: 448
   - Git Commit: [DONE] release: Опубликовать GitHub Release 0.5.0
   - Reference: workflow-pilot-native-window / T008 / implementation
   - Файлы: release-manifest.json, docs/planning/native-window.md
+- [TODO] T009: Встроенное окно на всех трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Встроенное окно на всех трёх ОС
+  - Reference: workflow-pilot-native-window / T009 / implementation
+  - Файлы: src/backend/main.mjs, src/contracts/launch.mjs, tests/backend-native-pages.test.mjs, tests/backend-upgrade.test.mjs, docs/modules/native-window.md
+- [TODO] T010: Подготовить версию 0.5.1 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.5.1
+  - Reference: workflow-pilot-native-window / T010 / implementation
+  - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/modules/native-window.md
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-native-window / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/native-window.md
+- [TODO] T011: Собрать выпуск 0.5.1 трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.5.1 трёх ОС
+  - Reference: workflow-pilot-native-window / T011 / implementation
+  - Файлы: release-manifest.json, docs/modules/native-window.md
+- [TODO] T012: Установить 0.5.1 в Applications — Ожидает
+  - Git Commit: [PENDING] release: Установить 0.5.1 в Applications
+  - Reference: workflow-pilot-native-window / T012 / implementation
+  - Файлы: release-manifest.json, docs/modules/native-window.md
+- [TODO] T013: Опубликовать GitHub Release 0.5.1 — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать GitHub Release 0.5.1
+  - Reference: workflow-pilot-native-window / T013 / implementation
+  - Файлы: release-manifest.json, docs/modules/native-window.md
 
 ## Context Pack For This Cycle
 
 - docs/planning/native-window.md
 - docs/architecture/OVERVIEW.md
+- docs/modules/native-window.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
