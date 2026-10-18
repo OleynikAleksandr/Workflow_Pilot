@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 504,
+  "plan_revision": 506,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -918,14 +918,15 @@
         "Штатный installer без пересборки; Applications и собственная копия проверены. При работающей службе оставить pending и сообщить пользователю."
       ],
       "expected_commit_message": "release: Установить готовое macOS-приложение 0.5.3",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "INSTALL-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-2",
@@ -986,7 +987,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 504
+Revision: 506
 
 ## Цель
 
@@ -1076,8 +1077,8 @@ Revision: 504
   - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006, DOCS-2
-- [TODO] INSTALL-2: Установить готовое macOS-приложение 0.5.3 — Ожидает
-  - Git Commit: [PENDING] release: Установить готовое macOS-приложение 0.5.3
+- [DONE] INSTALL-2: Установить готовое macOS-приложение 0.5.3 — Завершено
+  - Git Commit: [DONE] release: Установить готовое macOS-приложение 0.5.3
   - Reference: workflow-pilot-plugin-communication / INSTALL-2 / implementation
   - Файлы: release-manifest.json, docs/planning/plugin-panel-recovery.md
   - Параллельность: исключительное выполнение
