@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 449,
+  "plan_revision": 451,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -468,7 +468,8 @@
         "src/backend/main.mjs",
         "src/contracts/launch.mjs",
         "tests/backend-native-pages.test.mjs",
-        "tests/backend-upgrade.test.mjs"
+        "tests/backend-upgrade.test.mjs",
+        "src/execution/browser/backend-host.mjs"
       ],
       "documentation_paths": [
         "docs/modules/native-window.md"
@@ -484,13 +485,21 @@
         "Мак-специфичное (Dock, activation policy) остаётся только на macOS"
       ],
       "expected_commit_message": "feat: Встроенное окно на всех трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "T009",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "docs/modules/native-window.md",
+        "src/backend/main.mjs",
+        "src/contracts/launch.mjs",
+        "src/execution/browser/backend-host.mjs",
+        "tests/backend-native-pages.test.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ]
     },
     {
       "id": "T010",
@@ -662,7 +671,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 449
+Revision: 451
 
 ## Цель
 
@@ -710,10 +719,10 @@ Revision: 449
   - Git Commit: [DONE] release: Опубликовать GitHub Release 0.5.0
   - Reference: workflow-pilot-native-window / T008 / implementation
   - Файлы: release-manifest.json, docs/planning/native-window.md
-- [TODO] T009: Встроенное окно на всех трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Встроенное окно на всех трёх ОС
+- [DONE] T009: Встроенное окно на всех трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Встроенное окно на всех трёх ОС
   - Reference: workflow-pilot-native-window / T009 / implementation
-  - Файлы: src/backend/main.mjs, src/contracts/launch.mjs, tests/backend-native-pages.test.mjs, tests/backend-upgrade.test.mjs, docs/modules/native-window.md
+  - Файлы: src/backend/main.mjs, src/contracts/launch.mjs, tests/backend-native-pages.test.mjs, tests/backend-upgrade.test.mjs, src/execution/browser/backend-host.mjs, docs/modules/native-window.md
 - [TODO] T010: Подготовить версию 0.5.1 — Ожидает
   - Git Commit: [PENDING] feat: Подготовить версию 0.5.1
   - Reference: workflow-pilot-native-window / T010 / implementation

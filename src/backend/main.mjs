@@ -13,8 +13,10 @@ import {createRemoteAccess} from './remote-access.mjs';
 import {spawn} from 'node:child_process';
 import {BackendBrowserHost,desktopDependencies,TailscaleCli} from '../execution/facade.mjs';
 
-// macOS keeps pages as views a native window can show; elsewhere pages render offscreen.
-export const defaultPageMode=platform=>platform==='darwin'?'view':'offscreen';
+// Every release (macOS, Windows, Linux with its required X11 session) keeps pages as
+// views the native window can show. Offscreen pages are the mode of a backend without
+// a display (the later server stage); today only a development flag selects it.
+export const defaultPageMode=()=>'view';
 // nativeWindow(options): the entry point composes the window module (frontend) and
 // hands it in; the backend never imports frontend code itself.
 export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode=null,nativeWindow=null}={}) {
@@ -75,7 +77,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
         :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs');
       if(fixtureRoot)await installFixtureChat(electron.session.fromPartition(identity.partition));
       const host=new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,BaseWindow:electron.BaseWindow,WebContentsView:electron.WebContentsView,nativeImage:electron.nativeImage,
-        pageMode:pageMode??defaultPageMode(process.platform),screen:electron.screen,partition:identity.partition,preload,
+        pageMode:pageMode??defaultPageMode(),screen:electron.screen,partition:identity.partition,preload,
         session:electron.session.fromPartition(identity.partition)});
       pageHost=host;
       const {execution,createControl}=createBackendComposition();

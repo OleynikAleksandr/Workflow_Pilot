@@ -101,7 +101,7 @@ export class BackendBrowserHost {
     if (this.#pages.has(id)) throw Object.assign(new Error('Страница уже принадлежит backend.'), { code: 'BROWSER_HOST_CONFLICT' });
     if (this.pageMode === 'view') {
       // A hidden host has no display surface: HTTP viewers get CDP screenshots instead of capturePage.
-      const host = new this.BaseWindow({ show: false, focusable: false, width: 1000, height: 760 });
+      const host = new this.BaseWindow({ show: false, focusable: false, skipTaskbar: true, width: 1000, height: 760 });
       const view = new this.WebContentsView({ webPreferences: this.#preferences(this.preload, { offscreen: false }) });
       host.contentView.addChildView(view); view.setBounds({ x: 0, y: 0, width: 1000, height: 760 });
       this.#register(id, new ViewFrame(host, view), { contents: view.webContents,

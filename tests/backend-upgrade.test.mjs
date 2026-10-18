@@ -27,16 +27,16 @@ test('packaged builds ignore every test flag; development keeps the fixture mode
   assert.equal(launchMode([...argv,'--backend-page-mode=window'],{packaged:false}).pageMode,null);
   assert.equal(launchMode(['app','--smoke'],{packaged:true}).mode,'client','no in-process smoke in a release');
   assert.equal(launchMode(['app','--smoke'],{packaged:false}).mode,'in-process');
-  assert.deepEqual(launchMode(['app','--client-fixture','--client-backend-root=/tmp/b'],{packaged:true,platform:'linux'}),
-    {mode:'client',backendRoot:null,clientRoot:null,fixture:false,http:false,launcher:false});
-  assert.deepEqual(launchMode(['app'],{packaged:true,platform:'linux'}),{mode:'client',backendRoot:null,clientRoot:null,fixture:false,http:false,launcher:false});
-  // macOS: an ordinary launch asks the backend for its native window; --http-client opens the HTTP client.
-  assert.equal(launchMode(['app'],{packaged:true,platform:'darwin'}).launcher,true);
-  assert.deepEqual(launchMode(['app','--http-client'],{packaged:true,platform:'darwin'}),
-    {mode:'client',backendRoot:null,clientRoot:null,fixture:false,http:true,launcher:false});
+  // Every platform: an ordinary launch asks the backend for its native window; --http-client opens the HTTP client.
+  for(const platform of ['darwin','win32','linux']) {
+    assert.deepEqual(launchMode(['app'],{packaged:true,platform}),{mode:'client',backendRoot:null,clientRoot:null,fixture:false,http:false,launcher:true},platform);
+    assert.deepEqual(launchMode(['app','--http-client'],{packaged:true,platform}),
+      {mode:'client',backendRoot:null,clientRoot:null,fixture:false,http:true,launcher:false},platform);
+    // A release ignores the fixture flag, so it is an ordinary launch.
+    assert.equal(launchMode(['app','--client-fixture','--client-backend-root=/tmp/b'],{packaged:true,platform}).launcher,true,platform);
+  }
   assert.equal(launchMode(['app','--client-fixture'],{packaged:false,platform:'darwin'}).launcher,false,'fixture clients stay windows');
   assert.equal(launchMode(['app','--client-fixture','--client-launcher'],{packaged:false,platform:'linux'}).launcher,true);
-  assert.equal(launchMode(['app','--client-launcher'],{packaged:true,platform:'linux'}).launcher,false,'no forced launcher in a release');
 });
 
 test('handshake carries a validated product version for an explicit switch',()=>{

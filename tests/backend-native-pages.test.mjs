@@ -42,10 +42,8 @@ async function startFixtureBackend(t,extra=[]) {
     rect:selector=>client.json('/v1/fixture/rect',{method:'POST',body:{selector}})};
 }
 
-test('page mode follows the platform: views on macOS, offscreen elsewhere',()=>{
-  assert.equal(defaultPageMode('darwin'),'view');
-  assert.equal(defaultPageMode('linux'),'offscreen');
-  assert.equal(defaultPageMode('win32'),'offscreen');
+test('every release keeps view pages for the native window; offscreen is only a development flag',()=>{
+  assert.equal(defaultPageMode(),'view');
 });
 
 test('view-mode page keeps running in its hidden host, serves frames and input, and moves into a window without a reload',
