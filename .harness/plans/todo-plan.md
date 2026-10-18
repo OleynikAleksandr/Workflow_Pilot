@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 512,
+  "plan_revision": 515,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-plugin-communication",
@@ -1019,8 +1019,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-plugin-communication",
         "task_id": "DOCS-3",
@@ -1034,14 +1034,30 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/chatgpt-plugin.md"
+        "docs/modules/chatgpt-plugin.md",
+        "README.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/plugin-plan-lifetime.md"
       ],
       "acceptance_criteria": [
-        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git.",
+        "Контракт различает исторический tool-result и свежую проверку recover/bind; отказы реальной несовместимости сохранены.",
+        "Повторный живой тест 0.5.4 проверяет прежнюю панель после открытия чата до нового вызова/перезагрузки/ручного recover. Наблюдавшийся отказ 0.5.3 отражён отдельно от NOT_RUN 0.5.4."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/plugin-plan-lifetime.md"
+      ]
     },
     {
       "id": "RELEASE-3",
@@ -1164,7 +1180,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-plugin-communication
 Current Task: нет
-Revision: 512
+Revision: 515
 
 ## Цель
 
@@ -1272,10 +1288,10 @@ Revision: 512
   - Файлы: src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/contracts/backend.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: PUBLISH-2
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-plugin-communication / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, README.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md, docs/planning/plugin-plan-lifetime.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
 - [TODO] RELEASE-3: Собрать единый выпуск 0.5.4 — Ожидает
