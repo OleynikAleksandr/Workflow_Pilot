@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 453,
+  "plan_revision": 455,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-native-window",
@@ -53,7 +53,8 @@
       "docs/modules/backend.md",
       "docs/modules/browser.md",
       "docs/modules/desktop.md",
-      "docs/modules/native-window.md"
+      "docs/modules/native-window.md",
+      "docs/modules/linux.md"
     ]
   },
   "baseline_commit": "ecca668d094231a3b9c1afbc42ac00890d6c530e",
@@ -545,8 +546,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-native-window",
         "task_id": "DOCS-2",
@@ -561,13 +562,30 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/native-window.md"
+        "docs/modules/native-window.md",
+        "AGENTS.md",
+        "README.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/desktop.md",
+        "docs/modules/linux.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
-      "expected_commit_message": "docs: актуализировать документацию проекта"
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "actual_files": [
+        "AGENTS.md",
+        "README.md",
+        "docs/acceptance/backend-independence.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/desktop.md",
+        "docs/modules/linux.md"
+      ]
     },
     {
       "id": "T011",
@@ -678,7 +696,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-native-window
 Current Task: нет
-Revision: 453
+Revision: 455
 
 ## Цель
 
@@ -734,10 +752,10 @@ Revision: 453
   - Git Commit: [DONE] feat: Подготовить версию 0.5.1
   - Reference: workflow-pilot-native-window / T010 / implementation
   - Файлы: package.json, package-lock.json, src/frontend/plugin/index.html, src/frontend/plugin/app.mjs, tests/backend-upgrade.test.mjs, docs/modules/native-window.md
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-native-window / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/native-window.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/native-window.md, AGENTS.md, README.md, docs/acceptance/backend-independence.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/linux.md
 - [TODO] T011: Собрать выпуск 0.5.1 трёх ОС — Ожидает
   - Git Commit: [PENDING] release: Собрать выпуск 0.5.1 трёх ОС
   - Reference: workflow-pilot-native-window / T011 / implementation
