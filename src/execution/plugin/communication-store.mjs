@@ -52,7 +52,31 @@ export async function openCommunicationStore(directory,{files=fs}={}) {
     if(state)records.set(state.id,{state,events,previous,size:stat.size});
   }
   let broken=issues.length>0,tail=Promise.resolve();
+  async function readContent(ref) {
+    if(!/^[a-f0-9]{64}$/.test(ref??''))throw failure('PLUGIN_COMMUNICATION_CONTEXT');
+    let handle;
+    try {
+      const file=path.join(directory,ref+'.context'),before=await files.lstat(file);
+      if(!before.isFile()||before.isSymbolicLink())throw Error('unsafe');
+      handle=await files.open(file,constants.O_RDONLY|(constants.O_NOFOLLOW??0));
+      const stat=await handle.stat();if(!stat.isFile()||stat.size>1048576)throw Error('size');
+      const text=await handle.readFile('utf8');if(digest(text)!==ref)throw Error('digest');return text;
+    }catch{throw failure('PLUGIN_COMMUNICATION_CONTEXT');}finally{await handle?.close();}
+  }
   return Object.freeze({
+    readContent,
+    async putContent(text) {
+      if(typeof text!=='string'||Buffer.byteLength(text)>1048576)throw failure('PLUGIN_COMMUNICATION_CONTEXT');
+      if(broken)throw failure('PLUGIN_COMMUNICATION_STORE_BLOCKED');
+      const ref=digest(text);let handle;
+      try {
+        try{handle=await files.open(path.join(directory,ref+'.context'),constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);}
+        catch(error){if(error.code!=='EEXIST')throw error;await readContent(ref);return ref;}
+        await handle.writeFile(text,'utf8');await handle.sync();await handle.close();handle=null;
+        if(process.platform!=='win32'){const dir=await files.open(directory,'r');try{await dir.sync();}finally{await dir.close();}}
+        return ref;
+      }catch{throw failure('PLUGIN_COMMUNICATION_CONTEXT');}finally{await handle?.close();}
+    },
     load:()=>({runs:[...records.values()].map(({state,events})=>structuredClone({...state,events})),issues:structuredClone(issues)}),
     append(state,events) {
       const work=tail.then(async()=>{

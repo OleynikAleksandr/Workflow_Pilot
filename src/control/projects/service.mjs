@@ -21,6 +21,7 @@ export class ProjectsService {
   reconcileRoles(...args) { return this.#store.reconcileRoles(...args); }
   assignOrchestrator(...args) { return this.#store.assignOrchestrator(...args); }
   ensureExecutor(...args) { return this.#store.ensureExecutor(...args); }
+  assignmentProof(...args) { return this.#store.assignmentProof(...args); }
   saveExecutorAutomation(...args) { return this.#store.saveExecutorAutomation(...args); }
   saveExecutorTime(...args) { return this.#store.saveExecutorTime(...args); }
   resetUnsentExecutor(...args) { return this.#store.resetUnsentExecutor(...args); }

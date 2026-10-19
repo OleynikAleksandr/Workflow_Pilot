@@ -8,6 +8,19 @@ import path from 'node:path';
 import {emptyPlan,renderPlan} from '@webpilot/workflow-kit/lib/plan';
 import {ChildCommandWatches} from '../src/execution/files/project-input-watch.mjs';
 import {readCommandActivity} from '../src/control/workflow/command-activity.mjs';
+test('durable handoff recovers the Kit-to-channel gap and separates queued, accepted and replied',async t=>{
+  const f=fixture(t),ledger=f.ledger,origin={sessionId:'origin'},entry=ledger.finalization={status:'pending'};
+  f.runtime.queuedRoute=()=>true;const calls=[];let lost=true;
+  f.runtime.sendFinalization=async(_o,text,_ready,_before,meta)=>{calls.push({text,meta});if(lost)throw Error('connection lost');return {state:'queued',message_id:'durable-id'};};
+  await assert.rejects(f.runtime.queueMessage('/main',origin,ledger,entry,'complete context','finalization'));
+  assert.equal(entry.status,'queuing');const saved=structuredClone(ledger);f.runtime.book[JSON.stringify(['/main','scope'])]=saved;
+  lost=false;let receipt={delivery:'accepted',read:true,reply_observed:false};f.runtime.deliveryReceipt=()=>receipt;
+  await f.runtime.reconcileMessages('/main',f.state,origin,saved,()=>true);
+  assert.equal(saved.finalization.status,'queued');assert.deepEqual(calls[0],calls[1]);
+  await f.runtime.reconcileMessages('/main',f.state,origin,saved,()=>true);assert.equal(calls.length,2);
+  receipt.reply_observed=true;await f.runtime.reconcileMessages('/main',f.state,origin,saved,()=>true);
+  assert.equal(saved.finalization.status,'reply-observed');
+});
 
 test('a staged integration candidate never projects DONE before its Git commit is proven',()=>{
   const plan={tasks:[{id:'A',commit_status:'DONE',implementation_status:'DONE'},{id:'B',commit_status:'DONE',implementation_status:'DONE'}]};

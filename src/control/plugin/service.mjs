@@ -14,12 +14,29 @@ export function pluginConversationKey(metadata) {
 
 // Both frontends use the same ProjectsService. No profile copies or browser operations.
 export class PluginProjects {
-  constructor({ projects, loadContext, communicationStore = null, onChange = () => {} }) {
+  constructor({ projects, loadContext, communicationStore = null, onChange = () => {}, observe, admit, onCommunicationChange }) {
     Object.assign(this, { projects, loadContext, onChange });
-    this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id)});
+    this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id),
+      verifyTarget:id=>this.participantTarget(id),observe,admit,onChange:onCommunicationChange});
+  }
+  async participantTarget(sessionId) {
+    const target=localParticipantTarget(this.projects,sessionId);if(!target)return null;
+    const parent=this.projects.snapshot().projects.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt);
+    if(!parent)return null;
+    const info=await this.projects.inspect(parent.workspace,target.origin_session_id);
+    if(info.projectId!==parent.projectId)return null;
+    const projects={snapshot:()=>({projects:this.projects.snapshot().projects.map(p=>p.workspace===parent.workspace?{...p,...info}:p)}),
+      project:workspace=>workspace===parent.workspace?info:this.projects.project(workspace)};
+    const fresh=localParticipantTarget(projects,sessionId);if(!fresh)return null;
+    if(fresh.role==='E'){
+      const proof=await this.projects.assignmentProof(sessionId);
+      if(proof?.phase!=='ASSIGNED'||proof.id!==fresh.assignment_id||proof.parent_scope_id!==fresh.scope_id
+        ||proof.parent_task_id!==fresh.task_id)return null;
+    }
+    return fresh;
   }
   async reserveParticipant(sessionId) {
-    const target=localParticipantTarget(this.projects,sessionId);
+    const target=await this.participantTarget(sessionId);
     if(!target)throw fail('PLUGIN_PARTICIPANT_UNAVAILABLE','Нет действующего назначения или оркестратора для этой сессии.');
     return this.communication.reserve(target);
   }

@@ -9,7 +9,7 @@ import path from 'node:path';
 
 // Runs before any store, browser partition or service is constructed.
 export function configureDesktopIdentity(app, { smoke = false, temporaryRoot = os.tmpdir() } = {}) {
-  const dataDir = smoke ? fs.mkdtempSync(path.join(temporaryRoot, 'workflow-pilot-smoke-'))
+  const dataDir = smoke ? fs.realpathSync(fs.mkdtempSync(path.join(temporaryRoot, 'workflow-pilot-smoke-')))
     : path.join(app.getPath('appData'), 'Workflow Pilot');
   const browserDir = path.join(dataDir, 'browser');
   for (const directory of [dataDir, browserDir]) {

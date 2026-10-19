@@ -47,7 +47,8 @@ export function pruneLedger(entries) {
 export class PlanContinuation {
   constructor({ selected, inspectPlan, send, onChange = () => {}, log = () => {},
     schedule = setTimeout, cancel = clearTimeout, settleMs = 500, stallMs = 180000,
-    available = () => true, saveCheckpoint = async () => {}, onComplete = () => {} }) {
+    available = () => true, saveCheckpoint = async () => {}, onComplete = () => {},durableQueue=false }) {
+    this.durableQueue=durableQueue;
     Object.assign(this, { onComplete, selected, inspectPlan, send, onChange, log, schedule, cancel, settleMs, stallMs, available, saveCheckpoint });
     this.page = null; this.run = null; this.epoch = 0; this.timer = null; this.watchdog = null;
     this.state = { phase: 'off', message: '', active: false, reason: null };
@@ -95,8 +96,9 @@ export class PlanContinuation {
     const entries = [2, 3].includes(checkpoint?.version) && Array.isArray(checkpoint.entries) ? checkpoint.entries : [checkpoint];
     for (const entry of entries) {
       if (entry && typeof entry.key === 'string' && typeof entry.turnId === 'string'
-          && ['sending', 'sent'].includes(entry.status))
+          && ['sending', 'sent','queuing','queued'].includes(entry.status))
         this.checkpoints.set(JSON.stringify([entry.key, entry.turnId]), { key: entry.key, turnId: entry.turnId, status: entry.status,
+          ...(typeof entry.text==='string'?{text:entry.text}:{}),
           ...(Number.isSafeInteger(entry.generation) && entry.generation >= 0 ? { generation: entry.generation } : {}) });
     }
     for (const cycle of checkpoint?.version === 3 && Array.isArray(checkpoint.cycles) ? checkpoint.cycles : []) {
@@ -276,13 +278,14 @@ export class PlanContinuation {
     const consumed = this.checkpoints.get(JSON.stringify([owner, pauseId]))
       ?? [...this.checkpoints.values()].findLast(entry => entry.key === owner
         && entry.generation === cycle?.generation && (!p.turnId || entry.turnId.startsWith('cycle:')));
-    if (consumed)
+    if (consumed&&!(this.durableQueue&&consumed.status==='queuing'))
       return this.set(consumed.status === 'sending' ? 'paused' : 'running',
         consumed.status === 'sending' ? 'Исход отправки для этой паузы неизвестен. Повтор не отправляется.'
           : '«Продолжай» уже отправлено. Ждём ответ.', consumed.status === 'sent',
         consumed.status === 'sending' ? 'SEND_UNKNOWN' : 'PAUSE_CONSUMED');
     if (this.continuationOwner !== owner) { this.continuationOwner = owner; this.continuations = 0; }
-    const checkpoint = { key: owner, turnId: pauseId, status: 'sending', generation: cycle?.generation ?? 0 };
+    const checkpoint = consumed??{ key: owner, turnId: pauseId, status: this.durableQueue?'queuing':'sending', generation: cycle?.generation ?? 0,
+      ...(this.durableQueue?{text:'Продолжи ту же начатую задачу Workflow Kit.\nПолные данные задачи: '+JSON.stringify(plan.nextTask)}:{}) };
     this.log('pause', { turnId: p.turnId || '', identitySource: p.turnId ? 'native' : 'cycle', generation: cycle?.generation ?? 0 });
     this.set('sending', 'Отправляем «Продолжай»…', true);
     let sendInvoked = false, delivered = false, knownUnsent = false;
@@ -291,7 +294,7 @@ export class PlanContinuation {
       let result = { state: 'cancelled' };
       if (ready() && this.available() && !this.page.draftPresent) {
         sendInvoked = true;
-        result = await this.send(continueMessage(plan.nextTask), ready, async () => {
+        result = await this.send(checkpoint.text??continueMessage(plan.nextTask), ready, async () => {
           const latest = await this.inspectPlan(selected);
           if (!ready()) return false;
           if (!latest.confirmed || latest.scopeId !== selected.scopeId || latest.scopeStatus !== 'ACTIVE') {
@@ -303,12 +306,12 @@ export class PlanContinuation {
           }
           if (finished(latest)) { this.complete(); return false; }
           return !!latest.planView?.tasks?.length;
-        });
+        },{key:'continue:'+selected.assignmentId+':'+pauseId});
       }
-      if (result.state === 'sent') {
+      if (['sent','queued'].includes(result.state)) {
         delivered = true;
         if (key(this.selected()) === owner) { this.continuations++; this.log('send', { kind: 'continue', continuations: this.continuations }); }
-        await this.writeCheckpoint(owner, { ...checkpoint, status: 'sent' });
+        await this.writeCheckpoint(owner, { ...checkpoint, status: result.state });
         if (currentContext()) this.set('running', 'Автоматически отправлено «Продолжай». Ждём ответ.', true);
       } else if (result.state === 'unknown') {
         if (currentContext()) this.pause('Исход отправки неизвестен. Для этой паузы повтор не отправляется.', 'SEND_UNKNOWN');
@@ -320,7 +323,7 @@ export class PlanContinuation {
           result.reason === 'DRAFT_PRESENT' ? 'Ждём вашего сообщения. Черновик сохранён.' : 'Продолжение не отправлено. Ждём следующего события.');
       }
     } catch {
-      if (delivered) this.checkpoints.set(JSON.stringify([owner, pauseId]), { ...checkpoint, status: 'sent' });
+      if (delivered) this.checkpoints.set(JSON.stringify([owner, pauseId]), { ...checkpoint, status: this.durableQueue?'queued':'sent' });
       else if (!sendInvoked || knownUnsent) this.checkpoints.delete(JSON.stringify([owner, pauseId]));
       if (currentContext()) this.wait(delivered ? 'SEND_CHECKPOINT_ERROR' : 'SEND_ERROR',
         delivered ? '«Продолжай» отправлено. Не удалось сохранить подтверждение; повтор для этой паузы исключён.'

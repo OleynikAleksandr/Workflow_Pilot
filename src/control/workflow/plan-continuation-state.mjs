@@ -14,7 +14,7 @@ async function readNextTask(view) {
     const task = plan.tasks.find(candidate => candidate?.id === view.nextTaskId);
     if (!task || task.commit_status === 'DONE') return null;
     const strings = value => Array.isArray(value) ? value.filter(item => typeof item === 'string' && item) : [];
-    return { id: task.id, title: task.title, why: typeof task.why === 'string' ? task.why : '',
+    return { id: task.id, title: task.title, started:task.implementation_status==='IN_PROGRESS',why: typeof task.why === 'string' ? task.why : '',
       acceptance: strings(task.acceptance_criteria),
       files: [...strings(task.functional_paths), ...strings(task.documentation_paths)],
       checks: strings(task.verification_ids) };
@@ -32,8 +32,16 @@ export async function readPlanContinuationState(selected, environment = process.
   try { await fs.access(journal); pending = true; } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const dirty = await git(['status', '--porcelain', '--', '.harness/plans/todo-plan.md']);
   const after = await readWorkspace(workspace, sessionId);
+  let blocked=false;
+  if(selected.assignmentId){
+    const common=await git(['rev-parse','--path-format=absolute','--git-common-dir']);
+    const signals=(await fs.readFile(path.join(common,'workflow-kit','signals.jsonl'),'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;}))
+      .split('\n').filter(Boolean).map(JSON.parse).filter(s=>s.assignment_id===selected.assignmentId&&s.scope_id===selected.parentScopeId);
+    const last=signals.findLast(s=>s.kind==='task-blocked');
+    blocked=!!last&&!signals.slice(signals.indexOf(last)+1).some(s=>s.kind==='assignment-message'&&(!last.block_id||s.block_id===last.block_id));
+  }
   // Parallel and orchestrated plans are driven by their queue, never by the main chat's continuation.
-  return { ...after, nextTask: await readNextTask(after), confirmed: !['parallel', 'orchestrated'].includes(after.planExecution?.execution_strategy)
+  return { ...after, blocked,nextTask: await readNextTask(after), confirmed: !['parallel', 'orchestrated'].includes(after.planExecution?.execution_strategy)
     && !pending && !reviewBlocksExecution(readReview(workspace),after.scopeId) && (!after.planView.tasks.every(t => t.status === 'done') || !dirty) && before.planRevision === after.planRevision
     && before.scopeId === after.scopeId };
 }

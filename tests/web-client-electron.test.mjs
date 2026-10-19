@@ -29,7 +29,18 @@ function lines(child) {
 
 test('remote web client in Chromium: pairing on the Mac, the same UI and page, window requests stay on the device',
   {skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:180000},async t=>{
-  const root=await fsp.mkdtemp(path.join(os.tmpdir(),'wp-web-client-'));t.after(()=>fsp.rm(root,{recursive:true,force:true}));
+  const root=await fsp.mkdtemp(path.join(os.tmpdir(),'wp-web-client-'));
+  let backend,browser,proxy,mac;
+  const stop=async(child,signal)=>{
+    if(!child||child.exitCode!==null||child.signalCode!==null)return;
+    await new Promise(resolve=>{child.once('exit',resolve);child.kill(signal);});
+  };
+  // Chromium still writes its profile during exit. Close every owner before removing it,
+  // including when an assertion fails; an early rm failure must not skip other cleanup.
+  t.after(async()=>{
+    await stop(browser,'SIGKILL');mac?.close();await proxy?.close();await stop(backend,'SIGTERM');
+    await fsp.rm(root,{recursive:true,force:true,maxRetries:3,retryDelay:100});
+  });
   const workspace=path.join(root,'alpha');
   await fsp.mkdir(path.join(workspace,'.harness/plans'),{recursive:true});await fsp.mkdir(path.join(workspace,'scripts'),{recursive:true});
   await fsp.writeFile(path.join(workspace,'scripts/workflow.mjs'),'// fixture');await fsp.writeFile(path.join(workspace,'.harness/workflow.json'),'{}');
@@ -40,21 +51,19 @@ test('remote web client in Chromium: pairing on the Mac, the same UI and page, w
   await new WorkspaceSessions(path.join(root,'workspaces.json')).select(workspace);
   const electron=(await import('electron')).default;
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
-  const backend=spawn(electron,['.','--backend-host','--backend-fixture-root='+root],{cwd:project,env,stdio:['pipe','pipe','pipe']});
-  t.after(()=>{if(backend.exitCode===null)backend.kill('SIGTERM');});
+  backend=spawn(electron,['.','--backend-host','--backend-fixture-root='+root],{cwd:project,env,stdio:['pipe','pipe','pipe']});
   const fromBackend=lines(backend);
   const ready=await fromBackend(value=>value.ready,'backend');
   backend.stdin.write(JSON.stringify({op:'remote-enable'})+'\n');
   const enabled=await fromBackend(value=>value.op==='remote-enable','remote enable');
   assert.ok(enabled.remote?.port,'the gateway listens after an explicit enable');
-  const proxy=await startServeProxy({targetPort:enabled.remote.port});t.after(()=>proxy.close());
+  proxy=await startServeProxy({targetPort:enabled.remote.port});
   // A Mac window of the same backend: it must not receive the device's window requests.
-  const mac=new BackendConnection({port:ready.port,token:ready.token});t.after(()=>mac.close());
+  mac=new BackendConnection({port:ready.port,token:ready.token});
   await mac.connect();const macCommands=[];
   mac.subscribe({onCommand:command=>macCommands.push(command.type)});
-  const browser=spawn(electron,[path.join(project,'tests/fixtures/web-client-browser.mjs'),`http://127.0.0.1:${proxy.port}/`],
+  browser=spawn(electron,[path.join(project,'tests/fixtures/web-client-browser.mjs'),`http://127.0.0.1:${proxy.port}/`],
     {cwd:project,env,stdio:['pipe','pipe','pipe']});
-  t.after(()=>{if(browser.exitCode===null)browser.kill('SIGKILL');});
   const fromBrowser=lines(browser);await fromBrowser(value=>value.ready,'browser');
   let id=0;
   const probe=async code=>{const request=++id;browser.stdin.write(JSON.stringify({op:'eval',id:request,code})+'\n');

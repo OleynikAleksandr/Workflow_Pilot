@@ -6,7 +6,6 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
   pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
-import { AUTOMATIC_DIALOGUE_ENABLED } from '../contracts/backend.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -83,8 +82,7 @@ const workspaceSetup = control.configureProjects({
   onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; },
 });
 const {runtime:sessionContextRuntime, cache:contextCache} = control.configureContext({getRuntime:()=>runtime,
-  prepareBootstrap:project=>AUTOMATIC_DIALOGUE_ENABLED&&['orchestrator','executor'].includes(project.role)
-    ?plugin.reserveParticipant(project.sessionId):null,
+  prepareBootstrap:project=>workflow.prepareBootstrap(project),
   loadFixture:smoke ? workspace=>runtime.loadContext(workspace) : null, onChange:()=>publish()});
 // Agent time: wall clock while ChatGPT shows its Stop control; each finished request is added to its own session.
 let agentTimer, pageState, conversationRecovery;
@@ -92,6 +90,7 @@ function observeManualConversation(state, record = liveSessions.visible) {
   return liveSessions.observeManualConversation(state, record);
 }
 const workflow = control.configureWorkflow({getController:()=>store.selected()?.external?null:controller,
+  getPlugin:()=>plugin,
   contextAvailable:()=>!store.selected()?.external&&!pageLoading&&!setupState&&!settingsState,
   available:()=>!store.selected()?.external&&!liveSessions?.paused&&!!controller&&!controller.composer.inFlight&&!pageLoading&&!setupState&&!settingsState
     &&workspaceHealth?.ready&&workspaceHealth.workspace===store.selected()?.workspace,
@@ -1067,7 +1066,7 @@ function registerIpc() {
     if (selected) { if(!project.external)controller.cancel(); nextNavigation(); }
     const generation = navigationId;
     try {
-      if (stopExecution) workflow.stopPlanExecution(input);
+      if (stopExecution) await workflow.stopPlanExecution(input);
       await store.setArchived(input, true, { stopExecution });
     }
     catch (error) { if (selected && navigationCurrent(generation)) await selectWorkspace(project.workspace, { resume: true }); throw error; }
@@ -1382,6 +1381,7 @@ async function start() {
       append:async()=>{throw error;},
     }));
     plugin=control.createPlugin({onChange:()=>publish(),communicationStore,
+      observe:workflow.observeParticipant,admit:workflow.admitParticipant,onCommunicationChange:workflow.communicationChanged,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;
   }

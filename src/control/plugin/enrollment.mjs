@@ -11,7 +11,19 @@ export const workflowRunId = target => 'work:'+hash(JSON.stringify([target.proje
 // A ticket authorizes only the first binding of a backend-selected local session.
 // Raw tickets live in the targeted bootstrap only; the WAL contains their hashes.
 export class ParticipantEnrollment {
-  constructor(communication, resolveTarget) {this.communication=communication;this.resolveTarget=resolveTarget;}
+  constructor(communication, resolveTarget, verifyTarget) {Object.assign(this,{communication,resolveTarget,verifyTarget});}
+  async validate(target) {
+    const current=this.verifyTarget?await this.verifyTarget(target.local_session_id):this.current(target);
+    check(same(current,target),'ASSIGNMENT_CHANGED','Проект или действующее назначение не подтверждены. Отправка остановлена.');
+    return current;
+  }
+  async validateInput(input) {
+    const run=this.communication.runs.get(input.run_id);
+    if(run?.mode!=='workflow'&&!input.target)return;
+    const target=input.target??run.members[input.participant_id]?.target??run.enrollments?.[input.ticket_hash]?.target;
+    if(target)await this.validate(target);
+    if(input.recipient_id&&run?.members[input.recipient_id])await this.validate(run.members[input.recipient_id].target);
+  }
   current(target) {
     const current=this.resolveTarget?.(target.local_session_id);
     check(same(current,target),'ASSIGNMENT_CHANGED','Назначение или проект изменились. Ожидайте актуальный стартовый контекст Workflow Pilot.');
@@ -23,17 +35,21 @@ export class ParticipantEnrollment {
     return this.communication.mutate('reserve',{run_id:workflowRunId(target),target,ticket_hash:hash(ticket)})
       .then(result=>({...result,enrollment_ticket:ticket}));
   }
-  reserveInTransaction(input) {
-    const c=this.communication,target=this.current(input.target);
-    let run=c.runs.get(input.run_id);
+  ensureRun(target) {
+    const c=this.communication,id=workflowRunId(target);
+    let run=c.runs.get(id);
     check(!run||run.mode==='workflow','MODE','Этот запуск не предназначен для назначений.');
     if(!run) {
       check(c.runs.size<100,'LIMIT','Достигнут лимит запусков связи.');
-      run={id:input.run_id,registry_version:2,mode:'workflow',project_id:target.project_id,
+      run={id,registry_version:2,mode:'workflow',project_id:target.project_id,
         origin_session_id:target.origin_session_id,members:{},enrollments:{},messages:[],events:[],probes:{},clientEvents:{},clientSequences:{}};
       c.runs.set(run.id,run);c.event(run,'backend.start');
     }
     check(run.project_id===target.project_id&&run.origin_session_id===target.origin_session_id,'BINDING','Запуск принадлежит другой сессии.');
+    return run;
+  }
+  reserveInTransaction(input) {
+    const c=this.communication,target=this.current(input.target),run=this.ensureRun(target);
     for(const [key,value] of Object.entries(run.enrollments))if(value.expires_at<=c.now()&&!value.participant_id)delete run.enrollments[key];
     check(Object.keys(run.enrollments).length<256,'LIMIT','Достигнут лимит приглашений запуска.');
     run.enrollments[input.ticket_hash]={target:structuredClone(target),expires_at:c.now()+30*60*1000,participant_id:null};
@@ -53,7 +69,7 @@ export class ParticipantEnrollment {
     const target=this.current(invitation.target);
     const previous=Object.values(run.members).find(member=>same(member.target,target));
     check(!previous||previous.identity===identity,'BINDING','Назначение уже связано с другим разговором.');
-    check(!Object.values(run.members).some(member=>member.identity===identity&&!same(member.target,target)),
+    check(![...c.runs.values()].filter(r=>r.mode==='workflow').some(r=>Object.values(r.members).some(member=>member.identity===identity&&!same(member.target,target))),
       'BINDING','Один разговор не может представлять разные назначения.');
     if(invitation.participant_id) {
       check(previous?.id===invitation.participant_id,'BINDING','Привязка приглашения изменилась.');

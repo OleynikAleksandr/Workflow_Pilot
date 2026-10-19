@@ -741,6 +741,14 @@ export class WorkspaceSessions {
     });
   }
 
+  async assignmentProof(sessionId) {
+    const child=this.data.projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));
+    const session=child?.sessions.find(s=>s.sessionId===sessionId);
+    const parent=this.data.projects.find(p=>p.workspace===session?.parentWorkspace&&!p.parentWorkspace);
+    if(!session?.assignmentId||!parent||!ownedExecutor(child,parent))return null;
+    return assignmentOwnership(parent,child.workspace,session.assignmentId,this.git);
+  }
+
   saveExecutorAutomation(workspace,sessionId,patch) {
     return this.mutate(data=>{
       const {session}=this.activeRecord(workspace,sessionId,data,{background:true});

@@ -34,7 +34,7 @@ export const BACKEND_OPERATIONS = Object.freeze({
 });
 
 // Enabled only when working notifications use the channel (T003).
-export const AUTOMATIC_DIALOGUE_ENABLED = false;
+export const AUTOMATIC_DIALOGUE_ENABLED = true;
 export const PLUGIN_ACTION_CLASS = Object.freeze({
   panel: 'ui-mutation', list: 'read', open: 'read', connect: 'ui-mutation',
   'communication.join':'ui-mutation', 'communication.bind':'ui-mutation',
@@ -43,6 +43,8 @@ export const PLUGIN_ACTION_CLASS = Object.freeze({
   'communication.wait':'ui-mutation', 'communication.claim':'ui-mutation', 'communication.verify':'ui-mutation',
   'communication.report':'ui-mutation', 'communication.status':'read', 'communication.journal':'read',
   'communication.telemetry':'ui-mutation', 'communication.export':'read', 'communication.recover':'read',
+  'communication.sync':'ui-mutation', 'communication.readMessage':'ui-mutation',
+  'communication.content':'read', 'communication.roster':'read',
   // The separate MCP executor channel is NOT an operation of the UI API.
   'mcp.context': 'agent-independent', 'mcp.tools': 'agent-independent',
 });

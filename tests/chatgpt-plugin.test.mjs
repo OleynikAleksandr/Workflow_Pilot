@@ -78,7 +78,7 @@ async function client(t,f){
 }
 async function eventually(check){for(let i=0;i<200;i++){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
 
-const communicationTools=['bind','claim','enable','export','join','journal','probe','read_message','recover','report','send_message','status','stop','telemetry','verify','wait'];
+const communicationTools=['bind','claim','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','verify','wait'];
 test('the real project projection reserves the published origin even though persistence omits planExecution',async t=>{
   const f=await fixture(t),workspace=path.join(f.directory,'Первый'),file=path.join(workspace,'.harness/plans/todo-plan.md');
   const write=async state=>fs.writeFile(file,'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify({schema_version:1,project_id:'Первый',project_name:'Первый',
@@ -99,7 +99,7 @@ test('the real project projection reserves the published origin even though pers
 test('real MCP panel enrolls an existing assignment using fresh host identity without an external session',async t=>{
   const f=await fixture(t),before=f.store.snapshot(),target={project_id:'fixture',local_session_id:'worker',
     origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};
-  f.plugin.communication.enrollment.resolveTarget=id=>id==='worker'?target:null;
+  f.plugin.communication.enrollment.resolveTarget=f.plugin.communication.enrollment.verifyTarget=id=>id==='worker'?target:null;
   const invitation=await f.plugin.communication.reserve(target);
   await bridge(t,f);const c=await client(t,f);
   const args={name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata};
@@ -113,11 +113,11 @@ test('real MCP panel enrolls an existing assignment using fresh host identity wi
 test('communication MCP contracts reject missing identity, wrong binding and stale protocol; Stop cancels probe',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const tools=(await c.listTools()).tools;
-  const appOnly=['bind','claim','enable','recover','report','stop','telemetry','verify','wait'];
+  const appOnly=['bind','claim','enable','recover','report','stop','sync','telemetry','verify','wait'];
   for(const suffix of communicationTools){const tool=tools.find(t=>t.name==='workflow_communication_'+suffix);
     assert.ok(tool);assert.equal(tool._meta.ui.resourceUri,undefined,'data operations cannot recreate UI');
     assert.deepEqual(tool._meta.ui.visibility,appOnly.includes(suffix)?['app']:['journal','status','export'].includes(suffix)?['app','model']:['model']);
-    assert.equal(tool.annotations.readOnlyHint,['journal','status','export','recover'].includes(suffix));
+    assert.equal(tool.annotations.readOnlyHint,['journal','status','export','recover','participants','read_context'].includes(suffix));
     assert.equal(tool.inputSchema.properties.ctx,undefined);
   }
   const call=(name,args,meta=metadata)=>c.callTool({name:'workflow_communication_'+name,arguments:args,_meta:meta});
@@ -187,7 +187,7 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
 
 test('workflow panel automatically binds its current assignment after late SDK and recovers a new instance without manual IDs',async t=>{
   const f=await fixture(t),target={project_id:'fixture',local_session_id:'worker',origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};
-  f.plugin.communication.enrollment.resolveTarget=id=>id==='worker'?target:null;
+  f.plugin.communication.enrollment.resolveTarget=f.plugin.communication.enrollment.verifyTarget=id=>id==='worker'?target:null;
   const invite=await f.plugin.communication.reserve(target);await bridge(t,f);const c=await client(t,f);
   await c.callTool({name:'workflow_communication_join',arguments:{run_id:'older-experiment',role:'E'},_meta:metadata});
   await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
@@ -211,7 +211,7 @@ test('workflow panel automatically binds its current assignment after late SDK a
 
 test('lost automatic bind response is recovered with bounded reads and no model call',async t=>{
   const f=await fixture(t),target={project_id:'fixture',local_session_id:'worker',origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};
-  f.plugin.communication.enrollment.resolveTarget=()=>target;
+  f.plugin.communication.enrollment.resolveTarget=f.plugin.communication.enrollment.verifyTarget=()=>target;
   const invite=await f.plugin.communication.reserve(target);await f.plugin.communication.enroll(invite.enrollment_ticket,metadata);
   await bridge(t,f);const c=await client(t,f);let dropped=false;
   const ui=await communicationHtml(t,c,{toolReply:async(request,result)=>{
@@ -220,6 +220,41 @@ test('lost automatic bind response is recovered with bounded reads and no model 
   await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
   assert.equal(ui.calls.filter(c=>c==='workflow_communication_bind').length,2);
   assert.equal(ui.messages.length,0);assert.equal(ui.$('enable').hidden,true);
+});
+
+test('real SDK working channel starts automatically, reads full context and waits for the completed reply',async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;
+  const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
+  const e={...o,local_session_id:'worker',role:'E',assignment_id:'assignment',task_id:'T001'};
+  comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?o:id==='worker'?e:null;
+  const page={canSend:false,stopped:false,busy:true,documentId:'doc',turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1};
+  comm.workflow.observe=()=>page;comm.workflow.admit=async()=>page.canSend;comm.waitMs=30;
+  const invitation=await comm.reserve(e);await bridge(t,f);const c=await client(t,f);
+  await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata});
+  const contexts=[];
+  const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?30:ms,onMessage:async request=>{
+    const args=notificationArgs(request);assert.deepEqual(Object.keys(args),['message_id']);
+    const message=await modelTool(c,metadata,'read_message',args);let text='';
+    for(let part=0,total=1;part<total;part++){
+      const content=await modelTool(c,metadata,'read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
+      text+=content.text;total=content.total;
+    }contexts.push(text);
+  }});
+  await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
+  await comm.workflow.grant(o);
+  const text='Рабочее поручение — полный контекст ✓\n'.repeat(500);
+  await comm.workflow.enqueue(e,{key:'first',kind:'assignment-start',text});
+  await comm.workflow.enqueue(e,{key:'second',kind:'continue',text:'Второе поручение'});
+  await delay(100);assert.equal(ui.messages.length,0,'bootstrap still busy');
+  Object.assign(page,{canSend:true,stopped:true,busy:false});comm.observeSession('worker');
+  await eventually(()=>contexts.length===1);assert.equal(contexts[0],text);
+  await delay(80);assert.equal(ui.messages.length,1,'SDK/read alone cannot release the next turn');
+  Object.assign(page,{turnId:'a1',userTurnId:'u1',assistantRevision:2,userMessagesRevision:2});comm.observeSession('worker');
+  await eventually(()=>contexts.length===2);assert.equal(contexts[1],'Второе поручение');
+  assert.equal(ui.calls.includes('workflow_communication_enable'),false);
+  assert.equal(ui.calls.includes('workflow_communication_join'),false);assert.equal(ui.maxWaits,1);
+  ui.$('stop').click();await eventually(async()=>!(comm.runs.get(invitation.run_id).grant.active));
+  await delay(80);assert.equal(ui.messages.length,2);assert.deepEqual(ui.errors,[]);
 });
 
 test('real staged SDK -> Python MCP -> bridge -> Control: bind/enable/probe/wait/claim/verify/Send/report/read',async t=>{

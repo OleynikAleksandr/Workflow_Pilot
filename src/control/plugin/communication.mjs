@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {ParticipantEnrollment} from './enrollment.mjs';
+import {WorkflowChannel} from './workflow-channel.mjs';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS} from '../../contracts/backend.mjs';
 export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
@@ -14,7 +15,7 @@ export function communicationIdentity(metadata) {
     .map(key=>typeof metadata[key]==='string' && metadata[key].length<=512?metadata[key]:''))).digest('hex');
 }
 
-const MUTATIONS=['join','bind','enable','stop','send','probe','claim','verify','report','read','telemetry'];
+const MUTATIONS=['join','bind','enable','stop','send','probe','claim','verify','report','read','telemetry','sync'];
 const SECRET=/(?:Bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{12,}|(?:authorization|cookie|api[_-]?key|password|(?:access[_-]?)?token)\s*[:=]\s*\S+|https?:\/\/[^\s/:]+:[^\s/@]+@)/i;
 const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','report.failed',
   'stop.local','stop.failed','host.handshake','host.context_changed','visibility.changed','panel.pagehide','panel.dispose','panel.mount','panel.resume',
@@ -25,11 +26,12 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null}={}) {
-    Object.assign(this,{now,makeId,waitMs,store});
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,onChange=()=>{}}={}) {
+    Object.assign(this,{now,makeId,waitMs,store,onChange});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
-    this.enrollment=new ParticipantEnrollment(this,resolveTarget);
+    this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
+    this.workflow=new WorkflowChannel(this,{observe,admit});
     this.ready=this.restore();
   }
   async restore() {
@@ -38,6 +40,7 @@ export class PluginCommunication {
     if(loaded.issues.length){this.critical=loaded.issues[0].error_code;return;}
     for(const run of this.runs.values()) {
       const offset=run.events.length;
+      if(run.grant){run.grant.active=false;run.grant.phase='paused';run.grant.reason='restart';run.grant.generation++;}
       for(const member of Object.values(run.members)){member.stopped=true;member.generation++;}
       for(const message of run.messages) {
         if(message.delivery==='claimed'){message.delivery='unknown';this.event(run,'send.unknown',{message_id:message.message_id});}
@@ -58,13 +61,15 @@ export class PluginCommunication {
       await this.ready;
       requireValue(!this.disposed,'CLOSED','Служба связи закрывается.');
       requireValue(!this.critical,'STORE_BLOCKED','Критическая ошибка журнала. Отправка заблокирована.');
+      await this.enrollment.validateInput(input);
       const old=this.runs.get(input.run_id),panels=structuredClone(this.panels);
       if(old)this.runs.set(input.run_id,structuredClone(old));
       const offset=old?.events.length??0;
       try {
         if(old)this.expire(this.runs.get(input.run_id));
-        const result=this['_'+name](input),run=this.runs.get(input.run_id);
-        if(run){await this.persist(run,offset);this.syncTimers(run);this.wake(run,run.events.slice(offset));}
+        const result=await this['_'+name](input),run=this.runs.get(input.run_id);
+        if(run){await this.persist(run,offset);this.syncTimers(run);this.wake(run,run.events.slice(offset));
+          if(run.events.length>offset&&run.mode==='workflow')queueMicrotask(()=>this.onChange(run.id));}
         return structuredClone(result);
       }catch(error) {
         this.panels=panels;if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
@@ -114,7 +119,33 @@ export class PluginCommunication {
   reserve(target){return this.enrollment.reserve(target);}
   enroll(ticket,metadata){return this.enrollment.enroll(ticket,metadata);}
   _reserve(input){return this.enrollment.reserveInTransaction(input);}
-  _enroll(input){return this.enrollment.enrollInTransaction(input,communicationIdentity(input.metadata));}
+  _enroll(input){const result=this.enrollment.enrollInTransaction(input,communicationIdentity(input.metadata));
+    const run=this.run(result),member=Object.values(run.members).find(m=>m.id===result.participant_id);
+    this.workflow.attach(run,member);return result;}
+  _grant(input){return this.workflow._grant(input);}
+  _enqueue(input){return this.workflow._enqueue(input);}
+  _sync(input){return this.workflow.sync(input);}
+  _observed(input){const run=this.run(input);for(const member of Object.values(run.members))this.workflow.observed(run,member);return {};}
+  observeSession(sessionId){for(const run of this.runs.values())if(run.mode==='workflow'&&Object.values(run.members).some(m=>m.target.local_session_id===sessionId)){
+    void this.mutate('observed',{run_id:run.id}).catch(()=>{});
+    for(const waiter of this.waiters.values())if(waiter.runId===run.id)waiter.wake('event');
+  }}
+  async modelInput(input){
+    if(input.run_id&&input.participant_id)return input;
+    await this.ready;await this.tail;const identity=communicationIdentity(input.metadata);
+    const matches=[];
+    for(const run of this.runs.values())if(run.mode==='workflow')for(const member of Object.values(run.members))
+      if(member.identity===identity&&(!input.message_id||run.messages.some(m=>m.message_id===input.message_id&&m.recipient_id===member.id)))matches.push({run,member});
+    requireValue(matches.length===1,'BINDING','Рабочее назначение текущего разговора не найдено.');
+    return {...input,run_id:matches[0].run.id,participant_id:matches[0].member.id};
+  }
+  async readMessage(input){return this.read(await this.modelInput(input));}
+  async content(input){return this.workflow.content(await this.modelInput(input));}
+  async roster(input){input=await this.modelInput(input);await this.enrollment.validateInput(input);const {run,member}=this.member(input),participants=[];
+    for(const candidate of Object.values(run.members))if(candidate.id===member.id||member.role==='O'){
+      try{await this.enrollment.validate(candidate.target);participants.push(this.enrollment.publicMember(run,candidate));}catch{}
+    }return {participants,permission:this.workflow.state(run)};
+  }
   panel(input) {
     const context=this.member(input),panel=this.panels.get(input.panel_instance_id);
     requireValue(panel && panel.runId===context.run.id && panel.memberId===context.member.id
@@ -124,7 +155,8 @@ export class PluginCommunication {
     return {...context,panel};
   }
   allowed(input) {
-    const context=this.panel(input),{member,panel}=context;
+    const context=this.panel(input),{run,member,panel}=context;
+    if(run.mode==='workflow')requireValue(this.workflow.permitted(run,member)&&panel.messageSupported,'STOPPED','План приостановлен или SDK недоступен.');
     requireValue(!member.stopped && panel.expiresAt>this.now() && panel.generation===member.generation
       && input.permission_generation===member.generation,'STOPPED','Связь остановлена или срок разрешения истёк.');
     return context;
@@ -158,6 +190,7 @@ export class PluginCommunication {
     requireValue(!previous || previous.runId===run.id && previous.memberId===member.id,'BINDING','Панель уже связана с другим участником.');
     if(!previous)this.panels.set(input.panel_instance_id,{runId:run.id,memberId:member.id,identity:member.identity,generation:0,expiresAt:0});
     this.panels.get(input.panel_instance_id).messageSupported=input.message_supported===true;
+    if(run.mode==='workflow'){const panel=this.panels.get(input.panel_instance_id);panel.generation=member.generation;panel.expiresAt=this.now()+60000;}
     this.event(run,'binding.confirmed',{participant_id:member.id,panel_instance_id:input.panel_instance_id});
     return this._status(input);
   }
@@ -166,12 +199,12 @@ export class PluginCommunication {
     return {run_id:run.id,participant_id:member.id,role:member.role,conversation_key:member.identity,
       ...(run.mode==='workflow'?this.enrollment.publicMember(run,member):{}),
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
-      permission_generation:member.generation,stopped:member.stopped||expiresAt<=this.now(),
-      ...(run.mode==='workflow'?{channel_ready:[...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.messageSupported)}:{}),
+      permission_generation:member.generation,stopped:run.mode==='workflow'?!this.workflow.permitted(run,member):member.stopped||expiresAt<=this.now(),
+      ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:[...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.messageSupported&&p.expiresAt>this.now())}:{}),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:expiresAt,
       seq:run.events.length,messages:run.messages.filter(m=>m.recipient_id===member.id||m.sender_id===member.id)
-        .map(({idempotency_key,...message})=>structuredClone(message))};
+        .map(({idempotency_key,fingerprint,...message})=>structuredClone(message))};
   }
   _enable(input) {
     const {run,member,panel}=this.panel(input);
@@ -186,6 +219,7 @@ export class PluginCommunication {
   _stop(input) {
     const {run,member,panel}=this.panel(input),scope=input.scope??'participant';
     requireValue(['participant','panel'].includes(scope),'INPUT','Некорректная область остановки.');
+    if(run.mode==='workflow')return this.workflow.stop(input);
     // Only an explicit user Stop is global. A retiring instance may not revoke
     // a newer instance's permission, including an enable response arriving late.
     if(member.stopped || scope==='panel' && (panel.generation!==member.generation || input.permission_generation!==member.generation))
@@ -206,6 +240,11 @@ export class PluginCommunication {
     }
   }
   expire(run) {
+    if(run.mode==='workflow'){
+      for(const message of run.messages)if(message.delivery==='claimed'&&this.now()-message.claimed_at>35000){
+        message.delivery='unknown';this.event(run,'send.unknown',{message_id:message.message_id});
+      }return;
+    }
     for(const member of Object.values(run.members))if(!member.stopped&&this.deadline(run,member)<=this.now()){
       member.stopped=true;member.generation++;this.cancelProbes(run,member);
       this.event(run,'permission.expired',{participant_id:member.id,permission_generation:member.generation});
@@ -213,6 +252,7 @@ export class PluginCommunication {
   }
   _send(input) {
     const {run,member}=this.member(input),recipient=Object.values(run.members).find(m=>m.id===input.recipient_id);
+    requireValue(run.mode!=='workflow','MODE','Рабочие вопросы и решения передавайте один раз через task:block и assignment:message Workflow Kit.');
     requireValue(recipient && recipient!==member && ['question','answer','result'].includes(input.kind),'INPUT','Некорректный адресат или вид сообщения.');
     requireValue(typeof input.body==='string' && input.body.trim() && Buffer.byteLength(input.body)<=4096
       && identifier(input.idempotency_key),'INPUT','Сообщение должно содержать до 4096 байт и ключ идемпотентности.');
@@ -283,24 +323,26 @@ export class PluginCommunication {
     const {run,panel}=this.allowed(input);
     requireValue(Number.isSafeInteger(input.after_seq)&&input.after_seq>=0&&input.after_seq<=run.events.length,'CURSOR','Некорректный курсор журнала.');
     const value=this.waitResult(input);if(value.message_id||run.events.length>input.after_seq)return {immediate:true};
-    this.event(run,'wait.started',{participant_id:input.participant_id,panel_instance_id:input.panel_instance_id});
+    if(run.mode!=='workflow')this.event(run,'wait.started',{participant_id:input.participant_id,panel_instance_id:input.panel_instance_id});
     return {seq:run.events.length,expires_at:panel.expiresAt};
   }
   _waitEnd(input) {
     const {run,member}=this.panel(input);
-    this.event(run,'wait.'+({timeout:'timeout',cancel:'cancel',event:'event'}[input.reason]??'cancel'),{participant_id:member.id,panel_instance_id:input.panel_instance_id});
+    if(run.mode!=='workflow')this.event(run,'wait.'+({timeout:'timeout',cancel:'cancel',event:'event'}[input.reason]??'cancel'),{participant_id:member.id,panel_instance_id:input.panel_instance_id});
     return {};
   }
   waitResult(input) {
-    const {run,member}=this.member(input),pending=run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
+    const {run,member}=this.member(input),pending=run.mode==='workflow'?this.workflow.pending(run,member):run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
     const end=Math.min(input.after_seq+100,run.events.length),events=this.visibleEvents(run,member,run.events.slice(input.after_seq,end));
     return {message_id:pending?.message_id??null,events,seq:end,
       stopped:member.stopped||member.generation!==input.permission_generation,critical_error:this.critical};
   }
-  _claim(input) {
+  async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read,'CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
+    if(run.mode==='workflow'&&!await this.workflow.canClaim(run,member,message))return {deferred:true};
     message.delivery='claimed';message.delivery_attempt_id=this.makeId();message.panel_instance_id=input.panel_instance_id;
+    if(run.mode==='workflow')message.claimed_at=this.now();
     message.permission_generation=member.generation;
     this.event(run,'claim.granted',{participant_id:member.id,message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
     return {message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id};
@@ -312,10 +354,14 @@ export class PluginCommunication {
       && message.delivery_attempt_id===input.delivery_attempt_id,'CLAIM_DENIED','Нет подходящей попытки доставки.');
     return {...context,message};
   }
-  _verify(input) {
+  async _verify(input) {
     const {run,member,message}=this.attempt(input);
     requireValue(message.delivery==='claimed' && !message.intent && message.permission_generation===member.generation,
       'CLAIM_DENIED','Намерение отправки уже было подтверждено. Повтор запрещён.');
+    if(run.mode==='workflow'){
+      requireValue(await this.workflow.admit(member.target)&&this.workflow.observe(member.target).canSend,'BUSY','Адресат занят. Попытка оставлена без повтора; требуется проверка.');
+      this.workflow.begin(run,member,message);
+    }
     message.intent=true;
     this.event(run,'binding.verified',{participant_id:member.id,message_id:message.message_id,conversation_key:member.identity});
     this.event(run,'send.intent',{participant_id:member.id,message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
@@ -327,6 +373,7 @@ export class PluginCommunication {
     requireValue(message.delivery==='claimed'||message.delivery===input.outcome,'CONFLICT','Результат доставки уже записан.');
     message.delivery=input.outcome;
     this.event(run,'send.report',{message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id,outcome:input.outcome});
+    if(run.mode==='workflow')this.workflow.observed(run,run.members[message.recipient_id]);
     return {delivery:message.delivery,read:message.read};
   }
   _read(input) {
@@ -335,7 +382,9 @@ export class PluginCommunication {
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id});}
     this.event(run,'read.returned',{participant_id:member.id,message_id:message.message_id});
-    const {idempotency_key,...value}=message;return structuredClone(value);
+    if(run.mode==='workflow')this.workflow.observed(run,member);
+    const {idempotency_key,fingerprint,...value}=message;
+    return {...structuredClone(value),...(run.mode==='workflow'?{instructions:'Прочитайте ВСЕ части workflow_communication_read_context с message_id, context_ref и part от 0 до total-1. Затем выполните поручение в рамках роли и Workflow Kit. Не повторяйте событие через send_message.'}:{})};
   }
   _telemetry(input) {
     const {run}=this.panel(input),data=input.event;
@@ -359,12 +408,12 @@ export class PluginCommunication {
       panel_instance_id:input.panel_instance_id,participant_id:input.participant_id});
     return {seq:run.events.length};
   }
-  async status(input){await this.ready;await this.tail;return structuredClone(this._status(input));}
+  async status(input){await this.ready;await this.tail;await this.enrollment.validateInput(input);return structuredClone(this._status(input));}
   async recover(input){
     await this.ready;await this.tail;const identity=communicationIdentity(input.metadata),participants=[];
     for(const run of this.runs.values())for(const member of Object.values(run.members))if(member.identity===identity) {
       if(run.mode==='workflow') {
-        try{this.enrollment.current(member.target);}catch{continue;}
+        try{await this.enrollment.validate(member.target);}catch{continue;}
         participants.push(this.enrollment.publicMember(run,member));
       }else participants.push({run_id:run.id,participant_id:member.id,role:member.role});
     }
@@ -377,9 +426,11 @@ export class PluginCommunication {
       ||e.local_session_id===member.target.local_session_id||e.event_type.startsWith('backend.'));
   }
   async journal(input){await this.ready;await this.tail;const {run,member}=this.member(input);
+    await this.enrollment.validateInput(input);
     const after=input.after_seq??0;requireValue(Number.isSafeInteger(after)&&after>=0&&after<=run.events.length,'CURSOR','Некорректный курсор.');
     return {events:structuredClone(this.visibleEvents(run,member,run.events.slice(after,after+100))),seq:Math.min(after+100,run.events.length),total_seq:run.events.length,critical_error:this.critical};}
   async export(input){await this.ready;await this.tail;const {run,member}=this.member(input);
+    await this.enrollment.validateInput(input);
     const after=input.after_seq??0,through=input.through_seq??run.events.length;
     requireValue(Number.isSafeInteger(after)&&Number.isSafeInteger(through)&&after>=0&&after<=through&&through<=run.events.length,'CURSOR','Некорректные границы экспорта.');
     const next=Math.min(after+100,through),events=this.visibleEvents(run,member,run.events.slice(after,next));

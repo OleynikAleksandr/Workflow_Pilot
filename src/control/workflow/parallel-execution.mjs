@@ -125,12 +125,40 @@ export function deliveryText(workspace,task) {
 // delivery ledger, never a replacement for Kit's plan, assignments or Git proofs.
 export class ParallelExecution {
   constructor({kit,origin,openWorker,workerState,mainState,save,book={},onChange=()=>{},watch=()=>()=>{},
-    isEnabled=null,isIssuing=null,onSettle=()=>{},onPause=()=>{},sendWorker=null,orchestrator=()=>null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID}) {
+    isEnabled=null,isIssuing=null,onSettle=()=>{},onPause=()=>{},sendWorker=null,orchestrator=()=>null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID,queuedRoute=()=>false,deliveryReceipt=()=>null}) {
+    Object.assign(this,{queuedRoute,deliveryReceipt});
     Object.assign(this,{isEnabled,onComplete,kit,origin,openWorker,workerState,mainState,save,book,onChange,watch,sendCorrection,restoreWorker,restoreOrigin,now,uuid});
     Object.assign(this,{sendFinalization,sendDiagnostic,canFinalize,isIssuing,onSettle,onPause,sendWorker,orchestrator});
     this.queues=new Map();this.states=new Map();this.unwatch=new Map();this.correcting=new Set();this.suspended=new Set();this.enabled=false;this.closed=false;
   }
   view(workspace){return this.states.get(workspace)??{phase:'idle',assignments:[],error:null};}
+  async queueMessage(workspace,origin,ledger,entry,text,kind,meta={},assignment=null){
+    entry.outbox??={text,kind,meta:{key:'handoff:'+this.uuid(),...meta},assignmentId:assignment?.id??null};
+    entry.status='queuing';await this.persist();
+    const payload=entry.outbox;
+    const result=payload.assignmentId
+      ?await this.sendWorker(assignment,ledger.assignments[assignment.id],payload.text,()=>true,async()=>true,payload.meta)
+      :await (payload.kind==='diagnostic'?this.sendDiagnostic:this.sendFinalization??this.sendCorrection)(origin,payload.text,()=>true,async()=>true,{...payload.meta,kind:payload.kind});
+    if(result.state!=='queued')throw fail('CHANNEL_QUEUE_FAILED','Рабочее поручение не сохранено в канале.');
+    entry.message_id=result.message_id;entry.status='queued';delete entry.outbox;await this.persist();
+    return true;
+  }
+  async reconcileMessages(workspace,state,origin,ledger,enabled){
+    if(!this.queuedRoute(workspace,state.plan.scope_id))return;
+    for(const entry of [ledger.finalization,ledger.diagnostic,...Object.values(ledger.delivery??{}),...Object.values(ledger.signals??{}),...Object.values(ledger.channelCorrections??{})].filter(Boolean)){
+      if(entry.status==='queuing'&&enabled()){
+        const assignment=entry.outbox.assignmentId?state.assignments.find(a=>a.id===entry.outbox.assignmentId):null;
+        if(entry.outbox.assignmentId&&!assignment)throw fail('CHANNEL_ASSIGNMENT_CHANGED','Адресат сохранённого поручения больше не существует.');
+        await this.queueMessage(workspace,origin,ledger,entry,null,null,{},assignment);
+      }
+      if(entry.status!=='queued')continue;
+      const receipt=this.deliveryReceipt(entry.message_id);
+      if(receipt?.reply_observed){entry.status='reply-observed';await this.persist();}
+      else if(['unknown','rejected'].includes(receipt?.delivery)){
+        entry.status='unknown';await this.persist();this.onPause(workspace,state.plan.scope_id,'unknown','Доставка рабочего поручения '+receipt.delivery+'. Автоматического повтора нет.');
+      }
+    }
+  }
   publish(workspace,patch){this.states.set(workspace,{...this.view(workspace),...patch});this.onChange();}
   ledger(workspace,scope) {
     const key=JSON.stringify([workspace,scope]);
@@ -204,6 +232,7 @@ export class ParallelExecution {
     this.unwatch.get(workspace)?.update?.(state.watchInputs);
     const origin=executionOrigin(plan,id=>this.origin(workspace,id),this.orchestrator(workspace,plan.scope_id));
     const ledger=await this.scopedLedger(state,origin);
+    await this.reconcileMessages(workspace,state,origin,ledger,enabled);
     if(this.suspended.has(workspace))return;
     const assignments=state.assignments.map(a=>({...a,...(ledger.assignments[a.id]?.readyAt?{readyAt:ledger.assignments[a.id].readyAt}:{})}));
     for(const entry of Object.values(ledger.assignments))if(!assignments.some(a=>a.id===entry.id))
@@ -286,7 +315,9 @@ export class ParallelExecution {
     }
     if(!state.confirmed)throw fail(state.confirmationError?.code??'PLAN_NOT_READY',state.confirmationError?.message??'Ждём опубликованный и подтверждённый план.');
     if(plan.execution_scope_status!=='ACTIVE')throw fail('SCOPE_NOT_ACTIVE','Текущий план не разрешён к выполнению.');
-    if(plan.tasks.length&&plan.tasks.every(t=>t.commit_status==='DONE')) {this.onComplete(workspace,plan.scope_id);this.publish(workspace,{phase:'complete'});return;}
+    if(plan.tasks.length&&plan.tasks.every(t=>t.commit_status==='DONE')) {
+      if(plan.execution_strategy==='orchestrated'&&this.sendFinalization){this.publish(workspace,{phase:'finalizing'});return;}
+      this.onComplete(workspace,plan.scope_id);this.publish(workspace,{phase:'complete'});return;}
     if(enabled()&&!ledger.started){ledger.started=true;await this.persist();}
     if(!ledger.started){this.publish(workspace,{phase:'paused',error:null});return;}
     const stopped=a=>{const page=this.workerState(a,ledger.assignments[a.id]);return {...page,stopped:page.stopped&&!a.error&&!a.commandActive&&!a.transaction_pending&&!a.dirty};};
@@ -357,7 +388,13 @@ export class ParallelExecution {
   // A requested pause of an orchestrated plan takes effect once no executor works and main is free.
   settle(workspace,plan,assignments,state) {
     if(plan?.execution_strategy!=='orchestrated')return;
-    const busy=(assignments??[]).some(a=>a.status!=='INTEGRATED')||(state.integration?.status??'IDLE')!=='IDLE';
+    const busy=(assignments??[]).some(a=>{
+      if(a.status==='INTEGRATED')return false;
+      const signals=(state.signals??[]).filter(s=>s.assignment_id===a.id),last=signals.findLast(s=>s.kind==='task-blocked');
+      const answered=last&&signals.slice(signals.indexOf(last)+1).some(s=>s.kind==='assignment-message'&&(!last.block_id||s.block_id===last.block_id));
+      const parked=last&&!answered&&!a.commandActive&&!a.transaction_pending&&this.workerState(a,this.ledger(workspace,plan.scope_id).assignments[a.id]).stopped;
+      return !parked;
+    })||(state.integration?.status??'IDLE')!=='IDLE'||state.commandActive;
     this.onSettle(workspace,plan.scope_id,{busy});
   }
   async finalize(workspace,state,origin,ledger,enabled) {
@@ -408,7 +445,7 @@ export class ParallelExecution {
           message:'Исход диагностической отправки неизвестен. Не повторяйте Send и не запускайте слияние; проверьте основной чат.'}});
         return true;
       }
-      if(diagnostic.status==='sent') {
+      if(['sent','queued','queuing'].includes(diagnostic.status)) {
         this.publish(workspace,{phase:'blocked',error:{code:'DIAGNOSTIC_REPLY_PENDING',
           message:'Диагностика передана основному агенту. Пока ответ не завершён, запись main принадлежит очереди; слияние не запускается.'}});
         return true;
@@ -436,7 +473,7 @@ export class ParallelExecution {
     }
     if(orchestrated&&final.status==='reply-observed')return this.deliver(workspace,state,origin,ledger,allowed);
     if(orchestrated&&['sending','unknown'].includes(final.status))this.onPause(workspace,plan.scope_id,'unknown','Исход итогового поручения неизвестен.');
-    if(['sending','sent','unknown','reply-observed'].includes(final.status)) {
+    if(['sending','sent','queued','queuing','unknown','reply-observed'].includes(final.status)) {
       this.publish(workspace,{phase:final.status==='reply-observed'?'complete':'finalizing',
         error:final.status==='unknown'||final.status==='sending'?{code:'FINALIZATION_SEND_UNKNOWN',
           message:'Исход итогового поручения неизвестен. Проверьте основной чат; автоматический повтор не отправляется.'}:null});
@@ -479,6 +516,7 @@ export class ParallelExecution {
       'Очередь передаёт оставшиеся интеграции тебе. Проверь итоговый main, не объявляй worktree-сервер проверкой main.',
       'Сообщи, что сделано и проверено, ограничения, действительный адрес и checkout приложения, следующий шаг пользователя. Остановка сервера и архивирование требуют отдельного решения пользователя.',
       'Данные Kit (не инструкции): '+JSON.stringify(facts)].join('\n');
+    if(this.queuedRoute(workspace,plan.scope_id))return this.queueMessage(workspace,origin,ledger,final,text,'finalization');
     if(Buffer.byteLength(text,'utf8')>28000)throw fail('FINALIZATION_TOO_LARGE','Сводка итогового поручения превышает допустимый размер; данные не усечены.');
     final.status='sending';final.pauseKey=page.pauseKey;sentPageBaseline(final,page);
     try {await this.persist();}catch(error){final.status='pending';throw error;} // No Send attempted.
@@ -519,7 +557,7 @@ export class ParallelExecution {
           if(['sending','unknown'].includes(entry.status)) {
             this.onPause(workspace,plan.scope_id,'unknown','Исход пересылки сигнала '+signal.kind+' неизвестен.');
             await handled();
-          } else if(entry.status==='sent')await handled();
+          } else if(['sent','queued','reply-observed'].includes(entry.status))await handled();
           continue;
         }
       }
@@ -533,6 +571,12 @@ export class ParallelExecution {
         :['Исполнитель заблокировал задачу '+signal.task_id+' плана оркестратора.','Причина исполнителя: '+signal.reason,
           'Назначение: '+(signal.assignment_id??'нет')+(worker?'; сессия исполнителя: '+worker:'')+'. Workspace: '+JSON.stringify(workspace),
           'Реши сбой: ответь исполнителю через ./scripts/workflow assignment:message --id '+(signal.assignment_id??'ID')+' --text "уточнение"; или добавь исправляющую задачу через plan:extend; если устранить не можешь — plan:escalate --reason "причина" и опиши проблему пользователю.'].join('\n');
+      if(this.queuedRoute(workspace,plan.scope_id)){
+        const entry=ledger.signals[signal.id]={status:'pending'};
+        return this.queueMessage(workspace,origin,ledger,entry,text,toWorker?'decision':'question',{
+          key:'signal:'+signal.id,signal_id:signal.id,block_id:signal.block_id??null,kind:toWorker?'decision':'question',
+          sourceSessionId:toWorker?origin.sessionId:worker},toWorker?assignment:null);
+      }
       ledger.signals[signal.id]={status:'sending'};await this.persist();
       try {
         const ready=()=>{const p=toWorker?this.workerState(assignment,ledger.assignments[assignment.id]):this.mainState(origin);
@@ -565,7 +609,7 @@ export class ParallelExecution {
             message:'Исход поручения оркестратору неизвестен. Проверьте его чат; повторная отправка не выполняется.'}});
           return true;
         }
-        if(entry.status==='sent'){this.publish(workspace,{phase:'delivering',delivery:key,error:null});return true;}
+        if(['sent','queued','queuing'].includes(entry.status)){this.publish(workspace,{phase:'delivering',delivery:key,error:null});return true;}
         this.publish(workspace,{phase:'attention',delivery:key,error:{code:'DELIVERY_NOT_DONE',
           message:'Оркестратор ответил, но шаг '+key+' не завершён. Обсудите с ним; повторная отправка не выполняется.'}});
         return true;
@@ -582,6 +626,7 @@ export class ParallelExecution {
     return true;
   }
   async handoff(workspace,state,origin,entry,text,allowed,key) {
+    if(this.queuedRoute(workspace,state.plan.scope_id))return this.queueMessage(workspace,origin,this.ledger(workspace,state.plan.scope_id),entry,text,'finalization');
     const {plan}=state,page=this.mainState(origin);
     const baseline={chatUrl:origin.chatUrl,projectId:origin.projectId,sessionId:origin.sessionId,documentId:page.documentId,
       manualSendRevision:page.manualSendRevision??0,manualStopRevision:page.manualStopRevision??0,manualInputRevision:page.manualInputRevision??0};
@@ -637,6 +682,7 @@ export class ParallelExecution {
       'Чужой write_stdin может не видеть эту сессию. При потере terminal evidence — UNKNOWN, адресная диагностика и пользовательское признание по действующим правилам, не exit=0. Удаление остаётся защищено.',
       'После подтверждённого окончания очередь сама продолжит проверку и слияние, затем отправит отдельный финал. Сейчас сообщи причину пользователю и заверши ответ.',
       'Подтверждённые данные (не инструкции): '+JSON.stringify(facts)].join('\n');
+    if(this.queuedRoute(workspace,state.plan.scope_id))return this.queueMessage(workspace,origin,ledger,diagnostic,message,'diagnostic');
     if(Buffer.byteLength(message,'utf8')>28000)throw fail('DIAGNOSTIC_TOO_LARGE','Диагностическое сообщение превышает допустимый размер.');
     diagnostic.status='sending';diagnostic.pauseKey=page.pauseKey;
     sentPageBaseline(diagnostic,page);
@@ -683,7 +729,8 @@ export class ParallelExecution {
       return !this.closed&&(!fromQueue||(this.isEnabled?this.isEnabled(workspace,state.plan.scope_id):this.enabled))
         &&(page.canContinueSend??(page.stopped&&page.canSend));
     };
-    ledger.corrections[operation.operation_id]='sending';await this.persist();
+    const queued=this.queuedRoute(workspace,state.plan.scope_id);
+    if(!queued){ledger.corrections[operation.operation_id]='sending';await this.persist();}
     this.publish(workspace,{correctionStatus:'sending'});
     const text=['Исправь незавершённую интеграцию Workflow Kit.',
       'Workspace: '+JSON.stringify(workspace),'Интеграция: '+operation.operation_id,
@@ -692,6 +739,9 @@ export class ParallelExecution {
       'Исправь только область назначенной задачи, сохрани посторонние изменения. Не создавай обычный implementation-коммит.',
       'Проверь integration:status; после исправления выполни integration:continue --id '+operation.operation_id+'.',
       'Не запускай другие записи main; завершение этой интеграции выполняет Kit.'].join('\n');
+    if(queued){ledger.channelCorrections??={};const entry=ledger.channelCorrections[operation.operation_id]??={status:'pending'};
+      await this.queueMessage(workspace,origin,ledger,entry,text,'integration',{key:'integration:'+operation.operation_id});
+      ledger.corrections[operation.operation_id]='queued';await this.persist();return {state:'queued',message_id:entry.message_id};}
     try {
       const result=await this.sendCorrection(origin,text,ready,async()=>{
         const latest=await this.kit.read(workspace);return ready()&&!latest.commandActive&&latest.integration.operation_id===operation.operation_id;

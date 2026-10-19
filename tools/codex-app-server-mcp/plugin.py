@@ -122,14 +122,27 @@ def register_plugin(mcp, state_root: Path):
                            body: Annotated[str, Field(min_length=1, max_length=4096, description="Experiment text, at most 4096 UTF-8 bytes; never secrets.")],
                            idempotency_key: RunId, ctx: Context,
                            in_reply_to: Annotated[str | None, Field(max_length=128, description="Received message id; required for answer/result.")] = None) -> CallToolResult:
-        """Queue an addressed experiment message. Same key/content returns the same message; conflicting content is rejected. Queue acceptance is not SDK acceptance or model reading. End your turn after sending; never call app-only wait."""
+        """Legacy experiment only. Working plans reject this tool: use canonical Kit task:block or assignment:message once; backend delivers it. Same key/content returns the same message. Queue acceptance is not SDK acceptance or reading. Never call app-only wait."""
         return await communication("send", ctx, run_id=run_id, participant_id=participant_id, recipient_id=recipient_id,
                                    kind=kind, body=body, idempotency_key=idempotency_key, in_reply_to=in_reply_to)
 
     @mcp.tool(name="workflow_communication_read_message", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
-    async def read_message(run_id: RunId, participant_id: ParticipantId, message_id: MessageId, ctx: Context) -> CallToolResult:
+    async def read_message(message_id: MessageId, ctx: Context,
+                           run_id: Annotated[str | None, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$", description="Legacy run only; omit for automatically registered working plans.")] = None,
+                           participant_id: Annotated[str | None, Field(max_length=128, description="Legacy participant only; working plans derive it from host identity.")] = None) -> CallToolResult:
         """Read an addressed message and record its receipt. Identity must match the recipient. Reading is a mutation, separate from host acceptance, and never causes another notification. No UI resource is returned."""
-        return await communication("read", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id)
+        return await communication("readMessage", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id)
+
+    @mcp.tool(name="workflow_communication_read_context", annotations=READ, meta={"ui": {"visibility": ["model"]}})
+    async def read_context(message_id: MessageId, context_ref: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque context reference returned by read_message.")], ctx: Context,
+                           part: Annotated[int, Field(ge=0, description="Zero-based part; read through total-1.")] = 0) -> CallToolResult:
+        """Read the complete working instruction in numbered UTF-8 parts. Read every part from zero to total-1 before acting; no truncation. Fresh host identity and current assignment must match the addressed message. No UI or model turn is created."""
+        return await communication("content", ctx, message_id=message_id, context_ref=context_ref, part=part)
+
+    @mcp.tool(name="workflow_communication_participants", annotations=READ, meta={"ui": {"visibility": ["model"]}})
+    async def participants(ctx: Context) -> CallToolResult:
+        """Read current plan participants from verified host identity. Orchestrator sees active assignments; executor sees its own. No copied transport IDs, invitations, host metadata or worktree paths. Decisions use Kit assignment:message with the original block_id."""
+        return await communication("roster", ctx)
 
     @mcp.tool(name="workflow_communication_probe", annotations=LAUNCH, meta={"ui": {"visibility": ["model"]}})
     async def probe(run_id: RunId, participant_id: ParticipantId,
@@ -172,6 +185,11 @@ def register_plugin(mcp, state_root: Path):
     async def recover(ctx: Context) -> CallToolResult:
         """App-only discover current assignment from fresh host identity. Automatically bind the sole workflow participant; never ask for copied IDs. Legacy experiments alone may select a run and require Enable. This read never grants permission."""
         return await communication("recover", ctx)
+
+    @mcp.tool(name="workflow_communication_sync", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
+    async def sync(binding: Binding, message_supported: Annotated[bool, Field(description="True only while the current SDK exposes openai/message.")], ctx: Context) -> CallToolResult:
+        """App-only renew SDK presence and read existing plan permission. Never grants permission: Start/Continue controls it. No model turn, no thirty-minute limit on an active plan."""
+        return await communication("sync", ctx, binding=binding, message_supported=message_supported)
 
     @mcp.tool(name="workflow_communication_enable", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def enable(binding: Binding, message_supported: Annotated[bool, Field(description="The real SDK exposes experimental openai/message on this host.")], ctx: Context) -> CallToolResult:

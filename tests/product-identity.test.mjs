@@ -46,7 +46,8 @@ test('bootstrap refuses a profile symlink pointing at the donor', t => {
 test('smoke keeps all browser data under its disposable fixture', t => {
   const { root, app, paths } = fixture(t);
   const result = configureDesktopIdentity(app, { smoke: true, temporaryRoot: root });
-  assert.equal(path.dirname(result.dataDir), root);
+  assert.equal(path.dirname(result.dataDir), fs.realpathSync(root));
+  assert.equal(result.dataDir,fs.realpathSync(result.dataDir),'SDK journal receives a canonical fixture path');
   assert.equal(paths.sessionData, path.join(result.dataDir, 'browser'));
   assert.equal(result.partition.startsWith('persist:'), false);
 });

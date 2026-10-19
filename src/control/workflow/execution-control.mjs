@@ -1,7 +1,7 @@
 // The single run/pause control of an orchestrated plan. It belongs to a project and its plan,
 // lives in the backend and survives restarts; publication alone never starts execution.
 export const EXECUTION_STATES = Object.freeze(['not-started', 'running', 'pausing', 'paused', 'complete']);
-export const PAUSE_REASONS = Object.freeze(['manual', 'escalation', 'unknown']);
+export const PAUSE_REASONS = Object.freeze(['manual', 'escalation', 'unknown', 'restart']);
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const absolute = workspace => typeof workspace === 'string' && (workspace.startsWith('/') || /^[A-Za-z]:[\\/]/.test(workspace));
 const validScope = scopeId => typeof scopeId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(scopeId);
@@ -20,6 +20,9 @@ export class ExecutionControl {
     }
   }
   snapshot() { return structuredClone(this.book); }
+  revokeAfterRestart(){for(const entry of Object.values(this.book))if(entry.route==='plugin-v1'&&['running','pausing'].includes(entry.state)){
+    entry.state='paused';entry.reason='restart';entry.message='Служба перезапущена. Нажмите «Продолжить план».';
+  }}
   route(workspace,scopeId){return this.entry(workspace,scopeId)?.route??null;}
   selectRoute(workspace,scopeId,route) {
     if(!['plugin-v1','legacy-dom'].includes(route))throw fail('PLAN_EXECUTION_INVALID','Неизвестный маршрут выполнения.');

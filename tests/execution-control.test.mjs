@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { ExecutionControl } from '../src/control/workflow/execution-control.mjs';
 
 const W = '/projects/main', SCOPE = 'orchestrated-scope';
+test('backend restart revokes only the plan channel and one Continue restores the pinned route',()=>{
+  const value=new ExecutionControl();value.selectRoute(W,SCOPE,'plugin-v1');value.toggle(W,SCOPE);
+  value.selectRoute('/legacy',SCOPE,'legacy-dom');value.toggle('/legacy',SCOPE);
+  const restored=new ExecutionControl({saved:value.snapshot()});restored.revokeAfterRestart();
+  assert.equal(restored.view(W,SCOPE).state,'paused');assert.equal(restored.view(W,SCOPE).reason,'restart');
+  assert.equal(restored.view('/legacy',SCOPE).state,'running');assert.equal(restored.toggle(W,SCOPE).state,'running');
+  assert.equal(restored.route(W,SCOPE),'plugin-v1');
+});
 test('the working transport is pinned per plan and old saved plans retain DOM',()=>{
   const c=new ExecutionControl();assert.equal(c.selectRoute(W,SCOPE,'plugin-v1'),'plugin-v1');c.toggle(W,SCOPE);
   assert.equal(c.selectRoute(W,SCOPE,'legacy-dom'),'plugin-v1');

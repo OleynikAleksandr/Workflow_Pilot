@@ -9,6 +9,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 const settle = async () => { for (let i = 0; i < 12; i++) await new Promise(r => setImmediate(r)); };
+test('durable channel continuation recovers an enqueue gap with the same key and complete task text',async()=>{
+  const f=fixture();f.flow.durableQueue=true;f.plan.nextTask={id:'T002',title:'Full task',acceptance:['Обязательный текст '.repeat(1000)]};
+  const calls=[];let fail=true;
+  f.flow.send=async(text,_ready,_before,meta)=>{calls.push({text,key:meta.key});if(fail)throw Error('lost enqueue acknowledgement');return {state:'queued',message_id:'message'};};
+  await f.flow.start();assert.equal(f.flow.checkpoint.status,'queuing');const saved=f.flow.checkpointState();
+  f.flow.restore(true,saved);fail=false;await f.flow.planChanged();await f.drain();
+  assert.equal(calls.length,2);assert.deepEqual(calls[0],calls[1]);
+  assert.ok(Buffer.byteLength(calls[1].text)>4096);assert.ok(calls[1].text.includes(f.plan.nextTask.acceptance[0]));
+  assert.equal(f.flow.checkpoint.status,'queued');await f.flow.planChanged();assert.equal(calls.length,2);f.flow.dispose();
+});
 
 function fixture({ busy = false, scopeId = 'scope', turnId = 'a1234' } = {}) {
   let selected = { workspace: '/project', projectId: 'project-id', sessionId: 'chat', scopeId, chatUrl: 'https://chatgpt.com/c/abcdefgh' };
@@ -315,7 +325,7 @@ test('checkpoint reader distinguishes working task, prepared DONE and committed 
   const first = await readPlanContinuationState({ workspace: root }, { ...process.env, PATH: '/unavailable', WORKFLOW_GIT_BIN: bundledGit });
   assert.equal(first.confirmed, true);
   // 0.6.96: the same plan check gives the next task for the continuation message.
-  assert.deepEqual(first.nextTask, { id: 'DOCS', title: 'Docs', why: 'Keep context', acceptance: ['Docs match the result'],
+  assert.deepEqual(first.nextTask, { id: 'DOCS', title: 'Docs', started:true,why: 'Keep context', acceptance: ['Docs match the result'],
     files: ['docs/PRODUCT.md'], checks: ['unit-all'] });
   p.plan_revision++; await write();
   assert.equal((await readPlanContinuationState({ workspace: root })).confirmed, true, 'in-progress dirty plan may continue');
