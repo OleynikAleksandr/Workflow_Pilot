@@ -12,6 +12,7 @@ Execution не владеет проектом, current plan, привязкой
 | files/adapter.mjs | чтение/запись JSON/текста, canonical path, digest, existence |
 | runtime/service.mjs | подготовка Codex runtime, локальная готовность, выбор канала, login services |
 | runtime/mcp-client.mjs | initialize/tools-list собственного MCP; вызовы инструментов здесь запрещены |
+| runtime/project-commands.mjs | приватная адресная остановка команд удаляемого проекта, без остановки общей службы |
 | runtime/windows.mjs | проверенный vendor payload, private Python, bundled Git |
 | runtime/vps.mjs, vps-config.mjs | только свой SSH forward, явный маршрут и проверка владельца |
 | platform/paths.mjs | пути/Node discovery для выбранной платформы |
@@ -31,11 +32,15 @@ Facade предоставляет конкретные методы, без ун
 
 CommandService использует Node spawn: на POSIX отдельная группа, на Windows остановка своей process tree через taskkill. После TERM действует ограниченное ожидание до KILL; snapshot остаётся running, пока close не подтвердит исход. stdout/stderr ограничены maxBuffer, ожидание одного опроса — 0..60000 мс. Хранятся до 128 завершённых snapshots; активные не вытесняются. Потерянное доказательство не восстанавливается по одному PID.
 
+Удаление передаёт точные ownerWorkspace в `retireProjectCommands`: новые локальные команды этих папок запрещаются, текущие отменяются с ожиданием terminal evidence. Python-исполнитель получает тот же запрет через приватный loopback endpoint и сохранённый список остановленных workspace. Descriptor имеет private-права, bearer, PID; ответ связан с operation UUID и экземпляром исполнителя. Останавливаются только доказанно собственные команды/process groups. Общая MCP-служба и соседние проекты остаются живы; модели не предоставляется новый инструмент остановки. Неподтверждённая чужая операция даёт `PROJECT_COMMAND_STOP_UNCONFIRMED`; намерение удаления сохранено для повтора. Явное повторное добавление папки снимает её запрет. Поздний callback отменённой команды не воссоздаёт удалённую папку.
+
 Execution живёт в [backend](backend.md): закрытие или падение клиента его не затрагивает. Остановка backend после draining (dispose модели) запрещает новые команды, останавливает собственных transient workers и освобождает таймеры. Login MCP/tunnel/VPS службы ни от закрытия окна, ни от остановки backend не останавливаются. Python AppServerClient отдельно владеет MCP-командами и их session IDs/process identity/terminal evidence; JS не заводит второй реестр этих процессов. Каталог/аргументы/ошибки MCP и codex-tools.lock.json сохранены. JS Execution не импортирует Control/Frontend/Kit; Python остаётся автономным tools-пакетом.
 
 ## Identity и подготовка
 
 Свои state: WorkflowPilotCodexExecutor, env WORKFLOW_PILOT_*, MCP/tunnel preferred порты 18852/18853 с проверкой владельца и исходным подбором свободного порта. macOS label com.oleynik.WorkflowPilotCodexExecutor; Windows — собственный Run entry. Перед копированием/управлением runtime отвергаются symlink state/source/runtime/private. Новый продукт не принимает retireLegacy; совместимые retirement exports только возвращают LEGACY_RUNTIME_FORBIDDEN. adopt_legacy_tunnel всегда False без чтения ключей.
+
+Полные ensure и ensureMcpOnly объединяют одинаковые параллельные запросы, а пересекающиеся lifecycle-операции проходят одну reentrant-очередь. Status не конфликтует с подготовкой двух или пяти потребителей, готовые компоненты не перезапускаются. Внешний lock возвращает `RUNTIME_LIFECYCLE_BUSY`; runtime ждёт не более 10 секунд, повторяя только отказ до эффекта. Неизвестный транспортный исход изменяющей команды не повторяется. Stop меняет поколение, поздняя подготовка получает `RUNTIME_PREPARATION_CANCELLED`. ContextSession может продолжить подготовку после временной занятости лишь до первого Send; sending/sent/unknown не воспроизводятся, поздний прогрев не перезаписывает результат отправки.
 
 macOS tunnel-client закреплён на v0.0.14, официальный GitHub tag и SHA256SUMS проверяются перед распаковкой; поиска latest и копирования чужого PATH/runtime нет. Проверены Darwin arm64 и amd64 assets. Основной arm64 ZIP: SHA-256 b540493c5bdbcdbb755700c8e2e16597e28b1569e425007e0f73111047bd6a64. Windows vendor asset/digest прежние, извлекаются только vendor tools. Поставка notices и locks описана в [контракте выпуска](release.md); версии и SHA Linux закреплены в src/execution/platform/linux/toolchain.mjs.
 

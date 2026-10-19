@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 580,
+  "plan_revision": 582,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
@@ -113,7 +113,10 @@
       "docs/modules/chatgpt-plugin.md",
       "docs/modules/automatic-agent-dialogue-acceptance.md",
       "docs/modules/release.md",
-      "docs/planning/executor-readiness-recovery.md"
+      "docs/planning/executor-readiness-recovery.md",
+      "docs/acceptance/orchestrated-execution.md",
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/modules/plugin-communication-handoff.md"
     ]
   },
   "baseline_commit": "61ddf89fd5827e0643136cd9fc3ed86dbcac21e5",
@@ -128,7 +131,7 @@
       {
         "path": "docs/planning/executor-startup-and-removal.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "3585d09f6dbd13a9348d5f2ae39e120c245a0b47"
       }
     ],
     "include_last_completed_task": false,
@@ -475,8 +478,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-executor-lifecycle-fixes",
         "task_id": "DOCS",
@@ -503,7 +506,10 @@
         "docs/modules/chatgpt-plugin.md",
         "docs/modules/automatic-agent-dialogue-acceptance.md",
         "docs/modules/release.md",
-        "docs/planning/executor-readiness-recovery.md"
+        "docs/planning/executor-readiness-recovery.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/plugin-communication-handoff.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -519,7 +525,26 @@
       "expected_commit_message": "docs: Актуализация всех документов проекта",
       "context_pack": {
         "documents": []
-      }
+      },
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/execution.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/executor-readiness-recovery.md",
+        "docs/planning/executor-startup-and-removal.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -657,7 +682,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 580
+Revision: 582
 
 ## Цель
 
@@ -699,10 +724,10 @@ Revision: 580
   - Файлы: src/control/workflow/execution-projection.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/executor-startup-lifecycle.test.mjs, tests/parallel-execution-ui.test.mjs, tests/sidebar.test.mjs, tests/backend-end-to-end.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, tests/backend-upgrade.test.mjs, tools/codex-app-server-mcp/plugin.py, src/backend/bootstrap.mjs, src/backend/main.mjs, tests/backend-bootstrap.test.mjs, tests/backend-lifecycle.test.mjs, tests/execution-control.test.mjs, tests/fixtures/plugin-server.py, tests/workflow-channel.test.mjs, tests/fixtures/dialogue-runtime.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: Актуализация всех документов проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: Актуализация всех документов проекта
   - Reference: workflow-pilot-executor-lifecycle-fixes / DOCS / implementation
-  - Файлы: docs/planning/executor-startup-and-removal.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/execution.md, docs/modules/desktop.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-lifecycle.md, docs/modules/chatgpt-plugin.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/release.md, docs/planning/executor-readiness-recovery.md
+  - Файлы: docs/planning/executor-startup-and-removal.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/execution.md, docs/modules/desktop.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-lifecycle.md, docs/modules/chatgpt-plugin.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/release.md, docs/planning/executor-readiness-recovery.md, docs/acceptance/orchestrated-execution.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/plugin-communication-handoff.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004
 - [TODO] RELEASE: Собрать единый исправленный выпуск — Ожидает

@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.6, Kit 1.8.2, протокол панели `2`, build `0.5.6-communication-2`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка S1–S3](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.7, Kit 1.8.2, протокол панели `2`, build `0.5.7-communication-2`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка S1–S3](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
@@ -82,9 +82,11 @@ WAL в собственном `plugin-communication`: legacy schema 1, workflow 
 
 Новый panel_instance_id создаётся при mount. Handshake → свежий recover → bind → sync; при позднем SDK восстановление ограничено и не создаёт модельных ходов. Исторический tool-result, включая старую версию/ошибку, не управляет актуальной привязкой или разрешением. Рабочий UI скрывает ручные поля/Enable, показывает роль, scope/task/assignment и причину неготовности; один run выбирается автоматически. Sync в ожидании разрешения выполняется раз в две секунды и перед wait. Backoff ошибок ожидания 250–5000 мс; binding/version/storage прекращает локальную доставку. Ошибка claim/verify/report не порождает повтор Send. Светлая/тёмная тема и узкая раскладка поддержаны.
 
+Sidebar читает регистрацию, актуальную SDK lease и квитанцию первого assignment-start отдельно. Lease требует совпадения identity/поколения, messageSupported и неистёкшего присутствия; успешный MCP-вызов и ready страницы её не заменяют. Проекция не создаёт событий/разрешений и не выдаёт tickets или текст контекста. После удаления проекта сохранённый запрет сессий отзывает регистрацию/приглашения/допуск, pending отклоняется, claimed становится unknown; поздняя регистрация или enqueue отвечает `PROJECT_REMOVED`. Принятая история сохраняется без права новой отправки.
+
 Лента показывает последние 200 событий с фильтрами; экспорт собирает весь фиксированный through_seq, предлагает download или текст, ошибка не стирает журнал. Телеметрия имеет отдельные client_time/server_received_at, монотонный client_sequence, дедупликацию event_id и frontend.gap. Буфер 64 события; до bind события локальны, после уничтожения последние могут потеряться. Отсутствие server mount не доказывает отсутствие SDK. Intent не доказывает invocation, accepted не доказывает read. Сырые host payload, секреты и произвольные stack traces в телеметрию не записываются; фильтр секретов legacy-текста не является универсальным детектором.
 
-Ошибки имеют isError/structuredContent.error и префикс PLUGIN_COMMUNICATION_: IDENTITY_REQUIRED, BINDING, VERSION, UNSUPPORTED, STOPPED, ASSIGNMENT_CHANGED, ENROLLMENT/ENROLLMENT_EXPIRED, MODE, CLAIM_DENIED, READ_DENIED, STALE_MESSAGE, CONTEXT, CONFLICT, STORE_*, LIMIT и ошибки входа/курсора. Не маскировать их повторным join/Enable или DOM Send.
+Ошибки имеют isError/structuredContent.error и префикс PLUGIN_COMMUNICATION_: IDENTITY_REQUIRED, BINDING, VERSION, UNSUPPORTED, STOPPED, ASSIGNMENT_CHANGED, PROJECT_REMOVED, ENROLLMENT/ENROLLMENT_EXPIRED, MODE, CLAIM_DENIED, READ_DENIED, STALE_MESSAGE, CONTEXT, CONFLICT, STORE_*, LIMIT и ошибки входа/курсора. Не маскировать их повторным join/Enable или DOM Send.
 
 ## Прямое подключение и поставка
 
