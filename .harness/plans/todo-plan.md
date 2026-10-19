@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 564,
+  "plan_revision": 566,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Пользователь одним запуском плана автоматически подключает оркестратора и исполнителей; исполнитель сообщает техническую блокировку, получает решение и продолжает задачу без ручных ID, Enable и пользовательского продолжения.",
   "acceptance_criteria": [
     "Первое сообщение автоматически открывает панель будущего оркестратора; обсуждение/Review/публикация сохраняются, публикация сама выполнение не запускает.",
@@ -1362,14 +1362,15 @@
         "Пользователю переданы статус установки и шаги свежего вызова панели после обновления инструментов; живая приёмка не объявлена пройденной."
       ],
       "expected_commit_message": "feat: Опубликовать 0.5.6 и передать повторную проверку",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "PUBLISH-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1391,10 +1392,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 564
+Revision: 566
 
 ## Цель
 
@@ -1503,8 +1504,8 @@ Revision: 564
   - Файлы: release-manifest.json, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-2, DOCS-2
-- [TODO] PUBLISH-2: Опубликовать 0.5.6 и передать повторную проверку — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать 0.5.6 и передать повторную проверку
+- [DONE] PUBLISH-2: Опубликовать 0.5.6 и передать повторную проверку — Завершено
+  - Git Commit: [DONE] feat: Опубликовать 0.5.6 и передать повторную проверку
   - Reference: workflow-pilot-automatic-agent-dialogue / PUBLISH-2 / implementation
   - Файлы: release-manifest.json, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение
