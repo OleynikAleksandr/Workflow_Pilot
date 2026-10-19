@@ -11,10 +11,12 @@ test('project cleanup removes exact nested delivery owners, preserves neighbours
   const neighbour={key:JSON.stringify(['/projects/ab','other','url']),status:'sending'};
   const settings={theme:'dark',projectPlanContinuation:{'/projects/a':{enabled:true},'/projects/ab':{enabled:true}},
     parallelExecutionBook:{a:{workspace:'/projects/a'},b:{workspace:'/projects/ab'}},
+    executionControl:{'/projects/a':{projectId:'id-a',phase:'running'},'/projects/ab':{phase:'paused'}},
     reviewCheckpoint:{entries:[deleted,neighbour],cycles:[{key:JSON.stringify(['/projects/a','session-a'])}],reviewStops:[{key:JSON.stringify(['/projects/a','session-a'])}]},
     automationCheckpoint:{entries:[deleted,neighbour],cycles:[{sessionId:'session-a'}]}};
   const next=removeProjectSettings(settings,ids);
   assert.deepEqual(next.projectPlanContinuation,{'/projects/ab':{enabled:true}});assert.deepEqual(next.parallelExecutionBook,{b:{workspace:'/projects/ab'}});
+  assert.deepEqual(next.executionControl,{'/projects/ab':{phase:'paused'}});
   assert.deepEqual(next.reviewCheckpoint.entries,[neighbour]);assert.deepEqual(next.reviewCheckpoint.cycles,[]);assert.deepEqual(next.reviewCheckpoint.reviewStops,[]);
   assert.deepEqual(next.automationCheckpoint.entries,[neighbour]);assert.deepEqual(next.automationCheckpoint.cycles,[]);
   assert.equal(next.theme,'dark');assert.equal(settings.reviewCheckpoint.entries.length,2);

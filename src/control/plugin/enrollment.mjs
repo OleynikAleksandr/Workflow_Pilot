@@ -13,6 +13,7 @@ export const workflowRunId = target => 'work:'+hash(JSON.stringify([target.proje
 export class ParticipantEnrollment {
   constructor(communication, resolveTarget, verifyTarget) {Object.assign(this,{communication,resolveTarget,verifyTarget});}
   async validate(target) {
+    check(!this.communication.removedSessions.has(target.local_session_id),'PROJECT_REMOVED','Этот проект удалён из приложения.');
     const current=this.verifyTarget?await this.verifyTarget(target.local_session_id):this.current(target);
     check(same(current,target),'ASSIGNMENT_CHANGED','Проект или действующее назначение не подтверждены. Отправка остановлена.');
     return current;
@@ -25,6 +26,7 @@ export class ParticipantEnrollment {
     if(input.recipient_id&&run?.members[input.recipient_id])await this.validate(run.members[input.recipient_id].target);
   }
   current(target) {
+    check(!this.communication.removedSessions.has(target.local_session_id),'PROJECT_REMOVED','Этот проект удалён из приложения.');
     const current=this.resolveTarget?.(target.local_session_id);
     check(same(current,target),'ASSIGNMENT_CHANGED','Назначение или проект изменились. Ожидайте актуальный стартовый контекст Workflow Pilot.');
     return current;
@@ -38,6 +40,7 @@ export class ParticipantEnrollment {
   ensureRun(target) {
     const c=this.communication,id=workflowRunId(target);
     let run=c.runs.get(id);
+    check(!run?.removed,'PROJECT_REMOVED','Этот запуск удалён из приложения.');
     check(!run||run.mode==='workflow','MODE','Этот запуск не предназначен для назначений.');
     if(!run) {
       check(c.runs.size<100,'LIMIT','Достигнут лимит запусков связи.');

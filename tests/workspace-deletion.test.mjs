@@ -9,7 +9,7 @@ import { WorkspaceSessions, WorkspaceError } from '../src/control/sessions/works
 import { WorkspaceDeletion } from '../src/control/projects/workspace-deletion.mjs';
 import { purgeProjectStateFiles } from '../src/control/projects/project-state-cleanup.mjs';
 
-async function boundChild(store,a,id) {
+async function boundChild(store,a,id,register=true) {
   const {createHash}=await import('node:crypto'),git=(cwd,...args)=>execFileSync('git',['-C',cwd,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
   try{git(a,'rev-parse','HEAD');}catch{
     git(a,'init');git(a,'config','user.name','Fixture');git(a,'config','user.email','fixture@example.invalid');git(a,'add','.');git(a,'commit','-m','fixture');
@@ -21,7 +21,7 @@ async function boundChild(store,a,id) {
   await fs.mkdir(path.join(admin,'workflow-kit'),{recursive:true});await fs.mkdir(path.join(a,'.git/workflow-kit/assignments'),{recursive:true});
   await fs.writeFile(path.join(admin,'workflow-kit/assignment.json'),JSON.stringify(assignment));
   await fs.writeFile(path.join(a,'.git/workflow-kit/assignments',id+'.json'),JSON.stringify(assignment));
-  await store.ensureExecutor(assignment,origin);
+  if(register)await store.ensureExecutor(assignment,origin);
   return worktree;
 }
 
@@ -52,6 +52,15 @@ test('multiple owned children are journaled, archived with parent visibility, an
   const restart=new WorkspaceDeletion({store,journalDir:service.journalDir});assert.deepEqual(await restart.recover(),[]);
   assert.equal(store.project(one),null);assert.equal(store.project(two),null);assert.ok(store.project(b));
   assert.deepEqual(await restart.recover(),[]);
+});
+
+test('a worktree created by an already admitted operation is journaled after quiescence',async t=>{
+  const {store,service,project}=await fixture(t),a=await project('A');await store.setArchived(a,true);
+  let child,calls=0;
+  service.prepare=async()=>{if(++calls===1)child=await boundChild(store,a,'last-admitted',false);};
+  const preview=await service.preview(a);await service.apply(preview.token,preview.name);
+  assert.equal(calls,2);assert.equal(store.project(a),null);assert.equal(store.project(child),null);
+  await assert.rejects(fs.stat(child),{code:'ENOENT'});
 });
 
 test('a replaced child directory stops journal recovery before parent removal',async t=>{
@@ -182,7 +191,7 @@ test('overlapping journals complete in either order with exact persisted cleanup
   }
 });
 
-test('confirmed parent with missing child needs committed integrated ownership, not only database fields',async t=>{
+test('confirmed parent with missing child needs committed ownership, irrespective of completion',async t=>{
   for(const scenario of ['valid','assignment-missing','not-integrated','wrong-owner','changed-path']){
     await t.test(scenario,async sub=>{
       const {store,service,project}=await fixture(sub),parent=await project('Parent');
@@ -198,7 +207,7 @@ test('confirmed parent with missing child needs committed integrated ownership, 
       if(scenario==='wrong-owner')saved.parentProjectId='foreign-project-id';
       if(scenario==='changed-path')saved.sessions[0].assignmentId='foreign-worker';
       await store.setArchived(parent,true);
-      if(scenario==='valid'){
+      if(['valid','not-integrated'].includes(scenario)){
         const preview=await service.preview(parent);
         assert.equal(preview.sessionCount,1);
         await service.apply(preview.token,preview.name);
@@ -519,13 +528,14 @@ test('active, protected, nested, replaced and symlink roots cannot be deleted', 
   await assert.rejects(service.preview(a), { code: 'DELETE_PATH_CHANGED' }); assert.ok(await fs.stat(b));
 });
 
-test('cancelled and stale confirmations cannot delete changed files or a replacement folder', async t => {
+test('cancelled confirmation and replacement folder are protected; confirmed live edits belong to deletion', async t => {
   const { root, store, service, project } = await fixture(t); const a = await project('A'); await store.setArchived(a, true);
   let p = await service.preview(a); service.clear(); await assert.rejects(service.apply(p.token, p.name), { code: 'DELETE_PREVIEW_EXPIRED' });
   p = await service.preview(a); await fs.writeFile(path.join(a, 'new.txt'), 'new work');
-  await assert.rejects(service.apply(p.token, p.name), { code: 'DELETE_PREVIEW_CHANGED' });
-  p = await service.preview(a); await fs.rename(a, path.join(root, 'saved-original')); await fs.mkdir(a);
-  await assert.rejects(service.apply(p.token, p.name)); assert.ok(await fs.stat(a)); assert.ok(await fs.stat(path.join(root, 'saved-original')));
+  await service.apply(p.token, p.name);assert.equal(store.project(a),null);
+  const b=await project('B');await store.setArchived(b,true);
+  p = await service.preview(b); await fs.rename(b, path.join(root, 'saved-original')); await fs.mkdir(b);
+  await assert.rejects(service.apply(p.token, p.name)); assert.ok(await fs.stat(b)); assert.ok(await fs.stat(path.join(root, 'saved-original')));
 });
 
 test('interrupted local metadata cleanup resumes without deleting a replacement at the old path', async t => {
@@ -546,7 +556,7 @@ test('an already missing archived folder requires explicit confirmation to clear
 
 test('recovery completes a confirmed rename interrupted before recording removal stage', async t => {
   const { store, service, project } = await fixture(t); const a = await project('A'); await store.setArchived(a, true);
-  service.saveJob = async () => { throw new Error('interrupted'); };
+  const save=service.saveJob.bind(service);service.saveJob = async job => {if(job.stage==='removing')throw new Error('interrupted');await save(job);};
   const p = await service.preview(a); await assert.rejects(service.apply(p.token, p.name), /interrupted/);
   const journal = JSON.parse(await fs.readFile(path.join(service.journalDir, (await fs.readdir(service.journalDir))[0])));
   assert.equal(journal.stage, 'confirmed'); assert.ok(await fs.stat(journal.quarantine));
@@ -567,6 +577,29 @@ test('project deletion clears settings and executor metadata; cleanup failure re
   assert.deepEqual(data.parallelExecutionBook,{});assert.deepEqual(data.reviewCheckpoint.cycles,[]);assert.equal(store.project(a),null);
 });
 
+test('forget survives cancellation failure and restart, keeping unfinished worktrees and neighbour files',async t=>{
+  const {root,store,service,project}=await fixture(t),parent=await project('Parent'),other=await project('Neighbour');
+  const child=await boundChild(store,parent,'unfinished-forget');
+  await fs.writeFile(path.join(child,'unfinished.txt'),'keep');await store.setArchived(parent,true);
+  service.prepare=async job=>{assert.ok(await fs.stat(service.jobFile(job)));throw Error('cancellation interrupted');};
+  await assert.rejects(service.forget(parent,store.project(parent).projectId),/cancellation interrupted/);
+  assert.equal(service.isPending(parent),true);
+  const resumed=new WorkspaceDeletion({store,journalDir:service.journalDir});
+  assert.deepEqual(await resumed.recover(),[]);assert.deepEqual(await resumed.recover(),[]);
+  assert.equal(store.project(parent),null);assert.equal(store.project(child),null);assert.ok(store.project(other));
+  assert.equal(await fs.readFile(path.join(child,'unfinished.txt'),'utf8'),'keep');assert.ok(await fs.stat(parent));
+  assert.equal(await fs.readFile(path.join(other,'my-file.txt'),'utf8'),'keep until confirmed');
+});
+
+test('broken current plan does not block deletion when Git confirms identity',async t=>{
+  const {store,service,project}=await fixture(t),parent=await project('Parent');
+  await boundChild(store,parent,'broken-plan-child');
+  await store.setArchived(parent,true);
+  await fs.writeFile(path.join(parent,'.harness/plans/todo-plan.md'),'interrupted state');
+  const p=await service.preview(parent);await service.apply(p.token,p.name);
+  assert.equal(store.project(parent),null);await assert.rejects(fs.stat(parent),{code:'ENOENT'});
+});
+
 test('deletion removes only verified worktrees and all child sessions',async t=>{
   const {root,store,service,project}=await fixture(t),a=await project('A');
   const {createHash}=await import('node:crypto');
@@ -582,9 +615,9 @@ test('deletion removes only verified worktrees and all child sessions',async t=>
   await fs.writeFile(path.join(a,'.git/workflow-kit/assignments',id+'.json'),JSON.stringify(binding));
   const data=store.data.projects[0];store.data.projects.push({...structuredClone(data),workspace:child,parentWorkspace:a,parentProjectId:data.projectId,projectId:'child',sessions:[{...data.sessions[0],sessionId:'worker',assignmentId:id}]});await store.save();
   await fs.writeFile(path.join(child,'unfinished.txt'),'work');
-  await store.setArchived(a,true);await assert.rejects(service.preview(a),{code:'DELETE_WORKTREE_BUSY'});
-  await fs.rm(path.join(child,'unfinished.txt'));
-  await store.setArchived(a,true);const p=await service.preview(a);await service.apply(p.token,p.name);
+  binding.phase='RUNNING';await fs.writeFile(path.join(a,'.git/workflow-kit/assignments',id+'.json'),JSON.stringify(binding));
+  await store.setArchived(a,true);const p=await service.preview(a);
+  assert.deepEqual(p.related,[{workspace:child,missing:false}]);await service.apply(p.token,p.name);
   await assert.rejects(fs.stat(child),{code:'ENOENT'});await assert.rejects(fs.stat(path.dirname(child)),{code:'ENOENT'});assert.equal(store.project(child),null);assert.equal(store.project(a),null);
 });
 

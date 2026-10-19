@@ -2,7 +2,7 @@ import { readCommandActivity, acknowledgeUnknownCommand } from '../workflow/comm
 
 // Product ownership and destructive-action preconditions live behind Control.
 // Desktop supplies only confirmation and presentation callbacks.
-export function createProjectLifecycle({store,workflow,liveSessions,contextCache,workspaceSetup,confirm,settingsOpen,getDeletion,awaitSettings,saveSettings,onDeleted,purgeState}) {
+export function createProjectLifecycle({store,workflow,liveSessions,contextCache,workspaceSetup,confirm,settingsOpen,getDeletion,awaitSettings,saveSettings,onDeleted,purgeState,operations}) {
 const {execution}=workflow;
 function archiveRecords(items, { single = false } = {}) {
   if (!Array.isArray(items) || !items.length || (single && items.length !== 1)) throw new Error(single ? 'Выберите один проект.' : 'Выберите проекты из архива.');
@@ -35,18 +35,22 @@ function sessionArchiveRecords(items) {
 async function prepareProjectRemoval(job) {
   const workspaces=[job.workspace,...(job.related??[]).map(p=>p.workspace)];
   const records=[...liveSessions.all()].filter(r=>workspaces.includes(r.identity?.workspace));
-  for(const record of records)if(record.pageState.current?.state.busy||record.controller.pending||record.composer.inFlight)
-    throw Object.assign(new Error('Остановите работу чатов удаляемого проекта перед удалением.'),{code:'DELETE_PROJECT_BUSY'});
-  for(const workspace of workspaces)await execution.suspend(workspace);
+  const identities=[{workspace:job.workspace,projectId:job.projectId,sessionIds:job.sessionIds??[]},...(job.related??[])];
+  const suspending=workspaces.map(workspace=>execution.retire(workspace));
+  for(const record of records)liveSessions.release(record,{force:true});
+  // Cancellation must precede waiting for a scheduler that may own a Kit worker.
+  const results=await Promise.allSettled([operations.retireProjectCommands(workspaces),
+    workflow.retireCommunication(identities),...suspending]);
+  const failure=results.find(r=>r.status==='rejected');if(failure)throw failure.reason;
+  const proof=results[0].value;
   for(const workspace of workspaces) {
-    const activity=await readCommandActivity(workspace),command=activity.commands.find(c=>c.blocksDeletion);
-    if(command)throw Object.assign(new Error('Удаление ожидает завершения операции '+command.id+'. '+command.reason+
-      '. Для сервера попросите агента остановить его по session ID; неизвестный исход требует диагностики.'),{code:'DELETE_PROJECT_BUSY'});
+    const activity=await readCommandActivity(workspace),command=activity.commands.find(c=>c.blocksDeletion
+      &&!c.previousBoot&&!(c.executorInstance===proof.executor_instance&&proof.operations.includes(c.id)));
+    if(command)throw Object.assign(new Error('Не удалось подтвердить остановку прежней команды '+command.id+
+      '. Очистка сохранена и доступна для повтора; её результат остаётся неизвестным.'),{code:'PROJECT_COMMAND_STOP_UNCONFIRMED'});
   }
   job.sessionIds=[...new Set([...(job.sessionIds??[]),...records.map(r=>r.diagnostics?.log.sessionId).filter(Boolean)])];
   for(const record of records)await record.diagnostics?.stop();
-  for(const record of records)if(!liveSessions.release(record))
-    throw Object.assign(new Error('Чат ещё занят. Повторите удаление после остановки.'),{code:'DELETE_PROJECT_BUSY'});
   await store.whenIdle();
   await awaitSettings();
 }

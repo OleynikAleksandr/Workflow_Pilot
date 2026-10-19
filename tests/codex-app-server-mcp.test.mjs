@@ -17,9 +17,9 @@ function tomlString(value) {
 
 async function runPython(script, args = [], env = {}) {
   return await new Promise((resolve, reject) => {
-    const child = spawn('python3', [script, ...args], {
+    const child = spawn('python3', ['-B', script, ...args], {
       cwd: repoRoot,
-      env: { ...process.env, ...env },
+      env: { ...process.env, ...env, PYTHONDONTWRITEBYTECODE:'1' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -172,7 +172,7 @@ test('Codex App Server MCP exposes exactly the 9-tool catalog and delivers no pr
     'delete_path', 'list_trash', 'restore_trash',
   ];
   for (const name of removedTools) {
-    assert.doesNotMatch(source, new RegExp(`\\b${name}\\b`), `removed tool name ${name} must be absent from server.py`);
+    assert.doesNotMatch(source, new RegExp(`def ${name}\\(`), `removed tool ${name} must not be defined by the facade`);
   }
   for (const helper of ['run_shell', 'run_batch', 'start_shell_process']) {
     assert.doesNotMatch(source, new RegExp(`def ${helper}\\(`), `dead helper ${helper} must be gone`);

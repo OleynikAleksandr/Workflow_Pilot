@@ -130,12 +130,14 @@ export class ParallelExecution {
     Object.assign(this,{queuedRoute,deliveryReceipt});
     Object.assign(this,{isEnabled,onComplete,kit,origin,openWorker,workerState,mainState,save,book,onChange,watch,sendCorrection,restoreWorker,restoreOrigin,now,uuid});
     Object.assign(this,{sendFinalization,sendDiagnostic,canFinalize,isIssuing,onSettle,onPause,sendWorker,orchestrator});
-    this.queues=new Map();this.states=new Map();this.unwatch=new Map();this.correcting=new Set();this.suspended=new Set();this.enabled=false;this.closed=false;
+    this.queues=new Map();this.states=new Map();this.unwatch=new Map();this.correcting=new Set();this.suspended=new Set();this.retired=new Set();this.enabled=false;this.closed=false;
   }
   view(workspace){return this.states.get(workspace)??{phase:'idle',assignments:[],error:null};}
   async queueMessage(workspace,origin,ledger,entry,text,kind,meta={},assignment=null){
+    if(this.retired.has(workspace))throw fail('PROJECT_REMOVED','Проект удаляется.');
     entry.outbox??={text,kind,meta:{key:'handoff:'+this.uuid(),...meta},assignmentId:assignment?.id??null};
     entry.status='queuing';await this.persist();
+    if(this.retired.has(workspace))throw fail('PROJECT_REMOVED','Проект удаляется.');
     const payload=entry.outbox;
     const result=payload.assignmentId
       ?await this.sendWorker(assignment,ledger.assignments[assignment.id],payload.text,()=>true,async()=>true,payload.meta)
@@ -192,6 +194,7 @@ export class ParallelExecution {
   }
   persist(){return this.save(structuredClone(this.book));}
   observe(workspace) {
+    if(this.retired.has(workspace))return;
     this.suspended.delete(workspace);
     if(!this.unwatch.has(workspace))this.unwatch.set(workspace,this.watch(workspace,()=>this.signal(workspace)));
   }
@@ -202,7 +205,7 @@ export class ParallelExecution {
   signal(workspace) {return this.enqueue(workspace,true);}
   recheck(workspace) {this.observe(workspace);return this.enqueue(workspace,true);}
   enqueue(workspace,recovery=false) {
-    if(this.closed||this.suspended.has(workspace))return Promise.resolve();
+    if(this.closed||this.suspended.has(workspace)||this.retired.has(workspace))return Promise.resolve();
     if(this.correcting.has(workspace)) {
       const current=this.queues.get(workspace);if(current){current.again=true;current.recovery||=recovery;}
       return Promise.resolve(this.view(workspace));
@@ -760,6 +763,8 @@ export class ParallelExecution {
     this.unwatch.get(workspace)?.();this.unwatch.delete(workspace);
     const queue=this.queues.get(workspace);if(queue){queue.again=false;await queue.promise;}
   }
+  retire(workspace) {this.retired.add(workspace);return this.suspend(workspace);}
+  allow(workspace) {this.retired.delete(workspace);}
   forget(workspaces) {
     for(const workspace of workspaces){this.states.delete(workspace);this.unwatch.get(workspace)?.();this.unwatch.delete(workspace);}
     for(const [key,value] of Object.entries(this.book))if(workspaces.includes(value.workspace))delete this.book[key];

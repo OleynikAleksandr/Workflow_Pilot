@@ -23,6 +23,7 @@ import { withSessionPlan } from '@webpilot/workflow-kit/lib/session-plans';
 import { renderPlan } from '@webpilot/workflow-kit/lib/plan';
 import { commitTask } from '@webpilot/workflow-kit/lib/transaction';
 import { measureEventRuntimeBaseline } from './event-runtime-baseline.mjs';
+import {ExecutionFacade} from '../src/execution/facade.mjs';
 
 let packetLoads = 0;
 let smokeDataDir;
@@ -1355,20 +1356,28 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await archive.executeJavaScript('document.getElementById("forget").click()');
   await waitFor(() => !store.project(auxD.workspace) && !store.project(workspace), 'batch forget', snapshot);
   assert.ok(await fs.stat(auxD.workspace)); assert.ok(await fs.stat(workspace));
-  const reattached = await store.select(workspace); assert.equal(reattached.workspace, workspace); assert.equal(store.project(workspace).archivedAt, null, 'forgotten folder can be attached again');
 
   await clickArchive(auxF.workspace);
+  const removalCommands=new ExecutionFacade();
+  const commandOptions=workspace=>({cwd:workspace,env:{...process.env,ELECTRON_RUN_AS_NODE:'1'}});
+  const ownCommand=removalCommands.runCommand(process.execPath,['-e','setInterval(()=>{},1000)'],commandOptions(auxF.workspace));
+  const neighbourCommand=removalCommands.runCommand(process.execPath,['-e','setInterval(()=>{},1000)'],commandOptions(auxE.workspace));
+  await fs.writeFile(path.join(auxF.workspace,'unfinished.txt'),'uncommitted result');
   assert.equal(await archive.executeJavaScript('document.getElementById("delete").disabled'), false);
   await archive.executeJavaScript('document.getElementById("delete").click()');
   await waitFor(() => archive.executeJavaScript('!document.getElementById("delete-panel").hidden'), 'delete preview in archive window', snapshot);
   assert.equal(await archive.executeJavaScript('document.getElementById("confirm-delete").disabled'), true);
   await archive.executeJavaScript('document.getElementById("cancel-delete").click()');
   await waitFor(() => archive.executeJavaScript('document.getElementById("delete-panel").hidden'), 'cancel archive deletion', snapshot); assert.ok(await fs.stat(auxF.workspace));
+  assert.equal(removalCommands.commandSnapshot(ownCommand.operationId).outcome,'running','cancel confirmation preserves active work');
   await archive.executeJavaScript('document.getElementById("delete").click()');
   await waitFor(() => archive.executeJavaScript('!document.getElementById("delete-panel").hidden'), 'second delete preview', snapshot);
   await archive.executeJavaScript(`{ const input=document.getElementById('delete-confirmation'); input.value=${JSON.stringify(auxF.name)}; input.dispatchEvent(new Event('input',{bubbles:true})); document.getElementById('confirm-delete').click(); }`);
   await waitFor(() => !store.project(auxF.workspace), 'confirmed local deletion from archive window', snapshot);
   await assert.rejects(fs.stat(auxF.workspace), { code: 'ENOENT' });
+  assert.equal(removalCommands.commandSnapshot(ownCommand.operationId).outcome,'cancel');
+  assert.equal(removalCommands.commandSnapshot(neighbourCommand.operationId).outcome,'running','neighbour command survives deletion');
+  await removalCommands.stopCommand(neighbourCommand.operationId);await removalCommands.waitCommand(neighbourCommand.operationId,5000);
   assert.ok(store.project(auxE.workspace)?.archivedAt, 'unselected archived project is untouched');
   await browser.loadURL(first.chatUrl);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1, 'Web conversation remains after archive operations');
@@ -1403,7 +1412,9 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
 
   // Single-active-plan integration: old chats keep their URLs while every chat projects one current checkout plan.
   await sidebar.executeJavaScript('window.webPilot.closeSettings()');
-  await selectWorkspace(workspace);
+  const reattached = await selectWorkspace(workspace);
+  assert.equal(reattached.workspace, workspace);
+  assert.equal(store.project(workspace).archivedAt, null, 'forgotten folder can be attached again');
   await waitFor(() => snapshot().context.phase === 'delivered', 'single-active fixture initial context', snapshot);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("prepared-card") === null'), true);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-origin") === null'), true);

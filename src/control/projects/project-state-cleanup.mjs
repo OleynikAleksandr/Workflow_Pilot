@@ -25,9 +25,9 @@ export function belongsToProject(value, identities) {
 
 export function removeProjectSettings(settings, identities) {
   const result=structuredClone(settings);
-  for(const field of ['projectPlanContinuation','parallelExecutionBook'])if(result[field])
+  for(const field of ['projectPlanContinuation','parallelExecutionBook','executionControl'])if(result[field])
     result[field]=Object.fromEntries(Object.entries(result[field]).filter(([key,value])=>{
-      const workspace=field==='projectPlanContinuation'?key:value?.workspace;
+      const workspace=field==='parallelExecutionBook'?value?.workspace:key;
       const owner=identities.find(p=>p.workspace===workspace);
       if(owner&&value?.projectId&&owner.projectId&&value.projectId!==owner.projectId)return true;
       return !belongsToProject([key,value],identities);
@@ -40,10 +40,11 @@ export function removeProjectSettings(settings, identities) {
 
 export function pruneOrphanProjectSettings(settings, projects) {
   const live=new Map(projects.map(p=>[p.workspace,p]));
-  const missing=[...new Set([...Object.keys(settings.projectPlanContinuation??{}),...Object.values(settings.parallelExecutionBook??{}).map(v=>v.workspace)].filter(w=>w&&!live.has(w)))];
+  const missing=[...new Set([...Object.keys(settings.projectPlanContinuation??{}),...Object.keys(settings.executionControl??{}),...Object.values(settings.parallelExecutionBook??{}).map(v=>v.workspace)].filter(w=>w&&!live.has(w)))];
   const result=removeProjectSettings(settings,missing.map(workspace=>({workspace})));
-  for(const [workspace,value] of Object.entries(result.projectPlanContinuation??{}))
-    if(value.projectId&&value.projectId!==live.get(workspace)?.projectId)delete result.projectPlanContinuation[workspace];
+  for(const field of ['projectPlanContinuation','executionControl'])
+    for(const [workspace,value] of Object.entries(result[field]??{}))
+      if(value.projectId&&value.projectId!==live.get(workspace)?.projectId)delete result[field][workspace];
   for(const [key,value] of Object.entries(result.parallelExecutionBook??{}))
     if(value.projectId&&value.projectId!==live.get(value.workspace)?.projectId)delete result.parallelExecutionBook[key];
   const owner=value=>{

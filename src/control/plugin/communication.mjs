@@ -30,6 +30,7 @@ export class PluginCommunication {
   constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,currentMessage,onChange=()=>{}}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
+    this.removedSessions=new Set();
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,currentMessage});
@@ -40,6 +41,7 @@ export class PluginCommunication {
     for(const run of loaded.runs)this.runs.set(run.id,run);
     if(loaded.issues.length){this.critical=loaded.issues[0].error_code;return;}
     for(const run of this.runs.values()) {
+      for(const id of run.removed_sessions??[])this.removedSessions.add(id);
       const offset=run.events.length;
       if(run.grant){run.grant.active=false;run.grant.phase='paused';run.grant.reason='restart';run.grant.generation++;}
       for(const member of Object.values(run.members)){member.stopped=true;member.generation++;}
@@ -118,6 +120,34 @@ export class PluginCommunication {
     return {run,member};
   }
   reserve(target){return this.enrollment.reserve(target);}
+  async removeProjects(identities) {
+    await this.ready;
+    const sessions=[...new Set(identities.flatMap(p=>p.sessionIds??[]))];
+    for(const id of sessions)this.removedSessions.add(id);
+    for(const run of this.runs.values())if(run.mode==='workflow'&&(
+      Object.values(run.members).some(m=>sessions.includes(m.target.local_session_id))
+      ||Object.values(run.enrollments??{}).some(e=>sessions.includes(e.target.local_session_id))))
+      await this.mutate('retire',{run_id:run.id,sessions});
+  }
+  _retire(input) {
+    const run=this.run(input),sessions=new Set(input.sessions),members=new Set();
+    run.removed_sessions=[...new Set([...(run.removed_sessions??[]),...input.sessions])];
+    for(const member of Object.values(run.members))if(sessions.has(member.target.local_session_id)){
+      members.add(member.id);member.removed=true;member.stopped=true;member.generation++;
+    }
+    for(const [key,value] of Object.entries(run.enrollments??{}))if(sessions.has(value.target.local_session_id))delete run.enrollments[key];
+    if(sessions.has(run.origin_session_id)){
+      run.removed=true;
+      if(run.grant){run.grant.active=false;run.grant.phase='paused';run.grant.reason='removed';run.grant.generation++;}
+    }
+    for(const message of run.messages)if(run.removed||sessions.has(message.recipient_session_id)||members.has(message.recipient_id)||members.has(message.sender_id)){
+      if(message.delivery==='claimed')message.delivery='unknown';
+      else if(message.delivery==='pending')message.delivery='rejected';
+    }
+    for(const [id,panel] of this.panels)if(panel.runId===run.id&&(run.removed||members.has(panel.memberId)))this.panels.delete(id);
+    for(const [id,probe] of Object.entries(run.probes??{}))if(run.removed||members.has(probe.memberId))delete run.probes[id];
+    this.event(run,'project.removed');return {removed:true};
+  }
   enroll(ticket,metadata){return this.enrollment.enroll(ticket,metadata);}
   _reserve(input){return this.enrollment.reserveInTransaction(input);}
   _enroll(input){const result=this.enrollment.enrollInTransaction(input,communicationIdentity(input.metadata));

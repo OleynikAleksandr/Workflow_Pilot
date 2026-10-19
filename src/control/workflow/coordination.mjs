@@ -108,6 +108,7 @@ const orchestratedPlan=workspace=>store.project(workspace)?.planExecution?.execu
 // A started button marks the plan as orchestrated even before the cached project view refreshes;
 // a plan of the former model keeps its continuation engine as the source of truth.
 const executorEnabled=(workspace,scope)=>{
+  if(execution.retired.has(workspace)||store.project(workspace)?.archivedAt)return false;
   const {state}=executionControl.view(workspace,scope),strategy=store.project(workspace)?.planExecution?.execution_strategy;
   return strategy==='orchestrated'||(!strategy&&state!=='not-started')?['running','pausing'].includes(state):projectPlanContinuation.enabled(workspace,scope);
 };
@@ -332,9 +333,11 @@ const executionPort=Object.freeze({
   observe: workspace=>execution.observe(workspace),signal: workspace=>execution.signal(workspace),
   recheck: workspace=>execution.recheck(workspace),correct: (...args)=>execution.correct(...args),
   suspend: workspace=>execution.suspend(workspace),forget: workspaces=>execution.forget(workspaces),
+  retire: workspace=>execution.retire(workspace),allow: workspace=>execution.allow(workspace),
   publish: (...args)=>execution.publish(...args),dispose: ()=>execution.dispose(),
 });
 return Object.freeze({
+  retireCommunication:identities=>getPlugin()?.communication.removeProjects(identities),
   prepareBootstrap:project=>dialogue.prepareBootstrap(project),
   observeParticipant:target=>dialogue.observe(target),admitParticipant:target=>dialogue.admit(target),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),

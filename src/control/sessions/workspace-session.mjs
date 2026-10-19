@@ -11,12 +11,12 @@ export const workspaceGit=async(workspace,args)=>(await executeGit('git',['--no-
 // A path alone is not ownership: legacy records need the assignment's committed parent identity.
 export const ownedExecutor = (child,parent) => !!parent && !!child.parentProjectId
   && child.parentProjectId===parent.projectId && child.parentWorkspace===parent.workspace;
-export async function assignmentOwnership(parent,workspace,id,git=workspaceGit) {
+export async function assignmentOwnership(parent,workspace,id,git=workspaceGit,inspect=readWorkspace) {
   try {
     if(!parent||!path.isAbsolute(workspace)||!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(id))return null;
     const folder=await fs.lstat(workspace);
     if(!folder.isDirectory()||folder.isSymbolicLink()||await fs.realpath(workspace)!==workspace)return null;
-    const main=await readWorkspace(parent.workspace);
+    const main=await inspect(parent.workspace);
     if(main.projectId!==parent.projectId)return null;
     const pointerText=await fs.readFile(path.join(workspace,'.git'),'utf8');
     if(!pointerText.startsWith('gitdir: '))return null;

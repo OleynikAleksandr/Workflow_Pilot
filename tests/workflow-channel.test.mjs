@@ -26,6 +26,23 @@ async function fixture(t,currentMessage){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+test('project removal revokes pending and uncertain deliveries durably without touching a neighbour',async t=>{
+  const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e);
+  const first=await queue(f.c,e,'claimed'),second=await queue(f.c,e,'pending');
+  await f.c.claim({...b,message_id:first.message_id});
+  const other={...f.target('other','O'),project_id:'neighbour',origin_session_id:'other'};
+  f.targets.set('other',other);await f.c.workflow.grant(other);const neighbour=await f.bind(f.c,other);
+  await f.c.removeProjects([{sessionIds:['o','e']}]);
+  const run=f.c.runs.get(b.run_id);assert.equal(run.removed,true);assert.equal(run.grant.active,false);
+  assert.equal(run.messages.find(m=>m.id===first.message_id||m.message_id===first.message_id)?.delivery,'unknown');
+  assert.equal(run.messages.find(m=>m.id===second.message_id||m.message_id===second.message_id)?.delivery,'rejected');
+  await assert.rejects(f.c.workflow.grant(f.o),{code:'PLUGIN_COMMUNICATION_PROJECT_REMOVED'});
+  await assert.rejects(queue(f.c,e,'late'),{code:'PLUGIN_COMMUNICATION_PROJECT_REMOVED'});
+  assert.equal((await f.c.status(neighbour)).stopped,false);
+  f.c.dispose();await f.c.tail;const restored=await f.create();
+  assert.throws(()=>restored.reserve(e),{code:'PLUGIN_COMMUNICATION_PROJECT_REMOVED'});
+  assert.equal(restored.runs.get(neighbour.run_id).removed,undefined);
+});
 const pending=(c,b)=>c.waitResult({...b,after_seq:c.runs.get(b.run_id).events.length}).message_id;
 async function delivered(f,b,message_id){
   const attempt=await f.c.claim({...b,message_id});assert.ok(attempt.delivery_attempt_id);

@@ -3,6 +3,7 @@ import { desktopFiles } from './files/adapter.mjs';
 import { RuntimeError } from '../contracts/errors.mjs';
 import { BrowserSessions } from './browser/session-runtime.mjs';
 import { startPluginBridge } from './plugin/bridge.mjs';
+import {ProjectCommands} from './runtime/project-commands.mjs';
 export { openCommunicationStore } from './plugin/communication-store.mjs';
 export { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from './browser/chatgpt-experience.mjs';
 export { desktopFiles, exists } from './files/adapter.mjs';
@@ -46,6 +47,17 @@ export class ExecutionFacade {
   waitCommand(id, yieldMs) { return this.commands.wait(id, yieldMs); }
   stopCommand(id) { return this.commands.cancel(id); }
   commandSnapshot(id) { return this.commands.snapshot(id); }
+  configureProjectCommands(directory) {this.projectCommands=new ProjectCommands(directory);}
+  async retireProjectCommands(workspaces) {
+    const local=this.commands.retireWorkspaces(workspaces);
+    const remote=this.projectCommands?.retire(workspaces)??Promise.resolve({operations:[]});
+    const results=await Promise.allSettled([local,remote]);
+    const failed=results.find(r=>r.status==='rejected');if(failed)throw failed.reason;
+    return results[1].value;
+  }
+  async allowProjectCommands(workspace) {
+    await this.projectCommands?.update([workspace],false);this.commands.allowWorkspaces([workspace]);
+  }
   executeFile = (...args) => this.commands.executeFile(...args);
   readText(file) { return this.files.readText(file); }
   readJson(file) { return this.files.readJson(file); }

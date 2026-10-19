@@ -348,7 +348,9 @@ const httpPreview=await require('./protected-preview-fixture.cjs').start(root,pa
     assert.equal(await sessionView(newMain).webContents.executeJavaScript('window.fixtureMessages.length'),beforeFinal+2);
     await ipc('selectSession',otherRoot,store.project(otherRoot).sessionId);await ipc('selectSession',root,newOrigin.sessionId);
     assert.equal(await sessionView(newMain).webContents.executeJavaScript('window.fixtureMessages.length'),beforeFinal+2,'project switching cannot repeat diagnostic or final handoff');
-    // A live read-only httpPreview blocks deletion. Stopping its exact session permits a new confirmation.
+    // This preview belongs to a separate fixture executor, outside the backend's
+    // authenticated command-control endpoint. Never stop an unowned instance;
+    // preserve the confirmed deletion and resume it after its owner stops it.
     await ipc('archiveProject',root);await ipc('openArchive',root);
     await wait(()=>getArchiveWindow()&&!getArchiveWindow().isDestroyed(),'five-task archive ready');
     const archive=getArchiveWindow().webContents;
@@ -358,11 +360,14 @@ const httpPreview=await require('./protected-preview-fixture.cjs').start(root,pa
     const remove=httpPreview=>archive.executeJavaScript('window.webPilotArchive.deleteProject('+JSON.stringify(httpPreview.result.token)+','+JSON.stringify(store.project(root).name)+')');
     if(httpPreview) {
       const ticket=await inspect();assert.equal(ticket.ok,true);
-      const blocked=await remove(ticket);assert.equal(blocked.ok,false);assert.equal(blocked.error.code,'DELETE_PROJECT_BUSY');
+      const blocked=await remove(ticket);assert.equal(blocked.ok,false);assert.equal(blocked.error.code,'PROJECT_COMMAND_STOP_UNCONFIRMED');
       assert.ok(store.project(root));await httpPreview.stop();
+      const recovered=await archive.executeJavaScript('window.webPilotArchive.recoverDeletions()');
+      assert.equal(recovered.ok,true,JSON.stringify(recovered));
+    }else {
+      const ticket=await inspect();assert.equal(ticket.ok,true,JSON.stringify(ticket));
+      const deleted=await remove(ticket);assert.equal(deleted.ok,true,JSON.stringify(deleted));
     }
-    const ticket=await inspect();assert.equal(ticket.ok,true,JSON.stringify(ticket));
-    const deleted=await remove(ticket);assert.equal(deleted.ok,true,JSON.stringify(deleted));
     assert.equal(store.project(root),null);assert.ok(store.project(otherRoot));
     for(const a of [foundation,...tools,last])assert.equal(store.project(a.worktree),null);
     getArchiveWindow().close();

@@ -8,6 +8,17 @@ import path from 'node:path';
 import {emptyPlan,renderPlan} from '@webpilot/workflow-kit/lib/plan';
 import {ChildCommandWatches} from '../src/execution/files/project-input-watch.mjs';
 import {readCommandActivity} from '../src/control/workflow/command-activity.mjs';
+test('retirement blocks a delivery paused in persistence and all late scheduler callbacks',async t=>{
+  const f=fixture(t),entry={status:'pending'};let release,deliveries=0;
+  const wait=new Promise(resolve=>release=resolve);f.runtime.save=()=>wait;
+  f.runtime.sendFinalization=async()=>{deliveries++;return {message_id:'forbidden'};};
+  const pending=f.runtime.queueMessage('/main',{sessionId:'origin'},f.ledger,entry,'context','finalization');
+  await f.runtime.retire('/main');release();
+  await assert.rejects(pending,{code:'PROJECT_REMOVED'});
+  f.runtime.forget(['/main']);f.runtime.observe('/main');await f.runtime.signal('/main');
+  assert.equal(deliveries,0);assert.equal(f.runtime.states.has('/main'),false);
+  assert.equal(Object.values(f.runtime.book).some(v=>v.workspace==='/main'),false);
+});
 test('durable handoff recovers the Kit-to-channel gap and separates queued, accepted and replied',async t=>{
   const f=fixture(t),ledger=f.ledger,origin={sessionId:'origin'},entry=ledger.finalization={status:'pending'};
   f.runtime.queuedRoute=()=>true;const calls=[];let lost=true;

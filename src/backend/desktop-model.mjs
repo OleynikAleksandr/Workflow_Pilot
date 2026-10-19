@@ -691,6 +691,8 @@ async function openConnectedSession(input, sessionId = null, options = {}) {
     // Only the first connection needs the complete strict setup path.
     if (!record) {
       if (!await reviewWorkspace(workspace, true, { generation })) return null;
+      if(deletion.isPending(workspace))throw new Error('Сначала завершите подтверждённую очистку проекта.');
+      await executionServices.allowProjectCommands(workspace);execution.allow(workspace);
       const project = explicitSession && record
         ? await store.selectSession(workspace, sessionId, { isCurrent: current })
         : await store.select(workspace, { latest, isCurrent: current });
@@ -988,6 +990,8 @@ function registerIpc() {
     const workspace = doctorState.workspace;
     if (!await reviewWorkspace(workspace, true)) return;
     const generation = navigationId, existing = store.project(workspace);
+    if(deletion.isPending(workspace))throw new Error('Сначала завершите подтверждённую очистку проекта.');
+    if(!existing){await executionServices.allowProjectCommands(workspace);execution.allow(workspace);}
     let project = await store.select(workspace, { experience: mode === 'work' ? 'work' : 'chat', isCurrent: () => navigationCurrent(generation) });
     if (!navigationCurrent(generation) || !project) return;
     if (['chat','work'].includes(mode) && existing) project = await store.newSession(workspace, mode);
@@ -1147,6 +1151,9 @@ function registerIpc() {
     const firstSessionRequired = !!setupState.firstSessionRequired;
     const requestedExperience = input.experience ?? setupState.firstSessionExperience;
     const firstSessionExperience = firstSessionRequired && requestedExperience === 'work' ? 'work' : 'chat';
+    if(firstSessionRequired&&setupState.workspace&&!store.project(setupState.workspace)&&!deletion.isPending(setupState.workspace)){
+      await executionServices.allowProjectCommands(setupState.workspace);execution.allow(setupState.workspace);
+    }
     setupState = { ...setupState, phase: 'applying', error: null }; startupError = null; publish();
     const generation = navigationId;
     const result = await workspaceSetup.apply(input.token);
@@ -1228,7 +1235,8 @@ function registerIpc() {
   registerArchiveAction('archive:forget', async input => {
     const projects = archiveRecords(input);
     for (const project of projects) if (deletion.isPending(project.workspace)) throw new Error('Сначала завершите подтверждённое удаление.');
-    const count = await store.forgetArchivedMany(projects.map(project => ({ workspace: project.workspace, projectId: project.projectId })));
+    for(const project of projects)await deletion.forget(project.workspace,project.projectId);
+    const count = projects.length;
     deletion.clear(); archiveState = { deletion: null, notice: `Убрано из списка: ${count}. Папки на диске сохранены.`, focusWorkspace: null };
     return count;
   });
@@ -1367,10 +1375,7 @@ async function start() {
   deletion = control.createDeletion({ beforeFinish:job=>deletionHooks?.beforeFinish?.(job), journalDir: path.join(dataDir, 'deletions'), protectedPaths: [app.getAppPath(), runtimeFolder], prepare:prepareProjectRemoval, cleanup:cleanupDeletedProject, purgeState:(dir,identities)=>{
     return preferences.purge(dir,identities);
   } });
-  if (!storageError) {
-    const errors = await deletion.recover();
-    if (errors.length) { startupError = errors[0]; settingsState = { workspace: errors[0].workspace }; }
-  }
+  executionServices.configureProjectCommands(smoke||offline?path.join(dataDir,'fixture-executor'):runtimeFolder);
   const remoteSession = session.fromPartition(partition);
   remoteSession.setPermissionRequestHandler((contents, permission, callback, details) => {
     const origin = details?.securityOrigin ?? details?.requestingUrl ?? contents.getURL();
@@ -1389,6 +1394,10 @@ async function start() {
       observe:workflow.observeParticipant,admit:workflow.admitParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;
+  }
+  if (!storageError) {
+    const errors = await deletion.recover();
+    if (errors.length) { startupError = errors[0]; settingsState = { workspace: errors[0].workspace }; }
   }
   // The plugin bridge belongs to whoever runs the model (the backend); an
   // isolated fixture names its own directory instead of the user's runtime folder.

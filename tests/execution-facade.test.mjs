@@ -29,6 +29,19 @@ test('Execution facade owns exact stdin sessions, cwd and terminal results', asy
   await execution.stopCommand(other.operationId);
   assert.equal((await execution.waitCommand(other.operationId, 5000)).outcome, 'cancel');
 });
+test('project removal cancels its owned workers and blocks late launches, keeping a neighbour alive',async t=>{
+  const {root,execution}=await fixture(t),other=path.join(root,'neighbour');await fs.mkdir(other);
+  const args=['-e','setInterval(()=>{},1000)'];
+  const owned=execution.runCommand(process.execPath,args,{cwd:root});
+  const nearby=execution.runCommand(process.execPath,args,{cwd:other});
+  await execution.retireProjectCommands([root]);
+  assert.equal(execution.commandSnapshot(owned.operationId).outcome,'cancel');
+  assert.equal(execution.commandSnapshot(nearby.operationId).outcome,'running');
+  assert.throws(()=>execution.runCommand(process.execPath,args,{cwd:root}),{code:'PROJECT_REMOVED'});
+  await execution.allowProjectCommands(root);
+  assert.equal((await execution.executeFile(process.execPath,['-e','process.stdout.write("new")'],{cwd:root})).stdout,'new');
+});
+
 test('Execution distinguishes failure, requested cancellation and lost ownership', async t => {
   const { root, execution } = await fixture(t);
   await assert.rejects(execution.executeFile(process.execPath, ['-e', "process.stderr.write('failure');process.exit(7)"], { cwd: root }),

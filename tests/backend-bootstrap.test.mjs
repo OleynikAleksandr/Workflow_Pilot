@@ -23,4 +23,9 @@ test('startup: one missing or broken project does not stop the service; a pendin
     if(workspace===orphan)throw Object.assign(new Error('not a git repository'),{code:'COMMAND_FAILED'});return null;}}));
   assert.throws(()=>assertNoPendingKitTransactions(projects,{readJournal:workspace=>workspace===healthy?{phase:'PREPARED'}:null}),
     {code:'BACKEND_KIT_TRANSACTION_PENDING'});
+  let archivedReads=0;
+  assert.doesNotThrow(()=>assertNoPendingKitTransactions([{workspace:healthy,projectId:'parent',archivedAt:1},
+    {workspace:orphan,parentWorkspace:healthy,parentProjectId:'parent'}],{readJournal:()=>{archivedReads++;return {phase:'PREPARED'};}}));
+  assert.equal(archivedReads,0);
+  assert.doesNotThrow(()=>assertNoPendingKitTransactions([{workspace:healthy,archivedAt:1}],{readJournal:()=>({phase:'PREPARED'})}));
 });

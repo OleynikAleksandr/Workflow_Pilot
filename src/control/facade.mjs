@@ -85,7 +85,7 @@ export class ControlFacade {
   configureLifecycle(options) {
     if (this.#lifecycle) throw new Error('CONTROL_LIFECYCLE_ALREADY_CONFIGURED');
     this.#lifecycle = createProjectLifecycle({...options,store:this.projects,workflow:this.#workflow,
-      liveSessions:this.#sessions,contextCache:this.context.cache,workspaceSetup:this.setup});
+      liveSessions:this.#sessions,contextCache:this.context.cache,workspaceSetup:this.setup,operations:this.#execution});
     return this.#lifecycle;
   }
   configureStartup({ readiness, clipboard }) {

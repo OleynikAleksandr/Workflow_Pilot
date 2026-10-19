@@ -28,7 +28,11 @@ export function assertProfileStores(dataDir) {
 // A checkout whose transaction state cannot be read (folder gone, broken git or worktree)
 // does not stop the service: that project shows its own error when it is selected.
 export function assertNoPendingKitTransactions(projects,{readJournal=journal}={}) {
-  for(const workspace of new Set(projects.map(project=>project.workspace))) {
+  // Archived projects cannot execute. Their unfinished transaction must not
+  // prevent startup and the user's explicit removal/recovery action.
+  const active=projects.filter(project=>!project.archivedAt&&!projects.some(parent=>parent.archivedAt
+    &&project.parentProjectId&&parent.projectId===project.parentProjectId&&parent.workspace===project.parentWorkspace));
+  for(const workspace of new Set(active.map(project=>project.workspace))) {
     if(typeof workspace!=='string'||!path.isAbsolute(workspace)
       || !fs.existsSync(path.join(workspace,'.harness','workflow.json')))continue;
     let pending;

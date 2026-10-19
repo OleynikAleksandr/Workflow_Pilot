@@ -44,6 +44,7 @@ export class ProjectsService {
       journalDir: service.journalDir,
       clear: () => service.clear(), isPending: workspace => service.isPending(workspace),
       preview: workspace => service.preview(workspace), apply: (...args) => service.apply(...args),
+      forget: (...args) => service.forget(...args),
       inspectOrphan: input => service.inspectOrphan(input), clearOrphan: (...args) => service.clearOrphan(...args),
       recover: () => service.recover(),
     });

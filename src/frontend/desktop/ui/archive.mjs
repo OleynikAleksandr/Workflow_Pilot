@@ -104,6 +104,7 @@ function render(next = state) {
   if (preview) {
     $('delete-name').textContent = preview.name; $('delete-path').textContent = preview.workspace;
     $('delete-meta').textContent = preview.missing ? `Папка отсутствует · локальных сессий: ${preview.sessionCount}` : `${preview.files.toLocaleString('ru-RU')} файлов · ${(preview.bytes / 1024 / 1024).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} МБ · сессий: ${preview.sessionCount}`;
+    $('delete-worktrees').textContent = (preview.related??[]).map(item=>item.workspace+(item.missing?' (папка отсутствует)':'')).join('\n');
     if ($('delete-confirmation').dataset.token !== preview.token) { $('delete-confirmation').dataset.token = preview.token; $('delete-confirmation').value = ''; }
     $('delete-confirmation').disabled = pending; $('confirm-delete').disabled = pending || $('delete-confirmation').value !== preview.name;
   } else { $('delete-confirmation').dataset.token = ''; $('delete-confirmation').value = ''; }

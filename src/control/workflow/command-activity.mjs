@@ -32,6 +32,7 @@ export async function readCommandActivity(workspace,{isDead=dead,bootId=currentB
       &&record.boot_id.toLowerCase()!==bootId.toLowerCase();
     const acknowledged=state==='acknowledged_unknown';
     commands.push({id,digest:hash(raw),state,readOnly,executorPid:record.executor_pid??null,
+      executorInstance:valid?record.executor_instance:null,previousBoot:previousBoot&&knownDead,
       processId:typeof record.process_id==='string'?record.process_id:null,
       cwd:valid&&typeof record.cwd==='string'?record.cwd:workspace,workspace,
       exitCode:state==='completed'?record.exit_code:null,

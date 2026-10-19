@@ -2,6 +2,7 @@ import { execFile, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { operationId, unknownOperation } from '../../contracts/execution.mjs';
 import { RuntimeError } from '../../contracts/errors.mjs';
+import path from 'node:path';
 
 // spawn, unlike execFile, actually supports detached process groups on POSIX.
 function spawnFile(file, args, options, callback) {
@@ -50,15 +51,19 @@ export class CommandService {
     historyLimit = 128 } = {}) {
     Object.assign(this, { launch, platform, signal, historyLimit });
     this.operations = new Map();
+    this.retired = new Set();
     this.closed = false;
   }
   start(file, args = [], options = {}) {
     if (this.closed) throw new RuntimeError('EXECUTION_CLOSED', 'Исполнитель уже закрыт.');
     if (typeof file !== 'string' || !file || !Array.isArray(args) || args.some(arg => typeof arg !== 'string'))
       throw new TypeError('CommandService requires an executable and string arguments');
+    const {ownerWorkspace=options.cwd,...spawnOptions}=options;
+    const workspace=typeof ownerWorkspace==='string'?path.resolve(ownerWorkspace):null;
+    if(this.retired.has(workspace))throw new RuntimeError('PROJECT_REMOVED','Работа проекта остановлена для удаления.');
     const id = randomUUID();
     let complete;
-    const record = { id, child: null, outcome: 'running', stdout: '', stderr: '', exitCode: null,
+    const record = { id, workspace, child: null, outcome: 'running', stdout: '', stderr: '', exitCode: null,
       signal: null, error: null, failure: null, cancelled: false, killTimer: null, inputClosed: false,
       completion: new Promise(resolve => { complete = resolve; }) };
     this.operations.set(id, record);
@@ -76,7 +81,7 @@ export class CommandService {
       this.prune();
     };
     try {
-      const child = this.launch(file, args, { ...options, encoding: 'utf8', shell: false,
+      const child = this.launch(file, args, { ...spawnOptions, encoding: 'utf8', shell: false,
         detached: this.platform !== 'win32', windowsHide: true }, finish);
       record.child = child;
       child.stdout?.on('data', chunk => { record.stdout = (record.stdout + chunk).slice(0, maxBuffer); });
@@ -155,6 +160,18 @@ export class CommandService {
   prune() {
     const finished = [...this.operations.values()].filter(r => r.outcome !== 'running');
     for (const r of finished.slice(0, Math.max(0, finished.length - this.historyLimit))) this.operations.delete(r.id);
+  }
+  allowWorkspaces(workspaces) {for(const workspace of workspaces)this.retired.delete(path.resolve(workspace));}
+  async retireWorkspaces(workspaces) {
+    const targets=new Set(workspaces.map(w=>path.resolve(w)));
+    for(const workspace of targets)this.retired.add(workspace);
+    const pending=[...this.operations.values()].filter(r=>targets.has(r.workspace)&&r.outcome==='running');
+    await Promise.all(pending.map(async r=>{
+      if(r.outcome==='running')await this.cancel(r.id);
+      const result=await this.wait(r.id,10000);
+      if(result.outcome==='running')throw new RuntimeError('EXECUTION_CANCEL_UNCONFIRMED','Не удалось подтвердить остановку операции проекта. Повторите очистку.');
+    }));
+    return pending.map(r=>r.id);
   }
   async dispose() {
     this.closed = true;

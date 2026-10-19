@@ -14,14 +14,16 @@ import sys
 import threading
 import time
 import uuid
+import secrets
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from mcp.server.fastmcp import FastMCP, Image
 from mcp.types import ToolAnnotations
 from pydantic import Field
+from starlette.responses import JSONResponse
 
-from app_server_client import AppServerClient
+from app_server_client import AppServerClient, AppServerError
 
 
 READ_ONLY = ToolAnnotations(
@@ -178,12 +180,99 @@ class LocalFacade:
         self._boot_identity = current_boot_identity()
         self._read_only_generation = None
         self._patch_activity = threading.local()
+        self._direct_patches: dict[str, Any] = {}
+
+    def _assert_project_active(self, root: Path) -> None:
+        file = self.state_root / 'private' / 'project-command-stops.json'
+        try:
+            if file.is_symlink():
+                raise ValueError('Invalid project command control file')
+            data = json.loads(file.read_text(encoding='utf-8'))
+        except FileNotFoundError:
+            return
+        if data.get('version') != 1 or not isinstance(data.get('workspaces'), list):
+            raise ValueError('Invalid project command control file')
+        if str(root) in data['workspaces']:
+            raise ValueError('PROJECT_REMOVED: commands for this project are disabled by its removal')
+
+    def quiesce_projects(self, workspaces: list[str]) -> dict:
+        if not isinstance(workspaces, list) or not workspaces or len(workspaces) > 256 or any(
+            not isinstance(p, str) or not Path(p).is_absolute() or str(Path(p)) != p for p in workspaces
+        ):
+            raise ValueError('Invalid workspace addresses')
+        targets = set(workspaces)
+        # The backend persists the block before requesting cancellation. Never
+        # accept a control request that can race a newly admitted command.
+        for root in targets:
+            try:
+                self._assert_project_active(Path(root))
+            except ValueError as exc:
+                if not str(exc).startswith('PROJECT_REMOVED:'):
+                    raise
+            else:
+                raise ValueError('Project stop intent is missing')
+        deadline = time.monotonic() + 25
+        confirmed = set()
+        while True:
+            with self._activity_lock:
+                records = [(key, dict(value)) for key, value in self._activities.items()
+                           if value['workspace'] in targets and key not in confirmed]
+            if not records:
+                return {'executor_instance': self._executor_instance,
+                        'operations': [Path(key).stem for key in confirmed]}
+            for key, record in records:
+                stopped = record['state'] == 'completed' or record.get('direct_finished', False)
+                process = self._direct_patches.get(key)
+                if process is not None:
+                    if process.poll() is None:
+                        process.terminate()
+                        try:
+                            process.wait(timeout=1)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.wait(timeout=5)
+                    stopped = process.poll() is not None
+                elif record.get('process_id'):
+                    status = self.client.stop_process(record['process_id'])
+                    stopped = not status.get('running', True)
+                if stopped:
+                    with self._activity_lock:
+                        self._activities[key]['retired'] = True
+                    confirmed.add(key)
+            if time.monotonic() >= deadline:
+                raise ValueError('Owned command launch or termination is not yet confirmed')
+            time.sleep(0.02)
+
+    def install_project_control(self, mcp, host: str, port: int) -> None:
+        directory = self.state_root / 'private'
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if self.state_root.is_symlink() or directory.is_symlink() or directory.resolve() != self.state_root.resolve() / 'private':
+            raise ValueError('Private executor directory is not owned')
+        token = secrets.token_hex(32)
+        self._write_activity(directory / 'command-control.json',
+                             {'version': 1, 'port': port, 'pid': os.getpid(), 'token': token})
+
+        @mcp.custom_route('/workflow-project-control', methods=['POST'], include_in_schema=False)
+        async def control(request):
+            if (request.client is None or request.client.host not in ('127.0.0.1', '::1')
+                or request.headers.get('origin') or request.headers.get('host') != f'127.0.0.1:{port}'
+                or not secrets.compare_digest(request.headers.get('authorization', ''), 'Bearer ' + token)):
+                return JSONResponse({'error': 'Forbidden'}, status_code=403)
+            try:
+                body = await request.body()
+                if len(body) > 65536:
+                    raise ValueError('Request too large')
+                data = json.loads(body)
+                operation = str(uuid.UUID(data['operation']))
+                result = await asyncio.to_thread(self.quiesce_projects, data['workspaces'])
+                return JSONResponse({'operation': operation, **result})
+            except (ValueError, KeyError, OSError, AppServerError) as exc:
+                return JSONResponse({'error': str(exc)[:300]}, status_code=409)
 
     def _begin_activity(self, cwd: Path, *, kind: str = "exec", command: str = "", read_only: bool = False) -> Path | None:
         for root in (cwd, *cwd.parents):
             if (root / ".harness" / "plans" / "todo-plan.md").is_file():
                 directory = root / ".harness" / "runtime" / "command-activity"
-                directory.mkdir(parents=True, exist_ok=True, mode=0o700)
                 marker = directory / (uuid.uuid4().hex + ".json")
                 metadata = {"version": 2, "id": marker.stem, "workspace": str(root),
                     "cwd": str(cwd), "kind": kind, "command_hash": hashlib.sha256(command.encode()).hexdigest(),
@@ -194,9 +283,13 @@ class LocalFacade:
                 if self._boot_identity:
                     metadata["boot_id"] = self._boot_identity
                 with self._activity_lock:
+                    self._assert_project_active(root)
+                    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
                     self._activities[str(marker)] = metadata
                     self._write_activity(marker, metadata)
                 return marker
+        for root in (cwd, *cwd.parents):
+            self._assert_project_active(root)
         return None
 
     @staticmethod
@@ -212,7 +305,7 @@ class LocalFacade:
             return
         with self._activity_lock:
             metadata = self._activities.get(str(marker))
-            if metadata is None or metadata["state"] == "completed":
+            if metadata is None or metadata.get('retired') or metadata["state"] == "completed":
                 return
             if metadata["state"] == "unknown" and event.get("state") == "running":
                 return
@@ -422,25 +515,36 @@ class LocalFacade:
         """Windows: Codex puts apply_patch.bat on PATH, and a batch file takes the patch as an argument.
         A patch has many lines and may exceed the command line, so the same Codex executable is started
         under the name apply_patch and reads the patch from stdin, exactly as the alias does on macOS."""
+        marker = getattr(self._patch_activity, 'marker', None)
+        process = None
         try:
-            result = subprocess.run(
+            with self._activity_lock:
+                if marker is not None:
+                    self._assert_project_active(Path(self._activities[str(marker)]['workspace']))
+                process = subprocess.Popen(
                 ["apply_patch"],
                 executable=str(self.client.binary.path),
-                input=data,
                 cwd=str(cwd),
                 env=getattr(self.client, "environment", None),
-                capture_output=True,
-                timeout=120,
-                check=False,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0,
-            )
+                )
+                if marker is not None:
+                    self._direct_patches[str(marker)] = process
+            stdout, stderr = process.communicate(data, timeout=120)
         except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
             raise ValueError("Codex apply_patch did not finish within 120 seconds") from None
         except OSError as exc:
             raise self._native_apply_patch_error(f"failed to spawn: {exc}") from None
-        output = (result.stdout + result.stderr).decode("utf-8", errors="replace").strip()
-        if result.returncode != 0:
-            raise self._native_apply_patch_error(output or f"apply_patch exited with code {result.returncode}")
+        finally:
+            if marker is not None:
+                with self._activity_lock:
+                    self._activities[str(marker)]['direct_finished'] = process is None or process.poll() is not None
+        output = (stdout + stderr).decode("utf-8", errors="replace").strip()
+        if process.returncode != 0:
+            raise self._native_apply_patch_error(output or f"apply_patch exited with code {process.returncode}")
         return output or "Done!"
 
     def view_image(self, path: str) -> Any:
@@ -936,6 +1040,7 @@ def create_server(*, host: str, port: int, state_root: Path, codex_binary: str |
         # keep no per-session state and send no in-session notifications.
         stateless_http=True,
     )
+    facade.install_project_control(mcp, host, port)
 
     @mcp.tool(annotations=LOCAL_NOTIFICATION)
     def turn_watchdog(
