@@ -72,3 +72,15 @@ test('symlink destinations and external edits cannot redirect or silently extend
   await assert.rejects(store.append(state,[event(2)]),{code:'PLUGIN_COMMUNICATION_STORE_WRITE'});
   assert.deepEqual(await fs.readdir(outside),[]);
 });
+
+test('an unsupported registry or WAL version blocks writes without rewriting the source',async t=>{
+  const dir=await directory(t),store=await openCommunicationStore(dir);
+  await assert.rejects(store.append({...state,registry_version:3},[event(1)]),{code:'PLUGIN_COMMUNICATION_STORE_VERSION'});
+  await store.append(state,[event(1)]);
+  const record=JSON.parse((await fs.readFile(file(dir),'utf8')).trim());delete record.checksum;record.schema_version=99;
+  const text=JSON.stringify({...record,checksum:hash(JSON.stringify(record))})+'\n';await fs.writeFile(file(dir),text);
+  const next=await openCommunicationStore(dir);
+  assert.equal(next.load().issues[0].error_code,'PLUGIN_COMMUNICATION_STORE_VERSION');
+  await assert.rejects(next.append(state,[event(1)]),{code:'PLUGIN_COMMUNICATION_STORE_BLOCKED'});
+  assert.equal(await fs.readFile(file(dir),'utf8'),text);
+});

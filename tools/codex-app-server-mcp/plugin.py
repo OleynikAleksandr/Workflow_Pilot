@@ -113,7 +113,7 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_join", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def join(run_id: RunId, role: Annotated[str, Field(pattern=r"^(O|E)$", description="Role O or E; two different conversations are required.")], ctx: Context) -> CallToolResult:
-        """Join a communication run in this conversation. Return the participant id for binding the existing panel. Does not enable delivery or send to a model. Missing host identity is an explicit refusal."""
+        """Legacy experiment only: join an O/E run. Working plans reject join and register automatically through workflow_pilot_panel with their bootstrap invitation. No delivery or model turn is started."""
         return await communication("join", ctx, run_id=run_id, role=role)
 
     @mcp.tool(name="workflow_communication_send_message", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
@@ -134,7 +134,7 @@ def register_plugin(mcp, state_root: Path):
     @mcp.tool(name="workflow_communication_probe", annotations=LAUNCH, meta={"ui": {"visibility": ["model"]}})
     async def probe(run_id: RunId, participant_id: ParticipantId,
                     delay_ms: Annotated[int, Field(ge=25, le=60000, description="One-shot delay in milliseconds. Enable the panel first, then end your turn.")], ctx: Context) -> CallToolResult:
-        """Schedule one control message to yourself for an explicitly enabled panel. Stop cancels it. No general scheduler and no active-model wait. A fixture success does not prove ChatGPT wakeup."""
+        """Legacy experiment only: schedule one control message for an explicitly enabled panel. Working plans reject probe. Stop cancels it; no active-model wait. A fixture does not prove ChatGPT wakeup."""
         return await communication("probe", ctx, run_id=run_id, participant_id=participant_id, delay_ms=delay_ms)
 
     @mcp.tool(name="workflow_communication_status", annotations=READ, meta={"ui": {"visibility": ["app", "model"]}})
@@ -213,11 +213,12 @@ def register_plugin(mcp, state_root: Path):
     def panel_resource() -> str:
         return (Path(__file__).parent / "plugin-ui.html").read_text(encoding="utf-8")
 
-    @mcp.tool(name="workflow_pilot_panel", title="Workflow Pilot", annotations=READ,
+    @mcp.tool(name="workflow_pilot_panel", title="Workflow Pilot", annotations=CONNECT,
               meta={"ui": ui, "openai/ui": {"entrypoints": [{"type": "global"}, {"type": "thread"}]}})
-    async def panel() -> CallToolResult:
-        """Open the existing Workflow Pilot communication panel beside this conversation. Join with workflow_communication_join, then enter run/participant in the panel and explicitly enable delivery. Tool success does not prove visible rendering or ChatGPT wakeup. This panel neither creates conversations nor selects projects."""
-        return result(await asyncio.to_thread(bridge.call, {"action": "panel"}))
+    async def panel(ctx: Context, enrollment_ticket: Annotated[str | None, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque invitation from this session's Workflow Pilot startup context; never invent or share it.")] = None) -> CallToolResult:
+        """Open Workflow Pilot beside this conversation. With the bootstrap invitation, register this existing local session using fresh host identity; retrying the same binding is safe. No manual run/participant transfer or join is required for working plans. Without an invitation, open the existing panel. Success does not prove panel readiness, permission or model wakeup; never bypass host confirmations."""
+        return result(await asyncio.to_thread(bridge.call, {"action": "panel", "metadata": host_metadata(ctx),
+                                                            **({"enrollment_ticket": enrollment_ticket} if enrollment_ticket else {})}))
 
     @mcp.tool(name="workflow_open_project", title="Сведения о проектах Workflow Pilot", annotations=READ)
     async def open_project(project_id: Annotated[str | None, Field(min_length=1, max_length=512, description="Omit to list local projects; otherwise use an exact id from that list.")] = None) -> CallToolResult:

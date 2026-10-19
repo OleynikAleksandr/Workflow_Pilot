@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { validateContextPacket } from '../../contracts/context.mjs';
 import { PluginCommunication, COMMUNICATION_BUILD, COMMUNICATION_PROTOCOL } from './communication.mjs';
+import {localParticipantTarget} from './enrollment.mjs';
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const key = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
@@ -15,11 +16,17 @@ export function pluginConversationKey(metadata) {
 export class PluginProjects {
   constructor({ projects, loadContext, communicationStore = null, onChange = () => {} }) {
     Object.assign(this, { projects, loadContext, onChange });
-    this.communication = new PluginCommunication({store:communicationStore});
+    this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id)});
   }
-  async panel() {
+  async reserveParticipant(sessionId) {
+    const target=localParticipantTarget(this.projects,sessionId);
+    if(!target)throw fail('PLUGIN_PARTICIPANT_UNAVAILABLE','Нет действующего назначения или оркестратора для этой сессии.');
+    return this.communication.reserve(target);
+  }
+  async panel({enrollment_ticket,metadata}={}) {
     await this.communication.ready;
-    return {communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
+    const registration=enrollment_ticket?await this.communication.enroll(enrollment_ticket,metadata):null;
+    return {...(registration?{registration}:{}),communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       storage:this.communication.store?'durable':'memory',critical_error:this.communication.critical}};
   }
   list() {

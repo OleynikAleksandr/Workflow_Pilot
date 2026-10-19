@@ -6,6 +6,9 @@ import {createHash} from 'node:crypto';
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const failure=code=>Object.assign(new Error('Журнал связи недоступен. Отправка заблокирована; исходные файлы сохранены.'),{code});
 const encode=value=>JSON.stringify(value);
+const supportedState=state=>state?.registry_version===undefined&&!state?.mode||state?.registry_version===2&&state.mode==='workflow'
+  &&state.enrollments&&typeof state.enrollments==='object'
+  &&Object.entries(state.members??{}).every(([id,member])=>id===member.id&&member.target&&['O','E'].includes(member.role));
 
 // One fsynced JSONL transaction contains the new state and its contiguous events.
 // The WAL, not a separately replaced snapshot, is the only source of truth.
@@ -31,7 +34,8 @@ export async function openCommunicationStore(directory,{files=fs}={}) {
       try {
         if(i===lines.length-1)throw Error('tail');
         const {checksum,...record}=JSON.parse(line);
-        if(checksum!==digest(encode(record))||record.previous!==previous||record.schema_version!==1
+        if(!supportedState(record.state)||record.schema_version!==(record.state.registry_version===2?2:1))throw Error('version');
+        if(checksum!==digest(encode(record))||record.previous!==previous
           ||!record.state||!record.state.members||!Array.isArray(record.state.messages)||!record.state.probes
           ||!record.state.clientEvents||!record.state.clientSequences||!Array.isArray(record.events)||!record.events.length
           ||digest(record.run_id)+'.jsonl'!==name||record.state.id!==record.run_id)throw Error('record');
@@ -42,7 +46,7 @@ export async function openCommunicationStore(directory,{files=fs}={}) {
         }
         if(record.seq!==next||record.event_id!==record.events.at(-1).event_id)throw Error('sequence');
         seq=next;previous=checksum;state=record.state;events.push(...record.events);validBytes+=Buffer.byteLength(line+'\n');
-      }catch(error){code=error.message==='tail'?'PLUGIN_COMMUNICATION_STORE_TAIL':'PLUGIN_COMMUNICATION_STORE_CORRUPT';break;}
+      }catch(error){code=error.message==='version'?'PLUGIN_COMMUNICATION_STORE_VERSION':error.message==='tail'?'PLUGIN_COMMUNICATION_STORE_TAIL':'PLUGIN_COMMUNICATION_STORE_CORRUPT';break;}
     }
     if(code)issues.push({run_id:state?.id??null,error_code:code,last_seq:seq,valid_bytes:validBytes});
     if(state)records.set(state.id,{state,events,previous,size:stat.size});
@@ -53,10 +57,11 @@ export async function openCommunicationStore(directory,{files=fs}={}) {
     append(state,events) {
       const work=tail.then(async()=>{
         if(broken)throw failure('PLUGIN_COMMUNICATION_STORE_BLOCKED');
+        if(!supportedState(state))throw failure('PLUGIN_COMMUNICATION_STORE_VERSION');
         const old=records.get(state.id),seq=old?.events.at(-1)?.seq??0;
         const ids=new Set(old?.events.map(e=>e.event_id)??[]);
         if(!events.length||events.some((e,i)=>{const duplicate=ids.has(e.event_id);ids.add(e.event_id);return duplicate||e.run_id!==state.id||e.seq!==seq+i+1;}))throw failure('PLUGIN_COMMUNICATION_STORE_SEQUENCE');
-        const record={schema_version:1,run_id:state.id,seq:events.at(-1).seq,event_id:events.at(-1).event_id,
+        const record={schema_version:state.registry_version===2?2:1,run_id:state.id,seq:events.at(-1).seq,event_id:events.at(-1).event_id,
           previous:old?.previous??null,events:structuredClone(events),state:structuredClone(state)};
         const checksum=digest(encode(record)),line=encode({...record,checksum})+'\n';
         const file=path.join(directory,digest(state.id)+'.jsonl');let handle;

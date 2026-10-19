@@ -62,7 +62,7 @@ async function fixture(t){
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
 async function bridge(t,f){
-  const b=await startPluginBridge({directory:f.directory,panel:()=>f.plugin.panel(),list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
+  const b=await startPluginBridge({directory:f.directory,panel:input=>f.plugin.panel(input),list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
     communication:f.plugin.communication});
   t.after(()=>b.close());
   return JSON.parse(await fs.readFile(path.join(f.directory,'plugin-bridge.json'),'utf8'));
@@ -79,6 +79,20 @@ async function client(t,f){
 async function eventually(check){for(let i=0;i<200;i++){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
 
 const communicationTools=['bind','claim','enable','export','join','journal','probe','read_message','recover','report','send_message','status','stop','telemetry','verify','wait'];
+test('real MCP panel enrolls an existing assignment using fresh host identity without an external session',async t=>{
+  const f=await fixture(t),before=f.store.snapshot(),target={project_id:'fixture',local_session_id:'worker',
+    origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};
+  f.plugin.communication.enrollment.resolveTarget=id=>id==='worker'?target:null;
+  const invitation=await f.plugin.communication.reserve(target);
+  await bridge(t,f);const c=await client(t,f);
+  const args={name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata};
+  const first=await c.callTool(args);assert.equal(first.isError,false);
+  assert.equal(first.structuredContent.registration.assignment_id,'assignment');
+  assert.deepEqual((await c.callTool(args)).structuredContent.registration,first.structuredContent.registration);
+  assert.equal((await c.callTool({...args,_meta:{...metadata,'openai/session':'wrong'}})).structuredContent.error.code,'PLUGIN_COMMUNICATION_BINDING');
+  assert.equal((await c.callTool({...args,_meta:{}})).structuredContent.error.code,'PLUGIN_COMMUNICATION_IDENTITY_REQUIRED');
+  assert.deepEqual(f.store.snapshot(),before);
+});
 test('communication MCP contracts reject missing identity, wrong binding and stale protocol; Stop cancels probe',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const tools=(await c.listTools()).tools;
@@ -550,6 +564,10 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   const tools=(await c.listTools()).tools;
   const panel=tools.find(v=>v.name==='workflow_pilot_panel');
   assert.deepEqual(panel._meta['openai/ui'].entrypoints,[{type:'global'},{type:'thread'}]);
+  assert.equal(panel.annotations.readOnlyHint,false);
+  assert.equal(panel.annotations.idempotentHint,true);
+  assert.equal(panel.inputSchema.properties.ctx,undefined);
+  assert.equal(panel.inputSchema.properties.enrollment_ticket.anyOf[0].pattern,'^[a-f0-9]{64}$');
   assert.equal(panel.inputSchema.required?.length??0,0);
   assert.equal(tools.find(v=>v.name==='workflow_connect_project').annotations.idempotentHint,true);
   assert.equal(tools.find(v=>v.name==='workflow_connect_project').inputSchema.properties.ctx,undefined);

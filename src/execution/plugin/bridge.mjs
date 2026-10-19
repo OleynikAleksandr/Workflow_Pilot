@@ -28,7 +28,7 @@ export async function startPluginBridge({ directory, panel, list, open, connect,
         return;
       }
       if(input.action==='list')return reply(200,await list());
-      if(input.action==='panel')return reply(200,await panel());
+      if(input.action==='panel')return reply(200,await panel(input));
       if(input.action==='open')return reply(200,await open(input.projectId));
       if(input.action==='connect')return reply(200,await connect(input));
       reply(400,{error:{code:'PLUGIN_ACTION_INVALID',message:'Неизвестное действие плагина.'}});

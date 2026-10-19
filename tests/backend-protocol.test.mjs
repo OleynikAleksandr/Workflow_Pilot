@@ -154,7 +154,7 @@ test('synchronous event writes from a replay listener preserve ordered delivery'
 test('plugin UI write is leased but standalone MCP execution is not tied to a frontend',()=>{
   assert.equal(pluginPermission('list'),'read');
   assert.equal(pluginPermission('open'),'read');
-  assert.equal(pluginPermission('panel'),'read');
+  assert.equal(pluginPermission('panel'),'ui-mutation');
   for(const action of ['wait','claim','report'])assert.throws(()=>pluginPermission(action),error=>code(error)==='PLUGIN_ACTION_INVALID');
   assert.equal(pluginPermission('connect'),'ui-mutation');
   assert.equal(pluginPermission('mcp.tools'),'agent-independent');

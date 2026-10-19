@@ -1385,7 +1385,7 @@ async function start() {
   // The plugin bridge belongs to whoever runs the model (the backend); an
   // isolated fixture names its own directory instead of the user's runtime folder.
   if(plugin&&!smoke&&(!offline||pluginDirectory)) {
-    await executionServices.attachPlugin({directory:pluginDirectory??runtimeFolder,panel:()=>plugin.panel(),list:()=>plugin.list(),
+    await executionServices.attachPlugin({directory:pluginDirectory??runtimeFolder,panel:input=>plugin.panel(input),list:()=>plugin.list(),
       communication:plugin.communication,
       open:id=>plugin.open(id),connect:input=>plugin.connect(input)})
       .catch(()=>{startupError={code:'PLUGIN_BRIDGE_UNAVAILABLE',message:'Не удалось включить подключение панели ChatGPT. Проверьте, не открыта ли другая копия Workflow Pilot.'};});

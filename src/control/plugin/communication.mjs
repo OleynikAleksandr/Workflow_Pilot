@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import {ParticipantEnrollment} from './enrollment.mjs';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS} from '../../contracts/backend.mjs';
 export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
@@ -24,10 +25,11 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null}={}) {
     Object.assign(this,{now,makeId,waitMs,store});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
+    this.enrollment=new ParticipantEnrollment(this,resolveTarget);
     this.ready=this.restore();
   }
   async restore() {
@@ -106,8 +108,13 @@ export class PluginCommunication {
     const run=this.run(input),identity=communicationIdentity(input.metadata);
     const member=Object.values(run.members).find(item=>item.id===input.participant_id);
     requireValue(member && member.identity===identity,'BINDING','Участник не принадлежит текущему разговору.');
+    if(run.mode==='workflow')this.enrollment.current(member.target);
     return {run,member};
   }
+  reserve(target){return this.enrollment.reserve(target);}
+  enroll(ticket,metadata){return this.enrollment.enroll(ticket,metadata);}
+  _reserve(input){return this.enrollment.reserveInTransaction(input);}
+  _enroll(input){return this.enrollment.enrollInTransaction(input,communicationIdentity(input.metadata));}
   panel(input) {
     const context=this.member(input),panel=this.panels.get(input.panel_instance_id);
     requireValue(panel && panel.runId===context.run.id && panel.memberId===context.member.id
@@ -126,6 +133,7 @@ export class PluginCommunication {
     requireValue(identifier(input.run_id) && ['O','E'].includes(input.role),'INPUT','Укажите run_id и роль O/E.');
     const identity=communicationIdentity(input.metadata);
     let run=this.runs.get(input.run_id);
+    requireValue(!input.run_id.startsWith('work:')&&run?.mode!=='workflow','MODE','Join предназначен только для прежнего эксперимента. Рабочая панель регистрируется по назначению.');
     if(!run) {
       requireValue(this.runs.size<100,'LIMIT','Лимит запусков достигнут.');
       run={id:input.run_id,members:{},messages:[],events:[],probes:{},clientSequences:{},clientEvents:{}};this.runs.set(run.id,run);
@@ -155,6 +163,7 @@ export class PluginCommunication {
   _status(input) {
     const {run,member}=this.member(input),expiresAt=this.deadline(run,member);
     return {run_id:run.id,participant_id:member.id,role:member.role,conversation_key:member.identity,
+      ...(run.mode==='workflow'?this.enrollment.publicMember(run,member):{}),
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       permission_generation:member.generation,stopped:member.stopped||expiresAt<=this.now(),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
@@ -226,6 +235,7 @@ export class PluginCommunication {
   }
   _probe(input) {
     const {run,member}=this.member(input);
+    requireValue(run.mode!=='workflow','MODE','Probe предназначен только для прежнего эксперимента.');
     requireValue(Number.isSafeInteger(input.delay_ms) && input.delay_ms>=25 && input.delay_ms<=60000,'INPUT','Задержка probe: от 25 до 60000 мс.');
     requireValue(!member.stopped,'STOPPED','Сначала включите связь в подтверждённой панели.');
     requireValue([...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.generation===member.generation&&p.expiresAt>this.now()),'STOPPED','Нет действующего разрешения панели.');
@@ -349,20 +359,30 @@ export class PluginCommunication {
   async status(input){await this.ready;await this.tail;return structuredClone(this._status(input));}
   async recover(input){
     await this.ready;await this.tail;const identity=communicationIdentity(input.metadata),participants=[];
-    for(const run of this.runs.values())for(const member of Object.values(run.members))if(member.identity===identity)
-      participants.push({run_id:run.id,participant_id:member.id,role:member.role});
+    for(const run of this.runs.values())for(const member of Object.values(run.members))if(member.identity===identity) {
+      if(run.mode==='workflow') {
+        try{this.enrollment.current(member.target);}catch{continue;}
+        participants.push(this.enrollment.publicMember(run,member));
+      }else participants.push({run_id:run.id,participant_id:member.id,role:member.role});
+    }
     return {participants,build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,critical_error:this.critical};
   }
-  async journal(input){await this.ready;await this.tail;const {run}=this.member(input);
+  visibleEvents(run,member,events) {
+    if(run.mode!=='workflow'||member.role==='O')return events;
+    const messages=new Set(run.messages.filter(m=>m.sender_id===member.id||m.recipient_id===member.id).map(m=>m.message_id));
+    return events.filter(e=>e.participant_id===member.id||messages.has(e.message_id)
+      ||e.local_session_id===member.target.local_session_id||e.event_type.startsWith('backend.'));
+  }
+  async journal(input){await this.ready;await this.tail;const {run,member}=this.member(input);
     const after=input.after_seq??0;requireValue(Number.isSafeInteger(after)&&after>=0&&after<=run.events.length,'CURSOR','Некорректный курсор.');
-    return {events:structuredClone(run.events.slice(after,after+100)),seq:Math.min(after+100,run.events.length),total_seq:run.events.length,critical_error:this.critical};}
-  async export(input){await this.ready;await this.tail;const {run}=this.member(input);
+    return {events:structuredClone(this.visibleEvents(run,member,run.events.slice(after,after+100))),seq:Math.min(after+100,run.events.length),total_seq:run.events.length,critical_error:this.critical};}
+  async export(input){await this.ready;await this.tail;const {run,member}=this.member(input);
     const after=input.after_seq??0,through=input.through_seq??run.events.length;
     requireValue(Number.isSafeInteger(after)&&Number.isSafeInteger(through)&&after>=0&&after<=through&&through<=run.events.length,'CURSOR','Некорректные границы экспорта.');
-    const events=run.events.slice(after,Math.min(after+100,through)),next=events.at(-1)?.seq??after;
+    const next=Math.min(after+100,through),events=this.visibleEvents(run,member,run.events.slice(after,next));
     return {jsonl:events.map(e=>JSON.stringify(e)).join('\n')+(events.length?'\n':''),after_seq:next,through_seq:through,complete:next===through,
       summary:{run_id:run.id,events:through,protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
-        sdk_versions:SDK_VERSIONS,gaps:run.events.slice(0,through).filter(e=>e.event_type==='frontend.gap')
+        sdk_versions:SDK_VERSIONS,gaps:this.visibleEvents(run,member,run.events.slice(0,through)).filter(e=>e.event_type==='frontend.gap')
           .map(({seq,panel_instance_id,from,to})=>({seq,panel_instance_id,from,to})),critical_error:this.critical}};}
   dispose(){this.disposed=true;for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
 }

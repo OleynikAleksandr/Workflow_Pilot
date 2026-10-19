@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 530,
+  "plan_revision": 532,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -82,7 +82,8 @@
       "tests/backend-upgrade.test.mjs",
       "tests/mcp-runtime.test.mjs",
       "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "tests/backend-protocol.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/automatic-agent-dialogue.md",
@@ -137,8 +138,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "T001",
@@ -160,7 +161,9 @@
         "tests/plugin-communication-store.test.mjs",
         "tests/plugin-enrollment.test.mjs",
         "tests/codex-app-server-mcp.test.mjs",
-        "tests/session-roles.test.mjs"
+        "tests/session-roles.test.mjs",
+        "tests/backend-protocol.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -210,7 +213,21 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "expected_commit_message": "feat: Реестр участников и регистрация по назначению"
+      "expected_commit_message": "feat: Реестр участников и регистрация по назначению",
+      "actual_files": [
+        "src/control/plugin/enrollment.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "src/execution/plugin/communication-store.mjs",
+        "tests/backend-protocol.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/plugin-communication-store.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -888,7 +905,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 530
+Revision: 532
 
 ## Цель
 
@@ -907,10 +924,10 @@ Revision: 530
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Прямой выбор пользователя 19.10.2026: здесь одним агентом, как предыдущий план. Реализация меняет общие контракты регистрации/доставки/Kit и выполняется последовательно; несколько исполнителей относятся к продуктовым fixtures и внешней приёмке, не к делегированию этой разработки.
 
-- [TODO] T001: Реестр участников и регистрация по назначению — Ожидает
-  - Git Commit: [PENDING] feat: Реестр участников и регистрация по назначению
+- [DONE] T001: Реестр участников и регистрация по назначению — Завершено
+  - Git Commit: [DONE] feat: Реестр участников и регистрация по назначению
   - Reference: workflow-pilot-automatic-agent-dialogue / T001 / implementation
-  - Файлы: src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/control/sessions/workspace-session.mjs, src/control/projects/service.mjs, src/execution/plugin/communication-store.mjs, src/execution/plugin/bridge.mjs, src/contracts/backend.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/session-roles.test.mjs
+  - Файлы: src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/control/sessions/workspace-session.mjs, src/control/projects/service.mjs, src/execution/plugin/communication-store.mjs, src/execution/plugin/bridge.mjs, src/contracts/backend.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/session-roles.test.mjs, tests/backend-protocol.test.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T002: Автоматический запуск панели оркестратора и исполнителей — Ожидает
