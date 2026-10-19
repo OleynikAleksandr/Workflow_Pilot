@@ -126,7 +126,8 @@ export function deliveryText(workspace,task) {
 // delivery ledger, never a replacement for Kit's plan, assignments or Git proofs.
 export class ParallelExecution {
   constructor({kit,origin,openWorker,workerState,mainState,save,book={},onChange=()=>{},watch=()=>()=>{},
-    isEnabled=null,isIssuing=null,onSettle=()=>{},onPause=()=>{},sendWorker=null,orchestrator=()=>null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID,queuedRoute=()=>false,deliveryReceipt=()=>null}) {
+    isEnabled=null,isIssuing=null,onSettle=()=>{},onPause=()=>{},sendWorker=null,orchestrator=()=>null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID,queuedRoute=()=>false,deliveryReceipt=()=>null,channelSettled=()=>true}) {
+    this.channelSettled=channelSettled;
     Object.assign(this,{queuedRoute,deliveryReceipt});
     Object.assign(this,{isEnabled,onComplete,kit,origin,openWorker,workerState,mainState,save,book,onChange,watch,sendCorrection,restoreWorker,restoreOrigin,now,uuid});
     Object.assign(this,{sendFinalization,sendDiagnostic,canFinalize,isIssuing,onSettle,onPause,sendWorker,orchestrator});
@@ -284,7 +285,7 @@ export class ParallelExecution {
       const resumeKnown=recovery&&['PREPARED','MERGING','RESOLVING','CHECKING'].includes(operation.status)
         &&source&&!source.error&&!source.commandActive&&!source.transaction_pending&&!source.dirty
         &&this.workerState(source,ledger.assignments[source.id]).stopped&&this.mainState(origin).stopped;
-      if(!state.commandActive&&this.kit.continueIntegration&&(resumeKnown||operation.committed&&ledger.recoveryAttempt!==signature)) {
+      if(plan.dialogue_version!==1&&!state.commandActive&&this.kit.continueIntegration&&(resumeKnown||operation.committed&&ledger.recoveryAttempt!==signature)) {
         ledger.recoveryAttempt=signature;await this.persist();
         await this.kit.continueIntegration(workspace,operation.operation_id);
         this.queues.get(workspace).again=true;return;
@@ -332,7 +333,7 @@ export class ParallelExecution {
     const ready=assignments.filter(a=>a.status==='READY_FOR_INTEGRATION'&&stopped(a).stopped&&ledger.assignments[a.id]?.readyAt)
       .sort((a,b)=>ledger.assignments[a.id].readyAt-ledger.assignments[b.id].readyAt
         ||plan.tasks.findIndex(t=>t.id===a.parent_task_id)-plan.tasks.findIndex(t=>t.id===b.parent_task_id));
-    if(ready.length&&state.mainClean&&this.mainState(origin).stopped) {
+    if(plan.dialogue_version!==1&&ready.length&&state.mainClean&&this.mainState(origin).stopped) {
       const a=ready[0],entry=ledger.assignments[a.id];
       if(entry.integration==='starting'||entry.integration==='unknown')
         throw fail('INTEGRATION_UNKNOWN','Исход предыдущего запуска слияния требует сверки; автоматического повтора нет.');
@@ -405,6 +406,12 @@ export class ParallelExecution {
     if(!this.sendFinalization)return false;
     const {plan,assignments}=state;
     const orchestrated=plan.execution_strategy==='orchestrated';
+    if(plan.dialogue_version===1){
+      if(!plan.tasks.length||plan.tasks.some(t=>!isDeliveryTask(t)&&t.commit_status!=='DONE'))return false;
+      if(!this.channelSettled(workspace,plan.scope_id)){this.publish(workspace,{phase:'finalizing',error:null});return true;}
+      return this.deliver(workspace,state,origin,ledger,()=>!this.closed&&!this.suspended.has(workspace)
+        &&(this.canFinalize?this.canFinalize(workspace,plan.scope_id):enabled()));
+    }
     // A corrective task added after the handoff reopens the ordinary work: its integration needs a new final round.
     if(orchestrated&&ledger.finalization&&plan.tasks.some(t=>!isDeliveryTask(t)&&t.commit_status!=='DONE')
       &&['reply-observed','pending'].includes(ledger.finalization.status)) {

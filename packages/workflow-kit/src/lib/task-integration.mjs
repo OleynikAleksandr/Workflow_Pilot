@@ -41,7 +41,9 @@ function finish(root,record,t,sha) {
   atomic(localPath(root,'integrations/'+record.id+'.json'),json({...record,phase:'INTEGRATED',integration_commit:sha}),0o600);
   if(fs.existsSync(file(root)))fs.unlinkSync(file(root));
   // An orchestrated plan does not accumulate worktrees; a failed removal leaves the integration intact for assignment:cleanup.
-  const cleanup=isOrchestratedPlan(parsePlan(record.original_plan))?removeIntegratedWorktree(root,assignment):null;
+  // Dialogue executors still need to read/yield their acceptance after the
+  // merge. The orchestrator's final cleanup runs after transport receipts.
+  const cleanup=isOrchestratedPlan(parsePlan(record.original_plan))&&assignment.dialogue_version!==1?removeIntegratedWorktree(root,assignment):null;
   return {ok:true,status:'INTEGRATED',assignment_id:record.assignment_id,task_id:record.task_id,source_commit:record.source_commit,integration_commit:sha,
     ...(cleanup?{cleanup}:{})};
 }

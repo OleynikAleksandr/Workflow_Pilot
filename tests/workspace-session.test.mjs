@@ -4,10 +4,26 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 import { WorkspaceSessions, unsentExecutor, readWorkspace, normalizeChatUrl, conversationExperience, conversationUrlCompatibleWithExperience, activeSessionsNewestFirst } from '../src/control/sessions/workspace-session.mjs';
 import { sessionExecutionMessage } from '../src/control/context/context-session.mjs';
 
 const directoryLink = (target, link) => fs.symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+
+test('integration projection retains the Git-proven parent identity while the worktree contains the child plan',async t=>{
+  const {project}=await fixture(t),root=await project('Merging');
+  const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8'}).trim();
+  git('init','-b','main');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');
+  git('add','.');git('commit','-m','fixture plan');
+  const file=path.join(root,'.harness/plans/todo-plan.md'),original=await fs.readFile(file,'utf8'),before=await readWorkspace(root);
+  const journal=path.join(root,'.git/workflow-kit/integration.json');await fs.mkdir(path.dirname(journal),{recursive:true});
+  await fs.writeFile(journal,JSON.stringify({before_head:git('rev-parse','HEAD'),original_plan:original}));
+  await fs.writeFile(file,original.replaceAll('fixture-scope','assignment-worker'));
+  assert.equal((await readWorkspace(root)).scopeId,before.scopeId);
+  await fs.writeFile(journal,JSON.stringify({before_head:git('rev-parse','HEAD'),original_plan:original+'tampered'}));
+  await assert.rejects(readWorkspace(root),{code:'WORKFLOW_PLAN_INVALID'});
+  await fs.rm(journal);assert.equal((await readWorkspace(root)).scopeId,'assignment-worker');
+});
 
 test('assignment gets one inherited session without moving selection and persists its separate worktree',async t=>{
   const {project,store}=await fixture(t);

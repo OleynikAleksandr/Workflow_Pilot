@@ -16,7 +16,7 @@ import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,experience='chat'){
+export async function automaticDialogue(t,experience='chat',{owned=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false;
@@ -40,8 +40,9 @@ export async function automaticDialogue(t,experience='chat'){
     const metadata=record.metadata,notice=request.content.find(item=>item.type==='text').text;
     const args=JSON.parse(notice.match(/аргументами (\{[^\n]+?\})\./)[1]);
     const call=async(name,input)=>{
-      const r=await c.callTool({name:'workflow_communication_'+name,arguments:input,_meta:metadata});
-      assert.equal(r.isError,false,JSON.stringify(r.structuredContent));return r.structuredContent;
+      const r=await c.callTool({name:name.startsWith('assignment_')?'workflow_'+name:'workflow_communication_'+name,arguments:input,_meta:metadata});
+      assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId,
+        ...(r.isError?{target:await plugin.participantTarget(record.project()?.sessionId),proof:await store.assignmentProof(record.project()?.sessionId)}:{})}));return r.structuredContent;
     };
     const message=await call('read_message',args);
     assert.equal(message.role_protocol,3);
@@ -50,6 +51,51 @@ export async function automaticDialogue(t,experience='chat'){
       text+=value.text;total=value.total;
     }
     const project=record.project();notifications.push({...message,text,sessionId:project.sessionId});
+    if(owned){
+      assert.equal(message.dialogue_version,1);
+      const roster=()=>call('participants',{});
+      const send=payload=>call('assignment_send',{attempt:message.attempt??1,in_reply_to:message.assignment_id?message.message_id:undefined,
+        idempotency_key:message.kind+':'+message.message_id,...payload});
+      if(message.kind==='ready'){
+        assert.equal(message.sender_role,'backend');
+        if(message.task_id==='T003')assert.ok(readPlan(root).tasks.filter(t=>['T001','T002'].includes(t.id)).every(t=>t.commit_status==='DONE'));
+        if(message.task_id==='DOCS')assert.ok(readPlan(root).tasks.filter(t=>t.id!=='DOCS').every(t=>t.commit_status==='DONE'));
+        const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);assert.ok(target);
+        await send({recipient:target.recipient_ref,kind:'task',body:'Implement only '+message.task_id+' and return the checked commit.',
+          contexts:[{source:'orchestrator-selection',text:'Selected context for '+message.task_id}]});
+      }else if(message.kind==='task'){
+        assert.equal(message.sender_role,'O');assert.equal(record.bootstrapCount,1);
+        let selected='';for(let part=0,total=1;part<total;part++){
+          const v=await call('read_context',{message_id:message.message_id,context_ref:message.contexts[0].sha256,part});selected+=v.text;total=v.total;
+        }
+        assert.equal(selected,'Selected context for '+project.taskId);
+        await plans.call(project.workspace,'task:start',[project.taskId]);
+        if(project.taskId==='DOCS')await fs.rm(path.join(project.workspace,'docs/planning/dialogue.md'));
+        else await fs.writeFile(path.join(project.workspace,taskFile[project.taskId]),'# worker-'+project.taskId+'\n');
+        const committed=await plans.call(project.workspace,'commit',['--task',project.taskId]);
+        const status=await plans.call(root,'assignment:status',['--id',project.assignmentId]);
+        assert.equal(status.status,'READY_FOR_INTEGRATION');assert.equal(committed.ok,true);
+        await send({recipient:'orchestrator',kind:'result',source_commit:status.source_commit,body:'Checked result '+project.taskId});
+      }else if(message.kind==='result'){
+        assert.equal(message.sender_role,'E');
+        const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
+        const status=await plans.call(root,'assignment:status',['--id',message.assignment_id]);
+        assert.equal(status.source_commit,message.source_commit);assert.equal(status.status,'READY_FOR_INTEGRATION');
+        const diff=await workflow.executionKit.git(root,['show','--stat',message.source_commit]);assert.ok(diff);
+        await send({recipient:target.recipient_ref,kind:'acceptance',result_id:message.message_id,source_commit:message.source_commit,body:'Exact diff and checks accepted'});
+        await plans.call(root,'integration:start',[],{id:message.assignment_id,source_commit:message.source_commit});
+      }else if(message.kind==='acceptance'){
+        assert.equal(message.sender_role,'O');
+        await wait(async()=>JSON.parse(await fs.readFile(path.join(root,'.git/workflow-kit/assignments',project.assignmentId+'.json'),'utf8')).phase==='INTEGRATED',
+          'integration before late acceptance receipt');
+        assert.ok((await fs.stat(project.workspace)).isDirectory(),'worktree survives until acceptance is handled');
+      }
+      else if(message.kind==='finalization'){
+        assert.equal(message.sender_role,'backend');assert.match(text,/assignment:cleanup/);
+        assert.equal((await plans.call(root,'assignment:cleanup')).only_main,true);
+      }else throw Error('Unexpected owned dialogue: '+message.kind);
+      await call('assignment_yield',{message_ids:[message.message_id],reason:'handled'});return;
+    }
     if(project.assignmentId){
       if(message.kind==='assignment-start'){
         assert.equal(record.bootstrapCount,1);assert.equal(record.controller.state.messageSent,true);
@@ -82,11 +128,12 @@ export async function automaticDialogue(t,experience='chat'){
     const record={identity:{workspace:project.workspace,sessionId:project.sessionId,assignmentId:project.assignmentId},ready:true,
       disposed:false,loading:false,paused:false,cleanups:[],bootstrapCount:0,domWorkSends:0,
       project:()=>store.project(project.workspace,project.sessionId),metadata:{'openai/session':project.sessionId,'openai/subject':'fixture-owner'},
-      pageState:{current:{documentId:'doc-'+project.sessionId,state:{url:project.experience==='work'?'https://chatgpt.com/work/':'https://chatgpt.com/',
+      pageState:{current:{documentId:'doc-'+project.sessionId,seq:1,state:{url:project.experience==='work'?'https://chatgpt.com/work/':'https://chatgpt.com/',
         busy:false,editorAvailable:true,writable:true,draftPresent:false,login:'signed-in',lastMessageRole:'assistant',
         userMessagesRevision:0,assistantRevision:0,turnId:'a0',userTurnId:'u0'}}}};
     const page=record.pageState.current.state;
     const composer=record.composer={inFlight:false,getURL:()=>page.url,clearNewSessionDraft:async()=>({action:'draft-cleared'}),
+      observeSnapshot:async()=>{record.pageState.current.seq++;return true;},
       inspect:async({action}={})=>({...page,login:false,draftLength:0,messageSeen:record.bootstrapCount>0,
         ...(action==='select-experience'?{action:'experience-confirmed'}:{})}),
       sendUserMessage:async()=>{record.domWorkSends++;throw Error('Working message attempted DOM fallback');},
@@ -101,7 +148,9 @@ export async function automaticDialogue(t,experience='chat'){
           record.ui=await communicationHtml(testPort,c,{hostMetadata:record.metadata,timerMs:ms=>ms===2000?40:ms,
             onMessage:request=>{
               assert.equal(page.busy,false,'the physical conversation is idle before SDK notification');
-              page.busy=true;page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;page.lastMessageRole='user';reportPage(record);
+              page.busy=true;
+              if(!owned){page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;page.lastMessageRole='user';}
+              record.pageState.current.seq++;reportPage(record);
               const job=runAgent(record,request).catch(error).finally(()=>{jobs.delete(job);finish(record);});jobs.add(job);
               return {}; // Host acceptance precedes the model's asynchronous work.
             }});
@@ -122,8 +171,8 @@ export async function automaticDialogue(t,experience='chat'){
   workflow=createWorkflowCoordination({store,setup,plans,getController:()=>live.visible?.controller,
     available:()=>false,contextAvailable:()=>false,onChange:()=>{},report:error,save:async()=>{},getPlugin:()=>plugin});
   workflow.attachSessions(live);
-  plugin=control.createPlugin({loadContext:(workspace)=>plans.loadContext(workspace),communicationStore:await openCommunicationStore(path.join(directory,'communication')),
-    observe:workflow.observeParticipant,admit:workflow.admitParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged});
+  plugin=control.createPlugin({plans,loadContext:(workspace)=>plans.loadContext(workspace),communicationStore:await openCommunicationStore(path.join(directory,'communication')),
+    observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged});
   await plugin.communication.ready;plugin.communication.waitMs=40;
   t.after(async()=>{
     closed=true;workflow.execution.dispose();workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
@@ -153,7 +202,7 @@ export async function automaticDialogue(t,experience='chat'){
   const task=(id,file,dependencies=[])=>({id,title:'Write '+file,why:'Actual automatic dialogue fixture',dependencies,parallel_safe:true,
     files:[file],checks:['dependency'],acceptance:['Checked output committed'],commit:'docs: '+file});
   await plans.call(root,'plan:create',[],{id:'dialogue-fixture',spec:'docs/planning/dialogue.md',stack:'Node fixture',objective:'Two independent assignments, a question and a dependent result',approval:'Isolated fixture authorized',
-    parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Two independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,
+    parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Two independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,...(owned?{dialogue_version:1}:{}),
     acceptance:['One Start; complete work without manual panel action'],checks:[{id:'dependency',executable:'npm',args:['test'],required:false,timeout_ms:30000}],
     tasks:[task('T001','README.md'),task('T002','SECOND.md'),task('T003','THIRD.md',['T001','T002'])]});
   await store.reconcileRoles(root);await store.selectSession(root,origin.sessionId);workflow.execution.observe(root);
@@ -170,7 +219,11 @@ export async function automaticDialogue(t,experience='chat'){
     assert.equal(record.ui.calls.includes('workflow_communication_enable'),false);assert.equal(record.ui.calls.includes('workflow_communication_join'),false);
     assert.equal(record.project().experience,record===o?experience:'chat');
   }
-  assert.equal(notifications.filter(n=>n.kind==='question').length,1);assert.equal(notifications.filter(n=>n.kind==='decision').length,1);
+  if(owned){
+    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,4,kind);
+    assert.equal(notifications.some(n=>['assignment-start','continue'].includes(n.kind)),false);
+    assert.ok([...records.values()].every(r=>r.pageState.current.state.userMessagesRevision===1),'SDK creates no user bubble');
+  }else{assert.equal(notifications.filter(n=>n.kind==='question').length,1);assert.equal(notifications.filter(n=>n.kind==='decision').length,1);}
   assert.equal((await plans.call(root,'assignment:cleanup')).only_main,true);
   const run=[...plugin.communication.runs.values()][0];assert.equal(run.grant.phase,'complete');assert.equal(run.grant.active,false);
   assert.equal(workflow.executionControl.snapshot()[root].route,'plugin-v1');

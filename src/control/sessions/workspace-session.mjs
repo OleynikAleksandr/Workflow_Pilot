@@ -80,6 +80,26 @@ export async function readWorkspace(input, sessionId = null) {
   } catch {
     throw new WorkspaceError('WORKFLOW_NOT_INSTALLED', 'В этой папке нет Workflow Kit. Выберите подготовленный проект.');
   }
+  // Git temporarily places the executor's plan into main during a merge.
+  // Keep the published main identity until Kit finishes that integration;
+  // otherwise a concurrent receipt appears to belong to a different scope.
+  const integrationFile=path.join(workspace,'.git/workflow-kit/integration.json');
+  let integration;
+  try {
+    const stat=await fs.lstat(integrationFile);
+    if(!stat.isFile()||stat.isSymbolicLink())throw new WorkspaceError('WORKFLOW_PLAN_INVALID','Некорректный журнал интеграции.');
+    integration=JSON.parse(await fs.readFile(integrationFile,'utf8'));
+  }catch(error){
+    if(!['ENOENT','ENOTDIR'].includes(error.code))throw error;
+    // The journal may have disappeared after the first read completed.
+    text=await fs.readFile(path.join(workspace,'.harness/plans/todo-plan.md'),'utf8');
+  }
+  if(integration){
+    if(!/^[a-f0-9]{40,64}$/.test(integration.before_head??'')||typeof integration.original_plan!=='string'
+      ||await workspaceGit(workspace,['show',integration.before_head+':.harness/plans/todo-plan.md'])!==integration.original_plan.trim())
+      throw new WorkspaceError('WORKFLOW_PLAN_INVALID','Исходный план интеграции не подтверждён Git.');
+    text=integration.original_plan;
+  }
   const block = text.match(/<!-- workflow-state:begin -->\s*```json\s*([\s\S]*?)```\s*<!-- workflow-state:end -->/);
   let plan;
   try { plan = JSON.parse(block?.[1] ?? ''); } catch {
@@ -123,6 +143,7 @@ function projectPlan(plan, scopeTitle = '') {
         execution_strategy: plan.execution_strategy, execution_reason: plan.execution_reason,
         ...(plan.execution_origin_session_id!==undefined?{execution_origin_session_id:plan.execution_origin_session_id}:{}) };
       if (planExecution.execution_strategy === 'orchestrated') planExecution.release = plan.release === true;
+      if (plan.dialogue_version !== undefined) planExecution.dialogue_version = plan.dialogue_version;
       if (!['sequential', 'parallel', 'orchestrated'].includes(planExecution.execution_strategy)
           || typeof planExecution.execution_reason !== 'string' || !planExecution.execution_reason.trim()
           || planExecution.execution_strategy === 'parallel' && (!planExecution.parallel_allowed || planExecution.max_workers < 2)) throw new Error('Invalid policy');

@@ -36,7 +36,7 @@ export function configureExecutor(record,{store,inspectPlan,enabled,onChange,sig
   automation.restore(checkpoint.automationCheckpoint);
   const flow=new PlanContinuation({selected,inspectPlan:async project=>{
     const plan=await inspectPlan(project);
-    return {...plan,confirmed:plan.confirmed&&(!dialogue||plan.nextTask?.started&&!plan.blocked)&&plan.scopeId==='assignment-'+saved.assignmentId
+    return {...plan,confirmed:plan.confirmed&&!dialogue?.owned?.(record.project())&&(!dialogue||plan.nextTask?.started&&!plan.blocked)&&plan.scopeId==='assignment-'+saved.assignmentId
       &&plan.planView?.tasks?.length===1&&plan.planView.tasks[0].id===saved.taskId
       &&(!plan.nextTask||plan.nextTask.id===saved.taskId)};
   },

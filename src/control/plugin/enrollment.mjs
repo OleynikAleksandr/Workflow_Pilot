@@ -108,7 +108,8 @@ export function localParticipantTarget(projects,sessionId) {
       ||parent.planExecution?.execution_origin_session_id!==origin.sessionId
       ||project.ownershipState!=='confirmed'||!session.assignmentId||!session.taskId)return null;
     return {project_id:parent.projectId,local_session_id:sessionId,origin_session_id:origin.sessionId,role:'E',
-      scope_id:session.parentScopeId,assignment_id:session.assignmentId,task_id:session.taskId};
+      scope_id:session.parentScopeId,assignment_id:session.assignmentId,task_id:session.taskId,
+      ...(parent.planExecution?.dialogue_version===1?{dialogue_version:1}:{})};
   }
   if(session.role!=='orchestrator'||project.parentWorkspace)return null;
   const published=project.scopeId&&['ACTIVE','BLOCKED'].includes(project.scopeStatus);
@@ -116,5 +117,6 @@ export function localParticipantTarget(projects,sessionId) {
   return {project_id:project.projectId,local_session_id:sessionId,origin_session_id:sessionId,role:'O',
     // Publication and persisted role reconciliation are separate operations.
     // The fresh plan's exact origin is authoritative during that interval.
-    scope_id:published?project.scopeId:session.orchestratorScopeId??null,assignment_id:null,task_id:null};
+    scope_id:published?project.scopeId:session.orchestratorScopeId??null,assignment_id:null,task_id:null,
+    ...(project.planExecution?.dialogue_version===1?{dialogue_version:1}:{})};
 }

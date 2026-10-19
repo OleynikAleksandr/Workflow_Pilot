@@ -129,6 +129,7 @@ export class AssignmentDialogue {
       'YIELD_DENIED','Квитанция относится только к прочитанным сообщениям своего текущего плана.');
     for(const message of messages){
       check(await c.workflow.currentMessage(member.target,message),'STALE_MESSAGE','Сообщение больше не относится к текущей работе.');
+      if(message.service&&message.sender_role==='backend'&&!message.assignment_id)continue;
       const state=await this.state(member.target,message.assignment_id);
       check((state.dialogue?.attempt??1)===message.attempt,'STALE_ATTEMPT','Нельзя подтвердить обработку старой попытки.');
     }

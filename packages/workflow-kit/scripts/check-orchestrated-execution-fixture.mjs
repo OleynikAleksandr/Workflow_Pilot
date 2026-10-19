@@ -222,7 +222,9 @@ try {
   assert.throws(()=>startIntegration(root,{id:a.id,source_commit:second}));
   write(a.worktree,'README.md','# revised result\n');
   assert.equal(startIntegration(root,{id:a.id,source_commit:second}).status,'INTEGRATED');
+  assert.equal(fs.existsSync(a.worktree),true,'dialogue receipts survive integration');
   assert.equal(validate(root).resolved.T001.source_commit,second);
   assert.equal(git(root,'show',first+':README.md'),'# first result','previous proof is immutable');
+  assert.equal(cleanupAssignments(root).only_main,true,'explicit final cleanup removes integrated dialogue worktrees');
   console.log(JSON.stringify({assignmentDialogue:true,dispatchRequired:true,acceptanceRequired:true,revisionHistory:true}));
 } finally {fs.rmSync(dialogueDirectory,{recursive:true,force:true});}

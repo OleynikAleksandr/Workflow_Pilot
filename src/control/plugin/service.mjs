@@ -27,8 +27,20 @@ export class PluginProjects {
       throw fail('PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED','Назначение автора изменилось.');
     const project=this.projects.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===target.local_session_id));
     if(!project)throw fail('PLUGIN_COMMUNICATION_PROJECT_REMOVED','Проект удалён.');
-    try{return command==='assignment:dialogue-status'?await this.plans.call(project.workspace,command,['--id',input])
-      :await this.plans.call(project.workspace,command,[],input);}
+    try{
+      for(let attempt=0;;attempt++)try{
+        return command==='assignment:dialogue-status'?await this.plans.call(project.workspace,command,['--id',input])
+          :await this.plans.call(project.workspace,command,[],input);
+      }catch(error){
+        // Kit reports this before acquiring its operation lock. Preserve the
+        // durable operation ID while another assignment finishes its effect.
+        if(command!=='assignment:dialogue'||error.code!=='WORKFLOW_LOCKED'||attempt>=40)throw error;
+        await new Promise(resolve=>setTimeout(resolve,250));
+        const current=await this.participantTarget(target.local_session_id);
+        if(!current||current.scope_id!==target.scope_id||current.assignment_id!==target.assignment_id)
+          throw fail('PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED','Назначение изменилось во время ожидания Kit.');
+      }
+    }
     catch(error){throw fail('PLUGIN_ASSIGNMENT_'+(error.code??'FAILED'),error.message);}
   }
   async participantTarget(sessionId) {
@@ -42,7 +54,7 @@ export class PluginProjects {
     const fresh=localParticipantTarget(projects,sessionId);if(!fresh)return null;
     if(fresh.role==='E'){
       const proof=await this.projects.assignmentProof(sessionId);
-      if(proof?.phase!=='ASSIGNED'||proof.id!==fresh.assignment_id||proof.parent_scope_id!==fresh.scope_id
+      if(!(proof?.phase==='ASSIGNED'||fresh.dialogue_version===1&&proof?.phase==='INTEGRATED')||proof.id!==fresh.assignment_id||proof.parent_scope_id!==fresh.scope_id
         ||proof.parent_task_id!==fresh.task_id)return null;
     }
     return fresh;

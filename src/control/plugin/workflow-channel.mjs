@@ -5,7 +5,7 @@ const hash=value=>createHash('sha256').update(value).digest('hex');
 const fail=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 const check=(value,code,message)=>{if(!value)throw fail(code,message);};
 const LEASE_MS=60000;
-const kinds=new Set(['assignment-start','continue','question','decision','result','integration','finalization','diagnostic']);
+const kinds=new Set(['assignment-start','continue','question','decision','result','integration','finalization','diagnostic','ready','recovery']);
 
 // Plan permission is durable. A short panel lease only proves a live SDK; it
 // never asks the user to renew that permission or authorizes another scope.
@@ -82,15 +82,16 @@ export class WorkflowChannel {
     }
     return {...c._status(input),stop_applied:true};
   }
-  async enqueue(target,{key,kind,text,source=null,block_id=null,signal_id=null}) {
-    return this.c.mutate('enqueue',{run_id:workflowRunId(target),target,key,kind,text,source,block_id,signal_id});
+  async enqueue(target,{key,kind,text,source=null,block_id=null,signal_id=null,subject=null,attempt=null}) {
+    return this.c.mutate('enqueue',{run_id:workflowRunId(target),target,key,kind,text,source,block_id,signal_id,subject,attempt});
   }
   async _enqueue(input) {
     const c=this.c,run=c.run(input),target=input.target;
     check(run.mode==='workflow'&&target.scope_id===run.grant?.scope_id,'ASSIGNMENT_CHANGED','Назначение относится к другому плану.');
     check(typeof input.key==='string'&&input.key.length>0&&input.key.length<=240&&kinds.has(input.kind),'INPUT','Неверный конверт рабочего сообщения.');
     check(typeof input.text==='string'&&input.text.trim()&&Buffer.byteLength(input.text)<=1048576,'CONTEXT','Контекст пуст или превышает допустимый размер; он не обрезан.');
-    const fingerprint=hash(JSON.stringify([target.local_session_id,target.assignment_id,input.kind,input.text,input.block_id,input.signal_id]));
+    const fingerprint=hash(JSON.stringify([target.local_session_id,target.assignment_id,input.kind,input.text,input.block_id,input.signal_id,
+      ...(target.dialogue_version===1?[input.subject,input.attempt]:[])]));
     const existing=run.messages.find(m=>m.idempotency_key===input.key);
     if(existing){check(existing.fingerprint===fingerprint,'CONFLICT','Ключ события уже использован для другого поручения.');return this.receipt(existing);}
     check(run.grant.active,'STOPPED','Выполнение плана приостановлено.');
@@ -102,7 +103,8 @@ export class WorkflowChannel {
     const source=input.source&&Object.values(run.members).find(m=>m.target.local_session_id===input.source.local_session_id);
     const message={message_id:c.makeId(),recipient_id:recipient?.id??null,recipient_session_id:target.local_session_id,
       sender_id:source?.id??null,sender_role:input.source?.role??'backend',scope_id:target.scope_id,
-      assignment_id:target.assignment_id??input.source?.assignment_id??null,task_id:target.task_id??input.source?.task_id??null,
+      assignment_id:target.assignment_id??input.subject?.assignment_id??input.source?.assignment_id??null,task_id:target.task_id??input.subject?.task_id??input.source?.task_id??null,
+      ...(target.dialogue_version===1?{dialogue_version:1,attempt:input.attempt,service:!input.source}:{}),
       kind:input.kind,block_id:input.block_id,signal_id:input.signal_id,context_ref:ref,
       body:input.kind+(target.task_id?' · '+target.task_id:''),idempotency_key:input.key,fingerprint,
       delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};

@@ -18,6 +18,7 @@ export class DialogueDelivery {
     return !!signal&&currentSignal(signals,signal);
   }
   uses(project){return !!project&&this.route(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId)==='plugin-v1';}
+  owned(project){return !!project&&this.store.project(project.parentWorkspace??project.workspace)?.planExecution?.dialogue_version===1;}
   project(sessionId){const p=this.store.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));return p&&this.store.project(p.workspace,sessionId);}
   observe(target){
     const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState.current;
@@ -66,11 +67,23 @@ export class DialogueDelivery {
     if(!target)throw Object.assign(Error('Назначение адресата больше не действует.'),{code:'PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'});
     const source=meta.sourceSessionId?await plugin.participantTarget(meta.sourceSessionId):null;
     const receipt=await plugin.communication.workflow.enqueue(target,{key:meta.key??kind+':'+hash(JSON.stringify([target.scope_id,target.local_session_id,text])),
-      kind:meta.kind??kind,text,source,block_id:meta.block_id??null,signal_id:meta.signal_id??null});
+      kind:meta.kind??kind,text,source,block_id:meta.block_id??null,signal_id:meta.signal_id??null,
+      subject:meta.subject??null,attempt:meta.attempt??null});
     return {state:'queued',message_id:receipt.message_id};
   }
   async start(project){
     if(!this.uses(project))return;
+    if(this.owned(project)){
+      const plugin=this.getPlugin(),progress=plugin.communication.workflow.progress(project.sessionId);
+      if(!progress?.sdk||!progress.permitted||!this.observe({local_session_id:project.sessionId}).stopped)return;
+      const origin=this.project(project.executionOriginSessionId),target=await plugin.participantTarget(origin?.sessionId);
+      if(!target)return;
+      const state=await plugin.communication.assignment.state(target,project.assignmentId),attempt=state.dialogue?.attempt??1;
+      if(state.dialogue?.grant)return;
+      return this.send(origin,'Назначение готово к получению задания оркестратора. Данные backend (не рабочее поручение): '+JSON.stringify({
+        assignment_id:project.assignmentId,task_id:project.taskId,attempt}), 'ready',{
+        key:'ready:'+project.assignmentId+':'+attempt,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt});
+    }
     return this.send(project,['Загрузочный ход завершён. Начни своё назначение Workflow Kit.',
       'Выполни task:start '+project.taskId+', затем порученную задачу, проверки и commit --task '+project.taskId+'.',
       'Полное задание и recovery уже находятся в стартовом контексте; при изменении прочитай актуальный recovery.',
@@ -86,5 +99,13 @@ export class DialogueDelivery {
     for(const run of this.getPlugin()?.communication.runs.values()??[])if(run.mode==='workflow')
       if(run.messages.some(m=>m.recipient_session_id===project.sessionId&&m.scope_id===(project.parentScopeId??project.scopeId)&&!m.reply_observed))return true;
     return false;
+  }
+  settled(workspace,scope){
+    const project=this.store.project(workspace);
+    for(const run of this.getPlugin()?.communication.runs.values()??[])if(run.mode==='workflow'&&run.project_id===project?.projectId&&run.grant?.scope_id===scope){
+      if(run.messages.some(m=>m.scope_id===scope&&!m.reply_observed&&!m.superseded))return false;
+      if(Object.values(run.assignment_intents??{}).some(i=>i.effect.scope_id===scope&&i.phase!=='published'))return false;
+    }
+    return true;
   }
 }

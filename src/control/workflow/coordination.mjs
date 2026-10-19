@@ -122,7 +122,10 @@ const storedOrchestrator=(workspace,scope)=>store.snapshot().projects.find(p=>p.
   .find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId??null;
 async function restoreExecutionPage(project,assignment=null) {
   if(held(project))throw recoveryError();
-  if(liveRecord(project)?.ready&&(!assignment||liveRecord(project).executor))return project;
+  if(liveRecord(project)?.ready&&(!assignment||liveRecord(project).executor)){
+    if(assignment&&executorEnabled(project.parentWorkspace,project.parentScopeId))await dialogue.start(project);
+    return project;
+  }
   // An executor that never received anything opens a fresh Chat draft and gets its task as usual.
   const unsent=!!assignment&&unsentExecutor(project);
   if(!unsent&&(!project?.chatUrl||(!project.manualStart&&!project.attempt?.sendStartedAtMs&&!['sent','acknowledged'].includes(project.attempt?.state))))
@@ -141,6 +144,7 @@ async function restoreExecutionPage(project,assignment=null) {
 const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelExecutionBook,
   queuedRoute:(workspace,scope)=>executionControl.route(workspace,scope)==='plugin-v1',
   deliveryReceipt:id=>dialogue.receipt(id),
+  channelSettled:(workspace,scope)=>dialogue.settled(workspace,scope),
   // A draining backend opens no new assignment and queues no new send.
   isEnabled:(workspace,scope)=>!liveSessions?.paused&&executorEnabled(workspace,scope),
   // New tasks, the final handoff and delivery steps of an orchestrated plan wait while it is not running.
@@ -167,7 +171,8 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
       const record=liveRecord(store.project(assignment.worktree));
       if(record){record.integrated=true;record.executor?.clock.observe('done');
         // An integrated executor of an orchestrated plan frees its page; the chat reopens from the task.
-        if(orchestratedPlan(assignment.parent_root??state.workspace)&&liveSessions.visible!==record)liveSessions.release(record);}
+        if(orchestratedPlan(assignment.parent_root??state.workspace)&&liveSessions.visible!==record
+          &&(!dialogue.owned(record.project())||!dialogue.reserved(record.project())))liveSessions.release(record);}
     }
     publish();
   },

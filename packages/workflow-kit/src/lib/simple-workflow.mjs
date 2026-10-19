@@ -39,7 +39,7 @@ export function createSimplePlan(root,input) {
   const normalizedDelivery=delivery.map(t=>({...t,dependencies:[...new Set([...t.dependencies,'DOCS'])]}));
   // An orchestrated plan always ends with DOCS, with or without a release.
   tasks.splice(0,tasks.length,...work,...(delivery.length||input.execution_strategy==='orchestrated' ? [finalTask,...normalizedDelivery] : []));
-  const policy=Object.fromEntries([...EXECUTION_POLICY_FIELDS,'execution_origin_session_id','release'].filter(key=>Object.hasOwn(input,key)).map(key=>[key,input[key]]));
+  const policy=Object.fromEntries([...EXECUTION_POLICY_FIELDS,'execution_origin_session_id','release','dialogue_version'].filter(key=>Object.hasOwn(input,key)).map(key=>[key,input[key]]));
   const scope={...policy,scope_id:input.id,objective:input.objective,approval_note:input.approval??'Пользователь поручил выполнить описанную задачу и план.',acceptance_criteria:input.acceptance??[input.objective],approved_scope:{functional_paths:[...new Set(tasks.flatMap(t=>t.functional_paths))],documentation_paths:[...new Set(tasks.flatMap(t=>t.documentation_paths))]},context_pack:{documents:[{path:input.spec,required:true}],include_last_completed_task:false,dependency_task_ids:[]},tasks};
   // Reject invalid execution metadata before changing project configuration.
   buildScopePlan(root,scope,readPlan(root),config);
