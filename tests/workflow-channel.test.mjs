@@ -17,7 +17,7 @@ async function fixture(t,currentMessage,dialogueKit=null){
     admit:async target=>admission.get(target.local_session_id)!==false,currentMessage,dialogueKit});instances.push(c);await c.ready;return c;};
   const c=await create();
   const target=(id,role='E')=>{const value={project_id:'p',scope_id:'s',local_session_id:id,origin_session_id:'o',role,
-    assignment_id:role==='E'?'a-'+id:null,task_id:role==='E'?'t-'+id:null};targets.set(id,value);
+    assignment_id:role==='E'?'a-'+id:null,task_id:role==='E'?'t-'+id:null,...(dialogueKit?{dialogue_version:1}:{})};targets.set(id,value);
     pages.set(id,{canSend:true,stopped:true,busy:false,commandsIdle:true,observationSeq:1,documentId:'doc-'+id,turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1});return value;};
   const o=target('o','O');
   const bind=async(c,target)=>{const invite=await c.reserve(target),member=await c.enroll(invite.enrollment_ticket,meta(target.local_session_id));
@@ -86,19 +86,20 @@ test('persisted intent resumes the same Kit effect after publication failure and
   assert.equal(kit.calls,1);assert.equal(f.c.runs.get(b.run_id).messages.length,0);
   const restored=await f.create(),status=await restored.assignmentStatus({metadata:meta('o')});
   assert.equal(status.pending_intents.length,1);assert.equal(kit.calls,1);
-  const result=await restored.assignmentSend(input);
+  await restored.assignment.reconcile('p','s');
+  const result=restored.runs.get(b.run_id).messages[0];
   assert.equal(result.message_id,status.pending_intents[0].message_id);assert.equal(kit.calls,1);
   assert.equal(restored.runs.get(b.run_id).messages.length,1);
   assert.equal((await restored.assignmentStatus({metadata:meta('o')})).pending_intents.length,0);
 });
 test('an intent saved before Kit failure is never delivered and concurrent retries share one effect',async t=>{
   const kit=dialogueKitFixture(),apply=kit.apply;let failOnce=true;
-  kit.apply=async(...args)=>{if(failOnce){failOnce=false;throw Object.assign(Error('fixture interrupted before effect'),{code:'FIXTURE_INTERRUPTED'});}return apply(...args);};
+  kit.apply=async(...args)=>{if(failOnce){failOnce=false;throw Object.assign(Error('fixture interrupted before effect'),{code:'TEST_INTERRUPTION'});}return apply(...args);};
   const f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);
   await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
   const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
   const input={metadata:meta('o'),recipient,attempt:1,kind:'task',body:'One operation',idempotency_key:'retry'};
-  await assert.rejects(f.c.assignmentSend(input),{code:'FIXTURE_INTERRUPTED'});
+  const deferred=await f.c.assignmentSend(input);assert.equal(deferred.published,false);assert.equal(deferred.phase,'deferred');
   assert.equal(kit.calls,0);assert.equal(f.c.runs.get(b.run_id).messages.length,0);
   const pending=(await f.c.assignmentStatus({metadata:meta('o')})).pending_intents[0];assert.ok(pending.message_id);
   const results=await Promise.all([f.c.assignmentSend(input),f.c.assignmentSend(input),f.c.assignmentSend(input)]);
@@ -120,6 +121,59 @@ test('startup progress reads current assignment and live SDK separately without 
   f.targets.set('e',{...e,assignment_id:'replacement'});
   assert.deepEqual(f.c.workflow.progress('e'),{registered:false,sdk:false,permitted:false,initial:null});
   assert.equal(f.c.workflow.progress('missing'),null);
+});
+test('pausing blocks new SDK wakeups but preserves active executor outbox and retries one deferred Kit operation',async t=>{
+  const kit=dialogueKitFixture(),apply=kit.apply;let paused=true;
+  kit.apply=async(target,input)=>{if(input.kind==='task'&&paused)throw Object.assign(Error('Plan paused'),{code:'PLAN_PAUSED'});return apply(target,input);};
+  const f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);let b=await f.bind(f.c,e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const intent=await f.c.assignmentSend({metadata:meta('o'),recipient,attempt:1,kind:'task',body:'Task',idempotency_key:'paused-task'});
+  assert.equal(intent.published,false);const runId=b.run_id,events=f.c.runs.get(runId).events.length;
+  await f.c.assignment.reconcile('p','s');await f.c.assignment.reconcile('p','s');assert.equal(f.c.runs.get(runId).events.length,events,'unchanged deferral does not spin the event queue');
+  await f.c.workflow.grant(f.o,'pausing');b=await f.sync(f.c,b);assert.equal(f.c.runs.get(runId).grant.active,false);
+  const result=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'question',body:'Saved question',idempotency_key:'outbox'});
+  assert.equal(result.delivery,'pending');assert.equal(pending(f.c,b),null);
+  paused=false;await f.c.workflow.grant(f.o);b=await f.sync(f.c,b);await f.c.assignment.reconcile('p','s');
+  assert.equal(pending(f.c,b),intent.message_id);assert.equal(kit.calls,2);
+});
+test('explicit migration requires O and a paused plan and never clears historical UNKNOWN',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');let calls=0;
+  kit.migrate=async(_target,input)=>{calls++;return {migrated:true,operation_id:input.operation_id};};
+  await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
+  await assert.rejects(f.c.assignmentMigrate({metadata:meta('o')}),{code:'PLUGIN_COMMUNICATION_MIGRATION_PAUSE'});
+  await f.c.workflow.grant(f.o,'paused');
+  await assert.rejects(f.c.assignmentMigrate({metadata:meta('e')}),{code:'PLUGIN_COMMUNICATION_MIGRATION_PAUSE'});
+  const migrated=await f.c.assignmentMigrate({metadata:meta('o')});assert.equal(migrated.migrated,true);assert.equal(calls,1);
+  await f.c.workflow.grant(f.o);const panel=await f.sync(f.c,b),message=await queue(f.c,e,'uncertain-before-migration');
+  await sdk(f,panel,message.message_id,'unknown');await f.c.workflow.grant(f.o,'paused');
+  await assert.rejects(f.c.assignmentMigrate({metadata:meta('o')}),{code:'PLUGIN_COMMUNICATION_MIGRATION_UNKNOWN'});
+  const value=f.c.runs.get(b.run_id).messages.at(-1);assert.equal(value.delivery,'unknown');assert.equal(value.read,false);assert.equal(calls,1);
+});
+test('removal during a Kit effect retires its durable intent and cannot publish a late callback',async t=>{
+  const kit=dialogueKitFixture(),apply=kit.apply;let release,entered;
+  const started=new Promise(resolve=>entered=resolve),wait=new Promise(resolve=>release=resolve);
+  kit.apply=async(...args)=>{entered();await wait;return apply(...args);};
+  const f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const sending=f.c.assignmentSend({metadata:meta('o'),recipient,attempt:1,kind:'task',body:'Task',idempotency_key:'late'});
+  await started;await f.c.removeProjects([{sessionIds:['o','e']}]);release();
+  await assert.rejects(sending,{code:'PLUGIN_COMMUNICATION_INTENT'});
+  await f.c.assignment.reconcile('p','s');const run=f.c.runs.get(b.run_id);
+  assert.equal(run.removed,true);assert.equal(Object.values(run.assignment_intents)[0].phase,'retired');assert.equal(run.messages.length,0);
+});
+test('an obsolete UNKNOWN delivery requires actual notification read and yield; no payload read is fabricated',async t=>{
+  const stale=new Set(),kit=dialogueKitFixture(),f=await fixture(t,async(_target,m)=>!stale.has(m.message_id),kit),e=f.target('e');
+  await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const sent=await f.c.assignmentSend({metadata:meta('o'),recipient,attempt:1,kind:'task',body:'Original task',idempotency_key:'obsolete'});
+  await sdk(f,b,sent.message_id,'unknown');stale.add(sent.message_id);
+  const notice=await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});assert.equal(notice.superseded,true);
+  let message=f.c.runs.get(b.run_id).messages[0];assert.equal(message.read,false);assert.equal(message.delivery,'unknown');
+  const page=f.pages.get('e');page.busy=true;page.stopped=false;
+  await f.c.assignmentYield({metadata:meta('e'),message_ids:[sent.message_id],reason:'handled'});
+  page.busy=false;page.stopped=true;await observe(f,'e');f.advance(600);await observe(f,'e');
+  message=f.c.runs.get(b.run_id).messages[0];assert.equal(message.read,false);assert.equal(message.reply_observed,true);
+  assert.equal(f.c.runs.get(b.run_id).events.filter(e=>e.event_type==='send.intent').length,1);
 });
 test('project removal revokes pending and uncertain deliveries durably without touching a neighbour',async t=>{
   const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e);

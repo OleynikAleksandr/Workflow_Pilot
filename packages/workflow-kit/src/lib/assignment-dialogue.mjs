@@ -9,6 +9,8 @@ import {commitCandidate} from './transaction.mjs';
 import {blockTask,messageAssignment,readSignals} from './signals.mjs';
 import {latestBlock,blockAnswered} from './signal-state.mjs';
 import {assertAssignmentCommandsIdle} from './assignment-command-safety.mjs';
+import {assertPlanPermission} from './plan-permission.mjs';
+import {migratedResultHead} from './dialogue-migration-state.mjs';
 
 export const ASSIGNMENT_DIALOGUE_VERSION = 1;
 const key = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$/.test(value);
@@ -40,11 +42,12 @@ export function assignmentDialogueStatus(root,id) {
   const decision=last&&signals.findLast(s=>s.kind==='assignment-message'&&s.assignment_id===record.id
     &&s.block_id===last.block_id&&(s.assignment_attempt??1)===(record.dialogue?.attempt??1));
   return {ok:true,id:record.id,task_id:record.parent_task_id,role,
-    dialogue_version:record.dialogue_version??0,dialogue:record.dialogue??null,block:activeBlock(record),
+    phase:record.phase,migration:record.migration??null,dialogue_version:record.dialogue_version??0,dialogue:record.dialogue??null,block:activeBlock(record),
     last_decision:decision?{id:decision.id,block_id:decision.block_id,attempt:record.dialogue?.attempt??1}:null};
 }
 export function assertAssignmentDispatch(root,record) {
   if(record?.dialogue_version!==ASSIGNMENT_DIALOGUE_VERSION)return;
+  assertPlanPermission(record.parent_root);
   const current=readJSON(recordPath(record.parent_root,record.id)), d=current.dialogue;
   check(d?.grant && !d.revision && d.attempt===(record.attempt??1),
     'ASSIGNMENT_NOT_DISPATCHED','Ожидайте адресное поручение оркестратора; bootstrap не разрешает task:start.');
@@ -62,7 +65,7 @@ function proof(record, source) {
   check(sha(source),'ASSIGNMENT_RESULT','Нужен полный source_commit.');
   ownWorktree(record.worktree,record);
   ensureIdleGit(record.worktree);
-  check(!journal(record.worktree) && !allChanges(record.worktree).length && head(record.worktree)===source,
+  check(!journal(record.worktree) && !allChanges(record.worktree).length && migratedResultHead(record,source),
     'ASSIGNMENT_NOT_READY','Сначала завершите проверки/коммит; worktree должен быть чистым.');
   const {plan,resolved,config}=validate(record.worktree), task=plan.tasks[0];
   check(task.commit_status==='DONE' && resolved[record.parent_task_id]?.sha===source
@@ -82,10 +85,11 @@ function revise(file,record,input) {
   if(!d.revision) {
     check(!activeIntegration(record.parent_root),'INTEGRATION_PENDING','main занят интеграцией.');
     proof(record,input.source_commit);
-    d.revision={operation_id:input.operation_id,from:input.source_commit,next:d.attempt+1};
+    d.revision={operation_id:input.operation_id,from:input.source_commit,base:head(child),next:d.attempt+1};
     save(file,record);
   }
   const r=d.revision;
+  const base=r.base??r.from;
   check(r.operation_id===input.operation_id && r.from===input.source_commit,
     'ASSIGNMENT_REVISION_PENDING','Продолжите исходную операцию доработки.');
   const runtime=readAssignment(child);runtime.attempt=r.next;save(childRecordPath(child),runtime);
@@ -93,17 +97,17 @@ function revise(file,record,input) {
   candidate.plan_revision=old.plan_revision+1;
   const pending=journal(child);
   if(pending) {
-    check(pending.role==='assignment-plan' && pending.before_head===r.from,'TRANSACTION_PENDING','Есть другая транзакция.');
+    check(pending.role==='assignment-plan' && pending.before_head===base,'TRANSACTION_PENDING','Есть другая транзакция.');
     const done=completedTransaction(child,pending);
     if(done)finishTransaction(child,pending,done);
     else {candidate.plan_revision=parsePlan(pending.candidate_plan).plan_revision;
-      commitCandidate(child,{plan:candidate,role:'assignment-plan',selected:[PLAN],message:'chore: доработка '+record.parent_task_id,beforeHead:r.from});}
-  } else if(head(child)===r.from) {
+      commitCandidate(child,{plan:candidate,role:'assignment-plan',selected:[PLAN],message:'chore: доработка '+record.parent_task_id,beforeHead:base});}
+  } else if(head(child)===base) {
     check(!allChanges(child).length,'ASSIGNMENT_NOT_READY','Worktree изменился перед доработкой.');
-    commitCandidate(child,{plan:candidate,role:'assignment-plan',selected:[PLAN],message:'chore: доработка '+record.parent_task_id,beforeHead:r.from});
+    commitCandidate(child,{plan:candidate,role:'assignment-plan',selected:[PLAN],message:'chore: доработка '+record.parent_task_id,beforeHead:base});
   } else {
     const current=readPlan(child), message=git(child,['log','-1','--format=%B']).stdout;
-    check(git(child,['rev-parse','HEAD^']).stdout.trim()===r.from
+    check(git(child,['rev-parse','HEAD^']).stdout.trim()===base
       && message.includes('Workflow-Role: assignment-plan')
       && current.tasks[0].commit_ref.iteration===r.next && current.tasks[0].commit_status==='PENDING'
       && !allChanges(child).length,'ASSIGNMENT_REVISION_PENDING','Исход доработки не подтверждён; повтор запрещён.');
@@ -126,6 +130,7 @@ export function applyAssignmentDialogue(root,input) {
     const d=record.dialogue??=initial(), fingerprint=hash(json({role,...input}));
     const previous=d.operations[input.operation_id];
     if(previous){check(previous.fingerprint===fingerprint,'ASSIGNMENT_DIALOGUE_CONFLICT','Ключ уже использован с другим содержимым.');return {...previous.receipt,duplicate:true};}
+    if(input.kind==='task'||input.kind==='revision_request'||input.resume)assertPlanPermission(parent,plan);
     check(record.phase==='ASSIGNED' && input.attempt===d.attempt,'ASSIGNMENT_STALE','Назначение или попытка уже изменились.');
     check(!input.blocking||(role==='E'&&input.kind==='question'),'ASSIGNMENT_DIALOGUE_INPUT','blocking допустим только для вопроса E.');
     check(!input.resume||(role==='O'&&input.kind==='decision'),'ASSIGNMENT_DIALOGUE_INPUT','resume допустим только для решения O.');

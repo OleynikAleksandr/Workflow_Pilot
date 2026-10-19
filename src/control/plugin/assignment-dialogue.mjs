@@ -11,6 +11,34 @@ const reference=(run,target)=>'assignment:'+hash(JSON.stringify([run.id,target.s
 export class AssignmentDialogue {
   constructor(communication,kit){this.c=communication;this.kit=kit;this.pending=new Map();}
   async input(input){return this.c.modelInput({metadata:input.metadata});}
+  async migrate(input){
+    const binding=await this.input(input),{run,member}=this.c.member(binding);
+    check(member.role==='O'&&run.mode==='workflow'&&run.grant?.phase==='paused','MIGRATION_PAUSE','Переход выполняет O после общей паузы.');
+    check(this.kit?.migrate,'CAPABILITY','Служба не поддерживает переход старых назначений.');
+    check(!run.messages.some(m=>m.scope_id===run.grant.scope_id&&m.intent&&!m.reply_observed),
+      'MIGRATION_UNKNOWN','Есть незавершённая или неопределённая доставка; сначала установите её исход без повторной отправки.');
+    const operationId='migration-'+hash(JSON.stringify([run.id,run.grant.scope_id]));
+    const result=await this.kit.migrate(member.target,{operation_id:operationId});
+    await this.c.mutate('assignmentMigrated',{...binding,operation_id:operationId});return result;
+  }
+  async migrated(input){
+    const {run}=this.c.member(input);
+    check(!run.removed,'INTENT','Проект уже удалён.');
+    for(const member of Object.values(run.members)){
+      try{member.target=this.c.enrollment.current(member.target);}catch(error){
+        if(error.code!=='PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED')throw error;member.removed=true;member.stopped=true;
+      }
+    }
+    for(const [key,entry] of Object.entries(run.enrollments??{})){
+      try{entry.target=this.c.enrollment.current(entry.target);}catch(error){
+        if(error.code!=='PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED')throw error;delete run.enrollments[key];
+      }
+    }
+    for(const message of run.messages)if(message.scope_id===run.grant.scope_id&&!message.intent&&!message.reply_observed){
+      message.superseded=true;message.delivery='superseded';message.reply_observed=true;
+    }
+    this.c.event(run,'plan.dialogue_migrated',{operation_id:input.operation_id});return {migrated:true};
+  }
   targets(run){
     const targets=new Map();
     for(const entry of [...Object.values(run.enrollments??{}),...Object.values(run.members)]){
@@ -62,7 +90,8 @@ export class AssignmentDialogue {
     const state=await this.state(member.target,worker.assignment_id);
     check((state.dialogue?.attempt??1)===payload.attempt,'STALE_ATTEMPT','Попытка изменилась. Прочитайте статус назначения.');
     if(payload.in_reply_to){const parent=run.messages.find(m=>m.message_id===payload.in_reply_to);
-      check(parent?.recipient_id===member.id&&parent.read&&parent.assignment_id===worker.assignment_id,'CORRELATION','Ответ требует прочитанного сообщения своего назначения.');}
+      check(parent?.recipient_id===member.id&&parent.read&&parent.assignment_id===worker.assignment_id&&parent.attempt===payload.attempt,
+        'CORRELATION','Ответ требует прочитанного сообщения текущей попытки своего назначения.');}
     if(['acceptance','revision_request'].includes(payload.kind)){
       const result=run.messages.find(m=>m.message_id===payload.result_id);
       check(result?.kind==='result'&&result.recipient_id===member.id&&result.read
@@ -88,14 +117,45 @@ export class AssignmentDialogue {
       await this.c.tail;const run=this.c.runs.get(runId),intent=run?.assignment_intents?.[messageId];
       check(intent&&!run.removed,'INTENT','Намерение недоступно.');
       if(intent.phase==='published')return this.c.workflow.receipt(run.messages.find(m=>m.message_id===messageId));
-      await this.c.enrollment.validate(intent.source);await this.c.enrollment.validate(intent.target);
-      const receipt=await this.kit.apply(intent.source,intent.effect);
+      check(!['failed','retired'].includes(intent.phase),'INTENT_CLOSED','Операция закрыта; прочитайте её точную ошибку в status.');
+      let receipt;
+      try{await this.c.enrollment.validate(intent.source);await this.c.enrollment.validate(intent.target);
+        receipt=await this.kit.apply(intent.source,intent.effect);}
+      catch(error){
+        // The same durable operation survives a paused plan, process restart or
+        // an interrupted CLI response. Permanent validation is visible, not retried.
+        const code=String(error.code??'KIT_UNAVAILABLE');
+        const retry=/(?:WORKFLOW_LOCKED|PLAN_PAUSED|TEST_INTERRUPTION|KIT_UNAVAILABLE|TIMEOUT|ECONN|EPIPE|COMMAND_ACTIVE|COMMAND_UNKNOWN|INTEGRATION_PENDING|TRANSACTION_PENDING)$/.test(code);
+        await this.c.mutate('assignmentDeferred',{run_id:runId,message_id:messageId,retry,code,message:String(error.message).slice(0,700)});
+        if(!retry)throw error;
+        return {message_id:messageId,operation_id:intent.operation_id,persisted:true,published:false,phase:'deferred',error:{code,message:String(error.message).slice(0,700)}};
+      }
       return this.c.mutate('assignmentPublish',{run_id:runId,message_id:messageId,receipt});
     })();this.pending.set(key,work);void work.finally(()=>this.pending.delete(key)).catch(()=>{});return work;
   }
+  deferred(input){
+    const run=this.c.run(input),intent=run.assignment_intents?.[input.message_id];
+    if(!intent||run.removed||intent.phase==='retired')return {retired:true};
+    const phase=input.retry?'deferred':'failed';
+    if(intent.phase===phase&&intent.error?.code===input.code&&intent.error?.message===input.message)return {phase};
+    intent.phase=phase;intent.error={code:input.code,message:input.message};
+    this.c.event(run,'message.intent_deferred',{message_id:intent.message_id,code:input.code,retry:input.retry});
+    return {phase:intent.phase};
+  }
+  async reconcile(projectId,scopeId){
+    await this.c.tail;
+    for(const run of this.c.runs.values())if(!run.removed&&run.project_id===projectId&&run.grant?.scope_id===scopeId)
+      for(const intent of Object.values(run.assignment_intents??{}))if(['prepared','deferred'].includes(intent.phase)){
+        try{await this.complete(run.id,intent.message_id);}catch(error){
+          if(run.removed||intent.phase==='retired')continue;
+          if(intent.phase!=='failed')await this.c.mutate('assignmentDeferred',{run_id:run.id,message_id:intent.message_id,
+            retry:false,code:String(error.code??'KIT_UNAVAILABLE'),message:String(error.message).slice(0,700)});
+        }
+      }
+  }
   async publish(input){
     const c=this.c,run=c.run(input),intent=run.assignment_intents?.[input.message_id];
-    check(intent&&!run.removed,'INTENT','Намерение недоступно.');
+    check(intent&&!run.removed&&intent.phase!=='retired','INTENT','Намерение недоступно.');
     if(intent.phase==='published')return c.workflow.receipt(run.messages.find(m=>m.message_id===input.message_id));
     await c.enrollment.validate(intent.source);await c.enrollment.validate(intent.target);
     const receipt=input.receipt;
@@ -120,7 +180,7 @@ export class AssignmentDialogue {
     const {run,member}=this.c.member(binding);
     const pending=Object.values(run.assignment_intents??{}).filter(i=>i.sender_id===member.id&&i.phase!=='published');
     return {permission:this.c.workflow.state(run),assignments:await this.roster(run,member),
-      pending_intents:pending.map(i=>({message_id:i.message_id,operation_id:i.operation_id,phase:i.phase})),
+      pending_intents:pending.map(i=>({message_id:i.message_id,operation_id:i.operation_id,phase:i.phase,error:i.error??null})),
       messages:run.messages.filter(m=>(m.sender_id===member.id||m.recipient_id===member.id)&&m.scope_id===run.grant?.scope_id)
         .map(m=>({...this.c.workflow.receipt(m),kind:m.kind,assignment_id:m.assignment_id,attempt:m.attempt,sender_role:m.sender_role,in_reply_to:m.in_reply_to}))};
   }
@@ -130,9 +190,11 @@ export class AssignmentDialogue {
     check(run.mode==='workflow'&&Array.isArray(input.message_ids)&&input.message_ids.length>0&&input.message_ids.length<=32
       &&['awaiting_reply','tasks_sent','result_sent','handled'].includes(input.reason),'INPUT','Укажите прочитанные сообщения и причину окончания хода.');
     const messages=[...new Set(input.message_ids)].map(id=>run.messages.find(m=>m.message_id===id));
-    check(messages.every(m=>m?.dialogue_version===ASSIGNMENT_DIALOGUE_VERSION&&m.recipient_id===member.id&&m.read&&!m.superseded&&m.scope_id===run.grant?.scope_id),
+    check(messages.every(m=>m?.dialogue_version===ASSIGNMENT_DIALOGUE_VERSION&&m.recipient_id===member.id
+      &&(m.read&&!m.superseded||m.superseded_read&&input.reason==='handled')&&m.scope_id===run.grant?.scope_id),
       'YIELD_DENIED','Квитанция относится только к прочитанным сообщениям своего текущего плана.');
     for(const message of messages){
+      if(message.superseded_read&&input.reason==='handled')continue;
       const reply=run.messages.find(m=>m.sender_id===member.id&&m.assignment_id===message.assignment_id
         &&m.in_reply_to===message.message_id&&((m.kind==='revision_request'&&m.result_id===message.message_id)
           ||(m.kind==='decision'&&m.resume&&m.block_id===message.block_id)));

@@ -147,6 +147,8 @@ export class PluginCommunication {
       if(message.delivery==='claimed')message.delivery='unknown';
       else if(message.delivery==='pending')message.delivery='rejected';
     }
+    for(const intent of Object.values(run.assignment_intents??{}))if(intent.phase!=='published'&&(run.removed
+      ||sessions.has(intent.source.local_session_id)||sessions.has(intent.target.local_session_id)))intent.phase='retired';
     for(const [id,panel] of this.panels)if(panel.runId===run.id&&(run.removed||members.has(panel.memberId)))this.panels.delete(id);
     for(const [id,probe] of Object.entries(run.probes??{}))if(run.removed||members.has(probe.memberId))delete run.probes[id];
     this.event(run,'project.removed');return {removed:true};
@@ -160,10 +162,13 @@ export class PluginCommunication {
   _enqueue(input){return this.workflow._enqueue(input);}
   _assignmentIntent(input){return this.assignment.prepare(input);}
   _assignmentPublish(input){return this.assignment.publish(input);}
+  _assignmentDeferred(input){return this.assignment.deferred(input);}
   _assignmentYield(input){return this.assignment.yielded(input);}
   assignmentSend(input){return this.assignment.send(input);}
   assignmentStatus(input){return this.assignment.status(input);}
   assignmentYield(input){return this.assignment.yield(input);}
+  assignmentMigrate(input){return this.assignment.migrate(input);}
+  _assignmentMigrated(input){return this.assignment.migrated(input);}
   _sync(input){return this.workflow.sync(input);}
   _turnTimeout(input){return this.workflow.timeout(input);}
   async _observed(input){const run=this.run(input);for(const member of Object.values(run.members))
@@ -425,8 +430,13 @@ export class PluginCommunication {
   async _read(input) {
     const {run,member}=this.member(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id,'READ_DENIED','Сообщение недоступно этому участнику.');
-    if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message))return {message_id:message.message_id,superseded:true,
-      instructions:'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Завершите ход; актуальное поручение будет доставлено отдельно.'};
+    if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message)){
+      message.superseded_read=true;
+      this.event(run,'message.obsolete_read',{participant_id:member.id,message_id:message.message_id});
+      await this.workflow.observed(run,member);
+      return {message_id:message.message_id,superseded:true,
+        instructions:'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Для диалога версии 1 вызовите workflow_assignment_yield с reason=handled для этого уведомления, затем завершите ход.'};
+    }
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id});}
     this.event(run,'read.returned',{participant_id:member.id,message_id:message.message_id});

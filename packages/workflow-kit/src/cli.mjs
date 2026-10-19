@@ -5,6 +5,8 @@ import { startIntegration, continueIntegration, integrationStatus, assertIntegra
 import { createAssignment, assignmentStatus, setupAssignment, cleanupAssignments, assertAssignmentCommand } from './lib/task-assignment.mjs';
 import { blockTask, messageAssignment, escalatePlan } from './lib/signals.mjs';
 import {applyAssignmentDialogue,assignmentDialogueStatus} from './lib/assignment-dialogue.mjs';
+import {setPlanPermission} from './lib/plan-permission.mjs';
+import {assertMigrationCommand} from './lib/dialogue-migration-state.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { errorResult, check, readJSON, json, withPlanFile, PLAN } from './lib/common.mjs';
@@ -55,11 +57,16 @@ export async function main(argv = process.argv.slice(2)) {
 
     let event; if (isHook) event = JSON.parse(fs.readFileSync(0, 'utf8'));
     const root = repoRoot(opts.project || event?.cwd || process.cwd());
+    assertMigrationCommand(root,command);
     assertHandoffCommand(root,command);
     assertAssignmentCommand(root,command);
     assertIntegrationCommand(root,command);
     let result;
     const input = () => { check(opts.input, 'INPUT_REQUIRED', 'Укажите --input <JSON-файл>.'); return readJSON(path.resolve(opts.input)); };
+    if(command==='assignment:migrate'){
+      const {migrateAssignmentDialogue}=await import('./lib/dialogue-migration.mjs');
+      return {value:migrateAssignmentDialogue(root,input()),json:true};
+    }
     if(command==='review:run') {
       const {runReview}=await import('./lib/claude-review.mjs');
       const value=await withSessionPlan(root,{sessionId:opts.session,planId:opts.plan},()=>runReview(root,{
@@ -81,6 +88,7 @@ export async function main(argv = process.argv.slice(2)) {
       case 'assignment:message': result = messageAssignment(root,opts.id,opts.text,opts['signal-id'],opts['block-id'],opts['approval-note']); break;
       case 'assignment:dialogue': result = applyAssignmentDialogue(root,input()); break;
       case 'assignment:dialogue-status': result = assignmentDialogueStatus(root,opts.id); break;
+      case 'plan:permission': result = setPlanPermission(root,input()); break;
       case 'task:block': result = blockTask(root,opts.task,opts.reason,opts['signal-id'],opts['problem-id']); break;
       case 'plan:escalate': result = escalatePlan(root,opts.reason,opts['signal-id']); break;
       case 'review:status': result = reviewStatus(root); break;

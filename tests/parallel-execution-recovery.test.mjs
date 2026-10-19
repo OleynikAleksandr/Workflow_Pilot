@@ -103,6 +103,19 @@ function fixture(t) {
   return {state,ledger,calls,kit,runtime,assignment,grant};
 }
 
+test('a paused dialogue settles on physical safety, not unfinished tasks or reserved outbox',t=>{
+  const f=fixture(t);Object.assign(f.state.plan,{execution_strategy:'orchestrated',dialogue_version:1});
+  f.assignment('a','A','READY');f.assignment('b','B','RUNNING');
+  f.runtime.mainState=()=>({stopped:false});f.runtime.workerState=()=>({stopped:false});
+  f.runtime.physicalMainState=()=>({stopped:true});f.runtime.physicalWorkerState=()=>({stopped:true});
+  let latest;f.runtime.onSettle=(_root,_scope,state)=>latest=state;
+  f.runtime.settle('/main',f.state.plan,f.state.assignments,f.state);assert.equal(latest.busy,false);
+  f.state.assignments[1].commandActive=true;
+  f.runtime.settle('/main',f.state.plan,f.state.assignments,f.state);assert.equal(latest.busy,true);
+  f.state.assignments[1].commandActive=false;f.runtime.physicalMainState=()=>({stopped:false});
+  f.runtime.settle('/main',f.state.plan,f.state.assignments,f.state);assert.equal(latest.busy,true);
+});
+
 test('reserved identities missing in Kit retain capacity and visible uncertainty after restart',async t=>{
   const f=fixture(t);
   f.ledger.assignments.a={id:'a',taskId:'A',phase:'creating'};

@@ -39,6 +39,15 @@ export class ParallelKit {
       catch(error){if(error.code!=='PLAN_CHANGED_DURING_READ'||attempt>=2)throw error;}
     }
   }
+  async migration(workspace,scope,operationId){
+    const directory=await this.git(workspace,['rev-parse','--absolute-git-dir']);
+    const record=await fs.readFile(path.join(directory,'workflow-kit','dialogue-migration.json'),'utf8')
+      .then(JSON.parse).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+    if(!record||record.phase==='DONE')return null;
+    if(record.scope_id!==scope||record.operation_id!==operationId)
+      throw Object.assign(Error('Сначала завершите ранее начатый переход.'),{code:'DIALOGUE_MIGRATION_PENDING'});
+    return {assignments:record.children.map(child=>child.record)};
+  }
   async readSnapshot(workspace) {
     const text=await fs.readFile(path.join(workspace,planFile),'utf8'),plan=parsePlan(text);
     if(!['parallel','orchestrated'].includes(plan.execution_strategy))return {workspace,plan,assignments:[],integration:{status:'IDLE'}};

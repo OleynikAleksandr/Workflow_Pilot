@@ -100,6 +100,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
   catch(error){if(error.code!=='ENOENT')throw error;workflow.restore({});}
   await control.projects.load();
   await workflow.holdProjectsForRecovery(pendingKitTransactions(control.projects.snapshot().projects));
+  await workflow.revokeKitPermissions();
   const pages=createBackendPages({sessions,setup,store:control.projects,host:browser?.host??null,onReady:notify});
   return Object.freeze({control,execution,workflow,settings,setup,sessions,pages,
     // One change listener: the backend event log. It reads state, never stores it.

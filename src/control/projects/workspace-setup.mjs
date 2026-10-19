@@ -107,7 +107,7 @@ export class WorkspaceSetup {
     let output;
     try {
       output = await this.executeNode(node, [path.join(this.resourceDir, 'workspace-setup-worker.mjs')],
-        { env: this.environment, ownerWorkspace:input.action==='apply'?(input.workspace??input.project):undefined, timeout: 120000, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8', windowsHide: true },
+        { env: this.environment, ownerWorkspace:['apply','dialogue-migrate'].includes(input.action)?(input.workspace??input.project):undefined, timeout: 120000, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8', windowsHide: true },
         JSON.stringify(input));
     } catch (error) {
       if (!error.stdout) throw error;

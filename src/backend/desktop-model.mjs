@@ -1364,6 +1364,7 @@ async function start() {
     if(JSON.stringify(before)!==JSON.stringify(cleaned)) {
       workflow.restore(cleaned);await saveSettings();
     }
+    await workflow.revokeKitPermissions();
   }
   if (await surface.beforeWindow({ fresh: store.snapshot().projects.length === 0, storageError })) return false;
   if (process.platform === 'win32') {

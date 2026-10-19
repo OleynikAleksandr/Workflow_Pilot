@@ -4,6 +4,7 @@ import { PLAN, CONFIG, check, hash, json, atomic, readJSON, safePath } from './c
 import { git, head, repoRoot, localPath, isAncestor } from './git.mjs';
 import { parsePlan, isDeliveryTask } from './plan.mjs';
 import { taskChecks } from './validation-rules.mjs';
+import {installerMigrationCandidate} from './dialogue-migration-state.mjs';
 export const validId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(value);
 export const commonDirectory = root => fs.realpathSync(git(root, ['rev-parse','--path-format=absolute','--git-common-dir']).stdout.trim());
 export const recordPath = (root, id) => { check(validId(id),'ASSIGNMENT_ID','Нужен устойчивый ID назначения.'); return localPath(root,'assignments/'+id+'.json'); };
@@ -37,7 +38,7 @@ export function binding(record) {
   return {id:record.id,parent_scope_id:record.parent_scope_id,parent_task_id:record.parent_task_id,
     parent_root:record.parent_root,worktree:record.worktree,branch:record.branch,base_commit:record.base_commit,
     external_dependencies:record.external_dependencies,
-    ...(record.dialogue_version ? {dialogue_version:record.dialogue_version} : {})};
+    ...((record.contract_dialogue_version??record.dialogue_version) ? {dialogue_version:record.contract_dialogue_version??record.dialogue_version} : {})};
 }
 export function basePlan(root, record) {
   return parsePlan(git(root,['show',record.base_commit+':'+PLAN]).stdout);
@@ -64,6 +65,7 @@ export function immutableContract(plan) {
   const p=structuredClone(plan);
   for(const key of ['plan_revision','current_task_id','delivery_status'])delete p[key];
   for(const task of p.tasks)for(const key of ['implementation_status','commit_status','actual_files'])delete task[key];
+  for(const task of p.tasks)task.commit_ref.iteration??=1;
   // A commit that deletes a required document pins its revision; the pin is not a contract change.
   for(const pack of [p.context_pack,...p.tasks.map(task=>task.context_pack)])for(const doc of pack?.documents??[])delete doc.revision;
   return json(p);
@@ -80,6 +82,7 @@ export function assertAssignment(root, plan, {ready=false,role,files}={}) {
   check(record || !plan.assignment,'ASSIGNMENT_MISSING','У локального плана нет журнала назначения.');
   if(!record)return null;
   ownWorktree(root,record);
+  if(installerMigrationCandidate(root,plan,role,files??[]))return record;
   check(immutableContract(plan)===immutableContract(localPlan(root,record)), 'ASSIGNMENT_CONTRACT',
     'Исполнитель не меняет область, зависимости, проверки или состав назначенного плана.');
   check(hash(fs.readFileSync(safePath(root,CONFIG)))===record.config_digest,'ASSIGNMENT_CONFIG','Конфигурация проверок назначения изменена.');

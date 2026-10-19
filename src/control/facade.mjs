@@ -74,7 +74,7 @@ export class ControlFacade {
   }
   createDeletion(options) { return this.projects.createDeletion(options); }
   createPlugin(options = {}) {
-    return new PluginProjects({ projects:this.projects,plans:this.plans,
+    return new PluginProjects({ projects:this.projects,plans:this.plans,migrate:(target,input)=>this.#workflow.migrateAssignments(target,input),
       loadContext:workspace=>this.plans.loadContext(workspace), ...options });
   }
   configureSettings({file,workflowSnapshot}) {

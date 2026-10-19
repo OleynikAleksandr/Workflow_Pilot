@@ -15,6 +15,7 @@ import {validate,readConfig} from '../src/lib/validate.mjs';
 import {recover,contextPacket} from '../src/lib/recovery.mjs';
 import {applyAssignmentDialogue,assignmentDialogueStatus} from '../src/lib/assignment-dialogue.mjs';
 import {roleText} from '../src/lib/role-protocol.mjs';
+import {setPlanPermission} from '../src/lib/plan-permission.mjs';
 
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const write=(root,file,text)=>{fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),text);};
@@ -173,6 +174,9 @@ try {
     approved_scope:{functional_paths:[],documentation_paths:['README.md',SPEC]},
     context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false},
     tasks:[{...task('T001','README.md',[],false),context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false}}]});
+  const permission=active=>setPlanPermission(root,{scope_id:'dialogue-fixture',backend_id:'isolated-fixture',backend_pid:process.pid,active});
+  assert.throws(()=>createAssignment(root,{id:'dialogue-e',task_id:'T001',base_commit:git(root,'rev-parse','HEAD'),worktree:path.join(dialogueDirectory,'worker')},readPlan(root).plan_revision),{code:'PLAN_PAUSED'});
+  permission(true);
   const a=createAssignment(root,{id:'dialogue-e',task_id:'T001',base_commit:git(root,'rev-parse','HEAD'),worktree:path.join(dialogueDirectory,'worker')},readPlan(root).plan_revision);
   setupAssignment(root,a.id,{npmCi:true});
   const limitedRecovery=()=>{
@@ -198,6 +202,10 @@ try {
   assert.throws(()=>send(root,'task','task-1',{message_id:'different'}),{code:'ASSIGNMENT_DIALOGUE_CONFLICT'});
   send(a.worktree,'context_request','before-start');
   assert.equal(readPlan(a.worktree).current_task_id,null);
+  permission(false);
+  assert.throws(()=>startTask(a.worktree,'T001'),{code:'PLAN_PAUSED'});
+  send(a.worktree,'context_request','outbox-in-pause');
+  permission(true);
   startTask(a.worktree,'T001');
   process.env.WORKFLOW_TEST_FAILPOINT='dialogue-signal';
   try{assert.throws(()=>send(a.worktree,'question','question-1',{blocking:true,problem_id:'missing-rule'}),{code:'TEST_INTERRUPTION'});}
@@ -247,6 +255,9 @@ try {
   assert.throws(()=>send(a.worktree,'acceptance','self-accept',{source_commit:first,result_id:'result-1'}),{code:'ASSIGNMENT_ROLE'});
   assert.throws(()=>send(root,'acceptance','wrong-result',{source_commit:first,result_id:'not-result-1'}),{code:'ASSIGNMENT_RESULT_STALE'});
   send(root,'acceptance','accept-1',{source_commit:first,result_id:'result-1'});
+  permission(false);
+  assert.throws(()=>startIntegration(root,{id:a.id,source_commit:first}),{code:'PLAN_PAUSED'});
+  permission(true);
   process.env.WORKFLOW_TEST_FAILPOINT='prepared';
   try {assert.throws(()=>send(root,'revision_request','revise-1',{source_commit:first,result_id:'result-1'}),{code:'TEST_INTERRUPTION'});}
   finally {delete process.env.WORKFLOW_TEST_FAILPOINT;}

@@ -12,6 +12,7 @@ const file = root => localPath(root,'task-handoff.json');
 const save = (root,record) => atomic(file(root),json(record),0o600);
 const failpoint = stage => check(process.env.WORKFLOW_TEST_FAILPOINT!==stage,'TEST_INTERRUPTION','Прерывание восстановления: '+stage);
 export function assertHandoffCommand(root,command) {
+  if(command==='plan:permission')return;
   const record=fs.existsSync(file(root))?readJSON(file(root)):null;
   check(!record || record.phase==='DONE' || ['status','validate','recover','plan:view','assignment:handoff','assignment:status','integration:status','hook','git-hook'].includes(command),
     'HANDOFF_PENDING','Сначала продолжите assignment:handoff с тем же ID; сохранённые файлы не удаляйте.');

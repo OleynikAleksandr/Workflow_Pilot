@@ -226,7 +226,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
       check(false,'CONCURRENT_CHANGE','Проект меняется во время проверки; повторите после завершения операции.');
     }
     const {plan,config,resolved,transaction} = validation;
-    const dialogueExecutor=plan.assignment?.dialogue_version===1;
+    const dialogueExecutor=!!plan.assignment&&(plan.assignment.dialogue_version===1||plan.dialogue_version===1);
     check(!dialogueExecutor||!options.role||options.role==='executor','RECOVERY_ROLE','Назначение получает только собственные инструкции исполнителя.');
     const role = dialogueExecutor?'executor':options.role ?? null;
     check(role === null || RECOVERY_ROLES.includes(role), 'RECOVERY_ROLE', 'Роль recovery: orchestrator, discussion или executor.');

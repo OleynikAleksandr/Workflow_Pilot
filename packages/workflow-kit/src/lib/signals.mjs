@@ -3,6 +3,7 @@ import path from 'node:path';
 import { check, hash, withLock, readJSON } from './common.mjs';
 import { readPlan, isOrchestratedPlan } from './plan.mjs';
 import { commonDirectory, readAssignment, recordPath } from './assignment-contract.mjs';
+import {assertPlanPermission} from './plan-permission.mjs';
 import {sameAssignment,latestBlock,blockAnswered} from './signal-state.mjs';
 
 // Signals connect executors, the orchestrator and the application without commits.
@@ -84,6 +85,7 @@ export function messageAssignment(root, assignmentId, message, id, blockId, appr
   return append(root,request,id,(signals,requestHash)=>{
     const duplicate=signals.find(s=>s.request_hash===requestHash);
     if(duplicate)return {existing:duplicate};
+    if(record.dialogue_version===1)assertPlanPermission(root,plan);
     const block=latestBlock(signals,request);
     check(!blockId||block?.block_id===blockId,'BLOCK_STALE','Решение относится не к последней блокировке.',{block_id:block?.block_id??null});
     check(!block?.block_id||blockId===block.block_id,'BLOCK_REQUIRED','Укажите точный --block-id из вопроса.',{block_id:block?.block_id});

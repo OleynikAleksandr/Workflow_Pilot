@@ -10,7 +10,7 @@ import { run, git, identityReady } from './workflow-kit/lib/git.mjs';
 // Before 0.6.96 this was a separate list that stopped at 1.4.13, and projects with Kit 1.5.0–1.5.4 were refused.
 const supported = new Set(['1.0.0', ...upgradeFrom, VERSION]);
 function options(input) {
-  check(input && ['inspect', 'apply', 'fingerprint'].includes(input.action), 'SETUP_ACTION', 'Неизвестное действие подготовки.');
+  check(input && ['inspect', 'apply', 'fingerprint','dialogue-migrate'].includes(input.action), 'SETUP_ACTION', 'Неизвестное действие подготовки.');
   check(['new', 'existing'].includes(input.mode), 'SETUP_MODE', 'Выберите создание или подключение проекта.');
   check(typeof input.project === 'string' && path.isAbsolute(input.project) && !/[\r\n\0]/.test(input.project), 'PROJECT_PATH', 'Нужен полный путь к папке проекта.');
   return { project: input.project, mode: input.mode, name: input.name };
@@ -127,7 +127,14 @@ function inspectProject(opts) {
 try {
   const input = JSON.parse(fs.readFileSync(0, 'utf8'));
   const opts = options(input);
-  let result = input.action === 'fingerprint'
+  let result;
+  if(input.action==='dialogue-migrate'){
+    const {setPlanPermission}=await import('./workflow-kit/lib/plan-permission.mjs');
+    const {migrateAssignmentDialogue}=await import('./workflow-kit/lib/dialogue-migration.mjs');
+    check(input.permission?.active===false,'DIALOGUE_MIGRATION_PAUSE','Переход требует паузы.');
+    setPlanPermission(opts.project,input.permission);
+    result=migrateAssignmentDialogue(opts.project,input.migration);
+  }else result = input.action === 'fingerprint'
     ? { workspace: fs.realpathSync(opts.project), ...inspectionInputs(opts.project) }
     : inspectProject(opts);
   if (input.action === 'apply') {

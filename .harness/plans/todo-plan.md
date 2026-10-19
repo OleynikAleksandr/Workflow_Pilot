@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 609,
+  "plan_revision": 611,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -128,7 +128,16 @@
       "packages/workflow-kit/src/lib/simple-workflow.mjs",
       "src/control/sessions/workspace-session.mjs",
       "tests/workspace-session.test.mjs",
-      "packages/workflow-kit/src/lib/assignment-command-safety.mjs"
+      "packages/workflow-kit/src/lib/assignment-command-safety.mjs",
+      "packages/workflow-kit/src/lib/task-handoff.mjs",
+      "resources/workspace-setup-worker.mjs",
+      "src/control/projects/workspace-setup.mjs",
+      "tests/fixtures/released-kit/manifest.json",
+      "packages/workflow-kit/src/lib/dialogue-migration-state.mjs",
+      "packages/workflow-kit/src/lib/dialogue-migration.mjs",
+      "packages/workflow-kit/src/lib/plan-permission.mjs",
+      "tests/dialogue-migration.test.mjs",
+      "tests/fixtures/released-kit/kit-1.8.2.tar.gz"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-owned-dialogue.md",
@@ -804,8 +813,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T008",
@@ -834,7 +843,34 @@
         "tests/workflow-kit-upgrade.test.mjs",
         "src/control/plugin/communication.mjs",
         "src/control/workflow/dialogue-delivery.mjs",
-        "src/execution/plugin/communication-store.mjs"
+        "src/execution/plugin/communication-store.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/assignment-contract.mjs",
+        "packages/workflow-kit/src/lib/integration-proof.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/signals.mjs",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "packages/workflow-kit/src/lib/task-handoff.mjs",
+        "packages/workflow-kit/src/lib/task-integration.mjs",
+        "packages/workflow-kit/src/lib/transaction-state.mjs",
+        "resources/workspace-setup-worker.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/projects/workspace-setup.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "packages/workflow-kit/src/lib/dialogue-migration-state.mjs",
+        "packages/workflow-kit/src/lib/dialogue-migration.mjs",
+        "packages/workflow-kit/src/lib/plan-permission.mjs",
+        "tests/dialogue-migration.test.mjs",
+        "tests/fixtures/released-kit/kit-1.8.2.tar.gz"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -872,7 +908,45 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/assignment-contract.mjs",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/integration-proof.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/signals.mjs",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "packages/workflow-kit/src/lib/task-handoff.mjs",
+        "packages/workflow-kit/src/lib/task-integration.mjs",
+        "packages/workflow-kit/src/lib/transaction-state.mjs",
+        "resources/workspace-setup-worker.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/projects/workspace-setup.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/parallel-execution-recovery.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "packages/workflow-kit/src/lib/dialogue-migration-state.mjs",
+        "packages/workflow-kit/src/lib/dialogue-migration.mjs",
+        "packages/workflow-kit/src/lib/plan-permission.mjs",
+        "tests/dialogue-migration.test.mjs",
+        "tests/fixtures/released-kit/kit-1.8.2.tar.gz"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1256,7 +1330,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 609
+Revision: 611
 
 ## Цель
 
@@ -1317,10 +1391,10 @@ Revision: 609
   - Файлы: packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/signal-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/automatic-agent-dialogue.test.mjs, tests/workflow-signals.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/task-integration.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/workflow/parallel-kit.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/orchestrated-execution.test.mjs, tools/codex-app-server-mcp/plugin.py, packages/workflow-kit/src/lib/assignment-command-safety.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T006
-- [TODO] T008: Обеспечить восстановление и переход старых назначений — Ожидает
-  - Git Commit: [PENDING] feat: Обеспечить восстановление и переход старых назначений
+- [DONE] T008: Обеспечить восстановление и переход старых назначений — Завершено
+  - Git Commit: [DONE] feat: Обеспечить восстановление и переход старых назначений
   - Reference: orchestrator-owned-dialogue-refactor / T008 / implementation
-  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/coordination.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/workflow-channel.mjs, src/control/projects/project-compatibility.mjs, src/control/projects/workspace-deletion.mjs, src/backend/bootstrap.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, tests/parallel-execution-recovery.test.mjs, tests/migration-compatibility.test.mjs, tests/workspace-deletion.test.mjs, tests/backend-upgrade.test.mjs, tests/panel-resource-upgrade.test.mjs, tests/workflow-kit-upgrade.test.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/execution/plugin/communication-store.mjs
+  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/coordination.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/workflow-channel.mjs, src/control/projects/project-compatibility.mjs, src/control/projects/workspace-deletion.mjs, src/backend/bootstrap.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, tests/parallel-execution-recovery.test.mjs, tests/migration-compatibility.test.mjs, tests/workspace-deletion.test.mjs, tests/backend-upgrade.test.mjs, tests/panel-resource-upgrade.test.mjs, tests/workflow-kit-upgrade.test.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/execution/plugin/communication-store.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/integration-proof.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/task-handoff.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, resources/workspace-setup-worker.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, src/control/facade.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, src/control/projects/workspace-setup.mjs, src/control/workflow/parallel-kit.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/released-kit/manifest.json, tests/workflow-channel.test.mjs, tools/codex-app-server-mcp/plugin.py, packages/workflow-kit/src/lib/dialogue-migration-state.mjs, packages/workflow-kit/src/lib/dialogue-migration.mjs, packages/workflow-kit/src/lib/plan-permission.mjs, tests/dialogue-migration.test.mjs, tests/fixtures/released-kit/kit-1.8.2.tar.gz
   - Параллельность: исключительное выполнение
   - Зависимости: T007
 - [TODO] T009: Показать адресный диалог и причины ожидания — Ожидает

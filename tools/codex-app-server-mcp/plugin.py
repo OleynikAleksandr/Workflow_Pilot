@@ -203,6 +203,11 @@ def register_plugin(mcp, state_root: Path):
         """Read assignment attempt, grants, result/acceptance, pending intents and message receipts for this verified identity. Does not send or wake an agent. Read/handled and Kit integration are different facts. Never poll this with repeated model turns."""
         return await communication("assignmentStatus", ctx)
 
+    @mcp.tool(name="workflow_assignment_migrate", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def assignment_migrate(ctx: Context) -> CallToolResult:
+        """Explicitly migrate this orchestrator's old 0.5.7 assignments after the user requests a transition and pauses the plan. Requires parked executors and resolved deliveries. Installer upgrades pinned runtimes and preserves checked commits; READY executors must report their existing result without repeating work. No automatic restart: one common Continue resumes. Busy or UNKNOWN is a concrete refusal; never clear receipts or use DOM fallback."""
+        return await communication("assignmentMigrate", ctx)
+
     @mcp.tool(name="workflow_communication_probe", annotations=LAUNCH, meta={"ui": {"visibility": ["model"]}})
     async def probe(run_id: RunId, participant_id: ParticipantId,
                     delay_ms: Annotated[int, Field(ge=25, le=60000, description="One-shot delay in milliseconds. Enable the panel first, then end your turn.")], ctx: Context) -> CallToolResult:

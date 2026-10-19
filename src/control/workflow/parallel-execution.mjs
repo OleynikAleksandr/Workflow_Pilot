@@ -125,9 +125,11 @@ export function deliveryText(workspace,task) {
 // One serialized, event-driven queue per main checkout. The persisted book is a
 // delivery ledger, never a replacement for Kit's plan, assignments or Git proofs.
 export class ParallelExecution {
-  constructor({kit,origin,openWorker,workerState,mainState,save,book={},onChange=()=>{},watch=()=>()=>{},
+  constructor({kit,origin,openWorker,workerState,mainState,physicalWorkerState=workerState,physicalMainState=mainState,
+    reconcileChannel=async()=>{},restoreIntegrated=()=>false,save,book={},onChange=()=>{},watch=()=>()=>{},
     isEnabled=null,isIssuing=null,onSettle=()=>{},onPause=()=>{},sendWorker=null,orchestrator=()=>null,onComplete=()=>{},sendCorrection,sendFinalization=null,sendDiagnostic=null,canFinalize=null,restoreWorker=async()=>null,restoreOrigin=async()=>{},now=Date.now,uuid=randomUUID,queuedRoute=()=>false,deliveryReceipt=()=>null,channelSettled=()=>true}) {
     this.channelSettled=channelSettled;
+    Object.assign(this,{physicalWorkerState,physicalMainState,reconcileChannel,restoreIntegrated});
     Object.assign(this,{queuedRoute,deliveryReceipt});
     Object.assign(this,{isEnabled,onComplete,kit,origin,openWorker,workerState,mainState,save,book,onChange,watch,sendCorrection,restoreWorker,restoreOrigin,now,uuid});
     Object.assign(this,{sendFinalization,sendDiagnostic,canFinalize,isIssuing,onSettle,onPause,sendWorker,orchestrator});
@@ -237,6 +239,7 @@ export class ParallelExecution {
     this.unwatch.get(workspace)?.update?.(state.watchInputs);
     const origin=executionOrigin(plan,id=>this.origin(workspace,id),this.orchestrator(workspace,plan.scope_id));
     const ledger=await this.scopedLedger(state,origin);
+    if(plan.dialogue_version===1)await this.reconcileChannel(workspace,plan.scope_id);
     await this.reconcileMessages(workspace,state,origin,ledger,enabled);
     if(this.suspended.has(workspace))return;
     const assignments=state.assignments.map(a=>({...a,...(ledger.assignments[a.id]?.readyAt?{readyAt:ledger.assignments[a.id].readyAt}:{})}));
@@ -250,7 +253,7 @@ export class ParallelExecution {
         if(a.status==='INTEGRATED') {
           const entry=ledger.assignments[a.id];
           if(entry&&entry.integration!=='done'){entry.integration='done';entry.error=null;await this.persist();}
-          continue;
+          if(plan.dialogue_version!==1||!this.restoreIntegrated(workspace,a,entry))continue;
         }
         if(a.status==='UNKNOWN'){recoveryError??=a.error;continue;}
         try {
@@ -393,6 +396,12 @@ export class ParallelExecution {
   // A requested pause of an orchestrated plan takes effect once no executor works and main is free.
   settle(workspace,plan,assignments,state) {
     if(plan?.execution_strategy!=='orchestrated')return;
+    if(plan.dialogue_version===1||this.queuedRoute(workspace,plan.scope_id)){
+      const ledger=this.ledger(workspace,plan.scope_id),origin=executionOrigin(plan,id=>this.origin(workspace,id),this.orchestrator(workspace,plan.scope_id));
+      const busy=state.commandActive||!this.physicalMainState(origin).stopped||(assignments??[]).some(a=>
+        a.status!=='INTEGRATED'&&(a.commandActive||!this.physicalWorkerState(a,ledger.assignments[a.id]).stopped));
+      this.onSettle(workspace,plan.scope_id,{busy});return;
+    }
     const busy=(assignments??[]).some(a=>{
       if(a.status==='INTEGRATED')return false;
       const signals=(state.signals??[]).filter(s=>s.assignment_id===a.id),last=signals.findLast(s=>s.kind==='task-blocked');

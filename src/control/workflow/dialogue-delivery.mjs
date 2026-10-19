@@ -7,8 +7,13 @@ import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 const hash=value=>createHash('sha256').update(value).digest('hex');
 // A narrow adapter for the existing scheduler. It owns no assignments or plan.
 export class DialogueDelivery {
-  constructor({store,getPlugin,record,route,state,signals}){Object.assign(this,{store,getPlugin,record,route,state,signals});}
+  constructor({store,getPlugin,record,route,state,signals,kitPermission=async()=>{}}){Object.assign(this,{store,getPlugin,record,route,state,signals,kitPermission});}
   async currentMessage(target,message){
+    if(message.dialogue_version===1&&message.assignment_id){
+      const state=await this.getPlugin().communication.assignment.state(target,message.assignment_id);
+      if((state.dialogue?.attempt??1)!==message.attempt)return false;
+      if(message.block_id&&state.block?.block_id!==message.block_id&&state.last_decision?.block_id!==message.block_id)return false;
+    }
     if(!message.signal_id)return true;
     const project=this.project(target.local_session_id);
     if(!project||!this.signals)return false;
@@ -40,7 +45,7 @@ export class DialogueDelivery {
   }
   async admit(target){
     const project=this.project(target.local_session_id);
-    if(!this.uses(project)||!['running','pausing'].includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)
+    if(!this.uses(project)||!(this.owned(project)?['running']:['running','pausing']).includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)
       ||!this.observe(target).canSend)return false;
     return !(await readCommandActivity(project.workspace)).commandActive;
   }
@@ -53,6 +58,8 @@ export class DialogueDelivery {
   async permission(workspace,scope,phase){
     if(this.route(workspace,scope)!=='plugin-v1')return;
     const communication=this.getPlugin()?.communication;
+    if(this.store.project(workspace)?.planExecution?.dialogue_version===1)
+      await this.kitPermission(workspace,{scope_id:scope,backend_id:communication.backendId,backend_pid:process.pid,active:phase==='running'});
     const settled=[...(communication?.runs.values()??[])].find(run=>run.mode==='workflow'&&run.project_id===this.store.project(workspace)?.projectId
       &&run.grant?.scope_id===scope&&run.grant.phase===phase&&run.grant.boot===communication.backendId);
     if(settled)return communication.workflow.state(settled);
@@ -60,7 +67,12 @@ export class DialogueDelivery {
       ??this.store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions.find(s=>s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId;
     const target=await this.getPlugin().participantTarget(origin);
     if(!target||target.scope_id!==scope)throw Object.assign(Error('Оркестратор опубликованного плана не подтверждён.'),{code:'PLUGIN_PLAN_IDENTITY'});
-    return this.getPlugin().communication.workflow.grant(target,phase==='not-started'?'paused':phase);
+    try{return await this.getPlugin().communication.workflow.grant(target,phase==='not-started'?'paused':phase);}
+    catch(error){
+      if(target.dialogue_version===1)await this.kitPermission(workspace,{scope_id:scope,
+        backend_id:communication.backendId,backend_pid:process.pid,active:false});
+      throw error;
+    }
   }
   async send(project,text,kind,meta={}){
     const plugin=this.getPlugin(),target=await plugin.participantTarget(project.sessionId);
@@ -86,6 +98,11 @@ export class DialogueDelivery {
           assignment_id:project.assignmentId,task_id:project.taskId,attempt,block_id:state.block.block_id}), 'recovery',{
           key:'parked:'+hash(JSON.stringify([project.assignmentId,attempt,state.block.block_id,physical.documentId,physical.turnId,physical.assistantRevision])),
           block_id:state.block.block_id,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt});
+      }
+      if(state.migration&&state.dialogue?.grant?.legacy_authorization&&!state.dialogue.result){
+        return this.send(origin,'Назначение переведено на рабочий диалог. Обновите инструкции исполнителя адресным context. Если есть проверенный коммит, запросите у E result этого коммита без повторения работы; иначе уточните сохранённую точку и продолжите её. Данные backend: '+JSON.stringify({
+          assignment_id:project.assignmentId,task_id:project.taskId,attempt,source_commit:state.dialogue.grant.source_commit??null}),'recovery',{
+          key:'migrated:'+project.assignmentId+':'+state.migration.operation_id,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt});
       }
       if(state.dialogue?.grant)return;
       return this.send(origin,'Назначение готово к получению задания оркестратора. Данные backend (не рабочее поручение): '+JSON.stringify({

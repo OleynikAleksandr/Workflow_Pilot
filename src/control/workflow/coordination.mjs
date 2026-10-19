@@ -30,7 +30,8 @@ const held=project=>startupRecovery.has(project?.parentWorkspace??project?.works
 let reviewCheckpoint=null,automationCheckpoint=null,parallelExecutionBook={};
 const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&liveSessions?.find(project),
   route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>executionControl.view(workspace,scope),
-  signals:workspace=>executionKit.signals(workspace)});
+  signals:workspace=>executionKit.signals(workspace),
+  kitPermission:(workspace,input)=>sessionPlans.call(workspace,'plan:permission',[],input)});
 let permissionTail=Promise.resolve();
 function syncPermission(workspace){
   if(startupRecovery.has(workspace))return Promise.resolve();
@@ -145,6 +146,10 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   queuedRoute:(workspace,scope)=>executionControl.route(workspace,scope)==='plugin-v1',
   deliveryReceipt:id=>dialogue.receipt(id),
   channelSettled:(workspace,scope)=>dialogue.settled(workspace,scope),
+  reconcileChannel:(workspace,scope)=>getPlugin()?.communication.assignment.reconcile(store.project(workspace)?.projectId,scope),
+  restoreIntegrated:(workspace,assignment,entry)=>dialogue.reserved(store.project(assignment.worktree,entry?.sessionId)),
+  physicalWorkerState:(assignment,entry)=>executorPageState(liveRecord(store.project(assignment.worktree,entry?.sessionId))),
+  physicalMainState:origin=>executorPageState(liveRecord(origin)),
   // A draining backend opens no new assignment and queues no new send.
   isEnabled:(workspace,scope)=>!liveSessions?.paused&&executorEnabled(workspace,scope),
   // New tasks, the final handoff and delivery steps of an orchestrated plan wait while it is not running.
@@ -358,6 +363,27 @@ const executionPort=Object.freeze({
   publish: (...args)=>execution.publish(...args),dispose: ()=>execution.dispose(),
 });
 return Object.freeze({
+  async migrateAssignments(target,input){
+    const project=store.snapshot().projects.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt);
+    if(!project||target.role!=='O'||executionControl.view(project.workspace,target.scope_id).state!=='paused')
+      throw Object.assign(Error('Переход доступен оркестратору своего плана после общей паузы.'),{code:'DIALOGUE_MIGRATION_PAUSE'});
+    await execution.suspend(project.workspace);
+    try{
+      const facts=await executionKit.migration(project.workspace,target.scope_id,input.operation_id)
+        ??await executionKit.read(project.workspace);
+      for(const assignment of facts.assignments.filter(a=>a.status!=='INTEGRATED')){
+        const child=store.project(assignment.worktree),page=child&&await dialogue.reconcile({local_session_id:child.sessionId});
+        if(assignment.status==='UNKNOWN'||!page?.stopped||!page.commandsIdle||page.busy)
+          throw Object.assign(Error('Назначение ещё не припарковано или его исход неизвестен: '+assignment.parent_task_id),{code:'DIALOGUE_MIGRATION_BUSY'});
+      }
+      const result=await workspaceSetup.call({action:'dialogue-migrate',mode:'existing',project:project.workspace,
+        permission:{scope_id:target.scope_id,backend_id:getPlugin().communication.backendId,backend_pid:process.pid,active:false},
+        migration:{operation_id:input.operation_id,scope_id:target.scope_id,project_id:target.project_id}});
+      workspaceSetup.invalidateReadiness(project.workspace);
+      await store.inspect(project.workspace);await store.reconcileRoles(project.workspace);
+      return result;
+    }finally{execution.observe(project.workspace);}
+  },
   async holdProjectsForRecovery(workspaces) {
     for(const workspace of workspaces) {
       const project=store.project(workspace),parent=project?.parentWorkspace?store.project(project.parentWorkspace):null;
@@ -435,6 +461,12 @@ return Object.freeze({
   for(const book of [automationSend.entries,automationSend.cycles,reviewContinuation.flow.checkpoints,reviewContinuation.flow.cycles,reviewContinuation.stops])
     for(const [key,value] of book)if(belongsToProject([key,value],identities))book.delete(key);
 
+  },
+  async revokeKitPermissions() {
+    for(const project of store.snapshot().projects)if(!project.parentWorkspace&&!project.archivedAt&&project.planExecution?.dialogue_version===1)
+      try{await sessionPlans.call(project.workspace,'plan:permission',[],{scope_id:project.scopeId,
+        backend_id:getPlugin()?.communication.backendId??'startup',backend_pid:process.pid,active:false});}
+      catch(error){startupRecovery.set(project.workspace,new Set([project.workspace]));report(error);}
   },
   restoreBackground() {
     // A plan that was running or pausing continues after a backend restart, without a repeated Send.

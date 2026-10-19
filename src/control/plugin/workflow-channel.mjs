@@ -18,7 +18,9 @@ export class WorkflowChannel {
     if(await this.currentMessage(member.target,message))return false;
     message.superseded=true;
     if(!message.intent){message.reply_observed=true;message.delivery='superseded';}
-    else {message.read=true;await this.observed(run,member);}
+    // An obsolete delivery with an SDK intent still has an unknown outcome.
+    // Never invent a read receipt to clear its gate.
+    else await this.observed(run,member);
     this.c.event(run,'message.superseded',{participant_id:member.id,message_id:message.message_id,block_id:message.block_id});
     return true;
   }
@@ -27,7 +29,7 @@ export class WorkflowChannel {
     const c=this.c;
     check(target.role==='O'&&target.scope_id,'MODE','Нужен опубликованный план своего оркестратора.');
     check(['running','pausing','paused','complete'].includes(phase),'INPUT','Неизвестное состояние плана.');
-    const run=c.enrollment.ensureRun(target),active=['running','pausing'].includes(phase),old=run.grant;
+    const run=c.enrollment.ensureRun(target),active=phase==='running'||phase==='pausing'&&target.dialogue_version!==1,old=run.grant;
     if(old?.scope_id===target.scope_id&&old.phase===phase&&old.active===active&&old.boot===c.backendId)return this.state(run);
     const generation=Math.max(old?.generation??0,...Object.values(run.members).map(m=>m.generation))+1;
     run.grant={scope_id:target.scope_id,generation,phase,active,boot:c.backendId};
@@ -142,14 +144,14 @@ export class WorkflowChannel {
     const revisions=gate.documentId===page.documentId&&page.assistantRevision>gate.assistantRevision&&page.userMessagesRevision>gate.userMessagesRevision;
     if(page.stopped&&!page.busy&&(native||revisions)){
       const message=run.messages.find(m=>m.message_id===gate.message_id);
-      if(message?.read&&message.delivery==='accepted'){
+      if((message?.read||message?.superseded_read)&&message.delivery==='accepted'){
         message.reply_observed=true;delete member.deliveryGate;
         this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id});
       }
     }
   }
   async observeDialogue(run,member,message,gate){
-    if(!this.permitted(run,member)||!message.read||!message.yielded||message.delivery!=='accepted')return;
+    if(!this.permitted(run,member)||!(message.read||message.superseded_read)||!message.yielded||message.delivery!=='accepted')return;
     await this.c.enrollment.validate(member.target);
     const page=await this.reconcile(member.target),baseline=message.yielded.page;
     if(!page||!baseline||page.documentId!==gate.documentId||page.documentId!==baseline.documentId
