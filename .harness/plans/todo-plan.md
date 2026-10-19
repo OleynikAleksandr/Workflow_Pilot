@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 572,
+  "plan_revision": 573,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
@@ -76,7 +76,17 @@
       "tools/codex-app-server-mcp/plugin.py",
       "release-manifest.json",
       "src/control/sessions/session-plans.mjs",
-      "tests/session-plans.test.mjs"
+      "tests/session-plans.test.mjs",
+      "src/control/facade.mjs",
+      "src/control/projects/workspace-setup.mjs",
+      "src/control/workflow/parallel-kit.mjs",
+      "src/execution/commands/service.mjs",
+      "src/execution/runtime/project-commands.mjs",
+      "tools/codex-app-server-mcp/server.py",
+      "tests/execution-commands.test.mjs",
+      "tests/project-command-removal.test.mjs",
+      "tests/codex-app-server-mcp.test.mjs",
+      "tests/parallel-execution-recovery.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/executor-startup-and-removal.md",
@@ -277,13 +287,24 @@
         "tests/backend-lifecycle.test.mjs",
         "tests/backend-desktop-model.test.mjs",
         "tests/plugin-communication.test.mjs",
-        "tests/electron-smoke.mjs"
+        "tests/electron-smoke.mjs",
+        "src/control/facade.mjs",
+        "src/control/projects/workspace-setup.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/execution/commands/service.mjs",
+        "src/execution/runtime/project-commands.mjs",
+        "tools/codex-app-server-mcp/server.py",
+        "tests/execution-commands.test.mjs",
+        "tests/project-command-removal.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/parallel-execution-recovery.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
         "unit-all",
         "architecture",
-        "electron-smoke"
+        "electron-smoke",
+        "executor-channel"
       ],
       "id": "T003",
       "title": "Удалять проекты с незавершёнными назначениями",
@@ -559,7 +580,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 572
+Revision: 573
 
 ## Цель
 
@@ -592,7 +613,7 @@ Revision: 572
 - [TODO] T003: Удалять проекты с незавершёнными назначениями — Ожидает
   - Git Commit: [PENDING] fix: Удалять проекты с незавершёнными назначениями
   - Reference: workflow-pilot-executor-lifecycle-fixes / T003 / implementation
-  - Файлы: src/control/projects/workspace-deletion.mjs, src/control/projects/lifecycle.mjs, src/control/projects/project-state-cleanup.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/sessions/service.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/command-activity.mjs, src/control/plugin/communication.mjs, src/control/plugin/enrollment.mjs, src/control/settings/service.mjs, src/execution/facade.mjs, src/execution/runtime/service.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/contracts/backend.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, tests/workspace-deletion.test.mjs, tests/project-state-cleanup.test.mjs, tests/backend-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-communication.test.mjs, tests/electron-smoke.mjs
+  - Файлы: src/control/projects/workspace-deletion.mjs, src/control/projects/lifecycle.mjs, src/control/projects/project-state-cleanup.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/sessions/service.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/command-activity.mjs, src/control/plugin/communication.mjs, src/control/plugin/enrollment.mjs, src/control/settings/service.mjs, src/execution/facade.mjs, src/execution/runtime/service.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/contracts/backend.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, tests/workspace-deletion.test.mjs, tests/project-state-cleanup.test.mjs, tests/backend-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-communication.test.mjs, tests/electron-smoke.mjs, src/control/facade.mjs, src/control/projects/workspace-setup.mjs, src/control/workflow/parallel-kit.mjs, src/execution/commands/service.mjs, src/execution/runtime/project-commands.mjs, tools/codex-app-server-mcp/server.py, tests/execution-commands.test.mjs, tests/project-command-removal.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/parallel-execution-recovery.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002
 - [TODO] T004: Проверить полный сценарий и подготовить исправленный выпуск — Ожидает
