@@ -1,6 +1,6 @@
 # Workflow Kit — контракт пакета
 
-`@webpilot/workflow-kit` 1.8.1 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
+`@webpilot/workflow-kit` 1.8.2 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
 
 ## Код
 - `index.mjs` — `VERSION`, `WorkflowError`, `getRuntimeRoot()`, `currentPlanView`, `sessionPlanView`, пространства `actions`, `plan`, `sessionPlans`, `recovery`, `installer`. Exports: `.`, `./cli`, `./install`, `./lib/*`, `./schemas/*`, `./templates/*`, `./examples/*`, `./WORKFLOW.md`; bin `workflow`. Экспорты и lib-подпути сохраняются: их импортируют потребители.
@@ -89,7 +89,7 @@ Prepare требует явного получателя либо manual; respon
 ### Установка и обновление
 - `install --project <abs> [--mode new] [--dry-run]`: new — пустая папка (`FOLDER_NOT_EMPTY`); без Git — `git init -b main`. Создаёт `.harness/kit/**`, `scripts/workflow{,.mjs,.cmd}`, `.harness/workflow.json` (`document_bytes` 28000, `hard_bytes` 180000), NONE-план, Kit-секцию AGENTS, README и OVERVIEW при отсутствии, секции `.gitignore`/`.gitattributes`, SessionStart в `.codex/hooks.json`, git hooks, manifest. Занятые пути не перезаписываются (`INSTALL_CONFLICT`); `--expected-fingerprint` → `PREVIEW_CHANGED`. Нет автора Git (задаётся `--git-name`/`--git-email`) или есть исходные изменения — коммит ждёт `install:commit`. Та же версия — reconnect (hooks, runtime).
 - Runtime: macOS/Linux — Node ≥ 22 из `/opt/homebrew/bin` или `/usr/local/bin`, иначе копия в `.harness/runtime/node`; Windows — `.harness/runtime/node.exe`, MinGit из `WORKFLOW_GIT_HOME` в `.harness/runtime/git` (иначе системный Git).
-- install --update поддерживает upgradeFrom: 1.1.0–1.3.0, 1.4.0–1.4.13, 1.5.0–1.5.6, 1.6.0–1.6.4, 1.7.0–1.7.3. Неизвестная версия/изменённый owned-файл → UNSUPPORTED_MIGRATION. До записи проверяет plan, Git, identity, index и пути; operation.lock, незавершённая transaction, активное назначение/интеграция запрещают upgrade до записи. Backup — .harness/runtime/kit-upgrade-<id>/. Legacy tracked-пути удаляются только при равенстве HEAD/index/worktree; NONE получает required OVERVIEW. Один kit-update сохраняет активный план. [Контракт](parallel-assignments.md).
+- install --update поддерживает upgradeFrom: 1.1.0–1.3.0, 1.4.0–1.4.13, 1.5.0–1.5.6, 1.6.0–1.6.4, 1.7.0–1.7.3, 1.8.0–1.8.1. Неизвестная версия/изменённый owned-файл → UNSUPPORTED_MIGRATION. До записи проверяет plan, Git, identity, index и пути; operation.lock, незавершённая transaction, активное назначение/интеграция запрещают upgrade до записи. Backup — .harness/runtime/kit-upgrade-<id>/. Legacy tracked-пути удаляются только при равенстве HEAD/index/worktree; NONE получает required OVERVIEW. Один kit-update сохраняет активный план. [Контракт](parallel-assignments.md).
 - Упразднённые документы и индекс установщик не восстанавливает (миграция документации — отдельная работа); `soft_tokens`/`hard_tokens` принимаются, но не ограничивают.
 - `inspect`, `doctor` ничего не меняют; `remove --dry-run` → `--apply <remove_id>` — только при NONE без транзакции (`ACTIVE_SCOPE`), изменённое сохраняется.
 
@@ -112,5 +112,5 @@ Prepare требует явного получателя либо manual; respon
 - Пользователь: живой ChatGPT, native Windows (`workflow.cmd`, PowerShell-hook, MinGit); fixtures на Mac их не заменяют, для нового приложения не подтверждены.
 
 ## Открыто
-- Поддержка upgradeFrom шире динамического покрытия: проверены синтетические 1.4.13/1.7.1, неизменяемые 1.5.6/1.6.4, Review 1.6.3, parallel handoff после 1.7.0 и donor 1.7.2 NONE/ACTIVE/частично DONE. Политика и разделение циклов — [совместимость](../../../../docs/modules/project-compatibility.md).
+- Поддержка upgradeFrom шире динамического покрытия: проверены синтетические 1.4.13/1.7.1, неизменяемые 1.5.6/1.6.4, Review 1.6.3, parallel handoff после 1.7.0 и donor 1.7.2 NONE/ACTIVE/частично DONE, собственный 1.8.1 с задачей/legacy-сигналами. Политика и разделение циклов — [совместимость](../../../../docs/modules/project-compatibility.md).
 - Hot-swap bridge Workflow Pilot ↔ Kit — только операции current plan, без session-маршрутизации; не реализован.

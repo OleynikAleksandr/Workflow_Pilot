@@ -1,6 +1,6 @@
 # Единая поставка Workflow Pilot
 
-Версия 0.5.4. Порядок: DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Каждый пакет содержит клиент, backend и MCP; helper-bundle нет, тестовые флаги запрещены. Codex исключён из приёмки. Native Windows/Linux, VM и clean-install остаются pending; сначала пользователь проверяет Mac.
+Версия 0.5.5. Порядок: DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Каждый пакет содержит клиент, backend и MCP; helper-bundle нет, тестовые флаги запрещены. Codex исключён из приёмки. Native Windows/Linux, VM и clean-install остаются pending; сначала пользователь проверяет Mac.
 
 ## Комплект
 
@@ -30,6 +30,8 @@ Linux toolchain копируется `copy-linux-toolchain.mjs` после Packa
 
 Архивы готовятся во временном `.harness/runtime`; окончательные release и Downloads создаются через проверенный временный каталог и rename. Частичная доставка и смешивание комплектов запрещены. Равные sourceCommit/snapshot допускают повтор доставки без сборки. Оставшийся lock при UNKNOWN требует разбора.
 
+Перед каждой production-сборкой, включая повтор/проверку Kit, удалить только проверенные сгенерированные __pycache__, .pyc/.pyo из tools/codex-app-server-mcp без перехода по симлинкам. Исходники/runtime/профили не затрагивать. Python — с -B/PYTHONDONTWRITEBYTECODE=1; .gitignore не исключает extra-resource.
+
 ## Manifest
 
 Schema 2: version/sourceCommit, sources/locks, Electron/Node/Kit, macOS signature, три OS/arch, размеры/SHA архивов, vendor, INSTALL/SHA256SUMS. Native/VM/clean флаги false до отдельной приёмки; fixture их не повышает.
@@ -42,7 +44,7 @@ Schema 2: version/sourceCommit, sources/locks, Electron/Node/Kit, macOS signatur
 
 Явный SHA-1 Apple Development через WORKFLOW_PILOT_MAC_SIGNING_IDENTITY или собственный `.harness/runtime/mac-signing.json`. Нет автовыбора Keychain/конфигурации донора. Development без notarization не гарантирует отсутствие Gatekeeper на другом Mac.
 
-`build:mac` готовит и подписывает только staging; `release-mac.mjs` создаёт проверенный ZIP без общей доставки. После общей сборки отдельная INSTALL обязательна: `node scripts/check-installed-release.mjs --install`, затем проверка без аргументов. Последняя требует установленную новую версию и отвергает pending.
+`build:mac` готовит и подписывает только staging; `release-mac.mjs` создаёт проверенный ZIP без общей доставки. INSTALL вызывает `node scripts/check-installed-release.mjs --install`. Проверка без аргументов требует установленную новую версию, отвергая pending. Назначенная проверка `--delivery` допускает подтверждённый pending: связывает receipt с manifest/двумя целями, сверяет новый bundle и неизменные подпись/содержимое/identity старого. Результат различает installed/pending; запуск новой службы он не подтверждает.
 
 Цели — собственные `Workflow Pilot.app` в проекте и `/Applications`. Готовые Contents копируются без сборки/переподписи. Identity внешнего каталога сохраняется; прежние Contents — в backup-slot каждой цели, ошибка проверки возвращает их. Symlink, чужая identity и посторонние файлы запрещены. Обновление последовательное; отказ второй копии не отменяет первую. Повтор использует тот же комплект. Preflight записывается до установки, также при отсутствии приложения.
 

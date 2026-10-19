@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 545,
+  "plan_revision": 547,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -141,12 +141,12 @@
       {
         "path": "docs/planning/automatic-agent-dialogue.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
       },
       {
         "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -208,12 +208,12 @@
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -311,12 +311,12 @@
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -431,12 +431,12 @@
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/workflow-execution.md",
@@ -456,7 +456,7 @@
           {
             "path": "docs/planning/plugin-plan-lifetime.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           }
         ],
         "include_last_completed_task": false,
@@ -569,12 +569,12 @@
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/orchestrated-execution.md",
@@ -686,12 +686,12 @@
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -791,12 +791,12 @@
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
             "required": true,
-            "revision": "WORKTREE"
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/release.md",
@@ -840,8 +840,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "DOCS",
@@ -898,11 +898,13 @@
         "documents": [
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
-            "required": true
+            "required": true,
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -916,7 +918,31 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "expected_commit_message": "docs: Актуализация всех документов проекта"
+      "expected_commit_message": "docs: Актуализация всех документов проекта",
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/execution.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/automatic-agent-dialogue-acceptance.md",
+        "docs/planning/automatic-agent-dialogue.md",
+        "docs/planning/plugin-plan-lifetime.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -948,11 +974,13 @@
         "documents": [
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
-            "required": true
+            "required": true,
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/release.md",
@@ -996,11 +1024,13 @@
         "documents": [
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
-            "required": true
+            "required": true,
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/release.md",
@@ -1044,11 +1074,13 @@
         "documents": [
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
-            "required": true
+            "required": true,
+            "revision": "c9271f8f0866b122784cc05e5f47f1b4d8332ec5"
           },
           {
             "path": "docs/modules/release.md",
@@ -1088,7 +1120,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 545
+Revision: 547
 
 ## Цель
 
@@ -1143,8 +1175,8 @@ Revision: 545
   - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-chatgpt-plugin.mjs, src/contracts/backend.mjs, tests/backend-upgrade.test.mjs, tests/mcp-runtime.test.mjs, tests/workflow-kit-recovery.test.mjs, tests/codex-app-server-mcp.test.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/parallel-execution-recovery.test.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/backend-end-to-end.test.mjs, scripts/check-installed-release.mjs, scripts/release-mac.mjs, tests/release-mac.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.8.1.tar.gz, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T005
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: Актуализация всех документов проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: Актуализация всех документов проекта
   - Reference: workflow-pilot-automatic-agent-dialogue / DOCS / implementation
   - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/acceptance/orchestrated-execution.md, docs/modules/execution.md, docs/modules/control.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/project-compatibility.md, docs/modules/release.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/plugin-plan-lifetime.md, docs/planning/automatic-agent-dialogue.md, docs/planning/automatic-agent-dialogue-acceptance.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PROTOTYPE.md
   - Параллельность: исключительное выполнение

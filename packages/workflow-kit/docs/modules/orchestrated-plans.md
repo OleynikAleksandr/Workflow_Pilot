@@ -1,6 +1,6 @@
 # План оркестратора
 
-Workflow Kit 1.8.1 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
+Workflow Kit 1.8.2 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
 
 ## План
 
@@ -10,6 +10,8 @@ Workflow Kit 1.8.1 поддерживает `execution_strategy: "orchestrated"`
 - `release: true` требует `delivery_tail` в `.harness/workflow.json` — упорядоченный список `{verification_ids, verification_kind: package|installed}` с настроенными проверками (`CONFIG_SCHEMA`). Delivery-задачи после DOCS обязаны повторять его состав и порядок: без настройки `DELIVERY_TAIL_REQUIRED`, иначе `DELIVERY_TAIL_MISMATCH`. `release: false` запрещает delivery-задачи (`DELIVERY_TAIL`).
 - DONE обычной задачи и DOCS требует роли `integration` с operation_id и source_commit; DONE delivery-задачи — `implementation`.
 - `context_pack` задачи принимают plan:create, review:prepare, plan:extend и task:update; task:update заменяет его только у ещё не начатой задачи.
+
+В упрощённом plan:create общая спецификация orchestrated-плана — read-контекст, не неявная область записи каждого E. DOCS владеет переносом/удалением. Явно общие documentation_paths всё равно запрещают одновременные назначения; legacy parallel сохранён.
 
 ## Выполнение
 

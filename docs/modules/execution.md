@@ -54,6 +54,8 @@ macOS tunnel-client закреплён на v0.0.14, официальный GitH
 
 Secure Tunnel и VPS остаются переключаемыми. Ошибка VPS не ломает Secure Tunnel; переключение на неподготовленный VPS отклоняется. Никаких догадок об общем 17842 или перенастройки сервера.
 
+Плагин использует execution/plugin/bridge.mjs для классифицированных действий MCP-моста и communication-store.mjs для WAL/контекста с fsync/hash. Execution не назначает роли, не читает Kit и не решает, когда продолжать план: это Control. Observer и журнал команд дают ему готовность адресата. Рабочие уведомления отправляет SDK, DOM сохраняет первый bootstrap и прежние маршруты. Корреляция block_id, продолжение и парковка блокировки при паузе принадлежат [Control/Kit](orchestrated-execution.md).
+
 ## Проверки и границы
 
 `npm run check:architecture` использует dependency-cruiser 18.6.0 (официальные правила: https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md). Проверяются Execution→product, Control→Frontend/Electron, доступ к Execution через facade, leaf contracts, разрешимость импортов и новые циклы. Отдельный fixture намеренно вводит запрещённый импорт и цикл и требует отказа анализатора.
