@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 613,
+  "plan_revision": 615,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -174,7 +174,7 @@
     ]
   },
   "baseline_commit": "99e36fd1df663fb269ddf6f695423f5bd5a44fe9",
-  "current_task_id": null,
+  "current_task_id": "T010",
   "context_pack": {
     "documents": [
       {
@@ -1035,7 +1035,7 @@
       ]
     },
     {
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -1353,8 +1353,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
-Current Task: нет
-Revision: 613
+Current Task: T010
+Revision: 615
 
 ## Цель
 
@@ -1427,7 +1427,7 @@ Revision: 613
   - Файлы: src/control/workflow/execution-projection.mjs, src/contracts/backend.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/app.mjs, src/control/plugin/communication.mjs, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/parallel-execution-ui.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/electron-smoke.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/frontend/plugin/index.html, src/frontend/plugin/launch.mjs, tests/workflow-channel.test.mjs, src/contracts/dialogue-view.mjs, tests/panel-dialogue-view.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T008
-- [TODO] T010: Проверить полный диалог и подготовить согласованный выпуск — Ожидает
+- [IN_PROGRESS] T010: Проверить полный диалог и подготовить согласованный выпуск — В работе
   - Git Commit: [PENDING] feat: Проверить полный диалог и подготовить согласованный выпуск
   - Reference: orchestrator-owned-dialogue-refactor / T010 / implementation
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/electron-smoke.mjs, tests/backend-end-to-end.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/src/lib/common.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/fixtures/plugin-host.mjs

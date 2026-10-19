@@ -34,11 +34,25 @@
       "executable": "npm",
       "args": [
         "run",
-        "check",
+        "check:core",
         "--prefix",
         "packages/workflow-kit"
       ],
-      "evidence": "Контракт Kit, assignments/integration/recovery/review, installer и совместимость проектов."
+      "evidence": "Первая обязательная часть полного Kit: пакет, consumer/runtime/recovery, carryover, Review и план. Выполнять вместе с kit-assignments."
+    },
+    {
+      "required": false,
+      "timeout_ms": 600000,
+      "id": "kit-assignments",
+      "kind": "test",
+      "executable": "npm",
+      "args": [
+        "run",
+        "check:assignments",
+        "--prefix",
+        "packages/workflow-kit"
+      ],
+      "evidence": "Вторая обязательная часть полного Kit: handoff, назначения, интеграции, оркестрация и upgrade. Выполнять вместе с kit-check."
     },
     {
       "required": false,
