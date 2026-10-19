@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 568,
+  "plan_revision": 570,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
@@ -113,8 +113,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-executor-lifecycle-fixes",
         "task_id": "T001",
@@ -160,7 +160,14 @@
             "required": true
           }
         ]
-      }
+      },
+      "actual_files": [
+        "src/control/context/context-session.mjs",
+        "src/execution/runtime/service.mjs",
+        "tests/context-session.test.mjs",
+        "tests/mac-runtime-switch.test.mjs",
+        "tools/codex-app-server-mcp/control.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -538,7 +545,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 568
+Revision: 570
 
 ## Цель
 
@@ -556,8 +563,8 @@ Revision: 568
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Действующий AGENTS.md предписывает работать самостоятельно; сохраняется выбранная пользователем работа здесь одним агентом. Исправления затрагивают общие runtime/session/lifecycle-контракты, поэтому последовательны. Несколько исполнителей относятся только к продуктовым fixtures и живой приёмке.
 
-- [TODO] T001: Устранить конфликт подготовки общей службы — Ожидает
-  - Git Commit: [PENDING] fix: Устранить конфликт подготовки общей службы
+- [DONE] T001: Устранить конфликт подготовки общей службы — Завершено
+  - Git Commit: [DONE] fix: Устранить конфликт подготовки общей службы
   - Reference: workflow-pilot-executor-lifecycle-fixes / T001 / implementation
   - Файлы: src/execution/runtime/service.mjs, src/execution/facade.mjs, src/execution/platform/linux/runtime.mjs, tools/codex-app-server-mcp/control.py, src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, tests/mac-runtime-switch.test.mjs, tests/mcp-runtime.test.mjs, tests/context-session.test.mjs, tests/context-cache.test.mjs, tests/windows-runtime.test.mjs, tests/linux-runtime.test.mjs
   - Параллельность: исключительное выполнение

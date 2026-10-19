@@ -198,12 +198,19 @@ def _windows_operation_lock():
         try:
             msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
-            raise RuntimeError("Another Codex executor lifecycle operation is still running") from None
+            raise LifecycleBusyError() from None
         try:
             yield
         finally:
             handle.seek(0)
             msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+
+class LifecycleBusyError(RuntimeError):
+    code = "RUNTIME_LIFECYCLE_BUSY"
+
+    def __init__(self):
+        super().__init__("Another Codex executor lifecycle operation is still running")
 
 
 @contextlib.contextmanager
@@ -218,7 +225,7 @@ def operation_lock():
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise RuntimeError("Another Codex executor lifecycle operation is still running") from None
+            raise LifecycleBusyError() from None
         try:
             yield
         finally:

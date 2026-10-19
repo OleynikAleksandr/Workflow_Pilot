@@ -2,6 +2,7 @@ import { exists } from '../files/adapter.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { executeFile as execFile } from '../commands/service.mjs';
 import { LocalMcpClient } from './mcp-client.mjs';
 import { RuntimeError } from '../../contracts/errors.mjs';
@@ -65,6 +66,36 @@ function xml(value) {
     .replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 }
 
+// Reentrant only within the same operation: preparation calls control(), while
+// unrelated consumers wait for the whole readiness decision, not just one command.
+const lifecycleContext = new AsyncLocalStorage();
+function lifecycle(owner, action, fresh = false) {
+  const inherited = lifecycleContext.getStore();
+  const generation = owner.lifecycleGeneration ?? 0;
+  const check = () => {
+    if (generation !== (owner.lifecycleGeneration ?? 0))
+      throw new RuntimeError('RUNTIME_PREPARATION_CANCELLED', 'Подготовка службы отменена.');
+  };
+  if (!fresh && inherited?.owner === owner && inherited.active) {
+    if (inherited.generation !== generation) return Promise.reject(new RuntimeError('RUNTIME_PREPARATION_CANCELLED', 'Подготовка службы отменена.'));
+    return action();
+  }
+  const operation = (owner.lifecycleTail ?? Promise.resolve()).then(() => {
+    check();
+    const scope = { owner, generation, active: true };
+    return lifecycleContext.run(scope, async () => {
+      try { const result = await action(); check(); return result; }
+      finally { scope.active = false; }
+    });
+  });
+  owner.lifecycleTail = operation.catch(() => {});
+  return operation;
+}
+function cancelPreparation(owner) {
+  owner.lifecycleGeneration = (owner.lifecycleGeneration ?? 0) + 1;
+  owner.pending = owner.mcpOnlyPending = null;
+}
+
 export class CodexAppServerRuntime {
   // macOS runs control.py with the system Python and control.py builds the runtime environment itself.
   // Windows has no system Python: `bootstrap` (WindowsExecutorBootstrap) unpacks the tools of the package and
@@ -72,7 +103,8 @@ export class CodexAppServerRuntime {
   constructor({ sourceDir, platform = process.platform, stateDir = defaultRuntimeFolder(os.homedir(), platform),
     python = platform === 'win32' ? path.join(stateDir, 'runtime', 'venv', 'Scripts', 'python.exe') : '/usr/bin/python3',
     execute = execFile, executeInput = executePrivateInput, environment = process.env,
-    uv = null, bootstrap = null } = {}) {
+    uv = null, bootstrap = null, lifecycleWaitMs = 10_000,
+    wait = ms => new Promise(resolve => setTimeout(resolve, ms)), now = Date.now } = {}) {
     if (!sourceDir || !path.isAbsolute(sourceDir)) throw new TypeError('CodexAppServerRuntime requires an absolute sourceDir');
     this.sourceDir = sourceDir;
     this.platform = platform;
@@ -85,6 +117,7 @@ export class CodexAppServerRuntime {
     this.executeInput = executeInput;
     this.environment = { ...environment };
     this.uv = uv;
+    Object.assign(this, { lifecycleWaitMs, wait, now });
     this.expectedServerName = runtimeLabel(platform);
     this.client = null;
     this.pending = null;
@@ -115,6 +148,9 @@ export class CodexAppServerRuntime {
   }
 
   async syncSource() {
+    return lifecycle(this, () => this.#syncSource());
+  }
+  async #syncSource() {
     await this.assertOwnedPaths();
     const stage = this.installedSource + '.stage-' + process.pid;
     await fs.mkdir(this.stateDir, { recursive: true, mode: 0o700 });
@@ -156,17 +192,33 @@ export class CodexAppServerRuntime {
     if (this.bootstrap) await this.bootstrap.ensure();
     if(this.platform==='linux'&&this.bootstrap)this.environment={...this.environment,...await this.bootstrap.workflowEnvironment()};
     let output;
+    const deadline = this.now() + this.lifecycleWaitMs;
+    const generation = this.lifecycleGeneration ?? 0;
+    for (;;) {
+    if (generation !== (this.lifecycleGeneration ?? 0)) throw new RuntimeError('RUNTIME_PREPARATION_CANCELLED', 'Подготовка службы отменена.');
     try {
       output = await this.execute(this.python, ['-B', control, ...args],
         { cwd: this.installedSource, timeout, maxBuffer: 2 * 1024 * 1024, env: this.controlEnvironment(), ...this.#hidden() });
+      let report;
+      try { report = JSON.parse(output.stdout); } catch { break; }
+      if (report?.ok === false) throw Object.assign(new Error(report.error), { stdout: output.stdout });
+      break;
     } catch (error) {
       let report = null;
       try { report = JSON.parse(error.stdout || error.stderr); } catch { /* bounded public error */ }
+      // This code proves the lock was refused BEFORE the command had any effect.
+      // No timeout/unknown command outcome is retried.
+      if (report?.code === 'RUNTIME_LIFECYCLE_BUSY') {
+        if (this.now() >= deadline) throw new RuntimeError('RUNTIME_LIFECYCLE_BUSY', 'Общая служба занята другой операцией. Подготовка ожидает освобождения.');
+        await this.wait(Math.min(200, deadline - this.now()));
+        continue;
+      }
       if (report?.code === 'CODEX_NOT_FOUND') {
         const message = this.platform==='linux'?'Не запускается комплектный Codex Linux. Проверьте целостность архива Workflow Pilot.':this.windows ? WINDOWS_CODEX_NOT_FOUND_MESSAGE : CODEX_NOT_FOUND_MESSAGE;
         throw Object.assign(new RuntimeError(this.#system() + '_CODEX_NOT_FOUND', message), { publicMessage: message });
       }
       throw new RuntimeError(code, report?.error ?? fallback);
+    }
     }
     let result;
     try { result = JSON.parse(output.stdout); } catch {
@@ -177,6 +229,9 @@ export class CodexAppServerRuntime {
   }
 
   async configureChannel(channel) {
+    return lifecycle(this, () => this.#configureChannel(channel));
+  }
+  async #configureChannel(channel) {
     if (!CHATGPT_CHANNELS.includes(channel)) throw new RuntimeError('CHATGPT_CHANNEL_INVALID', 'Неизвестный канал ChatGPT.');
     if (!await exists(path.join(this.installedSource, 'control.py'))) await this.syncSource();
     const result = await this.#controlCommand(['configure-channel', '--channel', channel],
@@ -187,6 +242,9 @@ export class CodexAppServerRuntime {
 
   // Configures only this product's selector; control.py never prints its key.
   async configureSelector() {
+    return lifecycle(this, () => this.#configureSelector());
+  }
+  async #configureSelector() {
     await this.syncSource();
     return this.#controlCommand(['configure-selector'],
       { code: 'APP_SERVER_SELECTOR_CONFIG_FAILED', fallback: 'Не удалось настроить стабильный MCP connector.' });
@@ -195,6 +253,9 @@ export class CodexAppServerRuntime {
   // Windows: the services start when the user signs in (a per-user Run entry written by control.py).
   // macOS keeps its LaunchAgent, which MacRuntimeSwitcher installs.
   async autostart(enabled) {
+    return lifecycle(this, () => this.#autostart(enabled));
+  }
+  async #autostart(enabled) {
     if (!this.windows) throw new RuntimeError('RUNTIME_ACTION_DENIED', 'Эта операция не поддерживается оболочкой.');
     if (!await exists(path.join(this.installedSource, 'control.py'))) await this.syncSource();
     const result = await this.#controlCommand(['autostart', '--state', enabled ? 'on' : 'off'],
@@ -205,6 +266,9 @@ export class CodexAppServerRuntime {
 
   // Windows: the SSH forward of the user's server is kept by control.py; macOS keeps it with a LaunchAgent.
   async vpsControl(args) {
+    return lifecycle(this, () => this.#vpsControl(args));
+  }
+  async #vpsControl(args) {
     if ((!this.windows&&this.platform!=='linux') || !['vps-status', 'vps-apply', 'vps-stop'].includes(args?.[0])) {
       throw new RuntimeError('RUNTIME_ACTION_DENIED', 'Эта операция не поддерживается оболочкой.');
     }
@@ -213,6 +277,10 @@ export class CodexAppServerRuntime {
   }
 
   async control(command, { mcpOnly = false, tunnelOnly = false } = {}) {
+    if (command === 'stop') cancelPreparation(this);
+    return lifecycle(this, () => this.#control(command, { mcpOnly, tunnelOnly }), command === 'stop');
+  }
+  async #control(command, { mcpOnly, tunnelOnly }) {
     if (!['setup', 'status', 'start', 'stop', 'selector-start'].includes(command)) throw new RuntimeError('RUNTIME_ACTION_DENIED', 'Эта операция не поддерживается оболочкой.');
     if (!await exists(path.join(this.installedSource, 'control.py')) || command === 'setup') await this.syncSource();
     const result = await this.#controlCommand([command,
@@ -237,7 +305,7 @@ export class CodexAppServerRuntime {
   // Native dialogs or values from the wizard; the key reaches the worker only through its stdin.
   configureTunnel(credentials, { idOnly = false } = {}) {
     if (this.configurePending) return this.configurePending;
-    this.configurePending = this.#configureTunnel(credentials, idOnly).finally(() => { this.configurePending = null; });
+    this.configurePending = lifecycle(this, () => this.#configureTunnel(credentials, idOnly)).finally(() => { this.configurePending = null; });
     return this.configurePending;
   }
 
@@ -254,13 +322,15 @@ export class CodexAppServerRuntime {
 
   ensure() {
     if (this.pending) return this.pending;
-    this.pending = this.prepare().finally(() => { this.pending = null; });
+    const operation = lifecycle(this, () => this.prepare()).finally(() => { if (this.pending === operation) this.pending = null; });
+    this.pending = operation;
     return this.pending;
   }
 
   ensureMcpOnly() {
     if (this.mcpOnlyPending) return this.mcpOnlyPending;
-    this.mcpOnlyPending = this.prepareMcpOnly().finally(() => { this.mcpOnlyPending = null; });
+    const operation = lifecycle(this, () => this.prepareMcpOnly()).finally(() => { if (this.mcpOnlyPending === operation) this.mcpOnlyPending = null; });
+    this.mcpOnlyPending = operation;
     return this.mcpOnlyPending;
   }
 
@@ -365,7 +435,13 @@ export class MacSelectedRuntime {
 
   async ready() { if (this.prepare) await this.prepare(); }
 
-  async ensure() {
+  ensure() {
+    if (this.pending) return this.pending;
+    const operation = lifecycle(this, () => this.#ensure()).finally(() => { if (this.pending === operation) this.pending = null; });
+    this.pending = operation;
+    return operation;
+  }
+  async #ensure() {
     await this.ready();
     const backend = await this.appServerRuntime.ensureMcpOnly();
     const vps = await this.applyVps(backend.mcp_url);
@@ -379,12 +455,18 @@ export class MacSelectedRuntime {
 
   // First run: bring the MCP up and report the tunnel as it is, configured or not.
   async startMcpOnly() {
+    return lifecycle(this, () => this.#startMcpOnly());
+  }
+  async #startMcpOnly() {
     await this.ready();
     const backend = await this.appServerRuntime.ensureMcpOnly();
     return this.combine(backend, await this.applyVps(backend.mcp_url));
   }
 
   async setChannel(channel) {
+    return lifecycle(this, () => this.#setChannel(channel));
+  }
+  async #setChannel(channel) {
     if (!CHATGPT_CHANNELS.includes(channel)) throw new RuntimeError('CHATGPT_CHANNEL_INVALID', 'Неизвестный канал ChatGPT.');
     await this.ready();
     const backend = await this.appServerRuntime.ensureMcpOnly();
@@ -402,6 +484,11 @@ export class MacSelectedRuntime {
   }
 
   async control(command, { mcpOnly = false } = {}) {
+    if (command === 'start') return mcpOnly ? this.startMcpOnly() : this.ensure();
+    if (command === 'stop') cancelPreparation(this);
+    return lifecycle(this, () => this.#control(command, { mcpOnly }), command === 'stop');
+  }
+  async #control(command, { mcpOnly }) {
     if (command === 'status') {
       const status = await this.appServerRuntime.control('status');
       return this.combine(status, await this.vpsStatus(status.mcp_url));

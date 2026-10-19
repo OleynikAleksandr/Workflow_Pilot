@@ -13,6 +13,27 @@ const facts={project_id:project.projectId,project_name:project.name,plan_revisio
   execution_scope_status:'ACTIVE',delivery_status:'IN_PROGRESS',task_id:'T001',task_title:'Read'};
 const now=2000000;
 
+test('transient lifecycle contention resumes automatically, while Stop invalidates the retry',async()=>{
+  const f=controllerFixture({chatUrl:null});let tries=0;
+  f.controller.wait=async()=>{};
+  f.runtime.ensure=async()=>{if(++tries===1)throw Object.assign(Error('busy'),{code:'RUNTIME_LIFECYCLE_BUSY'});};
+  await f.controller.tick();await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.sends(),1);assert.equal(tries,2);
+  const stopped=controllerFixture({chatUrl:null});
+  stopped.runtime.ensure=async()=>{throw Object.assign(Error('busy'),{code:'RUNTIME_LIFECYCLE_BUSY'});};
+  stopped.controller.wait=async()=>{stopped.controller.cancel();};
+  await stopped.controller.tick();await new Promise(resolve=>setImmediate(resolve));assert.equal(stopped.sends(),0);
+});
+
+test('a late warm error cannot overwrite an already dispatched bootstrap',async()=>{
+  const f=controllerFixture({chatUrl:null});let finish;
+  f.controller.contextCache={warm:()=>new Promise(resolve=>{finish=resolve;}),load:async()=>packet(),isCurrent:async()=>true};
+  f.inspection.busy=true;await f.controller.tick();await Promise.resolve();
+  f.inspection.busy=false;await f.controller.tick();assert.equal(f.sends(),1);
+  finish({ok:false,error:{code:'RUNTIME_LIFECYCLE_BUSY',message:'late'}});
+  await new Promise(resolve=>setImmediate(resolve));assert.notEqual(f.controller.state.phase,'error');assert.equal(f.sends(),1);
+});
+
 test('explicit preparation retry retains drafts and cannot replay a sent or unknown request',async()=>{
   const f=controllerFixture();f.controller.state={phase:'error',error:{code:'CONTEXT_INPUTS_UNAVAILABLE'}};
   f.inspection.draftLength=20;

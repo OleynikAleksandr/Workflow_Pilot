@@ -12,6 +12,52 @@ const MCP_URL = 'http://127.0.0.1:27852/mcp';
 const TUNNEL_UI = 'http://127.0.0.1:27853/ui';
 const exists = file => fs.access(file).then(() => true, () => false);
 
+for (const platform of ['darwin','win32','linux']) test(`${platform}: complete readiness, MCP and status serialize for five consumers`, async t => {
+  const root = await temporary(t, 'workflow-lifecycle-');
+  const sourceDir = path.join(root,'source'), stateDir = path.join(root,'state');
+  await fs.mkdir(sourceDir); await fs.writeFile(path.join(sourceDir,'control.py'),'# fixture');
+  const binary = path.join(root,'binary'); await fs.writeFile(binary,'fixture');
+  let active=0, maximum=0, mcp=false, tunnel=false, starts=0;
+  const app = new CodexAppServerRuntime({ sourceDir,stateDir,platform,execute:async (_file,args) => {
+    maximum=Math.max(maximum,++active);
+    await new Promise(resolve=>setImmediate(resolve));
+    if(args[2]==='start') { starts++; if(args.includes('--mcp-only'))mcp=true; else tunnel=true; }
+    if(args[2]==='stop') { mcp=false;tunnel=false; }
+    active--;
+    return {stdout:JSON.stringify({ok:true,setup_complete:true,runtime_python:binary,tunnel_client:binary,
+      mcp:{ready:mcp,owned:true},tunnel:{ready:tunnel,configured:true,owned:true},mcp_url:MCP_URL})};
+  }});
+  t.mock.method(globalThis,'fetch',async (_url,options)=>{
+    const request=JSON.parse(options.body);
+    if(request.method.startsWith('notifications/'))return new Response(null,{status:202});
+    return Response.json({id:request.id,result:request.method==='initialize'
+      ?{serverInfo:{name:runtimeLabel(platform)},protocolVersion:'2025-03-26'}:{tools:[{name:'bridge_status'}]}});
+  });
+  const selected=new MacSelectedRuntime({appServerRuntime:app});
+  const results=await Promise.all([selected.ensure(),selected.ensure(),app.ensureMcpOnly(),selected.control('status'),selected.ensure()]);
+  assert.equal(maximum,1);assert.equal(starts,2);assert.ok(results[0].tunnel.ready);assert.equal(results[0],results[1]);
+  await Promise.all([selected.ensure(),selected.ensure(),app.ensure(),app.ensureMcpOnly(),app.control('status')]);
+  assert.equal(starts,2,'ready components are not restarted');
+});
+
+test('external lock refusal is bounded and retried only before effects; stop cancels preparation', async t => {
+  const root=await temporary(t,'workflow-busy-'), sourceDir=path.join(root,'source');
+  await fs.mkdir(sourceDir);await fs.writeFile(path.join(sourceDir,'control.py'),'# fixture');
+  let clock=0,calls=0,busy=true,onWait=()=>{};
+  const runtime=new CodexAppServerRuntime({sourceDir,stateDir:path.join(root,'state'),lifecycleWaitMs:400,now:()=>clock,
+    wait:async ms=>{clock+=ms;onWait();},execute:async(_file,args)=>{
+      calls++;
+      if(busy&&args[2]!=='stop')throw Object.assign(Error('busy'),{stdout:JSON.stringify({ok:false,code:'RUNTIME_LIFECYCLE_BUSY'})});
+      return {stdout:JSON.stringify({ok:true,mcp:{ready:true,owned:true},tunnel:{ready:true,owned:true},mcp_url:MCP_URL})};
+    }});
+  onWait=()=>{busy=false;};await runtime.control('status');assert.equal(calls,2);
+  busy=true;onWait=()=>{};await assert.rejects(runtime.control('status'),{code:'RUNTIME_LIFECYCLE_BUSY'});
+  let stopping;onWait=()=>{stopping=runtime.control('stop');};
+  await assert.rejects(runtime.control('status'),{code:'RUNTIME_PREPARATION_CANCELLED'});await stopping;
+  runtime.execute=async()=>{calls++;throw Error('unknown transport outcome');};
+  const before=calls;await assert.rejects(runtime.control('start'),{code:'APP_SERVER_RUNTIME_COMMAND_FAILED'});assert.equal(calls,before+1);
+});
+
 async function temporary(t, name) {
   const root = await mkdtemp(path.join(tmpdir(), name));
   t.after(() => fs.rm(root, { recursive: true, force: true }));

@@ -114,6 +114,7 @@ export class ContextSession {
   }
 
   attach(project, { freshDraft = false } = {}) {
+    this.serviceRetries = 0;
     this.retryGeneration = null;
     this.warmState = { requested: 0, started: -1, pending: false };
     this.inputsChanged = false; this.inputStale = false;
@@ -205,14 +206,19 @@ export class ContextSession {
     if (!this.contextCache || state.pending || state.started === state.requested) return;
     state.started = state.requested; state.pending = true;
     const request = state.started;
+    const mayReport = () => {
+      const attempt = this.store.project(project.workspace, project.sessionId)?.attempt;
+      return this.current(generation) && this.warmState === state && state.requested === request
+        && !attempt?.sendStartedAtMs && !['sending','sent','acknowledged','unknown'].includes(attempt?.state);
+    };
     void Promise.resolve().then(() => this.contextCache.warm(project.workspace, project.role)).then(result => {
       if (!this.current(generation) || this.warmState !== state) return;
-      if (result?.ok === false && state.requested === request) {
+      if (result?.ok === false && mayReport()) {
         this.emit({ phase: 'error', error: { code: result.error?.code ?? 'CONTEXT_WARM_FAILED',
           message: result.error?.message ?? 'Не удалось подготовить контекст. Повторите проверку.' } });
       }
     }, error => {
-      if (this.current(generation) && this.warmState === state && state.requested === request)
+      if (mayReport())
         this.emit({ phase: 'error', error: { code: error.code ?? 'CONTEXT_WARM_FAILED', message: error.message } });
     }).finally(() => {
       state.pending = false;
@@ -442,6 +448,13 @@ export class ContextSession {
     } catch (error) {
       if (!this.current(generation)) return;
       const persisted = project && this.store.project(project.workspace);
+      if (error.code === 'RUNTIME_LIFECYCLE_BUSY' && !persisted?.attempt?.sendStartedAtMs
+        && !['sending','sent','acknowledged','unknown'].includes(persisted?.attempt?.state) && this.serviceRetries++ < 2) {
+        this.emit({ phase: 'preparing', error: null });
+        await this.wait(500);
+        if (this.current(generation)) this.rerunRequested = true;
+        return;
+      }
       if (persisted?.attempt?.state === 'sending') {
         await this.store.updateSession(project.workspace, project.sessionId, { attempt: { ...persisted.attempt, state: 'unknown' } }).catch(() => {});
         this.emit({ phase: 'send-unknown', error: { code: error.code ?? 'SEND_UNKNOWN', message: error.message } });
