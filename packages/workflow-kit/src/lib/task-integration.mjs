@@ -6,6 +6,7 @@ import { parsePlan, renderPlan, isOrchestratedPlan } from './plan.mjs';
 import { validate, journal, taskChecks, readConfig, resolveReferences } from './validate.mjs';
 import { assignmentStatus, removeIntegratedWorktree } from './task-assignment.mjs';
 import {assertAssignmentAcceptance} from './assignment-dialogue.mjs';
+import {assertAssignmentCommandsIdle} from './assignment-command-safety.mjs';
 import { saveJournal, messageFor, completedTransaction, finishTransaction } from './transaction-state.mjs';
 
 const file = root => localPath(root,'integration.json');
@@ -70,6 +71,7 @@ export function startIntegration(root,{id,source_commit}) {
       return {ok:true,status:'INTEGRATED',already_integrated:true,...done};
     }
     ensureIdleGit(root);
+    assertAssignmentCommandsIdle(assignment);
     assertAssignmentAcceptance(assignment,source_commit);
     check(!journal(root) && !allChanges(root).length,'INTEGRATION_DIRTY','main должен быть чистым и без чужой транзакции.');
     check(git(root,['branch','--show-current']).stdout.trim()==='main' && fs.realpathSync(root)===assignment.parent_root
@@ -118,6 +120,11 @@ function resume(root,record) {
     return finish(root,record,null,done.sha);
   }
   check(head(root)===record.before_head && git(root,['branch','--show-current']).stdout.trim()==='main','HEAD_CHANGED','main изменён; автоматического повторного merge нет.');
+  const assignment=readJSON(recordFile(root,record.assignment_id));
+  assertAssignmentCommandsIdle(assignment);
+  assertAssignmentAcceptance(assignment,record.source_commit);
+  if(assignment.dialogue_version===1)check(head(assignment.worktree)===record.source_commit
+    &&!allChanges(assignment.worktree).length&&!journal(assignment.worktree),'INTEGRATION_NOT_READY','Исходный результат изменился до продолжения интеграции.');
   const before=parsePlan(record.original_plan), task=before.tasks.find(t=>t.id===record.task_id);
   if(record.phase==='PREPARED') {
     ensureIdleGit(root);check(!allChanges(root).length,'INTEGRATION_DIRTY','Изменения появились до merge.');

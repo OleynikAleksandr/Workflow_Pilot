@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 607,
+  "plan_revision": 609,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -127,7 +127,8 @@
       "tests/fixtures/executor-background-startup.mjs",
       "packages/workflow-kit/src/lib/simple-workflow.mjs",
       "src/control/sessions/workspace-session.mjs",
-      "tests/workspace-session.test.mjs"
+      "tests/workspace-session.test.mjs",
+      "packages/workflow-kit/src/lib/assignment-command-safety.mjs"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-owned-dialogue.md",
@@ -715,8 +716,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T007",
@@ -735,7 +736,15 @@
         "src/control/plugin/workflow-channel.mjs",
         "tests/automatic-agent-dialogue.test.mjs",
         "tests/workflow-signals.test.mjs",
-        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs"
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/task-integration.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/orchestrated-execution.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "packages/workflow-kit/src/lib/assignment-command-safety.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -773,7 +782,26 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/signal-state.mjs",
+        "packages/workflow-kit/src/lib/signals.mjs",
+        "packages/workflow-kit/src/lib/task-integration.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/orchestrated-execution.test.mjs",
+        "tests/workflow-signals.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "packages/workflow-kit/src/lib/assignment-command-safety.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1228,7 +1256,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 607
+Revision: 609
 
 ## Цель
 
@@ -1283,10 +1311,10 @@ Revision: 607
   - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/plan-continuation.mjs, src/control/plugin/workflow-channel.mjs, tests/automatic-agent-dialogue.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-finalization.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/orchestrated-execution.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/task-integration.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/executor-session.mjs, tests/workspace-session.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T005
-- [TODO] T007: Замкнуть диалог блокировок и доработки результата — Ожидает
-  - Git Commit: [PENDING] feat: Замкнуть диалог блокировок и доработки результата
+- [DONE] T007: Замкнуть диалог блокировок и доработки результата — Завершено
+  - Git Commit: [DONE] feat: Замкнуть диалог блокировок и доработки результата
   - Reference: orchestrator-owned-dialogue-refactor / T007 / implementation
-  - Файлы: packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/signal-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/automatic-agent-dialogue.test.mjs, tests/workflow-signals.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs
+  - Файлы: packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/signal-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/automatic-agent-dialogue.test.mjs, tests/workflow-signals.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/task-integration.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/workflow/parallel-kit.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/orchestrated-execution.test.mjs, tools/codex-app-server-mcp/plugin.py, packages/workflow-kit/src/lib/assignment-command-safety.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T006
 - [TODO] T008: Обеспечить восстановление и переход старых назначений — Ожидает

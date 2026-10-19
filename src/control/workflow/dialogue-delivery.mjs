@@ -79,6 +79,14 @@ export class DialogueDelivery {
       const origin=this.project(project.executionOriginSessionId),target=await plugin.participantTarget(origin?.sessionId);
       if(!target)return;
       const state=await plugin.communication.assignment.state(target,project.assignmentId),attempt=state.dialogue?.attempt??1;
+      if(state.block){
+        const worker=await plugin.participantTarget(project.sessionId),physical=worker&&await this.reconcile(worker);
+        if(!physical?.stopped||!physical.commandsIdle||physical.busy)return;
+        return this.send(origin,'Исполнитель припаркован на текущей блокировке; локальные команды завершены. Перед изменением общей среды сверьте parked всех затронутых назначений через participants. Данные backend: '+JSON.stringify({
+          assignment_id:project.assignmentId,task_id:project.taskId,attempt,block_id:state.block.block_id}), 'recovery',{
+          key:'parked:'+hash(JSON.stringify([project.assignmentId,attempt,state.block.block_id,physical.documentId,physical.turnId,physical.assistantRevision])),
+          block_id:state.block.block_id,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt});
+      }
       if(state.dialogue?.grant)return;
       return this.send(origin,'Назначение готово к получению задания оркестратора. Данные backend (не рабочее поручение): '+JSON.stringify({
         assignment_id:project.assignmentId,task_id:project.taskId,attempt}), 'ready',{

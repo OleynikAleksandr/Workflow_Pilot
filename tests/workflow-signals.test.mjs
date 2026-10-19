@@ -2,6 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {blockAnswered,currentSignal} from '../packages/workflow-kit/src/lib/signal-state.mjs';
 import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {assertAssignmentCommandsIdle} from '../packages/workflow-kit/src/lib/assignment-command-safety.mjs';
 test('legacy decisions clear legacy blocks only; new correlation isolates scope, task and assignment',async()=>{
   const base={scope_id:'s',task_id:'t',assignment_id:'a'},block={...base,id:'b1',kind:'task-blocked'},decision={...base,id:'d1',kind:'assignment-message'};
   assert.equal(blockAnswered([block,decision],block),true);
@@ -15,4 +19,26 @@ test('legacy decisions clear legacy blocks only; new correlation isolates scope,
   assert.equal(await delivery.currentMessage({local_session_id:'e'},{...base,signal_id:'d3'}),true);
   assert.equal(await delivery.currentMessage({local_session_id:'e'},{...base,signal_id:'d2'}),false);
   assert.equal(await delivery.currentMessage({local_session_id:'e'},{...base,signal_id:'d3',assignment_id:'foreign'}),false);
+});
+test('new assignment attempt cannot be resumed by an earlier repair decision',()=>{
+  const base={scope_id:'s',task_id:'t',assignment_id:'a',block_id:'b',id:'b',kind:'task-blocked',assignment_attempt:2};
+  const late={...base,id:'d',kind:'assignment-message',assignment_attempt:1};
+  assert.equal(blockAnswered([base,late],base),false);assert.equal(currentSignal([base,late],late),false);
+});
+test('assignment proof refuses mutable or unknown commands but permits verified read-only work',t=>{
+  const worktree=fs.mkdtempSync(path.join(os.tmpdir(),'dialogue-command-proof-'));
+  t.after(()=>fs.rmSync(worktree,{recursive:true,force:true}));
+  const record={worktree,dialogue_version:1},directory=path.join(worktree,'.harness/runtime/command-activity');
+  fs.mkdirSync(directory,{recursive:true});const file=path.join(directory,'command.json');
+  const marker={version:2,id:'command',workspace:worktree,executor_instance:'fixture',started_at_ms:1,state:'running'};
+  const write=value=>fs.writeFileSync(file,JSON.stringify(value));
+  write(marker);assert.throws(()=>assertAssignmentCommandsIdle(record),{code:'ASSIGNMENT_COMMAND_ACTIVE'});
+  write({...marker,state:'unknown',read_only_verified:true,sandbox_policy:'readOnly',process_id:'1'});
+  assert.throws(()=>assertAssignmentCommandsIdle(record),{code:'ASSIGNMENT_COMMAND_ACTIVE'});
+  write({...marker,read_only_verified:true,sandbox_policy:'readOnly',process_id:'1'});assertAssignmentCommandsIdle(record);
+  write({...marker,state:'completed',exit_code:0});assertAssignmentCommandsIdle(record);
+  write({...marker,workspace:'/other',state:'completed',exit_code:0});
+  assert.throws(()=>assertAssignmentCommandsIdle(record),{code:'ASSIGNMENT_COMMAND_ACTIVE'});
+  fs.rmSync(file);fs.symlinkSync(path.join(worktree,'outside'),file);
+  assert.throws(()=>assertAssignmentCommandsIdle(record),{code:'ASSIGNMENT_COMMAND_ACTIVE'});
 });

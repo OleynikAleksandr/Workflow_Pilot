@@ -6,6 +6,9 @@ import {readAssignment, recordPath, childRecordPath, ownWorktree, localPlan, sav
 import {validate, taskChecks} from './validate.mjs';
 import {journal, activeIntegration, completedTransaction, finishTransaction} from './transaction-state.mjs';
 import {commitCandidate} from './transaction.mjs';
+import {blockTask,messageAssignment,readSignals} from './signals.mjs';
+import {latestBlock,blockAnswered} from './signal-state.mjs';
+import {assertAssignmentCommandsIdle} from './assignment-command-safety.mjs';
 
 export const ASSIGNMENT_DIALOGUE_VERSION = 1;
 const key = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$/.test(value);
@@ -15,6 +18,12 @@ const allowed = {
   E: new Set(['context_request','context','question','clarification','result']),
 };
 const initial = () => ({version:ASSIGNMENT_DIALOGUE_VERSION,attempt:1,grant:null,result:null,acceptance:null,history:[],operations:{}});
+
+function activeBlock(record) {
+  const signals=readSignals(record.parent_root),block=latestBlock(signals,{scope_id:record.parent_scope_id,
+    task_id:record.parent_task_id,assignment_id:record.id,assignment_attempt:record.dialogue?.attempt??1});
+  return block&&!blockAnswered(signals,block)?block:null;
+}
 
 function target(root, id) {
   const child=readAssignment(root), parent=child?.parent_root??fs.realpathSync(root);
@@ -26,8 +35,13 @@ function target(root, id) {
 }
 export function assignmentDialogueStatus(root,id) {
   const {record,role}=target(root,id);
+  const signals=readSignals(record.parent_root),last=latestBlock(signals,{scope_id:record.parent_scope_id,
+    task_id:record.parent_task_id,assignment_id:record.id,assignment_attempt:record.dialogue?.attempt??1});
+  const decision=last&&signals.findLast(s=>s.kind==='assignment-message'&&s.assignment_id===record.id
+    &&s.block_id===last.block_id&&(s.assignment_attempt??1)===(record.dialogue?.attempt??1));
   return {ok:true,id:record.id,task_id:record.parent_task_id,role,
-    dialogue_version:record.dialogue_version??0,dialogue:record.dialogue??null};
+    dialogue_version:record.dialogue_version??0,dialogue:record.dialogue??null,block:activeBlock(record),
+    last_decision:decision?{id:decision.id,block_id:decision.block_id,attempt:record.dialogue?.attempt??1}:null};
 }
 export function assertAssignmentDispatch(root,record) {
   if(record?.dialogue_version!==ASSIGNMENT_DIALOGUE_VERSION)return;
@@ -44,6 +58,7 @@ export function assertAssignmentAcceptance(record,source) {
   'ASSIGNMENT_NOT_ACCEPTED','Нужна приёмка оркестратором текущего результата и точного source_commit.');
 }
 function proof(record, source) {
+  assertAssignmentCommandsIdle(record);
   check(sha(source),'ASSIGNMENT_RESULT','Нужен полный source_commit.');
   ownWorktree(record.worktree,record);
   ensureIdleGit(record.worktree);
@@ -112,13 +127,29 @@ export function applyAssignmentDialogue(root,input) {
     const previous=d.operations[input.operation_id];
     if(previous){check(previous.fingerprint===fingerprint,'ASSIGNMENT_DIALOGUE_CONFLICT','Ключ уже использован с другим содержимым.');return {...previous.receipt,duplicate:true};}
     check(record.phase==='ASSIGNED' && input.attempt===d.attempt,'ASSIGNMENT_STALE','Назначение или попытка уже изменились.');
+    check(!input.blocking||(role==='E'&&input.kind==='question'),'ASSIGNMENT_DIALOGUE_INPUT','blocking допустим только для вопроса E.');
+    check(!input.resume||(role==='O'&&input.kind==='decision'),'ASSIGNMENT_DIALOGUE_INPUT','resume допустим только для решения O.');
     check(!d.revision || d.revision.operation_id===input.operation_id,'ASSIGNMENT_REVISION_PENDING','Сначала завершите начатую доработку.');
     return withLock(localPath(record.worktree,'operation.lock'),()=>{
       ownWorktree(record.worktree,record);
+      const signalId=hash(input.operation_id).slice(0,40),priorSignal=readSignals(parent).find(s=>s.id===signalId&&s.dialogue_message_id===input.message_id);
+      const block=activeBlock(record);let signal=null;
+      if(input.block_id&&!priorSignal)check(block?.block_id===input.block_id,'BLOCK_STALE','Блокировка уже изменилась или разрешена.');
+      if(input.blocking){
+        check(priorSignal||!block||block.id===signalId,'BLOCK_ALREADY_ACTIVE','Продолжите уточнение существующей блокировки.',{block_id:block?.block_id});
+        signal=blockTask(record.worktree,record.parent_task_id,'Сообщение '+input.message_id+'; содержание '+input.content_digest,
+          signalId,input.problem_id?(/^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/.test(input.problem_id)?input.problem_id:hash(input.problem_id).slice(0,40)):undefined,{message_id:input.message_id}).signal;
+      }else if(input.resume){
+        check(priorSignal||block&&input.block_id===block.block_id,'BLOCK_REQUIRED','Решение требует текущего block_id.');
+        signal=messageAssignment(parent,record.id,'Решение '+input.message_id+'; содержание '+input.content_digest,
+          hash(input.operation_id).slice(0,40),input.block_id,undefined,{message_id:input.message_id}).signal;
+      }
+      if(signal&&process.env.WORKFLOW_TEST_FAILPOINT==='dialogue-signal')check(false,'TEST_INTERRUPTION','Тестовый сбой после сигнала до квитанции диалога.');
       if(input.kind==='task') {
         check(!d.grant,'ASSIGNMENT_ALREADY_DISPATCHED','Поручение уже выдано; передайте уточнение.');
         d.grant={message_id:input.message_id,operation_id:input.operation_id};
       } else if(input.kind==='result') {
+        check(!block,'ASSIGNMENT_BLOCKED','Сначала получите решение по текущей блокировке.');
         check(d.grant,'ASSIGNMENT_NOT_DISPATCHED','Назначение не получило поручение O.');
         check(!d.result,'ASSIGNMENT_RESULT_EXISTS','Результат уже отправлен; используйте исходную квитанцию.');
         d.result={message_id:input.message_id,attempt:d.attempt,...proof(record,input.source_commit)};
@@ -130,7 +161,9 @@ export function applyAssignmentDialogue(root,input) {
           source_commit:input.source_commit,attempt:d.attempt};}
       }
       const receipt={ok:true,operation_id:input.operation_id,message_id:input.message_id,assignment_id:record.id,
-        task_id:record.parent_task_id,attempt:d.attempt,kind:input.kind,result:d.result,acceptance:d.acceptance};
+        task_id:record.parent_task_id,attempt:d.attempt,kind:input.kind,result:d.result,acceptance:d.acceptance,
+        block_id:signal?.block_id??block?.block_id??null,problem_id:signal?.problem_id??block?.problem_id??null,
+        repair_attempt:signal?.attempt??block?.attempt??null,escalation_required:signal?.escalation_required??block?.escalation_required??false};
       d.operations[input.operation_id]={fingerprint,receipt};save(file,record);
       return receipt;
     });

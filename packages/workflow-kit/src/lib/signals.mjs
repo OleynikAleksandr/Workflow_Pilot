@@ -49,13 +49,15 @@ function orchestratedMain(root) {
   check(isOrchestratedPlan(plan) && plan.execution_scope_status === 'ACTIVE', 'SIGNAL_POLICY', 'Нужен активный план оркестратора.');
   return plan;
 }
-export function blockTask(root, taskId, reason, id, problemId) {
+export function blockTask(root, taskId, reason, id, problemId, dialogue={}) {
   const plan = readPlan(root), assignment = readAssignment(root), task = plan.tasks.find(t => t.id === taskId);
   check(task && plan.current_task_id === taskId && task.implementation_status === 'IN_PROGRESS', 'TASK_NOT_ACTIVE',
     'Блокируется только начатая текущая задача; её файлы сохраняются.', {task_id: taskId});
   check(problemId===undefined||/^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/.test(problemId),'SIGNAL_INPUT','Некорректный --problem-id.');
   const request={kind:'task-blocked',scope_id:assignment?.parent_scope_id??plan.scope_id,task_id:taskId,
     assignment_id:assignment?.id??null,reason:text(reason,'--reason')};
+  if(assignment?.dialogue_version===1)request.assignment_attempt=assignment.attempt??1;
+  if(dialogue.message_id)request.dialogue_message_id=dialogue.message_id;
   request.problem_id=problemId??hash(request.reason).slice(0,24);
   return append(root,request,id,(signals,requestHash)=>{
     const last=latestBlock(signals,request);
@@ -67,7 +69,7 @@ export function blockTask(root, taskId, reason, id, problemId) {
       attempt,escalation_required:attempt>=3};
   });
 }
-export function messageAssignment(root, assignmentId, message, id, blockId, approvalNote) {
+export function messageAssignment(root, assignmentId, message, id, blockId, approvalNote, dialogue={}) {
   const plan = orchestratedMain(root);
   const file = recordPath(root, assignmentId);
   check(fs.existsSync(file), 'ASSIGNMENT_ID', 'Назначение не найдено: ' + assignmentId);
@@ -77,6 +79,8 @@ export function messageAssignment(root, assignmentId, message, id, blockId, appr
   const request={kind:'assignment-message',scope_id:plan.scope_id,task_id:record.parent_task_id,
     assignment_id:assignmentId,text:text(message,'--text'),block_id:blockId??null,
     ...(approvalNote?{approval_note:text(approvalNote,'--approval-note')}:{})};
+  if(record.dialogue_version===1)request.assignment_attempt=record.dialogue?.attempt??1;
+  if(dialogue.message_id)request.dialogue_message_id=dialogue.message_id;
   return append(root,request,id,(signals,requestHash)=>{
     const duplicate=signals.find(s=>s.request_hash===requestHash);
     if(duplicate)return {existing:duplicate};

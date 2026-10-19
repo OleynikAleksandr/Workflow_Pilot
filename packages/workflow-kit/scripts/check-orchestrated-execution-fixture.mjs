@@ -196,12 +196,54 @@ try {
   assert.throws(()=>send(root,'task','foreign-scope',{scope_id:'another-scope'}),{code:'ASSIGNMENT_CHANGED'});
   send(root,'task','task-1');assert.equal(send(root,'task','task-1').duplicate,true);
   assert.throws(()=>send(root,'task','task-1',{message_id:'different'}),{code:'ASSIGNMENT_DIALOGUE_CONFLICT'});
-  startTask(a.worktree,'T001');write(a.worktree,'README.md','# first result\n');commitTask(a.worktree,'T001');
+  send(a.worktree,'context_request','before-start');
+  assert.equal(readPlan(a.worktree).current_task_id,null);
+  startTask(a.worktree,'T001');
+  process.env.WORKFLOW_TEST_FAILPOINT='dialogue-signal';
+  try{assert.throws(()=>send(a.worktree,'question','question-1',{blocking:true,problem_id:'missing-rule'}),{code:'TEST_INTERRUPTION'});}
+  finally{delete process.env.WORKFLOW_TEST_FAILPOINT;}
+  const blocked=send(a.worktree,'question','question-1',{blocking:true,problem_id:'missing-rule'});
+  assert.ok(blocked.block_id);assert.equal(blocked.repair_attempt,1);
+  assert.equal(send(a.worktree,'question','question-1',{blocking:true,problem_id:'missing-rule'}).duplicate,true);
+  send(root,'clarification','clarify-1',{block_id:blocked.block_id});
+  send(a.worktree,'clarification','facts-1',{block_id:blocked.block_id});
+  send(root,'context','context-1',{block_id:blocked.block_id});
+  assert.equal(assignmentDialogueStatus(root,a.id).block.block_id,blocked.block_id);
+  assert.equal(readSignals(root).filter(s=>s.kind==='task-blocked').length,1,'clarifications do not create repair attempts');
+  assert.throws(()=>send(root,'decision','stale-block',{block_id:'wrong',resume:true}),{code:'BLOCK_STALE'});
+  assert.throws(()=>send(root,'decision','no-block',{resume:true}),{code:'BLOCK_REQUIRED'});
+  process.env.WORKFLOW_TEST_FAILPOINT='dialogue-signal';
+  try{assert.throws(()=>send(root,'decision','resume-1',{block_id:blocked.block_id,resume:true}),{code:'TEST_INTERRUPTION'});}
+  finally{delete process.env.WORKFLOW_TEST_FAILPOINT;}
+  send(root,'decision','resume-1',{block_id:blocked.block_id,resume:true});
+  assert.equal(assignmentDialogueStatus(root,a.id).block,null);
+  assert.equal(readSignals(root).every(s=>s.dialogue_message_id),true,'relay must not duplicate MCP effects');
+  assert.throws(()=>send(a.worktree,'clarification','late-facts',{block_id:blocked.block_id}),{code:'BLOCK_STALE'});
+  const cliBlock=blockTask(a.worktree,'T001','Legacy CLI question in dialogue mode','cli-block');
+  send(root,'decision','mcp-resume-cli',{block_id:cliBlock.signal.block_id,resume:true});
+  const mcpBlock=send(a.worktree,'question','mcp-block-cli',{blocking:true});
+  messageAssignment(root,a.id,'CLI decision for MCP question','cli-resume',mcpBlock.block_id);
+  assert.equal(assignmentDialogueStatus(root,a.id).last_decision.block_id,mcpBlock.block_id);
+  for(let attempt=1;attempt<=3;attempt++){
+    const repeat=send(a.worktree,'question','repair-'+attempt,{blocking:true,problem_id:'repeat-repair'});
+    assert.equal(repeat.repair_attempt,attempt);
+    if(attempt<3)send(root,'decision','retry-'+attempt,{block_id:repeat.block_id,resume:true});
+    else{
+      assert.equal(repeat.escalation_required,true);
+      assert.throws(()=>send(root,'decision','blind-retry',{block_id:repeat.block_id,resume:true}),{code:'BLOCK_ESCALATION_REQUIRED'});
+      messageAssignment(root,a.id,'Apply approved fixture option','approved-repair',repeat.block_id,'Explicit fixture user approved option A');
+    }
+  }
+  write(a.worktree,'README.md','# first result\n');commitTask(a.worktree,'T001');
   limitedRecovery();
   const first=assignmentStatus(root,a.id).source_commit;
   assert.throws(()=>startIntegration(root,{id:a.id,source_commit:first}),{code:'ASSIGNMENT_NOT_ACCEPTED'});
   assert.throws(()=>send(root,'result','fake-result',{source_commit:first}),{code:'ASSIGNMENT_ROLE'});
   send(a.worktree,'result','result-1',{source_commit:first});
+  const marker=path.join(a.worktree,'.harness/runtime/command-activity/check.json');
+  fs.mkdirSync(path.dirname(marker),{recursive:true});fs.writeFileSync(marker,'{}');
+  assert.throws(()=>send(root,'acceptance','active-command',{source_commit:first,result_id:'result-1'}),{code:'ASSIGNMENT_COMMAND_ACTIVE'});
+  fs.rmSync(marker);
   assert.throws(()=>send(a.worktree,'acceptance','self-accept',{source_commit:first,result_id:'result-1'}),{code:'ASSIGNMENT_ROLE'});
   assert.throws(()=>send(root,'acceptance','wrong-result',{source_commit:first,result_id:'not-result-1'}),{code:'ASSIGNMENT_RESULT_STALE'});
   send(root,'acceptance','accept-1',{source_commit:first,result_id:'result-1'});
@@ -218,6 +260,9 @@ try {
   const second=assignmentStatus(root,a.id).source_commit;
   send(a.worktree,'result','result-2',{attempt:2,source_commit:second});
   send(root,'acceptance','accept-2',{attempt:2,source_commit:second,result_id:'result-2'});
+  fs.writeFileSync(marker,'{}');
+  assert.throws(()=>startIntegration(root,{id:a.id,source_commit:second}),{code:'ASSIGNMENT_COMMAND_ACTIVE'});
+  fs.rmSync(marker);
   write(a.worktree,'README.md','# uncommitted change\n');
   assert.throws(()=>startIntegration(root,{id:a.id,source_commit:second}));
   write(a.worktree,'README.md','# revised result\n');

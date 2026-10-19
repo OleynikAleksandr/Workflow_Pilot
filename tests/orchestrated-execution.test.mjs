@@ -10,7 +10,7 @@ import { readPlan } from '../packages/workflow-kit/src/lib/plan.mjs';
 import { readConfig } from '../packages/workflow-kit/src/lib/validate.mjs';
 import { commitTask } from '../packages/workflow-kit/src/lib/transaction.mjs';
 import { startIntegration } from '../packages/workflow-kit/src/lib/task-integration.mjs';
-import { cleanupAssignments, assignmentStatus } from '../packages/workflow-kit/src/lib/task-assignment.mjs';
+import { cleanupAssignments, assignmentStatus,createAssignment,setupAssignment } from '../packages/workflow-kit/src/lib/task-assignment.mjs';
 import { blockTask, messageAssignment, escalatePlan } from '../packages/workflow-kit/src/lib/signals.mjs';
 import { ParallelExecution } from '../src/control/workflow/parallel-execution.mjs';
 import { ParallelKit } from '../src/control/workflow/parallel-kit.mjs';
@@ -22,6 +22,30 @@ const write = (root, file, text) => { fs.mkdirSync(path.dirname(path.join(root, 
 const SPEC = 'docs/planning/orchestration.md';
 const task = (id, file, dependencies, parallel_safe) => ({ id, title: 'Write ' + file, why: 'End-to-end fixture', dependencies, parallel_safe,
   functional_paths: [], documentation_paths: [file], verification_ids: [], acceptance_criteria: ['Output committed'], expected_commit_message: 'docs: ' + file });
+
+test('a concurrent checked integration cannot turn an older proof snapshot into UNKNOWN',async t=>{
+  const directory=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'pilot-proof-snapshot-')));
+  t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+  const root=createFixture(directory);write(root,SPEC,'# Snapshot fixture\n');
+  createScope(root,{scope_id:'snapshot',objective:'Coherent integration proof',approval_note:'Isolated fixture',
+    parallel_allowed:false,max_workers:1,execution_strategy:'orchestrated',execution_reason:'One writer',
+    execution_origin_session_id:'origin',release:false,acceptance_criteria:['No false UNKNOWN'],
+    approved_scope:{functional_paths:[],documentation_paths:['README.md',SPEC]},
+    context_pack:{documents:[],dependency_task_ids:[],include_last_completed_task:false},tasks:[task('T001','README.md',[],false)]});
+  const a=createAssignment(root,{id:'worker',task_id:'T001',base_commit:git(root,'rev-parse','HEAD'),worktree:path.join(directory,'worker')},readPlan(root).plan_revision);
+  setupAssignment(root,a.id,{npmCi:true});startTask(a.worktree,'T001');write(a.worktree,'README.md','# result\n');commitTask(a.worktree,'T001');
+  const source=assignmentStatus(root,a.id).source_commit;
+  const setup={node:async()=>process.execPath,environment:process.env},plans=new SessionPlans({setup});
+  const original=plans.call.bind(plans);let injected=false;
+  plans.call=async(...args)=>{
+    const value=await original(...args);
+    if(args[1]==='validate'&&!injected){injected=true;assert.equal(startIntegration(root,{id:a.id,source_commit:source}).status,'INTEGRATED');}
+    return value;
+  };
+  const snapshot=await new ParallelKit({plans,setup}).read(root);
+  assert.equal(injected,true);assert.equal(snapshot.assignments.find(x=>x.id===a.id).status,'INTEGRATED');
+  assert.equal(snapshot.confirmed,true);
+});
 
 // The whole orchestrated plan: real Kit CLI and Git, the Control queue and the run button.
 // The test plays the executors and the orchestrator with Kit commands; no model runs.

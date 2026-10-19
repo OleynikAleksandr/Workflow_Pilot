@@ -16,10 +16,10 @@ import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,experience='chat',{owned=false}={}){
+export async function automaticDialogue(t,experience='chat',{owned=false,conversation=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
-  let workflow,plugin,c,runtime,closed=false;
+  let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0;
   const root=createFixture(directory),setup={node:async()=>process.execPath,
     environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
       GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
@@ -56,6 +56,23 @@ export async function automaticDialogue(t,experience='chat',{owned=false}={}){
       const roster=()=>call('participants',{});
       const send=payload=>call('assignment_send',{attempt:message.attempt??1,in_reply_to:message.assignment_id?message.message_id:undefined,
         idempotency_key:message.kind+':'+message.message_id,...payload});
+      const completeWork=async()=>{
+        if(!readPlan(project.workspace).current_task_id)await plans.call(project.workspace,'task:start',[project.taskId]);
+        if(project.taskId==='DOCS')await fs.rm(path.join(project.workspace,'docs/planning/dialogue.md'));
+        else await fs.writeFile(path.join(project.workspace,taskFile[project.taskId]),'# worker-'+project.taskId+' attempt '+message.attempt+'\n');
+        const committed=await plans.call(project.workspace,'commit',['--task',project.taskId]);
+        const status=await plans.call(root,'assignment:status',['--id',project.assignmentId]);
+        assert.equal(status.status,'READY_FOR_INTEGRATION');assert.equal(committed.ok,true);
+        await send({recipient:'orchestrator',kind:'result',source_commit:status.source_commit,body:'Checked result '+project.taskId});
+      };
+      const repairAndResume=async target=>{
+        if(!target.parked)return;
+        assert.equal(target.block.block_id,sharedRepair.block_id);
+        await fs.writeFile(path.join(root,'.harness/runtime/shared-rule'),'checked task-local fallback\n');sharedRepairs++;
+        await send({recipient:target.recipient_ref,kind:'decision',block_id:sharedRepair.block_id,resume:true,
+          body:'Shared setting repaired while parked. Use task-local fallback and validate it. Continue from the preserved task state.'});
+        sharedRepair=null;
+      };
       if(message.kind==='ready'){
         assert.equal(message.sender_role,'backend');
         if(message.task_id==='T003')assert.ok(readPlan(root).tasks.filter(t=>['T001','T002'].includes(t.id)).every(t=>t.commit_status==='DONE'));
@@ -69,21 +86,56 @@ export async function automaticDialogue(t,experience='chat',{owned=false}={}){
           const v=await call('read_context',{message_id:message.message_id,context_ref:message.contexts[0].sha256,part});selected+=v.text;total=v.total;
         }
         assert.equal(selected,'Selected context for '+project.taskId);
+        if(conversation&&project.taskId==='T001'){
+          assert.equal(readPlan(project.workspace).current_task_id,null);
+          await send({recipient:'orchestrator',kind:'context_request',body:'Need the exact local normalization policy before task:start.'});
+        }else await completeWork();
+      }else if(message.kind==='context_request'){
+        const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
+        await send({recipient:target.recipient_ref,kind:'context',body:'Use the task-local policy; report a missing fixture setting without changing shared state.'});
+      }else if(message.kind==='context'){
         await plans.call(project.workspace,'task:start',[project.taskId]);
-        if(project.taskId==='DOCS')await fs.rm(path.join(project.workspace,'docs/planning/dialogue.md'));
-        else await fs.writeFile(path.join(project.workspace,taskFile[project.taskId]),'# worker-'+project.taskId+'\n');
-        const committed=await plans.call(project.workspace,'commit',['--task',project.taskId]);
-        const status=await plans.call(root,'assignment:status',['--id',project.assignmentId]);
-        assert.equal(status.status,'READY_FOR_INTEGRATION');assert.equal(committed.ok,true);
-        await send({recipient:'orchestrator',kind:'result',source_commit:status.source_commit,body:'Checked result '+project.taskId});
+        const r=await send({recipient:'orchestrator',kind:'question',blocking:true,problem_id:'local-rule',body:'Local setting absent; checked both sources; commands are finished. Need a decision.'});
+        record.blockId=(await call('assignment_status',{})).assignments[0].block.block_id;assert.ok(r.message_id);
+      }else if(message.kind==='question'){
+        const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
+        assert.equal(target.block.block_id,message.block_id);
+        await send({recipient:target.recipient_ref,kind:'clarification',block_id:message.block_id,body:'Which two local sources were checked?'});
+      }else if(message.kind==='clarification'){
+        if(project.assignmentId){
+          assert.equal(message.block_id,record.blockId);
+          const state=(await call('assignment_status',{})).assignments[0];assert.equal(state.block.attempt,1);
+          await send({recipient:'orchestrator',kind:'clarification',block_id:message.block_id,body:'Both task-local sources absent; no running command, no shared edits.'});
+        }else{
+          const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
+          assert.equal(target.block.attempt,1);
+          sharedRepair={assignment_id:message.assignment_id,block_id:message.block_id};
+          await repairAndResume(target);
+        }
+      }else if(message.kind==='decision'){
+        assert.equal(message.block_id,record.blockId);assert.equal(message.resume,true);
+        assert.equal((await call('assignment_status',{})).assignments[0].block,null);
+        await completeWork();
+      }else if(message.kind==='revision_request'){
+        assert.equal(message.attempt,2);await completeWork();
+      }else if(message.kind==='recovery'){
+        assert.equal(message.sender_role,'backend');
+        if(sharedRepair?.assignment_id===message.assignment_id){
+          const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
+          await repairAndResume(target);
+        }
       }else if(message.kind==='result'){
         assert.equal(message.sender_role,'E');
         const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
         const status=await plans.call(root,'assignment:status',['--id',message.assignment_id]);
         assert.equal(status.source_commit,message.source_commit);assert.equal(status.status,'READY_FOR_INTEGRATION');
         const diff=await workflow.executionKit.git(root,['show','--stat',message.source_commit]);assert.ok(diff);
-        await send({recipient:target.recipient_ref,kind:'acceptance',result_id:message.message_id,source_commit:message.source_commit,body:'Exact diff and checks accepted'});
-        await plans.call(root,'integration:start',[],{id:message.assignment_id,source_commit:message.source_commit});
+        if(conversation&&message.task_id==='T001'&&message.attempt===1){
+          await send({recipient:target.recipient_ref,kind:'revision_request',result_id:message.message_id,source_commit:message.source_commit,body:'Revise the exact result for the second approved iteration.'});
+        }else{
+          await send({recipient:target.recipient_ref,kind:'acceptance',result_id:message.message_id,source_commit:message.source_commit,body:'Exact diff and checks accepted'});
+          await plans.call(root,'integration:start',[],{id:message.assignment_id,source_commit:message.source_commit});
+        }
       }else if(message.kind==='acceptance'){
         assert.equal(message.sender_role,'O');
         await wait(async()=>JSON.parse(await fs.readFile(path.join(root,'.git/workflow-kit/assignments',project.assignmentId+'.json'),'utf8')).phase==='INTEGRATED',
@@ -210,7 +262,14 @@ export async function automaticDialogue(t,experience='chat',{owned=false}={}){
   const start=await api.submit('plan.continue',{}),started=await api.wait(start.operationId);
   assert.equal(started.status,'completed',JSON.stringify(started));
   assert.equal(workflow.executionControl.view(root,'dialogue-fixture').state,'running','HTTP API runs the real plan button coordinator');
-  await wait(()=>workflow.executionControl.view(root,'dialogue-fixture').state==='complete','plan completion');
+  await wait(()=>{
+    const state=workflow.executionControl.view(root,'dialogue-fixture');
+    if(state.state==='paused')throw Error('Unexpected pause: '+JSON.stringify({state,
+      messages:[...plugin.communication.runs.values()].flatMap(r=>r.messages.map(m=>({id:m.message_id,kind:m.kind,task:m.task_id,
+        delivery:m.delivery,read:m.read,handled:!!m.yielded,finished:m.reply_observed,attempt:m.attempt}))),
+      events:[...plugin.communication.runs.values()].flatMap(r=>r.events.slice(-20))}));
+    return state.state==='complete';
+  },'plan completion');
   assert.equal(readPlan(root).delivery_status,'READY_FOR_ACCEPTANCE');
   assert.deepEqual(readPlan(root).tasks.map(task=>task.commit_status),['DONE','DONE','DONE','DONE']);
   assert.equal(records.size,5,'one O, three substantive E, and a DOCS assignment');
@@ -220,7 +279,12 @@ export async function automaticDialogue(t,experience='chat',{owned=false}={}){
     assert.equal(record.project().experience,record===o?experience:'chat');
   }
   if(owned){
-    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,4,kind);
+    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,4+(conversation&&kind==='result'?1:0),kind);
+    if(conversation){
+      assert.equal(sharedRepairs,1,'shared repair requires fresh parked facts and no user continuation');
+      for(const kind of ['context_request','question','decision','revision_request'])assert.equal(notifications.filter(n=>n.kind===kind).length,1,kind);
+      assert.equal(notifications.filter(n=>n.kind==='clarification').length,2);
+    }
     assert.equal(notifications.some(n=>['assignment-start','continue'].includes(n.kind)),false);
     assert.ok([...records.values()].every(r=>r.pageState.current.state.userMessagesRevision===1),'SDK creates no user bubble');
   }else{assert.equal(notifications.filter(n=>n.kind==='question').length,1);assert.equal(notifications.filter(n=>n.kind==='decision').length,1);}

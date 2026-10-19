@@ -34,8 +34,15 @@ export class ParallelKit {
     return text.split('\n').filter(Boolean).map(JSON.parse);
   }
   async read(workspace) {
+    for(let attempt=0;;attempt++){
+      try{return await this.readSnapshot(workspace);}
+      catch(error){if(error.code!=='PLAN_CHANGED_DURING_READ'||attempt>=2)throw error;}
+    }
+  }
+  async readSnapshot(workspace) {
     const text=await fs.readFile(path.join(workspace,planFile),'utf8'),plan=parsePlan(text);
     if(!['parallel','orchestrated'].includes(plan.execution_strategy))return {workspace,plan,assignments:[],integration:{status:'IDLE'}};
+    const beforeHead=await this.git(workspace,['rev-parse','HEAD']);
     const gitDir=await this.git(workspace,['rev-parse','--absolute-git-dir']);
     const integration=await this.plans.call(workspace,'integration:status');
     const proof=await this.plans.call(workspace,'validate');
@@ -65,6 +72,10 @@ export class ParallelKit {
     const committed=await this.git(workspace,['show','HEAD:'+planFile]);
     const unchanged=text===(await fs.readFile(path.join(workspace,planFile),'utf8'));
     const head=await this.git(workspace,['rev-parse','HEAD']);
+    // Git proof and assignment receipts can straddle an O-driven integration.
+    // Retry the read, never report that valid new receipt as an unknown effect.
+    if(head!==beforeHead||(proof.plan_revision??proof.plan?.plan_revision)!==plan.plan_revision)
+      throw Object.assign(Error('План изменился во время чтения доказательств; нужна свежая сверка.'),{code:'PLAN_CHANGED_DURING_READ'});
     const integrated=proof.resolved?.[integration.task_id];
     integration.committed=!!integrated?.integration_commit&&integrated.sha===head&&integrated.source_commit===integration.source_commit;
     const reviewPending=reviewBlocksExecution(readReview(workspace),plan.scope_id);

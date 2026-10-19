@@ -554,10 +554,12 @@ export class ParallelExecution {
     for(const [index,signal] of signals.entries()) {
       if(ledger.signals[signal.id]?.status==='handled')continue;
       const handled=async()=>{ledger.signals[signal.id]={status:'handled'};await this.persist();};
+      if(signal.dialogue_message_id){await handled();continue;}
       if(signal.kind==='plan-escalated') {
         await handled();this.onPause(workspace,plan.scope_id,'escalation',signal.reason);continue;
       }
       const assignment=assignments.find(a=>a.id===signal.assignment_id);
+      if(assignment?.dialogue_version===1&&(signal.assignment_attempt??1)!==(assignment.dialogue?.attempt??1)){await handled();continue;}
       const done=plan.tasks.find(t=>t.id===signal.task_id)?.commit_status==='DONE';
       if(done||!currentSignal(signals,signal)||!assignment&&signal.kind==='assignment-message'||!['task-blocked','assignment-message'].includes(signal.kind)) {await handled();continue;}
       const entry=ledger.signals[signal.id];
@@ -587,6 +589,8 @@ export class ParallelExecution {
         const entry=ledger.signals[signal.id]={status:'pending'};
         return this.queueMessage(workspace,origin,ledger,entry,text,toWorker?'decision':'question',{
           key:'signal:'+signal.id,signal_id:signal.id,block_id:signal.block_id??null,kind:toWorker?'decision':'question',
+          attempt:signal.assignment_attempt??assignment?.dialogue?.attempt??1,
+          subject:{assignment_id:signal.assignment_id,task_id:signal.task_id},
           sourceSessionId:toWorker?origin.sessionId:worker},toWorker?assignment:null);
       }
       ledger.signals[signal.id]={status:'sending'};await this.persist();

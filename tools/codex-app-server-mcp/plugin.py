@@ -167,7 +167,7 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_participants", annotations=READ, meta={"ui": {"visibility": ["model"]}})
     async def participants(ctx: Context) -> CallToolResult:
-        """Read current plan participants and assignment recipient_ref/attempt from verified host identity. O sees its executors; E addresses orchestrator. No copied transport IDs or invitations. Capability errors identify legacy assignments requiring a safe migration."""
+        """Read current plan participants and assignment recipient_ref/attempt from verified host identity. O sees its executors; E addresses orchestrator. block is Kit state; parked requires a current stopped page and idle local commands. Check parked for every affected E before shared environment repair; otherwise yield and await service recovery. No copied IDs. Legacy capability errors require safe migration."""
         return await communication("roster", ctx)
 
     @mcp.tool(name="workflow_assignment_send", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})

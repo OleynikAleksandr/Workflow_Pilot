@@ -104,7 +104,8 @@ export class WorkflowChannel {
     const message={message_id:c.makeId(),recipient_id:recipient?.id??null,recipient_session_id:target.local_session_id,
       sender_id:source?.id??null,sender_role:input.source?.role??'backend',scope_id:target.scope_id,
       assignment_id:target.assignment_id??input.subject?.assignment_id??input.source?.assignment_id??null,task_id:target.task_id??input.subject?.task_id??input.source?.task_id??null,
-      ...(target.dialogue_version===1?{dialogue_version:1,attempt:input.attempt,service:!input.source}:{}),
+      ...(target.dialogue_version===1?{dialogue_version:1,attempt:input.attempt,service:!input.source,
+        ...(input.signal_id?{blocking:input.kind==='question',resume:input.kind==='decision'}:{})}:{}),
       kind:input.kind,block_id:input.block_id,signal_id:input.signal_id,context_ref:ref,
       body:input.kind+(target.task_id?' · '+target.task_id:''),idempotency_key:input.key,fingerprint,
       delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
@@ -114,7 +115,9 @@ export class WorkflowChannel {
   }
   receipt(message){return {message_id:message.message_id,delivery:message.delivery,read:message.read,reply_observed:message.reply_observed===true,
     ...(message.dialogue_version===1?{operation_id:message.kit_receipt?.operation_id,assignment_id:message.assignment_id,attempt:message.attempt,
-      handled:!!message.yielded,result:message.kit_receipt?.result??null,acceptance:message.kit_receipt?.acceptance??null}:{})};}
+      handled:!!message.yielded,result:message.kit_receipt?.result??null,acceptance:message.kit_receipt?.acceptance??null,
+      block_id:message.block_id??null,problem_id:message.problem_id??null,repair_attempt:message.repair_attempt??null,
+      escalation_required:message.escalation_required===true}:{})};}
   pending(run,member) {
     if(!this.permitted(run,member)||member.deliveryGate||!this.observe(member.target).canSend)return null;
     const first=run.messages.find(m=>m.recipient_id===member.id&&m.scope_id===run.grant.scope_id&&!m.reply_observed);

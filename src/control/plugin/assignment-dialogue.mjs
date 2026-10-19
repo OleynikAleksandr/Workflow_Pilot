@@ -34,8 +34,11 @@ export class AssignmentDialogue {
     const assignments=[];
     for(const target of this.targets(run).filter(t=>t.role==='E'&&(member.role==='O'||t.local_session_id===member.target.local_session_id))){
       try{await this.c.enrollment.validate(target);const state=await this.state(target,target.assignment_id);
+        const physical=state.block?await this.c.workflow.reconcile(target):null;
         assignments.push({recipient_ref:member.role==='O'?reference(run,target):'orchestrator',task_id:target.task_id,
           assignment_id:target.assignment_id,attempt:state.dialogue?.attempt??1,dialogue_version:state.dialogue_version,
+          block:state.block??null,
+          parked:!!state.block&&physical?.stopped===true&&physical.commandsIdle===true&&!physical.busy,
           dialogue:state.dialogue?{grant:state.dialogue.grant,result:state.dialogue.result,acceptance:state.dialogue.acceptance}:null});
       }catch(error){assignments.push({recipient_ref:member.role==='O'?reference(run,target):'orchestrator',task_id:target.task_id,
         assignment_id:target.assignment_id,error:{code:error.code,message:error.message}});}
@@ -103,6 +106,8 @@ export class AssignmentDialogue {
       sender_id:intent.sender_id,sender_role:intent.source.role,recipient_id:recipient?.id??null,recipient_session_id:intent.target.local_session_id,
       kind:effect.kind,context_ref:intent.context_ref,contexts:intent.contexts,in_reply_to:intent.in_reply_to,
       block_id:receipt.block_id??effect.block_id,result_id:effect.result_id,source_commit:effect.source_commit,
+      problem_id:receipt.problem_id??effect.problem_id,blocking:effect.blocking,resume:effect.resume,
+      repair_attempt:receipt.repair_attempt,escalation_required:receipt.escalation_required,
       body:effect.kind+' · '+receipt.task_id,kit_receipt:receipt,idempotency_key:intent.key,fingerprint:intent.fingerprint,
       delivery:'pending',read:false,reply_observed:false,created_at:intent.created_at};
     run.messages.push(message);intent.phase='published';
@@ -128,10 +133,17 @@ export class AssignmentDialogue {
     check(messages.every(m=>m?.dialogue_version===ASSIGNMENT_DIALOGUE_VERSION&&m.recipient_id===member.id&&m.read&&!m.superseded&&m.scope_id===run.grant?.scope_id),
       'YIELD_DENIED','Квитанция относится только к прочитанным сообщениям своего текущего плана.');
     for(const message of messages){
-      check(await c.workflow.currentMessage(member.target,message),'STALE_MESSAGE','Сообщение больше не относится к текущей работе.');
+      const reply=run.messages.find(m=>m.sender_id===member.id&&m.assignment_id===message.assignment_id
+        &&m.in_reply_to===message.message_id&&((m.kind==='revision_request'&&m.result_id===message.message_id)
+          ||(m.kind==='decision'&&m.resume&&m.block_id===message.block_id)));
       if(message.service&&message.sender_role==='backend'&&!message.assignment_id)continue;
       const state=await this.state(member.target,message.assignment_id);
-      check((state.dialogue?.attempt??1)===message.attempt,'STALE_ATTEMPT','Нельзя подтвердить обработку старой попытки.');
+      const decided=member.role==='O'&&message.kind==='question'&&message.block_id
+        &&state.last_decision?.block_id===message.block_id&&state.last_decision.attempt===message.attempt;
+      check(reply||decided||await c.workflow.currentMessage(member.target,message),'STALE_MESSAGE','Сообщение больше не относится к текущей работе.');
+      check((state.dialogue?.attempt??1)===message.attempt
+        ||reply?.kind==='revision_request'&&reply.attempt===state.dialogue?.attempt&&reply.attempt===message.attempt+1,
+        'STALE_ATTEMPT','Нельзя подтвердить обработку старой попытки.');
     }
     for(const message of messages)if(!message.yielded){message.yielded={reason:input.reason,at:c.now(),page:structuredClone(c.workflow.observe(member.target))};
       if(message.intent&&['claimed','unknown'].includes(message.delivery)){
