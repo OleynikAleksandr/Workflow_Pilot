@@ -1,6 +1,6 @@
 # План оркестратора
 
-Workflow Kit 1.8.2 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
+Workflow Kit 1.9.0 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
 
 ## План
 
@@ -13,6 +13,14 @@ Workflow Kit 1.8.2 поддерживает `execution_strategy: "orchestrated"`
 
 В упрощённом plan:create общая спецификация orchestrated-плана — read-контекст, не неявная область записи каждого E. DOCS владеет переносом/удалением. Явно общие documentation_paths всё равно запрещают одновременные назначения; legacy parallel сохранён.
 
+## Версия рабочего диалога
+
+Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 3. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
+
+Kit хранит grant/attempt/result/acceptance и идемпотентные operation_id через assignment:dialogue. task:start требует grant текущей попытки и plan permission; integration требует acceptance точного result_id/source_commit. Revision создаёт новую попытку до интеграции, сохраняет старые proof и отзывает acceptance. После INTEGRATED нужна новая задача. [Полный контракт](../../../../docs/modules/assignment-dialogue.md).
+
+Plan:permission зеркалирует разрешение backend scope/generation; пауза запрещает новые назначения/task:start/resume/integration, но result/question активного хода можно сохранить. Старые планы сохраняют прежние правила. Миграция 0.5.7 выполняется только штатно при безопасной паузе, без повторной работы и ручной правки managed-файлов.
+
 ## Выполнение
 
 - В main обычные задачи и DOCS не начинаются (`ORCHESTRATED_MAIN_READ_ONLY`): их выполняют исполнители через назначения в своих worktree, включая `parallel_safe: false`.
@@ -20,8 +28,10 @@ Workflow Kit 1.8.2 поддерживает `execution_strategy: "orchestrated"`
 - task:start delivery-задачи в main допускается, когда все остальные задачи DONE, нет незавершённых назначений и интеграция свободна (`DELIVERY_NOT_READY`). Её коммит — однородительский implementation поверх merge-коммитов.
 - Начатая delivery-задача любого плана (выпуск собирается из одного закоммиченного `sourceCommit`) откладывается, когда plan:extend добавляет обычную работу: она возвращается в TODO, Kit добавляет следующий раунд DOCS, delivery зависит от него. Незакоммиченные изменения в путях delivery-задачи запрещают это (`DELIVERY_CHANGES_PENDING`).
 - Worktree без назначенных проверок (например, DOCS) не требует npm ci.
-- После подтверждённого INTEGRATED Kit в той же операции удаляет worktree (`git worktree remove` без force) и влитую ветку (`git branch -d`). Отказ удаления не отменяет интеграцию: назначение получает `cleanup.status: PENDING`. `assignment:cleanup` в main удаляет оставшееся только для INTEGRATED, остальное перечисляет; `only_main: true` — остался один main. Для прежних parallel-планов worktree и ветки не удаляются.
+- В legacy после подтверждённого INTEGRATED Kit в той же операции удаляет worktree (`git worktree remove` без force) и влитую ветку (`git branch -d`). Отказ удаления не отменяет интеграцию: назначение получает `cleanup.status: PENDING`. `assignment:cleanup` в main удаляет оставшееся только для INTEGRATED, остальное перечисляет; `only_main: true` — остался один main. Для прежних parallel-планов worktree и ветки не удаляются. В dialogue_version=1 интегрированные worktree сохраняются для квитанций до assignment:cleanup после итоговой обработки O.
 - Если интеграция DOCS удаляет документ, указанный в context_pack с ревизией WORKTREE, общий план закрепляет ревизию коммита до слияния; recovery main не ссылается на удалённый файл. Закреплённые ревизии не меняют контракт назначения.
+
+В новом режиме рекомендуемый model API workflow_assignment_send применяет эффект Kit и публикует авторское сообщение. CLI ниже совместимы с той же корреляцией; агент не дублирует MCP-операцию. Clarification/facts сохраняют block_id и счётчик ремонта; только O decision resume=true снимает актуальную блокировку. E после commit отправляет result, O принимает и интегрирует каждый результат до общего финального поручения.
 
 ## Сигналы
 
@@ -42,7 +52,7 @@ Workflow Kit 1.8.2 поддерживает `execution_strategy: "orchestrated"`
 `recover --role orchestrator|discussion|executor` (и `--format packet`) — роль передаёт приложение:
 
 - orchestrator и discussion — полный recovery с блоком роли; discussion не создаёт и не меняет план, документы создаёт только по просьбе пользователя в `.workflow-temp/`.
-- executor — только в worktree назначения: идентичность, Workflow Core, PROTOTYPE, проектная часть AGENTS, задача и документы её context_pack; документы плана, список docs/planning, Review и решения пользователя не передаются.
+- executor — только в worktree назначения: идентичность, Workflow Core, PROTOTYPE, проектная часть AGENTS и собственное состояние. В dialogue_version=1 документы context_pack не прикладываются: O выбирает их для адресной отправки. Legacy сохраняет задачу и её context_pack. Полные документы плана, список docs/planning, Review и решения пользователя не передаются.
 - Без роли — прежний recovery. Для orchestrated-плана в main recovery показывает исполнителей, очистку и заблокированные задачи, а продолжение не предлагает task:start обычных задач.
 
 `.workflow-temp/` входит в управляемую секцию `.gitignore`; install --update дополняет её, ручная правка секции останавливает обновление (`MODIFIED_INTEGRATION`).

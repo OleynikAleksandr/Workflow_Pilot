@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Workflow Pilot 0.5.7 — локальные проекты, планы Workflow Kit 1.8.2 и ChatGPT Web (Chat/Work), собственный MCP-исполнитель и [панель диалога](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор 0.6.115](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
+Workflow Pilot 0.5.8 — локальные проекты, планы Workflow Kit 1.9.0 и ChatGPT Web (Chat/Work), собственный MCP-исполнитель и [панель диалога](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор 0.6.115](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
 
 ## Устройство
 
@@ -18,21 +18,17 @@ Backend — фоновая служба с Control, Execution, Kit, stores, ст
 
 ## Выполнение и диалог
 
-У любого плана одна кнопка Start/Пауза/Continue и Review. Новые orchestrated-планы выполняются назначениями в worktree: O обсуждает/публикует, E выполняют задачи, Kit проверяет интеграции, O завершает delivery/cleanup/итог. Начатые sequential/parallel сохраняют прежний маршрут и ту же кнопку.
+Одна кнопка Start/Пауза/Continue и Review сохранены. Новые orchestrated-планы имеют dialogue_version=1: O выбирает задачи/контекст, ведёт уточнения и принимает конкретные результаты перед интеграцией. Backend создаёт допустимые назначения, доставляет сообщения и пробуждает агентов; Kit хранит план/proof, WAL — текст/receipts. Автоматического merge по READY в новом режиме нет.
 
-В 0.5.7 startup через DOM передаёт полное recovery и приглашение открыть панель. O/E регистрируют существующие локальные сессии без ручного join/ID/Enable. Публикация не запускает план. Start разрешает текущий scope и последующие назначения; SDK/bind и завершённый bootstrap предшествуют рабочему сообщению.
+O получает полный начальный DOM-recovery. E через DOM получает только обязательные правила/identity/приглашение панели, заканчивает bootstrap и ждёт task O. После SDK/bind ready идёт O, затем task/context E; вопрос/уточнение/решение/result/acceptance идут по каналу. Роли из одного role-protocol.mjs (версия 3); панель 0.5.8-communication-3, протокол 3. [Полная схема и обязанности](../modules/assignment-dialogue.md).
 
-DialogueDelivery связывает прежний scheduler с долговечной очередью PluginCommunication, без второго плана. Рабочие поручения, блокировки/решения, интеграции и итог идут через SDK; DOM сохраняет bootstrap и прежний Review/legacy, скрытого fallback нет. Свежая identity/назначение, observer busy/draft и FIFO защищают адресацию. Accepted, read, завершённый ход и DONE различаются. Ролевые инструкции — один role-protocol.mjs Kit; решения относятся к точному block_id. Протокол панели 2, build 0.5.7-communication-2.
+FIFO учитывает read, коррелированный yield и свежий физический конец хода без обязательного user bubble. Intent → идемпотентный Kit → WAL сохраняет эффект между сбоями. После вопроса следующий ответ не ждёт DONE. Неопределённый Send не повторяется. Закрытие окна сохраняет backend; restart требует одного Continue. Пауза запрещает новые назначения/пробуждения/интеграции, активный ход может сохранить outbox. DOCS/delivery/cleanup/итог и обработанные receipts предшествуют отключению связи.
 
-Закрытие окна не отзывает допуск, restart требует одного Continue. Ручной Stop прекращает отправки всего плана; UNKNOWN не повторяется. Финальные интеграции/delivery/cleanup и ответ предшествуют отключению канала, ручной archive не требуется. Поддержка хостом новой панели и SDK проверяется отдельно: живой WebContentsView её не доказывает.
-
-URI панели определяется SHA-256 полного HTML; MCP объявляет и отдаёт неизменяемый снимок. Обновление каталога и свежий вызов выбирают новый ресурс; старый результат в истории не считается обновлённой панелью. Подробности — [контракт ресурса](../modules/chatgpt-plugin.md#ресурс-панели-и-обновление).
-
-В 0.5.7 общая подготовка runtime сериализована, временная внешняя блокировка имеет ограниченное ожидание. Выбор живой сессии сохраняет её страницу, отправку и наблюдение до постоянного URL. Статусы отдельно отражают регистрацию, живой SDK и доставку. Незавершённые проекты удаляются по решению пользователя с адресной остановкой собственных операций; журнал удаления переживает restart. Pending-транзакция Kit удерживает выполнение своего проекта, сохраняя доступ к архиву и соседним проектам.
+Новые фоновое readiness и статус каждого E проверяются без выбора sidebar. URI панели — SHA-256 полного HTML, MCP обслуживает неизменяемый snapshot; старый iframe не обновляется от переустановки. Рабочие проекты/профили тестами не меняются. Старые планы сохраняют контракт; переход активного 0.5.7 — [явная миграция в паузе](../modules/assignment-dialogue-reliability.md#переход-старого-плана). Удаление незавершённого проекта сохраняет адресную остановку, журнал очистки и защиту соседей.
 
 ## Карта модулей
 
-- [Плагин/канал](../modules/chatgpt-plugin.md), [приёмка S1–S3](../modules/automatic-agent-dialogue-acceptance.md), [матрица](../modules/chatgpt-plugin-acceptance.md), [legacy P0/P1](../modules/plugin-communication-handoff.md).
+- [Плагин/канал](../modules/chatgpt-plugin.md), [приёмка A–D](../modules/automatic-agent-dialogue-acceptance.md), [матрица](../modules/chatgpt-plugin-acceptance.md), [legacy P0/P1](../modules/plugin-communication-handoff.md).
 - [Backend](../modules/backend.md), [Desktop](../modules/desktop.md), [встроенное окно](../modules/native-window.md), [Browser](../modules/browser.md), [iPad/Tailscale](../modules/remote-access.md).
 - [Control](../modules/control.md), [workflow coordination](../modules/workflow-execution.md), [оркестрация](../modules/orchestrated-execution.md), [совместимость Kit](../modules/project-compatibility.md), [жизненный цикл проектов](../modules/project-lifecycle.md).
 - [Execution](../modules/execution.md), [Linux runtime](../modules/linux.md), [первый запуск](../modules/first-run-onboarding.md), [поставка](../modules/release.md).
@@ -43,6 +39,6 @@ URI панели определяется SHA-256 полного HTML; MCP об�
 
 Запуск/установка — [README](../../README.md); состав — release-manifest.json. Installer обновляет Applications готовым bundle, при работающей службе оставляет проверенный pending; переключает версию пользователь.
 
-Автоматические проверки используют изолированные HTTP API/runtime/SDK/MCP/Kit/Git/Electron fixtures без модельных ходов и рабочих профилей. S1 на 0.5.6 завершился FAIL: конфликт подготовки службы у первого исполнителя, потеря начатой страницы у второго; регистрация второго не доказала SDK. S1–S3 нового 0.5.7 — NOT_RUN. Пользователь ранее подтвердил вход/туннель/контекст, панели Chat/Work, Retina-кадр, переподключение и вставку текста; сообщил об обмене прежней пары O/E при закрытом интерфейсе и живых службах. Это не приёмка новых назначений.
+Автоматические проверки используют изолированные HTTP API/runtime/SDK/MCP/Kit/Git/Electron fixtures без модельных ходов и рабочих профилей. Включают два и пять E, выбранный контекст, многоходовую блокировку, result/revision/acceptance/интеграции и DOCS. S1 0.5.6 и Test_02 0.5.7 — FAIL целевого workflow. A–D 0.5.8 — NOT_RUN. Ранее пользователь сообщил об обмене прежней пары при закрытом интерфейсе и живой службе; это не приёмка новых назначений.
 
 Pending: полная macOS-служба/Finder/Dock/Spotlight/меню/clipboard/файлы, оркестрация/архив/восстановление E/to-do с настоящими чатами, встроенное/HTTP-окно, iPad через реальный Tailscale/мобильную сеть. Native Windows/Linux, UTM и clean-install отложены. Secure MCP Tunnel собственный; VPS без собственного маршрута — setup-required. История выпусков хранится в Git.

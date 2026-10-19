@@ -10,6 +10,8 @@ Control не импортирует Electron, fs, child_process. IO проход
 
 createPlugin использует тот же ProjectsService через приватный Execution-мост существующего MCP; мост поднимает backend, поэтому плагин работает без открытого окна. Внешняя сессия хранит хеш идентификатора разговора, не запускает браузер и выполнение плана. Контракт и ограничения — [плагин ChatGPT](chatgpt-plugin.md).
 
+AssignmentDialogue сохраняет авторский intent, вызывает идемпотентный эффект Kit и публикует WAL. O выбирает task/context и принимает результат, Control не сочиняет их. DialogueDelivery связывает физический конец SDK-хода с прежним scheduler без требования user bubble. [Контракт ролей](assignment-dialogue.md) и [восстановление](assignment-dialogue-reliability.md).
+
 PluginCommunication владеет реестром O/нескольких E, приглашениями, допуском scope, очередью и WAL. PluginProjects передаёт свежие факты назначения; DialogueDelivery связывает канал с прежним scheduler и наблюдениями страницы/команд, без второго плана. Execution сохраняет мутации до подтверждения через fsync. Перед SDK проверяются identity, назначение, разрешение, занятость/черновик и одноразовое намерение. Start/Continue разрешает план, Stop отзывает отправки всего плана; restart требует Continue, UNKNOWN не повторяется. Sidebar адресата не выбирает. Контракт — [плагин](chatgpt-plugin.md).
 
 control-facade.test проверяет владение, restart, detached snapshots, UNKNOWN и откат записи; backend-api и backend-end-to-end — те же операции через API без клиента. chatgpt-plugin.test проверяет UI→MCP→Control. Electron smoke проходит реальные IPC на изолированных fixtures, включая удаление и внешнюю сессию. Живую приёмку выполняет пользователь.

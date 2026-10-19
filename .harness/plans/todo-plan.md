@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 617,
+  "plan_revision": 619,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -174,7 +174,9 @@
       "docs/planning/executor-readiness-recovery.md",
       "packages/workflow-kit/src/templates/PROTOTYPE.md",
       "packages/workflow-kit/src/WORKFLOW.md",
-      "packages/workflow-kit/src/templates/PLAN.md"
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/assignment-dialogue-reliability.md"
     ]
   },
   "baseline_commit": "99e36fd1df663fb269ddf6f695423f5bd5a44fe9",
@@ -184,17 +186,17 @@
       {
         "path": "docs/planning/orchestrator-owned-dialogue.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
       },
       {
         "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
       },
       {
         "path": "docs/planning/orchestrator-owned-dialogue-results.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -261,15 +263,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -351,15 +356,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -438,15 +446,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -528,15 +539,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -611,15 +625,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -699,15 +716,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -786,15 +806,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -903,15 +926,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -1010,15 +1036,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -1118,15 +1147,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -1166,8 +1198,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "DOCS",
@@ -1213,7 +1245,9 @@
         "docs/planning/executor-readiness-recovery.md",
         "packages/workflow-kit/src/templates/PROTOTYPE.md",
         "packages/workflow-kit/src/WORKFLOW.md",
-        "packages/workflow-kit/src/templates/PLAN.md"
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/assignment-dialogue-reliability.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -1230,20 +1264,49 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/orchestrated-execution.md",
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/workflow-execution.md",
+        "docs/modules/desktop.md",
+        "docs/modules/control.md",
+        "docs/modules/browser.md",
+        "docs/modules/backend.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/planning/executor-readiness-recovery.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/planning/orchestrator-owned-dialogue.md",
+        "docs/planning/orchestrator-owned-dialogue-reliability.md",
+        "docs/planning/orchestrator-owned-dialogue-results.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1276,15 +1339,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -1324,15 +1390,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -1372,15 +1441,18 @@
         "documents": [
           {
             "path": "docs/planning/orchestrator-owned-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           },
           {
             "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-            "required": true
+            "required": true,
+            "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
           }
         ],
         "include_last_completed_task": false,
@@ -1411,7 +1483,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 617
+Revision: 619
 
 ## Цель
 
@@ -1490,10 +1562,10 @@ Revision: 617
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/electron-smoke.mjs, tests/backend-end-to-end.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/src/lib/common.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/fixtures/plugin-host.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/recovery.mjs, scripts/prepare-agent-dialogue-experiment.mjs, src/contracts/dialogue-view.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/frontend/plugin/launch.mjs, tests/dialogue-experiment.test.mjs, tests/orchestrated-execution.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/dialogue-delivery.test.mjs, tests/panel-resource-upgrade.test.mjs, docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md, AGENTS.md
   - Параллельность: исключительное выполнение
   - Зависимости: T009
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: описать диалог под управлением оркестратора
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: описать диалог под управлением оркестратора
   - Reference: orchestrator-owned-dialogue-refactor / DOCS / implementation
-  - Файлы: docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md, docs/planning/orchestrator-owned-dialogue-results.md, README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/plugin-communication-handoff.md, docs/modules/control.md, docs/modules/execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/executor-readiness-recovery.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md, docs/planning/orchestrator-owned-dialogue-results.md, README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/plugin-communication-handoff.md, docs/modules/control.md, docs/modules/execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/executor-readiness-recovery.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010
 - [TODO] RELEASE: Собрать единый выпуск рефакторинга — Ожидает

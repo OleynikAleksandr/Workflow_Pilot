@@ -10,6 +10,8 @@
 
 Обычный выбор сессии или задачи сначала ищет её живой backend record. При сохранённой identity он показывается без навигации, повторной readiness и cancel, включая sending/busy и временный `/c/local-chatgpt…` до chatUrl. Наблюдение продолжает сохранять постоянный адрес исходного назначения. После restart/crash отсутствие известного адреса не разрешает новый Send: показывается неизвестный исход. Явная перезагрузка остаётся отдельной операцией. Изолированный Electron проверяет настоящий обработчик выбора между отправкой и постоянным URL, повторные переключения и сохранение одной отправки для O Chat/Work и Chat-исполнителей.
 
+Для нового диалога readiness bootstrap E повторяется ограниченно до Send при позднем editor, без select/show/focus. Composer предоставляет read-only observeSnapshot; документ/seq и физическая занятость сопоставляются с read/yield текущего SDK-хода. Два свежих спокойных наблюдения не требуют новой user revision. Эта сверка не отправляет DOM-сообщений и не отменяет UNKNOWN. [Транспорт](assignment-dialogue-reliability.md#sdk-fifo-и-конец-хода).
+
 ## Контракт и порядок вызовов
 
 Backend создаёт `BackendBrowserHost` и один раз вызывает `ExecutionFacade.attachBrowser({host, ipc})` (smoke-стенд — с `DesktopBrowserHost`). `openBrowserSession(id)` возвращает тот же порт для живого ID; после release новый вызов создаёт новую страницу. ID формируется координатором из workspace/session/assignment/task, но Execution не интерпретирует эти поля и не принимает stores или планы.

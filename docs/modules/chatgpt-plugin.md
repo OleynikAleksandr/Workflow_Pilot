@@ -1,15 +1,15 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.7, Kit 1.8.2, протокол панели `2`, build `0.5.7-communication-2`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка S1–S3](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.8, Kit 1.9.0, протокол панели `3`, build `0.5.8-communication-3`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
 1. Пользователь открывает локальный проект и будущего оркестратора Chat или Work. Первое полное recovery через существующий DOM-путь содержит ограниченное приглашение. Агент вызывает `workflow_pilot_panel` и открывает панель; это не разрешение выполнять план.
 2. Обсуждение, Review и публикация сохраняют прежний путь. Публикация связывает scope с точным `execution_origin_session_id`, но не запускает работу.
-3. Одна кнопка «Начать выполнение плана» разрешает текущий scope. Control/ParallelExecution через Kit создаёт назначения, worktree и Chat-исполнителей в пределах max_workers. Каждый получает свой bootstrap, регистрируется, завершает загрузочный ход. Рабочий `assignment-start` приходит после подтверждённых SDK/bind и завершения этого хода.
+3. Одна кнопка «Начать выполнение плана» разрешает текущий scope. Control/ParallelExecution через Kit создаёт назначения, worktree и Chat-исполнителей в пределах max_workers. Каждый получает свой bootstrap, регистрируется, завершает загрузочный ход. После SDK/bind и конца bootstrap O получает ready, выбирает задачу и контекст и отправляет собственный task. Backend assignment-start сохранён только для прежнего контракта.
 4. Поручения, продолжения, вопросы/решения, интеграции, delivery и итог передаются через канал. Пользователь не переносит run/participant, не открывает панели исполнителей, не вызывает join/Enable и не пишет «продолжай» при обычной технической блокировке.
 
-Панель не создаёт второй scheduler. Kit остаётся источником задач, назначений, проверок и DONE; локальный коммит исполнителя требует проверенной интеграции. [Оркестрация](orchestrated-execution.md) определяет волны и итоговую очистку. DOM остаётся для первого контекста, прежнего Review и legacy-планов. Выбранный маршрут `plugin-v1`/`legacy-dom` сохраняется; ошибки канала не переключают его скрыто на DOM.
+Панель не создаёт второй scheduler. Kit остаётся источником задач, назначений, проверок и DONE; локальный коммит исполнителя требует проверенной интеграции. [Оркестрация](orchestrated-execution.md) определяет волны и итоговую очистку. DOM передаёт полный начальный контекст O, минимальные обязательные правила/identity/bootstrap E, прежний Review и legacy. [Роли, рабочий API и приёмка результатов](assignment-dialogue.md) определяют dialogue_version=1. Выбранный маршрут `plugin-v1`/`legacy-dom` сохраняется; ошибки канала не переключают его скрыто на DOM.
 
 ## Регистрация и адресация
 
@@ -19,7 +19,7 @@ Control резервирует случайное 32-байтовое пригл
 
 Каждый MCP-запрос использует свежие host metadata. `openai/session` обязателен, organization/subject могут отсутствовать; нормализованная identity хешируется, исходные значения не сохраняются. Название/URL чата, sidebar, клиентские IDs и заявление роли не удостоверяют адресата. При регистрации, чтении и перед Send проверяется действующее назначение; завершённый/заменённый исполнитель не получает новые поручения. Оркестратор видит реестр своего плана, исполнитель — своё назначение. Реестр не выдаёт приглашения, raw metadata или чужие worktree.
 
-Конверт содержит message_id, scope, assignment/task, отправителя/адресата, kind, block_id/signal_id, idempotency key и ссылку на контекст. Типы: assignment-start, continue, question, decision, result, integration, finalization, diagnostic. Получатель выводится из проверенного назначения, ответ — из исходной блокировки. Содержимое сообщения не расширяет полномочия.
+Конверт содержит message_id, scope, assignment/task/attempt, проверенного автора/адресата, kind, in_reply_to, block_id/signal_id, idempotency key и ссылки на контекст. Рабочие типы: task, context_request, context, question, clarification, decision, result, revision_request, acceptance; service ready/recovery/finalization имеет автора backend. Legacy сохраняет прежние assignment-start/continue/integration. Содержимое не расширяет полномочия.
 
 ## Разрешение и срок жизни
 
@@ -29,7 +29,7 @@ Start/Continue выдаёт сохранённый допуск текущему
 | --- | --- |
 | Публикация | Панель готова, рабочих уведомлений нет |
 | Running | Новые назначения и адресные сообщения разрешены |
-| Пауза запрошена | Новые назначения запрещены; текущие вопросы/решения доходят до безопасной точки |
+| Пауза запрошена | В dialogue_version=1 новые назначения/пробуждения/интеграции запрещены; текущий ход сохраняет outbox и безопасно заканчивает команды |
 | Заблокированное назначение без активных команд | Может быть припарковано, чтобы пауза не ждала бесконечно; Continue возобновляет |
 | Ручной Stop панели | Немедленно отзывает отправки всего плана и отражается паузой; уже переданный SDK-запрос не отменяет |
 | pagehide/dispose/смена контекста | Отсоединяет экземпляр панели; не отзывает допуск плана или нового экземпляра |
@@ -42,13 +42,13 @@ Start/Continue выдаёт сохранённый допуск текущему
 
 ## Доставка и блокировки
 
-Существующий observer страницы и журнал команд сообщают занятость, черновик и незавершённую работу. FIFO каждого разговора не допускает второй Send до завершения предыдущего. Перед SDK: свежая identity/назначение/поколение, допуск и одноразовый claim/verify; затем сохранённый send.intent. Завершение хода подтверждается новым пользовательским и завершённым ответным ходом, read и accepted. Одна квитанция этого не заменяет.
+Существующий observer страницы и журнал команд сообщают занятость и черновик. Перед SDK проверяются identity/назначение/generation/допуск, одноразовый claim/verify и durable send.intent. В новом диалоге FIFO освобождается по read + собственному yield + свежему физическому концу хода без обязательной новой пользовательской реплики. Ранний yield/старый idle не открывают вход; ограниченная read-only сверка не запускает модель. [Точный контракт](assignment-dialogue-reliability.md#sdk-fifo-и-конец-хода).
 
 `pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report не возвращает pending. UNKNOWN и остальные терминальные исходы не повторяются через SDK или DOM. После restart claimed становится unknown. Большой контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
 
-Канонические сигналы — Kit `task:block` и `assignment:message --block-id`. Координатор сохраняет outbox до передачи, повтор после сбоя использует устойчивый ключ signal_id и прежний полный текст. Один ключ с другим содержимым отвергается. Агент не дублирует сигнал через send_message. Устаревшее решение не исполняется: до intent пропускается; после intent удерживает очередь до наблюдённого завершения, чтение возвращает указание не выполнять, контекст — STALE_MESSAGE.
+Рабочий model API — workflow_assignment_send/yield/status: авторский task, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 
-[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — один источник инструкций (`role-protocol.mjs`, версия 2). E сначала пробует допустимое исправление, затем сообщает ошибку/попытки/файлы/команды/точку продолжения и ждёт O без DONE. O отвечает точному block_id, организует разрешённый ремонт и проверяет возобновление, коммит и интеграцию. Общая среда имеет одного владельца; исходники проходят назначения, запрет реализации в main сохраняется. Третье повторение проблемы требует эскалации; новый цикл — только после явного решения пользователя. Прежние сигналы не переписываются: ответ без block_id может закрыть только прежнюю блокировку без block_id. Уже открытый разговор получает новые инструкции с очередным сообщением без повторного task:start.
+[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 3: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
 
 ## MCP и SDK
 
@@ -56,6 +56,9 @@ SDK: ext-apps 1.7.5, mcp-extensions 0.2.0, MCP 1.32.1. Настоящий `App.c
 
 | Операция | Доступ и контракт |
 | --- | --- |
+| workflow_assignment_send / yield / status | Model-only; task/context/вопросы/result/acceptance, квитанции обработки и свой реестр без user transport ID |
+| workflow_assignment_migrate | Model-only; явный безопасный переход старого scope от O после паузы |
+
 | workflow_pilot_panel | Model, optional enrollment_ticket; мутация регистрации и UI. Без приглашения открывает существующую панель. Успех вызова не доказывает mount/SDK |
 | communication_read_message | Model, message_id; workflow выводит участника из identity, legacy принимает run_id/participant_id; сохраняет read, возвращает текущие инструкции роли |
 | communication_read_context | Model, message_id/context_ref/part=0; прочитать 0…total−1 перед работой |
@@ -68,11 +71,11 @@ SDK: ext-apps 1.7.5, mcp-extensions 0.2.0, MCP 1.32.1. Настоящий `App.c
 | communication_status / journal / export | Model/App, run_id/participant_id; journal/export по 100 событий, export фиксирует through_seq до complete |
 | communication_telemetry | App, binding и очищенное событие с event_id/client_sequence |
 
-Имена communication_* имеют префикс `workflow_`. Binding: run_id, participant_id, panel_instance_id, protocol_version, build_id и permission_generation для доставки; посторонние поля отклоняются. Read-only: status/journal/export/recover/participants/read_context. Регистрация, read-квитанция и остальные мутации имеют readOnlyHint=false. Данные не возвращают UI resource.
+Имена communication_* имеют префикс `workflow_`. Binding: run_id, participant_id, panel_instance_id, protocol_version, build_id и permission_generation для доставки; посторонние поля отклоняются. Read-only: status/journal/export/recover/participants/read_context. Регистрация, read-квитанция и остальные мутации имеют readOnlyHint=false. Ответы communication содержат panel_resource_uri текущего immutable MCP snapshot; это диагностика каталога, не новое UI-вложение или доказательство старого iframe. Recover также сообщает assignment_dialogue_version и role_protocol_version.
 
 Legacy-only join/send_message/probe/enable сохраняют отдельный [ручной эксперимент P0/P1](plugin-communication-handoff.md): два разных разговора O/E, Enable на 30 минут, body до 4096 UTF-8 байт. Backend отвергает применение этих операций к рабочему плану. Старые журналы и экспорт доступны без автоматического разрешения.
 
-Свежая metadata подтверждает наблюдаемый момент, но verify и SDK target:active не атомарны. Хост может не сообщить навигацию. Собственный observer встроенной страницы не является предполагаемым API busy/черновика ChatGPT. Host confirmations не обходятся; необходимость посетить/подключить каждый новый чат означает FAIL автоматизации S1.
+Свежая metadata подтверждает наблюдаемый момент, но verify и SDK target:active не атомарны. Хост может не сообщить навигацию. Собственный observer встроенной страницы не является предполагаемым API busy/черновика ChatGPT. Host confirmations не обходятся; необходимость посетить/подключить каждый новый чат означает FAIL автоматизации A–D.
 
 ## Хранение, UI и диагностика
 
@@ -82,7 +85,7 @@ WAL в собственном `plugin-communication`: legacy schema 1, workflow 
 
 Новый panel_instance_id создаётся при mount. Handshake → свежий recover → bind → sync; при позднем SDK восстановление ограничено и не создаёт модельных ходов. Исторический tool-result, включая старую версию/ошибку, не управляет актуальной привязкой или разрешением. Рабочий UI скрывает ручные поля/Enable, показывает роль, scope/task/assignment и причину неготовности; один run выбирается автоматически. Sync в ожидании разрешения выполняется раз в две секунды и перед wait. Backoff ошибок ожидания 250–5000 мс; binding/version/storage прекращает локальную доставку. Ошибка claim/verify/report не порождает повтор Send. Светлая/тёмная тема и узкая раскладка поддержаны.
 
-Sidebar читает регистрацию, актуальную SDK lease и квитанцию первого assignment-start отдельно. Lease требует совпадения identity/поколения, messageSupported и неистёкшего присутствия; успешный MCP-вызов и ready страницы её не заменяют. Проекция не создаёт событий/разрешений и не выдаёт tickets или текст контекста. После удаления проекта сохранённый запрет сессий отзывает регистрацию/приглашения/допуск, pending отклоняется, claimed становится unknown; поздняя регистрация или enqueue отвечает `PROJECT_REMOVED`. Принятая история сохраняется без права новой отправки.
+Sidebar читает регистрацию, живой SDK, task/attempt/grant/result/acceptance и этап интеграции. Панель O показывает всех E и входящие/исходящие с авторами, адресатами и корреляцией; E — свой диалог. Read-only preview не отмечает read. После удаления сохранённый запрет сессий отзывает допуск, intent становится retired; поздние вызовы получают PROJECT_REMOVED. [Наблюдаемость](assignment-dialogue-reliability.md#наблюдаемость).
 
 Лента показывает последние 200 событий с фильтрами; экспорт собирает весь фиксированный through_seq, предлагает download или текст, ошибка не стирает журнал. Телеметрия имеет отдельные client_time/server_received_at, монотонный client_sequence, дедупликацию event_id и frontend.gap. Буфер 64 события; до bind события локальны, после уничтожения последние могут потеряться. Отсутствие server mount не доказывает отсутствие SDK. Intent не доказывает invocation, accepted не доказывает read. Сырые host payload, секреты и произвольные stack traces в телеметрию не записываются; фильтр секретов legacy-текста не является универсальным детектором.
 

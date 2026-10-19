@@ -1,6 +1,6 @@
 # Workflow Kit — контракт пакета
 
-`@webpilot/workflow-kit` 1.8.2 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
+`@webpilot/workflow-kit` 1.9.0 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
 
 ## Код
 - `index.mjs` — `VERSION`, `WorkflowError`, `getRuntimeRoot()`, `currentPlanView`, `sessionPlanView`, пространства `actions`, `plan`, `sessionPlans`, `recovery`, `installer`. Exports: `.`, `./cli`, `./install`, `./lib/*`, `./schemas/*`, `./templates/*`, `./examples/*`, `./WORKFLOW.md`; bin `workflow`. Экспорты и lib-подпути сохраняются: их импортируют потребители.
@@ -62,7 +62,7 @@ Prepare требует явного получателя либо manual; respon
 - `plan:carryover --input {scope, id, approval_note[, objective]}` — по отдельному поручению (`USER_CLOSE_REQUIRED`), чистое дерево, без активной задачи: незавершённые задачи (критерии, проверки, context_pack, взаимные зависимости) — новый current plan с `carryover.source_commit` прежнего; один коммит, повтор после успеха безопасен.
 
 ### Recovery
-Сборщик детерминированно читает источники; модели и пересказов нет.
+Для E диалога 1 — [ролевой состав](orchestrated-plans.md#recovery-по-ролям); ниже — полный recovery.
 - Состав: идентичность (проект, scope, worktree, plan, HEAD) → Workflow Core → PROTOTYPE → проектная часть `AGENTS.override.md`/`AGENTS.md` без Kit-секции → факты среды → «ФОРМЫ ПО ЗАПРОСУ» → цель, решения пользователя → все задачи → изменения после выпуска → прошлый план (NONE) → `docs/planning` (путь, заголовок, байты) → required-документы → пути изменений и посторонних правок → транзакция → evidence → продолжение → полнота. В строке полноты «Включено» `AGENTS.md` указывается, только если его проектная часть непуста и передана.
 - Карточка задачи: заголовок, зачем, статусы, зависимости, критерии, SHA и `git show`, файлы с точными добавлениями/исключениями, проверки. JSON плана и тексты diff не передаются: коммиты и диффы агент читает по ссылкам.
 - NONE: `archived_scope_id`, коммит закрытия (подтверждён trailers, `CONTEXT_ARCHIVE`), строки «id — заголовок — статусы — SHA», ссылки на его спецификации на ревизии родителя закрытия; проект без прошлого плана — норма.
@@ -89,7 +89,7 @@ Prepare требует явного получателя либо manual; respon
 ### Установка и обновление
 - `install --project <abs> [--mode new] [--dry-run]`: new — пустая папка (`FOLDER_NOT_EMPTY`); без Git — `git init -b main`. Создаёт `.harness/kit/**`, `scripts/workflow{,.mjs,.cmd}`, `.harness/workflow.json` (`document_bytes` 28000, `hard_bytes` 180000), NONE-план, Kit-секцию AGENTS, README и OVERVIEW при отсутствии, секции `.gitignore`/`.gitattributes`, SessionStart в `.codex/hooks.json`, git hooks, manifest. Занятые пути не перезаписываются (`INSTALL_CONFLICT`); `--expected-fingerprint` → `PREVIEW_CHANGED`. Нет автора Git (задаётся `--git-name`/`--git-email`) или есть исходные изменения — коммит ждёт `install:commit`. Та же версия — reconnect (hooks, runtime).
 - Runtime: macOS/Linux — Node ≥ 22 из `/opt/homebrew/bin` или `/usr/local/bin`, иначе копия в `.harness/runtime/node`; Windows — `.harness/runtime/node.exe`, MinGit из `WORKFLOW_GIT_HOME` в `.harness/runtime/git` (иначе системный Git).
-- install --update поддерживает upgradeFrom: 1.1.0–1.3.0, 1.4.0–1.4.13, 1.5.0–1.5.6, 1.6.0–1.6.4, 1.7.0–1.7.3, 1.8.0–1.8.1. Неизвестная версия/изменённый owned-файл → UNSUPPORTED_MIGRATION. До записи проверяет plan, Git, identity, index и пути; operation.lock, незавершённая transaction, активное назначение/интеграция запрещают upgrade до записи. Backup — .harness/runtime/kit-upgrade-<id>/. Legacy tracked-пути удаляются только при равенстве HEAD/index/worktree; NONE получает required OVERVIEW. Один kit-update сохраняет активный план. [Контракт](parallel-assignments.md).
+- install --update поддерживает upgradeFrom: 1.1.0–1.3.0, 1.4.0–1.4.13, 1.5.0–1.5.6, 1.6.0–1.6.4, 1.7.0–1.7.3, 1.8.0–1.8.2. Неизвестная версия/изменённый owned-файл → UNSUPPORTED_MIGRATION. До записи проверяет plan, Git, identity, index и пути; operation.lock, незавершённая transaction, активное назначение/интеграция запрещают upgrade до записи. Backup — .harness/runtime/kit-upgrade-<id>/. Legacy tracked-пути удаляются только при равенстве HEAD/index/worktree; NONE получает required OVERVIEW. Один kit-update сохраняет активный план. [Контракт](parallel-assignments.md).
 - Упразднённые документы и индекс установщик не восстанавливает (миграция документации — отдельная работа); `soft_tokens`/`hard_tokens` принимаются, но не ограничивают.
 - `inspect`, `doctor` ничего не меняют; `remove --dry-run` → `--apply <remove_id>` — только при NONE без транзакции (`ACTIVE_SCOPE`), изменённое сохраняется.
 

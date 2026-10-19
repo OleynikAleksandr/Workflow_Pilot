@@ -21,6 +21,8 @@
 
 Модель Desktop (`desktop-model.mjs`) — прежняя логика `application.mjs`, перенесённая в backend с теми же каналами pilot:*/archive:*/colors и снимками состояния; поведение 0.1.6 сохранено. Окно ей не нужно: состояние уходит в поток событий, просьбы открыть архив, редактор цветов, сменить тему или раскладку адресуются подключённому клиенту. Путь проекта выбирает диалог backend: это папка компьютера backend, а не файловый диалог удалённого клиента.
 
+Рабочий dialogue_version=1 сохраняет intent/Kit/WAL и permit текущего backend в Kit; restart отзывает permit до общего Continue. O/E остаются авторами содержания. Пауза сохраняет outbox активного хода, но не открывает новые пробуждения/интеграции. [Диалог](assignment-dialogue.md), [восстановление](assignment-dialogue-reliability.md).
+
 ### Процессы и профиль
 
 Профиль backend — прежний `<appData>/Workflow Pilot` с Chromium `browser/` и partition `persist:workflow-pilot-chatgpt`; профиль 0.1.6 используется на месте без смены схемы. Клиент хранит только собственные окна в `<appData>/Workflow Pilot Client`. Одновременно профилем владеет один процесс: Electron single-instance lock плюс `.backend-host/owner.json` (product, pid, boot generation, права 0600). После доказанного владения backend публикует приватный descriptor `.backend-host/service.json` (port, token, pid, generation) атомарной записью.
