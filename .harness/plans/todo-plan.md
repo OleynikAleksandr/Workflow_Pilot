@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 553,
+  "plan_revision": 554,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Пользователь одним запуском плана автоматически подключает оркестратора и исполнителей; исполнитель сообщает техническую блокировку, получает решение и продолжает задачу без ручных ID, Enable и пользовательского продолжения.",
   "acceptance_criteria": [
     "Первое сообщение автоматически открывает панель будущего оркестратора; обсуждение/Review/публикация сохраняются, публикация сама выполнение не запускает.",
@@ -104,7 +104,12 @@
       "tests/release-mac.test.mjs",
       "tests/workflow-kit-upgrade.test.mjs",
       "tests/fixtures/released-kit/manifest.json",
-      "tests/fixtures/released-kit/kit-1.8.1.tar.gz"
+      "tests/fixtures/released-kit/kit-1.8.1.tar.gz",
+      "tests/panel-resource-upgrade.test.mjs",
+      "scripts/release-package.mjs",
+      "scripts/check-plugin-resource.mjs",
+      "tests/release-all.test.mjs",
+      "tests/release-linux.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/automatic-agent-dialogue.md",
@@ -131,7 +136,8 @@
       "docs/modules/release.md",
       "packages/workflow-kit/docs/modules/parallel-assignments.md",
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
-      "docs/planning/plugin-plan-lifetime.md"
+      "docs/planning/plugin-plan-lifetime.md",
+      "docs/planning/panel-resource-upgrade.md"
     ]
   },
   "baseline_commit": "87a92ea22963dd1af1a23a2cb2451e096af732d5",
@@ -150,6 +156,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/panel-resource-upgrade.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -1101,6 +1112,215 @@
       "expected_commit_message": "release: Опубликовать выпуск и передать S1–S3 пользователю",
       "verification_kind": "package",
       "actual_files": []
+    },
+    {
+      "id": "T007",
+      "title": "Версионировать ресурс панели и объяснить несовместимость",
+      "why": "Новый HTML не должен получать старый ключ кэша ChatGPT.",
+      "dependencies": [
+        "PUBLISH"
+      ],
+      "functional_paths": [
+        "tools/codex-app-server-mcp/plugin.py",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/plugin-communication.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/panel-resource-upgrade.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "URI зависит от SHA-256 полного HTML; tools/list и resources/read используют один неизменяемый снимок.",
+        "Прежний URI возвращает безопасное сообщение перехода без действий связи; новый инструмент не ссылается на него.",
+        "Строгий отказ несовместимых build/protocol сохранён; ошибка содержит обе версии и корректные действия."
+      ],
+      "expected_commit_message": "feat: Версионировать ресурс панели и объяснить несовместимость",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-automatic-agent-dialogue",
+        "task_id": "T007",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T008",
+      "title": "Проверить переход со старого кэша и подготовить 0.5.6",
+      "why": "Проверить обновление каталога и ресурса с сохранённой прежней панелью и согласованность поставки.",
+      "dependencies": [
+        "T007"
+      ],
+      "functional_paths": [
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/panel-resource-upgrade.test.mjs",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "scripts/release-package.mjs",
+        "scripts/check-plugin-resource.mjs",
+        "tests/release-all.test.mjs",
+        "tests/release-linux.test.mjs",
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs",
+        "tests/backend-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/panel-resource-upgrade.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Изолированный host с кэшем прежнего URI после обновления настоящего каталога загружает новый HTML и автоматически связывает O без ручных полей.",
+        "Изменения HTML/JS/CSS дают новый URI; текущий MCP не меняет содержимое опубликованного снимка.",
+        "Проверка комплекта отвергает несогласованный HTML/build/protocol/ресурс; app/package/lock/backend согласованы на 0.5.6.",
+        "Живая панель ChatGPT остаётся отдельной пользовательской проверкой; исходники Kit не меняются."
+      ],
+      "expected_commit_message": "feat: Проверить переход со старого кэша и подготовить 0.5.6",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-automatic-agent-dialogue",
+        "task_id": "T008",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-automatic-agent-dialogue",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T007",
+        "T008"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/panel-resource-upgrade.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-2",
+      "title": "Собрать исправленный единый выпуск 0.5.6",
+      "why": "Собрать исправленный единый выпуск 0.5.6",
+      "dependencies": [
+        "T008",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/panel-resource-upgrade.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS-2 собраны macOS arm64, Windows x64, Linux x64 из одного sourceCommit; комплект и архивы проверены.",
+        "Перед production build проверены и удалены только Python-кэши tools/codex-app-server-mcp без симлинков."
+      ],
+      "expected_commit_message": "feat: Собрать исправленный единый выпуск 0.5.6",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-automatic-agent-dialogue",
+        "task_id": "RELEASE-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-2",
+      "title": "Установить готовый комплект 0.5.6",
+      "why": "Установить готовый комплект 0.5.6",
+      "dependencies": [
+        "RELEASE-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/panel-resource-upgrade.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer обновляет собственные копии готовым bundle без пересборки; подпись, состав и rollback проверены.",
+        "Работающая служба не останавливается; подтверждённый pending явно отличён от активной новой версии."
+      ],
+      "expected_commit_message": "feat: Установить готовый комплект 0.5.6",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-automatic-agent-dialogue",
+        "task_id": "INSTALL-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-2",
+      "title": "Опубликовать 0.5.6 и передать повторную проверку",
+      "why": "Опубликовать 0.5.6 и передать повторную проверку",
+      "dependencies": [
+        "INSTALL-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/panel-resource-upgrade.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "GitHub Release опубликован в собственном репозитории; тег на sourceCommit, все assets, размеры и digests совпадают; remote main проверен.",
+        "Пользователю переданы статус установки и шаги свежего вызова панели после обновления инструментов; живая приёмка не объявлена пройденной."
+      ],
+      "expected_commit_message": "feat: Опубликовать 0.5.6 и передать повторную проверку",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "workflow-pilot-automatic-agent-dialogue",
+        "task_id": "PUBLISH-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1122,10 +1342,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 553
+Revision: 554
 
 ## Цель
 
@@ -1204,11 +1424,48 @@ Revision: 553
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
+- [TODO] T007: Версионировать ресурс панели и объяснить несовместимость — Ожидает
+  - Git Commit: [PENDING] feat: Версионировать ресурс панели и объяснить несовместимость
+  - Reference: workflow-pilot-automatic-agent-dialogue / T007 / implementation
+  - Файлы: tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, tests/fixtures/plugin-host.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, docs/planning/panel-resource-upgrade.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PUBLISH
+- [TODO] T008: Проверить переход со старого кэша и подготовить 0.5.6 — Ожидает
+  - Git Commit: [PENDING] feat: Проверить переход со старого кэша и подготовить 0.5.6
+  - Reference: workflow-pilot-automatic-agent-dialogue / T008 / implementation
+  - Файлы: tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-host.mjs, tests/panel-resource-upgrade.test.mjs, scripts/stage-chatgpt-plugin.mjs, scripts/release-package.mjs, scripts/check-plugin-resource.mjs, tests/release-all.test.mjs, tests/release-linux.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, tests/backend-upgrade.test.mjs, docs/planning/panel-resource-upgrade.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T007
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: workflow-pilot-automatic-agent-dialogue / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-resource-upgrade.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T007, T008
+- [TODO] RELEASE-2: Собрать исправленный единый выпуск 0.5.6 — Ожидает
+  - Git Commit: [PENDING] feat: Собрать исправленный единый выпуск 0.5.6
+  - Reference: workflow-pilot-automatic-agent-dialogue / RELEASE-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/panel-resource-upgrade.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T008, DOCS-2
+- [TODO] INSTALL-2: Установить готовый комплект 0.5.6 — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовый комплект 0.5.6
+  - Reference: workflow-pilot-automatic-agent-dialogue / INSTALL-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/panel-resource-upgrade.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-2, DOCS-2
+- [TODO] PUBLISH-2: Опубликовать 0.5.6 и передать повторную проверку — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать 0.5.6 и передать повторную проверку
+  - Reference: workflow-pilot-automatic-agent-dialogue / PUBLISH-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/panel-resource-upgrade.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-2, DOCS-2
 
 ## Context Pack For This Cycle
 
 - docs/planning/automatic-agent-dialogue.md
 - docs/planning/automatic-agent-dialogue-acceptance.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/panel-resource-upgrade.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
