@@ -62,6 +62,19 @@ async function fixture(t){
 }
 
 const communicationTools=['bind','claim','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','verify','wait'];
+test('MCP advertises content-addressed HTML and keeps the legacy address inert',async t=>{
+  const f=await fixture(t);const c=await client(t,f);
+  const tool=(await c.listTools()).tools.find(t=>t.name==='workflow_pilot_panel');
+  const uri=tool._meta.ui.resourceUri;
+  const resource=(await c.readResource({uri})).contents[0];
+  assert.equal(uri,'ui://workflow-pilot/panel-'+digest(resource.text)+'.html');
+  assert.equal(resource.uri,uri);assert.equal(resource.mimeType,'text/html;profile=mcp-app');
+  assert.match(resource.text,new RegExp(COMMUNICATION_BUILD));
+  const legacy=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0];
+  assert.match(legacy.text,/Обновите инструменты подключения/);
+  assert.doesNotMatch(legacy.text,/<script|<iframe|<button|<input|<form/i);
+  assert.notEqual(legacy.text,resource.text);
+});
 test('the real project projection reserves the published origin even though persistence omits planExecution',async t=>{
   const f=await fixture(t),workspace=path.join(f.directory,'Первый'),file=path.join(workspace,'.harness/plans/todo-plan.md');
   const write=async state=>fs.writeFile(file,'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify({schema_version:1,project_id:'Первый',project_name:'Первый',
@@ -115,7 +128,11 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
     protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
   const secondMeta={...metadata,'openai/session':'different'};
   assert.equal((await call('bind',{binding},secondMeta)).structuredContent.error.code,'PLUGIN_COMMUNICATION_BINDING');
-  assert.equal((await call('bind',{binding:{...binding,build_id:'old'}})).structuredContent.error.code,'PLUGIN_COMMUNICATION_VERSION');
+  const incompatible=(await call('bind',{binding:{...binding,build_id:'0.5.2-communication-1',protocol_version:1}})).structuredContent.error;
+  assert.equal(incompatible.code,'PLUGIN_COMMUNICATION_VERSION');
+  assert.match(incompatible.message,/0\.5\.2-communication-1 \(протокол 1\)/);
+  assert.ok(incompatible.message.includes(COMMUNICATION_BUILD));
+  assert.match(incompatible.message,/Обновите инструменты подключения/);
   assert.equal((await call('bind',{binding})).isError,false);
   assert.equal((await call('enable',{binding,message_supported:false})).structuredContent.error.code,'PLUGIN_COMMUNICATION_UNSUPPORTED');
   const enabled=(await call('enable',{binding,message_supported:true})).structuredContent;
@@ -300,6 +317,9 @@ test('fresh backend incompatibility blocks recovery even after a matching histor
     ui.notify(historicalToolResult({communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD}}));
     await delay(30);
     assert.match(ui.$('enable-reason').textContent,/Несовместимая панель/);
+    assert.ok(ui.$('enable-reason').textContent.includes(COMMUNICATION_BUILD));
+    assert.ok(ui.$('enable-reason').textContent.includes(String(mismatch.build_id??mismatch.protocol_version)));
+    assert.match(ui.$('enable-reason').textContent,/Обновите инструменты подключения/);
     assert.equal(ui.$('run').value,'');assert.equal(ui.$('participant').value,'');
     assert.equal(ui.calls.includes('workflow_communication_bind'),false);
     assert.equal(ui.$('enable').disabled,true);assert.equal(ui.messages.length,0);assert.deepEqual(ui.errors,[]);

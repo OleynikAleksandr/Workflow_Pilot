@@ -3,6 +3,7 @@ import asyncio
 import http.client
 import json
 import re
+from hashlib import sha256
 from pathlib import Path
 from typing import Annotated, Any
 from uuid import uuid4
@@ -11,7 +12,24 @@ from mcp.server.fastmcp import Context
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import BaseModel, ConfigDict, Field
 
-UI_URI = "ui://workflow-pilot/projects-v1.html"
+LEGACY_UI_URI = "ui://workflow-pilot/projects-v1.html"
+
+
+def load_panel_resource(file: Path) -> tuple[str, str]:
+    # The URI is a host cache key. Keep its bytes immutable for this MCP instance,
+    # even while an updater replaces the source files for the next instance.
+    html = file.read_bytes().decode("utf-8")
+    return "ui://workflow-pilot/panel-" + sha256(html.encode("utf-8")).hexdigest() + ".html", html
+
+
+LEGACY_PANEL_HTML = """<!doctype html><html lang="ru"><meta charset="utf-8">
+<title>Обновите панель Workflow Pilot</title><body>
+<h1>Эта ссылка ведёт к прежней панели Workflow Pilot</h1>
+<p>Обновите инструменты подключения Workflow Pilot в ChatGPT, затем попросите
+агента заново вызвать workflow_pilot_panel в этом разговоре.</p>
+<p>Переустановка приложения сама по себе не заменяет сохранённую панель ChatGPT.
+Идентификаторы участников копировать и отдельно включать связь не нужно.</p>
+</body></html>"""
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 CONNECT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 LAUNCH = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
@@ -102,7 +120,8 @@ def result(data: dict[str, Any]) -> CallToolResult:
 
 def register_plugin(mcp, state_root: Path):
     bridge = PluginBridge(state_root)
-    ui = {"resourceUri": UI_URI}
+    ui_uri, panel_html = load_panel_resource(Path(__file__).parent / "plugin-ui.html")
+    ui = {"resourceUri": ui_uri}
 
     async def communication(action, ctx, **args):
         binding = args.pop("binding", None)
@@ -223,13 +242,20 @@ def register_plugin(mcp, state_root: Path):
         """App-only record an SDK outcome without retrying delivery. Unknown is terminal for this attempt. A late report never revokes an existing read receipt."""
         return await communication("report", ctx, binding=binding, message_id=message_id, delivery_attempt_id=delivery_attempt_id, outcome=outcome)
 
-    @mcp.resource(UI_URI, name="workflow_pilot_projects", title="Workflow Pilot",
+    @mcp.resource(ui_uri, name="workflow_pilot_projects", title="Workflow Pilot",
                   mime_type="text/html;profile=mcp-app",
                   meta={"openai/ui": {"preferredDisplayMode": "fullscreen", "availableDisplayModes": ["inline", "fullscreen"]},
                         "ui": {"csp": {"connectDomains": [], "resourceDomains": []}},
                         "openai/widgetCSP": {"connect_domains": [], "resource_domains": []}})
     def panel_resource() -> str:
-        return (Path(__file__).parent / "plugin-ui.html").read_text(encoding="utf-8")
+        return panel_html
+
+    @mcp.resource(LEGACY_UI_URI, name="workflow_pilot_legacy_panel", title="Обновите панель Workflow Pilot",
+                  mime_type="text/html;profile=mcp-app")
+    def legacy_panel_resource() -> str:
+        # A stale catalogue may still request the old address. Never silently
+        # place a different operational protocol under that historical key.
+        return LEGACY_PANEL_HTML
 
     @mcp.tool(name="workflow_pilot_panel", title="Workflow Pilot", annotations=CONNECT,
               meta={"ui": ui, "openai/ui": {"entrypoints": [{"type": "global"}, {"type": "thread"}]}})

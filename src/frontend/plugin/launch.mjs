@@ -1,5 +1,5 @@
 import {mountPanel} from './panel.mjs';
-import {COMMUNICATION_PROTOCOL as PROTOCOL,COMMUNICATION_BUILD as BUILD} from '../../contracts/backend.mjs';
+import {COMMUNICATION_PROTOCOL as PROTOCOL,COMMUNICATION_BUILD as BUILD,communicationVersionMessage} from '../../contracts/backend.mjs';
 const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|ASSIGNMENT_CHANGED|VERSION|STOPPED|STORE_|CLOSED|LIMIT)/.test(code??'');
 export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=10000}) {
   const ui=mountPanel({document}),$=ui.$,clock=()=>document.defaultView.performance.now(),started=clock();let panelId=uuid();
@@ -167,7 +167,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;expiresAt=0;seq=0;ui.unbound();
       const result=await call('recover');
       if(disposed||suspended||epoch!==generation)return;
-      if(result.build_id!==BUILD||result.protocol_version!==PROTOCOL)throw Object.assign(Error('Несовместимая панель. Переоткройте Workflow Pilot.'),{code:'PLUGIN_COMMUNICATION_VERSION'});
+      if(result.build_id!==BUILD||result.protocol_version!==PROTOCOL)throw Object.assign(Error(communicationVersionMessage({build_id:BUILD,protocol_version:PROTOCOL},result)),{code:'PLUGIN_COMMUNICATION_VERSION'});
       serverError=result.critical_error;
       const assigned=result.participants.filter(p=>p.mode==='workflow');
       if(assigned.length>1)throw Error('Найдено несколько рабочих назначений этого разговора. Требуется проверка backend; выбор вручную запрещён.');

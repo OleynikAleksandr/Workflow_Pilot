@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 554,
+  "plan_revision": 556,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -1143,14 +1143,23 @@
         "Строгий отказ несовместимых build/protocol сохранён; ошибка содержит обе версии и корректные действия."
       ],
       "expected_commit_message": "feat: Версионировать ресурс панели и объяснить несовместимость",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "T007",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/panel-resource-upgrade.md",
+        "tools/codex-app-server-mcp/plugin.py",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "id": "T008",
@@ -1345,7 +1354,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 554
+Revision: 556
 
 ## Цель
 
@@ -1424,8 +1433,8 @@ Revision: 554
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
-- [TODO] T007: Версионировать ресурс панели и объяснить несовместимость — Ожидает
-  - Git Commit: [PENDING] feat: Версионировать ресурс панели и объяснить несовместимость
+- [DONE] T007: Версионировать ресурс панели и объяснить несовместимость — Завершено
+  - Git Commit: [DONE] feat: Версионировать ресурс панели и объяснить несовместимость
   - Reference: workflow-pilot-automatic-agent-dialogue / T007 / implementation
   - Файлы: tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, tests/fixtures/plugin-host.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение

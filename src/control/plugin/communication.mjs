@@ -3,7 +3,7 @@ import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate} from '@webpilot/workflow-kit/lib/role-protocol';
 
-import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS} from '../../contracts/backend.mjs';
+import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
 export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
 const fail = (code, message) => Object.assign(new Error(message), {code:'PLUGIN_COMMUNICATION_'+code});
 const requireValue = (yes, code, message) => { if (!yes) throw fail(code,message); };
@@ -152,7 +152,7 @@ export class PluginCommunication {
     requireValue(panel && panel.runId===context.run.id && panel.memberId===context.member.id
       && panel.identity===context.member.identity,'BINDING','Подтвердите привязку этого экземпляра панели.');
     requireValue(input.protocol_version===COMMUNICATION_PROTOCOL && input.build_id===COMMUNICATION_BUILD,
-      'VERSION','Панель устарела. Переоткройте панель Workflow Pilot.');
+      'VERSION',communicationVersionMessage(input));
     return {...context,panel};
   }
   allowed(input) {
@@ -186,7 +186,7 @@ export class PluginCommunication {
     const {run,member}=this.member(input);
     requireValue(uuid(input.panel_instance_id),'INPUT','Некорректный экземпляр панели.');
     requireValue(input.protocol_version===COMMUNICATION_PROTOCOL && input.build_id===COMMUNICATION_BUILD,
-      'VERSION','Несовместимая версия панели.');
+      'VERSION',communicationVersionMessage(input));
     const previous=this.panels.get(input.panel_instance_id);
     requireValue(!previous || previous.runId===run.id && previous.memberId===member.id,'BINDING','Панель уже связана с другим участником.');
     if(!previous)this.panels.set(input.panel_instance_id,{runId:run.id,memberId:member.id,identity:member.identity,generation:0,expiresAt:0});
