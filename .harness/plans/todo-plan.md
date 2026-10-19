@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 549,
+  "plan_revision": 551,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -997,8 +997,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "INSTALL",
@@ -1044,7 +1044,8 @@
         "dependency_task_ids": []
       },
       "expected_commit_message": "release: Установить готовый macOS-комплект",
-      "verification_kind": "installed"
+      "verification_kind": "installed",
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -1123,7 +1124,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 549
+Revision: 551
 
 ## Цель
 
@@ -1190,8 +1191,8 @@ Revision: 549
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить готовый macOS-комплект — Ожидает
-  - Git Commit: [PENDING] release: Установить готовый macOS-комплект
+- [DONE] INSTALL: Установить готовый macOS-комплект — Завершено
+  - Git Commit: [DONE] release: Установить готовый macOS-комплект
   - Reference: workflow-pilot-automatic-agent-dialogue / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
