@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 619,
+  "plan_revision": 621,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -1309,8 +1309,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "RELEASE",
@@ -1356,7 +1356,10 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1483,7 +1486,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 619
+Revision: 621
 
 ## Цель
 
@@ -1568,8 +1571,8 @@ Revision: 619
   - Файлы: docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md, docs/planning/orchestrator-owned-dialogue-results.md, README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/plugin-communication-handoff.md, docs/modules/control.md, docs/modules/execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/executor-readiness-recovery.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010
-- [TODO] RELEASE: Собрать единый выпуск рефакторинга — Ожидает
-  - Git Commit: [PENDING] release: собрать выпуск рефакторинга диалога
+- [DONE] RELEASE: Собрать единый выпуск рефакторинга — Завершено
+  - Git Commit: [DONE] release: собрать выпуск рефакторинга диалога
   - Reference: orchestrator-owned-dialogue-refactor / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
