@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 551,
+  "plan_revision": 553,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Пользователь одним запуском плана автоматически подключает оркестратора и исполнителей; исполнитель сообщает техническую блокировку, получает решение и продолжает задачу без ручных ID, Enable и пользовательского продолжения.",
   "acceptance_criteria": [
     "Первое сообщение автоматически открывает панель будущего оркестратора; обсуждение/Review/публикация сохраняются, публикация сама выполнение не запускает.",
@@ -1048,8 +1048,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "PUBLISH",
@@ -1099,7 +1099,8 @@
         "dependency_task_ids": []
       },
       "expected_commit_message": "release: Опубликовать выпуск и передать S1–S3 пользователю",
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1121,10 +1122,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 551
+Revision: 553
 
 ## Цель
 
@@ -1197,8 +1198,8 @@ Revision: 551
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск и передать S1–S3 пользователю — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать выпуск и передать S1–S3 пользователю
+- [DONE] PUBLISH: Опубликовать выпуск и передать S1–S3 пользователю — Завершено
+  - Git Commit: [DONE] release: Опубликовать выпуск и передать S1–S3 пользователю
   - Reference: workflow-pilot-automatic-agent-dialogue / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
