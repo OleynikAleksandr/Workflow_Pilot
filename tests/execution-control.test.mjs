@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { ExecutionControl } from '../src/control/workflow/execution-control.mjs';
 
 const W = '/projects/main', SCOPE = 'orchestrated-scope';
+test('the working transport is pinned per plan and old saved plans retain DOM',()=>{
+  const c=new ExecutionControl();assert.equal(c.selectRoute(W,SCOPE,'plugin-v1'),'plugin-v1');c.toggle(W,SCOPE);
+  assert.equal(c.selectRoute(W,SCOPE,'legacy-dom'),'plugin-v1');
+  const restored=new ExecutionControl({saved:c.snapshot()});assert.equal(restored.route(W,SCOPE),'plugin-v1');
+  const old=new ExecutionControl({saved:{[W]:{scopeId:SCOPE,state:'running'}}});
+  assert.equal(old.selectRoute(W,SCOPE,'plugin-v1'),'legacy-dom');
+  assert.equal(restored.selectRoute(W,'next-scope','legacy-dom'),'legacy-dom');
+});
 function control(projectId = 'project-1') {
   const changes = [];
   const value = new ExecutionControl({ identity: () => projectId, now: () => 1000, onChange: workspace => changes.push(workspace) });

@@ -2,7 +2,7 @@ const delivery={pending:'В очереди',claimed:'Попытка начата
 // Rendering only; participant authorization and durable state belong to Control.
 export function mountPanel({document}) {
   const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
-  const $=id=>nodes.get('communication-'+id);let events=[],last=0,trimmed=false;
+  const $=id=>nodes.get('communication-'+id);let events=[],last=0,trimmed=false,workflow=false;
   const text=(id,value)=>{$(id).textContent=value;};
   function renderEvents(){
     const message=$('filter-message').value.trim(),participant=$('filter-participant').value.trim(),errors=$('filter-errors').checked;
@@ -18,6 +18,13 @@ export function mountPanel({document}) {
   }
   for(const id of ['filter-message','filter-participant','filter-errors'])$(id).addEventListener('input',renderEvents);
   return {$,status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
+    mode(value){workflow=value==='workflow';
+      for(const id of ['legacy-fields','bind','enable'])$(id).hidden=workflow;
+      if(workflow){$('run-selection').hidden=true;
+        text('binding-help','Назначение определено по текущему разговору. Привязка выполняется автоматически.');
+        text('permission-help','Связь управляется кнопкой выполнения плана. Отдельное включение для каждого исполнителя не требуется.');
+      }
+    },
     unbound(){text('identity','Участник не подтверждён');text('binding','Проверяем принадлежность текущему разговору.');
       $('run').value='';$('participant').value='';text('permission','Разрешение не выдано');text('queue','Очередь пока недоступна');
       text('last','Сообщений пока нет.');$('messages').replaceChildren();$('export-result').hidden=true;events=[];last=0;renderEvents();},
@@ -29,13 +36,13 @@ export function mountPanel({document}) {
     feed(values,base){
       if(base!==undefined){events=[];last=base;trimmed=base>0;}
       for(const event of values??[]){if(event.seq<=last)continue;
-        if(event.seq!==last+1)text('gap',`Пробел журнала: ожидалось ${last+1}, получено ${event.seq}. Сохраните экспорт.`);
+        if(!workflow&&event.seq!==last+1)text('gap',`Пробел журнала: ожидалось ${last+1}, получено ${event.seq}. Сохраните экспорт.`);
         last=event.seq;events.push(event);
       }
       if(events.length>200){events=events.slice(-200);trimmed=true;}renderEvents();
     },
     snapshot(value){
-      text('identity',`Роль ${value.role} · участник ${value.participant_id}`);
+      text('identity',value.mode==='workflow'?(value.role==='O'?'Оркестратор плана':`Исполнитель · ${value.task_id}\nНазначение ${value.assignment_id}`):`Роль ${value.role} · участник ${value.participant_id}`);
       text('binding',`Привязка подтверждена · ${value.conversation_key}`);
       text('permission',`Поколение ${value.permission_generation} · ${value.expires_at?'до '+new Date(value.expires_at).toLocaleTimeString('ru'):'разрешение не выдано'}`);
       const incoming=value.messages.filter(m=>m.recipient_id===value.participant_id);

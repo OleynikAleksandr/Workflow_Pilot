@@ -157,6 +157,7 @@ export class PluginCommunication {
     const previous=this.panels.get(input.panel_instance_id);
     requireValue(!previous || previous.runId===run.id && previous.memberId===member.id,'BINDING','Панель уже связана с другим участником.');
     if(!previous)this.panels.set(input.panel_instance_id,{runId:run.id,memberId:member.id,identity:member.identity,generation:0,expiresAt:0});
+    this.panels.get(input.panel_instance_id).messageSupported=input.message_supported===true;
     this.event(run,'binding.confirmed',{participant_id:member.id,panel_instance_id:input.panel_instance_id});
     return this._status(input);
   }
@@ -166,6 +167,7 @@ export class PluginCommunication {
       ...(run.mode==='workflow'?this.enrollment.publicMember(run,member):{}),
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       permission_generation:member.generation,stopped:member.stopped||expiresAt<=this.now(),
+      ...(run.mode==='workflow'?{channel_ready:[...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.messageSupported)}:{}),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:expiresAt,
       seq:run.events.length,messages:run.messages.filter(m=>m.recipient_id===member.id||m.sender_id===member.id)
@@ -173,6 +175,7 @@ export class PluginCommunication {
   }
   _enable(input) {
     const {run,member,panel}=this.panel(input);
+    requireValue(run.mode!=='workflow','MODE','Связью рабочего плана управляет кнопка выполнения плана.');
     requireValue(input.message_supported===true,'UNSUPPORTED','Хост не предоставил openai/message.');
     this.cancelProbes(run,member);
     member.generation++;member.stopped=false;panel.generation=member.generation;panel.expiresAt=this.now()+COMMUNICATION_PERMISSION_MS;
@@ -290,8 +293,8 @@ export class PluginCommunication {
   }
   waitResult(input) {
     const {run,member}=this.member(input),pending=run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
-    const events=run.events.slice(input.after_seq,input.after_seq+100);
-    return {message_id:pending?.message_id??null,events,seq:events.at(-1)?.seq??input.after_seq,
+    const end=Math.min(input.after_seq+100,run.events.length),events=this.visibleEvents(run,member,run.events.slice(input.after_seq,end));
+    return {message_id:pending?.message_id??null,events,seq:end,
       stopped:member.stopped||member.generation!==input.permission_generation,critical_error:this.critical};
   }
   _claim(input) {

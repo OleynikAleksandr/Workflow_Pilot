@@ -14,11 +14,19 @@ export class ExecutionControl {
       if (!absolute(workspace) || !entry || !validScope(entry.scopeId) || !EXECUTION_STATES.includes(entry.state)) continue;
       if (entry.reason != null && !PAUSE_REASONS.includes(entry.reason)) continue;
       this.book[workspace] = { projectId: typeof entry.projectId === 'string' ? entry.projectId : null, scopeId: entry.scopeId,
+        route:entry.route==='plugin-v1'?'plugin-v1':'legacy-dom',
         state: entry.state, reason: entry.reason ?? null, message: typeof entry.message === 'string' ? entry.message.slice(0, 1000) : null,
         updatedAt: Number.isFinite(entry.updatedAt) ? entry.updatedAt : 0 };
     }
   }
   snapshot() { return structuredClone(this.book); }
+  route(workspace,scopeId){return this.entry(workspace,scopeId)?.route??null;}
+  selectRoute(workspace,scopeId,route) {
+    if(!['plugin-v1','legacy-dom'].includes(route))throw fail('PLAN_EXECUTION_INVALID','Неизвестный маршрут выполнения.');
+    if(this.entry(workspace,scopeId))return this.route(workspace,scopeId);
+    this.write(workspace,scopeId,'not-started',null,null,route,false);
+    return route;
+  }
   // A replaced project or another plan never inherits the state of the old one.
   entry(workspace, scopeId) {
     const entry = this.book[workspace];
@@ -34,12 +42,12 @@ export class ExecutionControl {
   enabled(workspace, scopeId) { return this.view(workspace, scopeId).state === 'running'; }
   // Executors keep their normal continuations during pausing; only new tasks wait.
   issuing(workspace, scopeId) { return this.enabled(workspace, scopeId); }
-  write(workspace, scopeId, state, reason = null, message = null) {
+  write(workspace, scopeId, state, reason = null, message = null, route = 'legacy-dom', notify = true) {
     if (!absolute(workspace) || !validScope(scopeId)) throw fail('PLAN_EXECUTION_INVALID', 'Нужен проект и опубликованный план.');
     const old = this.entry(workspace, scopeId);
     if (old && old.state === state && old.reason === reason && old.message === message) return old;
-    this.book[workspace] = { projectId: this.identity?.(workspace) ?? null, scopeId, state, reason, message, updatedAt: this.now() };
-    this.onChange(workspace);
+    this.book[workspace] = { projectId: this.identity?.(workspace) ?? null, scopeId, route:old?.route??route,state, reason, message, updatedAt: this.now() };
+    if(notify)this.onChange(workspace);
     return this.book[workspace];
   }
   // The one button: start, pause before the next task, continue.

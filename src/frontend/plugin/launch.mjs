@@ -5,7 +5,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   const ui=mountPanel({document}),$=ui.$,clock=()=>document.defaultView.performance.now(),started=clock();let panelId=uuid();
   let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false,stopping=false,loop=null,expiry=null,expiresAt=0;
   let clientSequence=0,telemetry=[],flushing=null,dropped=0,exported='',exportRun='',serverError=null;
-  let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false;
+  let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false,workflow=false,recoveryFailures=0,retryTimer=null;
   const status=(text,state)=>{if(!disposed)ui.status(text,state);};
   const ready=()=>{
     const unavailable=disposed||suspended||!connected;
@@ -13,7 +13,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       !connected?'SDK не подключён. Переоткройте панель, если подключение не завершится.':serverError?serverError:
       contextBlocked?'Контекст изменился. Нажмите «Восстановить данные».':busy?'Восстанавливаем данные или выполняем действие…':
       stopping?'Ждём подтверждения остановки.':!binding?'Привязка не подтверждена. Восстановите данные или выберите запуск.':
-      !getMessage()?'Хост не предоставил openai/message. Отправка недоступна.':enabled?'Связь включена.':loop?'Завершаем прежнее ожидание…':'Можно включить связь на 30 минут.';
+      !getMessage()?'Хост не предоставил openai/message. Отправка недоступна.':enabled?'Связь включена.':loop?'Завершаем прежнее ожидание…':workflow?'Панель подключена. Ожидаем разрешение выполнения плана.':'Можно включить связь на 30 минут.';
     $('bind').disabled=unavailable||busy||enabled||!!binding||contextBlocked;
     $('recover').disabled=unavailable||busy||stopping||enabled;
     $('runs').disabled=unavailable||busy||enabled||!!binding;
@@ -44,7 +44,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     if(!disposed)ui.localEvents(telemetry.length,dropped);void flush();
   }
   function localStop(text,state='idle'){
-    enabled=false;epoch++;abort?.abort();clearTimeout(expiry);status(text,state);ready();
+    enabled=false;epoch++;abort?.abort();clearTimeout(expiry);clearTimeout(retryTimer);status(text,state);ready();
   }
   function stop(text='Остановлено локально; ждём подтверждения службы.',finalText=null,finalState='unknown',scope='panel'){
     if(stopPromise)return stopPromise;
@@ -120,15 +120,16 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       if(current())try{await refresh();}catch{status('Не удалось обновить состояния. Журнал остаётся в службе.','error');}
     }
   }
-  async function bind(){
+  async function bind({automatic=false}={}){
     if(binding||disposed||suspended||contextBlocked)return;
     const generation=epoch;
     const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,protocol_version:PROTOCOL,build_id:BUILD};
-    try{const result=await call('bind',{binding:next});if(disposed||suspended||epoch!==generation)return;binding=next;serverError=result.critical_error;
+    try{const result=await call('bind',{binding:next,message_supported:!!getMessage()});if(disposed||suspended||epoch!==generation)return;binding=next;serverError=result.critical_error;
+      workflow=result.mode==='workflow';ui.mode(result.mode);
       record('host.handshake',{message_supported:!!getMessage()});await refresh(true);
       if(disposed||suspended||epoch!==generation)return;
-      status('Привязка подтверждена: '+result.role+'. '+(getMessage()?'Включите связь вручную.':'Хост не поддерживает openai/message; отправка недоступна.'));}
-    catch(error){if(epoch===generation)status(error.message,'error');}finally{ready();}
+      status('Привязка подтверждена: '+result.role+'. '+(getMessage()?(workflow?'Ожидаем запуск плана.':'Включите связь вручную.'):'Хост не поддерживает openai/message; отправка недоступна.'));}
+    catch(error){if(epoch===generation)status(error.message,'error');if(automatic)throw error;}finally{ready();}
   }
   function choose(value){$('run').value=value.run_id;$('participant').value=value.participant_id;}
   function recover(){
@@ -141,11 +142,17 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;expiresAt=0;seq=0;ui.unbound();
       const result=await call('recover');
       if(disposed||suspended||epoch!==generation)return;
-      if(result.build_id!==BUILD||result.protocol_version!==PROTOCOL)throw Error('Несовместимая панель. Переоткройте Workflow Pilot.');
-      serverError=result.critical_error;candidates=result.participants;ui.candidates(candidates);
-      if(candidates.length===1){choose(candidates[0]);await bind();}
-      else status(candidates.length?'Найдено несколько запусков. Выберите нужный.':'В этом разговоре участник ещё не зарегистрирован. Выполните join и нажмите «Восстановить данные».');
-    })().catch(error=>{if(epoch===generation){serverError=error.message;status('Не удалось восстановить данные: '+error.message,'error');}})
+      if(result.build_id!==BUILD||result.protocol_version!==PROTOCOL)throw Object.assign(Error('Несовместимая панель. Переоткройте Workflow Pilot.'),{code:'PLUGIN_COMMUNICATION_VERSION'});
+      serverError=result.critical_error;
+      const assigned=result.participants.filter(p=>p.mode==='workflow');
+      if(assigned.length>1)throw Error('Найдено несколько рабочих назначений этого разговора. Требуется проверка backend; выбор вручную запрещён.');
+      candidates=assigned.length?assigned:result.participants;ui.candidates(candidates);
+      if(candidates.length===1){choose(candidates[0]);await bind({automatic:true});}
+      else status(candidates.length?'Найдено несколько экспериментальных запусков. Выберите нужный.':'Назначение этого разговора ещё не зарегистрировано. Ожидаем регистрацию из стартового контекста.');
+      recoveryFailures=0;
+    })().catch(error=>{if(epoch===generation){serverError=error.message;status('Не удалось восстановить данные: '+error.message,'error');
+      if(!terminal(error.code)&&++recoveryFailures<=3)retryTimer=setTimeout(()=>void recover(),250*recoveryFailures);
+    }})
       .finally(()=>{recovery=null;busy=false;ready();});return recovery;
   }
   $('recover').addEventListener('click',()=>void recover());
@@ -182,6 +189,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     catch{status('Хост не разрешил скачивание. Используйте «Выделить журнал» и сохраните текст.','error');}
   });
   record('panel.mount');ready();return {ready,recover,connected(){connected=true;ready();return recover();},
+    toolResult(){if(!connected||disposed||binding||busy||recovery)return;resumePending=true;ready();},
     contextChanged(fields=[]){
       const presentation=new Set(['theme','styles','containerDimensions','displayMode','availableDisplayModes','safeAreaInsets']);
       if(fields.length&&fields.every(field=>presentation.has(field)))return;

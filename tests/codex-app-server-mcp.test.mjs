@@ -954,6 +954,13 @@ test('App Server MCP answers a stale session id without initialize after a resta
   const message = JSON.parse(payload);
   assert.equal(message.id, 7);
   const tools = message.result.tools;
+  const panel=tools.find(tool=>tool.name==='workflow_pilot_panel');
+  assert.equal(panel.annotations.readOnlyHint,false);
+  assert.equal(panel.annotations.idempotentHint,true);
+  assert.equal(panel.inputSchema.properties.ctx,undefined);
+  assert.equal(panel.inputSchema.properties.enrollment_ticket.anyOf[0].pattern,'^[a-f0-9]{64}$');
+  for(const name of ['workflow_communication_join','workflow_communication_probe'])
+    assert.match(tools.find(tool=>tool.name===name).description,/Legacy experiment only/);
   assert.deepEqual(tools.map(tool => tool.name).sort(), [
     'apply_patch', 'bridge_status', 'computer_capture_screen', 'computer_capture_window',
     'computer_list_windows', 'exec_command',

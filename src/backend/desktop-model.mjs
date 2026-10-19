@@ -6,6 +6,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
   pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
+import { AUTOMATIC_DIALOGUE_ENABLED } from '../contracts/backend.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -82,6 +83,8 @@ const workspaceSetup = control.configureProjects({
   onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; },
 });
 const {runtime:sessionContextRuntime, cache:contextCache} = control.configureContext({getRuntime:()=>runtime,
+  prepareBootstrap:project=>AUTOMATIC_DIALOGUE_ENABLED&&['orchestrator','executor'].includes(project.role)
+    ?plugin.reserveParticipant(project.sessionId):null,
   loadFixture:smoke ? workspace=>runtime.loadContext(workspace) : null, onChange:()=>publish()});
 // Agent time: wall clock while ChatGPT shows its Stop control; each finished request is added to its own session.
 let agentTimer, pageState, conversationRecovery;

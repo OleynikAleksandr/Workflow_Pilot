@@ -15,6 +15,7 @@ import { configureExecutor, executorPageState } from './executor-session.mjs';
 import { ProjectInputWatch, ChildCommandWatches, chatGPTEntrypoint } from '../../execution/facade.mjs';
 import { removeProjectSettings, belongsToProject } from '../projects/project-state-cleanup.mjs';
 import { unsentExecutor } from '../sessions/workspace-session.mjs';
+import { AUTOMATIC_DIALOGUE_ENABLED } from '../../contracts/backend.mjs';
 
 // The 0.6.115 coordination rules live here. Desktop supplies presentation/readiness and persistence.
 export function createWorkflowCoordination({store, setup:workspaceSetup, plans:sessionPlans,
@@ -220,6 +221,7 @@ async function setPlanExecution(running) {
   if(reviewBlocksExecution(readReview(workspace),info.scopeId))
     throw Object.assign(new Error('План ещё не согласован в Review.'),{code:'PLAN_NOT_APPROVED'});
   if(info.planExecution?.execution_strategy==='orchestrated') {
+    executionControl.selectRoute(workspace,info.scopeId,AUTOMATIC_DIALOGUE_ENABLED?'plugin-v1':'legacy-dom');
     const {state}=executionControl.view(workspace,info.scopeId);
     if(running===undefined||(running&&!['running','pausing'].includes(state))||(running===false&&state==='running'))
       executionControl.toggle(workspace,info.scopeId);

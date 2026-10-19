@@ -76,10 +76,12 @@ export class ParticipantEnrollment {
 
 // Resolve only backend-owned sessions. User-supplied role/IDs never enter this path.
 export function localParticipantTarget(projects,sessionId) {
-  const all=projects.snapshot().projects;
+  // Persistence snapshots omit derived planExecution; use its project projection.
+  const all=projects.snapshot().projects.map(project=>({...project,
+    planExecution:projects.project?.(project.workspace)?.planExecution??project.planExecution}));
   const project=all.find(p=>!p.archivedAt&&p.sessions.some(s=>s.sessionId===sessionId&&!s.archivedAt));
   const session=project?.sessions.find(s=>s.sessionId===sessionId);
-  if(!session||session.external)return null;
+  if(!session||session.external||session.closedPlanCommit)return null;
   if(session.role==='executor') {
     const parent=all.find(p=>p.workspace===session.parentWorkspace&&!p.archivedAt&&!p.parentWorkspace);
     const origin=parent?.sessions.find(s=>s.sessionId===session.executionOriginSessionId&&!s.archivedAt&&s.role==='orchestrator');

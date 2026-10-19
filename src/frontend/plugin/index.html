@@ -6,16 +6,16 @@
 select{display:block;width:100%;margin-top:6px;padding:10px;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:7px}
 </style></head><body>
 <header><div><p class="eyebrow">Workflow Pilot</p><h1>Связь участников</h1></div><small id="communication-build"><!-- communication-build --></small></header>
-<p class="muted">Сохраняйте сообщения между двумя разговорами и наблюдайте каждый этап доставки. Пробуждение агента в ChatGPT проверяется отдельным опытом.</p>
+<p class="muted">Связь оркестратора и исполнителей, состояние назначений и доставки сообщений.</p>
 <p id="communication-status" role="status" aria-live="polite">Связь выключена. Привязка ещё не подтверждена.</p>
 <div class="grid"><section aria-labelledby="binding-title"><h2 id="binding-title">1. Подтвердите участника</h2>
-<p class="muted">Сохранённые данные этого разговора восстанавливаются автоматически. Для первого подключения попросите агента выполнить <code>workflow_communication_join</code> с общим запуском и ролью O или E, затем восстановите данные.</p>
+<p id="communication-binding-help" class="muted">Данные рабочего назначения восстанавливаются автоматически. Ручные поля ниже предназначены для прежнего эксперимента через <code>workflow_communication_join</code>.</p>
 <label id="communication-run-selection" hidden>Сохранённый запуск<select id="communication-runs"></select></label>
-<div class="fields"><label>Запуск<input id="communication-run" autocomplete="off" spellcheck="false" maxlength="128"></label><label>Участник<input id="communication-participant" autocomplete="off" spellcheck="false" maxlength="36"></label></div>
+<div id="communication-legacy-fields" class="fields"><label>Запуск<input id="communication-run" autocomplete="off" spellcheck="false" maxlength="128"></label><label>Участник<input id="communication-participant" autocomplete="off" spellcheck="false" maxlength="36"></label></div>
 <div class="actions"><button id="communication-recover" type="button">Восстановить данные</button><button id="communication-bind" type="button">Подтвердить привязку</button></div>
 <p id="communication-identity">Участник не подтверждён</p><p id="communication-binding">Адресат проверяется по текущему разговору хоста.</p>
 </section><section aria-labelledby="permission-title"><h2 id="permission-title">2. Разрешите уведомления</h2>
-<p class="muted">Разрешение действует 30 минут. Данные восстанавливаются после открытия; отправка требует нового включения.</p>
+<p id="communication-permission-help" class="muted">В прежнем эксперименте разрешение действует 30 минут. Данные восстанавливаются после открытия; отправка требует нового включения.</p>
 <div class="actions"><button id="communication-enable" type="button" disabled>Включить связь</button><button id="communication-stop" type="button" disabled>Остановить связь</button></div>
 <p id="communication-enable-reason" role="status">Подключаем SDK…</p>
 <p id="communication-permission">Разрешение не выдано</p><p class="muted">Stop прекращает новые отправки. Уже переданный хосту запрос отменить нельзя. Закрытая панель не гарантирует доставку.</p>

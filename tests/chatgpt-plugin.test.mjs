@@ -79,6 +79,23 @@ async function client(t,f){
 async function eventually(check){for(let i=0;i<200;i++){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
 
 const communicationTools=['bind','claim','enable','export','join','journal','probe','read_message','recover','report','send_message','status','stop','telemetry','verify','wait'];
+test('the real project projection reserves the published origin even though persistence omits planExecution',async t=>{
+  const f=await fixture(t),workspace=path.join(f.directory,'Первый'),file=path.join(workspace,'.harness/plans/todo-plan.md');
+  const write=async state=>fs.writeFile(file,'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify({schema_version:1,project_id:'Первый',project_name:'Первый',
+    plan_revision:2,scope_id:null,execution_scope_status:'NONE',delivery_status:'IN_PROGRESS',current_task_id:null,tasks:[],...state})+'\n```\n<!-- workflow-state:end -->');
+  await write({});const origin=await f.store.newSession(workspace,'work');
+  const initial=await f.plugin.reserveParticipant(origin.sessionId);
+  await write({scope_id:'automatic',execution_scope_status:'ACTIVE',execution_strategy:'orchestrated',parallel_allowed:true,max_workers:2,
+    execution_reason:'fixture',execution_origin_session_id:origin.sessionId,release:false,
+    tasks:[{id:'T001',title:'Task',implementation_status:'TODO',commit_status:'PENDING'}]});
+  await f.store.reconcileRoles(workspace);
+  assert.equal(f.store.snapshot().projects.find(p=>p.workspace===workspace).planExecution,undefined);
+  const registered=await f.plugin.panel({enrollment_ticket:initial.enrollment_ticket,metadata});
+  assert.equal(registered.registration.local_session_id,origin.sessionId);
+  const next=await f.plugin.reserveParticipant(origin.sessionId);assert.equal(next.run_id,initial.run_id);
+  const discussion=await f.store.newSession(workspace,'chat');
+  await assert.rejects(f.plugin.reserveParticipant(discussion.sessionId),{code:'PLUGIN_PARTICIPANT_UNAVAILABLE'});
+});
 test('real MCP panel enrolls an existing assignment using fresh host identity without an external session',async t=>{
   const f=await fixture(t),before=f.store.snapshot(),target={project_id:'fixture',local_session_id:'worker',
     origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};
@@ -126,7 +143,7 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.ok(!JSON.stringify(events).includes('conversation-fixture'));
 });
 
-async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms,initialToolResult}={}) {
+async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms,initialToolResult,handshake=Promise.resolve()}={}) {
   const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
   const errors=[],calls=[],messages=[];let initialized=false,currentMetadata=hostMetadata,notify,activeWaits=0,maxWaits=0;
   const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
@@ -140,7 +157,8 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
       notify=deliver;
       window.postMessage=async request=>{
         try{
-          if(request.method==='ui/initialize')queueMicrotask(()=>{
+          if(request.method==='ui/initialize')queueMicrotask(async()=>{
+            await handshake;
             if(initialToolResult)deliver(initialToolResult);
             deliver({jsonrpc:'2.0',id:request.id,result:{
             protocolVersion:request.params.protocolVersion,hostInfo:{name:'Isolated communication host',version:'1'},
@@ -166,6 +184,43 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
   const $=id=>dom.window.document.getElementById('communication-'+id);
   return {dom,$,errors,calls,messages,notify,get maxWaits(){return maxWaits;},setMetadata(meta){currentMetadata=meta;}};
 }
+
+test('workflow panel automatically binds its current assignment after late SDK and recovers a new instance without manual IDs',async t=>{
+  const f=await fixture(t),target={project_id:'fixture',local_session_id:'worker',origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};
+  f.plugin.communication.enrollment.resolveTarget=id=>id==='worker'?target:null;
+  const invite=await f.plugin.communication.reserve(target);await bridge(t,f);const c=await client(t,f);
+  await c.callTool({name:'workflow_communication_join',arguments:{run_id:'older-experiment',role:'E'},_meta:metadata});
+  await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
+  let connect;const handshake=new Promise(resolve=>{connect=resolve;});
+  const pending=communicationHtml(t,c,{handshake});await delay(25);
+  assert.equal(f.plugin.communication.panels.size,0);connect();const ui=await pending;
+  await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
+  assert.equal(ui.$('run').value,invite.run_id);assert.equal(ui.$('legacy-fields').hidden,true);
+  assert.equal(ui.$('enable').hidden,true);assert.equal(ui.$('bind').hidden,true);assert.equal(ui.$('run-selection').hidden,true);
+  assert.equal(ui.calls.filter(c=>c==='workflow_communication_enable').length,0);assert.equal(ui.messages.length,0);
+  const participant=(await f.plugin.communication.recover({metadata})).participants.find(p=>p.mode==='workflow');
+  assert.equal((await f.plugin.communication.status({...participant,metadata})).channel_ready,true);
+  const next=await communicationHtml(t,c,{initialToolResult:{jsonrpc:'2.0',method:'ui/notifications/tool-result',params:{structuredContent:{registration:{run_id:'stale'}}}}});
+  await eventually(()=>next.$('binding').textContent.includes('подтверждена'));
+  assert.equal(next.$('participant').value,participant.participant_id);assert.equal(next.messages.length,0);
+  const unsupported=await communicationHtml(t,c,{messageSupported:false});
+  await eventually(()=>unsupported.$('diagnostics').textContent.includes('Привязка: подтверждена'));
+  assert.match(unsupported.$('diagnostics').textContent,/openai\/message: не предоставлен/);
+  assert.equal(unsupported.messages.length,0);
+});
+
+test('lost automatic bind response is recovered with bounded reads and no model call',async t=>{
+  const f=await fixture(t),target={project_id:'fixture',local_session_id:'worker',origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};
+  f.plugin.communication.enrollment.resolveTarget=()=>target;
+  const invite=await f.plugin.communication.reserve(target);await f.plugin.communication.enroll(invite.enrollment_ticket,metadata);
+  await bridge(t,f);const c=await client(t,f);let dropped=false;
+  const ui=await communicationHtml(t,c,{toolReply:async(request,result)=>{
+    if(request.name==='workflow_communication_bind'&&!dropped){dropped=true;return {transportError:true};}return result;
+  }});
+  await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
+  assert.equal(ui.calls.filter(c=>c==='workflow_communication_bind').length,2);
+  assert.equal(ui.messages.length,0);assert.equal(ui.$('enable').hidden,true);
+});
 
 test('real staged SDK -> Python MCP -> bridge -> Control: bind/enable/probe/wait/claim/verify/Send/report/read',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);

@@ -78,6 +78,29 @@ test('the first message contains the exact complete packet and asks for a short 
   assert.ok(text.includes('Интерфейсом компьютера не управляй: не двигай мышь, не нажимай клавиши и не переключай окна — ни инструментами, ни командами (osascript, System Events, cliclick и подобными). Список окон и снимки экрана и окна (`computer_list_windows`, `computer_capture_screen`, `computer_capture_window`) разрешены. Живую проверку интерфейса выполняет пользователь.'));
 });
 
+test('automatic bootstrap reads recovery then opens only its panel; an executor does not start work in that turn',()=>{
+  const invitation={enrollment_ticket:'a'.repeat(64),expires_at:now+1000};
+  for(const experience of ['chat','work']){
+    const origin=startupMessage({...project,experience,role:'orchestrator'},'request',packet(),[],invitation);
+    assert.match(origin,/кроме единственного вызова workflow_pilot_panel/);
+    assert.ok(origin.includes(JSON.stringify({enrollment_ticket:invitation.enrollment_ticket})));
+    assert.match(origin,/После полного чтения recovery/);assert.match(origin,/публикация плана не запускают выполнение/);
+  }
+  const worker=startupMessage({...project,role:'executor',assignmentId:'assignment',taskId:'T001',parentWorkspace:'/main'},'request',packet(),[],invitation);
+  assert.match(worker,/заверши загрузочный ход/);assert.match(worker,/не вызывай task:start/);
+  assert.doesNotMatch(worker,/прочитай пакет и приступай|После чтения всех вложений выполни/);
+  assert.match(worker,/Не обходи подтверждения самого ChatGPT/);
+});
+
+test('bootstrap is reserved once before the actual first send and never replayed on a later tick',async()=>{
+  const f=controllerFixture({chatUrl:null});let reservations=0;
+  f.runtime.prepareBootstrap=async current=>{reservations++;assert.equal(current.sessionId,project.sessionId);
+    return {enrollment_ticket:'b'.repeat(64),expires_at:now+1000};};
+  await f.controller.tick();await f.controller.tick();
+  assert.equal(reservations,1);assert.equal(f.sends(),1);
+  assert.equal(f.saved.attempt.dialogueRoute,'plugin-v1');assert.ok(f.saved.attempt.text.includes('b'.repeat(64)));
+});
+
 test('every start names its parts with a short fragment of its own request id', () => {
   const { contextPartName } = contextSessionModule;
   const part = { index: 1, total: 5 };

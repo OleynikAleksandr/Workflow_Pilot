@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 532,
+  "plan_revision": 534,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -230,8 +230,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "T002",
@@ -261,7 +261,10 @@
         "tests/chatgpt-plugin.test.mjs",
         "tests/plugin-enrollment.test.mjs",
         "tests/orchestrated-execution.test.mjs",
-        "tests/electron-smoke.mjs"
+        "tests/electron-smoke.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/execution-control.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -313,7 +316,26 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "expected_commit_message": "feat: Автоматический запуск панели оркестратора и исполнителей"
+      "expected_commit_message": "feat: Автоматический запуск панели оркестратора и исполнителей",
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/context/service.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/frontend/plugin/app.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -905,7 +927,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 532
+Revision: 534
 
 ## Цель
 
@@ -930,10 +952,10 @@ Revision: 532
   - Файлы: src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/control/sessions/workspace-session.mjs, src/control/projects/service.mjs, src/execution/plugin/communication-store.mjs, src/execution/plugin/bridge.mjs, src/contracts/backend.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/session-roles.test.mjs, tests/backend-protocol.test.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Автоматический запуск панели оркестратора и исполнителей — Ожидает
-  - Git Commit: [PENDING] feat: Автоматический запуск панели оркестратора и исполнителей
+- [DONE] T002: Автоматический запуск панели оркестратора и исполнителей — Завершено
+  - Git Commit: [DONE] feat: Автоматический запуск панели оркестратора и исполнителей
   - Reference: workflow-pilot-automatic-agent-dialogue / T002 / implementation
-  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/executor-session.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/backend/desktop-model.mjs, src/contracts/backend.mjs, src/execution/plugin/bridge.mjs, tools/codex-app-server-mcp/plugin.py, tests/context-session.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-enrollment.test.mjs, tests/orchestrated-execution.test.mjs, tests/electron-smoke.mjs
+  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/executor-session.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/backend/desktop-model.mjs, src/contracts/backend.mjs, src/execution/plugin/bridge.mjs, tools/codex-app-server-mcp/plugin.py, tests/context-session.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-enrollment.test.mjs, tests/orchestrated-execution.test.mjs, tests/electron-smoke.mjs, src/control/workflow/execution-control.mjs, tests/codex-app-server-mcp.test.mjs, tests/execution-control.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] T003: Связать разрешение и доставку с выполнением плана — Ожидает

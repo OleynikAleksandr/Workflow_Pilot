@@ -164,13 +164,13 @@ def register_plugin(mcp, state_root: Path):
         return await communication("telemetry", ctx, binding=binding, event=event.model_dump(exclude_none=True))
 
     @mcp.tool(name="workflow_communication_bind", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
-    async def bind(binding: Binding, ctx: Context) -> CallToolResult:
-        """App-only: compare fresh host metadata with the model's join. Does not enable sending. Rebind each new panel instance; a sidebar selection is not an address."""
-        return await communication("bind", ctx, binding=binding)
+    async def bind(binding: Binding, ctx: Context, message_supported: Annotated[bool, Field(description="True only when the connected SDK exposes openai/message.")] = False) -> CallToolResult:
+        """App-only compare fresh host identity with this session's registration and report SDK readiness. Does not grant plan permission. Rebind each new instance; a historical tool result is not authorization."""
+        return await communication("bind", ctx, binding=binding, message_supported=message_supported)
 
     @mcp.tool(name="workflow_communication_recover", annotations=READ, meta={"ui": {"visibility": ["app"]}})
     async def recover(ctx: Context) -> CallToolResult:
-        """App-only discover run/participant/role belonging to fresh host identity. No caller-supplied identity, permission, UI or model turn. Select explicitly if multiple runs exist, bind a fresh panel, then require a user Enable click."""
+        """App-only discover current assignment from fresh host identity. Automatically bind the sole workflow participant; never ask for copied IDs. Legacy experiments alone may select a run and require Enable. This read never grants permission."""
         return await communication("recover", ctx)
 
     @mcp.tool(name="workflow_communication_enable", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
