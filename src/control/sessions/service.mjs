@@ -50,7 +50,7 @@ export class SessionRuntimes {
     const scopedStore=identity?sessionStore(this.store,identity):this.store;
     record.composer=browser.composer;
     record.controller=new ContextSession({store:scopedStore,runtime:this.runtime(),contextCache:this.contextCache,
-      composer:record.composer,onChange:()=>this.onChange(record),onChatBound:()=>this.onChatBound(record)});
+      composer:record.composer,onChange:()=>{this.syncStartupObservation(record);this.onChange(record);},onChatBound:()=>this.onChatBound(record)});
     record.controller.onIdle=()=>this.onChange(record);
     record.timer=new AgentTimer({onFinish:(target,durationMs)=>{
       void this.store.recordAgentTime(target.workspace,target.sessionId,durationMs).then(()=>this.onChange(record),error=>this.onError(record,error));
@@ -116,6 +116,27 @@ export class SessionRuntimes {
     }
     void record.controller.tick();
   }
+  syncStartupObservation(record){
+    const project=record.project(),attempt=project?.attempt,controller=record.controller;
+    const eligible=controller&&record.identity?.assignmentId&&record.ready&&!record.disposed&&!this.paused&&!record.loading
+      &&!project?.archivedAt&&!project?.sessionArchivedAt&&!project?.manualStart&&!project?.chatUrl
+      &&!attempt?.sendStartedAtMs&&!['sending','sent','acknowledged','unknown'].includes(attempt?.state)
+      &&['waiting-composer','waiting-experience','waiting-login'].includes(controller.state.phase);
+    let probe=record.startupObservation;
+    if(!eligible){if(probe)clearTimeout(probe.timer);if(probe)probe.timer=null;return;}
+    if(probe?.generation!==controller.generation){if(probe)clearTimeout(probe.timer);
+      probe=record.startupObservation={generation:controller.generation,count:0,timer:null};}
+    if(probe.timer||probe.count>=60)return;
+    // Layout/CSSOM readiness can change without a DOM mutation. Only an unsent
+    // bootstrap receives this bounded read-only reconciliation; never a Send retry.
+    probe.timer=setTimeout(async()=>{
+      probe.count++;
+      try{if(!controller.pending&&await record.composer.observeSnapshot()
+        &&!record.disposed&&controller.generation===probe.generation)this.tick(record);}
+      catch(error){if(!record.disposed)this.onError(record,error);}
+      finally{probe.timer=null;if(!record.disposed)this.syncStartupObservation(record);}
+    },500);probe.timer.unref?.();
+  }
   observeManualConversation(state, record = this.visible) {
     const selected = record?.project(), documentId = record?.pageState.current?.documentId;
     if (!selected || selected.chatUrl || !documentId) return false;
@@ -155,6 +176,7 @@ export class SessionRuntimes {
     if(!force&&(record.pageState.current?.state.busy||record.controller.pending||record.composer.inFlight))return false;
     if(this.visible===record)this.hide();
     record.disposed=true;record.controller.cancel();record.recovery.reset();record.timer.finish();
+    clearTimeout(record.startupObservation?.timer);
     for(const cleanup of record.cleanups.splice(0).reverse())cleanup();
     record.browser.release();
     this.#records.delete(record.key);return true;

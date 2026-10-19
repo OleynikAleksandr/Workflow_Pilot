@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 600,
+  "plan_revision": 602,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -122,7 +122,9 @@
       "src/execution/plugin/bridge.mjs",
       "src/execution/browser/chatgpt-composer.mjs",
       "tests/chatgpt-composer.test.mjs",
-      "tests/page-state.test.mjs"
+      "tests/page-state.test.mjs",
+      "tests/executor-background-startup.test.mjs",
+      "tests/fixtures/executor-background-startup.mjs"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-owned-dialogue.md",
@@ -445,8 +447,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T004",
@@ -474,7 +476,11 @@
         "src/execution/browser/chatgpt-experience.mjs",
         "src/execution/browser/chatgpt-page-observer.mjs",
         "src/control/workflow/executor-session.mjs",
-        "tests/chatgpt-experience.test.mjs"
+        "tests/chatgpt-experience.test.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "tests/executor-background-startup.test.mjs",
+        "tests/fixtures/executor-background-startup.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -511,7 +517,19 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "src/contracts/context.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/sessions/service.mjs",
+        "tests/executor-background-startup.test.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/context-session.test.mjs",
+        "tests/session-runtime.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1153,7 +1171,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 600
+Revision: 602
 
 ## Цель
 
@@ -1190,10 +1208,10 @@ Revision: 600
   - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/frontend/plugin/panel.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/chatgpt-plugin.test.mjs, src/backend/desktop-model.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/session-runtime.mjs, tests/chatgpt-composer.test.mjs, tests/page-state.test.mjs, docs/planning/orchestrator-owned-dialogue-reliability.md, docs/planning/orchestrator-owned-dialogue-results.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T004: Автоматически запускать E с минимальным bootstrap — Ожидает
-  - Git Commit: [PENDING] feat: Автоматически запускать E с минимальным bootstrap
+- [DONE] T004: Автоматически запускать E с минимальным bootstrap — Завершено
+  - Git Commit: [DONE] feat: Автоматически запускать E с минимальным bootstrap
   - Reference: orchestrator-owned-dialogue-refactor / T004 / implementation
-  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, src/control/sessions/service.mjs, src/backend/desktop-model.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/session-runtime.mjs, packages/workflow-kit/src/lib/recovery.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/context-cache.test.mjs, tests/session-runtime.test.mjs, tests/backend-native-pages.test.mjs, tests/electron-smoke.mjs, tests/executor-startup-lifecycle.test.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/control/workflow/executor-session.mjs, tests/chatgpt-experience.test.mjs
+  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, src/control/sessions/service.mjs, src/backend/desktop-model.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/session-runtime.mjs, packages/workflow-kit/src/lib/recovery.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/context-cache.test.mjs, tests/session-runtime.test.mjs, tests/backend-native-pages.test.mjs, tests/electron-smoke.mjs, tests/executor-startup-lifecycle.test.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/control/workflow/executor-session.mjs, tests/chatgpt-experience.test.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, tests/executor-background-startup.test.mjs, tests/fixtures/executor-background-startup.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Согласовать роли и передачу выбранного контекста — Ожидает

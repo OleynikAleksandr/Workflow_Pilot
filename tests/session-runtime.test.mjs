@@ -48,6 +48,25 @@ test('restart without a saved conversation address reports the lost page and nev
   }
 });
 
+test('background startup observation stops at dispatch and cannot revive a cancelled generation',async t=>{
+  const f=fixture(t);Object.assign(f.projects.a,{chatUrl:null,assignmentId:'a1'});
+  const a=f.manager.ensure(f.projects.a);a.ready=true;a.controller.attach(f.projects.a);
+  let finish,reads=0,ticks=0;
+  f.composers.get(f.view(a).webContents).observeSnapshot=()=>{reads++;return new Promise(resolve=>{finish=resolve;});};
+  f.manager.tick=()=>ticks++;
+  a.controller.emit({phase:'waiting-composer'});
+  await new Promise(resolve=>setTimeout(resolve,550));assert.equal(reads,1);
+  a.controller.cancel();finish({state:{editorAvailable:true}});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(ticks,0);
+  for(const state of ['sending','sent','unknown','acknowledged']){
+    f.projects.a.attempt={state};a.controller.emit({phase:'waiting-composer'});
+    assert.equal(a.startupObservation.timer,null);
+  }
+  f.projects.a.attempt=null;a.controller.emit({phase:'waiting-composer'});
+  f.manager.release(a,{force:true});
+  await new Promise(resolve=>setTimeout(resolve,550));assert.equal(reads,1);
+});
+
 test('independent sessions keep pages, controllers and timers when switching or moving their presentation',async t=>{
   const f=fixture(t),a=f.manager.ensure(f.projects.a),b=f.manager.ensure(f.projects.b),host=f.host(),otherHost=f.host();
   assert.notEqual(f.view(a),f.view(b));assert.notEqual(a.controller,b.controller);assert.notEqual(a.composer,b.composer);

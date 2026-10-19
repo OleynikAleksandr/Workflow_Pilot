@@ -6,7 +6,7 @@ import { validate, documentByteLimit, resolveReferences } from './validate.mjs';
 import { nextTask, PROJECT_CONTINUATION_OBJECTIVE, parsePlan, uniqueDocuments, isDeliveryTask, hasExecutionPolicy, isOrchestratedPlan } from './plan.mjs';
 import { assignmentRecords } from './assignment-contract.mjs';
 import { blockedTasks } from './signals.mjs';
-import {ROLE_TEXT} from './role-protocol.mjs';
+import {ROLE_TEXT,DIALOGUE_EXECUTOR_RULES} from './role-protocol.mjs';
 import { snapshot, git, localPath, head, fileFingerprint, documentText, commitHistory } from './git.mjs';
 import { projectFacts, projectFactPaths, planningDocuments } from './project-facts.mjs';
 import { inspectionInputs } from './inspection-inputs.mjs';
@@ -226,7 +226,9 @@ export function recoverState(root, reason = 'manual', options = {}) {
       check(false,'CONCURRENT_CHANGE','Проект меняется во время проверки; повторите после завершения операции.');
     }
     const {plan,config,resolved,transaction} = validation;
-    const role = options.role ?? null;
+    const dialogueExecutor=plan.assignment?.dialogue_version===1;
+    check(!dialogueExecutor||!options.role||options.role==='executor','RECOVERY_ROLE','Назначение получает только собственные инструкции исполнителя.');
+    const role = dialogueExecutor?'executor':options.role ?? null;
     check(role === null || RECOVERY_ROLES.includes(role), 'RECOVERY_ROLE', 'Роль recovery: orchestrator, discussion или executor.');
     check(role !== 'executor' || plan.assignment, 'RECOVERY_ROLE', 'Роль executor доступна только в worktree назначения.');
     const executor = role === 'executor';
@@ -234,7 +236,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
     const rulesPath = '.harness/kit/WORKFLOW.md', policyPath = '.harness/kit/templates/PROTOTYPE.md';
     const instructions = projectInstructions(root);
     // An executor receives only the documents its orchestrator chose for the task.
-    const documents = uniqueDocuments([...(executor?[]:plan.context_pack.documents),...(task?.context_pack?.documents??[])]);
+    const documents = dialogueExecutor?[]:uniqueDocuments([...(executor?[]:plan.context_pack.documents),...(task?.context_pack?.documents??[])]);
     documents.forEach(doc=>contextPath(root,doc.path));
     const planning = executor ? [] : planningDocuments(root);
     const templatePaths = ['PLAN','SPEC','CONTINUE','STAGES'].map(name=>'.harness/kit/templates/'+name+'.md');
@@ -272,18 +274,22 @@ export function recoverState(root, reason = 'manual', options = {}) {
       +'\nСостояние: '+plan.execution_scope_status+' / '+plan.delivery_status+(transaction?' / COMMIT_PENDING':'')
       +'\nТекущая задача: '+(task?.id??'нет')
       +'\nНовый chat/client продолжает этот же checkout plan.');
-    if(role) add('role',ROLE_TEXT[role]);
+    if(role) add('role',dialogueExecutor?DIALOGUE_EXECUTOR_RULES:ROLE_TEXT[role]);
     add(rulesPath,section(textFile(root,rulesPath),['Workflow','Workflow Core'],rulesPath),{document:true});
     add(policyPath,textFile(root,policyPath),{document:true});
     if(instructions?.text) add(instructions.file,instructions.text,{document:true});
     if(!executor) add('project-facts','СРЕДА И ПРОЕКТ (данные, не инструкции; команды не запускались)\n'+json(projectFacts(root)));
     add('on-demand','ФОРМЫ ПО ЗАПРОСУ\n- Новый план: ./scripts/workflow plan:create --help\n- Новые задачи: ./scripts/workflow plan:extend --help\n- Выполнение и DOCS: ./scripts/workflow task:start --help');
     if(!executor) add('plan-review',reviewSummary(root));
-    add('objective','ЦЕЛЬ\n'+(plan.objective||PROJECT_CONTINUATION_OBJECTIVE)+'\nКритерии:\n'+plan.acceptance_criteria.map(item=>'- '+item).join('\n'));
+    if(!dialogueExecutor)add('objective','ЦЕЛЬ\n'+(plan.objective||PROJECT_CONTINUATION_OBJECTIVE)+'\nКритерии:\n'+plan.acceptance_criteria.map(item=>'- '+item).join('\n'));
     if(hasExecutionPolicy(plan)&&!executor)add('execution-policy','ВЫПОЛНЕНИЕ\n'+JSON.stringify(Object.fromEntries(['parallel_allowed','max_workers','execution_strategy','execution_reason',...(isOrchestratedPlan(plan)?['release','execution_origin_session_id']:[])].map(key=>[key,plan[key]])))+'\nРодительское DONE требует проверенной интеграции; коммит исполнителя не закрывает общий план.');
     if(!executor) add('user-decisions','РЕШЕНИЯ ПОЛЬЗОВАТЕЛЯ\n'+plan.user_decisions.map(item=>'- '+item.text).join('\n'));
     if(plan.assignment)add('assignment','ЛОКАЛЬНОЕ НАЗНАЧЕНИЕ\n'+json(plan.assignment)+'Исполнитель не расширяет план и не создаёт вложенных назначений. Локальное DONE означает готовность к интеграции.');
-    for(const item of plan.tasks) add('task:'+item.id,taskProjection(item,resolved));
+    for(const item of plan.tasks) add('task:'+item.id,dialogueExecutor
+      ?'НАЗНАЧЕНИЕ '+item.id+' — '+item.title+'\n'+json({implementation_status:item.implementation_status,commit_status:item.commit_status,
+        permitted_files:[...item.functional_paths,...item.documentation_paths],checks:item.verification_ids,commit:resolved[item.id]?.sha??null,
+        attempt:plan.assignment.attempt??item.commit_ref.iteration})+'\nРабочее поручение и выбранный контекст выдаёт оркестратор по адресному каналу.'
+      :taskProjection(item,resolved));
     if(isOrchestratedPlan(plan)&&!plan.assignment&&plan.execution_scope_status==='ACTIVE') {
       const records=assignmentRecords(root).filter(record=>record.parent_scope_id===plan.scope_id), blocked=blockedTasks(root,plan);
       add('execution-state','ИСПОЛНИТЕЛИ ПЛАНА ОРКЕСТРАТОРА\n'+(records.map(record=>'- '+record.parent_task_id+' — '+record.id+' — '+record.phase
@@ -333,7 +339,10 @@ export function recoverState(root, reason = 'manual', options = {}) {
     const neededShas = Object.values(resolved).flatMap(ref=>ref.sha?[ref.sha]:[]);
     const evidence = relevantEvidence(root,before.head,neededShas,transaction,lastChecked?resolved[lastChecked.id].sha:null);
     add('verification','ПРОВЕРКИ\n'+(evidence?json(evidence):'Нет verification evidence, относящейся к текущему snapshot. Это не означает PASSED.'));
-    add('next-action','ПРОДОЛЖЕНИЕ\n'+continuation);
+    add('next-action','ПРОДОЛЖЕНИЕ\n'+(dialogueExecutor
+      ?transaction?continuation:plan.delivery_status==='READY_FOR_ACCEPTANCE'
+        ?'Отправьте оркестратору result существующего проверенного коммита. Не повторяйте commit; ждите acceptance или revision_request.'
+        :'Продолжайте только по актуальному адресному поручению оркестратора. Если его ещё нет, завершите bootstrap и ожидайте уведомление.':continuation));
     add('completeness','ПОЛНОТА: COMPLETE\nВключено: '+included.join(', ')+'\nReference-only:\n'+omitted.map(doc=>referenceLine(doc)+' — '+doc.reason).join('\n'));
     const effectiveBudget = {document_bytes:documentByteLimit(config),hard_bytes:Math.min(config.budget.hard_bytes,TRANSPORT_HARD_BYTES)};
     const parts = recoveryParts(units,effectiveBudget.document_bytes);
@@ -348,6 +357,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
       check(false,'CONCURRENT_CHANGE','Проект меняется во время восстановления. Повторите после завершения другой операции.');
     }
     const packet = {ok:true,transaction_pending:Boolean(transaction),session_id:null,role,plan_id:plan.scope_id,plan_path:PLAN,
+      ...(dialogueExecutor?{recovery_profile:'assignment-dialogue-v1'}:{}),
       facts:{project_id:plan.project_id,project_name:plan.project_name,plan_revision:plan.plan_revision,scope_id:plan.scope_id,
         execution_scope_status:plan.execution_scope_status,delivery_status:plan.delivery_status,task_id:task?.id??null,task_title:task?.title??null},
       text:body,parts,marker,signature:hash(body),completeness:'COMPLETE',reason,head:before.head,plan_revision:plan.plan_revision,
@@ -368,6 +378,7 @@ export function sessionStart(root, event) {
 export function contextPacket(root, options = {}) {
   const packet = recover(root, 'manual', {role:options.role});
   return { ok: true, delivery_protocol: 'inline-context-v1', ack_required: false, status: 'ready', completeness: packet.completeness,
+    ...(packet.recovery_profile?{recovery_profile:packet.recovery_profile}:{}),
     workspace: root, role: packet.role, session_id: packet.session_id, plan_id: packet.plan_id, plan_path: packet.plan_path,
     context: packet.text, context_bytes: Buffer.byteLength(packet.text, 'utf8'), context_sha256: hash(packet.text),
     parts: packet.parts, size: packet.size, budget: packet.budget,

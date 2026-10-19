@@ -3,6 +3,8 @@ import { RuntimeError } from './errors.mjs';
 export const CONTEXT_PROTOCOL = 'inline-context-v1';
 
 export function validateContextPacket(packet, workspace) {
+  if(packet?.recovery_profile!==undefined&&packet.recovery_profile!=='assignment-dialogue-v1')
+    throw new RuntimeError('MCP_CONTEXT_PROFILE','Неизвестный профиль recovery. Контекст не отправлен.');
   if (packet?.delivery_protocol !== CONTEXT_PROTOCOL || packet.ack_required !== false) {
     throw new RuntimeError('MCP_UPDATE_REQUIRED', 'Нужна обновлённая версия локальных инструментов с прямой передачей контекста.');
   }

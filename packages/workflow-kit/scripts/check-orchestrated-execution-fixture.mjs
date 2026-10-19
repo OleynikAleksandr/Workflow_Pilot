@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createFixture} from './check-parallel-execution-fixture.mjs';
-import {createScope,startTask,applyConfig,status} from '../src/lib/actions.mjs';
+import {createScope,startTask,applyConfig,status,commitDocumentation} from '../src/lib/actions.mjs';
 import {readPlan} from '../src/lib/plan.mjs';
 import {createAssignment,setupAssignment,assignmentStatus,cleanupAssignments} from '../src/lib/task-assignment.mjs';
 import {startIntegration} from '../src/lib/task-integration.mjs';
@@ -12,7 +12,7 @@ import {extendPlan} from '../src/lib/extend-plan.mjs';
 import {blockTask,messageAssignment,escalatePlan,readSignals,blockedTasks} from '../src/lib/signals.mjs';
 import {commitTask} from '../src/lib/transaction.mjs';
 import {validate,readConfig} from '../src/lib/validate.mjs';
-import {recover} from '../src/lib/recovery.mjs';
+import {recover,contextPacket} from '../src/lib/recovery.mjs';
 import {applyAssignmentDialogue,assignmentDialogueStatus} from '../src/lib/assignment-dialogue.mjs';
 
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
@@ -162,15 +162,30 @@ try {
 
 const dialogueDirectory=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kit-dialogue-')));
 try {
-  const root=createFixture(dialogueDirectory);write(root,SPEC,'# Addressed dialogue\n');
+  const root=createFixture(dialogueDirectory);
+  fs.appendFileSync(path.join(root,'AGENTS.md'),'\nMANDATORY_ASSIGNMENT_CONSTRAINT\n');
+  commitDocumentation(root,['AGENTS.md'],'docs: mandatory fixture restriction');
+  write(root,SPEC,'# Addressed dialogue\nUNSELECTED_PARENT_CONTEXT\n');
   createScope(root,{scope_id:'dialogue-fixture',objective:'Orchestrator accepts a specific executor result',approval_note:'Isolated dialogue fixture',
     dialogue_version:1,parallel_allowed:false,max_workers:1,execution_strategy:'orchestrated',execution_reason:'One checked assignment',
     execution_origin_session_id:'orchestrator-fixture',release:false,acceptance_criteria:['Accepted source only'],
     approved_scope:{functional_paths:[],documentation_paths:['README.md',SPEC]},
     context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false},
-    tasks:[task('T001','README.md',[],false)]});
+    tasks:[{...task('T001','README.md',[],false),context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false}}]});
   const a=createAssignment(root,{id:'dialogue-e',task_id:'T001',base_commit:git(root,'rev-parse','HEAD'),worktree:path.join(dialogueDirectory,'worker')},readPlan(root).plan_revision);
   setupAssignment(root,a.id,{npmCi:true});
+  const limitedRecovery=()=>{
+    for(const reason of ['startup','compact','manual']){
+      const p=recover(a.worktree,reason);
+      assert.equal(p.recovery_profile,'assignment-dialogue-v1');assert.equal(p.role,'executor');
+      assert.match(p.text,/MANDATORY_ASSIGNMENT_CONSTRAINT/);assert.match(p.text,/workflow_assignment_send/);
+      assert.doesNotMatch(p.text,/UNSELECTED_PARENT_CONTEXT|Orchestrator accepts a specific executor result/);
+      assert.equal(p.included.includes(SPEC),false);assert.ok(p.text.includes(a.worktree));
+    }
+    assert.equal(contextPacket(a.worktree).recovery_profile,'assignment-dialogue-v1');
+  };
+  limitedRecovery();assert.match(recover(root,'manual',{role:'orchestrator'}).text,/UNSELECTED_PARENT_CONTEXT/);
+  assert.throws(()=>recover(a.worktree,'manual',{role:'orchestrator'}),{code:'RECOVERY_ROLE'});
   const send=(where,kind,id,extra={})=>applyAssignmentDialogue(where,{assignment_id:a.id,attempt:1,kind,message_id:id,operation_id:id,...extra});
   assert.throws(()=>startTask(a.worktree,'T001'),{code:'ASSIGNMENT_NOT_DISPATCHED'});
   assert.throws(()=>send(a.worktree,'task','bad-role'),{code:'ASSIGNMENT_ROLE'});
@@ -179,6 +194,7 @@ try {
   send(root,'task','task-1');assert.equal(send(root,'task','task-1').duplicate,true);
   assert.throws(()=>send(root,'task','task-1',{message_id:'different'}),{code:'ASSIGNMENT_DIALOGUE_CONFLICT'});
   startTask(a.worktree,'T001');write(a.worktree,'README.md','# first result\n');commitTask(a.worktree,'T001');
+  limitedRecovery();
   const first=assignmentStatus(root,a.id).source_commit;
   assert.throws(()=>startIntegration(root,{id:a.id,source_commit:first}),{code:'ASSIGNMENT_NOT_ACCEPTED'});
   assert.throws(()=>send(root,'result','fake-result',{source_commit:first}),{code:'ASSIGNMENT_ROLE'});

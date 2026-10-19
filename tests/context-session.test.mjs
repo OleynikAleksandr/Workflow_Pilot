@@ -113,6 +113,16 @@ test('automatic bootstrap reads recovery then opens only its panel; an executor 
   assert.match(worker,/Не обходи подтверждения самого ChatGPT/);
 });
 
+test('dialogue executor bootstrap carries only rules and identity and requires its panel invitation',()=>{
+  const worker={...project,role:'executor',assignmentId:'assignment',taskId:'T001',parentWorkspace:'/main'};
+  const p={...packet(),recovery_profile:'assignment-dialogue-v1'};
+  const text=startupMessage(worker,'request',p,[],{enrollment_ticket:'c'.repeat(64)});
+  assert.match(text,/workflow_pilot_panel/);assert.match(text,/task:start и реализация запрещены/);
+  assert.match(text,/Оркестратор отдельно пришлёт task/);assert.match(text,/результат обязательно отправь ему/);assert.ok(text.includes(worker.workspace));
+  assert.doesNotMatch(text,/ПОЛНЫЙ КОНТЕКСТ|полного чтения recovery|опиши назначение проекта/);
+  assert.throws(()=>startupMessage(worker,'request',p),{code:'ASSIGNMENT_BOOTSTRAP_REQUIRED'});
+});
+
 test('bootstrap is reserved once before the actual first send and never replayed on a later tick',async()=>{
   const f=controllerFixture({chatUrl:null});let reservations=0;
   f.runtime.prepareBootstrap=async current=>{reservations++;assert.equal(current.sessionId,project.sessionId);
