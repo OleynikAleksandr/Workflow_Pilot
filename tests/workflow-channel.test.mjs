@@ -28,6 +28,19 @@ async function fixture(t,currentMessage,dialogueKit=null){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+test('panel status exposes own addressed text and all O assignments without marking messages read',async t=>{
+  const f=await fixture(t,undefined,dialogueKitFixture()),e=f.target('e'),other=f.target('other');
+  await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o),a=await f.bind(f.c,e),b=await f.bind(f.c,other);
+  const roster=await f.c.roster({metadata:meta('o')});
+  for(const item of roster.assignments)await f.c.assignmentSend({metadata:meta('o'),recipient:item.recipient_ref,attempt:1,
+    kind:'task',body:'Private task '+item.task_id,idempotency_key:item.task_id});
+  const ov=await f.c.status(o),av=await f.c.status(a),bv=await f.c.status(b);
+  assert.equal(ov.assignments.length,2);assert.equal(av.assignments.length,1);
+  assert.ok(ov.messages.every(m=>!m.read&&m.preview.startsWith('Private task')));
+  assert.equal(av.messages.length,1);assert.equal(bv.messages.length,1);
+  assert.equal(av.messages[0].preview,'Private task t-e');assert.equal(bv.messages[0].preview,'Private task t-other');
+  assert.ok(av.assignments[0].channel.sdk);assert.equal(JSON.stringify(av).includes('Private task t-other'),false);
+});
 function dialogueKitFixture(){
   const effects=new Map(),states=new Map();let calls=0;
   return {effects,get calls(){return calls;},
@@ -108,18 +121,19 @@ test('an intent saved before Kit failure is never delivered and concurrent retri
 });
 test('startup progress reads current assignment and live SDK separately without exposing or mutating protocol data',async t=>{
   const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);
-  assert.deepEqual(f.c.workflow.progress('e'),{registered:false,sdk:false,permitted:false,initial:null});
+  assert.deepEqual(f.c.workflow.progress('e'),{registered:false,sdk:false,permitted:false,generation:null,blocked:false,initial:null});
   const invitation=await f.c.reserve(e);await f.c.enroll(invitation.enrollment_ticket,meta('e'));
   assert.equal(f.c.workflow.progress('e').registered,true);assert.equal(f.c.workflow.progress('e').sdk,false);
   const b=await f.bind(f.c,e),first=await queue(f.c,e);const run=f.c.runs.get(b.run_id),seq=run.events.length;
-  assert.deepEqual(f.c.workflow.progress('e'),{registered:true,sdk:true,permitted:true,initial:{delivery:'pending',read:false}});
+  assert.deepEqual(f.c.workflow.progress('e'),{registered:true,sdk:true,permitted:true,generation:b.permission_generation,blocked:false,
+    initial:{message_id:first.message_id,delivery:'pending',read:false,handled:false,physical_complete:false}});
   assert.equal(run.events.length,seq,'projection creates no telemetry or grants');
-  await delivered(f,b,first.message_id);assert.deepEqual(f.c.workflow.progress('e').initial,{delivery:'accepted',read:true});
+  await delivered(f,b,first.message_id);assert.deepEqual(f.c.workflow.progress('e').initial,{message_id:first.message_id,delivery:'accepted',read:true,handled:false,physical_complete:true});
   f.advance(60001);assert.equal(f.c.workflow.progress('e').sdk,false);
   await f.sync(f.c,b);assert.equal(f.c.workflow.progress('e').sdk,true);
   await f.c.workflow.grant(f.o,'paused');assert.equal(f.c.workflow.progress('e').sdk,false,'old generation is not a current SDK lease');
   f.targets.set('e',{...e,assignment_id:'replacement'});
-  assert.deepEqual(f.c.workflow.progress('e'),{registered:false,sdk:false,permitted:false,initial:null});
+  assert.deepEqual(f.c.workflow.progress('e'),{registered:false,sdk:false,permitted:false,generation:null,blocked:false,initial:null});
   assert.equal(f.c.workflow.progress('missing'),null);
 });
 test('pausing blocks new SDK wakeups but preserves active executor outbox and retries one deferred Kit operation',async t=>{

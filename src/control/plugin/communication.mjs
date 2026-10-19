@@ -467,7 +467,22 @@ export class PluginCommunication {
       panel_instance_id:input.panel_instance_id,participant_id:input.participant_id});
     return {seq:run.events.length};
   }
-  async status(input){await this.ready;await this.tail;await this.enrollment.validateInput(input);return structuredClone(this._status(input));}
+  async status(input){
+    await this.ready;await this.tail;await this.enrollment.validateInput(input);
+    const value=structuredClone(this._status(input)),{run,member}=this.member(input);
+    if(run.mode==='workflow'&&member.target.dialogue_version===1){
+      value.assignments=await this.assignment.roster(run,member);
+      value.pending_intents=Object.values(run.assignment_intents??{}).filter(i=>i.phase!=='published'
+        &&(member.role==='O'||i.sender_id===member.id||i.target.local_session_id===member.target.local_session_id))
+        .map(i=>({message_id:i.message_id,assignment_id:i.effect.assignment_id,phase:i.phase,error:i.error??null}));
+      for(const message of value.messages.slice(-30))if(message.context_ref){
+        try{const text=this.store?await this.store.readContent(message.context_ref):this.workflow.contents.get(message.context_ref);
+          if(typeof text==='string')message.preview=text.slice(0,1600)+(text.length>1600?'…':'');}
+        catch{message.preview='Текст временно недоступен; сообщение сохранено.';}
+      }
+    }
+    return value;
+  }
   async recover(input){
     await this.ready;await this.tail;const identity=communicationIdentity(input.metadata),participants=[];
     for(const run of this.runs.values())for(const member of Object.values(run.members))if(member.identity===identity) {
@@ -494,7 +509,8 @@ export class PluginCommunication {
     requireValue(Number.isSafeInteger(after)&&Number.isSafeInteger(through)&&after>=0&&after<=through&&through<=run.events.length,'CURSOR','Некорректные границы экспорта.');
     const next=Math.min(after+100,through),events=this.visibleEvents(run,member,run.events.slice(after,next));
     return {jsonl:events.map(e=>JSON.stringify(e)).join('\n')+(events.length?'\n':''),after_seq:next,through_seq:through,complete:next===through,
-      summary:{run_id:run.id,events:through,protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
+      summary:{run_id:run.id,events:through,through_seq:through,visibility:run.mode==='workflow'&&member.role==='E'?'own-assignment':'whole-run',
+        page_from:after,page_through:next,protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
         sdk_versions:SDK_VERSIONS,gaps:this.visibleEvents(run,member,run.events.slice(0,through)).filter(e=>e.event_type==='frontend.gap')
           .map(({seq,panel_instance_id,from,to})=>({seq,panel_instance_id,from,to})),critical_error:this.critical}};}
   dispose(){this.disposed=true;this.workflow.dispose();for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}

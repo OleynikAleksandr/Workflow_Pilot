@@ -49,10 +49,14 @@ export class WorkflowChannel {
       .every(key=>(m.target[key]??null)===(target[key]??null)));
     const sdk=!!member&&[...c.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id
       &&p.identity===member.identity&&p.generation===member.generation&&p.expiresAt>c.now()&&p.messageSupported);
-    const initial=run?.messages.find(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
-      &&m.assignment_id===target.assignment_id&&m.kind==='assignment-start');
+    const initial=run?.messages.findLast(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
+      &&m.assignment_id===target.assignment_id&&['assignment-start','task','revision_request'].includes(m.kind)&&!m.superseded);
+    const dialogue=run?.messages.filter(m=>m.assignment_id===target.assignment_id&&m.scope_id===target.scope_id&&!m.superseded)??[];
+    const question=dialogue.findLast(m=>m.blocking&&m.kind==='question');
+    const blocked=!!question&&!dialogue.some(m=>m.kind==='decision'&&m.resume&&m.block_id===question.block_id);
     return {registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
-      initial:initial?{delivery:initial.delivery,read:initial.read}:null};
+      generation:member?.generation??null,blocked,
+      initial:initial?{message_id:initial.message_id,delivery:initial.delivery,read:initial.read,handled:!!initial.yielded,physical_complete:!!initial.reply_observed}:null};
   }
   permitted(run,member) {
     return run.grant?.active===true&&run.grant.boot===this.c.backendId&&!member.stopped

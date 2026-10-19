@@ -62,10 +62,12 @@ export class AssignmentDialogue {
     const assignments=[];
     for(const target of this.targets(run).filter(t=>t.role==='E'&&(member.role==='O'||t.local_session_id===member.target.local_session_id))){
       try{await this.c.enrollment.validate(target);const state=await this.state(target,target.assignment_id);
-        const physical=state.block?await this.c.workflow.reconcile(target):null;
+        const physical=state.block?await this.c.workflow.reconcile(target):this.c.workflow.observe(target);
         assignments.push({recipient_ref:member.role==='O'?reference(run,target):'orchestrator',task_id:target.task_id,
           assignment_id:target.assignment_id,attempt:state.dialogue?.attempt??1,dialogue_version:state.dialogue_version,
-          block:state.block??null,
+          phase:state.phase,block:state.block??null,channel:this.c.workflow.progress(target.local_session_id),
+          physical:physical?{busy:physical.busy===true,stopped:physical.stopped===true,commandsIdle:physical.commandsIdle===true,
+            document_id:physical.documentId??null,observation_seq:physical.observationSeq??0}:null,
           parked:!!state.block&&physical?.stopped===true&&physical.commandsIdle===true&&!physical.busy,
           dialogue:state.dialogue?{grant:state.dialogue.grant,result:state.dialogue.result,acceptance:state.dialogue.acceptance}:null});
       }catch(error){assignments.push({recipient_ref:member.role==='O'?reference(run,target):'orchestrator',task_id:target.task_id,

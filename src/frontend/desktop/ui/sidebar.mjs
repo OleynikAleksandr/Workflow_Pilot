@@ -404,7 +404,7 @@ function render(state) {
           if(executor.sessionId===selected?.sessionId)choice.setAttribute('aria-current','page');
           const name=document.createElement('strong');name.textContent=executor.title||executor.taskId;
           const caption=document.createElement('span');caption.textContent=executor.taskId+' · worktree · '+(executor.experience==='work'?'Work':'Chat');
-          const status=document.createElement('span');status.className='executor-status';status.textContent=executor.label;
+          const status=document.createElement('span');status.className='executor-status';status.textContent=executor.label+(executor.attempt>1?' · попытка '+executor.attempt:'');
           const time=document.createElement('span');time.dataset.executorTime=executor.sessionId;time.executorTime=executor.time;
           choice.title=executor.workspace;choice.append(name,caption,status,time);
           choice.addEventListener('click',()=>action('selectSession',executor.workspace,executor.sessionId));

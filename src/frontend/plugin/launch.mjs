@@ -201,10 +201,12 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   $('stop').addEventListener('click',()=>void stop(undefined,null,'unknown','participant'));
   $('refresh').addEventListener('click',async()=>{if(!binding||busy||enabled)return;busy=true;ready();try{await flush();await refresh(true);}catch{status('Не удалось обновить журнал. Повторите вручную.','error');}finally{busy=false;ready();}});
   $('export').addEventListener('click',async()=>{
-    if(!binding||busy)return;busy=true;ready();let after_seq=0,through_seq,parts=[],summary;
+    if(!binding||busy)return;busy=true;ready();let after_seq=0,through_seq,parts=[],summary,pages=[];
     try{do{const result=await call('export',{run_id:binding.run_id,participant_id:binding.participant_id,after_seq,...(through_seq===undefined?{}:{through_seq})});
-      if(disposed)return;parts.push(result.jsonl);after_seq=result.after_seq;through_seq=result.through_seq;summary=result.summary;if(result.complete)break;
-    }while(true);exported=parts.join('');exportRun=binding.run_id;ui.exportResult(exported,summary);}
+      if(disposed)return;
+      if(result.after_seq<after_seq||(!result.complete&&result.after_seq===after_seq)||through_seq!==undefined&&result.through_seq!==through_seq)throw Error('Export cursor changed');
+      pages.push({after_seq,through_seq:result.after_seq});parts.push(result.jsonl);after_seq=result.after_seq;through_seq=result.through_seq;summary=result.summary;if(result.complete)break;
+    }while(true);exported=parts.join('');exportRun=binding.run_id;ui.exportResult(exported,{...summary,pages,complete:true});}
     catch{status('Экспорт не завершён. Журнал сохранён в службе; повторите экспорт.','error');}finally{busy=false;ready();}
   });
   $('select').addEventListener('click',()=>{$('export-text').focus();$('export-text').select();});

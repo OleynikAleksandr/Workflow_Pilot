@@ -1,6 +1,10 @@
-const delivery={pending:'В очереди',claimed:'Попытка начата',accepted:'Принято хостом',rejected:'Отклонено',unknown:'Исход неизвестен',superseded:'Устарело'};
+import {assignmentStage} from '../../contracts/dialogue-view.mjs';
+const delivery={pending:'Сохранено · в очереди',claimed:'Попытка начата',accepted:'Принято хостом',rejected:'Отклонено',unknown:'Исход неизвестен',superseded:'Устарело'};
 const sender=message=>message.sender_role==='O'?'Оркестратор':message.sender_role==='E'?'Исполнитель':'Приложение';
-const label=message=>[sender(message),message.task_id,message.assignment_id].filter(Boolean).join(' · ');
+const label=message=>[sender(message)+' → '+(message.sender_role==='E'?'Оркестратор':message.task_id?'Исполнитель':'Оркестратор'),
+  message.task_id,message.attempt?'попытка '+message.attempt:null].filter(Boolean).join(' · ');
+const handled=message=>message.dialogue_version===1?' · '+(message.yielded?'обработано':'обработка не подтверждена')+
+  ' · '+(message.reply_observed?'ход завершён':'завершение хода не подтверждено'):'';
 // Rendering only; participant authorization and durable state belong to Control.
 export function mountPanel({document}) {
   const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
@@ -33,6 +37,7 @@ export function mountPanel({document}) {
       }
     },
     unbound(){text('identity','Участник не подтверждён');text('binding','Проверяем принадлежность текущему разговору.');
+      $('roster-section').hidden=true;$('roster').replaceChildren();text('outbox','');
       $('run').value='';$('participant').value='';text('permission','Разрешение не выдано');text('queue','Очередь пока недоступна');
       text('last','Сообщений пока нет.');$('messages').replaceChildren();$('export-result').hidden=true;events=[];last=0;renderEvents();},
     candidates(values){$('run-selection').hidden=values.length<2;$('runs').replaceChildren();
@@ -49,17 +54,27 @@ export function mountPanel({document}) {
       if(events.length>200){events=events.slice(-200);trimmed=true;}renderEvents();
     },
     snapshot(value){
+      if(value.assignments){$('roster-section').hidden=false;$('roster').replaceChildren();
+        for(const assignment of value.assignments){const li=document.createElement('li'),detail=document.createElement('span');
+          li.textContent=assignment.task_id+' · попытка '+(assignment.attempt??1)+' · '+(assignment.error?.message??assignmentStage(assignment).label);
+          detail.textContent=['Назначение '+assignment.assignment_id,'SDK: '+(assignment.channel?.sdk?'подключён':'не подтверждён'),
+            'поколение '+(assignment.channel?.generation??'—'),assignment.physical?.busy?'ход выполняется':assignment.physical?.stopped?'физическая остановка подтверждена':'состояние хода неизвестно',
+            assignment.dialogue?.result?.source_commit?'коммит '+assignment.dialogue.result.source_commit:null].filter(Boolean).join(' · ');
+          li.append(detail);$('roster').append(li);}
+        text('outbox',(value.pending_intents??[]).map(i=>`${i.assignment_id}: ${i.phase}${i.error?' · '+i.error.message:''}`).join('\n'));}
       text('identity',value.mode==='workflow'?(value.role==='O'?'Оркестратор плана':`Исполнитель · ${value.task_id}\nНазначение ${value.assignment_id}`):`Роль ${value.role} · участник ${value.participant_id}`);
       text('binding',`Привязка подтверждена · ${value.conversation_key}`);
       text('permission',value.mode==='workflow'?`План: ${value.permission?.phase??'ожидает запуска'} · ${value.stopped?'отправка приостановлена':'связь разрешена на время выполнения'}`:
         `Поколение ${value.permission_generation} · ${value.expires_at?'до '+new Date(value.expires_at).toLocaleTimeString('ru'):'разрешение не выдано'}`);
-      const incoming=value.messages.filter(m=>m.recipient_id===value.participant_id);
+      const incoming=value.messages.filter(m=>m.recipient_id===value.participant_id&&!m.superseded);
       text('queue',`${incoming.filter(m=>!m.read).length} непрочитанных · ${incoming.filter(m=>m.delivery==='pending'&&!m.read).length} ожидают уведомления`);
       const lastMessage=value.messages.at(-1);
-      text('last',lastMessage?`${workflow?label(lastMessage)+'\n':''}${lastMessage.kind} · ${lastMessage.superseded?'Устарело':delivery[lastMessage.delivery]} · ${lastMessage.read?'прочитано':'чтение не подтверждено'}\n${lastMessage.body}`:'Сообщений пока нет.');
+      text('last',lastMessage?`${workflow?label(lastMessage)+'\n':''}${lastMessage.kind} · ${lastMessage.superseded?'Устарело':delivery[lastMessage.delivery]} · ${lastMessage.read?'прочитано':'чтение не подтверждено'}${handled(lastMessage)}\n${lastMessage.preview??lastMessage.body}`:'Сообщений пока нет.');
       $('messages').replaceChildren();
       for(const message of value.messages.slice(-30)){
-        const li=document.createElement('li');li.textContent=`${workflow?label(message)+' · ':''}${message.kind} · ${message.superseded?'Устарело':delivery[message.delivery]} · ${message.read?'прочитано':'не прочитано'} · ${message.message_id}`;
+        const li=document.createElement('li');li.textContent=`${workflow?label(message)+' · ':''}${message.kind} · ${message.superseded?'Устарело':delivery[message.delivery]} · ${message.read?'прочитано':'не прочитано'}${handled(message)} · ${message.message_id}`;
+        if(message.preview){const body=document.createElement('p');body.textContent=message.preview;li.append(body);}
+        if(message.in_reply_to){const correlation=document.createElement('span');correlation.textContent='В ответ на '+message.in_reply_to;li.append(correlation);}
         $('messages').append(li);
       }
     },

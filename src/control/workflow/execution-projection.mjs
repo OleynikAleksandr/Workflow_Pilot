@@ -1,3 +1,4 @@
+import {assignmentStage} from '../../contracts/dialogue-view.mjs';
 export function integrationProblem(operation) {
   if (operation?.status !== 'CHECKS_FAILED') return null;
   let failure;
@@ -28,7 +29,8 @@ export function projectExecutionPlan(plan,assignments,integration) {
       const merging=assignment&&integration?.assignment_id===assignment.id&&integration.status!=='IDLE';
       const label=status==='done'?'Интеграция проверена':merging
         ?integrationProblem(integration)?.message??(['CONFLICT','CHECKS_FAILED'].includes(integration.status)?'Интеграция требует исправления':'Интегрируется')
-        :assignment?.status==='UNKNOWN'?'Назначение требует сверки':assignment?.status==='READY_FOR_INTEGRATION'?'Готово к интеграции':assignment?'Назначено исполнителю':null;
+        :assignment?.status==='UNKNOWN'?'Назначение требует сверки':assignment?.dialogue_version===1?assignmentStage(assignment).label
+        :assignment?.status==='READY_FOR_INTEGRATION'?'Готово к интеграции':assignment?'Назначено исполнителю':null;
       return {id:task.id,title:task.title,status,...(delivery?{delivery:true}:{}),label:label??(delivery&&status==='current'?'Выполняет оркестратор':null),
         executionLabel:plannedExecution(task,plan.execution_strategy)};
     })};
@@ -57,6 +59,7 @@ export function executorStatus(assignment,record,integration,{channel=null}={}) 
   if(!record||record.disposed||!page||record.loading)return {phase:'unknown',label:'Активность сейчас не наблюдается'};
   if(page.connectionError)return {phase:'unknown',label:'Нет подтверждённой связи с чатом'};
   if(page.login==='signed-out')return {phase:'waiting',label:'Нужен вход в ChatGPT'};
+  if(assignment?.dialogue_version===1)return assignmentStage({...assignment,channel,physical:page});
   if(channel&&!['READY_FOR_INTEGRATION','INTEGRATED'].includes(assignment?.status)) {
     if(['unknown','rejected','superseded'].includes(channel.initial?.delivery))return {phase:'attention',label:'Рабочее уведомление: '+channel.initial.delivery+' · автоматического повтора нет'};
     if(!channel.registered)return {phase:'starting',label:'Ожидаем регистрацию исполнителя'};
@@ -88,6 +91,7 @@ export function projectExecutors(projects,workspace,execution,recordFor,channelF
         createdAt:session.createdAt,
         assignmentId:session.assignmentId,taskId:session.taskId,title:session.title,experience:session.experience,
         chatUrl:session.chatUrl,worktree:true,...executorStatus(assignment,record,execution.integration,{channel:channelFor(target)}),
+        attempt:assignment?.dialogue?.attempt??1,
         sourceCommit:assignment?.source_commit??null,integrationCommit:assignment?.integration_commit??null,
         time:record?.executor?.clock.snapshot()??{...session.executionTime,phase:'unknown'}};
     }));
