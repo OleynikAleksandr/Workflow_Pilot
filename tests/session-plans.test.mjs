@@ -7,6 +7,23 @@ import { execFileSync } from 'node:child_process';
 import { emptyPlan, renderPlan, readPlan, writePlan } from '@webpilot/workflow-kit/lib/plan';
 import { sessionPlanView, selectPlan, withSessionPlan, ownedPlanPath } from '@webpilot/workflow-kit/lib/session-plans';
 import { WorkspaceSetup } from '../src/control/projects/workspace-setup.mjs';
+import { SessionPlans } from '../src/control/sessions/session-plans.mjs';
+
+test('inspection re-reads a concurrently removed transaction but never repeats a mutation or corrupt JSON',async()=>{
+  const missing={ok:false,code:'INVALID_JSON',message:'Не удалось прочитать JSON: /main/.git/workflow-kit/transaction.json',details:{reason:'ENOENT: no such file'}};
+  for(const command of ['assignment:status','integration:status','validate','commit','integration:start']){
+    let calls=0;const plans=new SessionPlans({setup:{node:async()=>'/node',environment:{}},
+      run:async()=>({stdout:JSON.stringify(++calls===1?missing:{ok:true})})});
+    if(['commit','integration:start'].includes(command)){await assert.rejects(plans.call('/main',command),{code:'INVALID_JSON'});assert.equal(calls,1);}
+    else{assert.equal((await plans.call('/main',command)).ok,true);assert.equal(calls,2);}
+  }
+  for(const reason of ['ENOENT: no such file','SyntaxError: corrupt']){
+    let calls=0;const plans=new SessionPlans({setup:{node:async()=>'/node',environment:{}},
+      run:async()=>{calls++;return {stdout:JSON.stringify({...missing,details:{reason}})};}});
+    await assert.rejects(plans.call('/main','assignment:status'),{code:'INVALID_JSON'});
+    assert.equal(calls,reason.startsWith('ENOENT')?2:1,'bounded inspection only');
+  }
+});
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'single-active-plan-'));

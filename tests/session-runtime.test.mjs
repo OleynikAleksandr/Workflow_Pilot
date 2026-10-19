@@ -34,6 +34,20 @@ function fixture(t) {
     select:id=>{selected=id;},counts:()=>({connections,disconnections})};
 }
 
+test('restart without a saved conversation address reports the lost page and never replays Send',async t=>{
+  for(const state of ['sending','sent','unknown']) {
+    const f=fixture(t);
+    f.projects.a.chatUrl=null;f.projects.a.attempt={state,sendStartedAtMs:1};
+    const record=f.manager.ensure(f.projects.a);record.ready=true;
+    await f.manager.navigate(record,'https://chatgpt.com/');
+    f.manager.tick(record);f.manager.tick(record);
+    assert.equal(record.controller.state.phase,'send-unknown');
+    assert.equal(record.controller.state.error.code,'SESSION_CHAT_ADDRESS_UNKNOWN');
+    assert.equal(f.projects.a.attempt.state,state,'unknown outcomes are not changed to success or retried');
+    assert.equal(record.controller.active,null);
+  }
+});
+
 test('independent sessions keep pages, controllers and timers when switching or moving their presentation',async t=>{
   const f=fixture(t),a=f.manager.ensure(f.projects.a),b=f.manager.ensure(f.projects.b),host=f.host(),otherHost=f.host();
   assert.notEqual(f.view(a),f.view(b));assert.notEqual(a.controller,b.controller);assert.notEqual(a.composer,b.composer);

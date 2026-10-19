@@ -8,7 +8,7 @@ export class SessionPlans {
   constructor({ setup = new WorkspaceSetup(), run = execute, files = desktopFiles, onWorkerStart = () => {} } = {}) {
     Object.assign(this, { setup, run, files, onWorkerStart });
   }
-  async call(workspace, command, args = [], input = null, { timeout = 120000 } = {}) {
+  async call(workspace, command, args = [], input = null, { timeout = 120000, readRetry = false } = {}) {
     if (!path.isAbsolute(workspace)) throw fail('WORKSPACE_REQUIRED', 'Нужна абсолютная папка проекта.');
     const node = await this.setup.node();
     let inputFile;
@@ -28,6 +28,13 @@ export class SessionPlans {
       catch (error) { if (!error.stdout) throw error; stdout = error.stdout; }
       let result;
       try { result = JSON.parse(stdout); } catch { throw fail('PLAN_COMMAND_FAILED', 'Workflow Kit вернул неполный ответ.'); }
+      // Kit 1.8.2 can observe the transaction marker just before its owner removes
+      // it. Re-read only inspection commands and this exact missing-marker race;
+      // malformed data and all commands with effects keep their original failure.
+      if (!readRetry && !input && ['assignment:status','integration:status','validate'].includes(command)
+          && result.code === 'INVALID_JSON' && /(?:\/|\\)workflow-kit(?:\/|\\)transaction\.json$/.test(result.message ?? '')
+          && /^ENOENT:/.test(result.details?.reason ?? ''))
+        return this.call(workspace, command, args, null, { timeout, readRetry:true });
       if (!result.ok) throw fail(result.code ?? 'PLAN_COMMAND_FAILED', result.message ?? 'Команда плана не выполнена.');
       return result;
     } finally { if (inputFile) await this.files.removeFile(inputFile).catch(() => {}); }

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 570,
+  "plan_revision": 572,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
@@ -74,7 +74,9 @@
       "package-lock.json",
       "tests/backend-upgrade.test.mjs",
       "tools/codex-app-server-mcp/plugin.py",
-      "release-manifest.json"
+      "release-manifest.json",
+      "src/control/sessions/session-plans.mjs",
+      "tests/session-plans.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/executor-startup-and-removal.md",
@@ -170,8 +172,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-executor-lifecycle-fixes",
         "task_id": "T002",
@@ -193,7 +195,10 @@
         "tests/session-opening-performance.test.mjs",
         "tests/backend-native-pages.test.mjs",
         "tests/backend-browser-lifecycle.test.mjs",
-        "tests/electron-smoke.mjs"
+        "tests/electron-smoke.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/session-plans.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -224,7 +229,16 @@
             "required": true
           }
         ]
-      }
+      },
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/session-plans.test.mjs",
+        "tests/session-runtime.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -545,7 +559,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 570
+Revision: 572
 
 ## Цель
 
@@ -569,10 +583,10 @@ Revision: 570
   - Файлы: src/execution/runtime/service.mjs, src/execution/facade.mjs, src/execution/platform/linux/runtime.mjs, tools/codex-app-server-mcp/control.py, src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, tests/mac-runtime-switch.test.mjs, tests/mcp-runtime.test.mjs, tests/context-session.test.mjs, tests/context-cache.test.mjs, tests/windows-runtime.test.mjs, tests/linux-runtime.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Сохранять начатый разговор при выборе исполнителя — Ожидает
-  - Git Commit: [PENDING] fix: Сохранять начатый разговор при выборе исполнителя
+- [DONE] T002: Сохранять начатый разговор при выборе исполнителя — Завершено
+  - Git Commit: [DONE] fix: Сохранять начатый разговор при выборе исполнителя
   - Reference: workflow-pilot-executor-lifecycle-fixes / T002 / implementation
-  - Файлы: src/backend/desktop-model.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/control/context/context-session.mjs, src/control/workflow/coordination.mjs, src/execution/browser/session-runtime.mjs, tests/backend-desktop-model.test.mjs, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/session-opening-performance.test.mjs, tests/backend-native-pages.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/electron-smoke.mjs
+  - Файлы: src/backend/desktop-model.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/control/context/context-session.mjs, src/control/workflow/coordination.mjs, src/execution/browser/session-runtime.mjs, tests/backend-desktop-model.test.mjs, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/session-opening-performance.test.mjs, tests/backend-native-pages.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/electron-smoke.mjs, src/control/sessions/session-plans.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/session-plans.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] T003: Удалять проекты с незавершёнными назначениями — Ожидает

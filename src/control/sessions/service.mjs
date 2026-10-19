@@ -43,6 +43,8 @@ export class SessionRuntimes {
     const record={key,identity,browser,pageState:browser.pageState,ready:false,get paused(){return runtimes.paused;},
       get loading(){return browser.snapshot().loading;},get epoch(){return browser.snapshot().epoch;},
       readinessEpoch:0,disposed:false,manualDocumentOwner:null,lastStopObservation:null,error:null,cleanups:[]};
+    record.addressLost = !!project && !project.chatUrl && (!!project.attempt?.sendStartedAtMs
+      || ['sending','sent','unknown','acknowledged'].includes(project.attempt?.state));
     this.#records.set(key,record);
     record.project=()=>identity?this.store.project(identity.workspace,identity.sessionId):null;
     const scopedStore=identity?sessionStore(this.store,identity):this.store;
@@ -85,7 +87,11 @@ export class SessionRuntimes {
       // interrupted Send stays UNKNOWN in the composer and is never repeated.
       if(event.type==='loaded'&&record.readyBeforeCrash&&!event.snapshot?.crashed){record.ready=true;record.readyBeforeCrash=false;}
       if(event.type==='loaded'||event.type==='navigated'){this.tick(record);this.onChange(record);}
-      if(event.type==='crashed'){record.readyBeforeCrash=event.recovering===true&&record.ready;record.ready=false;}
+      if(event.type==='crashed'){
+        record.readyBeforeCrash=event.recovering===true&&record.ready;record.ready=false;
+        const saved=record.project();
+        if(saved&&!saved.chatUrl&&(saved.attempt?.sendStartedAtMs||['sent','unknown'].includes(saved.attempt?.state)))record.addressLost=true;
+      }
       if(event.error){
         record.controller.cancel();record.error=event.error;
         this.onError(record,Object.assign(new Error(event.error.message),{code:event.error.code}));
@@ -97,6 +103,12 @@ export class SessionRuntimes {
   tick(record,{freshDraft=false}={}) {
     const project=record.project();
     if(record.disposed||this.paused||!record.ready||record.loading||!project||project.archivedAt||project.sessionArchivedAt)return;
+    if(record.addressLost&&!normalizeChatUrl(record.composer.getURL())) {
+      record.controller.emit({phase:'send-unknown',error:{code:'SESSION_CHAT_ADDRESS_UNKNOWN',
+        message:'Страница разговора утрачена до сохранения адреса. Первоначальная отправка не повторяется; восстановите исходный разговор.'}});
+      return;
+    }
+    record.addressLost=false;
     record.controller.runtime=this.runtime();
     if(!record.controller.active) {
       record.controller.attach(project,{freshDraft:freshDraft||record.freshDraft===true});

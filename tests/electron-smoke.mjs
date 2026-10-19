@@ -90,7 +90,8 @@ document.querySelector('form').addEventListener('submit',event=>{
  if(match && !location.pathname.startsWith('/c/')){
    const target='/c/'+match[0];history.pushState({},'', '/c/WEB:12345678-1234-1234-1234-123456789abc');
    localStorage.setItem('fixture-messages:'+target,JSON.stringify(window.fixtureMessages));saveTurns(target);
-   setTimeout(()=>history.replaceState({},'',target),600);
+   window.fixtureFinishConversation=()=>history.replaceState({},'',target);
+   if(!localStorage.getItem('fixture-hold-conversation'))setTimeout(window.fixtureFinishConversation,600);
  }else{localStorage.setItem('fixture-messages:'+location.pathname,JSON.stringify(window.fixtureMessages));saveTurns();}
 });
 </script></body></html>`;
@@ -914,7 +915,18 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await browser.executeJavaScript(`document.title='Поздний заголовок ChatGPT'`);
   await new Promise(resolve => setTimeout(resolve, 150));
   assert.equal(store.selected().title, 'Имя после 429', 'page title cannot overwrite manual session name');
+  await browser.executeJavaScript("localStorage.setItem('fixture-hold-conversation','yes')");
   await sidebar.executeJavaScript('document.querySelector(".new-project-chat").click()');
+  await waitFor(()=>store.selected()?.sessionId!==first.sessionId&&store.selected()?.attempt?.state==='sent'&&!store.selected()?.chatUrl,
+    'bootstrap dispatched before permanent Chat URL',snapshot);
+  const pendingChat=store.selected(),pendingRecord=liveSessions.find(pendingChat),pendingDocument=pendingRecord.pageState.current.documentId;
+  assert.match(pendingRecord.composer.getURL(),/\/c\/WEB:/);
+  for(const sessionId of [first.sessionId,pendingChat.sessionId,pendingChat.sessionId])
+    await sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)},${JSON.stringify(sessionId)})`);
+  await waitFor(()=>snapshot().workspaceHealth.ready,'selected pending Chat ready',snapshot);
+  assert.equal(pendingRecord.pageState.current.documentId,pendingDocument,'selection keeps the exact temporary conversation document');
+  assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),1,'selection never duplicates bootstrap');
+  await browser.executeJavaScript("localStorage.removeItem('fixture-hold-conversation');window.fixtureFinishConversation()");
   await waitFor(() => store.selected()?.sessionId !== first.sessionId && snapshot().context.phase === 'delivered', 'new Chat via project menu IPC', snapshot);
   assert.equal(packetLoads, warmPacketLoads, 'new Chat reuses the checkout-scoped recovery packet');
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
@@ -939,7 +951,17 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(store.snapshot().projects[0].sessions.length, 2);
   assert.deepEqual(await sidebar.executeJavaScript('Array.from(document.querySelectorAll(".session-experience")).map(e=>e.textContent)'), ['Chat', 'Chat']);
   assert.equal(snapshot().projects[0].sessions[0].attempt, undefined, 'Session tree only receives metadata');
+  await browser.executeJavaScript("localStorage.setItem('fixture-hold-conversation','yes')");
   await sidebar.executeJavaScript(`document.querySelector('.project-menu-button').click(); document.querySelector('.new-project-work').click()`);
+  await waitFor(()=>store.selected()?.experience==='work'&&store.selected()?.attempt?.state==='sent'&&!store.selected()?.chatUrl,
+    'bootstrap dispatched before permanent Work URL',snapshot);
+  const pendingWork=store.selected(),workRecord=liveSessions.find(pendingWork),workDocument=workRecord.pageState.current.documentId;
+  for(const sessionId of [first.sessionId,pendingWork.sessionId])
+    await sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)},${JSON.stringify(sessionId)})`);
+  await waitFor(()=>snapshot().workspaceHealth.ready,'selected pending Work ready',snapshot);
+  assert.equal(workRecord.pageState.current.documentId,workDocument);
+  assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),1);
+  await browser.executeJavaScript("localStorage.removeItem('fixture-hold-conversation');window.fixtureFinishConversation()");
   await waitFor(() => store.selected()?.experience === 'work' && snapshot().context.phase === 'delivered', 'new Work via project menu IPC', snapshot);
   assert.equal(packetLoads, warmPacketLoads, 'new Work reuses the same checkout-scoped recovery packet');
   const third = store.selected();

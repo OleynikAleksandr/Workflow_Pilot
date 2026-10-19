@@ -20,7 +20,8 @@ export async function automaticDialogue(t,experience='chat'){
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,closed=false;
   const root=createFixture(directory),setup={node:async()=>process.execPath,
-    environment:Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_')))};
+    environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
+      GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
   const plans=new SessionPlans({setup});
   const control=new ControlFacade({storageFile:path.join(directory,'sessions.json'),execution:{},
     getExecutionSettings:()=>({parallel_allowed:true,max_workers:2})});

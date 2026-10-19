@@ -558,6 +558,7 @@ function attachController(project, { freshDraft = false } = {}) {
   const record=liveSessions.visible;
   if(record?.identity?.workspace!==project.workspace||record.identity.sessionId!==project.sessionId)return false;
   record.ready=true;
+  if(record.addressLost&&!normalizeChatUrl(record.composer.getURL())) {liveSessions.tick(record);return false;}
   if(!controller.active)controller.attach(project,{freshDraft:freshDraft||record.freshDraft===true});
   record.freshDraft=false;
   return true;
@@ -586,7 +587,12 @@ async function navigate(project = store.selected(), { refresh = false, generatio
   }, 15000);
   waiting.unref?.();
   try {
-    const alreadyOpen = !refresh && !entryUrl && record.composer.getURL() === target;
+    // A session owns its page before ChatGPT assigns a permanent URL. Selection
+    // presents that page, including a draft, login or temporary conversation.
+    // Only an explicit navigation/reload may replace an existing document.
+    const currentUrl = record.composer.getURL();
+    const alreadyOpen = !!project && !refresh && !entryUrl && !!currentUrl && currentUrl !== 'about:blank'
+      && !record.browser.snapshot().crashed;
     if (!alreadyOpen) {
       const firstOpening = !project && !record.composer.getURL();
       pageLoading=true;
@@ -596,7 +602,7 @@ async function navigate(project = store.selected(), { refresh = false, generatio
       else await liveSessions.navigate(record,target,{reload:refresh||!!entryUrl,freshDraft});
     }
     if (!navigationCurrent(ownNavigation)) return;
-    pageLoading = false; startupFlow?.finishPage(ownNavigation);
+    pageLoading = record.loading; if(!pageLoading)startupFlow?.finishPage(ownNavigation);
     void refreshStartupAccount();
     if (attachController(project && store.project(project.workspace), { freshDraft })) {
       if (refresh) await controller.retry();
@@ -667,7 +673,7 @@ async function retiredExecutorTarget(input) {
 async function openConnectedSession(input, sessionId = null, options = {}) {
   const retired = await retiredExecutorTarget(input);
   if (retired) return openConnectedSession(retired.workspace, retired.sessionId, options);
-  const { latest = false, resume = false } = options;
+  const { latest = false, resume = false, refresh = false } = options;
   const explicitSession = sessionId !== null;
   const generation = nextNavigation();
   const current = () => navigationCurrent(generation);
@@ -702,9 +708,8 @@ async function openConnectedSession(input, sessionId = null, options = {}) {
       await navigate(project,{generation});void planMonitor.refresh();return project;
     }
     const sessionRecord=liveSessions.ensure(project);
-    sessionRecord.ready=false;sessionRecord.readyBeforeCrash=false;
     const readinessEpoch=++sessionRecord.readinessEpoch;
-    void navigate(project, { generation, resume });
+    void navigate(project, { generation, resume, refresh });
     // Inspection runs in the existing worker and never holds the IPC or store queue.
     void workspaceSetup.ready(workspace).then(result => {
       if(sessionRecord.disposed||sessionRecord.readinessEpoch!==readinessEpoch)return;
@@ -728,8 +733,8 @@ async function openConnectedSession(input, sessionId = null, options = {}) {
     report(error); return null;
   }
 }
-async function selectWorkspace(input, { latest = false, resume = false } = {}) {
-  return openConnectedSession(input, null, { latest, resume });
+async function selectWorkspace(input, { latest = false, resume = false, refresh = false } = {}) {
+  return openConnectedSession(input, null, { latest, resume, refresh });
 }
 
 const vpsView = publicVpsState;
@@ -1208,7 +1213,7 @@ function registerIpc() {
     if(!remoteAccess?.current&&input?.op==='refresh')return {ok:false,error:{code:'REMOTE_DISABLED',message:'Доступ с других устройств недоступен.'}};
     return localRemote().action(input);
   });
-  registerAction('pilot:reload', async () => { startupError = null; const current = store.selected(); if (current) await selectWorkspace(current.workspace); else void navigate(); }, { navigation: true });
+  registerAction('pilot:reload', async () => { startupError = null; const current = store.selected(); if (current) await selectWorkspace(current.workspace,{refresh:true}); else void navigate(null,{refresh:true}); }, { navigation: true });
 
   desktopIpc.handle('archive', 'archive:get-state', archiveSnapshot);
   registerArchiveAction('archive:restore', async input => {
