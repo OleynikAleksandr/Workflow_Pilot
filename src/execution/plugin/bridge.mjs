@@ -15,8 +15,9 @@ export async function startPluginBridge({ directory, panel, list, open, connect,
     if(req.method!=='POST'||req.url!=='/plugin')return reply(404,{error:{code:'NOT_FOUND',message:'Операция недоступна.'}});
     try {
       const chunks=[];let bytes=0;
-      for await(const chunk of req) {bytes+=chunk.length;if(bytes>16384)return reply(413,{error:{code:'TOO_LARGE',message:'Запрос слишком велик.'}});chunks.push(chunk);}
+      for await(const chunk of req) {bytes+=chunk.length;if(bytes>2*1024*1024)return reply(413,{error:{code:'TOO_LARGE',message:'Запрос слишком велик.'}});chunks.push(chunk);}
       const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      if(bytes>16384&&input.action!=='communication.assignmentSend')return reply(413,{error:{code:'TOO_LARGE',message:'Запрос слишком велик.'}});
       // Only the classified plugin actions exist; agent MCP channels are not bridge actions.
       if(!['read','ui-mutation'].includes(PLUGIN_ACTION_CLASS[input?.action]))
         return reply(400,{error:{code:'PLUGIN_ACTION_INVALID',message:'Неизвестное действие плагина.'}});

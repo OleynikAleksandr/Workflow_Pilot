@@ -52,6 +52,13 @@ class CommunicationBinding(BaseModel):
 Binding = Annotated[CommunicationBinding, Field(description="Panel binding and permission; host metadata is obtained separately for every call.")]
 
 
+class AssignmentContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    source: Annotated[str, Field(min_length=1, max_length=1024, description="Source selected and read by the orchestrator; a label or exact document reference.")]
+    text: Annotated[str, Field(min_length=1, max_length=1048576, description="Complete selected text; never silently truncate. Total body and contexts are limited to 1 MiB UTF-8.")]
+    commit: Annotated[str | None, Field(pattern=r"^(?:[a-f0-9]{40}|[a-f0-9]{64})$", description="Source revision when applicable.")] = None
+
+
 class CommunicationEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_id: MessageId
@@ -88,7 +95,7 @@ class PluginBridge:
             return {"error": {"code": "PLUGIN_DESKTOP_REQUIRED", "message": "Фоновая служба Workflow Pilot не запущена. Откройте Workflow Pilot (после закрытия окна служба продолжит работу) и повторите действие."}}
         connection = http.client.HTTPConnection("127.0.0.1", state["port"], timeout=120)
         try:
-            connection.request("POST", "/plugin", json.dumps(payload).encode("utf-8"),
+            connection.request("POST", "/plugin", json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                                {"Authorization": "Bearer " + state["token"], "Content-Type": "application/json"})
             response = connection.getresponse()
             body = response.read(2_000_001)
@@ -160,8 +167,41 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_participants", annotations=READ, meta={"ui": {"visibility": ["model"]}})
     async def participants(ctx: Context) -> CallToolResult:
-        """Read current plan participants from verified host identity. Orchestrator sees active assignments; executor sees its own. No copied transport IDs, invitations, host metadata or worktree paths. Decisions use Kit assignment:message with the original block_id."""
+        """Read current plan participants and assignment recipient_ref/attempt from verified host identity. O sees its executors; E addresses orchestrator. No copied transport IDs or invitations. Capability errors identify legacy assignments requiring a safe migration."""
         return await communication("roster", ctx)
+
+    @mcp.tool(name="workflow_assignment_send", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def assignment_send(
+            recipient: Annotated[str, Field(min_length=1, max_length=240, description="O uses recipient_ref from participants; E uses orchestrator.")],
+            kind: Annotated[str, Field(pattern=r"^(task|context_request|context|question|clarification|decision|result|revision_request|acceptance)$", description="Semantic message type; Kit checks the author's role and state transition.")],
+            body: Annotated[str, Field(min_length=1, max_length=1048576, description="Agent-authored task, question, decision or report. No automatic project-context expansion.")],
+            attempt: Annotated[int, Field(ge=1, description="Current assignment attempt returned by participants/status.")],
+            idempotency_key: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$", description="Stable key for this operation. Retry the same content with the same key.")],
+            ctx: Context,
+            contexts: Annotated[list[AssignmentContext] | None, Field(max_length=16, description="Selected immutable context sources, not the entire project recovery.")] = None,
+            in_reply_to: Annotated[MessageId | None, Field(description="Read incoming message this responds to.")] = None,
+            source_commit: Annotated[str | None, Field(pattern=r"^(?:[a-f0-9]{40}|[a-f0-9]{64})$", description="Exact checked SHA for result, acceptance or revision_request.")] = None,
+            result_id: Annotated[MessageId | None, Field(description="Read result being accepted or returned for revision.")] = None,
+            block_id: Annotated[str | None, Field(max_length=240, description="Existing blocking question correlation returned by Kit.")] = None,
+            problem_id: Annotated[str | None, Field(max_length=240, description="Stable problem identity across repair attempts.")] = None,
+            blocking: Annotated[bool, Field(description="True when this question prevents safe work on the assignment.")] = False,
+            resume: Annotated[bool, Field(description="Explicit O decision to resume the current correlated block.")] = False) -> CallToolResult:
+        """Working O/E dialogue. Author is verified from host identity. O selects only needed context and issues task; E asks O for missing context/problems and sends result after checked commit. O reads result, accepts its exact SHA or requests revision, then integrates through Kit. Outgoing messages are allowed during the current turn. A durable intent precedes Kit effects and delivery; same key/content never duplicates an effect. Acceptance is not integration. Do not duplicate this operation with legacy send or task:block. After processing incoming messages call workflow_assignment_yield and finish the turn."""
+        return await communication("assignmentSend", ctx, recipient=recipient, kind=kind, body=body, attempt=attempt,
+                                   idempotency_key=idempotency_key, contexts=[c.model_dump() for c in contexts or []],
+                                   in_reply_to=in_reply_to, source_commit=source_commit, result_id=result_id,
+                                   block_id=block_id, problem_id=problem_id, blocking=blocking, resume=resume)
+
+    @mcp.tool(name="workflow_assignment_yield", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def assignment_yield(message_ids: Annotated[list[MessageId], Field(min_length=1, max_length=32, description="Read incoming messages processed during this turn.")],
+                               reason: Annotated[str, Field(pattern=r"^(awaiting_reply|tasks_sent|result_sent|handled)$", description="Reason for ending the turn; never task completion proof.")], ctx: Context) -> CallToolResult:
+        """Acknowledge processing of read incoming messages, then finish the turn. This is not DONE, acceptance or proof that generation stopped. Backend additionally observes physical completion before another SDK wakeup. No model polling or user Continue is needed for an ordinary reply."""
+        return await communication("assignmentYield", ctx, message_ids=message_ids, reason=reason)
+
+    @mcp.tool(name="workflow_assignment_status", annotations=READ, meta={"ui": {"visibility": ["model"]}})
+    async def assignment_status(ctx: Context) -> CallToolResult:
+        """Read assignment attempt, grants, result/acceptance, pending intents and message receipts for this verified identity. Does not send or wake an agent. Read/handled and Kit integration are different facts. Never poll this with repeated model turns."""
+        return await communication("assignmentStatus", ctx)
 
     @mcp.tool(name="workflow_communication_probe", annotations=LAUNCH, meta={"ui": {"visibility": ["model"]}})
     async def probe(run_id: RunId, participant_id: ParticipantId,

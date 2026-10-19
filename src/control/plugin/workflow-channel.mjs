@@ -110,7 +110,9 @@ export class WorkflowChannel {
       assignment_id:message.assignment_id,task_id:message.task_id,kind:message.kind,scope_id:message.scope_id});
     return this.receipt(message);
   }
-  receipt(message){return {message_id:message.message_id,delivery:message.delivery,read:message.read,reply_observed:message.reply_observed===true};}
+  receipt(message){return {message_id:message.message_id,delivery:message.delivery,read:message.read,reply_observed:message.reply_observed===true,
+    ...(message.dialogue_version===1?{operation_id:message.kit_receipt?.operation_id,assignment_id:message.assignment_id,attempt:message.attempt,
+      handled:!!message.yielded,result:message.kit_receipt?.result??null,acceptance:message.kit_receipt?.acceptance??null}:{})};}
   pending(run,member) {
     if(!this.permitted(run,member)||member.deliveryGate||!this.observe(member.target).canSend)return null;
     const first=run.messages.find(m=>m.recipient_id===member.id&&m.scope_id===run.grant.scope_id&&!m.reply_observed);
@@ -141,14 +143,16 @@ export class WorkflowChannel {
   async content(input) {
     const c=this.c;await c.ready;await c.tail;await c.enrollment.validateInput(input);
     const {run,member}=c.member(input),message=run.messages.find(m=>m.message_id===input.message_id);
-    check(message?.recipient_id===member.id&&message.context_ref===input.context_ref,'READ_DENIED','Контекст недоступен этому назначению.');
+    check(message?.recipient_id===member.id&&(message.context_ref===input.context_ref
+      ||message.contexts?.some(c=>c.sha256===input.context_ref)),'READ_DENIED','Контекст недоступен этому назначению.');
     check(!message.superseded&&await this.currentMessage(member.target,message),'STALE_MESSAGE','Сигнал устарел. Не выполняйте прежнее решение; ожидайте актуальное поручение.');
-    const text=c.store?await c.store.readContent(message.context_ref):this.contents.get(message.context_ref);
+    const text=c.store?await c.store.readContent(input.context_ref):this.contents.get(input.context_ref);
     check(typeof text==='string','CONTEXT','Сохранённый контекст недоступен.');
     const parts=[];let part='',bytes=0;
     for(const char of text){const size=Buffer.byteLength(char);if(bytes+size>12000){parts.push(part);part='';bytes=0;}part+=char;bytes+=size;}parts.push(part);
     const index=input.part??0;check(Number.isInteger(index)&&index>=0&&index<parts.length,'INPUT','Неверная часть контекста.');
-    return {message_id:message.message_id,context_ref:message.context_ref,part:index,total:parts.length,text:parts[index],
-      bytes:Buffer.byteLength(text),sha256:message.context_ref};
+    const source=message.contexts?.find(c=>c.sha256===input.context_ref);
+    return {message_id:message.message_id,context_ref:input.context_ref,part:index,total:parts.length,text:parts[index],
+      bytes:Buffer.byteLength(text),sha256:input.context_ref,...(source?{source:source.source,commit:source.commit}:{})};
   }
 }

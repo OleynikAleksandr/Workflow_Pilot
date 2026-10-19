@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 594,
+  "plan_revision": 598,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -116,7 +116,10 @@
       "scripts/stage-chatgpt-plugin.mjs",
       "packages/workflow-kit/src/lib/common.mjs",
       "release-manifest.json",
-      "tests/workflow-kit-recovery.test.mjs"
+      "tests/workflow-kit-recovery.test.mjs",
+      "src/control/plugin/assignment-dialogue.mjs",
+      "src/control/facade.mjs",
+      "src/execution/plugin/bridge.mjs"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-owned-dialogue.md",
@@ -262,8 +265,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T002",
@@ -291,7 +294,11 @@
         "src/contracts/backend.mjs",
         "tests/plugin-communication-store.test.mjs",
         "tests/plugin-enrollment.test.mjs",
-        "tests/fixtures/plugin-host.mjs"
+        "tests/fixtures/plugin-host.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/facade.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -328,7 +335,22 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1101,7 +1123,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 594
+Revision: 598
 
 ## Цель
 
@@ -1126,10 +1148,10 @@ Revision: 594
   - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/integration-proof.mjs, packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/signal-state.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, packages/workflow-kit/scripts/check-task-integration-fixture.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/validation-rules.mjs, packages/workflow-kit/src/lib/recovery.mjs, tests/workflow-kit-recovery.test.mjs, docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Добавить рабочий адресный API и долговечные сообщения агентов — Ожидает
-  - Git Commit: [PENDING] feat: Добавить рабочий адресный API и долговечные сообщения агентов
+- [DONE] T002: Добавить рабочий адресный API и долговечные сообщения агентов — Завершено
+  - Git Commit: [DONE] feat: Добавить рабочий адресный API и долговечные сообщения агентов
   - Reference: orchestrator-owned-dialogue-refactor / T002 / implementation
-  - Файлы: tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/execution/facade.mjs, src/execution/plugin/communication-store.mjs, src/contracts/plugin-communication.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/backend.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/fixtures/plugin-host.mjs
+  - Файлы: tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/execution/facade.mjs, src/execution/plugin/communication-store.mjs, src/contracts/plugin-communication.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/backend.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/fixtures/plugin-host.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/facade.mjs, src/execution/plugin/bridge.mjs, packages/workflow-kit/src/lib/recovery.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] T003: Исправить обработку ходов и последовательное пробуждение — Ожидает

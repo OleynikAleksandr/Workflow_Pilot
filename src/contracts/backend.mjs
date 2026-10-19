@@ -53,6 +53,7 @@ export const PLUGIN_ACTION_CLASS = Object.freeze({
   'communication.telemetry':'ui-mutation', 'communication.export':'read', 'communication.recover':'read',
   'communication.sync':'ui-mutation', 'communication.readMessage':'ui-mutation',
   'communication.content':'read', 'communication.roster':'read',
+  'communication.assignmentSend':'ui-mutation','communication.assignmentYield':'ui-mutation','communication.assignmentStatus':'read',
   // The separate MCP executor channel is NOT an operation of the UI API.
   'mcp.context': 'agent-independent', 'mcp.tools': 'agent-independent',
 });

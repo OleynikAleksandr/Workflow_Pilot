@@ -7,12 +7,12 @@ import {randomUUID,createHash} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 const meta=id=>({'openai/session':id});
-async function fixture(t,currentMessage){
+async function fixture(t,currentMessage,dialogueKit=null){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'workflow-channel-')));
   const targets=new Map(),pages=new Map(),admission=new Map(),instances=[];let now=100000;
   const create=async()=>{const c=new PluginCommunication({store:await openCommunicationStore(directory),now:()=>now,waitMs:5,
     resolveTarget:id=>targets.get(id),verifyTarget:async id=>targets.get(id),observe:target=>pages.get(target.local_session_id),
-    admit:async target=>admission.get(target.local_session_id)!==false,currentMessage});instances.push(c);await c.ready;return c;};
+    admit:async target=>admission.get(target.local_session_id)!==false,currentMessage,dialogueKit});instances.push(c);await c.ready;return c;};
   const c=await create();
   const target=(id,role='E')=>{const value={project_id:'p',scope_id:'s',local_session_id:id,origin_session_id:'o',role,
     assignment_id:role==='E'?'a-'+id:null,task_id:role==='E'?'t-'+id:null};targets.set(id,value);
@@ -26,6 +26,78 @@ async function fixture(t,currentMessage){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+function dialogueKitFixture(){
+  const effects=new Map(),states=new Map();let calls=0;
+  return {effects,get calls(){return calls;},
+    status:async(_target,id)=>({dialogue_version:1,dialogue:states.get(id)??{attempt:1}}),
+    apply:async(target,input)=>{if(effects.has(input.operation_id))return {...effects.get(input.operation_id),duplicate:true};
+      calls++;const receipt={ok:true,operation_id:input.operation_id,message_id:input.message_id,assignment_id:input.assignment_id,
+        task_id:'t-'+input.assignment_id.slice(2),attempt:input.attempt,kind:input.kind};
+      effects.set(input.operation_id,receipt);states.set(input.assignment_id,{attempt:input.attempt,grant:input.kind==='task'?{message_id:input.message_id}:null});
+      return receipt;}};
+}
+test('working API derives author, addresses distinct assignments and sends immutable selected context',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e'),other=f.target('other');
+  await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.bind(f.c,e);await f.bind(f.c,other);
+  const roster=await f.c.roster({metadata:meta('o')}),recipient=roster.assignments.find(a=>a.task_id==='t-e').recipient_ref;
+  assert.notEqual(recipient,roster.assignments.find(a=>a.task_id==='t-other').recipient_ref);
+  const text='Выбранный контракт 😀\n'.repeat(2000),input={metadata:meta('o'),recipient,attempt:1,kind:'task',
+    body:'Реализуй только модуль e',contexts:[{source:'contract-e.md',commit:'a'.repeat(40),text}],idempotency_key:'task-e'};
+  const sent=await f.c.assignmentSend(input),read=await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
+  assert.equal(read.sender_role,'O');assert.equal(read.assignment_id,'a-e');assert.equal(kit.calls,1);
+  let content='';for(let part=0,total=1;part<total;part++){
+    const c=await f.c.content({metadata:meta('e'),message_id:sent.message_id,context_ref:read.contexts[0].sha256,part});
+    total=c.total;content+=c.text;assert.equal(c.source,'contract-e.md');assert.equal(c.commit,'a'.repeat(40));}
+  assert.equal(content,text);
+  await assert.rejects(f.c.content({metadata:meta('other'),message_id:sent.message_id,context_ref:read.contexts[0].sha256}),{code:'PLUGIN_COMMUNICATION_BINDING'});
+  assert.equal((await f.c.assignmentSend(input)).message_id,sent.message_id);assert.equal(kit.calls,1);
+  await assert.rejects(f.c.assignmentSend({...input,body:'changed'}),{code:'PLUGIN_COMMUNICATION_CONFLICT'});
+  f.pages.get('e').canSend=false;
+  const question=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'question',
+    body:'Уточни пустой ввод',in_reply_to:sent.message_id,idempotency_key:'question-e'});
+  assert.equal((await f.c.readMessage({metadata:meta('o'),message_id:question.message_id})).sender_role,'E');
+  await assert.rejects(f.c.assignmentSend({...input,metadata:meta('e'),idempotency_key:'spoof'}),{code:'PLUGIN_COMMUNICATION_ROLE'});
+  await assert.rejects(f.c.assignmentYield({metadata:meta('other'),message_ids:[sent.message_id],reason:'handled'}),{code:'PLUGIN_COMMUNICATION_YIELD_DENIED'});
+  const yieldReceipt=await f.c.assignmentYield({metadata:meta('e'),message_ids:[sent.message_id],reason:'awaiting_reply'});
+  assert.equal(yieldReceipt.physical_completion,false);
+  const result=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'result',
+    body:'Готово, проверки пройдены',source_commit:'b'.repeat(40),idempotency_key:'result-e'});
+  const acceptance={metadata:meta('o'),recipient,attempt:1,kind:'acceptance',body:'Diff проверен',source_commit:'b'.repeat(40),result_id:result.message_id,idempotency_key:'accept-e'};
+  await assert.rejects(f.c.assignmentSend(acceptance),{code:'PLUGIN_COMMUNICATION_RESULT_UNREAD'});
+  await f.c.readMessage({metadata:meta('o'),message_id:result.message_id});await f.c.assignmentSend(acceptance);
+  const before=kit.calls;await f.c.assignmentStatus({metadata:meta('o')});assert.equal(kit.calls,before,'status has no effects');
+});
+test('persisted intent resumes the same Kit effect after publication failure and restart',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');
+  await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const input={metadata:meta('o'),recipient,attempt:1,kind:'task',body:'Exact work',idempotency_key:'durable-task'};
+  const store=f.c.store;f.c.store={...store,append:async(state,events)=>{
+    if(events.some(e=>e.event_type==='message.persisted'))throw Error('fixture disk interruption');
+    return store.append(state,events);}};
+  await assert.rejects(f.c.assignmentSend(input),{code:'PLUGIN_COMMUNICATION_STORE_WRITE'});
+  assert.equal(kit.calls,1);assert.equal(f.c.runs.get(b.run_id).messages.length,0);
+  const restored=await f.create(),status=await restored.assignmentStatus({metadata:meta('o')});
+  assert.equal(status.pending_intents.length,1);assert.equal(kit.calls,1);
+  const result=await restored.assignmentSend(input);
+  assert.equal(result.message_id,status.pending_intents[0].message_id);assert.equal(kit.calls,1);
+  assert.equal(restored.runs.get(b.run_id).messages.length,1);
+  assert.equal((await restored.assignmentStatus({metadata:meta('o')})).pending_intents.length,0);
+});
+test('an intent saved before Kit failure is never delivered and concurrent retries share one effect',async t=>{
+  const kit=dialogueKitFixture(),apply=kit.apply;let failOnce=true;
+  kit.apply=async(...args)=>{if(failOnce){failOnce=false;throw Object.assign(Error('fixture interrupted before effect'),{code:'FIXTURE_INTERRUPTED'});}return apply(...args);};
+  const f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);
+  await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const input={metadata:meta('o'),recipient,attempt:1,kind:'task',body:'One operation',idempotency_key:'retry'};
+  await assert.rejects(f.c.assignmentSend(input),{code:'FIXTURE_INTERRUPTED'});
+  assert.equal(kit.calls,0);assert.equal(f.c.runs.get(b.run_id).messages.length,0);
+  const pending=(await f.c.assignmentStatus({metadata:meta('o')})).pending_intents[0];assert.ok(pending.message_id);
+  const results=await Promise.all([f.c.assignmentSend(input),f.c.assignmentSend(input),f.c.assignmentSend(input)]);
+  assert.ok(results.every(r=>r.message_id===pending.message_id));assert.equal(kit.calls,1);
+  assert.equal(f.c.runs.get(b.run_id).messages.length,1);
+});
 test('startup progress reads current assignment and live SDK separately without exposing or mutating protocol data',async t=>{
   const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);
   assert.deepEqual(f.c.workflow.progress('e'),{registered:false,sdk:false,permitted:false,initial:null});

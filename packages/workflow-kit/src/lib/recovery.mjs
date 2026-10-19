@@ -165,9 +165,13 @@ function taskProjection(task, resolved) {
   const actual = task.actual_files;
   const added = actual?.filter(file=>!planned.includes(file)) ?? [];
   const unchanged = actual ? planned.filter(file=>!actual.includes(file)) : [];
-  const actualDescription = !actual ? 'ещё не зафиксированы' :
+  const actualPaths = !actual ? 'ещё не зафиксированы' :
     'плановый список' + (unchanged.length ? '; исключены: '+unchanged.join(', ') : '')
     + (added.length ? '; добавлены: '+added.join(', ') : '');
+  const actualPositions=actual?'позиции списка: '+(planned.flatMap((file,i)=>actual.includes(file)?[i+1]:[]).join(', ')||'нет')
+    +(added.length?'; добавлены: '+added.join(', '):''):null;
+  const numbered=actualPositions&&actualPositions.length+planned.length*3<actualPaths.length;
+  const actualDescription=numbered?actualPositions:actualPaths;
   return '# ' + task.id + ' — ' + task.title
     + '\nЗачем: ' + task.why
     + '\nСтатус: ' + task.implementation_status + ' / ' + task.commit_status
@@ -177,7 +181,7 @@ function taskProjection(task, resolved) {
     + '\nКритерии:\n' + task.acceptance_criteria.map(item=>'- '+item).join('\n')
     + '\nКоммит: ' + (reference?.sha ?? (reference?.pending ? 'COMMIT_PENDING' : 'не создан'))
     + (reference?.sha ? '\nРодитель: '+reference.parent+'\nЧтение: git show '+reference.sha : '')
-    + '\nФайлы:\n' + planned.map(file=>'- '+file).join('\n')
+    + '\nФайлы:\n' + planned.map((file,i)=>(numbered?(i+1)+'. ':'- ')+file).join('\n')
     + '\nФактические файлы: ' + actualDescription
     + '\nПроверки: ' + (task.verification_ids.join(', ') || 'схема и состав коммита')
     + '\nСообщение коммита: ' + task.expected_commit_message;

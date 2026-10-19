@@ -62,6 +62,33 @@ async function fixture(t){
 }
 
 const communicationTools=['bind','claim','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','verify','wait'];
+test('actual MCP exposes working send/status/yield and transfers selected UTF-8 context through the private bridge',async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;
+  const o={project_id:'fixture',local_session_id:'o',origin_session_id:'o',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
+  const e={...o,local_session_id:'e',role:'E',assignment_id:'assignment-e',task_id:'T001'};
+  const targets=new Map([['o',o],['e',e]]),effects=[];
+  comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>targets.get(id);
+  comm.assignment.kit={status:async()=>({dialogue_version:1,dialogue:{attempt:1}}),apply:async(target,input)=>{
+    effects.push({target,input});return {...input,ok:true,task_id:'T001'};}};
+  await bridge(t,f);const c=await client(t,f);
+  const call=(who,name,args={})=>c.callTool({name,arguments:args,_meta:{'openai/session':who}});
+  await comm.workflow.grant(o);
+  for(const target of [o,e]){const invite=await comm.reserve(target);
+    assert.equal((await call(target.local_session_id,'workflow_pilot_panel',{enrollment_ticket:invite.enrollment_ticket})).isError,false);}
+  const roster=await call('o','workflow_communication_participants');
+  const recipient=roster.structuredContent.assignments[0].recipient_ref;
+  const text='Только нужный исполнителю контракт 😀\n'.repeat(5000);
+  const result=await call('o','workflow_assignment_send',{recipient,kind:'task',attempt:1,body:'Реализуй назначенный модуль',
+    contexts:[{source:'selected-contract',text}],idempotency_key:'real-mcp-task'});
+  assert.equal(result.isError,false,JSON.stringify(result));assert.equal(effects.length,1);assert.equal(effects[0].target.role,'O');
+  const message_id=result.structuredContent.message_id;
+  const read=await call('e','workflow_communication_read_message',{message_id});assert.equal(read.structuredContent.sender_role,'O');
+  const context=await call('e','workflow_communication_read_context',{message_id,context_ref:read.structuredContent.contexts[0].sha256});
+  assert.ok(context.structuredContent.total>1);assert.equal(context.structuredContent.bytes,Buffer.byteLength(text));
+  const yielded=await call('e','workflow_assignment_yield',{message_ids:[message_id],reason:'handled'});
+  assert.equal(yielded.isError,false);assert.equal(yielded.structuredContent.physical_completion,false);
+  const status=await call('o','workflow_assignment_status');assert.equal(status.isError,false);assert.equal(effects.length,1);
+});
 test('MCP advertises content-addressed HTML and keeps the legacy address inert',async t=>{
   const f=await fixture(t);const c=await client(t,f);
   const tool=(await c.listTools()).tools.find(t=>t.name==='workflow_pilot_panel');

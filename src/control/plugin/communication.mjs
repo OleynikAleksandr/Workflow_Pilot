@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
+import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
@@ -27,13 +28,14 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,currentMessage,onChange=()=>{}}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,currentMessage,dialogueKit=null,onChange=()=>{}}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,currentMessage});
+    this.assignment=new AssignmentDialogue(this,dialogueKit);
     this.ready=this.restore();
   }
   async restore() {
@@ -155,6 +157,12 @@ export class PluginCommunication {
     this.workflow.attach(run,member);return result;}
   _grant(input){return this.workflow._grant(input);}
   _enqueue(input){return this.workflow._enqueue(input);}
+  _assignmentIntent(input){return this.assignment.prepare(input);}
+  _assignmentPublish(input){return this.assignment.publish(input);}
+  _assignmentYield(input){return this.assignment.yielded(input);}
+  assignmentSend(input){return this.assignment.send(input);}
+  assignmentStatus(input){return this.assignment.status(input);}
+  assignmentYield(input){return this.assignment.yield(input);}
   _sync(input){return this.workflow.sync(input);}
   _observed(input){const run=this.run(input);for(const member of Object.values(run.members))this.workflow.observed(run,member);return {};}
   observeSession(sessionId){for(const run of this.runs.values())if(run.mode==='workflow'&&Object.values(run.members).some(m=>m.target.local_session_id===sessionId)){
@@ -175,7 +183,8 @@ export class PluginCommunication {
   async roster(input){input=await this.modelInput(input);await this.enrollment.validateInput(input);const {run,member}=this.member(input),participants=[];
     for(const candidate of Object.values(run.members))if(candidate.id===member.id||member.role==='O'){
       try{await this.enrollment.validate(candidate.target);participants.push(this.enrollment.publicMember(run,candidate));}catch{}
-    }return {participants,permission:this.workflow.state(run)};
+    }return {participants,permission:this.workflow.state(run),
+      ...(this.assignment.kit?{assignments:await this.assignment.roster(run,member)}:{})};
   }
   panel(input) {
     const context=this.member(input),panel=this.panels.get(input.panel_instance_id);

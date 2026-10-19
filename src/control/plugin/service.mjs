@@ -14,10 +14,22 @@ export function pluginConversationKey(metadata) {
 
 // Both frontends use the same ProjectsService. No profile copies or browser operations.
 export class PluginProjects {
-  constructor({ projects, loadContext, communicationStore = null, onChange = () => {}, observe, admit, currentMessage, onCommunicationChange }) {
-    Object.assign(this, { projects, loadContext, onChange });
+  constructor({ projects, loadContext, plans=null, communicationStore = null, onChange = () => {}, observe, admit, currentMessage, onCommunicationChange }) {
+    Object.assign(this, { projects, loadContext, onChange,plans });
     this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id),
-      verifyTarget:id=>this.participantTarget(id),observe,admit,currentMessage,onChange:onCommunicationChange});
+      verifyTarget:id=>this.participantTarget(id),observe,admit,currentMessage,onChange:onCommunicationChange,
+      dialogueKit:plans?{status:(target,id)=>this.dialogueOperation(target,'assignment:dialogue-status',id),
+        apply:(target,input)=>this.dialogueOperation(target,'assignment:dialogue',input)}:null});
+  }
+  async dialogueOperation(target,command,input){
+    const fresh=await this.participantTarget(target.local_session_id);
+    if(!fresh||fresh.role!==target.role||fresh.scope_id!==target.scope_id||fresh.assignment_id!==target.assignment_id)
+      throw fail('PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED','Назначение автора изменилось.');
+    const project=this.projects.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===target.local_session_id));
+    if(!project)throw fail('PLUGIN_COMMUNICATION_PROJECT_REMOVED','Проект удалён.');
+    try{return command==='assignment:dialogue-status'?await this.plans.call(project.workspace,command,['--id',input])
+      :await this.plans.call(project.workspace,command,[],input);}
+    catch(error){throw fail('PLUGIN_ASSIGNMENT_'+(error.code??'FAILED'),error.message);}
   }
   async participantTarget(sessionId) {
     const target=localParticipantTarget(this.projects,sessionId);if(!target)return null;
