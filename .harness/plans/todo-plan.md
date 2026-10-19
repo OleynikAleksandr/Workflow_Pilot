@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 575,
+  "plan_revision": 576,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
@@ -91,7 +91,9 @@
       "tests/backend-bootstrap.test.mjs",
       "tests/execution-facade.test.mjs",
       "tests/parallel-execution-smoke-fixture.cjs",
-      "tests/workflow-channel.test.mjs"
+      "tests/workflow-channel.test.mjs",
+      "src/backend/server.mjs",
+      "src/backend/remote-gateway.mjs"
     ],
     "documentation_paths": [
       "docs/planning/executor-startup-and-removal.md",
@@ -403,7 +405,9 @@
         "package.json",
         "package-lock.json",
         "tests/backend-upgrade.test.mjs",
-        "tools/codex-app-server-mcp/plugin.py"
+        "tools/codex-app-server-mcp/plugin.py",
+        "src/backend/server.mjs",
+        "src/backend/remote-gateway.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -423,7 +427,8 @@
         "Start двух новых исполнителей проходит настоящие runtime/Control/backend/SDK/MCP пути с подставленным физическим хостом/моделью; без ручных панелей, ID/Enable и рабочих DOM-дублей.",
         "Сквозной тест воспроизводит выбор во время временного URL, доставку в правильные разговоры, завершение и отдельное удаление застрявшего проекта без влияния на соседний.",
         "Следующий свободный номер проверен, app/backend/panel/MCP согласованы, URI HTML зависит от содержимого. Kit сохраняет 1.8.2; при необходимости его изменения до них уточнить план и назначить kit-check.",
-        "Подготовлены повторные живые опыты: один Start без посещения исполнителей, выбор при создании разговора и удаление незавершённого проекта. Fixtures не выдаются за PASS ChatGPT."
+        "Подготовлены повторные живые опыты: один Start без посещения исполнителей, выбор при создании разговора и удаление незавершённого проекта. Fixtures не выдаются за PASS ChatGPT.",
+        "/v1/events принимает clientId подписчика (клиент Mac передаёт свой, шлюз — clientId устройства); оконные события уходят только потоку этого клиента"
       ],
       "expected_commit_message": "fix: Проверить полный сценарий и подготовить исправленный выпуск",
       "context_pack": {
@@ -622,7 +627,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 575
+Revision: 576
 
 ## Цель
 
@@ -661,7 +666,7 @@ Revision: 575
 - [TODO] T004: Проверить полный сценарий и подготовить исправленный выпуск — Ожидает
   - Git Commit: [PENDING] fix: Проверить полный сценарий и подготовить исправленный выпуск
   - Reference: workflow-pilot-executor-lifecycle-fixes / T004 / implementation
-  - Файлы: src/control/workflow/execution-projection.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/executor-startup-lifecycle.test.mjs, tests/parallel-execution-ui.test.mjs, tests/sidebar.test.mjs, tests/backend-end-to-end.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, tests/backend-upgrade.test.mjs, tools/codex-app-server-mcp/plugin.py
+  - Файлы: src/control/workflow/execution-projection.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/executor-startup-lifecycle.test.mjs, tests/parallel-execution-ui.test.mjs, tests/sidebar.test.mjs, tests/backend-end-to-end.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, tests/backend-upgrade.test.mjs, tools/codex-app-server-mcp/plugin.py, src/backend/server.mjs, src/backend/remote-gateway.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
