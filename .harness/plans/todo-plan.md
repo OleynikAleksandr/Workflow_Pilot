@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 586,
+  "plan_revision": 588,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Два исполнителя автоматически запускаются без конфликта службы и потери начатого чата; пользователь может убрать или удалить проект независимо от завершения плана.",
   "acceptance_criteria": [
     "Один Start готовит двух исполнителей, автоматически связывает панели и доставляет адресные задания без ручного вмешательства; конкурентная подготовка службы восстанавливается.",
@@ -626,8 +626,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-executor-lifecycle-fixes",
         "task_id": "PUBLISH",
@@ -661,7 +661,8 @@
             "required": true
           }
         ]
-      }
+      },
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -683,10 +684,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 586
+Revision: 588
 
 ## Цель
 
@@ -746,8 +747,8 @@ Revision: 586
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск и передать повторную проверку — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать выпуск и передать повторную проверку
+- [DONE] PUBLISH: Опубликовать выпуск и передать повторную проверку — Завершено
+  - Git Commit: [DONE] release: Опубликовать выпуск и передать повторную проверку
   - Reference: workflow-pilot-executor-lifecycle-fixes / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
