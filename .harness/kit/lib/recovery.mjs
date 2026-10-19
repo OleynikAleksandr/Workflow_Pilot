@@ -6,6 +6,7 @@ import { validate, documentByteLimit, resolveReferences } from './validate.mjs';
 import { nextTask, PROJECT_CONTINUATION_OBJECTIVE, parsePlan, uniqueDocuments, isDeliveryTask, hasExecutionPolicy, isOrchestratedPlan } from './plan.mjs';
 import { assignmentRecords } from './assignment-contract.mjs';
 import { blockedTasks } from './signals.mjs';
+import {ROLE_TEXT} from './role-protocol.mjs';
 import { snapshot, git, localPath, head, fileFingerprint, documentText, commitHistory } from './git.mjs';
 import { projectFacts, projectFactPaths, planningDocuments } from './project-facts.mjs';
 import { inspectionInputs } from './inspection-inputs.mjs';
@@ -14,11 +15,6 @@ export const TRANSPORT_HARD_BYTES = 180000;
 export const TRANSPORT_MAX_PARTS = 7;
 export const RECOVERY_ROLES = Object.freeze(['orchestrator','discussion','executor']);
 // Workflow Pilot assigns the role of a session; the model never chooses it.
-const ROLE_TEXT = {
-  orchestrator: 'РОЛЬ: ОРКЕСТРАТОР\nЭта сессия ведёт план проекта. Без активного плана: обсуждение, спецификация в docs/planning и план оркестратора (execution_strategy orchestrated, execution_origin_session_id — Session ID этой сессии, release, метки parallel_safe и context_pack каждой задачи). Обсуждение без плана сохрани документом через docs:commit. Обычные задачи и DOCS выполняют исполнители в своих worktree, запуск — кнопкой пользователя. Ты принимаешь интеграции; на task:block отвечай assignment:message или исправляющей задачей через plan:extend; если не можешь устранить сбой — plan:escalate и описание проблемы пользователю. Delivery-задачи и assignment:cleanup выполняй в main по поручению приложения.',
-  discussion: 'РОЛЬ: ЧАТ ОБСУЖДЕНИЯ\nПлан проекта выполняется. Эта сессия — обсуждение параллельно с ним: план не создавай и не меняй, задачи не начинай. Документы не создавай; только по прямой просьбе пользователя — во временной папке .workflow-temp/ в корне проекта вне Git, предупредив об этом и назвав путь.',
-  executor: 'РОЛЬ: ИСПОЛНИТЕЛЬ\nЭта сессия выполняет одну задачу назначения: task:start → работа → commit --task. Не можешь завершить её — task:block --task ID --reason "причина" и заверши ответ. Контекст — служебная часть Kit и документы context_pack задачи.',
-};
 const LEGACY_REFERENCE_DOCUMENTS = new Set(['docs/MODULES.md', 'docs/DOCUMENTATION_INDEX.md']);
 function withoutKitSection(text,file) {
   const begin = '<!-- workflow-kit:begin -->', end = '<!-- workflow-kit:end -->';
@@ -286,7 +282,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
       const records=assignmentRecords(root).filter(record=>record.parent_scope_id===plan.scope_id), blocked=blockedTasks(root,plan);
       add('execution-state','ИСПОЛНИТЕЛИ ПЛАНА ОРКЕСТРАТОРА\n'+(records.map(record=>'- '+record.parent_task_id+' — '+record.id+' — '+record.phase
         +(record.phase==='INTEGRATED'?', очистка: '+(record.cleanup?.status??'нет'):'')).join('\n')||'назначений нет')
-        +'\nЗаблокированные задачи:\n'+(blocked.map(item=>'- '+item.task_id+': '+item.reason).join('\n')||'нет')
+        +'\nЗаблокированные задачи:\n'+(blocked.map(item=>'- '+item.task_id+': '+item.reason+'\n  '+JSON.stringify({assignment_id:item.assignment_id,block_id:item.block_id,problem_id:item.problem_id,attempt:item.attempt,escalation_required:item.escalation_required})).join('\n')||'нет')
         +'\nОбычные задачи и DOCS в main не выполняются.');
     }
     const deliveryIndex = plan.tasks.findLastIndex(item=>isDeliveryTask(item)&&item.commit_status==='DONE');
