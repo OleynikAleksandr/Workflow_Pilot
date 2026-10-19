@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 547,
+  "plan_revision": 549,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -945,8 +945,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "RELEASE",
@@ -991,7 +991,10 @@
         "dependency_task_ids": []
       },
       "expected_commit_message": "release: Собрать единый проверочный выпуск",
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1120,7 +1123,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 547
+Revision: 549
 
 ## Цель
 
@@ -1181,8 +1184,8 @@ Revision: 547
   - Файлы: README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/acceptance/orchestrated-execution.md, docs/modules/execution.md, docs/modules/control.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/project-compatibility.md, docs/modules/release.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/plugin-plan-lifetime.md, docs/planning/automatic-agent-dialogue.md, docs/planning/automatic-agent-dialogue-acceptance.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PROTOTYPE.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006
-- [TODO] RELEASE: Собрать единый проверочный выпуск — Ожидает
-  - Git Commit: [PENDING] release: Собрать единый проверочный выпуск
+- [DONE] RELEASE: Собрать единый проверочный выпуск — Завершено
+  - Git Commit: [DONE] release: Собрать единый проверочный выпуск
   - Reference: workflow-pilot-automatic-agent-dialogue / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
