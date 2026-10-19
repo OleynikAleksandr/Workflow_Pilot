@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 582,
+  "plan_revision": 584,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
@@ -547,8 +547,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-executor-lifecycle-fixes",
         "task_id": "RELEASE",
@@ -581,7 +581,10 @@
             "required": true
           }
         ]
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -682,7 +685,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 582
+Revision: 584
 
 ## Цель
 
@@ -730,8 +733,8 @@ Revision: 582
   - Файлы: docs/planning/executor-startup-and-removal.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/execution.md, docs/modules/desktop.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-lifecycle.md, docs/modules/chatgpt-plugin.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/release.md, docs/planning/executor-readiness-recovery.md, docs/acceptance/orchestrated-execution.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/plugin-communication-handoff.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004
-- [TODO] RELEASE: Собрать единый исправленный выпуск — Ожидает
-  - Git Commit: [PENDING] release: Собрать единый исправленный выпуск
+- [DONE] RELEASE: Собрать единый исправленный выпуск — Завершено
+  - Git Commit: [DONE] release: Собрать единый исправленный выпуск
   - Reference: workflow-pilot-executor-lifecycle-fixes / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
