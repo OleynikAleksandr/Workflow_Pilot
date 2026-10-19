@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import {blockAnswered,currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 import { parallelTasksCompatible, isDeliveryTask } from '@webpilot/workflow-kit/lib/plan';
 import { validateParallelSettings } from './parallel-settings.mjs';
 import { integrationProblem, projectExecutionPlan } from './execution-projection.mjs';
@@ -391,7 +392,7 @@ export class ParallelExecution {
     const busy=(assignments??[]).some(a=>{
       if(a.status==='INTEGRATED')return false;
       const signals=(state.signals??[]).filter(s=>s.assignment_id===a.id),last=signals.findLast(s=>s.kind==='task-blocked');
-      const answered=last&&signals.slice(signals.indexOf(last)+1).some(s=>s.kind==='assignment-message'&&(!last.block_id||s.block_id===last.block_id));
+      const answered=last&&blockAnswered(signals,last);
       const parked=last&&!answered&&!a.commandActive&&!a.transaction_pending&&this.workerState(a,this.ledger(workspace,plan.scope_id).assignments[a.id]).stopped;
       return !parked;
     })||(state.integration?.status??'IDLE')!=='IDLE'||state.commandActive;
@@ -548,8 +549,7 @@ export class ParallelExecution {
       }
       const assignment=assignments.find(a=>a.id===signal.assignment_id);
       const done=plan.tasks.find(t=>t.id===signal.task_id)?.commit_status==='DONE';
-      const answered=signal.kind==='task-blocked'&&signals.slice(index+1).some(later=>later.kind==='assignment-message'&&later.assignment_id===signal.assignment_id);
-      if(done||answered||!assignment&&signal.kind==='assignment-message'||!['task-blocked','assignment-message'].includes(signal.kind)) {await handled();continue;}
+      if(done||!currentSignal(signals,signal)||!assignment&&signal.kind==='assignment-message'||!['task-blocked','assignment-message'].includes(signal.kind)) {await handled();continue;}
       const entry=ledger.signals[signal.id];
       if(entry) {
         if(entry.status==='pending'){delete ledger.signals[signal.id];}
@@ -566,11 +566,13 @@ export class ParallelExecution {
       const page=toWorker?this.workerState(assignment,ledger.assignments[assignment.id]):this.mainState(origin);
       if(!page.stopped||page.canSend===false)continue;
       const worker=assignment?this.sessionOf(assignment,ledger):null;
-      const text=toWorker?['Сообщение оркестратора по твоей задаче '+signal.task_id+':',signal.text,
+      const text=toWorker?['Сообщение оркестратора по твоей задаче '+signal.task_id+'; block_id: '+(signal.block_id??'legacy')+':',signal.text,
         'Продолжи задачу в своём worktree: доведи её до commit --task '+signal.task_id+' или снова task:block с причиной.'].join('\n')
         :['Исполнитель заблокировал задачу '+signal.task_id+' плана оркестратора.','Причина исполнителя: '+signal.reason,
           'Назначение: '+(signal.assignment_id??'нет')+(worker?'; сессия исполнителя: '+worker:'')+'. Workspace: '+JSON.stringify(workspace),
-          'Реши сбой: ответь исполнителю через ./scripts/workflow assignment:message --id '+(signal.assignment_id??'ID')+' --text "уточнение"; или добавь исправляющую задачу через plan:extend; если устранить не можешь — plan:escalate --reason "причина" и опиши проблему пользователю.'].join('\n');
+          'Блокировка: '+(signal.block_id??'legacy')+'; проблема: '+(signal.problem_id??'legacy')+'; попытка: '+(signal.attempt??1)+'.',
+          signal.escalation_required?'Лимит повторения проблемы исчерпан. Выполни plan:escalate --reason "попытки, результаты и требуемое решение пользователя". Не отправляй очередное автоматическое повторение.':
+            'Реши сбой: ответь исполнителю через ./scripts/workflow assignment:message --id '+(signal.assignment_id??'ID')+(signal.block_id?' --block-id '+signal.block_id:'')+' --text "решение и проверка"; или добавь исправляющую задачу через plan:extend; если устранить не можешь — plan:escalate --reason "причина" и опиши проблему пользователю.'].join('\n');
       if(this.queuedRoute(workspace,plan.scope_id)){
         const entry=ledger.signals[signal.id]={status:'pending'};
         return this.queueMessage(workspace,origin,ledger,entry,text,toWorker?'decision':'question',{

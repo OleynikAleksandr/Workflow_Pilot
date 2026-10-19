@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 536,
+  "plan_revision": 538,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -89,7 +89,10 @@
       "tests/workflow-channel.test.mjs",
       "src/frontend/desktop/bootstrap.mjs",
       "tests/product-identity.test.mjs",
-      "tests/web-client-electron.test.mjs"
+      "tests/web-client-electron.test.mjs",
+      "packages/workflow-kit/src/lib/role-protocol.mjs",
+      "packages/workflow-kit/src/lib/signal-state.mjs",
+      "tests/workflow-signals.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/automatic-agent-dialogue.md",
@@ -480,8 +483,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "T004",
@@ -510,7 +513,19 @@
         "tests/workflow-kit-recovery.test.mjs",
         "tests/orchestrated-execution.test.mjs",
         "tests/parallel-execution.test.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/plan-continuation-state.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/workflow-channel.test.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/signal-state.mjs",
+        "tests/workflow-signals.test.mjs"
       ],
       "documentation_paths": [
         "packages/workflow-kit/src/WORKFLOW.md",
@@ -568,7 +583,39 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "expected_commit_message": "feat: Автономное разрешение блокировок и согласованные инструкции"
+      "expected_commit_message": "feat: Автономное разрешение блокировок и согласованные инструкции",
+      "actual_files": [
+        "AGENTS.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/signals.mjs",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "src/backend/desktop-model.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/workflow/plan-continuation-state.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/orchestrated-execution.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/signal-state.mjs",
+        "tests/workflow-signals.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -973,7 +1020,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 536
+Revision: 538
 
 ## Цель
 
@@ -1010,10 +1057,10 @@ Revision: 536
   - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/workflow/plan-continuation.mjs, src/control/workflow/automation-send-state.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, src/control/facade.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/orchestrated-execution.test.mjs, tests/execution-control.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/plan-continuation.test.mjs, tests/backend-end-to-end.test.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/plan-continuation-state.mjs, src/execution/plugin/communication-store.mjs, tests/codex-app-server-mcp.test.mjs, src/control/plugin/workflow-channel.mjs, tests/workflow-channel.test.mjs, src/frontend/desktop/bootstrap.mjs, tests/product-identity.test.mjs, tests/web-client-electron.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T004: Автономное разрешение блокировок и согласованные инструкции — Ожидает
-  - Git Commit: [PENDING] feat: Автономное разрешение блокировок и согласованные инструкции
+- [DONE] T004: Автономное разрешение блокировок и согласованные инструкции — Завершено
+  - Git Commit: [DONE] feat: Автономное разрешение блокировок и согласованные инструкции
   - Reference: workflow-pilot-automatic-agent-dialogue / T004 / implementation
-  - Файлы: packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, src/control/context/context-session.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/plugin/communication.mjs, src/execution/runtime/service.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, tests/context-session.test.mjs, tests/workflow-kit-recovery.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution.test.mjs, tests/chatgpt-plugin.test.mjs, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, AGENTS.md, docs/acceptance/orchestrated-execution.md
+  - Файлы: packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, src/control/context/context-session.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/plugin/communication.mjs, src/execution/runtime/service.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, tests/context-session.test.mjs, tests/workflow-kit-recovery.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution.test.mjs, tests/chatgpt-plugin.test.mjs, src/backend/desktop-model.mjs, src/control/plugin/service.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/coordination.mjs, src/control/workflow/plan-continuation-state.mjs, src/frontend/plugin/index.html, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/signal-state.mjs, tests/workflow-signals.test.mjs, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, AGENTS.md, docs/acceptance/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Сквозная матрица и комплект трёх живых сценариев — Ожидает

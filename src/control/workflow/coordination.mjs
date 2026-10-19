@@ -24,7 +24,8 @@ export function createWorkflowCoordination({store, setup:workspaceSetup, plans:s
 let liveSessions;
 let reviewCheckpoint=null,automationCheckpoint=null,parallelExecutionBook={};
 const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&liveSessions?.find(project),
-  route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>executionControl.view(workspace,scope)});
+  route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>executionControl.view(workspace,scope),
+  signals:workspace=>executionKit.signals(workspace)});
 let permissionTail=Promise.resolve();
 function syncPermission(workspace){
   const entry=executionControl.book[workspace];if(!entry||entry.route!=='plugin-v1')return Promise.resolve();
@@ -336,6 +337,7 @@ const executionPort=Object.freeze({
 return Object.freeze({
   prepareBootstrap:project=>dialogue.prepareBootstrap(project),
   observeParticipant:target=>dialogue.observe(target),admitParticipant:target=>dialogue.admit(target),
+  currentMessage:(target,message)=>dialogue.currentMessage(target,message),
   communicationChanged:runId=>{
     const run=getPlugin()?.communication.runs.get(runId);if(!run)return;
     const parent=store.snapshot().projects.find(p=>p.projectId===run.project_id&&!p.parentWorkspace);

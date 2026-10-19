@@ -1381,7 +1381,7 @@ async function start() {
       append:async()=>{throw error;},
     }));
     plugin=control.createPlugin({onChange:()=>publish(),communicationStore,
-      observe:workflow.observeParticipant,admit:workflow.admitParticipant,onCommunicationChange:workflow.communicationChanged,
+      observe:workflow.observeParticipant,admit:workflow.admitParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;
   }

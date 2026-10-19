@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
+import {ROLE_PROTOCOL_VERSION,roleUpdate} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS} from '../../contracts/backend.mjs';
 export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
@@ -26,12 +27,12 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,onChange=()=>{}}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,currentMessage,onChange=()=>{}}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
-    this.workflow=new WorkflowChannel(this,{observe,admit});
+    this.workflow=new WorkflowChannel(this,{observe,admit,currentMessage});
     this.ready=this.restore();
   }
   async restore() {
@@ -340,6 +341,7 @@ export class PluginCommunication {
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read,'CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
+    if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message))return {deferred:true,superseded:true};
     if(run.mode==='workflow'&&!await this.workflow.canClaim(run,member,message))return {deferred:true};
     message.delivery='claimed';message.delivery_attempt_id=this.makeId();message.panel_instance_id=input.panel_instance_id;
     if(run.mode==='workflow')message.claimed_at=this.now();
@@ -359,6 +361,7 @@ export class PluginCommunication {
     requireValue(message.delivery==='claimed' && !message.intent && message.permission_generation===member.generation,
       'CLAIM_DENIED','Намерение отправки уже было подтверждено. Повтор запрещён.');
     if(run.mode==='workflow'){
+      if(await this.workflow.superseded(run,member,message))return {superseded:true,expires_at:0};
       requireValue(await this.workflow.admit(member.target)&&this.workflow.observe(member.target).canSend,'BUSY','Адресат занят. Попытка оставлена без повтора; требуется проверка.');
       this.workflow.begin(run,member,message);
     }
@@ -376,15 +379,18 @@ export class PluginCommunication {
     if(run.mode==='workflow')this.workflow.observed(run,run.members[message.recipient_id]);
     return {delivery:message.delivery,read:message.read};
   }
-  _read(input) {
+  async _read(input) {
     const {run,member}=this.member(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id,'READ_DENIED','Сообщение недоступно этому участнику.');
+    if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message))return {message_id:message.message_id,superseded:true,
+      instructions:'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Завершите ход; актуальное поручение будет доставлено отдельно.'};
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id});}
     this.event(run,'read.returned',{participant_id:member.id,message_id:message.message_id});
     if(run.mode==='workflow')this.workflow.observed(run,member);
     const {idempotency_key,fingerprint,...value}=message;
-    return {...structuredClone(value),...(run.mode==='workflow'?{instructions:'Прочитайте ВСЕ части workflow_communication_read_context с message_id, context_ref и part от 0 до total-1. Затем выполните поручение в рамках роли и Workflow Kit. Не повторяйте событие через send_message.'}:{})};
+    return {...structuredClone(value),...(run.mode==='workflow'?{role_protocol:ROLE_PROTOCOL_VERSION,
+      instructions:roleUpdate(member.role==='O'?'orchestrator':'executor')+'\nПрочитайте ВСЕ части workflow_communication_read_context с message_id, context_ref и part от 0 до total-1. Затем выполните поручение в рамках роли и Workflow Kit. Не повторяйте событие через send_message.'}:{})};
   }
   _telemetry(input) {
     const {run}=this.panel(input),data=input.event;

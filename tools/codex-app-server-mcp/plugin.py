@@ -130,13 +130,13 @@ def register_plugin(mcp, state_root: Path):
     async def read_message(message_id: MessageId, ctx: Context,
                            run_id: Annotated[str | None, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$", description="Legacy run only; omit for automatically registered working plans.")] = None,
                            participant_id: Annotated[str | None, Field(max_length=128, description="Legacy participant only; working plans derive it from host identity.")] = None) -> CallToolResult:
-        """Read an addressed message and record its receipt. Identity must match the recipient. Reading is a mutation, separate from host acceptance, and never causes another notification. No UI resource is returned."""
+        """Read an addressed message, current role instructions and record receipt. Apply the role update without replaying completed work; read all referenced context parts. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
         return await communication("readMessage", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id)
 
     @mcp.tool(name="workflow_communication_read_context", annotations=READ, meta={"ui": {"visibility": ["model"]}})
     async def read_context(message_id: MessageId, context_ref: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque context reference returned by read_message.")], ctx: Context,
                            part: Annotated[int, Field(ge=0, description="Zero-based part; read through total-1.")] = 0) -> CallToolResult:
-        """Read the complete working instruction in numbered UTF-8 parts. Read every part from zero to total-1 before acting; no truncation. Fresh host identity and current assignment must match the addressed message. No UI or model turn is created."""
+        """Read the complete working instruction in numbered UTF-8 parts. Read zero through total-1 before acting; no truncation. Fresh identity, current assignment and block correlation must match. STALE_MESSAGE means do not execute the old decision. No UI or model turn is created."""
         return await communication("content", ctx, message_id=message_id, context_ref=context_ref, part=part)
 
     @mcp.tool(name="workflow_communication_participants", annotations=READ, meta={"ui": {"visibility": ["model"]}})

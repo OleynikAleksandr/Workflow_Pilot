@@ -1,5 +1,6 @@
 import { desktopFiles as fs } from '../../execution/facade.mjs';
 import { readReview } from '@webpilot/workflow-kit/lib/plan-review';
+import {blockAnswered} from '@webpilot/workflow-kit/lib/signal-state';
 export const reviewBlocksExecution=(review,scopeId)=>review?.enabled && review.scope_id===scopeId && review.stage!=='PUBLISHED';
 import path from 'node:path';
 import { executeFile as execute } from '../../execution/facade.mjs';
@@ -38,7 +39,7 @@ export async function readPlanContinuationState(selected, environment = process.
     const signals=(await fs.readFile(path.join(common,'workflow-kit','signals.jsonl'),'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;}))
       .split('\n').filter(Boolean).map(JSON.parse).filter(s=>s.assignment_id===selected.assignmentId&&s.scope_id===selected.parentScopeId);
     const last=signals.findLast(s=>s.kind==='task-blocked');
-    blocked=!!last&&!signals.slice(signals.indexOf(last)+1).some(s=>s.kind==='assignment-message'&&(!last.block_id||s.block_id===last.block_id));
+    blocked=!!last&&!blockAnswered(signals,last);
   }
   // Parallel and orchestrated plans are driven by their queue, never by the main chat's continuation.
   return { ...after, blocked,nextTask: await readNextTask(after), confirmed: !['parallel', 'orchestrated'].includes(after.planExecution?.execution_strategy)

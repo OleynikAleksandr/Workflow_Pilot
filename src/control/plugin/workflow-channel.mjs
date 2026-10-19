@@ -10,8 +10,17 @@ const kinds=new Set(['assignment-start','continue','question','decision','result
 // Plan permission is durable. A short panel lease only proves a live SDK; it
 // never asks the user to renew that permission or authorizes another scope.
 export class WorkflowChannel {
-  constructor(communication,{observe=()=>({canSend:false}),admit=async()=>false}={}) {
-    Object.assign(this,{c:communication,observe,admit});this.contents=new Map();
+  constructor(communication,{observe=()=>({canSend:false}),admit=async()=>false,currentMessage=async()=>true}={}) {
+    Object.assign(this,{c:communication,observe,admit,currentMessage});this.contents=new Map();
+  }
+  async superseded(run,member,message){
+    if(message.superseded)return true;
+    if(await this.currentMessage(member.target,message))return false;
+    message.superseded=true;
+    if(!message.intent){message.reply_observed=true;message.delivery='superseded';}
+    else {message.read=true;this.observed(run,member);}
+    this.c.event(run,'message.superseded',{participant_id:member.id,message_id:message.message_id,block_id:message.block_id});
+    return true;
   }
   grant(target,phase='running') {return this.c.mutate('grant',{run_id:workflowRunId(target),target,phase});}
   _grant({target,phase}) {
@@ -118,6 +127,7 @@ export class WorkflowChannel {
     const c=this.c;await c.ready;await c.tail;await c.enrollment.validateInput(input);
     const {run,member}=c.member(input),message=run.messages.find(m=>m.message_id===input.message_id);
     check(message?.recipient_id===member.id&&message.context_ref===input.context_ref,'READ_DENIED','Контекст недоступен этому назначению.');
+    check(!message.superseded&&await this.currentMessage(member.target,message),'STALE_MESSAGE','Сигнал устарел. Не выполняйте прежнее решение; ожидайте актуальное поручение.');
     const text=c.store?await c.store.readContent(message.context_ref):this.contents.get(message.context_ref);
     check(typeof text==='string','CONTEXT','Сохранённый контекст недоступен.');
     const parts=[];let part='',bytes=0;

@@ -88,9 +88,9 @@ test('orchestrated plan runs end to end: waves, pause, block and escalation, del
   // P1 blocks; the orchestrator answers it through Kit; the answer reaches the executor.
   const p1 = assignmentOf('P1');
   startTask(p1.assignment.worktree, 'P1'); write(p1.assignment.worktree, 'SECOND.md', '# draft\n');
-  blockTask(p1.assignment.worktree, 'P1', 'Which wording should the guide use?'); p1.stopped = true; await signal();
+  const blocked=blockTask(p1.assignment.worktree, 'P1', 'Which wording should the guide use?'); p1.stopped = true; await signal();
   assert.equal(corrections.length, 1); assert.match(corrections[0], /Which wording/);
-  messageAssignment(root, p1.assignment.id, 'Use the short wording'); await signal();
+  messageAssignment(root, p1.assignment.id, 'Use the short wording',undefined,blocked.signal.block_id); await signal();
   assert.deepEqual(toWorkers.map(item => item.id), [p1.assignment.id]); assert.match(toWorkers[0].text, /short wording/);
 
   // The user pauses the plan: running executors finish and integrate, then the pause takes effect.

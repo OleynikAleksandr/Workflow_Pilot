@@ -93,7 +93,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     if(!enabled||disposed||epoch!==generation)return;
     const args={binding:current,message_id:ticket.message_id,delivery_attempt_id:ticket.delivery_attempt_id};
     const verified=await call('verify',args,{signal});
-    if(!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
+    if(verified.superseded||!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
     status('Передаём запрос текущему разговору…','sending');
     let outcome='unknown',timer;
     try {

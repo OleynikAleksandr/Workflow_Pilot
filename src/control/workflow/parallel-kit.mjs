@@ -28,6 +28,11 @@ export class ParallelKit {
     if(!commit)return null;
     try {return parsePlan(await this.git(workspace,['show',commit+':'+planFile])).project_id;}catch{return null;}
   }
+  async signals(workspace){
+    const directory=await this.git(workspace,['rev-parse','--path-format=absolute','--git-common-dir']);
+    const text=await fs.readFile(path.join(directory,'workflow-kit','signals.jsonl'),'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;});
+    return text.split('\n').filter(Boolean).map(JSON.parse);
+  }
   async read(workspace) {
     const text=await fs.readFile(path.join(workspace,planFile),'utf8'),plan=parsePlan(text);
     if(!['parallel','orchestrated'].includes(plan.execution_strategy))return {workspace,plan,assignments:[],integration:{status:'IDLE'}};

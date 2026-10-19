@@ -1,4 +1,6 @@
-const delivery={pending:'В очереди',claimed:'Попытка начата',accepted:'Принято хостом',rejected:'Отклонено',unknown:'Исход неизвестен'};
+const delivery={pending:'В очереди',claimed:'Попытка начата',accepted:'Принято хостом',rejected:'Отклонено',unknown:'Исход неизвестен',superseded:'Устарело'};
+const sender=message=>message.sender_role==='O'?'Оркестратор':message.sender_role==='E'?'Исполнитель':'Приложение';
+const label=message=>[sender(message),message.task_id,message.assignment_id].filter(Boolean).join(' · ');
 // Rendering only; participant authorization and durable state belong to Control.
 export function mountPanel({document}) {
   const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
@@ -21,6 +23,11 @@ export function mountPanel({document}) {
     mode(value){workflow=value==='workflow';
       for(const id of ['legacy-fields','bind','enable'])$(id).hidden=workflow;
       if(workflow){$('run-selection').hidden=true;
+        document.getElementById('binding-title').textContent='Участник плана';
+        document.getElementById('permission-title').textContent='Связь во время выполнения';
+        text('stop','Остановить отправку плана');
+        text('stop-help','Остановка запрещает новые отправки всего плана. Для возобновления используйте «Продолжить» в плане. Уже переданный хосту запрос отменить нельзя.');
+        text('address-help','Адресат определяется назначением. Backend наблюдает занятость и черновик разговора. Выбор чата в боковой панели не меняет адресата; проверка и SDK Send не атомарны.');
         text('binding-help','Назначение определено по текущему разговору. Привязка выполняется автоматически.');
         text('permission-help','Связь управляется кнопкой выполнения плана. Отдельное включение для каждого исполнителя не требуется.');
       }
@@ -49,10 +56,10 @@ export function mountPanel({document}) {
       const incoming=value.messages.filter(m=>m.recipient_id===value.participant_id);
       text('queue',`${incoming.filter(m=>!m.read).length} непрочитанных · ${incoming.filter(m=>m.delivery==='pending'&&!m.read).length} ожидают уведомления`);
       const lastMessage=value.messages.at(-1);
-      text('last',lastMessage?`${lastMessage.kind} · ${delivery[lastMessage.delivery]} · ${lastMessage.read?'прочитано':'чтение не подтверждено'}\n${lastMessage.body}`:'Сообщений пока нет.');
+      text('last',lastMessage?`${workflow?label(lastMessage)+'\n':''}${lastMessage.kind} · ${lastMessage.superseded?'Устарело':delivery[lastMessage.delivery]} · ${lastMessage.read?'прочитано':'чтение не подтверждено'}\n${lastMessage.body}`:'Сообщений пока нет.');
       $('messages').replaceChildren();
       for(const message of value.messages.slice(-30)){
-        const li=document.createElement('li');li.textContent=`${message.kind} · ${delivery[message.delivery]} · ${message.read?'прочитано':'не прочитано'} · ${message.message_id}`;
+        const li=document.createElement('li');li.textContent=`${workflow?label(message)+' · ':''}${message.kind} · ${message.superseded?'Устарело':delivery[message.delivery]} · ${message.read?'прочитано':'не прочитано'} · ${message.message_id}`;
         $('messages').append(li);
       }
     },

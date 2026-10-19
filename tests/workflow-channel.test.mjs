@@ -7,12 +7,12 @@ import {randomUUID,createHash} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 const meta=id=>({'openai/session':id});
-async function fixture(t){
+async function fixture(t,currentMessage){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'workflow-channel-')));
   const targets=new Map(),pages=new Map(),admission=new Map(),instances=[];let now=100000;
   const create=async()=>{const c=new PluginCommunication({store:await openCommunicationStore(directory),now:()=>now,waitMs:5,
     resolveTarget:id=>targets.get(id),verifyTarget:async id=>targets.get(id),observe:target=>pages.get(target.local_session_id),
-    admit:async target=>admission.get(target.local_session_id)!==false});instances.push(c);await c.ready;return c;};
+    admit:async target=>admission.get(target.local_session_id)!==false,currentMessage});instances.push(c);await c.ready;return c;};
   const c=await create();
   const target=(id,role='E')=>{const value={project_id:'p',scope_id:'s',local_session_id:id,origin_session_id:'o',role,
     assignment_id:role==='E'?'a-'+id:null,task_id:role==='E'?'t-'+id:null};targets.set(id,value);
@@ -72,6 +72,8 @@ test('large UTF-8 context is complete, immutable, identity scoped and persists w
   assert.equal((await queue(f.c,e,'large',text)).message_id,m.message_id);
   await assert.rejects(queue(f.c,e,'large',text+'!'),{code:'PLUGIN_COMMUNICATION_CONFLICT'});
   const value=await f.c.readMessage({message_id:m.message_id,metadata:meta('e')});let complete='';
+  assert.equal(value.role_protocol,2);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
+  assert.match(value.instructions,/не повторяют recovery и не запускают задачу заново/);
   for(let part=0,total=1;part<total;part++){
     const page=await f.c.content({message_id:m.message_id,context_ref:value.context_ref,part,metadata:meta('e')});
     complete+=page.text;total=page.total;assert.ok(Buffer.byteLength(page.text)<=12000);
@@ -87,6 +89,24 @@ test('large UTF-8 context is complete, immutable, identity scoped and persists w
   assert.equal(await next.store.readContent(value.context_ref),text);
   f.targets.set('e',{...e,assignment_id:'replaced'});
   await assert.rejects(f.c.content({...b,message_id:m.message_id,context_ref:value.context_ref}),{code:'PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'});
+});
+test('obsolete decisions skip SDK and cannot expose work after an already accepted notification',async t=>{
+  const stale=new Set(),f=await fixture(t,async(_target,m)=>!stale.has(m.message_id)),e=f.target('e');
+  await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e);
+  const first=await queue(f.c,e,'before-claim');stale.add(first.message_id);
+  assert.deepEqual(await f.c.claim({...b,message_id:first.message_id}),{deferred:true,superseded:true});
+  const second=await queue(f.c,e,'before-verify'),attempt=await f.c.claim({...b,message_id:second.message_id});
+  stale.add(second.message_id);assert.deepEqual(await f.c.verify({...b,...attempt}),{superseded:true,expires_at:0});
+  const third=await queue(f.c,e,'after-send'),sent=await f.c.claim({...b,message_id:third.message_id});
+  await f.c.verify({...b,...sent});await f.c.report({...b,...sent,outcome:'accepted'});stale.add(third.message_id);
+  const response=await f.c.readMessage({message_id:third.message_id,metadata:meta('e')});
+  assert.equal(response.superseded,true);assert.equal(response.context_ref,undefined);
+  const message=f.c.runs.get(b.run_id).messages.at(-1);
+  await assert.rejects(f.c.content({message_id:third.message_id,context_ref:message.context_ref,metadata:meta('e')}),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
+  const fourth=await queue(f.c,e,'next');assert.equal(pending(f.c,b),null,'the already started model turn still owns the conversation');
+  const page=f.pages.get('e');page.turnId+='a';page.userTurnId+='u';page.assistantRevision++;page.userMessagesRevision++;
+  f.c.observeSession('e');await f.c.tail;assert.equal(pending(f.c,b),fourth.message_id);
+  const restored=await f.create();assert.equal(restored.runs.get(b.run_id).messages[0].delivery,'superseded');
 });
 test('two live panels consume at most one delivery and cannot skip an uncertain predecessor',async t=>{
   const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e),other=await f.bind(f.c,e);

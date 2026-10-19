@@ -2,11 +2,21 @@ import {createHash} from 'node:crypto';
 import {readCommandActivity} from './command-activity.mjs';
 import {executorPageState} from './executor-session.mjs';
 import {AUTOMATIC_DIALOGUE_ENABLED} from '../../contracts/backend.mjs';
+import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 // A narrow adapter for the existing scheduler. It owns no assignments or plan.
 export class DialogueDelivery {
-  constructor({store,getPlugin,record,route,state}){Object.assign(this,{store,getPlugin,record,route,state});}
+  constructor({store,getPlugin,record,route,state,signals}){Object.assign(this,{store,getPlugin,record,route,state,signals});}
+  async currentMessage(target,message){
+    if(!message.signal_id)return true;
+    const project=this.project(target.local_session_id);
+    if(!project||!this.signals)return false;
+    const signals=await this.signals(project.parentWorkspace??project.workspace);
+    const signal=signals.find(s=>s.id===message.signal_id&&s.scope_id===message.scope_id
+      &&s.assignment_id===message.assignment_id&&s.task_id===message.task_id);
+    return !!signal&&currentSignal(signals,signal);
+  }
   uses(project){return !!project&&this.route(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId)==='plugin-v1';}
   project(sessionId){const p=this.store.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));return p&&this.store.project(p.workspace,sessionId);}
   observe(target){

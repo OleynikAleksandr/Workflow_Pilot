@@ -197,6 +197,8 @@ test('workflow panel automatically binds its current assignment after late SDK a
   await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
   assert.equal(ui.$('run').value,invite.run_id);assert.equal(ui.$('legacy-fields').hidden,true);
   assert.equal(ui.$('enable').hidden,true);assert.equal(ui.$('bind').hidden,true);assert.equal(ui.$('run-selection').hidden,true);
+  assert.equal(ui.$('stop').textContent,'Остановить отправку плана');
+  assert.match(ui.$('stop-help').textContent,/всего плана/);
   assert.equal(ui.calls.filter(c=>c==='workflow_communication_enable').length,0);assert.equal(ui.messages.length,0);
   const participant=(await f.plugin.communication.recover({metadata})).participants.find(p=>p.mode==='workflow');
   assert.equal((await f.plugin.communication.status({...participant,metadata})).channel_ready,true);
@@ -235,6 +237,7 @@ test('real SDK working channel starts automatically, reads full context and wait
   const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?30:ms,onMessage:async request=>{
     const args=notificationArgs(request);assert.deepEqual(Object.keys(args),['message_id']);
     const message=await modelTool(c,metadata,'read_message',args);let text='';
+    assert.equal(message.role_protocol,2);assert.match(message.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
     for(let part=0,total=1;part<total;part++){
       const content=await modelTool(c,metadata,'read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
       text+=content.text;total=content.total;

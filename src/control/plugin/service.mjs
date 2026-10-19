@@ -14,10 +14,10 @@ export function pluginConversationKey(metadata) {
 
 // Both frontends use the same ProjectsService. No profile copies or browser operations.
 export class PluginProjects {
-  constructor({ projects, loadContext, communicationStore = null, onChange = () => {}, observe, admit, onCommunicationChange }) {
+  constructor({ projects, loadContext, communicationStore = null, onChange = () => {}, observe, admit, currentMessage, onCommunicationChange }) {
     Object.assign(this, { projects, loadContext, onChange });
     this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id),
-      verifyTarget:id=>this.participantTarget(id),observe,admit,onChange:onCommunicationChange});
+      verifyTarget:id=>this.participantTarget(id),observe,admit,currentMessage,onChange:onCommunicationChange});
   }
   async participantTarget(sessionId) {
     const target=localParticipantTarget(this.projects,sessionId);if(!target)return null;

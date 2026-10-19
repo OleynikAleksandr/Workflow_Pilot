@@ -92,11 +92,31 @@ try {
   write(root,'.workflow-temp/notes.md','# Temporary\n');
   assert.ok(!status(root).changes.some(file=>file.startsWith('.workflow-temp')),'temporary documents stay outside Git');
   assert.throws(()=>messageAssignment(root,'missing','Hello there'),{code:'ASSIGNMENT_ID'});
-  messageAssignment(root,first.id,'Proceed with the current text');
+  messageAssignment(root,first.id,'Proceed with the current text',undefined,blocked.signal.block_id);
   assert.deepEqual(blockedTasks(root,readPlan(root)),[]);
   escalatePlan(root,'Fixture escalation');
   assert.deepEqual(readSignals(first.worktree).map(s=>s.kind),['task-blocked','assignment-message','plan-escalated']);
   assert.ok(readSignals(root).every(s=>s.scope_id==='orchestrated-fixture'));
+  // A repeated real problem is a new block; neither a late answer nor a lost-response retry clears it.
+  const secondBlock=blockTask(first.worktree,'T001','Needs a decision');
+  assert.equal(secondBlock.signal.attempt,2);assert.notEqual(secondBlock.signal.block_id,blocked.signal.block_id);
+  assert.throws(()=>messageAssignment(root,first.id,'Missing correlation'),{code:'BLOCK_REQUIRED'});
+  assert.throws(()=>messageAssignment(root,first.id,'Late different answer',undefined,blocked.signal.block_id),{code:'BLOCK_STALE'});
+  assert.equal(messageAssignment(root,first.id,'Proceed with the current text',undefined,blocked.signal.block_id).duplicate,true);
+  assert.equal(blockedTasks(root,readPlan(root))[0].block_id,secondBlock.signal.block_id);
+  messageAssignment(root,first.id,'Try the verified local dependency','decision-2',secondBlock.signal.block_id);
+  assert.throws(()=>messageAssignment(root,first.id,'Changed content','decision-2',secondBlock.signal.block_id),{code:'SIGNAL_CONFLICT'});
+  const thirdBlock=blockTask(first.worktree,'T001','Same dependency still fails after repair','block-3',blocked.signal.problem_id);
+  assert.equal(thirdBlock.signal.attempt,3);assert.equal(thirdBlock.signal.escalation_required,true);
+  assert.equal(blockTask(first.worktree,'T001','Same dependency still fails after repair','block-3',blocked.signal.problem_id).duplicate,true);
+  assert.throws(()=>blockTask(first.worktree,'T001','Changed error','block-3',blocked.signal.problem_id),{code:'SIGNAL_CONFLICT'});
+  assert.throws(()=>messageAssignment(root,first.id,'Blindly retry again',undefined,thirdBlock.signal.block_id),{code:'BLOCK_ESCALATION_REQUIRED'});
+  assert.match(recover(root,'manual',{role:'orchestrator'}).text,/escalation_required":true/);
+  messageAssignment(root,first.id,'Use the user-approved dependency',undefined,thirdBlock.signal.block_id,'Fixture user explicitly selected local package A');
+  const nextCycle=blockTask(first.worktree,'T001','New observation',undefined,blocked.signal.problem_id);
+  assert.equal(nextCycle.signal.attempt,1,'only explicit user resolution opens a new bounded cycle');
+  messageAssignment(root,first.id,'Finish with the approved local package',undefined,nextCycle.signal.block_id);
+  assert.deepEqual(blockedTasks(root,readPlan(root)),[]);
   assert.throws(()=>blockTask(root,'T002','Not started'),{code:'TASK_NOT_ACTIVE'});
   // The orchestrator may extend the plan while an executor works; its task and edits survive.
   extendPlan(root,{tasks:[{id:'T005',title:'Write TOOL-A.md',files:['TOOL-A.md']}]},readPlan(root).plan_revision);
