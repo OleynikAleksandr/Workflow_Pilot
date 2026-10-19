@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 529,
+  "plan_revision": 530,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -610,23 +610,28 @@
         "documents": [
           {
             "path": "docs/planning/automatic-agent-dialogue.md",
-            "required": true
+            "required": true,
+            "revision": "WORKTREE"
           },
           {
             "path": "docs/planning/automatic-agent-dialogue-acceptance.md",
-            "required": true
+            "required": true,
+            "revision": "WORKTREE"
           },
           {
             "path": "docs/modules/release.md",
-            "required": true
+            "required": false,
+            "revision": "WORKTREE"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
-            "required": true
+            "required": false,
+            "revision": "WORKTREE"
           },
           {
             "path": "docs/modules/project-compatibility.md",
-            "required": true
+            "required": false,
+            "revision": "WORKTREE"
           }
         ],
         "include_last_completed_task": false,
@@ -883,7 +888,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 529
+Revision: 530
 
 ## Цель
 
