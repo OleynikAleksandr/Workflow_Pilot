@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 621,
+  "plan_revision": 623,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -1362,8 +1362,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "INSTALL",
@@ -1410,7 +1410,8 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "verification_kind": "installed"
+      "verification_kind": "installed",
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -1486,7 +1487,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 621
+Revision: 623
 
 ## Цель
 
@@ -1577,8 +1578,8 @@ Revision: 621
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить проверенный macOS-комплект — Ожидает
-  - Git Commit: [PENDING] release: установить проверенный macOS-комплект
+- [DONE] INSTALL: Установить проверенный macOS-комплект — Завершено
+  - Git Commit: [DONE] release: установить проверенный macOS-комплект
   - Reference: orchestrator-owned-dialogue-refactor / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
