@@ -21,7 +21,11 @@ export function createSimplePlan(root,input) {
     const files=t.files??[];check(Array.isArray(files),'PLAN_SCHEMA','files должен быть массивом.');files.forEach(p=>contextPath(root,p));
     const verification=t.checks??[];for(const id of verification)check(ids.has(id),'NOT_CONFIGURED','Неизвестная проверка: '+id);
     if(Object.hasOwn(t,'context_pack'))check(t.context_pack&&typeof t.context_pack==='object'&&!Array.isArray(t.context_pack),'PLAN_SCHEMA','context_pack задачи: объект с documents.');
-    return {...(Object.hasOwn(t,'parallel_safe')?{parallel_safe:t.parallel_safe}:{}),...(Object.hasOwn(t,'context_pack')?{context_pack:taskContextPack(t.context_pack)}:{}),id:t.id??'T'+String(i+1).padStart(3,'0'),title:t.title,why:t.why??t.title,dependencies:t.dependencies??[],functional_paths:files.filter(f=>!f.endsWith('.md')),documentation_paths:[...new Set([input.spec,...files.filter(f=>f.endsWith('.md'))])],verification_ids:verification,verification_kind:t.verification_kind??'code',acceptance_criteria:t.acceptance??[t.title],expected_commit_message:t.commit??'feat: '+t.title};
+    // In an orchestrated plan the specification is shared read context. DOCS
+    // owns its retirement; ordinary tasks own it only when explicitly listed.
+    // Otherwise every independent worker falsely conflicts on the same file.
+    const implicitSpec=input.execution_strategy==='orchestrated'?[]:[input.spec];
+    return {...(Object.hasOwn(t,'parallel_safe')?{parallel_safe:t.parallel_safe}:{}),...(Object.hasOwn(t,'context_pack')?{context_pack:taskContextPack(t.context_pack)}:{}),id:t.id??'T'+String(i+1).padStart(3,'0'),title:t.title,why:t.why??t.title,dependencies:t.dependencies??[],functional_paths:files.filter(f=>!f.endsWith('.md')),documentation_paths:[...new Set([...implicitSpec,...files.filter(f=>f.endsWith('.md'))])],verification_ids:verification,verification_kind:t.verification_kind??'code',acceptance_criteria:t.acceptance??[t.title],expected_commit_message:t.commit??'feat: '+t.title};
   });
   for (const task of tasks) {
     check(['code','package','installed'].includes(task.verification_kind),'PLAN_SCHEMA','Некорректный verification_kind.',{task_id:task.id});

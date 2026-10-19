@@ -108,8 +108,10 @@ export function localParticipantTarget(projects,sessionId) {
       scope_id:session.parentScopeId,assignment_id:session.assignmentId,task_id:session.taskId};
   }
   if(session.role!=='orchestrator'||project.parentWorkspace)return null;
-  if(project.scopeId&&['ACTIVE','BLOCKED'].includes(project.scopeStatus)
-    &&(session.orchestratorScopeId!==project.scopeId||project.planExecution?.execution_origin_session_id!==sessionId))return null;
+  const published=project.scopeId&&['ACTIVE','BLOCKED'].includes(project.scopeStatus);
+  if(published&&project.planExecution?.execution_origin_session_id!==sessionId)return null;
   return {project_id:project.projectId,local_session_id:sessionId,origin_session_id:sessionId,role:'O',
-    scope_id:session.orchestratorScopeId??null,assignment_id:null,task_id:null};
+    // Publication and persisted role reconciliation are separate operations.
+    // The fresh plan's exact origin is authoritative during that interval.
+    scope_id:published?project.scopeId:session.orchestratorScopeId??null,assignment_id:null,task_id:null};
 }

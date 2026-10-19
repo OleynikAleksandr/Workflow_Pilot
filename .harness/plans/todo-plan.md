@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 538,
+  "plan_revision": 540,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -92,7 +92,12 @@
       "tests/web-client-electron.test.mjs",
       "packages/workflow-kit/src/lib/role-protocol.mjs",
       "packages/workflow-kit/src/lib/signal-state.mjs",
-      "tests/workflow-signals.test.mjs"
+      "tests/workflow-signals.test.mjs",
+      "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+      "packages/workflow-kit/src/lib/simple-workflow.mjs",
+      "tests/dialogue-experiment.test.mjs",
+      "tests/fixtures/plugin-host.mjs",
+      "tests/mac-runtime-switch.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/automatic-agent-dialogue.md",
@@ -618,8 +623,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "T005",
@@ -638,7 +643,13 @@
         "tests/execution-control.test.mjs",
         "tests/context-session.test.mjs",
         "tests/electron-smoke.mjs",
-        "scripts/prepare-agent-dialogue-experiment.mjs"
+        "scripts/prepare-agent-dialogue-experiment.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "tests/dialogue-experiment.test.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/mac-runtime-switch.test.mjs"
       ],
       "documentation_paths": [
         "docs/modules/automatic-agent-dialogue-acceptance.md",
@@ -694,7 +705,21 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "expected_commit_message": "feat: Сквозная матрица и комплект трёх живых сценариев"
+      "expected_commit_message": "feat: Сквозная матрица и комплект трёх живых сценариев",
+      "actual_files": [
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "scripts/prepare-agent-dialogue-experiment.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/dialogue-experiment.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/mac-runtime-switch.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1020,7 +1045,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 538
+Revision: 540
 
 ## Цель
 
@@ -1063,10 +1088,10 @@ Revision: 538
   - Файлы: packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, src/control/context/context-session.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/plugin/communication.mjs, src/execution/runtime/service.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, tests/context-session.test.mjs, tests/workflow-kit-recovery.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution.test.mjs, tests/chatgpt-plugin.test.mjs, src/backend/desktop-model.mjs, src/control/plugin/service.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/coordination.mjs, src/control/workflow/plan-continuation-state.mjs, src/frontend/plugin/index.html, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/signal-state.mjs, tests/workflow-signals.test.mjs, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, AGENTS.md, docs/acceptance/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Сквозная матрица и комплект трёх живых сценариев — Ожидает
-  - Git Commit: [PENDING] feat: Сквозная матрица и комплект трёх живых сценариев
+- [DONE] T005: Сквозная матрица и комплект трёх живых сценариев — Завершено
+  - Git Commit: [DONE] feat: Сквозная матрица и комплект трёх живых сценариев
   - Reference: workflow-pilot-automatic-agent-dialogue / T005 / implementation
-  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/orchestrated-execution.test.mjs, tests/execution-control.test.mjs, tests/context-session.test.mjs, tests/electron-smoke.mjs, scripts/prepare-agent-dialogue-experiment.mjs, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/execution.md
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/orchestrated-execution.test.mjs, tests/execution-control.test.mjs, tests/context-session.test.mjs, tests/electron-smoke.mjs, scripts/prepare-agent-dialogue-experiment.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, src/control/plugin/enrollment.mjs, tests/dialogue-experiment.test.mjs, tests/fixtures/plugin-host.mjs, tests/mac-runtime-switch.test.mjs, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
 - [TODO] T006: Согласовать версии и совместимость поставки — Ожидает

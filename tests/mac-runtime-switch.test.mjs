@@ -440,8 +440,11 @@ test('Windows: the executor runs control.py with its private Python after the co
   assert.equal(await runtime.prepared(), false);
 
   runtime.client = null;
-  // Nothing listens on the test port: the lifecycle runs to the end and only the final handshake fails.
+  // Isolate the unavailable handshake instead of assuming a fixed port is free
+  // on the user's machine (or in a concurrent fixture).
+  const unavailable=t.mock.method(globalThis,'fetch',async endpoint=>{assert.equal(endpoint,MCP_URL);throw Error('Fixture transport unavailable');});
   await assert.rejects(runtime.prepareMcpOnly(), { code: 'MCP_UNAVAILABLE' });
+  assert.equal(unavailable.mock.callCount(),1);
   // tunnel-client is there before setup has ever run: control.py itself says that setup is still due.
   assert.deepEqual(events.slice(0, 6), ['bootstrap.ensure', 'control.status', 'bootstrap.ensure', 'control.setup', 'bootstrap.ensure', 'control.status']);
   assert.equal(await runtime.prepared(), true);

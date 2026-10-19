@@ -1,15 +1,14 @@
 import test from 'node:test';
+import {bridge,client,eventually,communicationHtml} from './fixtures/plugin-host.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
-import {JSDOM,VirtualConsole} from 'jsdom';
+import {JSDOM} from 'jsdom';
 import {Script} from 'node:vm';
 import {pluginHtml} from '../scripts/stage-chatgpt-plugin.mjs';
-import {Client} from '@modelcontextprotocol/sdk/client/index.js';
-import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {ControlFacade} from '../src/control/facade.mjs';
 import {startPluginBridge} from '../src/execution/plugin/bridge.mjs';
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../src/control/plugin/communication.mjs';
@@ -61,22 +60,6 @@ async function fixture(t){
   plugin=control.createPlugin({loadContext,onChange:()=>changes++,communicationStore:await openCommunicationStore(path.join(directory,'communication'))});
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
-async function bridge(t,f){
-  const b=await startPluginBridge({directory:f.directory,panel:input=>f.plugin.panel(input),list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
-    communication:f.plugin.communication});
-  t.after(()=>b.close());
-  return JSON.parse(await fs.readFile(path.join(f.directory,'plugin-bridge.json'),'utf8'));
-}
-async function client(t,f){
-  const c=new Client({name:'fixture',version:'1'});
-  const transport=new StdioClientTransport({command:path.join(root,'.harness/runtime/test-python/bin/python'),
-    args:['-B',path.join(root,'tests/fixtures/plugin-server.py'),path.join(root,'tools/codex-app-server-mcp'),f.directory],stderr:'pipe'});
-  let stderr='';transport.stderr?.on('data',chunk=>{stderr+=chunk;});
-  t.after(()=>c.close());
-  try{await c.connect(transport);}catch(error){throw new Error(error.message+'\n'+stderr);}
-  return c;
-}
-async function eventually(check){for(let i=0;i<200;i++){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
 
 const communicationTools=['bind','claim','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','verify','wait'];
 test('the real project projection reserves the published origin even though persistence omits planExecution',async t=>{
@@ -88,6 +71,8 @@ test('the real project projection reserves the published origin even though pers
   await write({scope_id:'automatic',execution_scope_status:'ACTIVE',execution_strategy:'orchestrated',parallel_allowed:true,max_workers:2,
     execution_reason:'fixture',execution_origin_session_id:origin.sessionId,release:false,
     tasks:[{id:'T001',title:'Task',implementation_status:'TODO',commit_status:'PENDING'}]});
+  const duringPublication=await f.plugin.participantTarget(origin.sessionId);
+  assert.equal(duringPublication.scope_id,'automatic','fresh published origin remains valid before role reconciliation');
   await f.store.reconcileRoles(workspace);
   assert.equal(f.store.snapshot().projects.find(p=>p.workspace===workspace).planExecution,undefined);
   const registered=await f.plugin.panel({enrollment_ticket:initial.enrollment_ticket,metadata});
@@ -143,47 +128,6 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.ok(!JSON.stringify(events).includes('conversation-fixture'));
 });
 
-async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms,initialToolResult,handshake=Promise.resolve()}={}) {
-  const html=(await c.readResource({uri:'ui://workflow-pilot/projects-v1.html'})).contents[0].text;
-  const errors=[],calls=[],messages=[];let initialized=false,currentMetadata=hostMetadata,notify,activeWaits=0,maxWaits=0;
-  const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
-  const dom=new JSDOM(html,{url:'https://communication-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
-    beforeParse(window){
-      const nativeTimeout=window.setTimeout.bind(window);window.setTimeout=(fn,ms,...args)=>nativeTimeout(fn,timerMs(ms),...args);
-      window.TextEncoder=TextEncoder;window.TextDecoder=TextDecoder;
-      window.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
-      window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
-      const deliver=data=>window.dispatchEvent(new window.MessageEvent('message',{source:window,data}));
-      notify=deliver;
-      window.postMessage=async request=>{
-        try{
-          if(request.method==='ui/initialize')queueMicrotask(async()=>{
-            await handshake;
-            if(initialToolResult)deliver(initialToolResult);
-            deliver({jsonrpc:'2.0',id:request.id,result:{
-            protocolVersion:request.params.protocolVersion,hostInfo:{name:'Isolated communication host',version:'1'},
-            hostContext:{theme},hostCapabilities:{serverTools:{},experimental:messageSupported?{'openai/message':{}}:{}}}});
-          });
-          else if(request.method==='ui/notifications/initialized')initialized=true;
-          else if(request.method==='tools/call'){
-            calls.push(request.params.name);
-            if(request.params.name==='workflow_communication_wait')maxWaits=Math.max(maxWaits,++activeWaits);
-            const result=await toolReply(request.params,await c.callTool({...request.params,_meta:currentMetadata}));
-            if(request.params.name==='workflow_communication_wait')activeWaits--;
-            if(result?.transportError)deliver({jsonrpc:'2.0',id:request.id,error:{code:-32000,message:'Response connection lost'}});
-            else deliver({jsonrpc:'2.0',id:request.id,result});
-          }else if(request.method==='ui/message'){
-            messages.push(request.params);const result=await onMessage(request.params);
-            if(!result?.drop)deliver({jsonrpc:'2.0',id:request.id,result:result??{}});
-          }
-        }catch(e){errors.push(e.message);deliver({jsonrpc:'2.0',id:request.id,error:{code:-32000,message:'Fixture failed'}});}
-      };
-    }});
-  t.after(()=>{dom.window.dispatchEvent(new dom.window.Event('pagehide'));dom.window.close();});
-  await eventually(()=>initialized||errors.length);assert.deepEqual(errors,[]);
-  const $=id=>dom.window.document.getElementById('communication-'+id);
-  return {dom,$,errors,calls,messages,notify,get maxWaits(){return maxWaits;},setMetadata(meta){currentMetadata=meta;}};
-}
 
 test('workflow panel automatically binds its current assignment after late SDK and recovers a new instance without manual IDs',async t=>{
   const f=await fixture(t),target={project_id:'fixture',local_session_id:'worker',origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};

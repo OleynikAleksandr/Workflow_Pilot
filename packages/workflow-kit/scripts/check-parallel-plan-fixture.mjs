@@ -250,11 +250,16 @@ try {
     createSimplePlan(root,{id:'simple-orchestrated',spec:'docs/planning/parallel.md',objective:'Orchestrated plan',
       parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Fixture',
       execution_origin_session_id:'orchestrator-1',release:false,
-      tasks:[{id:'T001',title:'One',files:['README.md'],context_pack:context},{id:'T002',title:'Two',files:['GUIDE.md']}]});
+      tasks:[{id:'T001',title:'One',files:['README.md'],parallel_safe:true,context_pack:context},{id:'T002',title:'Two',files:['GUIDE.md'],parallel_safe:true}]});
     let current = readPlan(root);
     assert.deepEqual(current.tasks.map(t=>t.id),['T001','T002','DOCS']);
     assert.deepEqual(current.tasks[0].context_pack,{documents:[{path:'GUIDE.md',required:true,revision:'WORKTREE'}],include_last_completed_task:false,dependency_task_ids:[]});
     assert.equal(current.release,false);
+    assert.equal(parallelTasksCompatible(current.tasks[0],current.tasks[1]),true,'shared read context does not claim shared write ownership');
+    assert.deepEqual(current.tasks[0].documentation_paths,['README.md']);
+    assert.ok(current.tasks[2].documentation_paths.includes('docs/planning/parallel.md'),'DOCS retains specification ownership');
+    const shared=current.tasks.slice(0,2).map(t=>({...t,documentation_paths:[...t.documentation_paths,'docs/planning/parallel.md']}));
+    assert.equal(parallelTasksCompatible(...shared),false,'explicit shared specification writes remain exclusive');
     extendPlan(root,{tasks:[{id:'T003',title:'Three',files:['NOTES.md'],context_pack:{documents:[{path:'README.md',required:false}]}}]},current.plan_revision);
     current = readPlan(root);
     assert.deepEqual(current.tasks.map(t=>t.id),['T001','T002','T003','DOCS'],'new work stays before DOCS');
