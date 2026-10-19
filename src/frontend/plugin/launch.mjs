@@ -6,7 +6,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false,stopping=false,loop=null,expiry=null,expiresAt=0;
   let clientSequence=0,telemetry=[],flushing=null,dropped=0,exported='',exportRun='',serverError=null;
   let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false,workflow=false,recoveryFailures=0,retryTimer=null;
-  let workflowTimer=null;
+  let workflowTimer=null,resourceUri='ещё не получен';
   function watchWorkflow(){
     clearTimeout(workflowTimer);
     if(!workflow||!binding||disposed||suspended||contextBlocked||!connected||serverError||loop)return;
@@ -40,11 +40,12 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     $('refresh').disabled=disposed||busy||enabled||!binding;
     $('export').disabled=disposed||busy||!binding;
     $('run').disabled=$('participant').disabled=!!binding||busy;
-    if(!disposed){$('enable-reason').textContent=reason;ui.diagnostics(`SDK: ${connected?'подключён':'не подключён'}; openai/message: ${getMessage()?'доступен':'не предоставлен'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\nПривязка: ${binding&&!contextBlocked?'подтверждена':'не подтверждена'}. Ожидание: ${enabled&&loop?'запущено':'остановлено'}.\n${reason}`);}
+    if(!disposed){$('enable-reason').textContent=reason;ui.diagnostics(`SDK: ${connected?'подключён':'не подключён'}; openai/message: ${getMessage()?'доступен':'не предоставлен'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\nРесурс текущего MCP: ${resourceUri}.\nПривязка: ${binding&&!contextBlocked?'подтверждена':'не подтверждена'}. Ожидание: ${enabled&&loop?'запущено':'остановлено'}.\n${reason}`);}
     if(resumePending&&!busy&&!recovery&&!stopping&&!suspended&&!disposed){resumePending=false;queueMicrotask(()=>recover());}
   };
   const call=async(name,args={},options={})=>{
     const result=await callTool('workflow_communication_'+name,args,{timeout:35000,...options});
+    if(/^ui:\/\/workflow-pilot\/panel-[a-f0-9]{64}\.html$/.test(result.structuredContent?.panel_resource_uri??''))resourceUri=result.structuredContent.panel_resource_uri;
     if(result.isError)throw Object.assign(new Error(result.structuredContent?.error?.message??'MCP отклонил запрос.'),{code:result.structuredContent?.error?.code});
     return result.structuredContent;
   };

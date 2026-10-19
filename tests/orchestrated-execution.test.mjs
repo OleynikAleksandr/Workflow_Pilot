@@ -28,7 +28,7 @@ test('a concurrent checked integration cannot turn an older proof snapshot into 
   t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
   const root=createFixture(directory);write(root,SPEC,'# Snapshot fixture\n');
   createScope(root,{scope_id:'snapshot',objective:'Coherent integration proof',approval_note:'Isolated fixture',
-    parallel_allowed:false,max_workers:1,execution_strategy:'orchestrated',execution_reason:'One writer',
+    dialogue_version:0,parallel_allowed:false,max_workers:1,execution_strategy:'orchestrated',execution_reason:'One writer',
     execution_origin_session_id:'origin',release:false,acceptance_criteria:['No false UNKNOWN'],
     approved_scope:{functional_paths:[],documentation_paths:['README.md',SPEC]},
     context_pack:{documents:[],dependency_task_ids:[],include_last_completed_task:false},tasks:[task('T001','README.md',[],false)]});
@@ -60,7 +60,7 @@ test('orchestrated plan runs end to end: waves, pause, block and escalation, del
   applyConfig(root, config);
   write(root, SPEC, '# Orchestration end to end\n');
   createScope(root, { scope_id: 'e2e', objective: 'End to end orchestration', approval_note: 'Isolated automated fixture',
-    parallel_allowed: true, max_workers: 2, execution_strategy: 'orchestrated', execution_reason: 'Sequential base, parallel pair, delivery',
+    dialogue_version:0,parallel_allowed: true, max_workers: 2, execution_strategy: 'orchestrated', execution_reason: 'Sequential base, parallel pair, delivery',
     execution_origin_session_id: 'orchestrator', release: true, acceptance_criteria: ['Only main remains'],
     approved_scope: { functional_paths: ['release.txt'], documentation_paths: ['README.md', 'SECOND.md', 'THIRD.md', SPEC, 'docs/architecture/OVERVIEW.md'] },
     context_pack: { documents: [{ path: SPEC, required: true }], dependency_task_ids: [], include_last_completed_task: false },

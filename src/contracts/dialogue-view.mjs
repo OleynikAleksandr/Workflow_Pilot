@@ -8,7 +8,8 @@ export function assignmentStage({phase,status,dialogue,block,channel,physical}={
   if(dialogue?.acceptance)return {phase:'accepted',label:'Результат принят оркестратором · ожидаем интеграцию'};
   if(dialogue?.result)return {phase:'review',label:'Результат отправлен · ожидаем проверку оркестратора'};
   if(status==='READY_FOR_INTEGRATION')return {phase:'report',label:'Коммит проверен · ожидаем отчёт исполнителя'};
-  if(!dialogue?.grant)return {phase:'waiting-task',label:'Ожидаем задание оркестратора'};
+  if(!dialogue?.grant)return physical?.busy?{phase:'starting',label:'Завершается загрузочный ход'}
+    :{phase:'waiting-task',label:'Ожидаем задание оркестратора'};
   if(channel?.initial&&!channel.initial.read)return {phase:'dispatch',label:'Задание оркестратора в доставке · чтение не подтверждено'};
   if((dialogue?.attempt??1)>1)return {phase:'revision',label:'Доработка · попытка '+dialogue.attempt};
   if(physical?.busy)return {phase:'working',label:'Выполняет поручение оркестратора'};

@@ -18,7 +18,7 @@ test('experiment preparation is isolated, refuses existing/symlink/product paths
   const result=prepareExperiment(path.join(directory,'new'));assert.equal(result.live,'NOT_RUN');
   assert.equal(fs.existsSync(path.join(result.workspace,'src/policy.mjs')),false);
   assert.match(fs.readFileSync(result.brief,'utf8'),/policy-alpha, minimumAge 21/);
-  assert.match(fs.readFileSync(result.report,'utf8'),/S1: NOT_RUN/);
+  assert.match(fs.readFileSync(result.report,'utf8'),/B \(this multihop dialogue experiment\): NOT_RUN/);
   const git=(...args)=>execFileSync('git',args,{cwd:result.workspace,encoding:'utf8'}).trim();
   assert.equal(git('status','--porcelain'),'');assert.equal(git('branch','--show-current'),'main');
   assert.equal(git('ls-files').includes('ORCHESTRATOR_BRIEF'),false);

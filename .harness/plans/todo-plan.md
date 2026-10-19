@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 615,
+  "plan_revision": 617,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -141,7 +141,11 @@
       "src/frontend/plugin/index.html",
       "src/frontend/plugin/launch.mjs",
       "src/contracts/dialogue-view.mjs",
-      "tests/panel-dialogue-view.test.mjs"
+      "tests/panel-dialogue-view.test.mjs",
+      "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+      "scripts/prepare-agent-dialogue-experiment.mjs",
+      "tests/dialogue-experiment.test.mjs",
+      "tests/dialogue-delivery.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-owned-dialogue.md",
@@ -174,7 +178,7 @@
     ]
   },
   "baseline_commit": "99e36fd1df663fb269ddf6f695423f5bd5a44fe9",
-  "current_task_id": "T010",
+  "current_task_id": null,
   "context_pack": {
     "documents": [
       {
@@ -1035,8 +1039,8 @@
       ]
     },
     {
-      "implementation_status": "IN_PROGRESS",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T010",
@@ -1065,9 +1069,29 @@
         "packages/workflow-kit/src/lib/common.mjs",
         "tests/plugin-communication-store.test.mjs",
         "tests/plugin-enrollment.test.mjs",
-        "tests/fixtures/plugin-host.mjs"
+        "tests/fixtures/plugin-host.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "scripts/prepare-agent-dialogue-experiment.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/dialogue-experiment.test.mjs",
+        "tests/orchestrated-execution.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/panel-resource-upgrade.test.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/orchestrator-owned-dialogue.md",
+        "docs/planning/orchestrator-owned-dialogue-reliability.md",
+        "AGENTS.md"
+      ],
       "verification_ids": [
         "unit-all",
         "architecture",
@@ -1076,7 +1100,8 @@
         "executor-channel",
         "chatgpt-plugin",
         "migration-compatibility",
-        "release-tooling"
+        "release-tooling",
+        "kit-assignments"
       ],
       "id": "T010",
       "title": "Проверить полный диалог и подготовить согласованный выпуск",
@@ -1106,7 +1131,39 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "scripts/prepare-agent-dialogue-experiment.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/dialogue-experiment.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/orchestrated-execution.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/backend-end-to-end.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/panel-resource-upgrade.test.mjs",
+        "docs/planning/orchestrator-owned-dialogue.md",
+        "docs/planning/orchestrator-owned-dialogue-reliability.md",
+        "AGENTS.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1353,8 +1410,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
-Current Task: T010
-Revision: 615
+Current Task: нет
+Revision: 617
 
 ## Цель
 
@@ -1427,10 +1484,10 @@ Revision: 615
   - Файлы: src/control/workflow/execution-projection.mjs, src/contracts/backend.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/app.mjs, src/control/plugin/communication.mjs, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/parallel-execution-ui.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/electron-smoke.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/frontend/plugin/index.html, src/frontend/plugin/launch.mjs, tests/workflow-channel.test.mjs, src/contracts/dialogue-view.mjs, tests/panel-dialogue-view.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T008
-- [IN_PROGRESS] T010: Проверить полный диалог и подготовить согласованный выпуск — В работе
-  - Git Commit: [PENDING] feat: Проверить полный диалог и подготовить согласованный выпуск
+- [DONE] T010: Проверить полный диалог и подготовить согласованный выпуск — Завершено
+  - Git Commit: [DONE] feat: Проверить полный диалог и подготовить согласованный выпуск
   - Reference: orchestrator-owned-dialogue-refactor / T010 / implementation
-  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/electron-smoke.mjs, tests/backend-end-to-end.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/src/lib/common.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/fixtures/plugin-host.mjs
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/electron-smoke.mjs, tests/backend-end-to-end.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, tests/backend-upgrade.test.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, packages/workflow-kit/src/lib/common.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/fixtures/plugin-host.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/recovery.mjs, scripts/prepare-agent-dialogue-experiment.mjs, src/contracts/dialogue-view.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/frontend/plugin/launch.mjs, tests/dialogue-experiment.test.mjs, tests/orchestrated-execution.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/dialogue-delivery.test.mjs, tests/panel-resource-upgrade.test.mjs, docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md, AGENTS.md
   - Параллельность: исключительное выполнение
   - Зависимости: T009
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

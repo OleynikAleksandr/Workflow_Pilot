@@ -34,7 +34,7 @@ const files={
 
 T001: implement src/normalize.mjs; check npm run test:normalize. Trim, collapse whitespace to one space and lowercase strings; reject nonstrings with TypeError. Own only this module and its test.
 
-T002: implement src/validate.mjs and src/policy.mjs; check npm run test:validate. Accept finite integer ages at least minimumAge. Both local policy packages are valid technical choices. The product policy is held by the orchestrator, not specified in this repository: do not guess it or alter tests to hide its absence. Inspect the actual failing import and local packages, then report the missing decision through task:block with facts, attempts and resume point. After a correlated decision, import minimumAge from the chosen installed package and finish the same task. Own only these modules and the validation test; never change global configuration.
+T002: implement src/validate.mjs and src/policy.mjs; check npm run test:validate. Accept finite integer ages at least minimumAge. Both local policy packages are valid technical choices. The product policy is held by the orchestrator, not specified in this repository: do not guess it or alter tests to hide its absence. Inspect the actual failing import and local packages, then send a blocking question through workflow_assignment_send with facts, attempts and resume point. After a correlated decision, import minimumAge from the chosen installed package and finish the same task. Own only these modules and the validation test; never change global configuration.
 
 T003: after verified integration of T001 and T002, implement src/record.mjs. Compose both functions; return {name, age}; blank normalized name throws TypeError, invalid age throws RangeError. Check npm test. Own only this module and its test. Required DOCS is additional, not a substitute for T003.
 `
@@ -58,26 +58,29 @@ export function prepareExperiment(value){
 
 Open workspace as a new Workflow Pilot project with two allowed parallel workers and a new Chat or Work orchestrator. Use its ordinary startup and automatically opened panel. Discuss, review when enabled, and publish a new orchestrated plan for TASKS.md, with T001 and T002 independent and T003 dependent on both integrations. Assign npm checks from package.json. Do not start until the user's single Start.
 
-The product choice for T002 is @dialogue/policy-alpha, minimumAge 21. Keep this decision in the orchestrator discussion; do not copy this brief or the decision into the repository, plan, specification or executor context before the question. The executor must encounter the genuine missing src/policy.mjs import, inspect both installed choices, and ask via task:block. Answer by assignment:message with the exact block_id. This is an isolated policy-decision test, not a request to sabotage an environment.
+This is live scenario B for the orchestrator-owned dialogue. After Start, read each ready event and send each executor its own task and only the selected context through workflow_assignment_send. Do not rely on backend task text or DOM delivery. The plan's context_pack is your input for selection, not an automatic attachment to E.
 
-After that decision, verify the executor resumes the same task, passes its check, commits and integrates. Complete T003, DOCS, cleanup and the final response normally. No manual join, IDs, Enable, executor panel visits or user continuation. Save evidence in REPORT.md outside the workspace. Do not run models or manipulate windows from this preparation script.
+The product choice for T002 is @dialogue/policy-alpha, minimumAge 21. Keep this decision in the orchestrator discussion; do not copy this brief or the decision into the repository, plan, specification or executor context before the question. The executor must encounter the genuine missing src/policy.mjs import, inspect both installed choices, and send a blocking question through workflow_assignment_send. First ask a clarification about the available packages; wait for its facts, then send the choice and resume=true for the same block_id. Use read/yield and end each waiting turn without model polling. This is an isolated policy-decision test, not a request to sabotage an environment.
+
+Require each executor to send result with its checked source_commit and Kit proof after commit. Read the report, inspect its changes, accept that exact result through the channel, then call Kit integration:start/continue. READY is not a report or acceptance. After both integrations send T003 its task and selected context; assign DOCS likewise, then perform cleanup and the final response. No manual join, IDs, Enable, executor panel visits or user continuation. Save evidence in REPORT.md outside the workspace. Do not run models or manipulate windows from this preparation script.
 `,{flag:'wx'});
   fs.writeFileSync(path.join(target,'REPORT.md'),`# Live automatic dialogue report
 
-S1: NOT_RUN
-S2: NOT_RUN
-S3: NOT_RUN
+A (separate basic two-executor run): NOT_RUN
+B (this multihop dialogue experiment): NOT_RUN
+C (separate revision experiment): NOT_RUN
+D (separate five-executor/background/restart/deletion runs): NOT_RUN
 
 - Application / backend / panel build / protocol / Kit / sourceCommit:
 - Client (embedded Workflow Pilot), orchestrator Chat or Work:
 - New project / scope / sessions / assignments / task IDs:
 - User actions (one Start expected after normal preparation):
-- Host confirmation required per new chat (yes means S1 automation FAIL):
+- Host confirmation required per new chat (yes means automation FAIL):
 - Manual executor panel opening / join / ID / Enable / continuation (any means automation FAIL):
-- S1 bootstrap, bind and first-work timestamps for each executor:
-- S2 actual error, attempts, block_id, question/read/decision/resume timestamps:
-- S2 verification, executor commit and verified integration:
-- S3 dependency integrations, third assignment, result, DOCS, cleanup, final turn and grant revocation:
+- Bootstrap, bind, O-authored task and selected context for each executor:
+- Actual error, attempts, block_id, question/read/clarification/facts/decision/resume timestamps:
+- Verification, E-authored result, source_commit, O acceptance and checked integration:
+- Dependency integrations, third assignment, result, DOCS, cleanup, final turn and grant revocation:
 - Export fixed through_seq / completed pages / gaps:
 - Optional interface close/reopen times; events before versus after close:
 - Missing evidence and observed errors:

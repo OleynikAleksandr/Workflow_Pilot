@@ -16,7 +16,7 @@ import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,experience='chat',{owned=false,conversation=false}={}){
+export async function automaticDialogue(t,experience='chat',{owned=false,conversation=false,workers=2}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0;
@@ -25,7 +25,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
       GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
   const plans=new SessionPlans({setup});
   const control=new ControlFacade({storageFile:path.join(directory,'sessions.json'),execution:{},
-    getExecutionSettings:()=>({parallel_allowed:true,max_workers:2})});
+    getExecutionSettings:()=>({parallel_allowed:true,max_workers:workers})});
   const store=control.projects;await store.load();await store.select(root);
   const origin=await store.newSession(root,experience);
   const error=e=>{if(!closed)errors.push(e);};
@@ -35,7 +35,8 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     page.busy=false;page.lastMessageRole='assistant';page.assistantRevision++;page.turnId='a'+page.assistantRevision;
     reportPage(record);
   };
-  const taskFile={T001:'README.md',T002:'SECOND.md',T003:'THIRD.md'};
+  const taskFile={T001:'README.md',T002:'SECOND.md',T003:'THIRD.md',T004:'TOOL-A.md',T005:'TOOL-B.md',T006:'TOOL-C.md'};
+  const independent=workers===5?['T001','T002','T004','T005','T006']:['T001','T002'];
   const runAgent=async(record,request)=>{
     const metadata=record.metadata,notice=request.content.find(item=>item.type==='text').text;
     const args=JSON.parse(notice.match(/аргументами (\{[^\n]+?\})\./)[1]);
@@ -75,7 +76,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
       };
       if(message.kind==='ready'){
         assert.equal(message.sender_role,'backend');
-        if(message.task_id==='T003')assert.ok(readPlan(root).tasks.filter(t=>['T001','T002'].includes(t.id)).every(t=>t.commit_status==='DONE'));
+        if(message.task_id==='T003')assert.ok(readPlan(root).tasks.filter(t=>independent.includes(t.id)).every(t=>t.commit_status==='DONE'));
         if(message.task_id==='DOCS')assert.ok(readPlan(root).tasks.filter(t=>t.id!=='DOCS').every(t=>t.commit_status==='DONE'));
         const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);assert.ok(target);
         await send({recipient:target.recipient_ref,kind:'task',body:'Implement only '+message.task_id+' and return the checked commit.',
@@ -86,6 +87,9 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
           const v=await call('read_context',{message_id:message.message_id,context_ref:message.contexts[0].sha256,part});selected+=v.text;total=v.total;
         }
         assert.equal(selected,'Selected context for '+project.taskId);
+        if(workers===5&&independent.includes(project.taskId))await wait(()=>
+          new Set(notifications.filter(n=>n.kind==='task'&&independent.includes(n.task_id)).map(n=>n.assignment_id)).size===5,
+          'five simultaneously active addressed tasks');
         if(conversation&&project.taskId==='T001'){
           assert.equal(readPlan(project.workspace).current_task_id,null);
           await send({recipient:'orchestrator',kind:'context_request',body:'Need the exact local normalization policy before task:start.'});
@@ -238,7 +242,9 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   const wait=async(check,label,timeout=180000)=>{
     const end=Date.now()+timeout;
     while(Date.now()<end){if(errors.length)throw errors[0];if(await check())return;await delay(50);}
-    throw Error(label+': '+JSON.stringify({execution:workflow.execution.view(root),panels:[...records.values()].map(r=>({
+    throw Error(label+': '+JSON.stringify({execution:workflow.execution.view(root),
+      messages:[...plugin.communication.runs.values()].flatMap(r=>r.messages.slice(-5).map(m=>({kind:m.kind,task:m.task_id,read:m.read,handled:!!m.yielded,finished:m.reply_observed}))),
+      panels:[...records.values()].map(r=>({
       session:r.project().sessionId,url:r.project().chatUrl,page:r.pageState.current,pending:r.controller.pending,
       phase:r.controller.state.phase,errors:r.ui?.errors,diagnostic:r.ui?.$('diagnostics')?.textContent,
       body:r.ui?.dom.window.document.body.textContent.slice(0,2500),calls:r.ui?.calls.slice(-20)
@@ -254,9 +260,10 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   const task=(id,file,dependencies=[])=>({id,title:'Write '+file,why:'Actual automatic dialogue fixture',dependencies,parallel_safe:true,
     files:[file],checks:['dependency'],acceptance:['Checked output committed'],commit:'docs: '+file});
   await plans.call(root,'plan:create',[],{id:'dialogue-fixture',spec:'docs/planning/dialogue.md',stack:'Node fixture',objective:'Two independent assignments, a question and a dependent result',approval:'Isolated fixture authorized',
-    parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Two independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,...(owned?{dialogue_version:1}:{}),
+    parallel_allowed:true,max_workers:workers,execution_strategy:'orchestrated',execution_reason:'Independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,...(owned?{}:{dialogue_version:0}),
     acceptance:['One Start; complete work without manual panel action'],checks:[{id:'dependency',executable:'npm',args:['test'],required:false,timeout_ms:30000}],
-    tasks:[task('T001','README.md'),task('T002','SECOND.md'),task('T003','THIRD.md',['T001','T002'])]});
+    tasks:[...independent.map(id=>task(id,taskFile[id])),task('T003','THIRD.md',independent)]});
+  assert.equal(readPlan(root).dialogue_version,owned?1:0,'new owned plan defaults to dialogue; legacy fixture opts into its former contract');
   await store.reconcileRoles(root);await store.selectSession(root,origin.sessionId);workflow.execution.observe(root);
   await workflow.execution.signal(root);assert.equal(records.size,1,'publication alone opens no executor');
   const start=await api.submit('plan.continue',{}),started=await api.wait(start.operationId);
@@ -269,17 +276,17 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         delivery:m.delivery,read:m.read,handled:!!m.yielded,finished:m.reply_observed,attempt:m.attempt}))),
       events:[...plugin.communication.runs.values()].flatMap(r=>r.events.slice(-20))}));
     return state.state==='complete';
-  },'plan completion');
+  },'plan completion',workers===5?270000:180000);
   assert.equal(readPlan(root).delivery_status,'READY_FOR_ACCEPTANCE');
-  assert.deepEqual(readPlan(root).tasks.map(task=>task.commit_status),['DONE','DONE','DONE','DONE']);
-  assert.equal(records.size,5,'one O, three substantive E, and a DOCS assignment');
+  assert.deepEqual(readPlan(root).tasks.map(task=>task.commit_status),Array(workers+2).fill('DONE'));
+  assert.equal(records.size,workers+3,'one O, independent E, a dependent task and DOCS');
   for(const record of records.values()){
     assert.equal(record.bootstrapCount,1);assert.equal(record.domWorkSends,0);
     assert.equal(record.ui.calls.includes('workflow_communication_enable'),false);assert.equal(record.ui.calls.includes('workflow_communication_join'),false);
     assert.equal(record.project().experience,record===o?experience:'chat');
   }
   if(owned){
-    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,4+(conversation&&kind==='result'?1:0),kind);
+    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,workers+2+(conversation&&kind==='result'?1:0),kind);
     if(conversation){
       assert.equal(sharedRepairs,1,'shared repair requires fresh parked facts and no user continuation');
       for(const kind of ['context_request','question','decision','revision_request'])assert.equal(notifications.filter(n=>n.kind===kind).length,1,kind);

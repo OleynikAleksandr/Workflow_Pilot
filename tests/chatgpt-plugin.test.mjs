@@ -688,6 +688,12 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   for(const name of ['workflow_plugin_wait','workflow_plugin_claim','workflow_plugin_report'])assert.equal(tools.find(v=>v.name===name),undefined);
   assert.equal(tools.find(v=>v.name==='workflow_open_project')._meta?.ui?.resourceUri,undefined);
   const resource=await c.readResource({uri:panel._meta.ui.resourceUri});
+  const capabilities=await c.callTool({name:'workflow_communication_recover',arguments:{},_meta:metadata});
+  assert.equal(capabilities.structuredContent.panel_resource_uri,panel._meta.ui.resourceUri);
+  assert.equal(capabilities.structuredContent.assignment_dialogue_version,1);
+  assert.equal(capabilities.structuredContent.role_protocol_version,3);
+  for(const name of ['workflow_assignment_send','workflow_assignment_yield','workflow_assignment_status','workflow_assignment_migrate'])
+    assert.deepEqual(tools.find(tool=>tool.name===name)._meta.ui.visibility,['model']);
   assert.equal(resource.contents[0].mimeType,'text/html;profile=mcp-app');
   assert.match(resource.contents[0].text,/Связь участников/);assert.match(resource.contents[0].text,/<script>/);
   assert.doesNotMatch(resource.contents[0].text,/navigation-probe|launch-arm|target:\s*["']new/);

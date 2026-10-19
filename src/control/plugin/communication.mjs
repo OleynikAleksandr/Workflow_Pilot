@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
+import {ASSIGNMENT_DIALOGUE_VERSION} from '../../contracts/plugin-communication.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
@@ -491,7 +492,8 @@ export class PluginCommunication {
         participants.push(this.enrollment.publicMember(run,member));
       }else participants.push({run_id:run.id,participant_id:member.id,role:member.role});
     }
-    return {participants,build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,critical_error:this.critical};
+    return {participants,build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,
+      assignment_dialogue_version:ASSIGNMENT_DIALOGUE_VERSION,role_protocol_version:ROLE_PROTOCOL_VERSION,critical_error:this.critical};
   }
   visibleEvents(run,member,events) {
     if(run.mode!=='workflow'||member.role==='O')return events;

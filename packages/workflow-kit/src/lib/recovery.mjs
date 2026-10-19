@@ -274,7 +274,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
       +'\nСостояние: '+plan.execution_scope_status+' / '+plan.delivery_status+(transaction?' / COMMIT_PENDING':'')
       +'\nТекущая задача: '+(task?.id??'нет')
       +'\nНовый chat/client продолжает этот же checkout plan.');
-    if(role) add('role',roleText(role,plan.assignment?.dialogue_version??plan.dialogue_version??0));
+    if(role) add('role',roleText(role,plan.assignment?.dialogue_version??plan.dialogue_version??(role==='orchestrator'&&plan.execution_scope_status==='NONE'?1:0)));
     add(rulesPath,section(textFile(root,rulesPath),['Workflow','Workflow Core'],rulesPath),{document:true});
     add(policyPath,textFile(root,policyPath),{document:true});
     if(instructions?.text) add(instructions.file,instructions.text,{document:true});

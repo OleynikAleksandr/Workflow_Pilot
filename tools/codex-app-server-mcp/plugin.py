@@ -134,8 +134,10 @@ def register_plugin(mcp, state_root: Path):
         binding = args.pop("binding", None)
         if binding is not None:
             args.update(binding.model_dump())
-        return result(await asyncio.to_thread(bridge.call, {**args, "action": "communication." + action,
-                                                           "metadata": host_metadata(ctx)}))
+        data = await asyncio.to_thread(bridge.call, {**args, "action": "communication." + action,
+                                                   "metadata": host_metadata(ctx)})
+        # Catalogue URI belongs to this immutable MCP snapshot, not to a replayed iframe.
+        return result({**data, "panel_resource_uri": ui_uri})
 
     @mcp.tool(name="workflow_communication_join", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def join(run_id: RunId, role: Annotated[str, Field(pattern=r"^(O|E)$", description="Role O or E; two different conversations are required.")], ctx: Context) -> CallToolResult:

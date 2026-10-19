@@ -34,7 +34,7 @@ try {
   applyConfig(root,config);
   write(root,SPEC,'# Orchestration fixture\n');
   createScope(root,{scope_id:'orchestrated-fixture',objective:'Waves, delivery in main and worktree cleanup',approval_note:'Isolated automated fixture',
-    parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Sequential foundation, two parallel tasks, sequential finish',
+    dialogue_version:0,parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Sequential foundation, two parallel tasks, sequential finish',
     execution_origin_session_id:'orchestrator-fixture',release:true,acceptance_criteria:['Only main remains'],
     approved_scope:{functional_paths:['release.txt'],documentation_paths:['README.md','SECOND.md','THIRD.md','FOUNDATION.md','TOOL-A.md',SPEC,'docs/architecture/OVERVIEW.md']},
     context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false},

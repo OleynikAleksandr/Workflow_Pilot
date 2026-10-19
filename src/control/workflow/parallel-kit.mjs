@@ -36,7 +36,12 @@ export class ParallelKit {
   async read(workspace) {
     for(let attempt=0;;attempt++){
       try{return await this.readSnapshot(workspace);}
-      catch(error){if(error.code!=='PLAN_CHANGED_DURING_READ'||attempt>=2)throw error;}
+      catch(error){
+        // Git checkout/merge replaces the tracked plan outside Kit's atomic writer.
+        // A bounded fresh read tolerates that window; persistent corruption still fails.
+        if(!['PLAN_CHANGED_DURING_READ','PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION'].includes(error.code)||attempt>=2)throw error;
+        await new Promise(resolve=>setTimeout(resolve,50));
+      }
     }
   }
   async migration(workspace,scope,operationId){
@@ -74,7 +79,12 @@ export class ParallelKit {
         const activity=await readCommandActivity(record.worktree);
         assignments.push({...record,...status,...activity,commandActive:activity.commandActive||await exists(path.join(childGit,'workflow-kit','operation.lock')),
           dirty:!!await this.git(record.worktree,['status','--porcelain'])});
-      }catch(error){assignments.push({...record,status:'UNKNOWN',error:{code:error.code,message:error.message}});}
+      }catch(error){
+        // A concurrent child's commit also replaces its plan. A failed read is
+        // not evidence of an unknown write: retry the whole coherent snapshot.
+        if(['PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION'].includes(error.code))throw error;
+        assignments.push({...record,status:'UNKNOWN',error:{code:error.code,message:error.message}});
+      }
     }
     const pending=await exists(path.join(gitDir,'workflow-kit','transaction.json'));
     const handoff=await fs.readFile(path.join(gitDir,'workflow-kit','task-handoff.json'),'utf8').then(JSON.parse).catch(e=>{if(e.code==='ENOENT')return null;throw e;});

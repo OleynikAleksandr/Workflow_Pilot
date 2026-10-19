@@ -45,10 +45,13 @@ test('the release guard validates the actual staged HTML, wire contract, visible
   assert.equal(proof.uri,`ui://workflow-pilot/panel-${hash(html)}.html`);
   for(const changed of [
     html.replace('name="workflow-pilot-build"','name="missing-build"'),
-    html.replace('name="workflow-pilot-protocol" content="2"','name="workflow-pilot-protocol" content="1"'),
+    html.replace(`name="workflow-pilot-protocol" content="${contract.protocol}"`,'name="workflow-pilot-protocol" content="0"'),
     html.replace(`<small id="communication-build">${contract.build}`,`<small id="communication-build">0.5.2-communication-1`),
     html.replace(/<script>[\s\S]*?<\/script>/,'<script>globalThis.oldPanel=true;</script>'),
-  ])assert.throws(()=>verifyPluginResource({...input,html:changed}),/Panel|panel/);
+  ]){
+    assert.notEqual(changed,html,'each negative fixture must actually corrupt the staged resource');
+    assert.throws(()=>verifyPluginResource({...input,html:changed}),/Panel|panel/);
+  }
   assert.throws(()=>verifyPluginResource({...input,version:'0.0.1'}),/version mismatch/);
   assert.throws(()=>verifyPluginResource({...input,protocol:999}),/build\/protocol mismatch/);
 });

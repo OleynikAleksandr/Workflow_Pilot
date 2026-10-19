@@ -194,6 +194,8 @@ try {
     const orchestrated = {...structuredClone(scope),parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',
       execution_reason:'Fixture orchestration',execution_origin_session_id:'orchestrator-1',release:false};
     const plan = build(root,orchestrated);
+    assert.equal(plan.dialogue_version,1,'new orchestrated plans use O-owned dialogue');
+    assert.equal(build(root,{...orchestrated,dialogue_version:0}).dialogue_version,0,'explicit legacy fixture keeps its contract');
     assert.deepEqual(plan.tasks.map(t=>t.id),['T001','T002','DOCS'],'DOCS is added without a release');
     assert.deepEqual(plan.tasks[2].dependencies,['T001','T002']);
     assert.ok(plan.tasks[2].documentation_paths.includes('docs/planning/parallel.md'),'DOCS owns the specification it may retire in its worktree');
@@ -252,6 +254,7 @@ try {
       execution_origin_session_id:'orchestrator-1',release:false,
       tasks:[{id:'T001',title:'One',files:['README.md'],parallel_safe:true,context_pack:context},{id:'T002',title:'Two',files:['GUIDE.md'],parallel_safe:true}]});
     let current = readPlan(root);
+    assert.equal(current.dialogue_version,1,'simple plan entry uses the same default');
     assert.deepEqual(current.tasks.map(t=>t.id),['T001','T002','DOCS']);
     assert.deepEqual(current.tasks[0].context_pack,{documents:[{path:'GUIDE.md',required:true,revision:'WORKTREE'}],include_last_completed_task:false,dependency_task_ids:[]});
     assert.equal(current.release,false);

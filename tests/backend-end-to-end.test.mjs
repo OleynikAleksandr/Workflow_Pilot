@@ -13,6 +13,7 @@ import {BackendConnection} from '../src/frontend/client/connection.mjs';
 import {WorkspaceSessions} from '../src/control/sessions/workspace-session.mjs';
 import {processAlive} from '../src/backend/identity.mjs';
 import {launchMode} from '../src/contracts/launch.mjs';
+import {COMMUNICATION_PROTOCOL} from '../src/contracts/backend.mjs';
 
 const project=fileURLToPath(new URL('../',import.meta.url));
 const settle=(ms=100)=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -88,10 +89,11 @@ test('launcher → work → client crash → work continues → reconnect to the
   const python=path.join(project,'.harness/runtime/test-python/bin/python');
   if(fs.existsSync(python)) {
     const mcp=new Client({name:'end-to-end',version:'1'});
+    t.after(()=>mcp.close());
     await mcp.connect(new StdioClientTransport({command:python,args:['-B',path.join(project,'tests/fixtures/plugin-server.py'),
       path.join(project,'tools/codex-app-server-mcp'),path.join(root,'plugin')],stderr:'pipe'}));
     const panel=await mcp.callTool({name:'workflow_pilot_panel',arguments:{}});
-    assert.equal(panel.isError,false);assert.equal(panel.structuredContent.projects,undefined);assert.equal(panel.structuredContent.communication.protocol_version,2);
+    assert.equal(panel.isError,false);assert.equal(panel.structuredContent.projects,undefined);assert.equal(panel.structuredContent.communication.protocol_version,COMMUNICATION_PROTOCOL);
     const joined=await mcp.callTool({name:'workflow_communication_join',arguments:{run_id:'backend-e2e',role:'O'},
       _meta:{'openai/session':'isolated-backend-e2e'}});
     assert.equal(joined.isError,false);assert.equal(joined.structuredContent.role,'O');
