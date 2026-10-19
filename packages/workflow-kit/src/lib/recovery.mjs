@@ -6,7 +6,7 @@ import { validate, documentByteLimit, resolveReferences } from './validate.mjs';
 import { nextTask, PROJECT_CONTINUATION_OBJECTIVE, parsePlan, uniqueDocuments, isDeliveryTask, hasExecutionPolicy, isOrchestratedPlan } from './plan.mjs';
 import { assignmentRecords } from './assignment-contract.mjs';
 import { blockedTasks } from './signals.mjs';
-import {ROLE_TEXT,DIALOGUE_EXECUTOR_RULES} from './role-protocol.mjs';
+import {ROLE_TEXT,roleText} from './role-protocol.mjs';
 import { snapshot, git, localPath, head, fileFingerprint, documentText, commitHistory } from './git.mjs';
 import { projectFacts, projectFactPaths, planningDocuments } from './project-facts.mjs';
 import { inspectionInputs } from './inspection-inputs.mjs';
@@ -274,7 +274,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
       +'\nСостояние: '+plan.execution_scope_status+' / '+plan.delivery_status+(transaction?' / COMMIT_PENDING':'')
       +'\nТекущая задача: '+(task?.id??'нет')
       +'\nНовый chat/client продолжает этот же checkout plan.');
-    if(role) add('role',dialogueExecutor?DIALOGUE_EXECUTOR_RULES:ROLE_TEXT[role]);
+    if(role) add('role',roleText(role,plan.assignment?.dialogue_version??plan.dialogue_version??0));
     add(rulesPath,section(textFile(root,rulesPath),['Workflow','Workflow Core'],rulesPath),{document:true});
     add(policyPath,textFile(root,policyPath),{document:true});
     if(instructions?.text) add(instructions.file,instructions.text,{document:true});

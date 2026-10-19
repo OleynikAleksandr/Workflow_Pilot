@@ -14,6 +14,7 @@ import {commitTask} from '../src/lib/transaction.mjs';
 import {validate,readConfig} from '../src/lib/validate.mjs';
 import {recover,contextPacket} from '../src/lib/recovery.mjs';
 import {applyAssignmentDialogue,assignmentDialogueStatus} from '../src/lib/assignment-dialogue.mjs';
+import {roleText} from '../src/lib/role-protocol.mjs';
 
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const write=(root,file,text)=>{fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),text);};
@@ -179,12 +180,14 @@ try {
       const p=recover(a.worktree,reason);
       assert.equal(p.recovery_profile,'assignment-dialogue-v1');assert.equal(p.role,'executor');
       assert.match(p.text,/MANDATORY_ASSIGNMENT_CONSTRAINT/);assert.match(p.text,/workflow_assignment_send/);
+      assert.ok(p.text.includes(roleText('executor',1)));
       assert.doesNotMatch(p.text,/UNSELECTED_PARENT_CONTEXT|Orchestrator accepts a specific executor result/);
       assert.equal(p.included.includes(SPEC),false);assert.ok(p.text.includes(a.worktree));
     }
     assert.equal(contextPacket(a.worktree).recovery_profile,'assignment-dialogue-v1');
   };
-  limitedRecovery();assert.match(recover(root,'manual',{role:'orchestrator'}).text,/UNSELECTED_PARENT_CONTEXT/);
+  limitedRecovery();const orchestratorRecovery=recover(root,'manual',{role:'orchestrator'}).text;
+  assert.match(orchestratorRecovery,/UNSELECTED_PARENT_CONTEXT/);assert.ok(orchestratorRecovery.includes(roleText('orchestrator',1)));
   assert.throws(()=>recover(a.worktree,'manual',{role:'orchestrator'}),{code:'RECOVERY_ROLE'});
   const send=(where,kind,id,extra={})=>applyAssignmentDialogue(where,{assignment_id:a.id,attempt:1,kind,message_id:id,operation_id:id,...extra});
   assert.throws(()=>startTask(a.worktree,'T001'),{code:'ASSIGNMENT_NOT_DISPATCHED'});

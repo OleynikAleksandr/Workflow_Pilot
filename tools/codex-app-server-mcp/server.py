@@ -1028,6 +1028,7 @@ def create_server(*, host: str, port: int, state_root: Path, codex_binary: str |
             "computer_list_windows, computer_capture_screen and computer_capture_window. "
             "Tool usage: search with rg through exec_command; edit text files with apply_patch and do not reread them "
             "after a successful patch. "
+            "Workflow roles come from read_message. "
             + LONG_COMMAND_RULE + " "
             + PREEXECUTION_RETRY_RULE
         ),

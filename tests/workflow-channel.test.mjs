@@ -47,6 +47,9 @@ test('working API derives author, addresses distinct assignments and sends immut
     body:'Реализуй только модуль e',contexts:[{source:'contract-e.md',commit:'a'.repeat(40),text}],idempotency_key:'task-e'};
   const sent=await f.c.assignmentSend(input),read=await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
   assert.equal(read.sender_role,'O');assert.equal(read.assignment_id,'a-e');assert.equal(kit.calls,1);
+  assert.equal(read.role_protocol,3);assert.match(read.instructions,/ДИАЛОГ 1/);
+  assert.match(read.instructions,/обязательно отправь orchestrator result/);
+  assert.doesNotMatch(read.instructions,/Полный context_pack — в recovery/);
   let content='';for(let part=0,total=1;part<total;part++){
     const c=await f.c.content({metadata:meta('e'),message_id:sent.message_id,context_ref:read.contexts[0].sha256,part});
     total=c.total;content+=c.text;assert.equal(c.source,'contract-e.md');assert.equal(c.commit,'a'.repeat(40));}
@@ -57,7 +60,9 @@ test('working API derives author, addresses distinct assignments and sends immut
   f.pages.get('e').canSend=false;
   const question=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'question',
     body:'Уточни пустой ввод',in_reply_to:sent.message_id,idempotency_key:'question-e'});
-  assert.equal((await f.c.readMessage({metadata:meta('o'),message_id:question.message_id})).sender_role,'E');
+  const answer=await f.c.readMessage({metadata:meta('o'),message_id:question.message_id});
+  assert.equal(answer.sender_role,'E');assert.match(answer.instructions,/сам отправь task/);
+  assert.match(answer.instructions,/Не жди общего финального поручения/);
   await assert.rejects(f.c.assignmentSend({...input,metadata:meta('e'),idempotency_key:'spoof'}),{code:'PLUGIN_COMMUNICATION_ROLE'});
   await assert.rejects(f.c.assignmentYield({metadata:meta('other'),message_ids:[sent.message_id],reason:'handled'}),{code:'PLUGIN_COMMUNICATION_YIELD_DENIED'});
   const yieldReceipt=await f.c.assignmentYield({metadata:meta('e'),message_ids:[sent.message_id],reason:'awaiting_reply'});
@@ -252,7 +257,7 @@ test('large UTF-8 context is complete, immutable, identity scoped and persists w
   assert.equal((await queue(f.c,e,'large',text)).message_id,m.message_id);
   await assert.rejects(queue(f.c,e,'large',text+'!'),{code:'PLUGIN_COMMUNICATION_CONFLICT'});
   const value=await f.c.readMessage({message_id:m.message_id,metadata:meta('e')});let complete='';
-  assert.equal(value.role_protocol,2);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
+  assert.equal(value.role_protocol,3);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
   assert.match(value.instructions,/не повторяют recovery и не запускают задачу заново/);
   for(let part=0,total=1;part<total;part++){
     const page=await f.c.content({message_id:m.message_id,context_ref:value.context_ref,part,metadata:meta('e')});

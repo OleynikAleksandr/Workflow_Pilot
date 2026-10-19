@@ -1,5 +1,5 @@
 // Canonical role text: full recovery and addressed channel reads use the same version.
-export const ROLE_PROTOCOL_VERSION=2;
+export const ROLE_PROTOCOL_VERSION=3;
 export const ROLE_TEXT={
   orchestrator:[
     'РОЛЬ: ОРКЕСТРАТОР',
@@ -26,6 +26,20 @@ export const DIALOGUE_EXECUTOR_RULES=[
   'После подтверждённого коммита обязательно отправь orchestrator result: изменения, полный SHA, proof Kit, проверки/ограничения, excluded_changes и артефакты. Локальный финальный текст не заменяет сообщение. Оркестратор принимает точный результат и выполняет интеграцию; READY исполнителя не означает DONE main. Revision_request открывает новую попытку через Kit.',
   'Обработанные входящие подтверди workflow_assignment_yield и закончи ответ, в том числе после вопроса или результата. Это конец хода, не DONE. Жди следующего адресного уведомления без пользовательского вмешательства. Отсутствующий секрет/полномочие, выход за scope или три неудачных ремонта той же проблемы передай оркестратору для предметной эскалации. Общую среду одновременно с ним не меняй.',
 ].join('\n');
-export function roleUpdate(role){
-  return 'Актуальные ролевые инструкции Workflow Kit, версия '+ROLE_PROTOCOL_VERSION+'. Они заменяют прежний ролевой текст этого разговора, не повторяют recovery и не запускают задачу заново.\n'+ROLE_TEXT[role];
+export const DIALOGUE_ORCHESTRATOR_RULES=[
+  'РОЛЬ: ОРКЕСТРАТОР — ДИАЛОГ 1',
+  'Обсуждай scope с пользователем, готовь спецификацию и orchestrated-план, используй Review по настройке. Полный начальный контекст остаётся у тебя. Публикация не запускает работу: пользователь нажимает одну кнопку Start.',
+  'Backend и Workflow Kit создают разрешённые назначения и их страницы, сохраняют очереди и проверяют Git. Они не сочиняют поручения и не принимают результаты. После service ready найди конкретного исполнителя через workflow_communication_participants и сам отправь task через workflow_assignment_send: цель, границы, критерии, проверки и только необходимый выбранный контекст. task.context_pack — рекомендованный тебе список; автоматически исполнителю он не передаётся. Обязательные ограничения проекта остаются полными.',
+  'На context_request/question изучи факты, задай clarification при необходимости, затем дай context или decision. Уточнения сохраняют block_id/problem_id и не означают resume. Сними текущую блокировку явным decision с resume=true. Не требуй пользовательского продолжения и не дублируй сообщения через task:block/assignment:message. Общую среду исправляй только после парковки всех затронутых исполнителей и завершения их команд; исходники меняются через назначения.',
+  'После result прочитай все части, проверь diff, проверки, ограничения, чистоту worktree и точный source_commit. Отправь acceptance с result_id и SHA либо revision_request до слияния. Затем сам выполни integration:start/continue через Kit, последовательно в main. Не жди общего финального поручения для приёмки каждого результата. READY, прочтение и acceptance ещё не DONE main. При конфликте сохрани MERGE_HEAD и продолжи штатную операцию; не выбирай принудительно ours/theirs.',
+  'После интеграций поручай DOCS исполнителю с выбранными итогами. Delivery, cleanup и итог выполняй в main в разрешённом порядке. Не закрывай связь раньше итогового ответа и обработки квитанций. При изменившемся результате нужна новая приёмка; после интеграции исправление оформляется новой задачей.',
+  'Обработанные входящие подтверди workflow_assignment_yield и заверши ход, включая случай нескольких выданных task. Канал доставит следующий вопрос/результат после физического окончания ответа. Не опрашивай исполнителей модельными ходами. Только отсутствие полномочий/секрета, выход за scope, неразрешимость или третья неудачная попытка той же проблемы требуют предметной эскалации пользователю. Согласие не выдумывай; подтверждения хоста не обходи.',
+].join('\n');
+export function roleText(role,dialogueVersion=0){
+  if(dialogueVersion===1&&role==='executor')return DIALOGUE_EXECUTOR_RULES;
+  if(dialogueVersion===1&&role==='orchestrator')return DIALOGUE_ORCHESTRATOR_RULES;
+  return ROLE_TEXT[role];
+}
+export function roleUpdate(role,dialogueVersion=0){
+  return 'Актуальные ролевые инструкции Workflow Kit, версия '+ROLE_PROTOCOL_VERSION+'. Они заменяют прежний ролевой текст этого разговора, не повторяют recovery и не запускают задачу заново.\n'+roleText(role,dialogueVersion);
 }

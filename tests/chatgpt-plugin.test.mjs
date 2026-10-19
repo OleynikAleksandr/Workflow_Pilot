@@ -71,6 +71,9 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   comm.assignment.kit={status:async()=>({dialogue_version:1,dialogue:{attempt:1}}),apply:async(target,input)=>{
     effects.push({target,input});return {...input,ok:true,task_id:'T001'};}};
   await bridge(t,f);const c=await client(t,f);
+  const catalogue=(await c.listTools()).tools;
+  assert.match(catalogue.find(x=>x.name==='workflow_communication_send_message').description,/workflow_assignment_send/);
+  assert.match(catalogue.find(x=>x.name==='workflow_assignment_send').description,/sends result after checked commit/);
   const call=(who,name,args={})=>c.callTool({name,arguments:args,_meta:{'openai/session':who}});
   await comm.workflow.grant(o);
   for(const target of [o,e]){const invite=await comm.reserve(target);
@@ -83,6 +86,9 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   assert.equal(result.isError,false,JSON.stringify(result));assert.equal(effects.length,1);assert.equal(effects[0].target.role,'O');
   const message_id=result.structuredContent.message_id;
   const read=await call('e','workflow_communication_read_message',{message_id});assert.equal(read.structuredContent.sender_role,'O');
+  assert.equal(read.structuredContent.role_protocol,3);
+  assert.match(read.structuredContent.instructions,/обязательно отправь orchestrator result/);
+  assert.match(read.structuredContent.instructions,/workflow_assignment_yield/);
   const context=await call('e','workflow_communication_read_context',{message_id,context_ref:read.structuredContent.contexts[0].sha256});
   assert.ok(context.structuredContent.total>1);assert.equal(context.structuredContent.bytes,Buffer.byteLength(text));
   const yielded=await call('e','workflow_assignment_yield',{message_ids:[message_id],reason:'handled'});
@@ -249,7 +255,7 @@ test('real SDK working channel starts automatically, reads full context and wait
   const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?30:ms,onMessage:async request=>{
     const args=notificationArgs(request);assert.deepEqual(Object.keys(args),['message_id']);
     const message=await modelTool(c,metadata,'read_message',args);let text='';
-    assert.equal(message.role_protocol,2);assert.match(message.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
+    assert.equal(message.role_protocol,3);assert.match(message.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
     for(let part=0,total=1;part<total;part++){
       const content=await modelTool(c,metadata,'read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
       text+=content.text;total=content.total;

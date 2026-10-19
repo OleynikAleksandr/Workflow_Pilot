@@ -148,7 +148,7 @@ def register_plugin(mcp, state_root: Path):
                            body: Annotated[str, Field(min_length=1, max_length=4096, description="Experiment text, at most 4096 UTF-8 bytes; never secrets.")],
                            idempotency_key: RunId, ctx: Context,
                            in_reply_to: Annotated[str | None, Field(max_length=128, description="Received message id; required for answer/result.")] = None) -> CallToolResult:
-        """Legacy experiment only. Working plans reject this tool: use canonical Kit task:block or assignment:message once; backend delivers it. Same key/content returns the same message. Queue acceptance is not SDK acceptance or reading. Never call app-only wait."""
+        """Legacy experiment only. Working plans reject this tool. For dialogue version 1 use workflow_assignment_send for task/context/questions/results and workflow_assignment_yield after handling incoming messages. Older assignments retain canonical Kit task:block/assignment:message until safe migration. Same key/content returns the same message. Queue acceptance is not SDK acceptance or reading. Never call app-only wait."""
         return await communication("send", ctx, run_id=run_id, participant_id=participant_id, recipient_id=recipient_id,
                                    kind=kind, body=body, idempotency_key=idempotency_key, in_reply_to=in_reply_to)
 

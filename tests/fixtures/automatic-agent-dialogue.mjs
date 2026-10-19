@@ -44,7 +44,7 @@ export async function automaticDialogue(t,experience='chat'){
       assert.equal(r.isError,false,JSON.stringify(r.structuredContent));return r.structuredContent;
     };
     const message=await call('read_message',args);
-    assert.equal(message.role_protocol,2);
+    assert.equal(message.role_protocol,3);
     let text='';for(let part=0,total=1;part<total;part++){
       const value=await call('read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
       text+=value.text;total=value.total;

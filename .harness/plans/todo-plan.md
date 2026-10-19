@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 602,
+  "plan_revision": 605,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -150,7 +150,10 @@
       "docs/modules/control.md",
       "docs/modules/execution.md",
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
-      "docs/planning/executor-readiness-recovery.md"
+      "docs/planning/executor-readiness-recovery.md",
+      "packages/workflow-kit/src/templates/PROTOTYPE.md",
+      "packages/workflow-kit/src/WORKFLOW.md",
+      "packages/workflow-kit/src/templates/PLAN.md"
     ]
   },
   "baseline_commit": "99e36fd1df663fb269ddf6f695423f5bd5a44fe9",
@@ -532,8 +535,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T005",
@@ -545,8 +548,6 @@
       "functional_paths": [
         "packages/workflow-kit/src/lib/role-protocol.mjs",
         "packages/workflow-kit/src/lib/recovery.mjs",
-        "packages/workflow-kit/src/templates/PROTOTYPE.md",
-        "packages/workflow-kit/src/WORKFLOW.md",
         "packages/workflow-kit/src/lib/command-help.mjs",
         "src/control/context/context-session.mjs",
         "src/control/workflow/dialogue-delivery.mjs",
@@ -556,9 +557,16 @@
         "packages/workflow-kit/scripts/check-project-recovery-fixture.mjs",
         "tests/chatgpt-plugin.test.mjs",
         "tests/context-session.test.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/workflow-channel.test.mjs"
+      ],
+      "documentation_paths": [
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "packages/workflow-kit/src/WORKFLOW.md",
         "packages/workflow-kit/src/templates/PLAN.md"
       ],
-      "documentation_paths": [],
       "verification_ids": [
         "kit-check",
         "unit-all",
@@ -595,7 +603,23 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "src/control/plugin/communication.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tools/codex-app-server-mcp/server.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -973,7 +997,10 @@
         "docs/modules/control.md",
         "docs/modules/execution.md",
         "packages/workflow-kit/docs/modules/workflow-kit-package.md",
-        "docs/planning/executor-readiness-recovery.md"
+        "docs/planning/executor-readiness-recovery.md",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "packages/workflow-kit/src/templates/PLAN.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -1171,7 +1198,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 602
+Revision: 605
 
 ## Цель
 
@@ -1214,10 +1241,10 @@ Revision: 602
   - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/context/context-cache.mjs, src/control/sessions/service.mjs, src/backend/desktop-model.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/session-runtime.mjs, packages/workflow-kit/src/lib/recovery.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/context-cache.test.mjs, tests/session-runtime.test.mjs, tests/backend-native-pages.test.mjs, tests/electron-smoke.mjs, tests/executor-startup-lifecycle.test.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/control/workflow/executor-session.mjs, tests/chatgpt-experience.test.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, tests/executor-background-startup.test.mjs, tests/fixtures/executor-background-startup.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Согласовать роли и передачу выбранного контекста — Ожидает
-  - Git Commit: [PENDING] feat: Согласовать роли и передачу выбранного контекста
+- [DONE] T005: Согласовать роли и передачу выбранного контекста — Завершено
+  - Git Commit: [DONE] feat: Согласовать роли и передачу выбранного контекста
   - Reference: orchestrator-owned-dialogue-refactor / T005 / implementation
-  - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/lib/command-help.mjs, src/control/context/context-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, tests/chatgpt-plugin.test.mjs, tests/context-session.test.mjs, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/command-help.mjs, src/control/context/context-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, packages/workflow-kit/scripts/check-project-recovery-fixture.mjs, tests/chatgpt-plugin.test.mjs, tests/context-session.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
 - [TODO] T006: Передать O выдачу заданий и управление интеграцией — Ожидает
@@ -1253,7 +1280,7 @@ Revision: 602
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: описать диалог под управлением оркестратора
   - Reference: orchestrator-owned-dialogue-refactor / DOCS / implementation
-  - Файлы: docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md, docs/planning/orchestrator-owned-dialogue-results.md, README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/plugin-communication-handoff.md, docs/modules/control.md, docs/modules/execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/executor-readiness-recovery.md
+  - Файлы: docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md, docs/planning/orchestrator-owned-dialogue-results.md, README.md, AGENTS.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/desktop.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/acceptance/orchestrated-execution.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/plugin-communication-handoff.md, docs/modules/control.md, docs/modules/execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/executor-readiness-recovery.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010
 - [TODO] RELEASE: Собрать единый выпуск рефакторинга — Ожидает

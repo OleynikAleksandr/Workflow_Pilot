@@ -296,7 +296,7 @@ export class PluginCommunication {
   }
   _send(input) {
     const {run,member}=this.member(input),recipient=Object.values(run.members).find(m=>m.id===input.recipient_id);
-    requireValue(run.mode!=='workflow','MODE','Рабочие вопросы и решения передавайте один раз через task:block и assignment:message Workflow Kit.');
+    requireValue(run.mode!=='workflow','MODE','Рабочий диалог версии 1: workflow_assignment_send. Старое назначение: task:block/assignment:message до безопасной миграции. Legacy send не используется в рабочих планах.');
     requireValue(recipient && recipient!==member && ['question','answer','result'].includes(input.kind),'INPUT','Некорректный адресат или вид сообщения.');
     requireValue(typeof input.body==='string' && input.body.trim() && Buffer.byteLength(input.body)<=4096
       && identifier(input.idempotency_key),'INPUT','Сообщение должно содержать до 4096 байт и ключ идемпотентности.');
@@ -433,7 +433,7 @@ export class PluginCommunication {
     if(run.mode==='workflow')await this.workflow.observed(run,member);
     const {idempotency_key,fingerprint,...value}=message;
     return {...structuredClone(value),...(run.mode==='workflow'?{role_protocol:ROLE_PROTOCOL_VERSION,
-      instructions:roleUpdate(member.role==='O'?'orchestrator':'executor')+'\nПрочитайте ВСЕ части workflow_communication_read_context с message_id, context_ref и part от 0 до total-1. Затем выполните поручение в рамках роли и Workflow Kit. Не повторяйте событие через send_message.'}:{})};
+      instructions:roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0)+'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
   }
   _telemetry(input) {
     const {run}=this.panel(input),data=input.event;

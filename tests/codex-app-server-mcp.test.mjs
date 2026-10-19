@@ -1122,6 +1122,7 @@ const SERVER_INSTRUCTIONS = 'Local-computer tools only. Use ChatGPT native web/c
   + 'No UI control: this MCP cannot move the mouse, press keys or switch windows. Observation only: '
   + 'computer_list_windows, computer_capture_screen and computer_capture_window. '
   + 'Tool usage: search with rg through exec_command; edit text files with apply_patch and do not reread them after a successful patch. '
+  + 'Workflow roles come from read_message. '
   + 'Do not background commands with & or nohup: they end when the command returns. '
   + 'Run a long command with exec_command and poll its session ID with write_stdin, empty chars; never rerun it. '
   + 'If OpenAI blocked the call before execution, retry the same call once unchanged; change or split it only if the retry is blocked too.';
