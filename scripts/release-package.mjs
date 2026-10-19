@@ -10,6 +10,7 @@ import { extractFile, listPackage, statFile, uncache } from '@electron/asar';
 import { macDirectoryIdentity } from './check-mac-signature.mjs';
 import { WINDOWS_RUNTIME_ARCHIVE, WINDOWS_RUNTIME_SHA256 } from '../src/execution/runtime/windows.mjs';
 import { packageInventory } from './release-archive.mjs';
+import {panelContract,verifyPluginResource} from './check-plugin-resource.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 // The release records HEAD as its source commit, so everything it packages must already be committed.
@@ -121,7 +122,13 @@ export async function verifyPackagedSources({ root, resources, version, sources 
     const expected=Object.keys(sources).filter(f=>f.startsWith(prefix)).map(f=>f.slice(prefix.length)).sort();
     if(!isDeepStrictEqual(await files(path.join(resources,base)),expected))throw new Error('Unexpected external resources: '+base);
   }
-  return { version: pkg.version, asarSha256: await sha256File(asar) };
+  let panelResource;
+  if(sources['tools/codex-app-server-mcp/plugin.py']) {
+    const html=await fs.readFile(path.join(resources,'codex-app-server-mcp/plugin-ui.html'),'utf8');
+    const contract=panelContract(extractFile(asar,'src/contracts/backend.mjs').toString('utf8'));
+    panelResource=verifyPluginResource({html,version,...contract});
+  }
+  return { version: pkg.version, asarSha256: await sha256File(asar),...(panelResource?{panelResource}:{}) };
 }
 
 export async function artifactRecord(file, extra={}) {

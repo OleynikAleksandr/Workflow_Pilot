@@ -67,6 +67,21 @@ test('release refuses mismatched versions, omitted helper and stale source despi
   await fs.writeFile(path.join(f.root, 'src/startup.mjs'), 'export const platform = "changed";');
   await assert.rejects(verifyPackagedSources(f), /Packaged source mismatch: src/);
 });
+test('packaged plugin validation rejects stale HTML even if its hashes agree with the source snapshot',async t=>{
+  const f=await fixture(t),build='1.0.0-communication-2';
+  await fs.mkdir(path.join(f.root,'src/contracts'),{recursive:true});
+  await fs.writeFile(path.join(f.root,'src/contracts/backend.mjs'),`export const COMMUNICATION_APP_VERSION = '1.0.0';\nexport const COMMUNICATION_BUILD = '${build}';\nexport const COMMUNICATION_PROTOCOL = 2;\n`);
+  await fs.writeFile(path.join(f.root,'tools/codex-app-server-mcp/plugin.py'),'# packaged plugin fixture');
+  const html=`<meta name="workflow-pilot-build" content="${build}"><meta name="workflow-pilot-protocol" content="2"><small id="communication-build">${build} · протокол 2</small><script>globalThis.build="${build}";</script>`;
+  await fs.writeFile(path.join(f.root,'tools/codex-app-server-mcp/plugin-ui.html'),html);
+  await fs.cp(path.join(f.root,'src'),path.join(f.input,'src'),{recursive:true});
+  await fs.cp(path.join(f.root,'tools/codex-app-server-mcp'),path.join(f.resources,'codex-app-server-mcp'),{recursive:true});
+  await createPackage(f.input,path.join(f.resources,'app.asar'));
+  assert.match((await verifyPackagedSources(f)).panelResource.uri,/panel-[a-f0-9]{64}\.html$/);
+  for(const base of [path.join(f.root,'tools/codex-app-server-mcp'),path.join(f.resources,'codex-app-server-mcp')])
+    await fs.writeFile(path.join(base,'plugin-ui.html'),html.replaceAll(build,'0.5.2-communication-1'));
+  await assert.rejects(verifyPackagedSources(f),/Panel build metadata mismatch/);
+});
 test('release snapshots detect a changed external helper and rejects nested macOS app', async t => {
   const f = await fixture(t), before = await sourceSnapshot(f.root);
   await fs.writeFile(path.join(f.root, 'resources/runtime-control/windows-first-run.py'), 'print("changed")');

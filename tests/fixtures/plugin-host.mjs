@@ -14,10 +14,10 @@ async function bridge(t,f){
   t.after(()=>b.close());
   return JSON.parse(await fs.readFile(path.join(f.directory,'plugin-bridge.json'),'utf8'));
 }
-async function client(t,f){
+async function client(t,f,{sourceDir=path.join(root,'tools/codex-app-server-mcp')}={}){
   const c=new Client({name:'fixture',version:'1'});
   const transport=new StdioClientTransport({command:path.join(root,'.harness/runtime/test-python/bin/python'),
-    args:['-B',path.join(root,'tests/fixtures/plugin-server.py'),path.join(root,'tools/codex-app-server-mcp'),f.directory],stderr:'pipe'});
+    args:['-B',path.join(root,'tests/fixtures/plugin-server.py'),sourceDir,f.directory],stderr:'pipe'});
   let stderr='';transport.stderr?.on('data',chunk=>{stderr+=chunk;});
   t.after(()=>c.close());
   try{await c.connect(transport);}catch(error){throw new Error(error.message+'\n'+stderr);}
@@ -25,9 +25,11 @@ async function client(t,f){
 }
 async function eventually(check){for(let i=0;i<200;i++){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
 
-async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms,initialToolResult,handshake=Promise.resolve()}={}) {
+async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms,initialToolResult,handshake=Promise.resolve(),resourceCache=new Map()}={}) {
   const tool=(await c.listTools()).tools.find(tool=>tool.name==='workflow_pilot_panel');
-  const html=(await c.readResource({uri:tool._meta.ui.resourceUri})).contents[0].text;
+  const resourceUri=tool._meta.ui.resourceUri;
+  if(!resourceCache.has(resourceUri))resourceCache.set(resourceUri,(await c.readResource({uri:resourceUri})).contents[0].text);
+  const html=resourceCache.get(resourceUri);
   const errors=[],calls=[],messages=[];let initialized=false,currentMetadata=hostMetadata,notify,activeWaits=0,maxWaits=0;
   const console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
   const dom=new JSDOM(html,{url:'https://communication-fixture.invalid/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,
@@ -65,7 +67,7 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
   t.after(()=>{dom.window.dispatchEvent(new dom.window.Event('pagehide'));dom.window.close();});
   await eventually(()=>initialized||errors.length);assert.deepEqual(errors,[]);
   const $=id=>dom.window.document.getElementById('communication-'+id);
-  return {dom,$,errors,calls,messages,notify,get maxWaits(){return maxWaits;},setMetadata(meta){currentMetadata=meta;}};
+  return {dom,$,errors,calls,messages,notify,resourceUri,get maxWaits(){return maxWaits;},setMetadata(meta){currentMetadata=meta;}};
 }
 
 export {bridge,client,eventually,communicationHtml};

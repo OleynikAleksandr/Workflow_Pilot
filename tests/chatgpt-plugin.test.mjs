@@ -75,6 +75,27 @@ test('MCP advertises content-addressed HTML and keeps the legacy address inert',
   assert.doesNotMatch(legacy.text,/<script|<iframe|<button|<input|<form/i);
   assert.notEqual(legacy.text,resource.text);
 });
+test('catalogue refresh bypasses a cached legacy panel and binds a new orchestrator through real MCP and SDK',async t=>{
+  const f=await fixture(t),target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};
+  f.plugin.communication.enrollment.resolveTarget=f.plugin.communication.enrollment.verifyTarget=id=>id==='origin'?target:null;
+  const invite=await f.plugin.communication.reserve(target);await bridge(t,f);const c=await client(t,f);
+  const legacyUri='ui://workflow-pilot/projects-v1.html',oldHtml='<html><body>0.5.2-communication-1 · протокол 1</body></html>';
+  const cache=new Map([[legacyUri,oldHtml]]),reads=[];
+  const readResource=c.readResource.bind(c);
+  c.readResource=async(params,...args)=>{reads.push(params.uri);return readResource(params,...args);};
+  const opened=await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
+  assert.equal(opened.isError,false);
+  const ui=await communicationHtml(t,c,{resourceCache:cache});
+  await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
+  assert.notEqual(ui.resourceUri,legacyUri);assert.deepEqual(reads,[ui.resourceUri]);
+  assert.equal(cache.get(legacyUri),oldHtml,'the old cached copy remains; selection must use the new catalogue');
+  assert.match(ui.$('build').textContent,new RegExp(COMMUNICATION_BUILD));
+  assert.equal(ui.$('legacy-fields').hidden,true);assert.equal(ui.$('enable').hidden,true);
+  assert.equal(ui.calls.includes('workflow_communication_join'),false);assert.equal(ui.calls.includes('workflow_communication_enable'),false);
+  assert.equal(ui.calls.filter(name=>name==='workflow_communication_bind').length,1);
+  assert.deepEqual(ui.messages,[],'registration before Start cannot launch work');assert.deepEqual(ui.errors,[]);
+});
+
 test('the real project projection reserves the published origin even though persistence omits planExecution',async t=>{
   const f=await fixture(t),workspace=path.join(f.directory,'Первый'),file=path.join(workspace,'.harness/plans/todo-plan.md');
   const write=async state=>fs.writeFile(file,'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify({schema_version:1,project_id:'Первый',project_name:'Первый',

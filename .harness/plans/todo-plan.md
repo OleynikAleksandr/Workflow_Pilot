@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 556,
+  "plan_revision": 558,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -1198,14 +1198,28 @@
         "Живая панель ChatGPT остаётся отдельной пользовательской проверкой; исходники Kit не меняются."
       ],
       "expected_commit_message": "feat: Проверить переход со старого кэша и подготовить 0.5.6",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "T008",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/panel-resource-upgrade.md",
+        "package-lock.json",
+        "package.json",
+        "scripts/check-plugin-resource.mjs",
+        "scripts/release-package.mjs",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "src/contracts/backend.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/panel-resource-upgrade.test.mjs",
+        "tests/release-all.test.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -1354,7 +1368,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 556
+Revision: 558
 
 ## Цель
 
@@ -1439,8 +1453,8 @@ Revision: 556
   - Файлы: tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, tests/fixtures/plugin-host.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение
   - Зависимости: PUBLISH
-- [TODO] T008: Проверить переход со старого кэша и подготовить 0.5.6 — Ожидает
-  - Git Commit: [PENDING] feat: Проверить переход со старого кэша и подготовить 0.5.6
+- [DONE] T008: Проверить переход со старого кэша и подготовить 0.5.6 — Завершено
+  - Git Commit: [DONE] feat: Проверить переход со старого кэша и подготовить 0.5.6
   - Reference: workflow-pilot-automatic-agent-dialogue / T008 / implementation
   - Файлы: tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-host.mjs, tests/panel-resource-upgrade.test.mjs, scripts/stage-chatgpt-plugin.mjs, scripts/release-package.mjs, scripts/check-plugin-resource.mjs, tests/release-all.test.mjs, tests/release-linux.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, tests/backend-upgrade.test.mjs, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение
