@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 623,
+  "plan_revision": 625,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Один Start запускает исполнителей, которым оркестратор адресно выдаёт задачи и выбранный контекст; двусторонний диалог разрешает блокировки и доставляет результаты для приёмки, интеграции и завершения плана без участия пользователя в обычных шагах.",
   "acceptance_criteria": [
     "Планирование O, полный начальный DOM-контекст, Review и одна кнопка Start сохранены. E получают через DOM только правила/identity/bootstrap; рабочую задачу и минимальный контекст выбирает и отправляет O.",
@@ -1414,8 +1414,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "PUBLISH",
@@ -1462,7 +1462,8 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1484,10 +1485,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 623
+Revision: 625
 
 ## Цель
 
@@ -1584,8 +1585,8 @@ Revision: 623
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск и передать живую приёмку — Ожидает
-  - Git Commit: [PENDING] release: опубликовать рефакторинг диалога
+- [DONE] PUBLISH: Опубликовать выпуск и передать живую приёмку — Завершено
+  - Git Commit: [DONE] release: опубликовать рефакторинг диалога
   - Reference: orchestrator-owned-dialogue-refactor / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
