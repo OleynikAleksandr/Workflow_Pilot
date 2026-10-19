@@ -33,8 +33,10 @@ function assignmentStatusUnlocked(root,id) {
   const {resolved}=validate(record.worktree);
   const sha=resolved[record.parent_task_id]?.sha;
   const setup=environmentStatus(record.worktree,runtime);
+  const dialogue=record.dialogue_version?readJSON(recordPath(record.parent_root,record.id)).dialogue??null:null;
   return {ok:true,...binding(record),status:sha?'READY_FOR_INTEGRATION':!setup.ready?'NEEDS_SETUP':plan.current_task_id?'RUNNING':'READY',
-    source_commit:sha??null,setup,transaction_pending:!!journal(record.worktree)};
+    source_commit:sha??null,setup,transaction_pending:!!journal(record.worktree),
+    ...(record.dialogue_version?{dialogue,attempt:dialogue?.attempt??1}: {})};
 }
 export const assignmentStatus=(root,id)=>assignmentStatusUnlocked(root,id);
 // Only a verified INTEGRATED worktree is removed, never with force; its merged branch goes with git branch -d.
@@ -108,7 +110,8 @@ export function createAssignment(root,input,expectedRevision) {
     check(git(root,['show-ref','--verify','--quiet','refs/heads/'+branch],{allowFailure:true}).status!==0,'ASSIGNMENT_BRANCH','Ветка уже занята.');
     const record={schema_version:1,id:input.id,parent_root:root,parent_scope_id:plan.scope_id,parent_task_id:task.id,
       worktree:target,branch,base_commit:input.base_commit,git_common_dir:commonDirectory(root),external_dependencies:dependencies,
-      config_digest:hash(fs.readFileSync(safePath(root,CONFIG))),phase:'PREPARED',setup:{}};
+      config_digest:hash(fs.readFileSync(safePath(root,CONFIG))),phase:'PREPARED',setup:{},
+      ...(plan.dialogue_version?{dialogue_version:plan.dialogue_version,attempt:1}: {})};
     save(file,record);
     return resumeAssignment(root,record);
   });

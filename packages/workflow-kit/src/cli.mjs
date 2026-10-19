@@ -4,6 +4,7 @@ import { handoffParallelTask, assertHandoffCommand } from './lib/task-handoff.mj
 import { startIntegration, continueIntegration, integrationStatus, assertIntegrationCommand } from './lib/task-integration.mjs';
 import { createAssignment, assignmentStatus, setupAssignment, cleanupAssignments, assertAssignmentCommand } from './lib/task-assignment.mjs';
 import { blockTask, messageAssignment, escalatePlan } from './lib/signals.mjs';
+import {applyAssignmentDialogue,assignmentDialogueStatus} from './lib/assignment-dialogue.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { errorResult, check, readJSON, json, withPlanFile, PLAN } from './lib/common.mjs';
@@ -78,6 +79,8 @@ export async function main(argv = process.argv.slice(2)) {
       case 'assignment:setup': result = setupAssignment(root,opts.id,{npmCi:!!opts['npm-ci']}); break;
       case 'assignment:cleanup': result = cleanupAssignments(root); break;
       case 'assignment:message': result = messageAssignment(root,opts.id,opts.text,opts['signal-id'],opts['block-id'],opts['approval-note']); break;
+      case 'assignment:dialogue': result = applyAssignmentDialogue(root,input()); break;
+      case 'assignment:dialogue-status': result = assignmentDialogueStatus(root,opts.id); break;
       case 'task:block': result = blockTask(root,opts.task,opts.reason,opts['signal-id'],opts['problem-id']); break;
       case 'plan:escalate': result = escalatePlan(root,opts.reason,opts['signal-id']); break;
       case 'review:status': result = reviewStatus(root); break;

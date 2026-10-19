@@ -36,7 +36,8 @@ export function plainPath(target) {
 export function binding(record) {
   return {id:record.id,parent_scope_id:record.parent_scope_id,parent_task_id:record.parent_task_id,
     parent_root:record.parent_root,worktree:record.worktree,branch:record.branch,base_commit:record.base_commit,
-    external_dependencies:record.external_dependencies};
+    external_dependencies:record.external_dependencies,
+    ...(record.dialogue_version ? {dialogue_version:record.dialogue_version} : {})};
 }
 export function basePlan(root, record) {
   return parsePlan(git(root,['show',record.base_commit+':'+PLAN]).stdout);
@@ -47,6 +48,7 @@ export function localPlan(root, record) {
   const scope = 'assignment-'+record.id;
   const task = {...structuredClone(source),dependencies:[],parallel_safe:false,
     implementation_status:'TODO',commit_status:'PENDING',commit_ref:{scope_id:scope,task_id:source.id,role:'implementation'}};
+  if(record.dialogue_version)task.commit_ref.iteration=record.attempt??1;
   if(task.context_pack)task.context_pack.dependency_task_ids=[];
   delete task.actual_files;
   return {schema_version:1,plan_revision:1,project_id:parent.project_id,project_name:parent.project_name,
@@ -56,7 +58,7 @@ export function localPlan(root, record) {
     context_pack:{...structuredClone(parent.context_pack),dependency_task_ids:[],include_last_completed_task:false},
     tasks:[task],blocked_reason:null,user_decisions:[],parallel_allowed:false,max_workers:1,
     execution_strategy:'sequential',execution_reason:'Одна порученная микрозадача; результат ждёт интеграции.',
-    assignment:binding(record)};
+    assignment:binding(record),...(record.dialogue_version?{dialogue_version:record.dialogue_version}:{})};
 }
 export function immutableContract(plan) {
   const p=structuredClone(plan);
@@ -94,7 +96,7 @@ export function assertAssignment(root, plan, {ready=false,role,files}={}) {
 }
 export function assertAssignmentCommand(root, command) {
   if(!readAssignment(root))return;
-  check(['status','validate','recover','plan:view','task:start','commit','repair','hook','hook:ack','git-hook','assignment:status','task:block'].includes(command),
+  check(['status','validate','recover','plan:view','task:start','commit','repair','hook','hook:ack','git-hook','assignment:status','assignment:dialogue','assignment:dialogue-status','task:block'].includes(command),
     'ASSIGNMENT_READ_ONLY','Исполнитель выполняет назначение; изменение плана, вложенные назначения и публикация запрещены.');
 }
 export function packageDirectories(root, record) {

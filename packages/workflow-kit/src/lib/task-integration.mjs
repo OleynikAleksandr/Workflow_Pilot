@@ -5,6 +5,7 @@ import { git, head, gitPath, localPath, allChanges, paths, isAncestor, ensureIdl
 import { parsePlan, renderPlan, isOrchestratedPlan } from './plan.mjs';
 import { validate, journal, taskChecks, readConfig, resolveReferences } from './validate.mjs';
 import { assignmentStatus, removeIntegratedWorktree } from './task-assignment.mjs';
+import {assertAssignmentAcceptance} from './assignment-dialogue.mjs';
 import { saveJournal, messageFor, completedTransaction, finishTransaction } from './transaction-state.mjs';
 
 const file = root => localPath(root,'integration.json');
@@ -67,6 +68,7 @@ export function startIntegration(root,{id,source_commit}) {
       return {ok:true,status:'INTEGRATED',already_integrated:true,...done};
     }
     ensureIdleGit(root);
+    assertAssignmentAcceptance(assignment,source_commit);
     check(!journal(root) && !allChanges(root).length,'INTEGRATION_DIRTY','main должен быть чистым и без чужой транзакции.');
     check(git(root,['branch','--show-current']).stdout.trim()==='main' && fs.realpathSync(root)===assignment.parent_root
       && ['parallel','orchestrated'].includes(plan.execution_strategy) && plan.execution_scope_status==='ACTIVE' && !plan.current_task_id,

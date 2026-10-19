@@ -13,6 +13,7 @@ import {blockTask,messageAssignment,escalatePlan,readSignals,blockedTasks} from 
 import {commitTask} from '../src/lib/transaction.mjs';
 import {validate,readConfig} from '../src/lib/validate.mjs';
 import {recover} from '../src/lib/recovery.mjs';
+import {applyAssignmentDialogue,assignmentDialogueStatus} from '../src/lib/assignment-dialogue.mjs';
 
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const write=(root,file,text)=>{fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),text);};
@@ -20,6 +21,7 @@ const SPEC='docs/planning/orchestration.md';
 const task=(id,file,dependencies,parallel_safe,checks=[])=>({id,title:'Write '+file,why:'Orchestrated fixture',dependencies,parallel_safe,
   functional_paths:[],documentation_paths:[file],verification_ids:checks,acceptance_criteria:['Output committed'],expected_commit_message:'docs: '+file});
 
+if(!process.argv.includes('--dialogue-only')) {
 const directory=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kit-orchestrated-')));
 try {
   const root=createFixture(directory);
@@ -156,3 +158,52 @@ try {
   assert.deepEqual(git(root,'branch','--format=%(refname:short)').split('\n'),['main']);
   console.log(JSON.stringify({orchestratedExecutionFixture:true,mainReadOnly:true,barrier:true,signals:true,worktreeCleanup:true,docsPin:true,delivery:true}));
 } finally {fs.rmSync(directory,{recursive:true,force:true});}
+}
+
+const dialogueDirectory=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kit-dialogue-')));
+try {
+  const root=createFixture(dialogueDirectory);write(root,SPEC,'# Addressed dialogue\n');
+  createScope(root,{scope_id:'dialogue-fixture',objective:'Orchestrator accepts a specific executor result',approval_note:'Isolated dialogue fixture',
+    dialogue_version:1,parallel_allowed:false,max_workers:1,execution_strategy:'orchestrated',execution_reason:'One checked assignment',
+    execution_origin_session_id:'orchestrator-fixture',release:false,acceptance_criteria:['Accepted source only'],
+    approved_scope:{functional_paths:[],documentation_paths:['README.md',SPEC]},
+    context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false},
+    tasks:[task('T001','README.md',[],false)]});
+  const a=createAssignment(root,{id:'dialogue-e',task_id:'T001',base_commit:git(root,'rev-parse','HEAD'),worktree:path.join(dialogueDirectory,'worker')},readPlan(root).plan_revision);
+  setupAssignment(root,a.id,{npmCi:true});
+  const send=(where,kind,id,extra={})=>applyAssignmentDialogue(where,{assignment_id:a.id,attempt:1,kind,message_id:id,operation_id:id,...extra});
+  assert.throws(()=>startTask(a.worktree,'T001'),{code:'ASSIGNMENT_NOT_DISPATCHED'});
+  assert.throws(()=>send(a.worktree,'task','bad-role'),{code:'ASSIGNMENT_ROLE'});
+  assert.throws(()=>send(a.worktree,'context_request','foreign',{assignment_id:'another-e'}),{code:'ASSIGNMENT_OWNER'});
+  assert.throws(()=>send(root,'task','foreign-scope',{scope_id:'another-scope'}),{code:'ASSIGNMENT_CHANGED'});
+  send(root,'task','task-1');assert.equal(send(root,'task','task-1').duplicate,true);
+  assert.throws(()=>send(root,'task','task-1',{message_id:'different'}),{code:'ASSIGNMENT_DIALOGUE_CONFLICT'});
+  startTask(a.worktree,'T001');write(a.worktree,'README.md','# first result\n');commitTask(a.worktree,'T001');
+  const first=assignmentStatus(root,a.id).source_commit;
+  assert.throws(()=>startIntegration(root,{id:a.id,source_commit:first}),{code:'ASSIGNMENT_NOT_ACCEPTED'});
+  assert.throws(()=>send(root,'result','fake-result',{source_commit:first}),{code:'ASSIGNMENT_ROLE'});
+  send(a.worktree,'result','result-1',{source_commit:first});
+  assert.throws(()=>send(a.worktree,'acceptance','self-accept',{source_commit:first,result_id:'result-1'}),{code:'ASSIGNMENT_ROLE'});
+  assert.throws(()=>send(root,'acceptance','wrong-result',{source_commit:first,result_id:'not-result-1'}),{code:'ASSIGNMENT_RESULT_STALE'});
+  send(root,'acceptance','accept-1',{source_commit:first,result_id:'result-1'});
+  process.env.WORKFLOW_TEST_FAILPOINT='prepared';
+  try {assert.throws(()=>send(root,'revision_request','revise-1',{source_commit:first,result_id:'result-1'}),{code:'TEST_INTERRUPTION'});}
+  finally {delete process.env.WORKFLOW_TEST_FAILPOINT;}
+  send(root,'revision_request','revise-1',{source_commit:first,result_id:'result-1'});
+  assert.equal(send(root,'revision_request','revise-1',{source_commit:first,result_id:'result-1'}).duplicate,true);
+  assert.equal(readPlan(a.worktree).tasks[0].commit_ref.iteration,2);
+  assert.equal(assignmentDialogueStatus(root,a.id).dialogue.history[0].result.source_commit,first);
+  assert.throws(()=>startIntegration(root,{id:a.id,source_commit:first}),{code:'ASSIGNMENT_NOT_ACCEPTED'});
+  assert.throws(()=>send(root,'acceptance','stale-accept',{source_commit:first,result_id:'result-1'}),{code:'ASSIGNMENT_STALE'});
+  startTask(a.worktree,'T001');write(a.worktree,'README.md','# revised result\n');commitTask(a.worktree,'T001');
+  const second=assignmentStatus(root,a.id).source_commit;
+  send(a.worktree,'result','result-2',{attempt:2,source_commit:second});
+  send(root,'acceptance','accept-2',{attempt:2,source_commit:second,result_id:'result-2'});
+  write(a.worktree,'README.md','# uncommitted change\n');
+  assert.throws(()=>startIntegration(root,{id:a.id,source_commit:second}));
+  write(a.worktree,'README.md','# revised result\n');
+  assert.equal(startIntegration(root,{id:a.id,source_commit:second}).status,'INTEGRATED');
+  assert.equal(validate(root).resolved.T001.source_commit,second);
+  assert.equal(git(root,'show',first+':README.md'),'# first result','previous proof is immutable');
+  console.log(JSON.stringify({assignmentDialogue:true,dispatchRequired:true,acceptanceRequired:true,revisionHistory:true}));
+} finally {fs.rmSync(dialogueDirectory,{recursive:true,force:true});}

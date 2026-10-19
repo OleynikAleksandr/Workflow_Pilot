@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 590,
+  "plan_revision": 594,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -115,7 +115,8 @@
       "packages/workflow-kit/package.json",
       "scripts/stage-chatgpt-plugin.mjs",
       "packages/workflow-kit/src/lib/common.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "tests/workflow-kit-recovery.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-owned-dialogue.md",
@@ -174,8 +175,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T001",
@@ -200,9 +201,14 @@
         "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
         "packages/workflow-kit/src/schemas/plan.schema.json",
         "packages/workflow-kit/src/lib/validate.mjs",
-        "packages/workflow-kit/src/lib/validation-rules.mjs"
+        "packages/workflow-kit/src/lib/validation-rules.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "tests/workflow-kit-recovery.test.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/orchestrator-owned-dialogue.md",
+        "docs/planning/orchestrator-owned-dialogue-reliability.md"
+      ],
       "verification_ids": [
         "kit-check",
         "unit-all",
@@ -236,7 +242,24 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/orchestrator-owned-dialogue-reliability.md",
+        "docs/planning/orchestrator-owned-dialogue.md",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/assignment-contract.mjs",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/integration-proof.mjs",
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "packages/workflow-kit/src/lib/task-integration.mjs",
+        "packages/workflow-kit/src/schemas/plan.schema.json",
+        "tests/workflow-kit-recovery.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1078,7 +1101,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 590
+Revision: 594
 
 ## Цель
 
@@ -1097,10 +1120,10 @@ Revision: 590
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Разработка здесь одним агентом по прямому сохранённому решению пользователя и AGENTS.md; контракты Kit, Control и канала связаны. Два-пять E относятся к продукту/fixtures/живой приёмке, не делегированию этой разработки.
 
-- [TODO] T001: Ввести контракт назначений с диалогом и приёмкой в Kit — Ожидает
-  - Git Commit: [PENDING] feat: Ввести контракт назначений с диалогом и приёмкой в Kit
+- [DONE] T001: Ввести контракт назначений с диалогом и приёмкой в Kit — Завершено
+  - Git Commit: [DONE] feat: Ввести контракт назначений с диалогом и приёмкой в Kit
   - Reference: orchestrator-owned-dialogue-refactor / T001 / implementation
-  - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/integration-proof.mjs, packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/signal-state.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, packages/workflow-kit/scripts/check-task-integration-fixture.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/validation-rules.mjs
+  - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/task-integration.mjs, packages/workflow-kit/src/lib/integration-proof.mjs, packages/workflow-kit/src/lib/signals.mjs, packages/workflow-kit/src/lib/signal-state.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, packages/workflow-kit/scripts/check-task-integration-fixture.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/validation-rules.mjs, packages/workflow-kit/src/lib/recovery.mjs, tests/workflow-kit-recovery.test.mjs, docs/planning/orchestrator-owned-dialogue.md, docs/planning/orchestrator-owned-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T002: Добавить рабочий адресный API и долговечные сообщения агентов — Ожидает

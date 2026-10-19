@@ -81,6 +81,7 @@
     "user_decisions"
   ],
   "properties": {
+    "dialogue_version": {"enum": [0,1], "description": "Explicit assignment dialogue capability; absent or zero preserves legacy semantics."},
     "assignment": {
       "type": "object",
       "required": ["id","parent_scope_id","parent_task_id","parent_root","worktree","branch","base_commit","external_dependencies"],

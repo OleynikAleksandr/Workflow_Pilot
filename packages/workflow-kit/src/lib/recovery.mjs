@@ -60,14 +60,14 @@ function relevantEvidence(root, beforeHead, neededShas, transaction, lastChecked
   const file = localPath(root, 'last-verification.json');
   if (!fs.existsSync(file)) return null;
   try {
-    let evidence = JSON.parse(fs.readFileSync(file, 'utf8'));
+    let evidenceFile=file, evidence = JSON.parse(fs.readFileSync(file, 'utf8'));
     // A documentation/service commit has no product checks. Retrieve the last
     // checked task of this plan, never a global latest task from another checkout state.
     if (!transaction && !evidence.checks?.length && lastCheckedSha && /^[a-f0-9]{40,64}$/.test(lastCheckedSha)) {
       const archived = localPath(root, 'verification/by-commit/' + lastCheckedSha + '.json');
       if (fs.existsSync(archived)) {
         const previous = JSON.parse(fs.readFileSync(archived, 'utf8'));
-        if (previous.commit === lastCheckedSha) evidence = previous;
+        if (previous.commit === lastCheckedSha) {evidence = previous;evidenceFile=archived;}
       }
     }
     const related = (evidence.commit && new Set([beforeHead, ...neededShas, lastCheckedSha]).has(evidence.commit)) ||
@@ -75,7 +75,9 @@ function relevantEvidence(root, beforeHead, neededShas, transaction, lastChecked
     if (!related) return null;
     return { commit: evidence.commit ?? null, candidate_tree: evidence.candidate_tree ?? null,
       verification_scope: evidence.verification_scope ?? 'unspecified', excluded_changes: evidence.excluded_changes ?? [],
-      checks: Array.isArray(evidence.checks) ? evidence.checks.map(c => ({ id: c.id, kind: c.kind ?? 'unspecified', evidence: c.evidence ?? null, command: c.command, status: c.status, exit_code: c.exit_code, elapsed_ms: c.elapsed_ms, output: c.output })) : [],
+      evidence_file:evidenceFile,
+      checks: Array.isArray(evidence.checks) ? evidence.checks.map(c => ({ id: c.id, kind: c.kind ?? 'unspecified', status: c.status, exit_code: c.exit_code, elapsed_ms: c.elapsed_ms,
+        ...(c.status==='PASSED'?{}:{evidence:c.evidence??null,command:c.command,output:c.output}) })) : [],
       historical: Boolean(evidence.commit && evidence.commit !== beforeHead),
       note: evidence.commit && evidence.commit !== beforeHead ? "Результаты относятся к указанному коммиту; не подтверждают последующие изменения или текущее состояние артефакта." : evidence.note ?? undefined };
   } catch { return null; }

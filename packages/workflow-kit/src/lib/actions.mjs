@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { assertAssignment, assertAssignmentCommand, assertOrchestratedMain } from './assignment-contract.mjs';
+import {assertAssignmentDispatch} from './assignment-dialogue.mjs';
 import { activeIntegration } from './transaction-state.mjs';
 import { blockedTasks } from './signals.mjs';
 import { assertReviewPublication, finishReviewPublication, cleanupReview } from './review-state.mjs';
@@ -119,6 +120,7 @@ export function startTask(root, taskId, expectedRevision) {
   return locked(root, () => {
     noTransaction(root); assertSingleWriter(root, PLAN); const { plan, config } = validate(root); revision(plan, expectedRevision);
     const assignment = assertAssignment(root, plan, {ready:true});
+    assertAssignmentDispatch(root,assignment);
     check(plan.execution_strategy !== 'parallel' || assignment, 'PARALLEL_MAIN_READ_ONLY',
       'Основной parallel-план выполняют назначенные исполнители. Не начинайте task:start в main; запуском управляет кнопка выполнения плана пользователя. Уже начатую задачу сохраняет assignment:handoff.');
     check(plan.execution_scope_status === 'ACTIVE', 'SCOPE_NOT_ACTIVE', 'Реализация разрешена только в ACTIVE scope.');

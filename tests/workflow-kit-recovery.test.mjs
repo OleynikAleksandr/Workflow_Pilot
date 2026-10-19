@@ -42,6 +42,20 @@ async function fixture(t) {
   git(root, 'add', '.'); git(root, 'commit', '-m', 'baseline');
   return root;
 }
+test('recovery preserves verification provenance and failures without replaying successful logs',async t=>{
+  const root=await fixture(t),file=path.join(root,'.git/workflow-kit/last-verification.json');
+  await fs.mkdir(path.dirname(file),{recursive:true});
+  const evidence={commit:git(root,'rev-parse','HEAD'),candidate_tree:git(root,'rev-parse','HEAD^{tree}'),checks:[
+    {id:'passed',status:'PASSED',exit_code:0,elapsed_ms:2,output:'SUCCESS_LOG_REMAINS_IN_EVIDENCE'},
+    {id:'failed',status:'FAILED',exit_code:1,elapsed_ms:3,output:'ACTIONABLE_FAILURE',command:['test']}]};
+  await fs.writeFile(file,JSON.stringify(evidence));
+  const packet=recover(root);
+  assert.doesNotMatch(packet.text,/SUCCESS_LOG_REMAINS_IN_EVIDENCE/);
+  assert.match(packet.text,/ACTIONABLE_FAILURE/);assert.ok(packet.text.includes(evidence.commit));
+  const value=JSON.parse(sourceText(packet,'verification').slice('ПРОВЕРКИ\n'.length));
+  assert.equal(value.evidence_file,await fs.realpath(file));assert.equal(value.checks[0].status,'PASSED');
+  assert.deepEqual(JSON.parse(await fs.readFile(file,'utf8')),evidence,'full receipt is immutable');
+});
 function scopeInput(valid = true) {
   return {
     scope_id: 'module-change-001', objective: 'Изменить fixture module', approval_note: 'Пользователь согласовал контракт fixture module.',

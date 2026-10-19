@@ -25,21 +25,32 @@ export function inspectIntegrationSource(root,source,task,parentScope,resolveRef
   const base=planAt(root,assignment.base_commit), original=base.tasks.find(t=>t.id===task.id);
   check(base.scope_id===parentScope && original && taskContract(original)===taskContract(task),'INTEGRATION_CONTRACT','Контракт задачи изменился после назначения.');
   const commits=commitHistory(root,assignment.base_commit,source);
-  check(commits.length===2,'INTEGRATION_HISTORY','Разрешены только подготовка назначения и один implementation-коммит.');
-  const [implementation,preparation]=commits;
-  check(implementation.sha===source && implementation.parents.length===1 && implementation.parents[0]===preparation.sha
-    && preparation.parents.length===1 && preparation.parents[0]===assignment.base_commit,'INTEGRATION_HISTORY','Посторонние коммиты или merge в ветке исполнителя.');
-  for(const [commit,role] of [[implementation,'implementation'],[preparation,'assignment-plan']]) {
-    check(one(commit,'Workflow-Scope')===child.scope_id && one(commit,'Workflow-Role')===role,'INTEGRATION_TRAILERS','Неверная идентичность источника.');
-    one(commit,'Workflow-Transaction');
+  const attempts=assignment.dialogue_version===1 ? child.tasks[0].commit_ref.iteration??1 : 1;
+  check(Number.isSafeInteger(attempts) && attempts>0 && commits.length===2*attempts,
+    'INTEGRATION_HISTORY','Каждая попытка требует подготовки назначения и одного проверенного implementation-коммита.');
+  const allowed=allowedFiles(task);
+  for(let i=0;i<attempts;i++) {
+    const [implementation,preparation]=commits.slice(2*i,2*i+2), iteration=attempts-i;
+    const before=commits[2*i+2]?.sha??assignment.base_commit;
+    check(implementation.parents.length===1 && implementation.parents[0]===preparation.sha
+      && preparation.parents.length===1 && preparation.parents[0]===before,'INTEGRATION_HISTORY','Посторонние коммиты или merge в ветке исполнителя.');
+    for(const [commit,role] of [[implementation,'implementation'],[preparation,'assignment-plan']]) {
+      check(one(commit,'Workflow-Scope')===child.scope_id && one(commit,'Workflow-Role')===role,'INTEGRATION_TRAILERS','Неверная идентичность источника.');
+      one(commit,'Workflow-Transaction');
+    }
+    check(one(implementation,'Workflow-Task')===task.id
+      && Number(implementation.trailers['Workflow-Iteration']?.[0]??1)===iteration,'INTEGRATION_TRAILERS','Неверная задача или попытка источника.');
+    check(commitPaths(root,preparation.sha).every(p=>p===PLAN),'INTEGRATION_SCOPE','Подготовка назначения изменила исходники.');
+    const prepared=planAt(root,preparation.sha), finished=planAt(root,implementation.sha), childTask=finished.tasks[0];
+    check(json(prepared.assignment)===json(assignment) && json(finished.assignment)===json(assignment)
+      && prepared.tasks[0].commit_status==='PENDING' && childTask.commit_status==='DONE'
+      && (childTask.commit_ref.iteration??1)===iteration && (prepared.tasks[0].commit_ref.iteration??1)===iteration
+      && workerContract(original)===taskContract(childTask) && workerContract(original)===taskContract(prepared.tasks[0]),
+    'INTEGRATION_CONTRACT','Локальное задание не соответствует родительскому.');
+    const changes=commitPaths(root,implementation.sha);
+    check(changes.includes(PLAN) && changes.every(p=>allowed.includes(p)),'INTEGRATION_SCOPE','Попытка содержит чужие файлы.');
   }
-  check(one(implementation,'Workflow-Task')===task.id,'INTEGRATION_TRAILERS','Неверная задача источника.');
-  check(commitPaths(root,preparation.sha).every(p=>p===PLAN),'INTEGRATION_SCOPE','Подготовка назначения изменила исходники.');
-  const prepared=planAt(root,preparation.sha), childTask=child.tasks[0];
-  check(json(prepared.assignment)===json(assignment) && prepared.tasks[0].commit_status==='PENDING'
-    && childTask.commit_status==='DONE' && workerContract(original)===taskContract(childTask)
-    && workerContract(original)===taskContract(prepared.tasks[0]),'INTEGRATION_CONTRACT','Локальное задание не соответствует родительскому.');
-  const changed=commitPaths(root,source), allowed=allowedFiles(task);
+  const changed=commitPaths(root,source);
   check(changed.includes(PLAN) && changed.every(p=>allowed.includes(p)),'INTEGRATION_SCOPE','Source содержит чужие файлы.');
   // Installed runtime/configuration are inherited, never imported from a worker.
   const delta=git(root,['diff','--name-only','--no-renames',assignment.base_commit,source,'--']).stdout.trim().split('\n').filter(Boolean);
