@@ -26,6 +26,22 @@ async function fixture(t,currentMessage){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+test('startup progress reads current assignment and live SDK separately without exposing or mutating protocol data',async t=>{
+  const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);
+  assert.deepEqual(f.c.workflow.progress('e'),{registered:false,sdk:false,permitted:false,initial:null});
+  const invitation=await f.c.reserve(e);await f.c.enroll(invitation.enrollment_ticket,meta('e'));
+  assert.equal(f.c.workflow.progress('e').registered,true);assert.equal(f.c.workflow.progress('e').sdk,false);
+  const b=await f.bind(f.c,e),first=await queue(f.c,e);const run=f.c.runs.get(b.run_id),seq=run.events.length;
+  assert.deepEqual(f.c.workflow.progress('e'),{registered:true,sdk:true,permitted:true,initial:{delivery:'pending',read:false}});
+  assert.equal(run.events.length,seq,'projection creates no telemetry or grants');
+  await delivered(f,b,first.message_id);assert.deepEqual(f.c.workflow.progress('e').initial,{delivery:'accepted',read:true});
+  f.advance(60001);assert.equal(f.c.workflow.progress('e').sdk,false);
+  await f.sync(f.c,b);assert.equal(f.c.workflow.progress('e').sdk,true);
+  await f.c.workflow.grant(f.o,'paused');assert.equal(f.c.workflow.progress('e').sdk,false,'old generation is not a current SDK lease');
+  f.targets.set('e',{...e,assignment_id:'replacement'});
+  assert.deepEqual(f.c.workflow.progress('e'),{registered:false,sdk:false,permitted:false,initial:null});
+  assert.equal(f.c.workflow.progress('missing'),null);
+});
 test('project removal revokes pending and uncertain deliveries durably without touching a neighbour',async t=>{
   const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e);
   const first=await queue(f.c,e,'claimed'),second=await queue(f.c,e,'pending');

@@ -237,7 +237,8 @@ function orchestratorPlanView(saved) {
     ?execution.view(workspace).planView?.tasks:null)??project.planView?.tasks??[]}
     :orchestrator?.closedPlanCommit?closedPlan(workspace,orchestrator.closedPlanCommit):null;
   if(!source)return {scopeId:scope,objective:'',tasks:[],loading:true};
-  const executors=projectExecutors(store.snapshot().projects,workspace,execution.view(workspace),liveRecord).filter(e=>e.parentScopeId===scope);
+  const executors=projectExecutors(store.snapshot().projects,workspace,execution.view(workspace),liveRecord,
+    target=>plugin?.communication.workflow.progress(target.sessionId)).filter(e=>e.parentScopeId===scope);
   const planned=new Map((project.planView?.tasks??[]).map(task=>[task.id,task]));
   return {scopeId:scope,objective:source.objective,current,error:source.error??null,
     tasks:source.tasks.map(task=>{
@@ -274,7 +275,8 @@ function snapshot() {
     activity:[...liveSessions.all()].some(r=>(r.identity?.workspace===workspace
       ||store.project(r.identity?.workspace)?.parentWorkspace===workspace)&&r.pageState.current?.state.busy)?'working'
       :execution.view(workspace).error||sessions.some(s=>liveRecord({workspace,sessionId:s.sessionId})?.controller.state.error)?'attention':'idle',
-    executors:projectExecutors(projects,workspace,execution.view(workspace),liveRecord),
+    executors:projectExecutors(projects,workspace,execution.view(workspace),liveRecord,
+      target=>plugin?.communication.workflow.progress(target.sessionId)),
     sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, chatUrl, title, createdAt, external, role, orchestratorScopeId, closedPlanCommit }) =>
       ({ sessionId, experience, chatUrl, title, createdAt, external:!!external, role:role??null, orchestratorScopeId:orchestratorScopeId??null,
         orchestratorState:orchestratorState(workspace,{role,orchestratorScopeId,closedPlanCommit}) })),

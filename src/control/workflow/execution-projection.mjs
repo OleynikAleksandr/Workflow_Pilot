@@ -34,7 +34,7 @@ export function projectExecutionPlan(plan,assignments,integration) {
     })};
 }
 
-export function executorStatus(assignment,record,integration) {
+export function executorStatus(assignment,record,integration,{channel=null}={}) {
   if(assignment?.status==='INTEGRATED')return {phase:'done',label:'Завершено · интеграция проверена'};
   if(integration?.assignment_id&&integration.assignment_id===assignment?.id&&integration.status!=='IDLE')
     return ['CONFLICT','CHECKS_FAILED','UNKNOWN'].includes(integration.status)
@@ -47,9 +47,29 @@ export function executorStatus(assignment,record,integration) {
   if(assignment?.status==='UNKNOWN')return {phase:'unknown',label:'Состояние требует сверки'};
   if(assignment?.commandActive){const command=assignment.commands?.find(c=>c.blocksIntegration);return {phase:'command',
     label:command?command.reason+' · '+command.id:'Команда ещё не подтверждена как завершённая'};}
+  const bootstrap=record?.controller?.state?.phase;
+  const startup={selected:'Открывается разговор',preparing:'Подготовка службы и контекста',
+    'loading-context':'Загружается контекст','preparing-message':'Готовится стартовое сообщение',
+    sending:'Отправляется стартовый контекст','waiting-chat':'Ожидаем постоянный адрес разговора'};
+  if(startup[bootstrap])return {phase:'starting',label:startup[bootstrap]};
+  if(bootstrap==='send-unknown')return {phase:'unknown',label:'Исход стартовой отправки неизвестен · автоматического повтора нет'};
   const page=record?.pageState.current?.state;
   if(!record||record.disposed||!page||record.loading)return {phase:'unknown',label:'Активность сейчас не наблюдается'};
   if(page.connectionError)return {phase:'unknown',label:'Нет подтверждённой связи с чатом'};
+  if(page.login==='signed-out')return {phase:'waiting',label:'Нужен вход в ChatGPT'};
+  if(channel&&!['READY_FOR_INTEGRATION','INTEGRATED'].includes(assignment?.status)) {
+    if(['unknown','rejected','superseded'].includes(channel.initial?.delivery))return {phase:'attention',label:'Рабочее уведомление: '+channel.initial.delivery+' · автоматического повтора нет'};
+    if(!channel.registered)return {phase:'starting',label:'Ожидаем регистрацию исполнителя'};
+    if(!channel.sdk)return {phase:'starting',label:'Ожидаем подключение SDK и привязку панели'};
+    if(!channel.permitted)return {phase:'waiting',label:'Связь плана приостановлена'};
+    if(!channel.initial?.read) {
+      if(channel.initial?.delivery==='accepted')return {phase:'starting',label:'Уведомление принято · ожидаем прочтение'};
+      if(channel.initial?.delivery==='claimed')return {phase:'starting',label:'Отправляется рабочее уведомление'};
+      if(page.busy)return {phase:'starting',label:'Завершается загрузочный ход'};
+      if(page.draftPresent)return {phase:'waiting',label:'Черновик · рабочее уведомление ожидает'};
+      return {phase:'starting',label:'Ожидаем рабочее уведомление'};
+    }
+  }
   if(page.busy)return {phase:'working',label:assignment?.status==='READY_FOR_INTEGRATION'?'Коммит готов · ответ продолжается':'Работает'};
   if(assignment?.status==='READY_FOR_INTEGRATION')return page.lastMessageRole==='assistant'
     ?{phase:'ready',label:'Готово к слиянию'}:{phase:'waiting',label:'Ждём завершения ответа'};
@@ -58,7 +78,7 @@ export function executorStatus(assignment,record,integration) {
   return {phase:'waiting',label:'Пауза · задача не завершена'};
 }
 
-export function projectExecutors(projects,workspace,execution,recordFor) {
+export function projectExecutors(projects,workspace,execution,recordFor,channelFor=()=>null) {
   const parent=projects.find(p=>p.workspace===workspace&&!p.parentWorkspace&&!p.archivedAt);
   return projects.filter(p=>parent&&p.parentWorkspace===workspace&&p.parentProjectId===parent.projectId&&!p.archivedAt).flatMap(project=>project.sessions
     .filter(s=>s.assignmentId&&!s.archivedAt).map(session=>{
@@ -67,7 +87,7 @@ export function projectExecutors(projects,workspace,execution,recordFor) {
       return {workspace:project.workspace,sessionId:session.sessionId,originSessionId:session.executionOriginSessionId,parentScopeId:session.parentScopeId,
         createdAt:session.createdAt,
         assignmentId:session.assignmentId,taskId:session.taskId,title:session.title,experience:session.experience,
-        chatUrl:session.chatUrl,worktree:true,...executorStatus(assignment,record,execution.integration),
+        chatUrl:session.chatUrl,worktree:true,...executorStatus(assignment,record,execution.integration,{channel:channelFor(target)}),
         sourceCommit:assignment?.source_commit??null,integrationCommit:assignment?.integration_commit??null,
         time:record?.executor?.clock.snapshot()??{...session.executionTime,phase:'unknown'}};
     }));

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 576,
+  "plan_revision": 580,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
@@ -93,7 +93,11 @@
       "tests/parallel-execution-smoke-fixture.cjs",
       "tests/workflow-channel.test.mjs",
       "src/backend/server.mjs",
-      "src/backend/remote-gateway.mjs"
+      "src/backend/remote-gateway.mjs",
+      "src/backend/main.mjs",
+      "tests/execution-control.test.mjs",
+      "tests/fixtures/plugin-server.py",
+      "tests/fixtures/dialogue-runtime.mjs"
     ],
     "documentation_paths": [
       "docs/planning/executor-startup-and-removal.md",
@@ -378,8 +382,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-executor-lifecycle-fixes",
         "task_id": "T004",
@@ -406,8 +410,14 @@
         "package-lock.json",
         "tests/backend-upgrade.test.mjs",
         "tools/codex-app-server-mcp/plugin.py",
-        "src/backend/server.mjs",
-        "src/backend/remote-gateway.mjs"
+        "src/backend/bootstrap.mjs",
+        "src/backend/main.mjs",
+        "tests/backend-bootstrap.test.mjs",
+        "tests/backend-lifecycle.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/fixtures/plugin-server.py",
+        "tests/workflow-channel.test.mjs",
+        "tests/fixtures/dialogue-runtime.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -428,7 +438,7 @@
         "Сквозной тест воспроизводит выбор во время временного URL, доставку в правильные разговоры, завершение и отдельное удаление застрявшего проекта без влияния на соседний.",
         "Следующий свободный номер проверен, app/backend/panel/MCP согласованы, URI HTML зависит от содержимого. Kit сохраняет 1.8.2; при необходимости его изменения до них уточнить план и назначить kit-check.",
         "Подготовлены повторные живые опыты: один Start без посещения исполнителей, выбор при создании разговора и удаление незавершённого проекта. Fixtures не выдаются за PASS ChatGPT.",
-        "/v1/events принимает clientId подписчика (клиент Mac передаёт свой, шлюз — clientId устройства); оконные события уходят только потоку этого клиента"
+        "Зависшая транзакция Kit блокирует выполнение только своего проекта после restart; backend и удаление через архив остаются доступны, журнал Kit не изменяется."
       ],
       "expected_commit_message": "fix: Проверить полный сценарий и подготовить исправленный выпуск",
       "context_pack": {
@@ -442,7 +452,27 @@
             "required": true
           }
         ]
-      }
+      },
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/main.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "tests/backend-bootstrap.test.mjs",
+        "tests/backend-lifecycle.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/plugin-server.py",
+        "tests/workflow-channel.test.mjs",
+        "tests/executor-startup-lifecycle.test.mjs",
+        "tests/fixtures/dialogue-runtime.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -627,7 +657,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 576
+Revision: 580
 
 ## Цель
 
@@ -663,10 +693,10 @@ Revision: 576
   - Файлы: src/control/projects/workspace-deletion.mjs, src/control/projects/lifecycle.mjs, src/control/projects/project-state-cleanup.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/control/sessions/service.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/command-activity.mjs, src/control/plugin/communication.mjs, src/control/plugin/enrollment.mjs, src/control/settings/service.mjs, src/execution/facade.mjs, src/execution/runtime/service.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/contracts/backend.mjs, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, tests/workspace-deletion.test.mjs, tests/project-state-cleanup.test.mjs, tests/backend-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-communication.test.mjs, tests/electron-smoke.mjs, src/control/facade.mjs, src/control/projects/workspace-setup.mjs, src/control/workflow/parallel-kit.mjs, src/execution/commands/service.mjs, src/execution/runtime/project-commands.mjs, tools/codex-app-server-mcp/server.py, tests/execution-commands.test.mjs, tests/project-command-removal.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/parallel-execution-recovery.test.mjs, src/backend/bootstrap.mjs, tests/backend-bootstrap.test.mjs, tests/execution-facade.test.mjs, tests/parallel-execution-smoke-fixture.cjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T004: Проверить полный сценарий и подготовить исправленный выпуск — Ожидает
-  - Git Commit: [PENDING] fix: Проверить полный сценарий и подготовить исправленный выпуск
+- [DONE] T004: Проверить полный сценарий и подготовить исправленный выпуск — Завершено
+  - Git Commit: [DONE] fix: Проверить полный сценарий и подготовить исправленный выпуск
   - Reference: workflow-pilot-executor-lifecycle-fixes / T004 / implementation
-  - Файлы: src/control/workflow/execution-projection.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/executor-startup-lifecycle.test.mjs, tests/parallel-execution-ui.test.mjs, tests/sidebar.test.mjs, tests/backend-end-to-end.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, tests/backend-upgrade.test.mjs, tools/codex-app-server-mcp/plugin.py, src/backend/server.mjs, src/backend/remote-gateway.mjs
+  - Файлы: src/control/workflow/execution-projection.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/executor-startup-lifecycle.test.mjs, tests/parallel-execution-ui.test.mjs, tests/sidebar.test.mjs, tests/backend-end-to-end.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, tests/backend-upgrade.test.mjs, tools/codex-app-server-mcp/plugin.py, src/backend/bootstrap.mjs, src/backend/main.mjs, tests/backend-bootstrap.test.mjs, tests/backend-lifecycle.test.mjs, tests/execution-control.test.mjs, tests/fixtures/plugin-server.py, tests/workflow-channel.test.mjs, tests/fixtures/dialogue-runtime.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

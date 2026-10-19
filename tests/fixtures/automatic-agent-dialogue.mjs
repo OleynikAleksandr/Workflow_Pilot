@@ -11,14 +11,15 @@ import {sessionStore} from '../../src/control/sessions/service.mjs';
 import {ContextSession} from '../../src/control/context/context-session.mjs';
 import {createWorkflowCoordination} from '../../src/control/workflow/coordination.mjs';
 import {openCommunicationStore} from '../../src/execution/plugin/communication-store.mjs';
-import {bridge,client,communicationHtml} from './plugin-host.mjs';
+import {bridge,communicationHtml} from './plugin-host.mjs';
+import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 
-// Only the ChatGPT host/model and the physical composer are simulated. Registration,
-// SDK, Python MCP, plan button, scheduler, sessions, persistence and Kit/Git are real.
+// Physical service lifecycle commands, ChatGPT/model and composer are simulated.
+// Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
 export async function automaticDialogue(t,experience='chat'){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
-  let workflow,plugin,c,closed=false;
+  let workflow,plugin,c,runtime,closed=false;
   const root=createFixture(directory),setup={node:async()=>process.execPath,
     environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
       GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
@@ -109,7 +110,7 @@ export async function automaticDialogue(t,experience='chat'){
         }finally{composer.inFlight=false;}
       }};
     record.controller=new ContextSession({store:sessionStore(store,record.identity),composer,
-      runtime:{ensure:async()=>{},loadContext:(workspace,role)=>plans.loadContext(workspace,role),prepareBootstrap:p=>workflow.prepareBootstrap(p)},
+      runtime:{ensure:()=>runtime.ensure(),loadContext:(workspace,role)=>plans.loadContext(workspace,role),prepareBootstrap:p=>workflow.prepareBootstrap(p)},
       onChange:()=>{if(record.controller?.state.phase==='error')error(new Error(JSON.stringify(record.controller.state.error)));}});
     records.set(project.sessionId,record);return record;
   }
@@ -124,7 +125,6 @@ export async function automaticDialogue(t,experience='chat'){
   plugin=control.createPlugin({loadContext:(workspace)=>plans.loadContext(workspace),communicationStore:await openCommunicationStore(path.join(directory,'communication')),
     observe:workflow.observeParticipant,admit:workflow.admitParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged});
   await plugin.communication.ready;plugin.communication.waitMs=40;
-  await bridge(testPort,{directory,plugin});c=await client(testPort,{directory});
   t.after(async()=>{
     closed=true;workflow.execution.dispose();workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
     for(const record of records.values())live.release(record);
@@ -132,6 +132,8 @@ export async function automaticDialogue(t,experience='chat'){
     plugin.communication.dispose();await plugin.communication.tail;await store.whenIdle();
     await fs.rm(directory,{recursive:true,force:true,maxRetries:3});
   });
+  await bridge(testPort,{directory,plugin});runtime=await dialogueRuntime(testPort,directory);c=runtime.client;
+  const api=await dialogueApi(testPort,directory,{control,workflow,settings:{},sessions:live,pages:{list:()=>[]}});
   const wait=async(check,label,timeout=180000)=>{
     const end=Date.now()+timeout;
     while(Date.now()<end){if(errors.length)throw errors[0];if(await check())return;await delay(50);}
@@ -156,7 +158,9 @@ export async function automaticDialogue(t,experience='chat'){
     tasks:[task('T001','README.md'),task('T002','SECOND.md'),task('T003','THIRD.md',['T001','T002'])]});
   await store.reconcileRoles(root);await store.selectSession(root,origin.sessionId);workflow.execution.observe(root);
   await workflow.execution.signal(root);assert.equal(records.size,1,'publication alone opens no executor');
-  assert.equal((await workflow.setPlanExecution()).state,'running','actual plan button entry point');
+  const start=await api.submit('plan.continue',{}),started=await api.wait(start.operationId);
+  assert.equal(started.status,'completed',JSON.stringify(started));
+  assert.equal(workflow.executionControl.view(root,'dialogue-fixture').state,'running','HTTP API runs the real plan button coordinator');
   await wait(()=>workflow.executionControl.view(root,'dialogue-fixture').state==='complete','plan completion');
   assert.equal(readPlan(root).delivery_status,'READY_FOR_ACCEPTANCE');
   assert.deepEqual(readPlan(root).tasks.map(task=>task.commit_status),['DONE','DONE','DONE','DONE']);
@@ -170,5 +174,6 @@ export async function automaticDialogue(t,experience='chat'){
   assert.equal((await plans.call(root,'assignment:cleanup')).only_main,true);
   const run=[...plugin.communication.runs.values()][0];assert.equal(run.grant.phase,'complete');assert.equal(run.grant.active,false);
   assert.equal(workflow.executionControl.snapshot()[root].route,'plugin-v1');
+  runtime.verify();
   return {notifications,run,root};
 }

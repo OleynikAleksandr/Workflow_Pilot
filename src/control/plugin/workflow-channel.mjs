@@ -37,6 +37,21 @@ export class WorkflowChannel {
     return this.state(run);
   }
   state(run){return {scope_id:run.grant?.scope_id??null,phase:run.grant?.phase??'not-started',active:run.grant?.active===true};}
+  // Read-only local projection. Registration, a live SDK lease and message
+  // receipt are separate facts; no ticket, identity or message text leaves it.
+  progress(sessionId) {
+    const c=this.c,target=c.enrollment.resolveTarget?.(sessionId);
+    if(!target||c.removedSessions.has(sessionId))return null;
+    const run=c.runs.get(workflowRunId(target));if(run?.removed)return null;
+    const member=Object.values(run?.members??{}).find(m=>['project_id','local_session_id','origin_session_id','role','scope_id','assignment_id','task_id']
+      .every(key=>(m.target[key]??null)===(target[key]??null)));
+    const sdk=!!member&&[...c.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id
+      &&p.identity===member.identity&&p.generation===member.generation&&p.expiresAt>c.now()&&p.messageSupported);
+    const initial=run?.messages.find(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
+      &&m.assignment_id===target.assignment_id&&m.kind==='assignment-start');
+    return {registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
+      initial:initial?{delivery:initial.delivery,read:initial.read}:null};
+  }
   permitted(run,member) {
     return run.grant?.active===true&&run.grant.boot===this.c.backendId&&!member.stopped
       &&(member.role==='O'||member.target.scope_id===run.grant.scope_id);

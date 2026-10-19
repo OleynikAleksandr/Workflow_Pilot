@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {configureBackendIdentity,claimBackendIdentity} from './identity.mjs';
-import {createBackendComposition,createBackendPages,assertProfileStores,assertNoPendingKitTransactions} from './bootstrap.mjs';
+import {createBackendComposition,createBackendPages,assertProfileStores,pendingKitTransactions} from './bootstrap.mjs';
 import {createDesktopModel} from './desktop-model.mjs';
 import {createRemoteSurface} from './remote-surface.mjs';
 import {startBackendPort,installFixtureChat} from './lifecycle.mjs';
@@ -85,7 +85,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
         // Fail closed before any page, executor or automation starts.
         beforeWindow:async({storageError})=>{
           if(storageError)throw Object.assign(new Error('Project store cannot be read.'),{code:'WORKSPACE_STORE_INVALID'});
-          assertNoPendingKitTransactions(desktop.services.control.projects.snapshot().projects);
+          await desktop.services.workflow.holdProjectsForRecovery(pendingKitTransactions(desktop.services.control.projects.snapshot().projects));
           return false;
         }});
       // Remote devices and the gateway are bound after the API port exists.

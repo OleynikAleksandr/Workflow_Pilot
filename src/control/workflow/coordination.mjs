@@ -22,12 +22,18 @@ import {DialogueDelivery} from './dialogue-delivery.mjs';
 export function createWorkflowCoordination({store, setup:workspaceSetup, plans:sessionPlans,
   getController, available, contextAvailable, onChange:publish, report, save:saveSettings,getPlugin=()=>null}) {
 let liveSessions;
+// A pending Kit transaction holds only its project. The service and archive stay
+// available; neither startup nor deletion repairs or changes the Kit journal.
+const startupRecovery=new Map();
+const recoveryError=()=>Object.assign(new Error('Для выполнения проекта нужно восстановление Kit. Проект можно архивировать и удалить без завершения плана.'),{code:'PROJECT_RECOVERY_REQUIRED'});
+const held=project=>startupRecovery.has(project?.parentWorkspace??project?.workspace);
 let reviewCheckpoint=null,automationCheckpoint=null,parallelExecutionBook={};
 const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&liveSessions?.find(project),
   route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>executionControl.view(workspace,scope),
   signals:workspace=>executionKit.signals(workspace)});
 let permissionTail=Promise.resolve();
 function syncPermission(workspace){
+  if(startupRecovery.has(workspace))return Promise.resolve();
   const entry=executionControl.book[workspace];if(!entry||entry.route!=='plugin-v1')return Promise.resolve();
   const {scopeId,state}=entry;
   const next=permissionTail.then(()=>dialogue.permission(workspace,scopeId,state));
@@ -108,13 +114,14 @@ const orchestratedPlan=workspace=>store.project(workspace)?.planExecution?.execu
 // A started button marks the plan as orchestrated even before the cached project view refreshes;
 // a plan of the former model keeps its continuation engine as the source of truth.
 const executorEnabled=(workspace,scope)=>{
-  if(execution.retired.has(workspace)||store.project(workspace)?.archivedAt)return false;
+  if(startupRecovery.has(workspace)||execution.retired.has(workspace)||store.project(workspace)?.archivedAt)return false;
   const {state}=executionControl.view(workspace,scope),strategy=store.project(workspace)?.planExecution?.execution_strategy;
   return strategy==='orchestrated'||(!strategy&&state!=='not-started')?['running','pausing'].includes(state):projectPlanContinuation.enabled(workspace,scope);
 };
 const storedOrchestrator=(workspace,scope)=>store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions
   .find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId??null;
 async function restoreExecutionPage(project,assignment=null) {
+  if(held(project))throw recoveryError();
   if(liveRecord(project)?.ready&&(!assignment||liveRecord(project).executor))return project;
   // An executor that never received anything opens a fresh Chat draft and gets its task as usual.
   const unsent=!!assignment&&unsentExecutor(project);
@@ -238,6 +245,13 @@ async function setPlanExecution(running) {
   const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
   if(!workspace||selected?.external)throw Object.assign(new Error('Выберите проект с планом.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
   if(running!==undefined&&typeof running!=='boolean')throw Object.assign(new Error('Неверная команда кнопки плана.'),{code:'PLAN_EXECUTION_INVALID'});
+  if(startupRecovery.has(workspace)) {
+    for(const pending of startupRecovery.get(workspace)) {
+      workspaceSetup.invalidateReadiness(pending);
+      if(!(await workspaceSetup.ready(pending).catch(()=>({ready:false}))).ready)throw recoveryError();
+    }
+    startupRecovery.delete(workspace);
+  }
   const info=await store.inspect(workspace);
   if(!info.scopeId||!['ACTIVE','BLOCKED'].includes(info.scopeStatus))
     throw Object.assign(new Error('Кнопка доступна у опубликованного плана.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
@@ -330,15 +344,33 @@ const executionPort=Object.freeze({
   view: workspace=>structuredClone(execution.view(workspace)),
   allStates: ()=>structuredClone([...execution.states].map(([workspace,state])=>({...state,workspace}))),
   ledgers: ()=>structuredClone(Object.values(parallelExecutionBook)),
-  observe: workspace=>execution.observe(workspace),signal: workspace=>execution.signal(workspace),
-  recheck: workspace=>execution.recheck(workspace),correct: (...args)=>execution.correct(...args),
+  observe: workspace=>{if(!startupRecovery.has(workspace))execution.observe(workspace);},
+  signal: workspace=>startupRecovery.has(workspace)?Promise.resolve():execution.signal(workspace),
+  recheck: workspace=>{if(startupRecovery.has(workspace))throw recoveryError();return execution.recheck(workspace);},
+  correct: (...args)=>{if(startupRecovery.has(args[0]))throw recoveryError();return execution.correct(...args);},
   suspend: workspace=>execution.suspend(workspace),forget: workspaces=>execution.forget(workspaces),
   retire: workspace=>execution.retire(workspace),allow: workspace=>execution.allow(workspace),
   publish: (...args)=>execution.publish(...args),dispose: ()=>execution.dispose(),
 });
 return Object.freeze({
+  async holdProjectsForRecovery(workspaces) {
+    for(const workspace of workspaces) {
+      const project=store.project(workspace),parent=project?.parentWorkspace?store.project(project.parentWorkspace):null;
+      const root=parent&&parent.projectId===project.parentProjectId?parent.workspace:workspace;
+      if(!startupRecovery.has(root))startupRecovery.set(root,new Set());
+      startupRecovery.get(root).add(workspace);
+    }
+    for(const root of startupRecovery.keys()) {
+      await execution.suspend(root);
+      const legacy=projectPlanContinuation.book[root];if(legacy)legacy.enabled=false;
+      const state=executionControl.book[root];
+      if(state&&['running','pausing','paused'].includes(state.state))
+        executionControl.write(root,state.scopeId,'paused','unknown',recoveryError().message,state.route,false);
+    }
+    if(startupRecovery.size)await saveSettings();
+  },
   retireCommunication:identities=>getPlugin()?.communication.removeProjects(identities),
-  prepareBootstrap:project=>dialogue.prepareBootstrap(project),
+  prepareBootstrap:project=>{if(held(project))throw recoveryError();return dialogue.prepareBootstrap(project);},
   observeParticipant:target=>dialogue.observe(target),admitParticipant:target=>dialogue.admit(target),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),
   communicationChanged:runId=>{
@@ -374,7 +406,7 @@ return Object.freeze({
     snapshot:()=>executionControl.snapshot()}),setPlanExecution,
   // The user confirmed archiving a project with an active plan: execution pauses now; Kit is untouched.
   stopPlanExecution:async workspace=>{const scope=store.project(workspace)?.scopeId;if(!scope)return null;
-    await dialogue.permission(workspace,scope,'paused');return executionControl.stop(workspace,scope);},
+    if(!startupRecovery.has(workspace))await dialogue.permission(workspace,scope,'paused');return executionControl.stop(workspace,scope);},
   execution:executionPort,executionKit:Object.freeze({git:(...args)=>executionKit.git(...args)}),
   // The continuation engine of plans of the former model; users reach it only through the plan button.
   continuePlan,
@@ -388,6 +420,7 @@ return Object.freeze({
 
   },
   cleanup(identities) {
+  for(const identity of identities)startupRecovery.delete(identity.workspace);
   const cleaned=removeProjectSettings({projectPlanContinuation:projectPlanContinuation.snapshot(),parallelExecutionBook,reviewCheckpoint,automationCheckpoint},identities);
   projectPlanContinuation.book=cleaned.projectPlanContinuation;parallelExecutionBook=cleaned.parallelExecutionBook;execution.book=parallelExecutionBook;
   reviewCheckpoint=cleaned.reviewCheckpoint;automationCheckpoint=cleaned.automationCheckpoint;
@@ -399,14 +432,14 @@ return Object.freeze({
   },
   restoreBackground() {
     // A plan that was running or pausing continues after a backend restart, without a repeated Send.
-    for(const [workspace,state] of Object.entries(executionControl.book))if(['running','pausing'].includes(state.state)) {
+    for(const [workspace,state] of Object.entries(executionControl.book))if(!startupRecovery.has(workspace)&&['running','pausing'].includes(state.state)) {
       execution.observe(workspace);void execution.signal(workspace);
     }
-    for(const [workspace,state] of Object.entries(projectPlanContinuation.book))if(state.enabled) {
+    for(const [workspace,state] of Object.entries(projectPlanContinuation.book))if(!startupRecovery.has(workspace)&&state.enabled) {
       const project=store.project(workspace,state.sessionId);
       if(project?.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt)void restoreExecutionPage(project).catch(report);
     }
-    for(const project of store.snapshot().projects)if(!project.parentWorkspace&&!project.archivedAt
+    for(const project of store.snapshot().projects)if(!startupRecovery.has(project.workspace)&&!project.parentWorkspace&&!project.archivedAt
       &&(project.sessions.some(s=>s.executionSnapshot?.parallel_allowed)||Object.values(parallelExecutionBook).some(b=>b?.workspace===project.workspace))) {
       execution.observe(project.workspace);void execution.signal(project.workspace);
     }

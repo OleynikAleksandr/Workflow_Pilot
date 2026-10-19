@@ -1,7 +1,7 @@
 {
   "name": "workflow-pilot",
   "productName": "Workflow Pilot",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "Локальный проект и ChatGPT в одном окне",
   "private": true,
   "type": "module",

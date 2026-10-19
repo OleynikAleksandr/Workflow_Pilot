@@ -10,11 +10,12 @@ import readline from 'node:readline';
 import {configureBackendIdentity,claimBackendIdentity,assertNoBackendOwner} from '../src/backend/identity.mjs';
 import {createBackendComposition} from '../src/backend/bootstrap.mjs';
 import {WorkspaceSessions} from '../src/control/sessions/workspace-session.mjs';
+import {BackendConnection} from '../src/frontend/client/connection.mjs';
 
 const project=fileURLToPath(new URL('../',import.meta.url));
 
 function fixture(t){
-  const root=fs.mkdtempSync(path.join(os.tmpdir(),'wp-backend-lifecycle-'));
+  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'wp-backend-lifecycle-')));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
   return root;
 }
@@ -61,7 +62,7 @@ test('composition creates one shared Execution and Control facade, never an impl
   assert.throws(()=>first.execution.attachRuntime({channel:'vps'}),error=>error.code==='EXECUTION_OWNER_CONFLICT');
 });
 
-test('independent Electron backend survives disconnected frontend; single owner and corrupt state fail closed',{skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:35000},async t=>{
+test('independent Electron backend survives disconnected frontend; corrupt stores fail closed and pending Kit remains removable',{skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:60000},async t=>{
   const root=fixture(t);const electron=(await import('electron')).default;
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
   const args=['.', '--backend-host','--backend-fixture-root='+root];
@@ -137,18 +138,37 @@ test('independent Electron backend survives disconnected frontend; single owner 
       tasks:[],current_task_id:null})+'\n```\n<!-- workflow-state:end -->');
   execFileSync('git',['init','-q',workspace]);
   const store=new WorkspaceSessions(path.join(root,'workspaces.json'));
-  await store.select(workspace);
+  const selected=await store.select(workspace);
   const journalDir=path.join(workspace,'.git','workflow-kit');
   await fsp.mkdir(journalDir,{recursive:true});
   await fsp.writeFile(path.join(journalDir,'transaction.json'),JSON.stringify({id:'unfinished',role:'implementation'}));
-  const original=await fsp.readFile(path.join(root,'workspaces.json'),'utf8');
-  const withJournal=spawn(electron,args,{cwd:project,env,stdio:['ignore','pipe','pipe']});
+  const originalJournal=await fsp.readFile(path.join(journalDir,'transaction.json'),'utf8');
+  const withJournal=spawn(electron,args,{cwd:project,env,stdio:['pipe','pipe','pipe']});
+  t.after(()=>{if(withJournal.exitCode===null)withJournal.kill('SIGTERM');});
   let journalError='';withJournal.stderr.on('data',part=>{journalError+=part;});
-  const journalExit=await new Promise((resolve,reject)=>{
-    const timeout=setTimeout(()=>reject(Error('Kit journal test stalled')),9000);
-    withJournal.once('exit',code=>{clearTimeout(timeout);resolve(code);});
+  const journalReady=await new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>reject(Error('Kit journal startup stalled: '+journalError)),12000);
+    readline.createInterface({input:withJournal.stdout}).on('line',line=>{
+      try{const value=JSON.parse(line);if(value.ready){clearTimeout(timeout);resolve(value);}}catch{}
+    });
+    withJournal.once('exit',code=>{clearTimeout(timeout);reject(Error('Kit journal stopped service: '+code+' '+journalError));});
   });
-  assert.notEqual(journalExit,0);assert.match(journalError,/BACKEND_KIT_TRANSACTION_PENDING/);
-  assert.equal(await fsp.readFile(path.join(root,'workspaces.json'),'utf8'),original);
-  assert.equal(fs.existsSync(path.join(journalDir,'transaction.json')),true);
+  const api=new BackendConnection(journalReady);t.after(()=>api.close());await api.connect();await api.acquire();
+  const invoke=async(surface,channel,input)=>{
+    const operation=await api.submit('ui.invoke',{surface,channel,input});
+    const result=await api.wait(operation.operationId);assert.equal(result.status,'completed',JSON.stringify(result));
+    assert.equal(result.result.value.ok,true,JSON.stringify(result));return result.result.value;
+  };
+  const resume=await api.submit('plan.continue',{}),refused=await api.wait(resume.operationId);
+  assert.equal(refused.status,'failed');assert.equal(refused.result.error.code,'PROJECT_RECOVERY_REQUIRED');
+  await invoke('local','pilot:archive-project',{workspace:selected.workspace,stopExecution:true});
+  await invoke('local','pilot:open-archive-window',null);
+  await invoke('archive','archive:forget',[{workspace:selected.workspace,projectId:selected.projectId}]);
+  const remaining=JSON.parse(await fsp.readFile(path.join(root,'workspaces.json'),'utf8'));
+  assert.equal(remaining.projects.some(p=>p.workspace===selected.workspace),false);
+  assert.equal(await fsp.readFile(path.join(journalDir,'transaction.json'),'utf8'),originalJournal,'no Kit recovery or fake DONE');
+  assert.equal(fs.existsSync(workspace),true,'forget preserves the repository');
+  assert.equal((await api.json('/v1/status')).identity,'workflow-pilot','the service survives removal');
+  api.close();withJournal.stdin.end('stop\n');
+  assert.equal(await new Promise(resolve=>withJournal.once('exit',resolve)),0);
 });

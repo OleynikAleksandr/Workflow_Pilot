@@ -27,19 +27,20 @@ export function assertProfileStores(dataDir) {
 // An unfinished Kit transaction is recovered by Kit, never run over by the backend.
 // A checkout whose transaction state cannot be read (folder gone, broken git or worktree)
 // does not stop the service: that project shows its own error when it is selected.
-export function assertNoPendingKitTransactions(projects,{readJournal=journal}={}) {
+export function pendingKitTransactions(projects,{readJournal=journal}={}) {
   // Archived projects cannot execute. Their unfinished transaction must not
   // prevent startup and the user's explicit removal/recovery action.
   const active=projects.filter(project=>!project.archivedAt&&!projects.some(parent=>parent.archivedAt
     &&project.parentProjectId&&parent.projectId===project.parentProjectId&&parent.workspace===project.parentWorkspace));
+  const held=[];
   for(const workspace of new Set(active.map(project=>project.workspace))) {
     if(typeof workspace!=='string'||!path.isAbsolute(workspace)
       || !fs.existsSync(path.join(workspace,'.harness','workflow.json')))continue;
     let pending;
     try{pending=readJournal(workspace);}catch{continue;}
-    if(pending)throw Object.assign(new Error('Kit transaction requires recovery before backend starts.'),
-      {code:'BACKEND_KIT_TRANSACTION_PENDING'});
+    if(pending)held.push(workspace);
   }
+  return held;
 }
 
 export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,execution=new ExecutionFacade(),
@@ -98,7 +99,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
   try{workflow.restore(await settings.load());}
   catch(error){if(error.code!=='ENOENT')throw error;workflow.restore({});}
   await control.projects.load();
-  assertNoPendingKitTransactions(control.projects.snapshot().projects);
+  await workflow.holdProjectsForRecovery(pendingKitTransactions(control.projects.snapshot().projects));
   const pages=createBackendPages({sessions,setup,store:control.projects,host:browser?.host??null,onReady:notify});
   return Object.freeze({control,execution,workflow,settings,setup,sessions,pages,
     // One change listener: the backend event log. It reads state, never stores it.

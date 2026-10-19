@@ -135,6 +135,14 @@ test('button command: only a published orchestrated plan starts, the state is sa
   await control.projects.whenIdle();
   const second = create();await second.control.projects.load();const restarted = second.workflow;restarted.restore(saved);
   assert.equal(restarted.executionControl.view(main.workspace, SCOPE).state, 'running');
+  await restarted.holdProjectsForRecovery([main.workspace]);
+  assert.equal(restarted.executionControl.view(main.workspace,SCOPE).state,'paused');
+  assert.equal(restarted.executorEnabled(main.workspace,SCOPE),false);
+  await assert.rejects(restarted.setPlanExecution(true),{code:'PROJECT_RECOVERY_REQUIRED'});
+  assert.throws(()=>restarted.prepareBootstrap(main),{code:'PROJECT_RECOVERY_REQUIRED'});
+  assert.throws(()=>restarted.execution.recheck(main.workspace),{code:'PROJECT_RECOVERY_REQUIRED'});
+  assert.doesNotThrow(()=>restarted.execution.observe(main.workspace),'sidebar observation cannot restart held work');
+  await restarted.stopPlanExecution(main.workspace);
   restarted.cleanup([{ workspace: main.workspace, projectId: main.projectId, sessionIds: [main.sessionId] }]);
   assert.equal(restarted.executionControl.view(main.workspace, SCOPE).state, 'not-started');
 });
