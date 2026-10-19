@@ -193,13 +193,13 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_enable", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def enable(binding: Binding, message_supported: Annotated[bool, Field(description="The real SDK exposes experimental openai/message on this host.")], ctx: Context) -> CallToolResult:
-        """App-only explicit user permission for thirty minutes. Returns a fresh generation; never restore permission automatically on reload."""
+        """App-only legacy experiment permission for thirty minutes. Working plans reject Enable: Start/Continue grants plan permission and sync only renews SDK presence. Legacy reload requires a new explicit Enable."""
         return await communication("enable", ctx, binding=binding, message_supported=message_supported)
 
     @mcp.tool(name="workflow_communication_stop", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
     async def stop(binding: Binding, ctx: Context,
-                   scope: Annotated[str, Field(pattern=r"^(participant|panel)$", description="participant for explicit user Stop; panel for lifecycle/expiry, fenced by permission_generation.")] = "participant") -> CallToolResult:
-        """App-only revoke sending and pending probe. Repeated stopped calls are idempotent; automatic panel Stop cannot revoke a newer generation. Explicit user Stop is global for this participant. Already handed-off requests cannot be cancelled."""
+                   scope: Annotated[str, Field(pattern=r"^(participant|panel)$", description="participant for explicit user Stop (whole working plan, one legacy participant); panel for lifecycle detach.")] = "participant") -> CallToolResult:
+        """App-only Stop. In a working plan, explicit participant scope revokes sending for the whole plan; panel scope only detaches this SDK instance. In legacy experiments, participant scope stops one participant and panel scope is fenced by permission_generation. Repeated calls are idempotent. Already handed-off requests cannot be cancelled."""
         return await communication("stop", ctx, binding=binding, scope=scope)
 
     @mcp.tool(name="workflow_communication_wait", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})

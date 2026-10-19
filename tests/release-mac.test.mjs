@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { createPackage, extractFile, uncache } from '@electron/asar';
-import { installMacBundle, publishMacRelease } from '../scripts/release-mac.mjs';
+import { installMacBundle, publishMacRelease, verifyMacDelivery } from '../scripts/release-mac.mjs';
 
 const mac = { skip: process.platform !== 'darwin' };
 // These small bundles test installation mechanics, with an explicit fixture signature verifier.
@@ -136,4 +136,27 @@ test('a verification failure after installation restores the previous Contents',
   } }), /Copied signature failed/);
   assert.equal((await fs.stat(target)).ino, before.ino);
   assert.equal(marker(target), 'safe');
+});
+
+test('a running backend leaves a verified pending package and unchanged target; delivery distinguishes activation',mac,async t=>{
+  const root=await fixture(t),source=await bundle(root,'1.0.0','running');
+  const options={source,target:path.join(root,'Workflow Pilot.app'),backupRoot:path.join(root,'backups'),version:'1.0.0',verifySignature};
+  await installMacBundle({...options,backendExecutable:async()=>null});const before=await fs.stat(options.target);
+  await bundle(root,'1.0.1','ready');options.version='1.0.1';
+  const receipt=await installMacBundle({...options,backendExecutable:async()=>path.join(options.target,'Contents/MacOS/Workflow Pilot')});
+  assert.equal(receipt.pending,true);assert.equal(receipt.previous.version,'1.0.0');
+  assert.equal(marker(options.target),'running');assert.equal((await fs.stat(options.target)).ino,before.ino);
+  assert.equal(marker(receipt.staged),'ready');
+  const delivered=await verifyMacDelivery({...options,receipt});
+  assert.equal(delivered.installed,false);assert.equal(delivered.pending,true);assert.equal(delivered.previousVersion,'1.0.0');
+  await assert.rejects(verifyMacDelivery(options),/No verified pending/);
+  await assert.rejects(verifyMacDelivery({...options,receipt:{...receipt,staged:source}}),/Unexpected pending/);
+  await assert.rejects(verifyMacDelivery({...options,receipt:{...receipt,inode:0}}),/identity changed/);
+  await fs.writeFile(path.join(options.target,'Contents/Info.plist'),(await fs.readFile(path.join(options.target,'Contents/Info.plist'),'utf8'))+'\n');
+  await assert.rejects(verifyMacDelivery({...options,receipt}),/does not match staging/,'a changed old target cannot be called untouched');
+  const installed=await installMacBundle({...options,backendExecutable:async()=>null});
+  assert.equal(installed.pending,undefined);assert.equal(marker(options.target),'ready');
+  assert.equal(marker(installed.backup),'running');
+  const active=await verifyMacDelivery({...options,receipt});assert.equal(active.installed,true);assert.equal(active.pending,false);
+  assert.equal((await fs.stat(options.target)).ino,before.ino);
 });

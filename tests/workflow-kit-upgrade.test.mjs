@@ -81,7 +81,7 @@ test('released 1.6.3 review survives upgrade and adopts author positions without
   assert.equal(fs.existsSync(path.join(project,spec)),true);
 });
 
-for(const [version,revision] of [['1.5.6','ab6d3d99e5da577d45bfc3b78575f201817948b0'],['1.6.4','db9945ac81a530d14d84e92e60b2c850f9ef8ff6'],['1.7.2','workflow-pilot-kit-1.7.2-baseline']])
+for(const [version,revision] of [['1.5.6','ab6d3d99e5da577d45bfc3b78575f201817948b0'],['1.6.4','db9945ac81a530d14d84e92e60b2c850f9ef8ff6'],['1.7.2','workflow-pilot-kit-1.7.2-baseline'],['1.8.1','workflow-pilot-v0.5.4']])
 test('real '+version+' task start survives kit-update and new-runtime task commit', t => {
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'kit-156-transition-'));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
@@ -107,7 +107,14 @@ test('real '+version+' task start survives kit-update and new-runtime task commi
   assert(upgradeFrom.has('1.5.6'));
   assert(upgradeFrom.has('1.6.1'),'last released Kit remains upgradeable');
   assert(upgradeFrom.has(version));
-  if(version==='1.6.4') {
+  let signalsBefore;
+  const signalsFile=path.join(project,'.git/workflow-kit/signals.jsonl');
+  if(version==='1.8.1'){
+    cli('task:block','--task','T006','--reason','Legacy blocker preserved through the upgrade');
+    signalsBefore=fs.readFileSync(signalsFile,'utf8');
+    assert.equal(JSON.parse(signalsBefore).schema_version,undefined,'actual released legacy signal format');
+  }
+  if(version==='1.6.4'||version==='1.8.1') {
     const manifest=path.join(project,'.harness/kit-manifest.json'),runtime=path.join(project,'.harness/kit/lib/common.mjs');
     const before=[fs.readFileSync(manifest,'utf8'),fs.readFileSync(runtime,'utf8'),run('git',['rev-parse','HEAD'])];
     for(const marker of ['assignment.json','integration.json','assignments/unfinished.json']) {
@@ -121,6 +128,11 @@ test('real '+version+' task start survives kit-update and new-runtime task commi
   assert.equal(install({project,update:true}).ok,true);
   assert.match(run('git',['log','-1','--format=%B']),/Workflow-Role: kit-update/);
   assert.equal(JSON.parse(fs.readFileSync(path.join(project,'.harness/kit-manifest.json'))).version,VERSION);
+  if(signalsBefore){
+    assert.equal(fs.readFileSync(signalsFile,'utf8'),signalsBefore,'upgrade never rewrites the prior signal journal');
+    assert.equal(readPlan(project).current_task_id,'T006');
+    assert.equal(cli('status').ok,true);
+  }
   cli('commit','--task','T006');
   const plan=readPlan(project), refs=resolveReferences(project,plan);
   assert.equal(plan.tasks.find(t=>t.id==='T006').commit_status,'DONE');

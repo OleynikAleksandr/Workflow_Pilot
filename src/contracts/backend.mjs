@@ -1,9 +1,9 @@
 // Wire protocol shared by an unprivileged frontend and the independent backend.
 // No Electron, filesystem, shell, store or secret crosses this boundary.
 export const BACKEND_API_VERSION = 1;
-export const COMMUNICATION_PROTOCOL = 1;
-export const COMMUNICATION_APP_VERSION = '0.5.4';
-export const COMMUNICATION_BUILD = '0.5.4-communication-1';
+export const COMMUNICATION_PROTOCOL = 2;
+export const COMMUNICATION_APP_VERSION = '0.5.5';
+export const COMMUNICATION_BUILD = '0.5.5-communication-2';
 export const COMMUNICATION_PERMISSION_MS = 30 * 60 * 1000;
 export const BACKEND_LIMITS = Object.freeze({
   messageBytes: 64 * 1024,

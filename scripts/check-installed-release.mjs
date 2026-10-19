@@ -8,7 +8,7 @@ import { RELEASE_MATRIX, sourceSnapshot, verifyPackagedSources, verifyReleaseDir
 import { verifyWindowsPackage } from './verify-windows-package.mjs';
 import { verifyLinuxPackage } from './verify-linux-package.mjs';
 import { verifyMacSignature, macDirectoryIdentity, assertSameMacDirectory } from './check-mac-signature.mjs';
-import { installMacBundle, BACKUP_FOLDER } from './release-mac.mjs';
+import { installMacBundle, verifyMacDelivery, BACKUP_FOLDER } from './release-mac.mjs';
 const ROOT=fileURLToPath(new URL('..',import.meta.url));
 
 export async function releaseInputs({root=ROOT,deliveryDirectory}={}) {
@@ -34,7 +34,12 @@ export async function installPreparedRelease(options={}) {
   const installations=[];
   for(const target of apps)installations.push(await installMacBundle({source,target,version,
     backupRoot:path.join(root,'.harness/runtime',BACKUP_FOLDER),verifySignature:args=>verifyMacSignature({...args,root})}));
-  return {ok:true,version,manifestSha256:input.manifestSha256,installations,noRebuild:true};
+  const receipt={ok:true,version,manifestSha256:input.manifestSha256,installations,noRebuild:true};
+  const file=path.join(root,'.harness/runtime','release-'+version+'-installation.json');
+  const temporary=await fs.mkdtemp(file+'.');
+  try{const staged=path.join(temporary,'receipt.json');await fs.writeFile(staged,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});await fs.rename(staged,file);}
+  finally{await fs.rm(temporary,{recursive:true,force:true});}
+  return receipt;
 }
 export async function verifyInstalledRelease(options={}) {
   const input=await releaseInputs(options),{root,version,manifest}=input;
@@ -46,30 +51,40 @@ export async function verifyInstalledRelease(options={}) {
     if(row.id==='linux')await verifyLinuxPackage(folder,{root,version,sources:manifest.sources});
   }
   const preflight=JSON.parse(await fs.readFile(path.join(root,'.harness/runtime','release-'+version+'-preflight.json'),'utf8'));
+  let installation;
+  if(options.delivery){
+    installation=JSON.parse(await fs.readFile(path.join(root,'.harness/runtime','release-'+version+'-installation.json'),'utf8'));
+    assert.equal(installation.version,version);assert.equal(installation.manifestSha256,input.manifestSha256);
+    assert.deepEqual(installation.installations.map(i=>i.target),[path.join(root,'Workflow Pilot.app'),'/Applications/Workflow Pilot.app']);
+  }
   const copies=[];
   const environment={...process.env};
   for(const key of ['NODE_OPTIONS','NODE_PATH','ELECTRON_RUN_AS_NODE'])delete environment[key];
-  for(const app of [path.join(root,'Workflow Pilot.app'),'/Applications/Workflow Pilot.app']) {
+  for(const target of [path.join(root,'Workflow Pilot.app'),'/Applications/Workflow Pilot.app']) {
+    const delivered=options.delivery?await verifyMacDelivery({source:path.join(root,'.harness/runtime/build',RELEASE_MATRIX[0].folder),
+      target,version,backupRoot:path.join(root,'.harness/runtime',BACKUP_FOLDER),receipt:installation.installations.find(i=>i.target===target),
+      verifySignature:args=>verifyMacSignature({...args,root})}):{app:target,target,installed:true,pending:false};
+    const app=delivered.app;
     assert.equal((await fs.lstat(app)).isSymbolicLink(),false);
     const signature=await verifyMacSignature({bundle:app,root});
     assert.deepEqual(signature,manifest.macCodeSignature);
     const proof=await verifyPackagedSources({root,resources:path.join(app,'Contents/Resources'),version,sources:manifest.sources});
     assert.equal(proof.asarSha256,manifest.artifacts[0].asarSha256);
-    const identity=await macDirectoryIdentity(app),before=preflight.find(p=>p.path===app);
-    if(before)assertSameMacDirectory(before,identity,app);
+    const identity=await macDirectoryIdentity(target),before=preflight.find(p=>p.path===target);
+    if(before)assertSameMacDirectory(before,identity,target);
     const binary=path.join(app,'Contents/MacOS/Workflow Pilot');
     const versions=JSON.parse(execFileSync(binary,['-p','JSON.stringify(process.versions)'],
       {encoding:'utf8',timeout:10000,env:{...environment,ELECTRON_RUN_AS_NODE:'1'}}));
     assert.equal(versions.electron,manifest.electron);assert.equal(versions.node,manifest.node);
     const node=path.join(app,'Contents/Resources/mac-tools/node/bin/node');
     assert.equal(execFileSync(node,['-p','process.version+" "+process.arch'],{encoding:'utf8',timeout:10000,env:environment}).trim(),'v'+manifest.node+' arm64');
-    copies.push({app,signature,identity});
+    copies.push({...delivered,signature,identity});
   }
   // No manifest write: stdout becomes the Workflow Kit check evidence.
-  return {ok:true,version,manifestSha256:input.manifestSha256,copies,noRebuild:true,nativeWindowsTested:false,nativeLinuxTested:false};
+  return {ok:true,version,manifestSha256:input.manifestSha256,copies,pending:copies.some(c=>c.pending),noRebuild:true,nativeWindowsTested:false,nativeLinuxTested:false};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const install=process.argv.slice(2);
-  if(install.length&&(install.length!==1||install[0]!=='--install'))throw new Error('Expected --install or no arguments');
-  (install.length?installPreparedRelease():verifyInstalledRelease()).then(r=>console.log(JSON.stringify(r,null,2))).catch(e=>{console.error(e.message);process.exitCode=1;});
+  if(install.length&&(install.length!==1||!['--install','--delivery'].includes(install[0])))throw new Error('Expected --install, --delivery or no arguments');
+  (install[0]==='--install'?installPreparedRelease():verifyInstalledRelease({delivery:install[0]==='--delivery'})).then(r=>console.log(JSON.stringify(r,null,2))).catch(e=>{console.error(e.message);process.exitCode=1;});
 }

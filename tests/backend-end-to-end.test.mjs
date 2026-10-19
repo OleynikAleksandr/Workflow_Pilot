@@ -91,7 +91,7 @@ test('launcher → work → client crash → work continues → reconnect to the
     await mcp.connect(new StdioClientTransport({command:python,args:['-B',path.join(project,'tests/fixtures/plugin-server.py'),
       path.join(project,'tools/codex-app-server-mcp'),path.join(root,'plugin')],stderr:'pipe'}));
     const panel=await mcp.callTool({name:'workflow_pilot_panel',arguments:{}});
-    assert.equal(panel.isError,false);assert.equal(panel.structuredContent.projects,undefined);assert.equal(panel.structuredContent.communication.protocol_version,1);
+    assert.equal(panel.isError,false);assert.equal(panel.structuredContent.projects,undefined);assert.equal(panel.structuredContent.communication.protocol_version,2);
     const joined=await mcp.callTool({name:'workflow_communication_join',arguments:{run_id:'backend-e2e',role:'O'},
       _meta:{'openai/session':'isolated-backend-e2e'}});
     assert.equal(joined.isError,false);assert.equal(joined.structuredContent.role,'O');

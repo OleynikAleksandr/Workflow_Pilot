@@ -98,6 +98,9 @@ test('real MCP panel enrolls an existing assignment using fresh host identity wi
 test('communication MCP contracts reject missing identity, wrong binding and stale protocol; Stop cancels probe',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const tools=(await c.listTools()).tools;
+  assert.match(tools.find(t=>t.name==='workflow_communication_enable').description,/Working plans reject Enable/);
+  assert.match(tools.find(t=>t.name==='workflow_communication_stop').description,/whole plan/);
+  assert.match(tools.find(t=>t.name==='workflow_communication_stop').description,/only detaches/);
   const appOnly=['bind','claim','enable','recover','report','stop','sync','telemetry','verify','wait'];
   for(const suffix of communicationTools){const tool=tools.find(t=>t.name==='workflow_communication_'+suffix);
     assert.ok(tool);assert.equal(tool._meta.ui.resourceUri,undefined,'data operations cannot recreate UI');

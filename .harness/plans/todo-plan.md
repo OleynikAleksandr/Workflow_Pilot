@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 542,
+  "plan_revision": 545,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -97,7 +97,14 @@
       "packages/workflow-kit/src/lib/simple-workflow.mjs",
       "tests/dialogue-experiment.test.mjs",
       "tests/fixtures/plugin-host.mjs",
-      "tests/mac-runtime-switch.test.mjs"
+      "tests/mac-runtime-switch.test.mjs",
+      "packages/workflow-kit/src/lib/installer.mjs",
+      "scripts/check-installed-release.mjs",
+      "scripts/release-mac.mjs",
+      "tests/release-mac.test.mjs",
+      "tests/workflow-kit-upgrade.test.mjs",
+      "tests/fixtures/released-kit/manifest.json",
+      "tests/fixtures/released-kit/kit-1.8.1.tar.gz"
     ],
     "documentation_paths": [
       "docs/planning/automatic-agent-dialogue.md",
@@ -128,7 +135,7 @@
     ]
   },
   "baseline_commit": "87a92ea22963dd1af1a23a2cb2451e096af732d5",
-  "current_task_id": "T006",
+  "current_task_id": null,
   "context_pack": {
     "documents": [
       {
@@ -722,8 +729,8 @@
       ]
     },
     {
-      "implementation_status": "IN_PROGRESS",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "T006",
@@ -744,15 +751,29 @@
         "tests/mcp-runtime.test.mjs",
         "tests/workflow-kit-recovery.test.mjs",
         "tests/codex-app-server-mcp.test.mjs",
-        "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs"
+        "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/parallel-execution-recovery.test.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "tests/backend-end-to-end.test.mjs",
+        "scripts/check-installed-release.mjs",
+        "scripts/release-mac.mjs",
+        "tests/release-mac.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/released-kit/kit-1.8.1.tar.gz"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/modules/release.md"
+      ],
       "verification_ids": [
         "unit-all",
         "architecture",
         "electron-smoke",
         "kit-check",
-        "executor-channel"
+        "executor-channel",
+        "chatgpt-plugin"
       ],
       "id": "T006",
       "title": "Согласовать версии и совместимость поставки",
@@ -760,7 +781,9 @@
       "acceptance_criteria": [
         "Следующая свободная версия проверена и согласована в package/lock/backend/HTML/MCP; протокол и формат хранилища различают старый клиент и новый без ошибочного разрешения.",
         "Изменённый Kit имеет корректную версию и штатный upgrade: сохраняет планы/назначения/сигналы, managed-файлы обновляет installer; отсутствие ручных правок установленного Kit.",
-        "Итоговые проверки полного исходного комплекта, включая окончательные WORKFLOW.md/PROTOTYPE.md, проходят; фактические pass/fail/skip и внешняя NOT_RUN-приёмка разделены; production build ещё не выполняется."
+        "Итоговые проверки полного исходного комплекта, включая окончательные WORKFLOW.md/PROTOTYPE.md, проходят; фактические pass/fail/skip и внешняя NOT_RUN-приёмка разделены; production build ещё не выполняется.",
+        "Описания MCP Enable/Stop явно различают эксперимент и рабочий план; полный recovery сохраняет обязательные документы и не менее 20% запаса без повышения бюджета.",
+        "Ожидание реального события файловой системы в F04 учитывает нагрузку полного suite; проверки доставки события, terminal receipt и закрытия watcher сохранены без polling."
       ],
       "parallel_safe": false,
       "context_pack": {
@@ -794,7 +817,27 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "expected_commit_message": "feat: Согласовать версии и совместимость поставки"
+      "expected_commit_message": "feat: Согласовать версии и совместимость поставки",
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "src/contracts/backend.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/backend-end-to-end.test.mjs",
+        "scripts/check-installed-release.mjs",
+        "scripts/release-mac.mjs",
+        "tests/release-mac.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/released-kit/kit-1.8.1.tar.gz",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/chatgpt-plugin.test.mjs",
+        "docs/modules/release.md",
+        "tests/parallel-execution-recovery.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1044,8 +1087,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
-Current Task: T006
-Revision: 542
+Current Task: нет
+Revision: 545
 
 ## Цель
 
@@ -1094,10 +1137,10 @@ Revision: 542
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/orchestrated-execution.test.mjs, tests/execution-control.test.mjs, tests/context-session.test.mjs, tests/electron-smoke.mjs, scripts/prepare-agent-dialogue-experiment.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, src/control/plugin/enrollment.mjs, tests/dialogue-experiment.test.mjs, tests/fixtures/plugin-host.mjs, tests/mac-runtime-switch.test.mjs, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [IN_PROGRESS] T006: Согласовать версии и совместимость поставки — В работе
-  - Git Commit: [PENDING] feat: Согласовать версии и совместимость поставки
+- [DONE] T006: Согласовать версии и совместимость поставки — Завершено
+  - Git Commit: [DONE] feat: Согласовать версии и совместимость поставки
   - Reference: workflow-pilot-automatic-agent-dialogue / T006 / implementation
-  - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-chatgpt-plugin.mjs, src/contracts/backend.mjs, tests/backend-upgrade.test.mjs, tests/mcp-runtime.test.mjs, tests/workflow-kit-recovery.test.mjs, tests/codex-app-server-mcp.test.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs
+  - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-chatgpt-plugin.mjs, src/contracts/backend.mjs, tests/backend-upgrade.test.mjs, tests/mcp-runtime.test.mjs, tests/workflow-kit-recovery.test.mjs, tests/codex-app-server-mcp.test.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/parallel-execution-recovery.test.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/backend-end-to-end.test.mjs, scripts/check-installed-release.mjs, scripts/release-mac.mjs, tests/release-mac.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.8.1.tar.gz, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T005
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

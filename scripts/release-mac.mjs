@@ -66,6 +66,24 @@ function sameBundle(actual, expected) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Copied app does not match staging');
 }
 
+export const pendingMacBundle=(backupRoot,target)=>path.join(backupRoot,'pending-'+path.basename(backupSlot(backupRoot,target)),APP);
+
+// Delivery can be complete while activation waits for the user. Validate the
+// supplied package and the untouched running copy independently of the receipt.
+export async function verifyMacDelivery({source,target,backupRoot,version,receipt,verifySignature=verifyMacSignature}) {
+  const expected=await inspectSignedBundle(source,version,verifySignature);
+  const current=await inspectSignedBundle(target,undefined,verifySignature);
+  if(current.version===version){sameBundle(current,expected);return {target,app:target,installed:true,pending:false,...expected};}
+  if(receipt?.target!==target||receipt.pending!==true||receipt.reason!=='BACKEND_RUNNING')throw Error('No verified pending installation for '+target);
+  const staged=pendingMacBundle(backupRoot,target);
+  if(receipt.staged!==staged)throw Error('Unexpected pending destination');
+  sameBundle(current,receipt.previous);
+  const stat=await fs.lstat(target);
+  if(stat.dev!==receipt.device||stat.ino!==receipt.inode)throw Error('Pending target directory identity changed');
+  sameBundle(await inspectSignedBundle(staged,version,verifySignature),expected);
+  return {target,app:staged,installed:false,pending:true,reason:'BACKEND_RUNNING',previousVersion:current.version,...expected};
+}
+
 // Keep the outer directory: Finder aliases can retain its filesystem identity.
 // A live backend keeps loading files from its bundle: its runtime is never
 // replaced underneath it. The verified new app waits in a pending copy; the
@@ -81,12 +99,14 @@ export async function installMacBundle({ source, target, backupRoot, version, ve
   if(path.basename(target)!==APP)throw new Error('Target must use Workflow Pilot identity');
   const running = previous ? await backendExecutable() : null;
   if (running && path.resolve(running).startsWith(path.resolve(target) + path.sep)) {
-    const pending = path.join(backupRoot, 'pending-' + path.basename(backupSlot(backupRoot, target)), APP);
+    const prior=await inspectSignedBundle(target,undefined,verifySignature);
+    const pending = pendingMacBundle(backupRoot,target);
     await fs.rm(path.dirname(pending), { recursive: true, force: true });
     await fs.mkdir(path.dirname(pending), { recursive: true });
     run('/usr/bin/ditto', [source, pending]);
     sameBundle(await inspectSignedBundle(pending, version, verifySignature), expected);
-    return { target, ...expected, pending: true, reason: 'BACKEND_RUNNING', staged: pending,
+    sameBundle(await inspectSignedBundle(target,undefined,verifySignature),prior);
+    return { target, ...expected, previous:prior,device:previous.dev,inode:previous.ino,pending: true, reason: 'BACKEND_RUNNING', staged: pending,
       instruction: 'Остановите фоновую службу Workflow Pilot (значок или меню) и повторите установку.' };
   }
   await fs.mkdir(path.dirname(target), { recursive: true });

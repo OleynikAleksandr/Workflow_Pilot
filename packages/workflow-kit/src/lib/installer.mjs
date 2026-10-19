@@ -14,7 +14,7 @@ import { inspectionInputs } from './inspection-inputs.mjs';
 const hookNames = ['pre-commit', 'commit-msg', 'post-commit', 'pre-push'];
 const hookName = entry => path.posix.basename(entry.path.replaceAll('\\', '/'));
 // Versions this installer upgrades in place. Consumers (Web Pilot Workspace Setup) read the same list.
-export const upgradeFrom = new Set(['1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.4.2', '1.4.3', '1.4.4', '1.4.5', '1.4.6', '1.4.7', '1.4.8', '1.4.9', '1.4.10', '1.4.11', '1.4.12', '1.4.13', '1.5.0', '1.5.1', '1.5.2', '1.5.3', '1.5.4', '1.5.5', '1.5.6', '1.6.0', '1.6.1', '1.6.2', '1.6.3', '1.6.4', '1.7.0', '1.7.1', '1.7.2', '1.7.3', '1.8.0']);
+export const upgradeFrom = new Set(['1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.4.2', '1.4.3', '1.4.4', '1.4.5', '1.4.6', '1.4.7', '1.4.8', '1.4.9', '1.4.10', '1.4.11', '1.4.12', '1.4.13', '1.5.0', '1.5.1', '1.5.2', '1.5.3', '1.5.4', '1.5.5', '1.5.6', '1.6.0', '1.6.1', '1.6.2', '1.6.3', '1.6.4', '1.7.0', '1.7.1', '1.7.2', '1.7.3', '1.8.0', '1.8.1']);
 function migrateNonePlanForContinuity(root) {
   const file = path.join(root, PLAN);
   if (!fs.existsSync(file)) return false;
