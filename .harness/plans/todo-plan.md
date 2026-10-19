@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 562,
+  "plan_revision": 564,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -1329,14 +1329,15 @@
         "Работающая служба не останавливается; подтверждённый pending явно отличён от активной новой версии."
       ],
       "expected_commit_message": "feat: Установить готовый комплект 0.5.6",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "INSTALL-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-2",
@@ -1393,7 +1394,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 562
+Revision: 564
 
 ## Цель
 
@@ -1496,8 +1497,8 @@ Revision: 562
   - Файлы: release-manifest.json, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение
   - Зависимости: T008, DOCS-2
-- [TODO] INSTALL-2: Установить готовый комплект 0.5.6 — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовый комплект 0.5.6
+- [DONE] INSTALL-2: Установить готовый комплект 0.5.6 — Завершено
+  - Git Commit: [DONE] feat: Установить готовый комплект 0.5.6
   - Reference: workflow-pilot-automatic-agent-dialogue / INSTALL-2 / implementation
   - Файлы: release-manifest.json, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение
