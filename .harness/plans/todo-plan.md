@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 584,
+  "plan_revision": 586,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-executor-lifecycle-fixes",
@@ -587,8 +587,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-executor-lifecycle-fixes",
         "task_id": "INSTALL",
@@ -622,7 +622,8 @@
             "required": true
           }
         ]
-      }
+      },
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -685,7 +686,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-executor-lifecycle-fixes
 Current Task: нет
-Revision: 584
+Revision: 586
 
 ## Цель
 
@@ -739,8 +740,8 @@ Revision: 584
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить готовый macOS-комплект — Ожидает
-  - Git Commit: [PENDING] release: Установить готовый macOS-комплект
+- [DONE] INSTALL: Установить готовый macOS-комплект — Завершено
+  - Git Commit: [DONE] release: Установить готовый macOS-комплект
   - Reference: workflow-pilot-executor-lifecycle-fixes / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
