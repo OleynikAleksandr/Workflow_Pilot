@@ -134,9 +134,10 @@
       "kind": "installed",
       "executable": "node",
       "args": [
-        "scripts/check-installed-release.mjs"
+        "scripts/check-installed-release.mjs",
+        "--delivery"
       ],
-      "evidence": "После каждой общей сборки готовое macOS-приложение обновлено в корне проекта и /Applications/Workflow Pilot.app: текущая версия, sourceCommit, состав, подпись и runtime сверены; без пересборки и изменения донора."
+      "evidence": "Готовый macOS-комплект проверен в корне проекта и /Applications: установлен либо оставлен pending при BACKEND_RUNNING; manifest, sourceCommit, подпись, runtime и неизменность старой копии подтверждены отдельно. Без пересборки и остановки службы."
     },
     {
       "required": false,

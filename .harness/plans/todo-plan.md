@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 540,
+  "plan_revision": 542,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -128,7 +128,7 @@
     ]
   },
   "baseline_commit": "87a92ea22963dd1af1a23a2cb2451e096af732d5",
-  "current_task_id": null,
+  "current_task_id": "T006",
   "context_pack": {
     "documents": [
       {
@@ -722,7 +722,7 @@
       ]
     },
     {
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -1044,8 +1044,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
-Current Task: нет
-Revision: 540
+Current Task: T006
+Revision: 542
 
 ## Цель
 
@@ -1094,7 +1094,7 @@ Revision: 540
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/orchestrated-execution.test.mjs, tests/execution-control.test.mjs, tests/context-session.test.mjs, tests/electron-smoke.mjs, scripts/prepare-agent-dialogue-experiment.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, src/control/plugin/enrollment.mjs, tests/dialogue-experiment.test.mjs, tests/fixtures/plugin-host.mjs, tests/mac-runtime-switch.test.mjs, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/modules/execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [TODO] T006: Согласовать версии и совместимость поставки — Ожидает
+- [IN_PROGRESS] T006: Согласовать версии и совместимость поставки — В работе
   - Git Commit: [PENDING] feat: Согласовать версии и совместимость поставки
   - Reference: workflow-pilot-automatic-agent-dialogue / T006 / implementation
   - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, scripts/stage-workflow-kit.mjs, scripts/stage-chatgpt-plugin.mjs, src/contracts/backend.mjs, tests/backend-upgrade.test.mjs, tests/mcp-runtime.test.mjs, tests/workflow-kit-recovery.test.mjs, tests/codex-app-server-mcp.test.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs
