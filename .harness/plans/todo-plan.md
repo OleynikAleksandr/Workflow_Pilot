@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 560,
+  "plan_revision": 562,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -1294,14 +1294,17 @@
         "Перед production build проверены и удалены только Python-кэши tools/codex-app-server-mcp без симлинков."
       ],
       "expected_commit_message": "feat: Собрать исправленный единый выпуск 0.5.6",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "RELEASE-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-2",
@@ -1390,7 +1393,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 560
+Revision: 562
 
 ## Цель
 
@@ -1487,8 +1490,8 @@ Revision: 560
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-resource-upgrade.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/backend.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007, T008
-- [TODO] RELEASE-2: Собрать исправленный единый выпуск 0.5.6 — Ожидает
-  - Git Commit: [PENDING] feat: Собрать исправленный единый выпуск 0.5.6
+- [DONE] RELEASE-2: Собрать исправленный единый выпуск 0.5.6 — Завершено
+  - Git Commit: [DONE] feat: Собрать исправленный единый выпуск 0.5.6
   - Reference: workflow-pilot-automatic-agent-dialogue / RELEASE-2 / implementation
   - Файлы: release-manifest.json, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение
