@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 598,
+  "plan_revision": 600,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -119,7 +119,10 @@
       "tests/workflow-kit-recovery.test.mjs",
       "src/control/plugin/assignment-dialogue.mjs",
       "src/control/facade.mjs",
-      "src/execution/plugin/bridge.mjs"
+      "src/execution/plugin/bridge.mjs",
+      "src/execution/browser/chatgpt-composer.mjs",
+      "tests/chatgpt-composer.test.mjs",
+      "tests/page-state.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-owned-dialogue.md",
@@ -353,8 +356,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T003",
@@ -375,9 +378,19 @@
         "tests/automatic-agent-dialogue.test.mjs",
         "tests/fixtures/automatic-agent-dialogue.mjs",
         "tests/fixtures/dialogue-runtime.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/page-state.test.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/orchestrator-owned-dialogue-reliability.md",
+        "docs/planning/orchestrator-owned-dialogue-results.md"
+      ],
       "verification_ids": [
         "unit-all",
         "architecture",
@@ -412,7 +425,24 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/orchestrator-owned-dialogue-reliability.md",
+        "docs/planning/orchestrator-owned-dialogue-results.md",
+        "src/backend/desktop-model.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/page-state.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1123,7 +1153,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 598
+Revision: 600
 
 ## Цель
 
@@ -1154,10 +1184,10 @@ Revision: 598
   - Файлы: tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/execution/facade.mjs, src/execution/plugin/communication-store.mjs, src/contracts/plugin-communication.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/backend.mjs, tests/plugin-communication-store.test.mjs, tests/plugin-enrollment.test.mjs, tests/fixtures/plugin-host.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/facade.mjs, src/execution/plugin/bridge.mjs, packages/workflow-kit/src/lib/recovery.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Исправить обработку ходов и последовательное пробуждение — Ожидает
-  - Git Commit: [PENDING] feat: Исправить обработку ходов и последовательное пробуждение
+- [DONE] T003: Исправить обработку ходов и последовательное пробуждение — Завершено
+  - Git Commit: [DONE] feat: Исправить обработку ходов и последовательное пробуждение
   - Reference: orchestrator-owned-dialogue-refactor / T003 / implementation
-  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/frontend/plugin/panel.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/chatgpt-plugin.test.mjs
+  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/frontend/plugin/panel.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/chatgpt-plugin.test.mjs, src/backend/desktop-model.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/session-runtime.mjs, tests/chatgpt-composer.test.mjs, tests/page-state.test.mjs, docs/planning/orchestrator-owned-dialogue-reliability.md, docs/planning/orchestrator-owned-dialogue-results.md
   - Параллельность: исключительное выполнение
   - Зависимости: T002
 - [TODO] T004: Автоматически запускать E с минимальным bootstrap — Ожидает

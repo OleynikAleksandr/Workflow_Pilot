@@ -338,6 +338,24 @@ test('event-driven composer confirms its marker without using the polling wait',
   } finally { dispose(); f.dom.window.close(); }
 });
 
+test('read-only turn reconciliation samples the isolated observer and rejects navigation during its read',async()=>{
+  const f=fixture({draft:'Сохранить черновик'}),source=new PageStateSource();
+  f.dom.window.reportObservation=message=>source.accept(message);
+  const dispose=f.dom.window.eval('('+installPageObserver.toString()+')('+chatGPTDOMScript()+', reportObservation)');
+  let afterRead=()=>{};
+  f.view.executeJavaScriptInIsolatedWorld=async(world,scripts,gesture)=>{
+    assert.equal(world,999);assert.equal(gesture,undefined);
+    const result=f.dom.window.eval(scripts[0].code);afterRead();return result;
+  };
+  const composer=new ChatGPTComposer(f.view,{pageState:source});
+  try{
+    const first=await composer.observeSnapshot(),second=await composer.observeSnapshot();
+    assert.ok(first.seq<second.seq);assert.equal(second.state.userMessagesRevision,0);
+    assert.equal(second.state.draftPresent,true);assert.equal(f.editor.value,'Сохранить черновик');assert.equal(f.sends(),0);
+    afterRead=()=>source.reset();assert.equal(await composer.observeSnapshot(),null);
+  }finally{dispose();f.dom.window.close();}
+});
+
 test('event-driven Send waits for late editor readiness instead of assuming a fixed settle delay', async () => {
   const f = fixture(), source = new PageStateSource();
   f.dom.window.reportObservation = message => source.accept(message);

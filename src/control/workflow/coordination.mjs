@@ -372,6 +372,7 @@ return Object.freeze({
   retireCommunication:identities=>getPlugin()?.communication.removeProjects(identities),
   prepareBootstrap:project=>{if(held(project))throw recoveryError();return dialogue.prepareBootstrap(project);},
   observeParticipant:target=>dialogue.observe(target),admitParticipant:target=>dialogue.admit(target),
+  reconcileParticipant:target=>dialogue.reconcile(target),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),
   communicationChanged:runId=>{
     const run=getPlugin()?.communication.runs.get(runId);if(!run)return;

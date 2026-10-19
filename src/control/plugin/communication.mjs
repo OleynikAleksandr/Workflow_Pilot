@@ -28,13 +28,13 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,currentMessage,dialogueKit=null,onChange=()=>{}}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{}}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
-    this.workflow=new WorkflowChannel(this,{observe,admit,currentMessage});
+    this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
     this.assignment=new AssignmentDialogue(this,dialogueKit);
     this.ready=this.restore();
   }
@@ -93,6 +93,7 @@ export class PluginCommunication {
     if(events.some(e=>!e.event_type.startsWith('wait.')))for(const waiter of this.waiters.values())if(waiter.runId===run.id)waiter.wake('event');
   }
   syncTimers(run) {
+    this.workflow.syncProbes(run);
     for(const [key,timer] of this.probes)if(timer.runId===run.id&&!Object.values(run.probes??{}).some(p=>p.id===key)){
       clearTimeout(timer.timer);this.probes.delete(key);
     }
@@ -164,9 +165,12 @@ export class PluginCommunication {
   assignmentStatus(input){return this.assignment.status(input);}
   assignmentYield(input){return this.assignment.yield(input);}
   _sync(input){return this.workflow.sync(input);}
-  _observed(input){const run=this.run(input);for(const member of Object.values(run.members))this.workflow.observed(run,member);return {};}
+  _turnTimeout(input){return this.workflow.timeout(input);}
+  async _observed(input){const run=this.run(input);for(const member of Object.values(run.members))
+    if((!input.session_id||member.target.local_session_id===input.session_id)
+      &&(!input.message_id||member.deliveryGate?.message_id===input.message_id))await this.workflow.observed(run,member);return {};}
   observeSession(sessionId){for(const run of this.runs.values())if(run.mode==='workflow'&&Object.values(run.members).some(m=>m.target.local_session_id===sessionId)){
-    void this.mutate('observed',{run_id:run.id}).catch(()=>{});
+    void this.mutate('observed',{run_id:run.id,session_id:sessionId}).catch(()=>{});
     for(const waiter of this.waiters.values())if(waiter.runId===run.id)waiter.wake('event');
   }}
   async modelInput(input){
@@ -409,13 +413,13 @@ export class PluginCommunication {
     this.event(run,'send.intent',{participant_id:member.id,message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
     return {message_id:message.message_id,permission_generation:member.generation,expires_at:this.panels.get(input.panel_instance_id).expiresAt};
   }
-  _report(input) {
+  async _report(input) {
     const {run,message}=this.attempt(input,false);
     requireValue(['accepted','rejected','unknown'].includes(input.outcome) && message.intent,'INPUT','Некорректный результат отправки.');
-    requireValue(message.delivery==='claimed'||message.delivery===input.outcome,'CONFLICT','Результат доставки уже записан.');
-    message.delivery=input.outcome;
+    requireValue(message.delivery==='claimed'||message.delivery===input.outcome||message.resolved_by_read,'CONFLICT','Результат доставки уже записан.');
+    if(!message.resolved_by_read)message.delivery=input.outcome;
     this.event(run,'send.report',{message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id,outcome:input.outcome});
-    if(run.mode==='workflow')this.workflow.observed(run,run.members[message.recipient_id]);
+    if(run.mode==='workflow')await this.workflow.observed(run,run.members[message.recipient_id]);
     return {delivery:message.delivery,read:message.read};
   }
   async _read(input) {
@@ -426,7 +430,7 @@ export class PluginCommunication {
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id});}
     this.event(run,'read.returned',{participant_id:member.id,message_id:message.message_id});
-    if(run.mode==='workflow')this.workflow.observed(run,member);
+    if(run.mode==='workflow')await this.workflow.observed(run,member);
     const {idempotency_key,fingerprint,...value}=message;
     return {...structuredClone(value),...(run.mode==='workflow'?{role_protocol:ROLE_PROTOCOL_VERSION,
       instructions:roleUpdate(member.role==='O'?'orchestrator':'executor')+'\nПрочитайте ВСЕ части workflow_communication_read_context с message_id, context_ref и part от 0 до total-1. Затем выполните поручение в рамках роли и Workflow Kit. Не повторяйте событие через send_message.'}:{})};
@@ -483,6 +487,6 @@ export class PluginCommunication {
       summary:{run_id:run.id,events:through,protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
         sdk_versions:SDK_VERSIONS,gaps:this.visibleEvents(run,member,run.events.slice(0,through)).filter(e=>e.event_type==='frontend.gap')
           .map(({seq,panel_instance_id,from,to})=>({seq,panel_instance_id,from,to})),critical_error:this.critical}};}
-  dispose(){this.disposed=true;for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
+  dispose(){this.disposed=true;this.workflow.dispose();for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
 }
 for(const name of MUTATIONS)PluginCommunication.prototype[name]=function(input){return this.mutate(name,input);};

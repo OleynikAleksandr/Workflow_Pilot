@@ -10,15 +10,15 @@ const kinds=new Set(['assignment-start','continue','question','decision','result
 // Plan permission is durable. A short panel lease only proves a live SDK; it
 // never asks the user to renew that permission or authorizes another scope.
 export class WorkflowChannel {
-  constructor(communication,{observe=()=>({canSend:false}),admit=async()=>false,currentMessage=async()=>true}={}) {
-    Object.assign(this,{c:communication,observe,admit,currentMessage});this.contents=new Map();
+  constructor(communication,{observe=()=>({canSend:false}),admit=async()=>false,reconcile=async()=>null,currentMessage=async()=>true}={}) {
+    Object.assign(this,{c:communication,observe,admit,reconcile,currentMessage});this.contents=new Map();this.turnProbes=new Map();
   }
   async superseded(run,member,message){
     if(message.superseded)return true;
     if(await this.currentMessage(member.target,message))return false;
     message.superseded=true;
     if(!message.intent){message.reply_observed=true;message.delivery='superseded';}
-    else {message.read=true;this.observed(run,member);}
+    else {message.read=true;await this.observed(run,member);}
     this.c.event(run,'message.superseded',{participant_id:member.id,message_id:message.message_id,block_id:message.block_id});
     return true;
   }
@@ -125,10 +125,13 @@ export class WorkflowChannel {
   begin(run,member,message) {
     const page=this.observe(member.target);
     member.deliveryGate={message_id:message.message_id,documentId:page.documentId??null,turnId:page.turnId??null,
+      observationSeq:page.observationSeq??0,
       userTurnId:page.userTurnId??null,assistantRevision:page.assistantRevision??0,userMessagesRevision:page.userMessagesRevision??0};
   }
-  observed(run,member) {
+  async observed(run,member) {
     const gate=member.deliveryGate;if(!gate)return;
+    const message=run.messages.find(m=>m.message_id===gate.message_id);
+    if(message?.dialogue_version===1)return this.observeDialogue(run,member,message,gate);
     const page=this.observe(member.target);
     const native=gate.turnId&&page.turnId&&gate.turnId!==page.turnId&&gate.userTurnId&&page.userTurnId&&gate.userTurnId!==page.userTurnId;
     const revisions=gate.documentId===page.documentId&&page.assistantRevision>gate.assistantRevision&&page.userMessagesRevision>gate.userMessagesRevision;
@@ -140,6 +143,59 @@ export class WorkflowChannel {
       }
     }
   }
+  async observeDialogue(run,member,message,gate){
+    if(!this.permitted(run,member)||!message.read||!message.yielded||message.delivery!=='accepted')return;
+    await this.c.enrollment.validate(member.target);
+    const page=await this.reconcile(member.target),baseline=message.yielded.page;
+    if(!page||!baseline||page.documentId!==gate.documentId||page.documentId!==baseline.documentId
+      ||page.observationSeq<=Math.max(gate.observationSeq,baseline.observationSeq??0))return;
+    const reason=!page.commandsIdle?'commands-active':page.busy?'assistant-busy':!page.stopped?'page-unavailable'
+      :!page.canSend?'draft-or-manual-stop':null;
+    if(page.busy&&!gate.seenBusy){gate.seenBusy=true;this.c.event(run,'turn.busy',{message_id:message.message_id});}
+    if(reason){
+      if(gate.idle||gate.wait_reason!==reason){delete gate.idle;gate.wait_reason=reason;
+        this.c.event(run,'turn.waiting',{message_id:message.message_id,reason});}
+      return;
+    }
+    // A fresh read of the old idle bubble is not evidence of this turn ending.
+    if(!baseline.busy&&!gate.seenBusy&&page.assistantRevision<=baseline.assistantRevision)return;
+    const signature=JSON.stringify([page.documentId,page.turnId,page.assistantRevision]);
+    if(gate.idle?.signature!==signature){
+      gate.idle={signature,seq:page.observationSeq,at:this.c.now()};gate.wait_reason='confirming-idle';
+      this.c.event(run,'turn.idle_candidate',{message_id:message.message_id});return;
+    }
+    if(page.observationSeq<=gate.idle.seq||this.c.now()-gate.idle.at<500)return;
+    message.reply_observed=true;delete member.deliveryGate;
+    this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id,evidence:'read-yield-fresh-idle'});
+  }
+  syncProbes(run){
+    if(this.c.disposed)return;
+    const eligible=new Map(Object.values(run.members).flatMap(member=>{
+      const gate=member.deliveryGate,message=run.messages.find(m=>m.message_id===gate?.message_id);
+      return this.permitted(run,member)&&message?.dialogue_version===1&&message.yielded&&!message.reply_observed
+        ?[[message.message_id,member]]:[];
+    }));
+    for(const [id,p] of this.turnProbes)if(p.runId===run.id&&!eligible.has(id)){clearTimeout(p.timer);this.turnProbes.delete(id);}
+    for(const [id] of eligible){
+      let p=this.turnProbes.get(id);if(p?.timer||p?.exhausted)continue;
+      if(!p){p={runId:run.id,count:0,timer:null};this.turnProbes.set(id,p);}
+      p.timer=setTimeout(async()=>{
+        p.count++;p.exhausted=p.count>=120;
+        try{await this.c.mutate('observed',{run_id:run.id,message_id:id});
+          if(p.exhausted)await this.c.mutate('turnTimeout',{run_id:run.id,message_id:id});
+        }catch{/* Identity/removal failures never authorize a new delivery. */}
+        p.timer=null;
+        if(!this.c.disposed){const current=this.c.runs.get(run.id);if(current)this.syncProbes(current);}
+      },1000);p.timer.unref?.();
+    }
+  }
+  timeout(input){
+    const run=this.c.run(input),member=Object.values(run.members).find(m=>m.deliveryGate?.message_id===input.message_id);
+    if(member){member.deliveryGate.wait_reason='physical-completion-unconfirmed';
+      this.c.event(run,'turn.waiting',{message_id:input.message_id,reason:'physical-completion-unconfirmed'});}
+    return {};
+  }
+  dispose(){for(const p of this.turnProbes.values())clearTimeout(p.timer);this.turnProbes.clear();}
   async content(input) {
     const c=this.c;await c.ready;await c.tail;await c.enrollment.validateInput(input);
     const {run,member}=c.member(input),message=run.messages.find(m=>m.message_id===input.message_id);

@@ -22,7 +22,20 @@ export class DialogueDelivery {
   observe(target){
     const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState.current;
     return {...executorPageState(record),documentId:page?.documentId??null,
+      observationSeq:page?.seq??0,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
+  }
+  async reconcile(target){
+    const project=this.project(target.local_session_id),record=this.record(project);
+    if(!record)return null;
+    let timer;
+    try{return await Promise.race([(async()=>{
+      if(!await record.composer.observeSnapshot())return null;
+      const activity=await readCommandActivity(project.workspace);
+      if(this.record(this.project(target.local_session_id))!==record)return null;
+      return {...this.observe(target),commandsIdle:!activity.commandActive};
+    })(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),2000);timer.unref?.();})]);}
+    finally{clearTimeout(timer);}
   }
   async admit(target){
     const project=this.project(target.local_session_id);

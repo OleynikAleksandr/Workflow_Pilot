@@ -262,6 +262,13 @@ export class ChatGPTComposer {
   }
 
   getURL() { return this.contents.getURL(); }
+  async observeSnapshot() {
+    const key = this.documentKey();
+    const message = await this.contents.executeJavaScriptInIsolatedWorld(999,
+      [{ code: 'globalThis.__webPilotObserverRead?.() ?? null' }]);
+    if (this.documentKey() !== key || !message || message.documentId !== key) return null;
+    return message;
+  }
   documentKey() { return this.pageState?.current?.documentId ?? this.contents.getURL(); }
   hasFilled(requestId) {
     return !!requestId && this.filledRequest?.requestId === requestId

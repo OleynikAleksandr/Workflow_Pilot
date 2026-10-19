@@ -120,14 +120,23 @@ export class AssignmentDialogue {
         .map(m=>({...this.c.workflow.receipt(m),kind:m.kind,assignment_id:m.assignment_id,attempt:m.attempt,sender_role:m.sender_role,in_reply_to:m.in_reply_to}))};
   }
   async yield(input){const binding=await this.input(input);return this.c.mutate('assignmentYield',{...binding,message_ids:input.message_ids,reason:input.reason});}
-  yielded(input){
+  async yielded(input){
     const c=this.c,{run,member}=c.member(input);
     check(run.mode==='workflow'&&Array.isArray(input.message_ids)&&input.message_ids.length>0&&input.message_ids.length<=32
       &&['awaiting_reply','tasks_sent','result_sent','handled'].includes(input.reason),'INPUT','Укажите прочитанные сообщения и причину окончания хода.');
     const messages=[...new Set(input.message_ids)].map(id=>run.messages.find(m=>m.message_id===id));
     check(messages.every(m=>m?.dialogue_version===ASSIGNMENT_DIALOGUE_VERSION&&m.recipient_id===member.id&&m.read&&!m.superseded&&m.scope_id===run.grant?.scope_id),
       'YIELD_DENIED','Квитанция относится только к прочитанным сообщениям своего текущего плана.');
-    for(const message of messages)if(!message.yielded){message.yielded={reason:input.reason,at:c.now()};
+    for(const message of messages){
+      check(await c.workflow.currentMessage(member.target,message),'STALE_MESSAGE','Сообщение больше не относится к текущей работе.');
+      const state=await this.state(member.target,message.assignment_id);
+      check((state.dialogue?.attempt??1)===message.attempt,'STALE_ATTEMPT','Нельзя подтвердить обработку старой попытки.');
+    }
+    for(const message of messages)if(!message.yielded){message.yielded={reason:input.reason,at:c.now(),page:structuredClone(c.workflow.observe(member.target))};
+      if(message.intent&&['claimed','unknown'].includes(message.delivery)){
+        message.delivery='accepted';message.resolved_by_read=true;
+        c.event(run,'send.resolved',{message_id:message.message_id,evidence:'recipient-read-yield'});
+      }
       c.event(run,'message.yielded',{message_id:message.message_id,participant_id:member.id,reason:input.reason});}
     return {handled:messages.map(m=>m.message_id),physical_completion:false,instructions:'Завершите ответ. Это квитанция обработки, не DONE и не подтверждение физической остановки.'};
   }

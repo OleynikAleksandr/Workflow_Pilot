@@ -47,6 +47,11 @@ export class BrowserSessions {
       getURL: () => snapshot().url,
       hasFilled: requestId => composer.hasFilled(requestId),
       inspect: args => call('inspect', args),
+      observeSnapshot: async () => {
+        const epoch = record.epoch, message = await call('observeSnapshot');
+        if (record.disposed || record.epoch !== epoch || !message) return false;
+        return source.accept(message).accepted;
+      },
       deliver: args => call('deliver', args),
       sendUserMessage: args => call('sendUserMessage', args),
       clearNewSessionDraft: args => call('clearNewSessionDraft', args),

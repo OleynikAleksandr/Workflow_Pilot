@@ -92,6 +92,10 @@ test('observer catches equal-length drafts, late user text, attributes and busy 
   const messages = []; w.reportObservation = m => messages.push(m);
   const dispose = w.eval('(' + installPageObserver.toString() + ')(' + chatGPTDOMScript() + ', reportObservation)');
   assert.equal(typeof w.__webPilotObserverSnapshot, 'function');
+  const firstRead=w.__webPilotObserverRead(),secondRead=w.__webPilotObserverRead();
+  assert.equal(firstRead.documentId,secondRead.documentId);
+  assert.ok(secondRead.seq>firstRead.seq,'read-only reconciliation has a fresh observer sequence');
+  assert.deepEqual(firstRead.state,secondRead.state,'fresh read does not manufacture a user turn');
   await turn();
   const editor = w.document.querySelector('#prompt-textarea');
   const initial = messages.at(-1);
