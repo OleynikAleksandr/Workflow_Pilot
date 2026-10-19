@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.5, Kit 1.8.2, протокол панели `2`, build `0.5.5-communication-2`. Ресурс — `ui://workflow-pilot/projects-v1.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка S1–S3](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.6, Kit 1.8.2, протокол панели `2`, build `0.5.6-communication-2`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка S1–S3](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
@@ -90,6 +90,16 @@ WAL в собственном `plugin-communication`: legacy schema 1, workflow 
 
 `workflow_open_project {project_id?}` читает проекты/сессии без UI. `workflow_connect_project {project_id,request_id?}` отдельно связывает уже открытый внешний разговор, проверяет inline-context-v1 (полноту/размер/SHA/identity), возвращает полный recovery; повторы не создают дубликат. Облачный проект/история не меняются, выбор внешней сессии не создаёт страницу и выполнение плана. Старые кнопки создания чатов и навигационные пробы удалены.
 
-Мост backend: loopback, приватный descriptor 0600 с токеном, Host/Origin проверяются. Исторические PLUGIN_DESKTOP_REQUIRED/UNAVAILABLE означают недоступную службу. Окно не требуется; donor-профиль не используется. Ресурс читает staged HTML на запрос, кэш хоста не контролируется. Проверять свежий ответ и видимый build, не подменять только установленный HTML.
+Мост backend: loopback, приватный descriptor 0600 с токеном, Host/Origin проверяются. Исторические PLUGIN_DESKTOP_REQUIRED/UNAVAILABLE означают недоступную службу. Окно не требуется; donor-профиль не используется.
+
+## Ресурс панели и обновление
+
+При регистрации MCP читает staged HTML один раз и вычисляет SHA-256 полных UTF-8 байтов. Каталог `workflow_pilot_panel._meta.ui.resourceUri` и `resources/read` используют один неизменяемый снимок: изменение файла не меняет уже объявленный ресурс, следующий запуск получает новый URI. Любая правка HTML/CSS/JS меняет ключ. Это следует [контракту кэширования OpenAI](https://developers.openai.com/plugins/build/chatgpt-ui#embed-the-component-in-the-server-response).
+
+Прежний `ui://workflow-pilot/projects-v1.html` возвращает только безопасное сообщение об обновлении без SDK, полей, кнопок и отправок. Новые инструменты на него не ссылаются; неизвестные исторические хеши не подменяются текущим HTML. Уже сохранённая хостом копия не переписывается. Точное место хранения показанной пользователю старой панели не установлено.
+
+После установки и запуска новой службы обновить инструменты существующего подключения ChatGPT и выполнить свежий `workflow_pilot_panel`; открытие старого результата не заменяет новый вызов. Проверить видимый build/протокол и подтверждённую привязку. Профиль, cookies и историю не очищать. Строгая проверка версии остаётся: ошибка показывает обе версии, предлагает обновить каталог и заново вызвать панель; если отстаёт сервер — завершить установку. Переустановка приложения сама по себе не объявляется очисткой кэша ChatGPT.
+
+`check-plugin-resource.mjs` сверяет package/backend, метки HTML, видимый build и compiled script при staging и в готовом пакете. Fixtures настоящего MCP/SDK проверяют старый кэш → новый каталог → автоматическую привязку O без join/ID/Enable, неизменность снимка и отдельные изменения HTML/CSS/JS. Это не живая приёмка хоста.
 
 Staging перед start/test/smoke/build собирает автономный HTML с лицензиями; Runtime.syncSource доставляет весь tools-комплект. DOCS предшествует общей сборке трёх ОС из одного commit и штатной установке ([поставка](release.md)). Автоматические проверки: настоящий SDK/HTML/Python MCP/Control/Kit/Git в изоляции, O в Chat/Work и Chat-исполнители, без моделей и рабочих профилей. [Матрица](chatgpt-plugin-acceptance.md) отделяет эту проверку от живой приёмки.

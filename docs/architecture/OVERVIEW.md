@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Workflow Pilot 0.5.5 — локальные проекты, планы Workflow Kit 1.8.2 и ChatGPT Web (Chat/Work), собственный MCP-исполнитель и [панель диалога](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор 0.6.115](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
+Workflow Pilot 0.5.6 — локальные проекты, планы Workflow Kit 1.8.2 и ChatGPT Web (Chat/Work), собственный MCP-исполнитель и [панель диалога](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор 0.6.115](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
 
 ## Устройство
 
@@ -20,11 +20,13 @@ Backend — фоновая служба с Control, Execution, Kit, stores, ст
 
 У любого плана одна кнопка Start/Пауза/Continue и Review. Новые orchestrated-планы выполняются назначениями в worktree: O обсуждает/публикует, E выполняют задачи, Kit проверяет интеграции, O завершает delivery/cleanup/итог. Начатые sequential/parallel сохраняют прежний маршрут и ту же кнопку.
 
-В 0.5.5 startup через DOM передаёт полное recovery и приглашение открыть панель. O/E регистрируют существующие локальные сессии без ручного join/ID/Enable. Публикация не запускает план. Start разрешает текущий scope и последующие назначения; SDK/bind и завершённый bootstrap предшествуют рабочему сообщению.
+В 0.5.6 startup через DOM передаёт полное recovery и приглашение открыть панель. O/E регистрируют существующие локальные сессии без ручного join/ID/Enable. Публикация не запускает план. Start разрешает текущий scope и последующие назначения; SDK/bind и завершённый bootstrap предшествуют рабочему сообщению.
 
-DialogueDelivery связывает прежний scheduler с долговечной очередью PluginCommunication, без второго плана. Рабочие поручения, блокировки/решения, интеграции и итог идут через SDK; DOM сохраняет bootstrap и прежний Review/legacy, скрытого fallback нет. Свежая identity/назначение, observer busy/draft и FIFO защищают адресацию. Accepted, read, завершённый ход и DONE различаются. Ролевые инструкции — один role-protocol.mjs Kit; решения относятся к точному block_id. Протокол панели 2, build 0.5.5-communication-2.
+DialogueDelivery связывает прежний scheduler с долговечной очередью PluginCommunication, без второго плана. Рабочие поручения, блокировки/решения, интеграции и итог идут через SDK; DOM сохраняет bootstrap и прежний Review/legacy, скрытого fallback нет. Свежая identity/назначение, observer busy/draft и FIFO защищают адресацию. Accepted, read, завершённый ход и DONE различаются. Ролевые инструкции — один role-protocol.mjs Kit; решения относятся к точному block_id. Протокол панели 2, build 0.5.6-communication-2.
 
 Закрытие окна не отзывает допуск, restart требует одного Continue. Ручной Stop прекращает отправки всего плана; UNKNOWN не повторяется. Финальные интеграции/delivery/cleanup и ответ предшествуют отключению канала, ручной archive не требуется. Поддержка хостом новой панели и SDK проверяется отдельно: живой WebContentsView её не доказывает.
+
+URI панели определяется SHA-256 полного HTML; MCP объявляет и отдаёт неизменяемый снимок. Обновление каталога и свежий вызов выбирают новый ресурс; старый результат в истории не считается обновлённой панелью. Подробности — [контракт ресурса](../modules/chatgpt-plugin.md#ресурс-панели-и-обновление).
 
 ## Карта модулей
 

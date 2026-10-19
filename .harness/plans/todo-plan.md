@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 558,
+  "plan_revision": 560,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "workflow-pilot-automatic-agent-dialogue",
@@ -162,7 +162,7 @@
       {
         "path": "docs/planning/panel-resource-upgrade.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "59cb7f92dd53159ef91d2dbcccb4b0ee6c360ab6"
       }
     ],
     "include_last_completed_task": false,
@@ -1224,8 +1224,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "workflow-pilot-automatic-agent-dialogue",
         "task_id": "DOCS-2",
@@ -1240,14 +1240,36 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/panel-resource-upgrade.md"
+        "docs/planning/panel-resource-upgrade.md",
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/backend.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/backend.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/panel-resource-upgrade.md"
+      ]
     },
     {
       "id": "RELEASE-2",
@@ -1368,7 +1390,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: workflow-pilot-automatic-agent-dialogue
 Current Task: нет
-Revision: 558
+Revision: 560
 
 ## Цель
 
@@ -1459,10 +1481,10 @@ Revision: 558
   - Файлы: tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-host.mjs, tests/panel-resource-upgrade.test.mjs, scripts/stage-chatgpt-plugin.mjs, scripts/release-package.mjs, scripts/check-plugin-resource.mjs, tests/release-all.test.mjs, tests/release-linux.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, tests/backend-upgrade.test.mjs, docs/planning/panel-resource-upgrade.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: workflow-pilot-automatic-agent-dialogue / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-resource-upgrade.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-resource-upgrade.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/backend.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T007, T008
 - [TODO] RELEASE-2: Собрать исправленный единый выпуск 0.5.6 — Ожидает

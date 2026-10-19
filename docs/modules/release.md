@@ -1,6 +1,6 @@
 # Единая поставка Workflow Pilot
 
-Версия 0.5.5. Порядок: DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Каждый пакет содержит клиент, backend и MCP; helper-bundle нет, тестовые флаги запрещены. Codex исключён из приёмки. Native Windows/Linux, VM и clean-install остаются pending; сначала пользователь проверяет Mac.
+Версия 0.5.6. Порядок: DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Каждый пакет содержит клиент, backend и MCP; helper-bundle нет, тестовые флаги запрещены. Codex исключён из приёмки. Native Windows/Linux, VM и clean-install остаются pending; сначала пользователь проверяет Mac.
 
 ## Комплект
 
@@ -20,7 +20,7 @@ Windows vendor: только [закреплённый asset v0.6.115](https://g
 
 Все исходники, scripts, package/lock и Kit закоммичены. HEAD, source snapshot и hashes locks сверяются до и после сборки. `npm run build` готовит общие Kit/observer/plugin/notices, затем параллельно пакует три ОС через Electron Packager/ASAR и ditto/tar. `--ignore-scripts` исключает повторную запись ресурсов; отдельный `TMPDIR` каждой платформы — `.harness/runtime/packager-tmp/<platform>`. CLI `--tmpdir` не используется: теряет следующие `--extra-resource`. Ошибка/UNKNOWN любой ОС запрещает выпуск после завершения остальных. Linux-бинарники на Mac не запускаются.
 
-Версии приложения, Electron/Node, Kit и sourceCommit общие. Python executor и staged HTML с лицензиями входят в MCP всех пакетов. `stage-chatgpt-plugin` вставляет JS через callback String.replace и проверяет синтаксис до записи. Реальный HTML/MCP/SDK проверяется fixture: digest не доказывает работу UI. Схемы Codex 0.163.0 совпадают по hash с 0.162.1; поставляемый Linux Codex — 0.162.1, буквальный version_matches может быть false.
+Версии приложения, Electron/Node, Kit и sourceCommit общие. Python executor и staged HTML с лицензиями входят в MCP всех пакетов. `stage-chatgpt-plugin` вставляет JS через callback String.replace и проверяет синтаксис до записи. `check-plugin-resource.mjs` при staging и проверке каждого пакета сверяет версию package/backend, build/protocol в HTML, видимый build и compiled script; совпадение одних файловых hashes недостаточно. URI вычисляется из полного HTML; [MCP сохраняет неизменяемый снимок](chatgpt-plugin.md#ресурс-панели-и-обновление). Реальный HTML/MCP/SDK проверяется fixture: digest не доказывает работу UI. Схемы Codex 0.163.0 совпадают по hash с 0.162.1; поставляемый Linux Codex — 0.162.1, буквальный version_matches может быть false.
 
 Строгая сверка: src, runtime package.json, обе копии Kit (ASAR и внешняя), Python/HTML/preload/workers/observer, toolchain. Запрещены вложенные .app, лишние файлы/ресурсы и runtime/secret-пути. Windows: PE, pinned vendor/Node. Linux: ELF x64, права, hashes, Electron. Каждый архив распаковывается и сравнивается со staging по содержимому, правам и симлинкам; выходящие за пакет ссылки запрещены.
 
