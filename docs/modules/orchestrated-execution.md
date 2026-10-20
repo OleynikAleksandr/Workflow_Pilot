@@ -1,6 +1,6 @@
 # Оркестрованное выполнение плана
 
-Новые планы Workflow Pilot 0.5.9 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
+Новые планы Workflow Pilot 0.5.10 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
 
 ## Роли и принадлежность
 
@@ -14,9 +14,9 @@ E работает в Chat независимо от режима O Chat/Work. B
 
 ParallelExecution остаётся единственным scheduler. Он механически создаёт допустимые назначения при активном разрешении scope, учитывает зависимости, max_workers и пересечение путей. `parallel_safe: false` — исключительная задача после всего предыдущего; обе категории выполняются E. DOCS добавляется всегда. При release=true настроенный delivery_tail идёт после DOCS и выполняется O в main.
 
-Страница → bootstrap → registration → живой SDK/bind → конец bootstrap предшествуют ready O. Два-пять E не требуют select/show/focus, посещения карточек, ID или Enable. Поздний editor обрабатывается ограниченным повтором подготовки до Send. Отправленные/sending/unknown не повторяются. Исполнитель, которому действительно ничего не отправлялось, может получить новый чистый Chat draft; наличие адреса или начатого Send запрещает такое восстановление.
+Страница → bootstrap → registration → живой SDK/bind → конец bootstrap предшествуют ready O. Сразу после назначения O получает отдельное уведомление для prepare одновременно с bootstrap; только после ready явно вызывает dispatch своего черновика. Два-пять E не требуют select/show/focus, посещения карточек, ID или Enable. Поздний editor обрабатывается ограниченным повтором подготовки до Send. Отправленные/sending/unknown не повторяются. Исполнитель, которому действительно ничего не отправлялось, может получить новый чистый Chat draft; наличие адреса или начатого Send запрещает такое восстановление.
 
-O отправляет task/context конкретному E; Kit сохраняет grant назначения. E выполняет task:start → работа → commit --task → result O. При нехватке данных спрашивает O, при блокировке ведёт коррелированный диалог до decision; после yield заканчивает ход. Обычное ожидание не запускает модельный polling. Канонические правила — role-protocol.mjs, версия 3.
+O отправляет task/context конкретному E; Kit сохраняет grant назначения. E выполняет task:start → работа → commit --task → result O. При нехватке данных спрашивает O, при блокировке ведёт коррелированный диалог до decision; после yield заканчивает ход. Обычное ожидание не запускает модельный polling. Канонические правила — role-protocol.mjs, версия 4.
 
 O проверяет result/diff/proof и принимает точный source_commit либо открывает revision_request новой попытки. Только затем выполняет integration:start/continue. Автоматического merge по READY в версии 1 нет; main DONE требует доказательства Git. Зависимая задача выдаётся после интеграций предшественников. Конфликт/check failure сохраняет операцию для исправления O без принудительного ours/theirs.
 
@@ -26,7 +26,7 @@ ExecutionControl хранит not-started/running/pausing/paused/complete, пр�
 
 Закрытие окна не останавливает backend и не отзывает допуск. Restart требует одного Continue. Stop панели останавливает отправки всего плана; поздние callbacks старого поколения не восстанавливают допуск. UNKNOWN не повторяется, а уточняется фактическими квитанциями и проверкой состояния.
 
-Интегрированные E нового режима сохраняются до завершения сообщений и итоговой очистки. После обычных задач O поручает DOCS, после её интеграции получает delivery-шаги по очереди и cleanup/итог. Нужны все DONE, обработанный outbox и физический конец последнего хода; канал не закрывается по одному READY или пустой очереди. `assignment:cleanup` проверяет INTEGRATED и удаляет только свои безопасные worktree/ветки. READY_FOR_ACCEPTANCE не означает пользовательскую приёмку или archive.
+Интегрированные E нового режима сохраняются до завершения сообщений и итоговой очистки. После обычных задач O поручает DOCS, после её интеграции получает delivery-шаги по очереди и cleanup/итог. Нужны все DONE, терминальные квитанции E, cleanup DONE, чистый main и физический конец итогового O; канал не закрывается по одному READY или пустой очереди. `assignment:cleanup` проверяет INTEGRATED и внутренний transport proof; ранний запрос остаётся PENDING и автоматически продолжается после квитанции/окончания команд. Пока идёт финализация, UI показывает «Завершение» и причину; после complete нет активной «Паузы», restart сохраняет complete. READY_FOR_ACCEPTANCE не означает пользовательскую приёмку или archive.
 
 Если код требует исправления во время delivery, plan:extend откладывает delivery, добавляет новый DOCS-раунд; сборка выполняется после него из нового sourceCommit. Уже завершённые delivery-записи сохраняются.
 
@@ -34,7 +34,7 @@ ExecutionControl хранит not-started/running/pausing/paused/complete, пр�
 
 Существующие sequential/parallel и orchestrated без dialogue_version=1 сохраняют прежний маршрут и доказательства. Их backend assignment-start, сигналы CLI, автоматическая интеграция готовых источников и прежняя семантика паузы не выдаются за новый O-authored протокол. Одна кнопка управления остаётся и у них.
 
-Переход активного orchestrated 0.5.7 выполняет O отдельной штатной миграцией только в безопасной паузе; installer сохраняет старые коммиты, READY требует отчёта E по просьбе O, INTEGRATED не повторяется. [Условия и отказы](assignment-dialogue-reliability.md#переход-старого-плана). Обычная подготовка проекта обновляет Kit до 1.9.0 при допустимом состоянии, managed-файлы вручную не меняются.
+Переход активного orchestrated 0.5.7 выполняет O отдельной штатной миграцией только в безопасной паузе; installer сохраняет старые коммиты, READY требует отчёта E по просьбе O, INTEGRATED не повторяется. [Условия и отказы](assignment-dialogue-reliability.md#переход-старого-плана). Обычная подготовка проекта обновляет Kit до 1.9.1 при допустимом состоянии, managed-файлы вручную не меняются.
 
 ## Интерфейс и удаление
 
@@ -46,4 +46,4 @@ ExecutionControl хранит not-started/running/pausing/paused/complete, пр�
 
 Реальные Kit/Git, HTTP Start, Python MCP, staged SDK и Control проходят автоматические fixtures с двумя и пятью E, без пользовательских bubbles на каждом SDK-ходе. Скрытый Electron проверяет фоновый bootstrap/observer/composer без select/show. Legacy assertions сохранены отдельными случаями. [Матрица восстановления](assignment-dialogue-reliability.md#проверки-и-граница-доказательств).
 
-Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.9 — NOT_RUN. Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.
+Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.10 — NOT_RUN. Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.

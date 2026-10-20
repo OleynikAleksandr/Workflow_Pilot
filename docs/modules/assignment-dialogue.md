@@ -1,6 +1,6 @@
 # Диалог под управлением оркестратора
 
-Контракт Workflow Pilot 0.5.9 / Kit 1.9.0: `dialogue_version: 1`, ролевой протокол 3, панель `0.5.9-communication-3`, протокол панели 3. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
+Контракт Workflow Pilot 0.5.10 / Kit 1.9.1: `dialogue_version: 1`, ролевой протокол 4, панель `0.5.10-communication-3`, протокол панели 3. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
 
 ## Роли и пользовательский процесс
 
@@ -26,10 +26,17 @@ sequenceDiagram
     participant K as Kit / Git
     U->>B: Start
     B->>K: Допустимое назначение и worktree
-    B->>E: DOM: правила, identity, приглашение панели
-    E->>B: Панель / SDK, конец bootstrap
+    par Запуск исполнителя
+        B->>E: DOM: правила, identity, приглашение панели
+        E->>B: Панель / SDK, конец bootstrap
+    and Подготовка оркестратором
+        B->>O: service recovery: назначение создано
+        O->>B: prepare: task + выбранный контекст, без grant
+        B-->>O: durable draft_id
+    end
     B->>O: service ready
-    O->>E: task + выбранный контекст через канал
+    O->>B: dispatch сохранённого draft_id
+    B->>E: Авторское task O через канал
     E->>K: task:start
     E->>O: question / context_request
     O->>E: clarification
@@ -54,11 +61,21 @@ DOM остаётся для первоначальной загрузки и п�
 
 До 16 источников, суммарно body и texts до 1 MiB; превышение отклоняется без обрезки. Чтение частей `0…total−1` обязательно до использования; доступ и digest проверяются для адресата. Недостаток до task:start позволяет `context_request` без фиктивного начала работы. Старые планы сохраняют прежнюю семантику context_pack.
 
+## Подготовка одновременно с bootstrap
+
+После создания допустимого назначения backend отправляет O служебное уведомление о подготовке, не дожидаясь панели E. O выбирает содержание и вызывает `workflow_assignment_prepare`: сохраняются текст, неизменяемые contexts и draft_id, привязанные к автору, project/scope/assignment/task/attempt и digest требований Kit. Черновик не является сообщением E, task grant или SDK-вызовом. Старый Kit без contract_digest получает предметный отказ capability; backend не выдумывает digest.
+
+После ready O вызывает `workflow_assignment_dispatch` со своей сохранённой ссылкой. Backend заново проверяет назначение, попытку, требования, актуальный binding/SDK, физический конец bootstrap и отсутствие команд E. Ранний вызов оставляет черновик без grant и публикации. Если ready уже получен, отправка возможна в том же ходе после подготовки. Медленный E не удерживает отправку готовому соседу. Backend сам не отправляет черновик вместо решения O; обычное ожидание не вызывает модельный polling.
+
+Повтор с тем же ключом и содержимым идемпотентен в пределах автора и scope; другой scope не наследует черновик. Смена попытки/назначения/требований запрещает старую отправку. Посторонний коммит сам по себе не отменяет текст: O отвечает за актуальность выбранных источников. Pause допускает сохранение черновика активным O, но запрещает dispatch; Continue повторно проверяет канал. Restart сохраняет текст и требует общего Continue, без автоматического dispatch. DOCS готовится одновременно со своим bootstrap только после проверенных интеграций предшественников.
+
 ## Model API
 
 | Инструмент | Контракт |
 | --- | --- |
 | `workflow_communication_participants` | Свой реестр назначений, task/title/attempt/состояние, opaque recipient_ref; O видит своих E, E — своё назначение |
+| `workflow_assignment_prepare` | Только O: recipient, attempt, body, idempotency_key, contexts; возвращает draft_id без grant и сообщения E |
+| `workflow_assignment_dispatch` | Только O: свой draft_id; свежая проверка канала/назначения, затем прежний intent → Kit → WAL |
 | `workflow_assignment_send` | recipient, kind, attempt, body, idempotency_key; необязательные in_reply_to, contexts, block_id, problem_id, blocking, resume, source_commit, result_id |
 | `workflow_communication_read_message` | Свой message_id; сохраняет read, возвращает полный текст/ссылки и актуальные инструкции |
 | `workflow_communication_read_context` | message_id, context_ref, part; проверенные полные части |
@@ -67,6 +84,8 @@ DOM остаётся для первоначальной загрузки и п�
 | `workflow_assignment_migrate` | Только O старого рабочего плана после общей безопасной паузы; [контракт перехода](assignment-dialogue-reliability.md#переход-старого-плана) |
 
 Все assignment-инструменты model-only. E задаёт recipient=`orchestrator`; O использует адрес из реестра, а не придумывает ID или выбирает sidebar. Автор определяется свежей host identity/назначением, не полем роли в payload. Контекст, чужая попытка, устаревший адрес, изменённый scope и удалённый проект проверяются до эффекта.
+
+`yield.reason` — enum фактической MCP-схемы: `awaiting_reply` — ожидание ответа/ready; `tasks_sent` — поручения отправлены; `result_sent` — результат отправлен; `handled` — прочая обработка. Это квитанция обработки входа, не DONE и не самостоятельное доказательство физического конца.
 
 Типы O: task, context, question, clarification, decision, revision_request, acceptance. Типы E: context_request, context, question, clarification, result. Ready/recovery/finalization имеют автора backend. Один operation/idempotency key с тем же содержимым возвращает прежний receipt; изменённое содержимое с тем же ключом — конфликт. Повтор не означает новый ход или новую работу.
 
@@ -90,6 +109,8 @@ Revision до интеграции создаёт новую попытку то
 
 O выполняет последовательные интеграции в main штатными командами Kit. Только проверенный Git merge подтверждает INTEGRATED/DONE. Конфликт/check failure сохраняет operation_id, MERGE_HEAD и доказательства; O разрешает операцию в её области и вызывает continue, без принудительного ours/theirs или reset. Зависимые задачи назначаются после интеграций предшественников и подтверждённого конца хода O. Обработка двух результатов за один ход автоматически освобождает путь к DOCS. Карточка O и строки плана читают одну актуальную проекцию исполнения своего scope; после двух интеграций обе показывают 2/3. В новом режиме автоматического merge по одному READY нет.
 
-После обычных задач O поручает DOCS с итогами и выбранным контекстом, затем выполняет delivery, `assignment:cleanup`, проверку main и итог пользователю. Интегрированные E остаются доступны для завершения квитанций до очистки. Все DONE плюс обработанные сообщения и физический конец итогового хода предшествуют отзыву связи; пустая очередь не означает завершение. READY_FOR_ACCEPTANCE не архивирует scope.
+После обычных задач O поручает DOCS с итогами и выбранным контекстом, затем выполняет delivery, `assignment:cleanup`, проверку main и итог пользователю. Последняя acceptance E должна иметь read/yield и свежий физический конец. Backend связывает эту квитанцию с точными assignment/attempt/source_commit в Kit через внутреннюю `assignment:transport`; агент её не вызывает. Ранняя cleanup получает PENDING и автоматически продолжается после квитанции и окончания команд E. Удаление worktree не отнимает у O возможность видеть доказанные INTEGRATED/result/acceptance в реестре; это чтение родительской записи, не разрешение новой работы E.
 
-Канонический текст ролей — `packages/workflow-kit/src/lib/role-protocol.mjs` (версия 3). Recovery, startup, шаблоны PLAN/PROTOTYPE/WORKFLOW, MCP instructions/descriptions и backend validation согласованы. Обновление правил открытого чата не повторяет уже сделанные действия.
+Все DONE, обработанные сообщения, проверенная очистка, чистый main и физический конец итогового O предшествуют долговечному complete и отзыву связи. Пока финализация не закончена, интерфейс показывает «Завершение» с причиной и возможностью остановки. После complete активной «Паузы»/«Продолжить» нет, карточка и панель показывают все выполненные задачи. Restart сохраняет complete. READY_FOR_ACCEPTANCE не архивирует scope.
+
+Канонический текст ролей — `packages/workflow-kit/src/lib/role-protocol.mjs` (версия 4). Recovery, startup, шаблоны PLAN/PROTOTYPE/WORKFLOW, MCP instructions/descriptions и backend validation согласованы. Обновление правил открытого чата не повторяет уже сделанные действия.

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 654,
+  "plan_revision": 657,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -178,7 +178,8 @@
       "packages/workflow-kit/src/templates/PLAN.md",
       "docs/modules/assignment-dialogue.md",
       "docs/modules/assignment-dialogue-reliability.md",
-      "docs/planning/dialogue-preparation-finalization.md"
+      "docs/planning/dialogue-preparation-finalization.md",
+      "tests/fixtures/released-kit/README.md"
     ]
   },
   "baseline_commit": "99e36fd1df663fb269ddf6f695423f5bd5a44fe9",
@@ -198,7 +199,7 @@
       {
         "path": "docs/planning/dialogue-preparation-finalization.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "21e72c46735c55e648775079e2407ed5ff8da161"
       }
     ],
     "include_last_completed_task": false,
@@ -1952,8 +1953,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "DOCS-3",
@@ -1973,14 +1974,50 @@
         "docs/planning/dialogue-preparation-finalization.md",
         "packages/workflow-kit/src/templates/PLAN.md",
         "packages/workflow-kit/src/templates/PROTOTYPE.md",
-        "packages/workflow-kit/src/WORKFLOW.md"
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "tests/fixtures/released-kit/README.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/dialogue-preparation-finalization.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "tests/fixtures/released-kit/README.md"
+      ]
     },
     {
       "id": "RELEASE-3",
@@ -2098,7 +2135,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 654
+Revision: 657
 
 ## Цель
 
@@ -2255,10 +2292,10 @@ Revision: 654
   - Файлы: packages/workflow-kit/src/lib/installer.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.0.tar.gz, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
   - Зависимости: T014
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: orchestrator-owned-dialogue-refactor / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012, T013, T014, T015
 - [TODO] RELEASE-3: Собрать следующий выпуск для трёх ОС — Ожидает
