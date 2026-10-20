@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 719,
+  "plan_revision": 721,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -630,14 +630,15 @@
         "Штатный installer проверяет версию, manifest, подпись и rollback; при работающем backend проверенная pending копия без остановки службы."
       ],
       "expected_commit_message": "feat: Установить готовую экспериментальную macOS сборку",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "INSTALL-PIP",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -659,10 +660,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 719
+Revision: 721
 
 ## Цель
 
@@ -744,8 +745,8 @@ Revision: 719
   - Файлы: release-manifest.json, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-2
-- [TODO] INSTALL-PIP: Установить готовую экспериментальную macOS сборку — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовую экспериментальную macOS сборку
+- [DONE] INSTALL-PIP: Установить готовую экспериментальную macOS сборку — Завершено
+  - Git Commit: [DONE] feat: Установить готовую экспериментальную macOS сборку
   - Reference: prepared-task-flow / INSTALL-PIP / implementation
   - Файлы: release-manifest.json, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение
