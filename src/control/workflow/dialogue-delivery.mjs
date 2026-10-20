@@ -56,7 +56,7 @@ export class DialogueDelivery {
     const ticket=await this.getPlugin().reserveParticipant(project.sessionId);
     if(project.role==='executor'&&this.owned(project)){
       const origin=this.project(project.executionOriginSessionId);
-      if(origin)await this.send(origin,'Назначение создано; подключение исполнителя продолжается параллельно. Сейчас подготовьте task и выбранный контекст через workflow_assignment_prepare. Черновик не разрешает работу. После ready отправьте его через workflow_assignment_dispatch. Данные backend: '+JSON.stringify({
+      if(origin)await this.send(origin,'Назначение создано; подключение исполнителя продолжается параллельно. Сейчас подготовьте task и выбранный контекст через workflow_assignment_prepare с dispatch_when_ready=true: это явное разрешение отправить сохранённое поручение при подтверждённой готовности канала. Используйте recipient_ref из read_message, attempt=1. Отдельного ready и dispatch ждать не нужно. Без dispatch_when_ready сохраняется только черновик. Данные backend: '+JSON.stringify({
         assignment_id:project.assignmentId,task_id:project.taskId}), 'recovery',{
         key:'prepare:'+project.assignmentId,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt:1});
     }
@@ -112,6 +112,17 @@ export class DialogueDelivery {
           key:'migrated:'+project.assignmentId+':'+state.migration.operation_id,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt});
       }
       if(state.dialogue?.grant)return;
+      for(const run of plugin.communication.runs.values()){
+        const intent=Object.values(run.assignment_intents??{}).find(i=>i.effect.assignment_id===project.assignmentId
+          &&i.effect.attempt===attempt&&i.effect.scope_id===target.scope_id&&i.effect.kind==='task'
+          &&['authorized','needs_confirmation'].includes(i.phase));
+        if(!intent)continue;
+        if(intent.phase==='authorized'&&plugin.communication.assignment.authorized(run,intent))return;
+        return this.send(origin,'Сохранённое поручение требует новой авторизации после изменения разрешения или состояния назначения. Проверьте актуальные требования/попытку и draft_id через workflow_assignment_status. Если они совпадают, вызовите workflow_assignment_dispatch с when_ready=true; иначе подготовьте новое поручение. Данные backend: '+JSON.stringify({
+          assignment_id:project.assignmentId,task_id:project.taskId,attempt,draft_id:intent.message_id}),'recovery',{
+          key:'authorize:'+intent.message_id+':'+run.grant.generation,
+          subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt});
+      }
       return this.send(origin,'Назначение готово к получению задания оркестратора. Данные backend (не рабочее поручение): '+JSON.stringify({
         assignment_id:project.assignmentId,task_id:project.taskId,attempt}), 'ready',{
         key:'ready:'+project.assignmentId+':'+attempt,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt});
@@ -138,7 +149,7 @@ export class DialogueDelivery {
       if(run.messages.some(m=>m.scope_id===scope&&!m.reply_observed&&!m.superseded))return false;
       if(this.getPlugin().communication.assignment?.kit?.close&&run.messages.some(m=>m.scope_id===scope
         &&m.kind==='acceptance'&&!m.kit_transport_closed))return false;
-      if(Object.values(run.assignment_intents??{}).some(i=>i.effect.scope_id===scope&&['prepared','deferred'].includes(i.phase)))return false;
+      if(Object.values(run.assignment_intents??{}).some(i=>i.effect.scope_id===scope&&['authorized','needs_confirmation','prepared','deferred'].includes(i.phase)))return false;
     }
     return true;
   }

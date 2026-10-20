@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 667,
+  "plan_revision": 669,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -114,8 +114,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "T001",
@@ -161,7 +161,19 @@
         "Отдельная фаза авторизации связана с generation/boot/recipient/attempt/digest; при смене требуется подтверждение O. Полные ролевые правила не исключаются на основании одного прежнего чтения."
       ],
       "expected_commit_message": "feat: Разрешить подготовленный dispatch по готовности без лишнего хода O",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -553,7 +565,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 667
+Revision: 669
 
 ## Цель
 
@@ -570,8 +582,8 @@ Revision: 667
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Прямое решение пользователя и AGENTS: разработка одним агентом; связанные контракты доставки, диагностики и UI.
 
-- [TODO] T001: Разрешить подготовленный dispatch по готовности без лишнего хода O — Ожидает
-  - Git Commit: [PENDING] feat: Разрешить подготовленный dispatch по готовности без лишнего хода O
+- [DONE] T001: Разрешить подготовленный dispatch по готовности без лишнего хода O — Завершено
+  - Git Commit: [DONE] feat: Разрешить подготовленный dispatch по готовности без лишнего хода O
   - Reference: dialogue-latency-visibility / T001 / implementation
   - Файлы: src/control/plugin/assignment-dialogue.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, tools/codex-app-server-mcp/plugin.py, packages/workflow-kit/src/lib/role-protocol.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, src/control/workflow/parallel-execution.mjs, docs/planning/dialogue-latency-visibility.md
   - Параллельность: исключительное выполнение

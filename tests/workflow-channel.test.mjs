@@ -85,6 +85,81 @@ test('draft survives pause but rejects changed requirements before grant',async 
   await assert.rejects(f.c.assignmentDispatch({metadata:meta('o'),draft_id:d.draft_id}),{code:'PLUGIN_COMMUNICATION_STALE_DRAFT'});
   assert.equal(kit.calls,0);
 });
+test('explicit prepare authorization dispatches on readiness without another O call, suppressing only unsent preparation',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');
+  await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.c.reserve(e);
+  const prepare=await f.c.workflow.enqueue(f.o,{key:'prepare:a-e',kind:'recovery',text:'Prepare this task',
+    subject:{assignment_id:'a-e',task_id:'t-e'},attempt:1});
+  const message=await f.c.readMessage({metadata:meta('o'),message_id:prepare.message_id});
+  assert.equal(message.inline_context.complete,true);assert.equal(message.inline_context.text,'Prepare this task');
+  assert.equal(message.inline_context.sha256,message.context_ref);
+  assert.match(message.instructions,/повторно его не читайте/);
+  const ready=await f.c.workflow.enqueue(f.o,{key:'ready:a-e:1',kind:'ready',text:'Ready',
+    subject:{assignment_id:'a-e',task_id:'t-e'},attempt:1});
+  const input={metadata:meta('o'),recipient:message.recipient_ref,attempt:1,body:'Exact selected task',idempotency_key:'auto',
+    dispatch_when_ready:true};
+  const prepared=await f.c.assignmentPrepare(input);
+  assert.equal(prepared.phase,'authorized');assert.equal(prepared.published,false);assert.equal(kit.calls,0);
+  const run=()=>[...f.c.runs.values()][0];
+  assert.equal(run().messages.find(m=>m.message_id===prepare.message_id).reply_observed,false,'read notification still needs yield and actual end');
+  assert.equal(run().messages.find(m=>m.message_id===ready.message_id).delivery,'superseded');
+  await f.c.assignment.reconcile('p','s');assert.equal(kit.calls,0);
+  await f.bind(f.c,e);
+  await f.c.assignment.reconcile('p','s');assert.equal(kit.calls,1);
+  const delivered=run().messages.find(m=>m.message_id===prepared.message_id);
+  assert.equal(delivered.sender_role,'O');assert.equal(delivered.kind,'task');assert.equal(delivered.delivery,'pending');
+  const lateReady=await f.c.workflow.enqueue(f.o,{key:'ready:a-e:late',kind:'ready',text:'Late ready producer',
+    subject:{assignment_id:'a-e',task_id:'t-e'},attempt:1});
+  assert.equal(lateReady.delivery,'superseded','a concurrent ready producer cannot enqueue a needless O turn');
+  await f.c.assignment.reconcile('p','s');
+  assert.equal((await f.c.assignmentPrepare(input)).message_id,prepared.message_id);assert.equal(kit.calls,1);
+});
+test('pause and restart revoke unconsumed authorization; Continue alone never grants work',async t=>{
+  for(const restart of [false,true]){
+    const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');
+    await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.c.reserve(e);
+    const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+    const draft=await f.c.assignmentPrepare({metadata:meta('o'),recipient,attempt:1,body:'Selected',idempotency_key:'auto',dispatch_when_ready:true});
+    const c=restart?await f.create():f.c;
+    if(!restart)await c.workflow.grant(f.o,'paused');
+    await c.workflow.grant(f.o);await f.bind(c,e);
+    await c.assignment.reconcile('p','s');assert.equal(kit.calls,0);
+    assert.equal((await c.assignmentStatus({metadata:meta('o')})).pending_intents[0].phase,'needs_confirmation');
+    await c.assignmentDispatch({metadata:meta('o'),draft_id:draft.draft_id,when_ready:true});
+    assert.equal(kit.calls,1);
+  }
+});
+test('changed contract or attempt invalidates authorized draft before any effect',async t=>{
+  for(const changed of [{contract_digest:'changed'},{dialogue:{attempt:2}}]){
+    const kit=dialogueKitFixture(),original=kit.status,f=await fixture(t,undefined,kit),e=f.target('e');
+    await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.c.reserve(e);
+    const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+    await f.c.assignmentPrepare({metadata:meta('o'),recipient,attempt:1,body:'Old',idempotency_key:'auto',dispatch_when_ready:true});
+    kit.status=async(...args)=>({...await original(...args),...changed});
+    await f.bind(f.c,e);await f.c.assignment.reconcile('p','s');
+    assert.equal(kit.calls,0);
+    assert.equal((await f.c.assignmentStatus({metadata:meta('o')})).pending_intents[0].phase,'needs_confirmation');
+  }
+});
+test('permission Stop serializes with an already authorized effect; SDK UNKNOWN remains untouched',async t=>{
+  const kit=dialogueKitFixture(),apply=kit.apply,f=await fixture(t,undefined,kit),e=f.target('e');
+  await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o);await f.bind(f.c,e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const ready=await f.c.workflow.enqueue(f.o,{key:'ready:a-e:1',kind:'ready',text:'Ready',
+    subject:{assignment_id:'a-e',task_id:'t-e'},attempt:1});
+  const claim=await f.c.claim({...o,message_id:ready.message_id});
+  await f.c.verify({...o,message_id:ready.message_id,delivery_attempt_id:claim.delivery_attempt_id});
+  await f.c.report({...o,message_id:ready.message_id,delivery_attempt_id:claim.delivery_attempt_id,outcome:'unknown'});
+  let entered,release;const started=new Promise(r=>entered=r),gate=new Promise(r=>release=r);
+  kit.apply=async(...args)=>{entered();await gate;return apply(...args);};
+  const sent=f.c.assignmentPrepare({metadata:meta('o'),recipient,attempt:1,body:'Exact',idempotency_key:'auto',dispatch_when_ready:true});
+  await started;
+  const stop=f.c.workflow.grant(f.o,'paused');release();await sent;await stop;
+  assert.equal(kit.calls,1);
+  const run=[...f.c.runs.values()][0],unknown=run.messages.find(m=>m.message_id===ready.message_id);
+  assert.equal(unknown.delivery,'unknown');assert.equal(unknown.reply_observed,false);assert.ok(!unknown.superseded);
+  assert.equal(run.grant.active,false);
+});
 test('a slow unbound executor does not delay dispatch to a ready sibling; old Kit cannot prepare',async t=>{
   const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),slow=f.target('slow'),fast=f.target('fast');
   await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.c.reserve(slow);await f.bind(f.c,fast);

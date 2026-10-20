@@ -74,6 +74,8 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   const catalogue=(await c.listTools()).tools;
   assert.match(catalogue.find(x=>x.name==='workflow_communication_send_message').description,/workflow_assignment_send/);
   assert.match(catalogue.find(x=>x.name==='workflow_assignment_send').description,/sends result after checked commit/);
+  assert.equal(catalogue.find(x=>x.name==='workflow_assignment_prepare').inputSchema.properties.dispatch_when_ready.default,false);
+  assert.equal(catalogue.find(x=>x.name==='workflow_assignment_dispatch').inputSchema.properties.when_ready.default,false);
   assert.deepEqual(catalogue.find(x=>x.name==='workflow_assignment_yield').inputSchema.properties.reason.enum,
     ['awaiting_reply','tasks_sent','result_sent','handled']);
   const call=(who,name,args={})=>c.callTool({name,arguments:args,_meta:{'openai/session':who}});
@@ -88,11 +90,16 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   assert.equal(draft.isError,false,JSON.stringify(draft));assert.equal(effects.length,0);
   const early=await call('o','workflow_assignment_dispatch',{draft_id:draft.structuredContent.draft_id});
   assert.equal(early.isError,true);
+  const authorized=await call('o','workflow_assignment_prepare',{recipient,attempt:1,body:'Реализуй назначенный модуль',
+    contexts:[{source:'selected-contract',text}],idempotency_key:'real-mcp-task',dispatch_when_ready:true});
+  assert.equal(authorized.isError,false,JSON.stringify(authorized));
+  assert.equal(authorized.structuredContent.phase,'authorized');assert.equal(effects.length,0);
   const member=Object.values([...comm.runs.values()][0].members).find(m=>m.role==='E');
   const binding={...comm.enrollment.publicMember([...comm.runs.values()][0],member),metadata:{'openai/session':'e'},
     panel_instance_id:randomUUID(),build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
   await comm.bind({...binding,message_supported:true});await comm.sync({...binding,message_supported:true});
   comm.workflow.reconcile=async()=>({stopped:true,busy:false,commandsIdle:true});
+  await comm.assignment.reconcile('fixture','scope');
   const result=await call('o','workflow_assignment_dispatch',{draft_id:draft.structuredContent.draft_id});
   assert.equal(result.isError,false,JSON.stringify(result));assert.equal(effects.length,1);assert.equal(effects[0].target.role,'O');
   const message_id=result.structuredContent.message_id;

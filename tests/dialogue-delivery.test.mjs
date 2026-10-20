@@ -21,9 +21,9 @@ test('finalization waits for live effects and unread deliveries, but a rejected 
   const run={mode:'workflow',project_id:'project',grant:{scope_id:'scope'},messages:[],assignment_intents:{}};
   const delivery=new DialogueDelivery({store:{project:()=>({projectId:'project'})},getPlugin:()=>({communication:{runs:new Map([['run',run]])}})});
   const settled=()=>delivery.settled('/workspace','scope');
-  for(const phase of ['prepared','deferred','published','failed','retired']){
+  for(const phase of ['authorized','needs_confirmation','prepared','deferred','published','failed','retired']){
     run.assignment_intents.one={effect:{scope_id:'scope'},phase};
-    assert.equal(settled(),!['prepared','deferred'].includes(phase),phase);
+    assert.equal(settled(),!['authorized','needs_confirmation','prepared','deferred'].includes(phase),phase);
   }
   run.messages.push({scope_id:'scope',reply_observed:false});assert.equal(settled(),false);
   run.messages[0].reply_observed=true;assert.equal(settled(),true);

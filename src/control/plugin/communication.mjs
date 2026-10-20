@@ -48,6 +48,7 @@ export class PluginCommunication {
       for(const id of run.removed_sessions??[])this.removedSessions.add(id);
       const offset=run.events.length;
       if(run.grant&&run.grant.phase!=='complete'){run.grant.active=false;run.grant.phase='paused';run.grant.reason='restart';run.grant.generation++;}
+      this.assignment.invalidateAuthorizations(run);
       for(const member of Object.values(run.members)){member.stopped=true;member.generation++;}
       for(const message of run.messages) {
         if(message.delivery==='claimed'){message.delivery='unknown';this.event(run,'send.unknown',{message_id:message.message_id});}
@@ -172,6 +173,7 @@ export class PluginCommunication {
   _enqueue(input){return this.workflow._enqueue(input);}
   _assignmentIntent(input){return this.assignment.prepare(input);}
   _assignmentDispatch(input){return this.assignment.dispatchDraft(input);}
+  _assignmentAuthorized(input){return this.assignment.applyAuthorized(input);}
   assignmentPrepare(input){return this.assignment.draft(input);}
   assignmentDispatch(input){return this.assignment.dispatch(input);}
   _assignmentPublish(input){return this.assignment.publish(input);}
@@ -203,7 +205,21 @@ export class PluginCommunication {
     requireValue(matches.length===1,'BINDING','Рабочее назначение текущего разговора не найдено.');
     return {...input,run_id:matches[0].run.id,participant_id:matches[0].member.id};
   }
-  async readMessage(input){return this.read(await this.modelInput(input));}
+  async readMessage(input){
+    const binding=await this.modelInput(input),message=await this.read(binding);
+    if(message.superseded||!message.service||message.sender_role!=='backend')return message;
+    const {run,member}=this.member(binding);
+    if(member.role==='O'&&message.assignment_id)message.recipient_ref=this.assignment.recipientRef(run,message.assignment_id);
+    if(message.context_ref){
+      const content=await this.workflow.content({...binding,context_ref:message.context_ref,part:0});
+      if(content.total===1&&content.bytes<=12000){
+        message.inline_context={text:content.text,sha256:content.sha256,bytes:content.bytes,complete:true};
+        message.instructions=message.instructions.replace('Прочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1.',
+          'Основной context_ref полностью включён в inline_context (complete=true); повторно его не читайте. Дополнительные contexts[].sha256 прочитайте через workflow_communication_read_context, part от 0 до total-1.');
+      }
+    }
+    return message;
+  }
   async content(input){return this.workflow.content(await this.modelInput(input));}
   async roster(input){input=await this.modelInput(input);await this.enrollment.validateInput(input);const {run,member}=this.member(input),participants=[];
     for(const candidate of Object.values(run.members))if(candidate.id===member.id||member.role==='O'){

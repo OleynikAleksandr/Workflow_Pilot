@@ -33,6 +33,7 @@ export class WorkflowChannel {
     if(old?.scope_id===target.scope_id&&old.phase===phase&&old.active===active&&old.boot===c.backendId)return this.state(run);
     const generation=Math.max(old?.generation??0,...Object.values(run.members).map(m=>m.generation))+1;
     run.grant={scope_id:target.scope_id,generation,phase,active,boot:c.backendId};
+    c.assignment.invalidateAuthorizations(run);
     for(const member of Object.values(run.members)){member.generation=generation;member.stopped=!active;
       if(member.role==='O')member.target.scope_id=target.scope_id;}
     c.event(run,'plan.permission',{scope_id:target.scope_id,permission_generation:generation,phase,active});
@@ -83,6 +84,7 @@ export class WorkflowChannel {
     }
     if(run.grant?.active){
       run.grant.active=false;run.grant.phase='paused';run.grant.reason='manual';run.grant.generation++;
+      c.assignment.invalidateAuthorizations(run);
       for(const m of Object.values(run.members)){m.stopped=true;m.generation=run.grant.generation;}
       c.event(run,'plan.revoked',{participant_id:member.id,scope_id:run.grant.scope_id});
     }
@@ -117,6 +119,11 @@ export class WorkflowChannel {
       delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
     run.messages.push(message);c.event(run,'message.persisted',{message_id:message.message_id,participant_id:recipient?.id??null,
       assignment_id:message.assignment_id,task_id:message.task_id,kind:message.kind,scope_id:message.scope_id});
+    // A ready producer may have observed the assignment just before O
+    // authorized it. Recheck in the enqueue transaction, not only in start().
+    for(const intent of Object.values(run.assignment_intents??{}))if(intent.effect.kind==='task'
+      &&(intent.phase==='published'||intent.phase==='authorized'&&c.assignment.authorized(run,intent)))
+      c.assignment.suppressPreparation(run,intent);
     return this.receipt(message);
   }
   receipt(message){return {message_id:message.message_id,delivery:message.delivery,read:message.read,reply_observed:message.reply_observed===true,

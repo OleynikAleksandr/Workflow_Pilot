@@ -113,6 +113,7 @@ export function availableTasks(plan,assignments,workers) {
 export function deliveryText(workspace,task) {
   if(!task)return ['Все задачи плана оркестратора выполнены. Выполни итоговую очистку: ./scripts/workflow assignment:cleanup.',
     'Workspace: '+JSON.stringify(workspace),
+    'Используй уже проверенные proof точных SHA и подтверждённые интеграции. Не повторяй проверки неизменившегося кода: новый прогон нужен при изменениях после проверки, ошибке или конкретном непроверенном свойстве.',
     'Убедись, что остался только main (only_main: true); невлитые назначения перечисли пользователю.',
     'Затем дай итоговый ответ пользователю: что сделано и проверено, ограничения и следующий шаг. План не архивируй без прямого поручения пользователя.'].join('\n');
   return ['Выполни delivery-задачу плана оркестратора в main.','Workspace: '+JSON.stringify(workspace),

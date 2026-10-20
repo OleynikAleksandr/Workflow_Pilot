@@ -46,6 +46,31 @@ export class AssignmentDialogue {
     }
     return [...targets.values()];
   }
+  recipientRef(run,assignmentId){
+    const target=this.targets(run).find(t=>t.role==='E'&&t.assignment_id===assignmentId);
+    return target?reference(run,target):null;
+  }
+  authorized(run,intent){
+    const a=intent.authorization,g=run.grant;
+    return !!a&&g?.active&&g.phase==='running'&&a.generation===g.generation&&a.boot===this.c.backendId
+      &&g.boot===a.boot&&a.scope_id===g.scope_id&&a.recipient===reference(run,intent.target)
+      &&a.attempt===intent.effect.attempt&&a.contract_digest===intent.contract_digest;
+  }
+  invalidateAuthorizations(run){
+    for(const intent of Object.values(run.assignment_intents??{}))if(intent.phase==='authorized'&&!this.authorized(run,intent)){
+      intent.phase='needs_confirmation';
+      this.c.event(run,'task.authorization_expired',{message_id:intent.message_id,assignment_id:intent.effect.assignment_id});
+    }
+  }
+  suppressPreparation(run,intent){
+    for(const m of run.messages)if(m.service&&m.sender_role==='backend'&&m.recipient_id===intent.sender_id
+      &&m.assignment_id===intent.effect.assignment_id&&m.attempt===intent.effect.attempt
+      &&m.scope_id===intent.effect.scope_id&&!m.read&&!m.intent&&!m.reply_observed
+      &&(m.kind==='ready'||m.kind==='recovery'&&m.idempotency_key?.startsWith('prepare:'))){
+      m.superseded=true;m.reply_observed=true;m.delivery='superseded';
+      this.c.event(run,'message.superseded',{message_id:m.message_id,participant_id:m.recipient_id,reason:'task-authorized'});
+    }
+  }
   async target(run,member,recipient){
     const target=this.targets(run).find(t=>member.role==='E'?recipient==='orchestrator'&&t.role==='O'
       :t.role==='E'&&reference(run,t)===recipient);
@@ -97,29 +122,40 @@ export class AssignmentDialogue {
   }
   async draft(input){
     const binding=await this.input(input),payload=assignmentPayload({...input,kind:'task'});
-    return this.c.mutate('assignmentIntent',{...binding,payload,key:input.idempotency_key,draft:true});
+    check(input.dispatch_when_ready===undefined||typeof input.dispatch_when_ready==='boolean','INPUT','dispatch_when_ready должен быть boolean.');
+    const result=await this.c.mutate('assignmentIntent',{...binding,payload,key:input.idempotency_key,draft:true});
+    if(!input.dispatch_when_ready)return result;
+    await this.c.mutate('assignmentDispatch',{...binding,draft_id:result.message_id,when_ready:true});
+    return this.complete(binding.run_id,result.message_id);
   }
   async dispatch(input){
     const binding=await this.input(input);
-    const result=await this.c.mutate('assignmentDispatch',{...binding,draft_id:input.draft_id});
+    check(input.when_ready===undefined||typeof input.when_ready==='boolean','INPUT','when_ready должен быть boolean.');
+    const result=await this.c.mutate('assignmentDispatch',{...binding,draft_id:input.draft_id,when_ready:input.when_ready===true});
     return this.complete(binding.run_id,result.message_id);
   }
   async ready(target){
     const progress=this.c.workflow.progress(target.local_session_id),physical=await this.c.workflow.reconcile(target);
     check(progress?.sdk&&progress.permitted&&physical?.stopped&&!physical.busy&&physical.commandsIdle===true,
-      'CHANNEL_NOT_READY','Задание сохраните через workflow_assignment_prepare. Отправка требует текущего SDK, привязки и конца bootstrap; ждите ready без опроса модели.');
+      'CHANNEL_NOT_READY','Отправка ждёт текущего SDK, привязки и конца bootstrap. Явно авторизованное поручение отправится автоматически; обычный черновик требует dispatch. Завершите ход без опроса модели.');
   }
   async dispatchDraft(input){
     const {run,member}=this.c.member(input),intent=run.assignment_intents?.[input.draft_id];
     check(member.role==='O'&&intent?.sender_id===member.id&&intent.effect.kind==='task','ROLE','Нужен собственный черновик O.');
     check(intent.effect.scope_id===run.grant?.scope_id,'STALE_DRAFT','Черновик относится к другому плану.');
-    if(intent.phase!=='draft')return {message_id:intent.message_id};
+    if(intent.phase==='published')return {message_id:intent.message_id};
+    check(!['failed','retired'].includes(intent.phase),'INTENT_CLOSED','Операция закрыта; подготовьте актуальное поручение.');
     await this.c.enrollment.validate(intent.target);
     const state=await this.state(member.target,intent.effect.assignment_id);
     check(state.contract_digest===intent.contract_digest&&(state.dialogue?.attempt??1)===intent.effect.attempt,
       'STALE_DRAFT','Изменились требования или попытка. Подготовьте новое поручение.');
-    await this.ready(intent.target);
-    intent.phase='prepared';
+    if(!input.when_ready)await this.ready(intent.target);
+    check(run.grant.active&&run.grant.phase==='running'&&run.grant.boot===this.c.backendId,
+      'STOPPED','Авторизация отправки требует выполняющегося плана.');
+    intent.authorization={generation:run.grant.generation,boot:this.c.backendId,scope_id:run.grant.scope_id,
+      recipient:reference(run,intent.target),attempt:intent.effect.attempt,contract_digest:intent.contract_digest};
+    intent.phase='authorized';delete intent.error;
+    this.suppressPreparation(run,intent);
     this.c.event(run,'task.dispatch_requested',{message_id:intent.message_id,assignment_id:intent.effect.assignment_id});
     return {message_id:intent.message_id};
   }
@@ -170,6 +206,7 @@ export class AssignmentDialogue {
       check(intent&&!run.removed,'INTENT','Намерение недоступно.');
       check(intent.phase!=='draft','DRAFT_NOT_DISPATCHED','Черновик не отправлен. После ready вызовите workflow_assignment_dispatch.');
       if(intent.phase==='published')return this.c.workflow.receipt(run.messages.find(m=>m.message_id===messageId));
+      if(intent.authorization)return this.c.mutate('assignmentAuthorized',{run_id:runId,message_id:messageId});
       check(!['failed','retired'].includes(intent.phase),'INTENT_CLOSED','Операция закрыта; прочитайте её точную ошибку в status.');
       let receipt;
       try{await this.c.enrollment.validate(intent.source);await this.c.enrollment.validate(intent.target);
@@ -187,6 +224,35 @@ export class AssignmentDialogue {
       return this.c.mutate('assignmentPublish',{run_id:runId,message_id:messageId,receipt});
     })();this.pending.set(key,work);void work.finally(()=>this.pending.delete(key)).catch(()=>{});return work;
   }
+  async applyAuthorized(input){
+    const c=this.c,run=c.run(input),intent=run.assignment_intents?.[input.message_id];
+    check(intent&&!run.removed,'INTENT','Намерение недоступно.');
+    if(intent.phase==='published')return c.workflow.receipt(run.messages.find(m=>m.message_id===input.message_id));
+    if(intent.phase==='authorized'&&!this.authorized(run,intent))this.invalidateAuthorizations(run);
+    if(intent.phase!=='authorized')return {message_id:intent.message_id,draft_id:intent.message_id,
+      persisted:true,published:false,phase:intent.phase};
+    try{
+      await c.enrollment.validate(intent.source);await c.enrollment.validate(intent.target);
+      const state=await this.state(intent.source,intent.effect.assignment_id);
+      check(state.contract_digest===intent.contract_digest&&(state.dialogue?.attempt??1)===intent.effect.attempt,
+        'STALE_DRAFT','Изменились требования или попытка. Подготовьте новое поручение.');
+      await this.ready(intent.target);
+      // Authorization, the idempotent Kit effect and WAL publication share the
+      // permission mutation queue. A concurrent Stop cannot race a new effect.
+      const receipt=await this.kit.apply(intent.source,intent.effect);
+      return this.publish({...input,receipt});
+    }catch(error){
+      const code=String(error.code??'KIT_UNAVAILABLE');
+      const retry=/(?:CHANNEL_NOT_READY|WORKFLOW_LOCKED|PLAN_PAUSED|TEST_INTERRUPTION|KIT_UNAVAILABLE|TIMEOUT|ECONN|EPIPE|COMMAND_ACTIVE|COMMAND_UNKNOWN|INTEGRATION_PENDING|TRANSACTION_PENDING)$/.test(code);
+      if(!retry)intent.phase='needs_confirmation';
+      if(intent.error?.code!==code||!retry){
+        intent.error={code,message:String(error.message).slice(0,700)};
+        c.event(run,'task.dispatch_waiting',{message_id:intent.message_id,assignment_id:intent.effect.assignment_id,code,retry});
+      }
+      return {message_id:intent.message_id,draft_id:intent.message_id,persisted:true,published:false,phase:intent.phase,
+        ...(retry?{waiting:intent.error}:{error:intent.error})};
+    }
+  }
   deferred(input){
     const run=this.c.run(input),intent=run.assignment_intents?.[input.message_id];
     if(!intent||run.removed||intent.phase==='retired')return {retired:true};
@@ -199,7 +265,7 @@ export class AssignmentDialogue {
   async reconcile(projectId,scopeId){
     await this.c.tail;
     for(const run of this.c.runs.values())if(!run.removed&&run.project_id===projectId&&run.grant?.scope_id===scopeId){
-      for(const intent of Object.values(run.assignment_intents??{}))if(['prepared','deferred'].includes(intent.phase)){
+      for(const intent of Object.values(run.assignment_intents??{}))if(['authorized','prepared','deferred'].includes(intent.phase)){
         try{await this.complete(run.id,intent.message_id);}catch(error){
           if(run.removed||intent.phase==='retired')continue;
           if(intent.phase!=='failed')await this.c.mutate('assignmentDeferred',{run_id:run.id,message_id:intent.message_id,
@@ -254,7 +320,17 @@ export class AssignmentDialogue {
       repair_attempt:receipt.repair_attempt,escalation_required:receipt.escalation_required,
       body:effect.kind+' · '+receipt.task_id,kit_receipt:receipt,idempotency_key:intent.key,fingerprint:intent.fingerprint,
       delivery:'pending',read:false,reply_observed:false,created_at:intent.created_at};
-    run.messages.push(message);intent.phase='published';
+    run.messages.push(message);intent.phase='published';delete intent.error;
+    if(effect.kind==='task')for(const other of Object.values(run.assignment_intents??{})){
+      if(other!==intent&&other.effect.kind==='task'&&other.effect.assignment_id===effect.assignment_id
+        &&other.effect.scope_id===effect.scope_id&&other.effect.attempt<=effect.attempt
+        &&['draft','authorized','needs_confirmation'].includes(other.phase)){
+        // Kit's accepted exact task is authoritative. Superseded unconsumed
+        // drafts must not keep finalization waiting forever.
+        other.phase='retired';
+        c.event(run,'task.draft_retired',{message_id:other.message_id,assignment_id:effect.assignment_id});
+      }
+    }
     c.event(run,'message.persisted',{message_id:message.message_id,participant_id:message.recipient_id,assignment_id:message.assignment_id,
       task_id:message.task_id,kind:message.kind,sender_role:message.sender_role});
     return c.workflow.receipt(message);
@@ -264,7 +340,7 @@ export class AssignmentDialogue {
     const {run,member}=this.c.member(binding);
     const pending=Object.values(run.assignment_intents??{}).filter(i=>i.sender_id===member.id&&i.phase!=='published');
     return {permission:this.c.workflow.state(run),assignments:await this.roster(run,member),
-      pending_intents:pending.map(i=>({message_id:i.message_id,draft_id:i.phase==='draft'?i.message_id:undefined,
+      pending_intents:pending.map(i=>({message_id:i.message_id,draft_id:i.effect.kind==='task'?i.message_id:undefined,
         assignment_id:i.effect.assignment_id,attempt:i.effect.attempt,operation_id:i.operation_id,phase:i.phase,error:i.error??null})),
       messages:run.messages.filter(m=>(m.sender_id===member.id||m.recipient_id===member.id)&&m.scope_id===run.grant?.scope_id)
         .map(m=>({...this.c.workflow.receipt(m),kind:m.kind,assignment_id:m.assignment_id,attempt:m.attempt,sender_role:m.sender_role,in_reply_to:m.in_reply_to}))};

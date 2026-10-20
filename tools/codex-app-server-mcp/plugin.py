@@ -158,7 +158,7 @@ def register_plugin(mcp, state_root: Path):
     async def read_message(message_id: MessageId, ctx: Context,
                            run_id: Annotated[str | None, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$", description="Legacy run only; omit for automatically registered working plans.")] = None,
                            participant_id: Annotated[str | None, Field(max_length=128, description="Legacy participant only; working plans derive it from host identity.")] = None) -> CallToolResult:
-        """Read an addressed message, current role instructions and record receipt. Apply the role update without replaying completed work; read all referenced context parts. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
+        """Read an addressed message, current role instructions and record receipt. Small service messages include complete inline_context with digest and recipient_ref: use them directly without another context/participants read. Otherwise read all referenced context parts. Apply the role update without replaying completed work. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
         return await communication("readMessage", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id)
 
     @mcp.tool(name="workflow_communication_read_context", annotations=READ, meta={"ui": {"visibility": ["model"]}})
@@ -198,15 +198,18 @@ def register_plugin(mcp, state_root: Path):
     async def assignment_prepare(recipient: RunId, attempt: Annotated[int, Field(ge=1, description="Current assignment attempt from participants.")],
                                  body: Annotated[str, Field(min_length=1, max_length=1048576, description="Orchestrator-authored task text; no secrets.")],
                                  idempotency_key: RunId, ctx: Context,
-                                 contexts: Annotated[list[AssignmentContext] | None, Field(max_length=16, description="Selected context sources for this executor only.")] = None) -> CallToolResult:
-        """Orchestrator only: prepare a durable task and selected context while executor bootstrap is running. Does not grant, publish or send work. Save draft_id. After channel ready call workflow_assignment_dispatch; status lists your drafts. Same key/content is idempotent. Do not poll while waiting."""
+                                 contexts: Annotated[list[AssignmentContext] | None, Field(max_length=16, description="Selected context sources for this executor only.")] = None,
+                                 dispatch_when_ready: Annotated[bool, Field(description="Explicitly authorize this exact task/context to dispatch when its channel is ready in the current plan generation. False saves a draft only.")] = False) -> CallToolResult:
+        """Orchestrator only: prepare task/context concurrently with bootstrap, using recipient_ref and attempt from the service read_message. Prefer dispatch_when_ready=true to explicitly authorize delivery in this call: publishes immediately if ready, otherwise waits durably without another O turn. Pause/restart invalidates that authorization and requires explicit reauthorization; status reports needs_confirmation. False saves only a draft. Same key/content never repeats a Kit effect. Read complete inline service context directly; do not reread it or poll readiness."""
         return await communication("assignmentPrepare", ctx, recipient=recipient, attempt=attempt, body=body,
-                                   idempotency_key=idempotency_key, contexts=[c.model_dump() for c in contexts or []])
+                                   idempotency_key=idempotency_key, contexts=[c.model_dump() for c in contexts or []],
+                                   dispatch_when_ready=dispatch_when_ready)
 
     @mcp.tool(name="workflow_assignment_dispatch", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
-    async def assignment_dispatch(draft_id: MessageId, ctx: Context) -> CallToolResult:
-        """Orchestrator sends its saved task only after current binding, SDK and physical bootstrap completion. Validates assignment, attempt and requirements again. Repeated calls return the same receipt, never repeat UNKNOWN. Not-ready keeps the draft: yield and wait for ready."""
-        return await communication("assignmentDispatch", ctx, draft_id=draft_id)
+    async def assignment_dispatch(draft_id: MessageId, ctx: Context,
+                                  when_ready: Annotated[bool, Field(description="Explicitly authorize delivery when ready in this generation; use for reauthorization after pause/restart.")] = False) -> CallToolResult:
+        """Orchestrator explicitly authorizes its saved exact task. Validates assignment, attempt and requirements again. when_ready=true persists authorization until ready without another model turn; false requires current binding, SDK and physical bootstrap completion now. Pause/restart invalidates unconsumed authorization. Repeated calls return the same receipt, never repeat UNKNOWN."""
+        return await communication("assignmentDispatch", ctx, draft_id=draft_id, when_ready=when_ready)
 
     @mcp.tool(name="workflow_assignment_yield", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def assignment_yield(message_ids: Annotated[list[MessageId], Field(min_length=1, max_length=32, description="Read incoming messages processed during this turn.")],
