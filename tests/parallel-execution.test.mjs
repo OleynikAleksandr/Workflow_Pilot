@@ -308,6 +308,42 @@ test('orchestrated: a sequential task runs alone, parallel tasks wait for it and
   assert.ok(!f.calls.created.includes('D1'),'delivery is never assigned');
 });
 
+test('dialogue DOCS bootstrap overlaps O text only after verified dependencies and without a main writer',async t=>{
+  const f=orchestratedFixture(t);f.state.plan.dialogue_version=1;
+  f.state.plan.tasks=[{...task('A'),commit_status:'DONE'},{...task('B'),commit_status:'DONE'},
+    {...task('DOCS',['A','B']),parallel_safe:false}];
+  f.state.assignments=['A','B'].map(id=>({id,parent_task_id:id,status:'INTEGRATED',source_commit:'source-'+id}));
+  Object.assign(f.page,{stopped:false,canSend:false,busy:true});
+  f.state.commandActive=true;await f.signal();assert.equal(f.calls.created.length,0);
+  f.state.commandActive=false;f.state.mainClean=false;await f.signal();assert.equal(f.calls.created.length,0);
+  f.state.mainClean=true;f.state.confirmed=false;await f.signal();assert.equal(f.calls.created.length,0);
+  f.state.confirmed=true;f.state.integration={status:'PREPARED'};await f.signal();assert.equal(f.calls.created.length,0);
+  f.state.integration={status:'IDLE'};await f.signal();assert.deepEqual(f.calls.created,['DOCS']);
+  assert.equal(f.calls.sent.length,0,'bootstrap does not send a message into the busy O conversation');
+  await f.signal();assert.equal(f.calls.created.length,1,'same assignment is reused');
+});
+
+test('dialogue final text overlaps E receipts; null and PENDING cleanup never imply complete',async t=>{
+  for(const cleanup of [null,{status:'PENDING'},{status:'DONE'}]){
+    const f=orchestratedFixture(t);f.state.plan.dialogue_version=1;
+    f.state.plan.tasks=[{...task('A'),commit_status:'DONE'}];
+    f.state.assignments=[{id:'a',parent_task_id:'A',status:'INTEGRATED',source_commit:'source-a',cleanup}];
+    let settled=false;f.runtime.channelSettled=()=>settled;
+    await f.signal();assert.equal(f.calls.sent.length,1,'final handoff does not wait for terminal E');
+    if(cleanup?.status==='DONE')assert.doesNotMatch(f.calls.sent[0],/assignment:cleanup/);
+    else assert.match(f.calls.sent[0],/assignment:cleanup.*PENDING/);
+    await f.reply();assert.notEqual(f.control.state,'complete');
+    settled=true;await f.signal();
+    if(cleanup?.status!=='DONE')assert.notEqual(f.control.state,'complete');
+    f.state.assignments[0].cleanup={status:'DONE'};
+    f.control.state='paused';await f.signal();assert.equal(f.control.state,'paused');
+    f.control.state='running';f.state.commandActive=true;await f.signal();assert.notEqual(f.control.state,'complete');
+    f.state.commandActive=false;f.page.stopped=false;await f.signal();assert.notEqual(f.control.state,'complete');
+    f.page.stopped=true;await f.signal();assert.equal(f.control.state,'complete');
+    assert.equal(f.calls.sent.length,1);
+  }
+});
+
 test('orchestrated: pause stops new tasks, running executors finish and integrate, continue resumes',async t=>{
   const f=orchestratedFixture(t);
   await f.signal();f.finish('S1');await f.signal();

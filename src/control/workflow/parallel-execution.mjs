@@ -110,11 +110,17 @@ export function availableTasks(plan,assignments,workers) {
 }
 
 // Only structured Kit facts are transmitted; the orchestrator decides inside the rules of its role.
-export function deliveryText(workspace,task) {
-  if(!task)return ['Все задачи плана оркестратора выполнены. Выполни итоговую очистку: ./scripts/workflow assignment:cleanup.',
+export function deliveryText(workspace,task,state=null) {
+  const cleaned=state?.assignments?.every(a=>a.status==='INTEGRATED'&&a.cleanup?.status==='DONE');
+  if(!task)return ['Все обязательные задачи интегрированы. '+(cleaned
+    ?'Очистка всех назначений подтверждена Kit. Не повторяй её.'
+    :'Выполни итоговую очистку: ./scripts/workflow assignment:cleanup. При PENDING не жди модельным опросом: backend продолжит её после последних квитанций.'),
     'Workspace: '+JSON.stringify(workspace),
     'Используй уже проверенные proof точных SHA и подтверждённые интеграции. Не повторяй проверки неизменившегося кода: новый прогон нужен при изменениях после проверки, ошибке или конкретном непроверенном свойстве.',
-    'Убедись, что остался только main (only_main: true); невлитые назначения перечисли пользователю.',
+    'Сообщай only_main: true только по подтверждению Kit; ожидающую очистку назови оставшейся стадией.',
+    ...(state?[ 'Проверенные факты на момент поручения (не разрешение повторять эффекты): '+JSON.stringify({
+      head:state.head,revision:state.plan.plan_revision,assignments:state.assignments.map(a=>({
+        task_id:a.parent_task_id,source_commit:a.source_commit,integration_commit:a.integration_commit,cleanup:a.cleanup?.status??null}))})]:[]),
     'Затем дай итоговый ответ пользователю: что сделано и проверено, ограничения и следующий шаг. План не архивируй без прямого поручения пользователя.'].join('\n');
   return ['Выполни delivery-задачу плана оркестратора в main.','Workspace: '+JSON.stringify(workspace),
     'Задача '+task.id+' — '+task.title+'. Порядок: ./scripts/workflow task:start '+task.id+' → работа → commit --task '+task.id+'.',
@@ -349,7 +355,11 @@ export class ParallelExecution {
     if(!issuing()){this.publish(workspace,{phase:'paused'});this.settle(workspace,plan,assignments,state);return;}
     if(!state.mainClean)throw fail('MAIN_DIRTY','В main есть незакоммиченные изменения. Выполнение плана не удаляет и не присваивает их.');
     const mainPage=this.mainState(origin);
-    if(!mainPage.stopped||mainPage.canSend===false)throw fail('MAIN_CHAT_NOT_READY','Ждём готовности основного чата без активного ответа и черновика.');
+    if(plan.dialogue_version!==1&&(!mainPage.stopped||mainPage.canSend===false))
+      throw fail('MAIN_CHAT_NOT_READY','Ждём готовности основного чата без активного ответа и черновика.');
+    // Bootstrap creates a separate conversation; it does not send into O.
+    // Confirmed main, writer/integration/transaction guards above and Kit's
+    // locked base/revision check still apply while O finishes its text.
     // A known, never-opened assignment may finish setup under the same identity.
     for(const a of assignments) {
       const entry=ledger.assignments[a.id];
@@ -417,9 +427,14 @@ export class ParallelExecution {
     const {plan,assignments}=state;
     const orchestrated=plan.execution_strategy==='orchestrated';
     if(plan.dialogue_version===1){
+      const signature=JSON.stringify(plan.tasks.map(t=>[t.id,t.commit_ref]));
+      const final=ledger.delivery?.cleanup;
+      if(final?.planSignature&&final.planSignature!==signature&&['pending','reply-observed'].includes(final.status)){
+        delete ledger.delivery.cleanup;await this.persist();
+      }
       if(!plan.tasks.length||plan.tasks.some(t=>!isDeliveryTask(t)&&t.commit_status!=='DONE'))return false;
-      if(!this.channelSettled(workspace,plan.scope_id)){this.publish(workspace,{phase:'finalizing',
-        finalizationReason:'Ожидаем последние квитанции и подтверждённое завершение ходов.',error:null});return true;}
+      // Final text may overlap terminal E receipts; actual delivery effects
+      // and completion below retain the settled-channel barrier.
       return this.deliver(workspace,state,origin,ledger,()=>!this.closed&&!this.suspended.has(workspace)
         &&(this.canFinalize?this.canFinalize(workspace,plan.scope_id):enabled()));
     }
@@ -642,13 +657,25 @@ export class ParallelExecution {
         return true;
       }
       if(!allowed()){this.publish(workspace,{phase:'paused',delivery:key,error:null});return true;}
-      if(!state.confirmed||state.commandActive||!state.mainClean||!page.stopped||!page.canSend) {
+      if(plan.dialogue_version===1&&task&&!this.channelSettled(workspace,plan.scope_id)){
+        this.publish(workspace,{phase:'finalizing',delivery:key,error:null,
+          finalizationReason:'Ожидаем последние квитанции перед поставкой.'});return true;
+      }
+      if(!state.confirmed||state.commandActive||!state.mainClean||!page.stopped||!page.canSend
+        ||plan.dialogue_version===1&&state.integration?.status!=='IDLE') {
         this.publish(workspace,{phase:'delivering',delivery:key,error:null});return true;
       }
-      const next=ledger.delivery[key]={status:'pending',scope:plan.scope_id,sessionId:origin.sessionId};
-      return this.handoff(workspace,state,origin,next,deliveryText(workspace,task),allowed,key);
+      if(plan.dialogue_version===1&&state.assignments.some(a=>a.status!=='INTEGRATED')){
+        this.publish(workspace,{phase:'finalizing',delivery:key,error:null,finalizationReason:'Проверяем все интеграции.'});return true;
+      }
+      const next=ledger.delivery[key]={status:'pending',scope:plan.scope_id,sessionId:origin.sessionId,
+        planSignature:JSON.stringify(plan.tasks.map(t=>[t.id,t.commit_ref]))};
+      return this.handoff(workspace,state,origin,next,deliveryText(workspace,task,plan.dialogue_version===1?state:null),allowed,key);
     }
+    if(plan.dialogue_version===1&&!allowed()){this.publish(workspace,{phase:'paused',error:null});return true;}
     if(plan.dialogue_version===1&&(state.commandActive||!state.confirmed||!state.mainClean
+      ||state.integration?.status!=='IDLE'
+      ||!this.channelSettled(workspace,plan.scope_id)||!this.physicalMainState(origin).stopped
       ||state.assignments.some(a=>a.status!=='INTEGRATED'||a.cleanup?.status!=='DONE'))){
       this.publish(workspace,{phase:'finalizing',delivery:'cleanup',error:null,
         finalizationReason:'Ожидаем подтверждение очистки Kit и чистого main после итогового ответа.'});

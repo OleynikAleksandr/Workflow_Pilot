@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 671,
+  "plan_revision": 673,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -71,7 +71,9 @@
       "src/control/workflow/session-plans.mjs",
       "tests/parallel-execution.test.mjs",
       "src/control/sessions/session-plans.mjs",
-      "tests/session-plans.test.mjs"
+      "tests/session-plans.test.mjs",
+      "packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs",
+      "tests/parallel-finalization.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -250,8 +252,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "T006",
@@ -269,7 +271,11 @@
         "tests/parallel-execution.test.mjs",
         "tests/workflow-channel.test.mjs",
         "tests/fixtures/automatic-agent-dialogue.mjs",
-        "tests/automatic-agent-dialogue.test.mjs"
+        "tests/automatic-agent-dialogue.test.mjs",
+        "packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/dialogue-delivery.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -289,7 +295,17 @@
         "Проверить Kit-команду O во время длительного setup DOCS: WORKFLOW_LOCKED означает повторяемое ожидание занятости без эскалации пользователю и без повтора уже совершённого эффекта. Ролевой протокол явно объясняет временную блокировку при подготовке назначения; повтор использует прежний operation/idempotency key и актуальное состояние."
       ],
       "expected_commit_message": "fix: перекрыть независимые стадии DOCS и завершения",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/dialogue-delivery.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -584,7 +600,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 671
+Revision: 673
 
 ## Цель
 
@@ -613,10 +629,10 @@ Revision: 671
   - Файлы: src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/contracts/plugin-communication.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/session-plans.mjs, src/control/sessions/session-plans.mjs, tests/dialogue-delivery.test.mjs, tests/session-plans.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T006: Перекрыть запуск DOCS и финализацию с независимыми хвостами диалога — Ожидает
-  - Git Commit: [PENDING] fix: перекрыть независимые стадии DOCS и завершения
+- [DONE] T006: Перекрыть запуск DOCS и финализацию с независимыми хвостами диалога — Завершено
+  - Git Commit: [DONE] fix: перекрыть независимые стадии DOCS и завершения
   - Reference: dialogue-latency-visibility / T006 / implementation
-  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/assignment-dialogue.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, tests/parallel-execution.test.mjs, tests/workflow-channel.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs
+  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/assignment-dialogue.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, tests/parallel-execution.test.mjs, tests/workflow-channel.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs, src/control/workflow/parallel-kit.mjs, tests/parallel-finalization.test.mjs, tests/dialogue-delivery.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002
 - [TODO] T003: Показывать текущие действия и отличать интеграции от завершения плана — Ожидает

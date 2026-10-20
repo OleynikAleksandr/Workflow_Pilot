@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
 import {ParallelKit} from '../src/control/workflow/parallel-kit.mjs';
 import {PluginProjects} from '../src/control/plugin/service.mjs';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {createFixture,planFixture} from '../packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs';
+import {readPlan} from '../packages/workflow-kit/src/lib/plan.mjs';
 
 test('assignment contract reads tolerate a Git replacement window but not persistent corruption',async()=>{
   let calls=0,broken=false;
@@ -69,13 +74,40 @@ test('participant validation retries transient integration reads but never retai
 
 test('read retries a Git replacement window but rejects persistent plan corruption',async()=>{
   const kit=new ParallelKit({});let reads=0;
-  for(const code of ['ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT']){
+  for(const code of ['ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT','PLAN_COMMIT_MISMATCH']){
     reads=0;kit.readSnapshot=async()=>{if(++reads===1)throw Object.assign(Error('concurrent replacement'),{code});return {confirmed:true};};
     assert.deepEqual(await kit.read('/fixture'),{confirmed:true});assert.equal(reads,2);
+    reads=0;kit.readSnapshot=async()=>{reads++;throw Object.assign(Error('persistent corruption'),{code});};
+    await assert.rejects(kit.read('/fixture'),{code});assert.equal(reads,3);
   }
   reads=0;
   kit.readSnapshot=async()=>{if(++reads===1)throw Object.assign(Error('partial Git write'),{code:'PLAN_JSON'});return {confirmed:true};};
   assert.deepEqual(await kit.read('/fixture'),{confirmed:true});assert.equal(reads,2);
   reads=0;kit.readSnapshot=async()=>{reads++;throw Object.assign(Error('corrupt'),{code:'PLAN_JSON'});};
   await assert.rejects(kit.read('/fixture'),{code:'PLAN_JSON'});assert.equal(reads,3);
+});
+
+test('a child commit lock defers inconsistent proof; persistent missing proof remains UNKNOWN',async t=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'wp-child-proof-'));
+  t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+  const root=createFixture(directory);planFixture(root,'origin');
+  const plan=readPlan(root),gitDir=path.join(root,'.git'),childGit=path.join(directory,'child-git');
+  const records=path.join(gitDir,'workflow-kit','assignments'),lock=path.join(childGit,'workflow-kit','operation.lock');
+  await fs.mkdir(records,{recursive:true});await fs.mkdir(path.dirname(lock),{recursive:true});
+  await fs.writeFile(path.join(records,'a.json'),JSON.stringify({id:'a',parent_scope_id:plan.scope_id,
+    parent_task_id:'T001',worktree:path.join(directory,'child'),phase:'ACTIVE'}));
+  await fs.writeFile(lock,'fixture writer');
+  const text=await fs.readFile(path.join(root,'.harness/plans/todo-plan.md'),'utf8');
+  const kit=new ParallelKit({plans:{call:async(_root,command)=>{
+    if(command==='integration:status')return {status:'IDLE'};
+    if(command==='validate')return {resolved:{},plan_revision:plan.plan_revision};
+    throw Object.assign(Error('DONE before commit visibility'),{code:'PLAN_COMMIT_MISMATCH'});
+  }}});
+  kit.git=async(workspace,args)=>args.includes('--absolute-git-dir')?(workspace===root?gitDir:childGit)
+    :args[0]==='show'?text.trim():args[0]==='status'?'':'head';
+  await assert.rejects(kit.read(root),{code:'WORKFLOW_LOCKED'});
+  await fs.rm(lock);
+  const result=await kit.read(root);
+  assert.equal(result.assignments[0].status,'UNKNOWN');
+  assert.equal(result.assignments[0].error.code,'PLAN_COMMIT_MISMATCH');
 });

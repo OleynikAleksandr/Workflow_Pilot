@@ -43,21 +43,22 @@ function fixture(t) {
   }});
  t.after(()=>runtime.dispose());return {origin,state,ledger,page,auth,calls,kit,runtime};
 }
-test('dialogue version 1 never merges READY and waits for terminal receipts before cleanup',async t=>{
+test('dialogue version 1 never merges READY, overlaps final handoff and waits for receipts and cleanup before complete',async t=>{
  const f=fixture(t);Object.assign(f.state.plan,{execution_strategy:'orchestrated',dialogue_version:1});
  await f.runtime.signal('/main');assert.equal(f.calls.merged,0);assert.equal(f.calls.sent,0);
  assert.equal(f.ledger.finalization,undefined,'READY is not a final handoff');
  f.state.plan.tasks[0].commit_status='DONE';f.state.assignments[0].status='INTEGRATED';
- f.runtime.channelSettled=()=>false;await f.runtime.signal('/main');assert.equal(f.calls.sent,0);
  f.runtime.queuedRoute=()=>true;f.runtime.sendFinalization=async(_origin,text)=>{
   assert.match(text,/assignment:cleanup/);f.calls.sent++;return {state:'queued',message_id:'cleanup'};
  };
- f.runtime.channelSettled=()=>true;await f.runtime.signal('/main');assert.equal(f.calls.sent,1);
+ f.runtime.channelSettled=()=>false;await f.runtime.signal('/main');assert.equal(f.calls.sent,1);
  await f.runtime.signal('/main');assert.equal(f.calls.sent,1);assert.equal(f.auth.enabled('/main','scope'),true);
  f.runtime.deliveryReceipt=()=>({reply_observed:true});await f.runtime.signal('/main');
  assert.equal(f.auth.enabled('/main','scope'),true,'final words do not prove cleanup');
  assert.equal(f.runtime.view('/main').phase,'finalizing');
  f.state.assignments[0].cleanup={status:'DONE'};await f.runtime.signal('/main');
+ assert.equal(f.auth.enabled('/main','scope'),true,'cleanup alone cannot bypass unconfirmed terminal receipts');
+ f.runtime.channelSettled=()=>true;await f.runtime.signal('/main');
  assert.equal(f.auth.enabled('/main','scope'),false);assert.equal(f.calls.merged,0);
 });
 test('final READY returns control before DONE, then observes a distinct main reply without replay',async t=>{

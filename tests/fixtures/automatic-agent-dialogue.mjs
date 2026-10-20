@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import {setTimeout as delay} from 'node:timers/promises';
+import {execFileSync} from 'node:child_process';
 import {createFixture} from '../../packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs';
 import {readPlan} from '../../packages/workflow-kit/src/lib/plan.mjs';
 import {ControlFacade} from '../../src/control/facade.mjs';
@@ -19,12 +20,27 @@ import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 export async function automaticDialogue(t,experience='chat',{owned=false,conversation=false,workers=2,batchResults=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
-  let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false;
+  let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
   const drafts=new Map();
-  const root=createFixture(directory),setup={node:async()=>process.execPath,
+  const root=createFixture(directory,{setupDelayMs:owned&&batchResults?1500:0}),setup={node:async()=>process.execPath,
     environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
       GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
   const plans=new SessionPlans({setup});
+  if(owned&&batchResults){
+    // Hold the real setup lock long enough to exercise a concurrent O command.
+    const invoke=plans.call.bind(plans);
+    plans.call=async(workspace,command,args=[],...rest)=>{
+      const id=command==='assignment:setup'?args[args.indexOf('--id')+1]:null;
+      const assignment=id&&JSON.parse(await fs.readFile(path.join(root,'.git/workflow-kit/assignments',id+'.json'),'utf8'));
+      if(assignment?.parent_task_id!=='DOCS')return invoke(workspace,command,args,...rest);
+      const before=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'});
+      const pending=invoke(workspace,command,args,...rest);
+      await wait(async()=>!!await fs.stat(path.join(assignment.worktree,'.harness/runtime/setup-hook-ready')).catch(()=>null),'DOCS setup entered npm');
+      await assert.rejects(invoke(root,'assignment:cleanup'),{code:'WORKFLOW_LOCKED'});
+      assert.equal(execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}),before,'rejected O command has no effect');
+      const result=await pending;setupLockChecked=true;return result;
+    };
+  }
   const control=new ControlFacade({storageFile:path.join(directory,'sessions.json'),execution:{},
     getExecutionSettings:()=>({parallel_allowed:true,max_workers:workers})});
   const store=control.projects;await store.load();await store.select(root);
@@ -176,16 +192,31 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
             }
           }
         }
+        if(batchResults&&results.some(r=>independent.includes(r.task_id))
+          &&readPlan(root).tasks.filter(t=>independent.includes(t.id)).every(t=>t.commit_status==='DONE')){
+          await wait(()=>[...records.values()].some(r=>r.project()?.taskId==='DOCS'),'DOCS bootstrap before O ends its result turn');
+          assert.equal(record.pageState.current.state.busy,true);docsOverlap=true;
+        }
       }else if(message.kind==='acceptance'){
         assert.equal(message.sender_role,'O');
         await wait(async()=>JSON.parse(await fs.readFile(path.join(root,'.git/workflow-kit/assignments',project.assignmentId+'.json'),'utf8')).phase==='INTEGRATED',
           'integration before late acceptance receipt');
-        if(batchResults&&project.taskId==='DOCS')await wait(()=>earlyCleanup,'early cleanup request before terminal yield');
+        if(batchResults&&project.taskId==='DOCS'){
+          await wait(()=>earlyCleanup,'early cleanup request before terminal yield');
+          await wait(()=>notifications.some(n=>n.kind==='finalization'),'final O starts before E terminal yield');
+        }
         assert.ok((await fs.stat(project.workspace)).isDirectory(),'worktree survives until acceptance is handled');
       }
       else if(message.kind==='finalization'){
-        assert.equal(message.sender_role,'backend');assert.match(text,/assignment:cleanup/);
-        assert.equal((await plans.call(root,'assignment:cleanup')).only_main,true);
+        assert.equal(message.sender_role,'backend');
+        if(batchResults){
+          const docs=[...records.values()].find(r=>r.project()?.taskId==='DOCS');
+          assert.equal(docs.pageState.current.state.busy,true);finalOverlap=true;
+        }
+        if(text.includes('assignment:cleanup')){
+          const cleanup=await plans.call(root,'assignment:cleanup');
+          assert.ok(cleanup.only_main||cleanup.pending.length>0,'early finalization keeps real pending receipts');
+        }else assert.match(text,/Очистка всех назначений подтверждена/);
       }else throw Error('Unexpected owned dialogue: '+message.kind);
       await call('assignment_yield',{message_ids:handled,reason:'handled'});return;
     }
@@ -301,6 +332,8 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     parallel_allowed:true,max_workers:workers,execution_strategy:'orchestrated',execution_reason:'Independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,...(owned?{}:{dialogue_version:0}),
     acceptance:['One Start; complete work without manual panel action'],checks:[{id:'dependency',executable:'npm',args:['test'],required:false,timeout_ms:30000}],
     tasks:[...independent.map(id=>task(id,taskFile[id])),...(batchResults?[]:[task('T003','THIRD.md',independent)])]});
+  if(owned&&batchResults)await plans.call(root,'task:update',['--task','DOCS','--expected-revision',String(readPlan(root).plan_revision)],
+    {checks:['dependency']});
   assert.equal(readPlan(root).dialogue_version,owned?1:0,'new owned plan defaults to dialogue; legacy fixture opts into its former contract');
   await store.reconcileRoles(root);await store.selectSession(root,origin.sessionId);workflow.execution.observe(root);
   await workflow.execution.signal(root);assert.equal(records.size,1,'publication alone opens no executor');
@@ -350,7 +383,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     const sent=run.events.find(e=>e.event_type==='message.persisted'&&e.message_id===draftId);
     assert.ok(prepared.seq<bound.seq&&bound.seq<sent.seq,'prepare precedes binding; dispatch follows binding');
   }
-  if(batchResults)assert.equal(earlyCleanup,true);
+  if(batchResults){assert.equal(earlyCleanup,true);assert.equal(setupLockChecked,true);assert.equal(docsOverlap,true);assert.equal(finalOverlap,true);}
   assert.equal(workflow.executionControl.snapshot()[root].route,'plugin-v1');
   runtime.verify();
   return {notifications,run,root};

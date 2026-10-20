@@ -39,7 +39,7 @@ export class ParallelKit {
       catch(error){
         // Git checkout/merge replaces the tracked plan outside Kit's atomic writer.
         // A bounded fresh read tolerates that window; persistent corruption still fails.
-        if(!['PLAN_CHANGED_DURING_READ','PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION','ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT'].includes(error.code)||attempt>=2)throw error;
+        if(!['PLAN_CHANGED_DURING_READ','PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION','PLAN_COMMIT_MISMATCH','ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT'].includes(error.code)||attempt>=2)throw error;
         await new Promise(resolve=>setTimeout(resolve,50));
       }
     }
@@ -73,9 +73,10 @@ export class ParallelKit {
       if(record.phase==='INTEGRATED') {
         assignments.push({...record,status:'UNKNOWN',error:{code:'INTEGRATION_PROOF_MISSING',message:'Интеграция не подтверждена историей main.'}});continue;
       }
+      let childGit;
       try {
+        childGit=await this.git(record.worktree,['rev-parse','--absolute-git-dir']);
         const status=await this.plans.call(workspace,'assignment:status',['--id',record.id]);
-        const childGit=await this.git(record.worktree,['rev-parse','--absolute-git-dir']);
         const activity=await readCommandActivity(record.worktree);
         assignments.push({...record,...status,...activity,commandActive:activity.commandActive||await exists(path.join(childGit,'workflow-kit','operation.lock')),
           dirty:!!await this.git(record.worktree,['status','--porcelain'])});
@@ -85,9 +86,12 @@ export class ParallelKit {
         if(['PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION'].includes(error.code))throw error;
         // A revision updates the child plan and its contract under Kit locks.
         // A reader between these writes must not turn a known writer into UNKNOWN.
-        if(await exists(path.join(gitDir,'workflow-kit','operation.lock')))
+        if(await exists(path.join(gitDir,'workflow-kit','operation.lock'))
+          ||childGit&&await exists(path.join(childGit,'workflow-kit','operation.lock')))
           throw Object.assign(Error('Workflow Kit обновляет назначение; ждём завершения операции.'),{code:'WORKFLOW_LOCKED'});
-        if(retryTransient&&['ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT'].includes(error.code))throw error;
+        // A commit replaces plan, transaction and HEAD separately. The writer
+        // may have just released its lock by the time this failed read returns.
+        if(retryTransient&&['PLAN_COMMIT_MISMATCH','ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT'].includes(error.code))throw error;
         assignments.push({...record,status:'UNKNOWN',error:{code:error.code,message:error.message}});
       }
     }

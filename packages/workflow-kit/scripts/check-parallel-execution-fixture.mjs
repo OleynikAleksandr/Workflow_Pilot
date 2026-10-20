@@ -23,7 +23,7 @@ const npm=(root,args)=>{
   }
   return execFileSync('npm',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']});
 };
-export function createFixture(directory) {
+export function createFixture(directory,{setupDelayMs=0}={}) {
   fs.mkdirSync(directory,{recursive:true});const root=path.join(fs.realpathSync(directory),'main');fs.mkdirSync(root);
   git(root,'init','-b','main');git(root,'config','user.name','Parallel Fixture');git(root,'config','user.email','fixture@example.invalid');
   write(root,'.gitignore','node_modules/\n');
@@ -32,7 +32,9 @@ export function createFixture(directory) {
   write(root,'vendor/fixture-dep/package.json',JSON.stringify({name:'fixture-dep',version:'1.0.0',type:'module',exports:'./index.mjs'}));
   write(root,'vendor/fixture-dep/index.mjs','export const value=37;\n');
   write(root,'package.json',JSON.stringify({name:'parallel-fixture',version:'1.0.0',private:true,type:'module',
-    scripts:{test:'node verify.mjs'},dependencies:{'fixture-dep':'file:vendor/fixture-dep'}}));
+    scripts:{test:'node verify.mjs',...(setupDelayMs?{
+      preinstall:`node -e "require('fs').mkdirSync('.harness/runtime',{recursive:true});require('fs').writeFileSync('.harness/runtime/setup-hook-ready','ready');setTimeout(()=>{},${Math.min(5000,Math.max(0,Number(setupDelayMs)||0))})"`}:{})},
+    dependencies:{'fixture-dep':'file:vendor/fixture-dep'}}));
   write(root,'verify.mjs',"import assert from 'node:assert/strict';import fs from 'node:fs';import {value} from 'fixture-dep';assert.equal(value,37);if(fs.readFileSync('THIRD.md','utf8').includes('worker-c'))for(const f of ['README.md','SECOND.md'])assert.match(fs.readFileSync(f,'utf8'),/worker-/);\n");
   npm(root,['install','--package-lock-only','--ignore-scripts','--offline','--no-audit','--no-fund']);
   git(root,'add','.');git(root,'commit','-m','fixture baseline');install({project:root,mode:'existing'});
