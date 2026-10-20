@@ -423,8 +423,8 @@ function currentView(project, sessionId = project?.selectedSessionId) {
 
 export class WorkspaceSessions {
   constructor(file, { inspect = readWorkspace, uuid = randomUUID, now = Date.now, planService = null,
-    getExecutionSettings = () => validateParallelSettings(), git=workspaceGit } = {}) {
-    Object.assign(this, { file, uuid, now, planService, getExecutionSettings, git });
+    getExecutionSettings = () => validateParallelSettings(), getExecutionState=()=>null, git=workspaceGit } = {}) {
+    Object.assign(this, { file, uuid, now, planService, getExecutionSettings, getExecutionState, git });
     this.inspect = async (workspace, sessionId = this.project(workspace)?.sessionId) => {
       try { return await inspect(workspace, sessionId); }
       catch (error) {
@@ -938,13 +938,27 @@ export class WorkspaceSessions {
     });
   }
 
-  // A project with an active orchestrated plan is archived only with the user's explicit
-  // confirmation (stopExecution); the plan itself stays in Kit.
+  // Scope acceptance and execution completion differ. Completion is obtained
+  // from the backend, never from a flag supplied by the client.
   setArchived(workspace, archived, { stopExecution = false } = {}) {
-    return this.mutate(data => {
+    return this.mutate(async data => {
       const project = data.projects.find(p => p.workspace === workspace);
       if (!project || typeof archived !== 'boolean') throw new WorkspaceError('WORKSPACE_REQUIRED', 'Выберите проект из списка.');
-      if (archived && !project.archivedAt && !stopExecution && project.sessions.some(session => activeOrchestrator(project, session)))
+      let fresh=null;
+      if(archived&&!project.archivedAt){
+        // A missing folder may still be archived. It cannot prove completion.
+        try{fresh=await this.inspect(workspace);}catch{/* retain the saved identity and conservative active-plan guard */}
+        if(fresh){
+          if(fresh.projectId!==project.projectId)throw new WorkspaceError('PROJECT_REPLACED','Проект изменился. Повторите выбор перед архивированием.');
+          Object.assign(project,fresh);applySessionRoles(project);
+        }
+      }
+      const execution=this.getExecutionState(workspace);
+      const complete=!!fresh&&execution?.projectId===project.projectId&&execution?.scopeId===project.scopeId
+        &&execution.state==='complete'&&project.scopeStatus==='ACTIVE'&&project.planView?.tasks?.length>0
+        &&project.planView.tasks.every(task=>task.status==='done');
+      if (archived && !project.archivedAt && !stopExecution && !complete
+        &&(orchestratedPlanActive(project)||project.sessions.some(session => activeOrchestrator(project, session))))
         throw new WorkspaceError('PLAN_ACTIVE', 'У проекта выполняется план оркестратора. Подтвердите архивирование: выполнение плана будет остановлено.');
       project.archivedAt = archived ? (project.archivedAt ?? this.now()) : null;
       if (archived && (data.selectedWorkspace === workspace||data.projects.some(p=>p.workspace===data.selectedWorkspace&&ownedExecutor(p,project)))) data.selectedWorkspace = null;

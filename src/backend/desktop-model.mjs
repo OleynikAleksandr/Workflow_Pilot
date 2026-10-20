@@ -32,7 +32,8 @@ const settingsFile = path.join(dataDir, 'settings.json');
 
 const chromiumDiagnosticsFile = path.join(dataDir, 'diagnostics', 'chromium-events.jsonl');
 const control = createControl({storageFile:path.join(dataDir, 'workspaces.json'),
-  getExecutionSettings:()=>preferences.parallelExecution, git:(workspace,args)=>executionKit.git(workspace,['--no-optional-locks',...args])});
+  getExecutionSettings:()=>preferences.parallelExecution,getExecutionState:workspace=>workflow.executionControl.snapshot()[workspace]??null,
+  git:(workspace,args)=>executionKit.git(workspace,['--no-optional-locks',...args])});
 const preferences=control.configureSettings({file:settingsFile,workflowSnapshot:()=>workflow.snapshot()});
 const store = control.projects;
 const observeActivity=activityClock();
@@ -1086,17 +1087,17 @@ function registerIpc() {
     const stopExecution = typeof request === 'object' && request?.stopExecution === true;
     const project = typeof input === 'string' ? store.project(input) : null;
     if (!project || project.archivedAt || storageError) throw new Error('Выберите активный проект.');
-    const selected = store.selected()?.workspace === input;
-    if (selected) { if(!project.external)controller.cancel(); nextNavigation(); }
-    const generation = navigationId;
-    try {
-      if (stopExecution) await workflow.stopPlanExecution(input);
-      await store.setArchived(input, true, { stopExecution });
+    const selected = store.selected()?.workspace === input,generation=navigationId;
+    if (stopExecution) {
+      await store.reconcileRoles(input).catch(error=>{if(!['WORKFLOW_NOT_INSTALLED','ENOENT'].includes(error.code))throw error;});
+      await workflow.stopPlanExecution(input);
     }
-    catch (error) { if (selected && navigationCurrent(generation)) await selectWorkspace(project.workspace, { resume: true }); throw error; }
+    await store.setArchived(input, true, { stopExecution });
+    // A rejected archive request must not cancel/restart the active conversation.
     if (!navigationCurrent(generation)) return;
     startupError = null;
-    if (selected) { workspaceHealth = null; await navigate(null, { generation }); }
+    if (selected) { if(!project.external)controller.cancel();const next=nextNavigation();
+      workspaceHealth = null; await navigate(null, { generation:next }); }
   });
   registerAction('pilot:archive-session', async input => {
     if (typeof input?.workspace !== 'string' || typeof input?.sessionId !== 'string') throw new Error('Выберите сессию проекта.');

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 675,
+  "plan_revision": 677,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -73,7 +73,8 @@
       "src/control/sessions/session-plans.mjs",
       "tests/session-plans.test.mjs",
       "packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs",
-      "tests/parallel-finalization.test.mjs"
+      "tests/parallel-finalization.test.mjs",
+      "tests/execution-control.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -363,8 +364,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "T004",
@@ -382,7 +383,9 @@
         "tests/workspace-session.test.mjs",
         "tests/workspace-deletion.test.mjs",
         "tests/session-roles.test.mjs",
-        "tests/backend-lifecycle.test.mjs"
+        "tests/backend-lifecycle.test.mjs",
+        "src/control/workflow/coordination.mjs",
+        "tests/execution-control.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -399,7 +402,16 @@
         "Finalizing защищён как незавершённое выполнение; актуальный backend проверяется независимо от устаревшей UI-карточки."
       ],
       "expected_commit_message": "feat: Согласовать приёмку плана и архивирование завершённого проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -612,7 +624,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 675
+Revision: 677
 
 ## Цель
 
@@ -653,10 +665,10 @@ Revision: 675
   - Файлы: src/contracts/dialogue-view.mjs, src/contracts/workflow-view.mjs, src/control/workflow/execution-projection.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/plugin/panel.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/parallel-execution-ui.test.mjs, tests/electron-smoke.mjs, tests/executor-startup-lifecycle.test.mjs, src/control/plugin/workflow-channel.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T006
-- [TODO] T004: Согласовать приёмку плана и архивирование завершённого проекта — Ожидает
-  - Git Commit: [PENDING] feat: Согласовать приёмку плана и архивирование завершённого проекта
+- [DONE] T004: Согласовать приёмку плана и архивирование завершённого проекта — Завершено
+  - Git Commit: [DONE] feat: Согласовать приёмку плана и архивирование завершённого проекта
   - Reference: dialogue-latency-visibility / T004 / implementation
-  - Файлы: src/control/sessions/workspace-session.mjs, src/control/projects/service.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/sidebar.test.mjs, tests/workspace-session.test.mjs, tests/workspace-deletion.test.mjs, tests/session-roles.test.mjs, tests/backend-lifecycle.test.mjs
+  - Файлы: src/control/sessions/workspace-session.mjs, src/control/projects/service.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/sidebar.test.mjs, tests/workspace-session.test.mjs, tests/workspace-deletion.test.mjs, tests/session-roles.test.mjs, tests/backend-lifecycle.test.mjs, src/control/workflow/coordination.mjs, tests/execution-control.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Проверить полный быстрый цикл и согласовать новый выпуск — Ожидает

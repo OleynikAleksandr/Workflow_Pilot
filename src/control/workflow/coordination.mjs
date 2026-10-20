@@ -448,6 +448,7 @@ return Object.freeze({
     snapshot:()=>executionControl.snapshot()}),setPlanExecution,
   // The user confirmed archiving a project with an active plan: execution pauses now; Kit is untouched.
   stopPlanExecution:async workspace=>{const scope=store.project(workspace)?.scopeId;if(!scope)return null;
+    if(executionControl.view(workspace,scope).state==='complete')return executionControl.view(workspace,scope);
     if(!startupRecovery.has(workspace))await dialogue.permission(workspace,scope,'paused');return executionControl.stop(workspace,scope);},
   execution:executionPort,executionKit:Object.freeze({git:(...args)=>executionKit.git(...args)}),
   // The continuation engine of plans of the former model; users reach it only through the plan button.

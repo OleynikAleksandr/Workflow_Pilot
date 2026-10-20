@@ -143,6 +143,11 @@ test('button command: only a published orchestrated plan starts, the state is sa
   assert.throws(()=>restarted.execution.recheck(main.workspace),{code:'PROJECT_RECOVERY_REQUIRED'});
   assert.doesNotThrow(()=>restarted.execution.observe(main.workspace),'sidebar observation cannot restart held work');
   await restarted.stopPlanExecution(main.workspace);
+  const completed=restarted.snapshot();
+  completed.executionControl[main.workspace]={...completed.executionControl[main.workspace],state:'complete',route:'plugin-v1'};
+  const third=create();await third.control.projects.load();await third.control.projects.reconcileRoles(main.workspace);third.workflow.restore(completed);
+  assert.equal((await third.workflow.stopPlanExecution(main.workspace)).state,'complete',
+    'archiving an already complete run preserves completion instead of revoking it into pause');
   restarted.cleanup([{ workspace: main.workspace, projectId: main.projectId, sessionIds: [main.sessionId] }]);
   assert.equal(restarted.executionControl.view(main.workspace, SCOPE).state, 'not-started');
 });

@@ -427,14 +427,26 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.equal(f.document.getElementById('execution-actions').hidden,false,'orchestrated stages stay visible');
   assert.equal(f.document.getElementById('plan-continuation-message').hidden,true,'no PlanContinuation text in the new scheme');
   assert.equal(f.document.querySelector('.project').dataset.workspace,'/demo','the tree keeps the parent project');
-  // Archiving a project with an active plan asks first; a refusal sends nothing.
-  f.window.webPilot.archiveProject=async(workspace,options)=>{f.calls.push(['archiveProject',workspace,options]);return {state:f.state};};
+  // The backend checks first; only a confirmed unfinished run asks to stop.
+  f.window.webPilot.archiveProject=async(workspace,options)=>{f.calls.push(['archiveProject',workspace,options]);
+    return options?.stopExecution?{ok:true,state:f.state}:{ok:false,error:{code:'PLAN_ACTIVE'},state:f.state};};
   const archive=()=>{f.document.querySelector('.archive-project').click();};
   const before=f.calls.length;f.window.confirm=()=>false;archive();await f.settle();
-  assert.equal(f.calls.length,before,'no archive without confirmation');
+  assert.equal(f.calls.length,before+1,'one backend check, no stop after refusal');
   let question='';f.window.confirm=text=>{question=text;return true;};archive();await f.settle();
   assert.match(question,/Выполнение плана будет остановлено/);
   assert.equal(JSON.stringify(f.calls.at(-1)),JSON.stringify(['archiveProject','/demo',{stopExecution:true}]));
+  // A stale running card cannot force a false warning after completion.
+  question='';f.window.webPilot.archiveProject=async(workspace,options)=>{
+    f.calls.push(['archiveProject',workspace,options]);return {ok:true,state:f.state};};
+  archive();await f.settle();assert.equal(question,'');
+  assert.equal(f.calls.at(-1)[2],undefined,'complete is archived without stop');
+  emit({state:'complete',complete:true},{sessions:project.sessions.map(s=>s.role==='orchestrator'
+    ?{...s,orchestratorState:{state:'complete',label:'Выполнено'}}:s)});
+  f.window.webPilot.archiveProject=async(workspace,options)=>{f.calls.push(['archiveProject',workspace,options]);
+    return options?.stopExecution?{ok:true,state:f.state}:{ok:false,error:{code:'PLAN_ACTIVE'},state:f.state};};
+  question='';archive();await f.settle();
+  assert.match(question,/незавершённое выполнение/,'fresh backend state overrides a stale complete card');
   // Back to the orchestrator: its row in the tree loads its dialog.
   f.document.querySelector('.session[data-session-id="s4"]').click();await f.settle();
   assert.deepEqual(f.calls.at(-1),['selectSession','/demo','s4']);

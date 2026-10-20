@@ -71,6 +71,35 @@ test('roles: the orchestrator of an active plan and its project cannot be archiv
   assert.equal(store.project(folder, orchestrator.sessionId).role, 'orchestrator');
 });
 
+test('archive distinguishes durable completion from active scope and rechecks fresh plan instead of client flags',async t=>{
+  const {folder,store,write,id}=await fixture(t),origin=await store.select(folder);
+  const done=orchestrated(origin.sessionId,{tasks:[{id:'T001',title:'Task',implementation_status:'DONE',commit_status:'DONE'}]});
+  await write(done);await store.reconcileRoles(folder);
+  let state={projectId:id,scopeId:done.scope_id,state:'running'};
+  store.getExecutionState=()=>state;
+  for(const phase of ['running','pausing','paused','not-started']){
+    state={...state,state:phase};
+    await assert.rejects(store.setArchived(folder,true,{complete:true}),{code:'PLAN_ACTIVE'},phase);
+  }
+  state={...state,state:'complete'};
+  const plan=await fs.readFile(path.join(folder,'.harness/plans/todo-plan.md'),'utf8');
+  assert.ok((await store.setArchived(folder,true)).archivedAt);
+  assert.equal(await fs.readFile(path.join(folder,'.harness/plans/todo-plan.md'),'utf8'),plan,'project archive does not accept/archive Kit scope');
+  assert.equal((await store.setArchived(folder,false)).archivedAt,null);
+  assert.equal(state.state,'complete','returning a project does not resume its run');
+  const inspect=store.inspect;store.inspect=async()=>{throw Object.assign(Error('gone'),{code:'ENOENT'});};
+  await assert.rejects(store.setArchived(folder,true),{code:'PLAN_ACTIVE'},'unreadable fresh plan cannot prove complete');
+  store.inspect=inspect;
+  state={...state,projectId:'foreign'};
+  await assert.rejects(store.setArchived(folder,true),{code:'PLAN_ACTIVE'});
+  state={...state,projectId:id};
+  await write(orchestrated(origin.sessionId,{plan_revision:3}));
+  assert.equal(store.project(folder).planView.tasks[0].status,'done','saved projection is deliberately stale');
+  await assert.rejects(store.setArchived(folder,true),{code:'PLAN_ACTIVE'},'new unfinished task defeats old completion');
+  await write({...done,scope_id:'replacement',plan_revision:4});
+  await assert.rejects(store.setArchived(folder,true),{code:'PLAN_ACTIVE'},'old complete cannot authorize another scope');
+});
+
 test('roles: a closed plan keeps its orchestrator with the closing commit; the next plan gets a new one', async t => {
   const { folder, store, write, gitCalls } = await fixture(t);
   const first = await store.select(folder);

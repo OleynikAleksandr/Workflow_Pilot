@@ -98,11 +98,7 @@ $('toggle-projects').addEventListener('click', async () => {
 // Archive needs neither the project's folder nor its selection; an active orchestrated
 // plan is stopped only after the user confirms it.
 function archiveProject(project) {
-  const active = project.sessions.some(session => session.role === 'orchestrator'
-    && !['planning', 'complete', undefined].includes(session.orchestratorState?.state));
-  if (!active) return action('archiveProject', project.workspace);
-  if (window.confirm(`В проекте «${project.name}» выполняется план оркестратора. Перенести проект в архив? Выполнение плана будет остановлено; план и работа исполнителей сохранятся, продолжить можно после возврата из архива.`))
-    action('archiveProject', project.workspace, { stopExecution: true });
+  return action('archiveProject', project.workspace);
 }
 let pickerSignature='';
 function renderProjectChoices(state) {
@@ -216,7 +212,12 @@ async function action(method, ...args) {
   if (!navigation) { actionPending = true; pendingAction = method; }
   render(currentState);
   try {
-    const result = await api[method](...args);
+    let result = await api[method](...args);
+    if(method==='archiveProject'&&result?.error?.code==='PLAN_ACTIVE'&&!args[1]?.stopExecution){
+      if(window.confirm('У проекта есть незавершённое выполнение плана. Перенести проект в архив? Выполнение плана будет остановлено; план и работа исполнителей сохранятся.')){
+        result=await api.archiveProject(args[0],{stopExecution:true});
+      }
+    }
     if (generation === actionGeneration && result?.state) render(result.state);
   } catch (error) {
     if (generation === actionGeneration) {
