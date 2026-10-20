@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 632,
+  "plan_revision": 634,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -1593,14 +1593,17 @@
         "После DOCS единый sourceCommit, состав и digests, очистка Python-кэша перед сборкой."
       ],
       "expected_commit_message": "feat: Собрать выпуск исправлений 0.5.9 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "RELEASE-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-2",
@@ -1687,7 +1690,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 632
+Revision: 634
 
 ## Цель
 
@@ -1802,8 +1805,8 @@ Revision: 632
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue-reliability.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T011
-- [TODO] RELEASE-2: Собрать выпуск исправлений 0.5.9 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать выпуск исправлений 0.5.9 для трёх ОС
+- [DONE] RELEASE-2: Собрать выпуск исправлений 0.5.9 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать выпуск исправлений 0.5.9 для трёх ОС
   - Reference: orchestrator-owned-dialogue-refactor / RELEASE-2 / implementation
   - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
