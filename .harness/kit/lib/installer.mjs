@@ -10,11 +10,14 @@ import { commitCandidate } from './transaction.mjs';
 import { payload, hooksDirectory, hookContent, installationManifest, HOOK_COMMAND, BLOCK_START, BLOCK_END, MD_START, MD_END, GITIGNORE_SECTION } from './installation-files.mjs';
 import { prepareRuntime, launcherCommand, windows } from './platform.mjs';
 import { inspectionInputs } from './inspection-inputs.mjs';
+import {pendingDialogueMigration} from './dialogue-migration-state.mjs';
 
 const hookNames = ['pre-commit', 'commit-msg', 'post-commit', 'pre-push'];
 const hookName = entry => path.posix.basename(entry.path.replaceAll('\\', '/'));
 // Versions this installer upgrades in place. Consumers (Web Pilot Workspace Setup) read the same list.
 export const upgradeFrom = new Set(['1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.4.2', '1.4.3', '1.4.4', '1.4.5', '1.4.6', '1.4.7', '1.4.8', '1.4.9', '1.4.10', '1.4.11', '1.4.12', '1.4.13', '1.5.0', '1.5.1', '1.5.2', '1.5.3', '1.5.4', '1.5.5', '1.5.6', '1.6.0', '1.6.1', '1.6.2', '1.6.3', '1.6.4', '1.7.0', '1.7.1', '1.7.2', '1.7.3', '1.8.0', '1.8.1']);
+upgradeFrom.add('1.8.2');
+upgradeFrom.add('1.9.0');
 function migrateNonePlanForContinuity(root) {
   const file = path.join(root, PLAN);
   if (!fs.existsSync(file)) return false;
@@ -289,6 +292,68 @@ function upgradeInstallation(root, preview) {
     return { ok: true, installed: true, upgraded: true, project_path: root, project_name: preview.project_name, version: VERSION, sha: result.sha, backup_path: backup,
       state: status(root), message: 'Workflow Kit обновлён до ' + VERSION + '; активный план и пользовательские документы сохранены.' };
   });
+}
+
+// Explicit coordinated migration only. Prepare all worktrees before writing any
+// runtime; the caller journals these exact bytes and holds every operation lock.
+export function prepareDialogueRuntimeUpgrade(root,operationId,plan) {
+  const old=readJSON(safePath(root,MANIFEST));
+  check(['1.8.2',VERSION].includes(old.version),'DIALOGUE_MIGRATION_VERSION','Переход поддерживает Kit 1.8.2 и текущий комплект.');
+  const temp=path.join(root,'.harness/runtime/dialogue-upgrade-preview-'+id());
+  fs.mkdirSync(temp,{recursive:true});let desired;
+  try{desired=payload(temp,plan.project_name,{folder:path.join(temp,'.git/hooks'),tracked:false,mechanism:'git'});}
+  finally{fs.rmSync(temp,{recursive:true,force:true});}
+  const map=new Map(desired.filter(e=>!e.external).map(e=>[e.path,e])),replacements=new Map(),writes=[];
+  const add=(entry,content)=>{
+    const file=safePath(root,entry.path),before=fs.existsSync(file)?fs.readFileSync(file,'utf8'):null;
+    if(before!==content)writes.push({path:entry.path,before:before===null?null:hash(before),content,mode:entry.mode??0o644});
+    if(content!==null)replacements.set(entry.path,manifestEntry({...entry,content,hash:hash(content),original_hash:entry.original_hash??null}));
+  };
+  const owned=e=>e.kind==='owned'&&(e.path.startsWith('.harness/kit/')||['scripts/workflow','scripts/workflow.mjs','scripts/workflow.cmd'].includes(e.path));
+  for(const entry of old.files.filter(owned)){
+    const file=safePath(root,entry.path);
+    check(fs.existsSync(file)&&hash(fs.readFileSync(file))===entry.hash,'MODIFIED_INTEGRATION','Runtime изменён: '+entry.path);
+    const next=map.get(entry.path);add(next??entry,next?.content??null);
+  }
+  for(const entry of desired.filter(owned))if(!old.files.some(e=>e.path===entry.path)){
+    check(!fs.existsSync(safePath(root,entry.path)),'MODIFIED_INTEGRATION','Новый путь Kit уже занят: '+entry.path);add(entry,entry.content);
+  }
+  for(const entry of old.files.filter(e=>e.kind==='managed'&&(/^AGENTS(?:\.override)?\.md$/.test(e.path)||e.path==='.gitignore'))){
+    const current=fs.readFileSync(safePath(root,entry.path),'utf8'),ignore=entry.path==='.gitignore';
+    const content=ignore?GITIGNORE_SECTION:map.get('.harness/kit/templates/AGENTS.md').content;
+    add(entry,replaceOwnedSection(current,entry,content,ignore?BLOCK_START:MD_START,ignore?BLOCK_END:MD_END));
+  }
+  const template=map.get('.harness/plans/todo-plan.template.md'),prior=old.files.find(e=>e.path===template.path);
+  if(prior&&hash(fs.readFileSync(safePath(root,template.path)))===prior.hash)add(template,template.content);
+  const removed=new Set(writes.filter(e=>e.content===null).map(e=>e.path));
+  const metadata={...old,version:VERSION,upgraded_from:old.version,dialogue_migration:operationId,
+    files:[...old.files.filter(e=>!removed.has(e.path)&&!replacements.has(e.path)),...replacements.values()]};
+  add({path:MANIFEST},json(metadata));
+  return {root,before_head:head(root),plan,selected:writes.map(e=>e.path),writes,operation_id:operationId};
+}
+export function applyDialogueRuntimeUpgrade(entry) {
+  const root=entry.root,owner=pendingDialogueMigration(root);
+  check(owner?.operation_id===entry.operation_id&&owner.upgrades.some(e=>json(e)===json(entry)),
+    'DIALOGUE_MIGRATION_OWNER','Нет сохранённой операции installer.');
+  if(head(root)!==entry.before_head){
+    const t=journal(root);
+    if(t)return commitCandidate(root,{plan:entry.plan,role:'kit-update',selected:entry.selected,
+      message:'chore: обновить Kit для диалога\n\nWorkflow-Dialogue-Migration: '+entry.operation_id,beforeHead:entry.before_head}).sha;
+    check(git(root,['rev-parse','HEAD^']).stdout.trim()===entry.before_head
+      &&git(root,['log','-1','--format=%B']).stdout.includes('Workflow-Dialogue-Migration: '+entry.operation_id),
+      'DIALOGUE_MIGRATION_HEAD','HEAD изменён вне перехода.');
+    check(!allChanges(root).length,'DIALOGUE_MIGRATION_CHANGED','Checkout изменён после обновления runtime.');
+    return head(root);
+  }
+  for(const item of entry.writes){
+    const file=safePath(root,item.path),current=fs.existsSync(file)?hash(fs.readFileSync(file)):null,next=item.content===null?null:hash(item.content);
+    check(current===item.before||current===next,'DIALOGUE_MIGRATION_CHANGED','Файл изменён после начала перехода: '+item.path);
+    if(current===next)continue;
+    if(item.content===null)fs.unlinkSync(file);else{atomic(file,item.content,item.mode);if(item.mode===0o755)fs.chmodSync(file,item.mode);}
+  }
+  check(process.env.WORKFLOW_TEST_FAILPOINT!=='dialogue-migration-files','TEST_INTERRUPTION','Прерван переход после записи runtime.');
+  return commitCandidate(root,{plan:entry.plan,role:'kit-update',selected:entry.selected,
+    message:'chore: обновить Kit для диалога\n\nWorkflow-Dialogue-Migration: '+entry.operation_id,beforeHead:entry.before_head}).sha;
 }
 
 function applyGitIdentity(root, opts) {

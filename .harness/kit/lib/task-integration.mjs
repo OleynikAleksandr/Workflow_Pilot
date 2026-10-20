@@ -5,6 +5,10 @@ import { git, head, gitPath, localPath, allChanges, paths, isAncestor, ensureIdl
 import { parsePlan, renderPlan, isOrchestratedPlan } from './plan.mjs';
 import { validate, journal, taskChecks, readConfig, resolveReferences } from './validate.mjs';
 import { assignmentStatus, removeIntegratedWorktree } from './task-assignment.mjs';
+import {assertAssignmentAcceptance} from './assignment-dialogue.mjs';
+import {assertAssignmentCommandsIdle} from './assignment-command-safety.mjs';
+import {assertPlanPermission} from './plan-permission.mjs';
+import {migratedResultHead} from './dialogue-migration-state.mjs';
 import { saveJournal, messageFor, completedTransaction, finishTransaction } from './transaction-state.mjs';
 
 const file = root => localPath(root,'integration.json');
@@ -40,7 +44,9 @@ function finish(root,record,t,sha) {
   atomic(localPath(root,'integrations/'+record.id+'.json'),json({...record,phase:'INTEGRATED',integration_commit:sha}),0o600);
   if(fs.existsSync(file(root)))fs.unlinkSync(file(root));
   // An orchestrated plan does not accumulate worktrees; a failed removal leaves the integration intact for assignment:cleanup.
-  const cleanup=isOrchestratedPlan(parsePlan(record.original_plan))?removeIntegratedWorktree(root,assignment):null;
+  // Dialogue executors still need to read/yield their acceptance after the
+  // merge. The orchestrator's final cleanup runs after transport receipts.
+  const cleanup=isOrchestratedPlan(parsePlan(record.original_plan))&&assignment.dialogue_version!==1?removeIntegratedWorktree(root,assignment):null;
   return {ok:true,status:'INTEGRATED',assignment_id:record.assignment_id,task_id:record.task_id,source_commit:record.source_commit,integration_commit:sha,
     ...(cleanup?{cleanup}:{})};
 }
@@ -66,7 +72,10 @@ export function startIntegration(root,{id,source_commit}) {
       check(done?.source_commit===source_commit && done.sha===assignment.integration_commit,'INTEGRATION_SOURCE','Повтор с другим источником.');
       return {ok:true,status:'INTEGRATED',already_integrated:true,...done};
     }
+    assertPlanPermission(root,plan);
     ensureIdleGit(root);
+    assertAssignmentCommandsIdle(assignment);
+    assertAssignmentAcceptance(assignment,source_commit);
     check(!journal(root) && !allChanges(root).length,'INTEGRATION_DIRTY','main должен быть чистым и без чужой транзакции.');
     check(git(root,['branch','--show-current']).stdout.trim()==='main' && fs.realpathSync(root)===assignment.parent_root
       && ['parallel','orchestrated'].includes(plan.execution_strategy) && plan.execution_scope_status==='ACTIVE' && !plan.current_task_id,
@@ -75,7 +84,7 @@ export function startIntegration(root,{id,source_commit}) {
     check(task?.commit_status==='PENDING','INTEGRATION_TASK','Задача уже интегрирована.');
     const status=assignmentStatus(root,id);
     check(status.status==='READY_FOR_INTEGRATION' && !status.transaction_pending && status.source_commit===source_commit
-      && !allChanges(assignment.worktree).length && head(assignment.worktree)===source_commit,'INTEGRATION_NOT_READY','Исполнитель ещё не завершил точный source.');
+      && !allChanges(assignment.worktree).length && migratedResultHead(assignment,source_commit),'INTEGRATION_NOT_READY','Исполнитель ещё не завершил точный source.');
     const source=inspectIntegrationSource(root,source_commit,task,plan.scope_id);
     check(source.assignment.id===id && source.assignment.base_commit===assignment.base_commit && isAncestor(root,assignment.base_commit),
       'INTEGRATION_BASE','Назначение или база не совпадают с main.');
@@ -98,6 +107,7 @@ export function continueIntegration(root,id) {
   });
 }
 function resume(root,record) {
+  assertPlanPermission(root,parsePlan(record.original_plan));
   let t=journal(root);
   if(t) {
     check(t.role==='integration' && t.id===record.id,'TRANSACTION_PENDING','Обнаружена чужая транзакция.');
@@ -114,6 +124,11 @@ function resume(root,record) {
     return finish(root,record,null,done.sha);
   }
   check(head(root)===record.before_head && git(root,['branch','--show-current']).stdout.trim()==='main','HEAD_CHANGED','main изменён; автоматического повторного merge нет.');
+  const assignment=readJSON(recordFile(root,record.assignment_id));
+  assertAssignmentCommandsIdle(assignment);
+  assertAssignmentAcceptance(assignment,record.source_commit);
+  if(assignment.dialogue_version===1)check(migratedResultHead(assignment,record.source_commit)
+    &&!allChanges(assignment.worktree).length&&!journal(assignment.worktree),'INTEGRATION_NOT_READY','Исходный результат изменился до продолжения интеграции.');
   const before=parsePlan(record.original_plan), task=before.tasks.find(t=>t.id===record.task_id);
   if(record.phase==='PREPARED') {
     ensureIdleGit(root);check(!allChanges(root).length,'INTEGRATION_DIRTY','Изменения появились до merge.');
@@ -127,6 +142,14 @@ function resume(root,record) {
   check(fs.existsSync(gitPath(root,'MERGE_HEAD')) && fs.readFileSync(gitPath(root,'MERGE_HEAD'),'utf8').trim()===record.source_commit,
     'INTEGRATION_UNKNOWN','Нет ожидаемого MERGE_HEAD; автоматический повтор запрещён.');
   if(record.phase==='MERGING') {
+    // Installer-owned files have a separate main attestation. Keep the current
+    // parent runtime; task source conflicts still require an O decision.
+    const source=inspectIntegrationSource(root,record.source_commit,task,before.scope_id);
+    for(const file of source.migration_service_paths??[]){
+      if(git(root,['cat-file','-e',record.before_head+':'+file],{allowFailure:true}).status===0)
+        git(root,['restore','--source='+record.before_head,'--staged','--worktree','--',file]);
+      else git(root,['rm','--ignore-unmatch','--',file]);
+    }
     // Only the subordinate plan is replaced, by the exact parent plan from the journal.
     atomic(safePath(root,PLAN),record.original_plan);git(root,['add','--',PLAN]);
     record.phase='RESOLVING';save(root,record);

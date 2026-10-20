@@ -70,6 +70,8 @@ export const isOrchestratedPlan = plan => plan?.execution_strategy === 'orchestr
 export const requiresIntegration = (plan, task) => plan.execution_strategy === 'parallel'
   || isOrchestratedPlan(plan) && !isDeliveryTask(task);
 function validateExecutionPolicy(plan) {
+  if(Object.hasOwn(plan,'dialogue_version'))check([0,1].includes(plan.dialogue_version)
+    && (isOrchestratedPlan(plan)||plan.assignment),'PLAN_DIALOGUE_VERSION','Версия диалога допустима только у плана оркестратора или его назначения.');
   if (Object.hasOwn(plan,'execution_origin_session_id')) check(typeof plan.execution_origin_session_id==='string'
     && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(plan.execution_origin_session_id),
     'PLAN_EXECUTION_ORIGIN','Некорректная сессия происхождения параметров выполнения.');

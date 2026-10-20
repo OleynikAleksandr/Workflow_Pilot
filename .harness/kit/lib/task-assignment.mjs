@@ -6,6 +6,9 @@ import { readPlan, parallelTasksCompatible, isOrchestratedPlan, isDeliveryTask }
 import { validate, journal } from './validate.mjs';
 import { commitCandidate, completedTransaction, finishTransaction } from './transaction.mjs';
 import { prepareRuntime } from './platform.mjs';
+import {assertPlanPermission} from './plan-permission.mjs';
+import {migrationAttestation} from './dialogue-migration-state.mjs';
+import {assertAssignmentCommandsIdle} from './assignment-command-safety.mjs';
 
 import { assignmentRecords, validId, commonDirectory, recordPath, childRecordPath, readAssignment, save, plainPath, binding, localPlan, ownWorktree, assertAssignment, packageDirectories, environmentStatus, preparationSteps } from './assignment-contract.mjs';
 export { readAssignment, assertAssignment, assertAssignmentCommand, environmentStatus } from './assignment-contract.mjs';
@@ -33,14 +36,39 @@ function assignmentStatusUnlocked(root,id) {
   const {resolved}=validate(record.worktree);
   const sha=resolved[record.parent_task_id]?.sha;
   const setup=environmentStatus(record.worktree,runtime);
+  const dialogue=record.dialogue_version?readJSON(recordPath(record.parent_root,record.id)).dialogue??null:null;
   return {ok:true,...binding(record),status:sha?'READY_FOR_INTEGRATION':!setup.ready?'NEEDS_SETUP':plan.current_task_id?'RUNNING':'READY',
-    source_commit:sha??null,setup,transaction_pending:!!journal(record.worktree)};
+    source_commit:sha??null,setup,transaction_pending:!!journal(record.worktree),
+    ...(record.dialogue_version?{dialogue,attempt:dialogue?.attempt??1}: {})};
 }
 export const assignmentStatus=(root,id)=>assignmentStatusUnlocked(root,id);
 // Only a verified INTEGRATED worktree is removed, never with force; its merged branch goes with git branch -d.
 export function removeIntegratedWorktree(root,record) {
   check(record.phase==='INTEGRATED','ASSIGNMENT_NOT_INTEGRATED','Удаляется только worktree подтверждённо интегрированного назначения.',{id:record.id});
+  if(record.dialogue_version===1){
+    const acceptance=record.dialogue?.acceptance,transport=record.dialogue?.transport;
+    const pending=reason=>{
+      record.cleanup={status:'PENDING',reason};save(recordPath(root,record.id),record);
+      return {id:record.id,task_id:record.parent_task_id,worktree:record.worktree,branch:record.branch,...record.cleanup};
+    };
+    if(!acceptance||!transport||['message_id','attempt','source_commit'].some(k=>transport[k]!==acceptance[k]))
+      return pending('terminal-receipt-pending');
+    try{assertAssignmentCommandsIdle(record);}catch(error){
+      if(error.code!=='ASSIGNMENT_COMMAND_ACTIVE')throw error;
+      return pending('executor-command-active');
+    }
+  }
   const errors=[];
+  let installerOnlyTip=null;
+  if(record.migration){
+    const attestation=migrationAttestation(root,record.migration.operation_id),entry=attestation.assignments.find(a=>a.id===record.id);
+    const tip=git(root,['rev-parse','refs/heads/'+record.branch],{allowFailure:true});
+    if(entry&&entry.source_commit===record.source_commit&&entry.before_head===record.source_commit
+      &&tip.status===0&&tip.stdout.trim()===entry.upgrade_commit){
+      installerOnlyTip=entry.upgrade_commit;
+      git(root,['update-ref','refs/workflow-kit/dialogue-migrations/'+record.migration.operation_id+'/'+record.id,installerOnlyTip]);
+    }
+  }
   if(fs.existsSync(record.worktree)) {
     const removed=git(root,['worktree','remove','--',record.worktree],{allowFailure:true});
     if(removed.status!==0)errors.push(String(removed.stderr||removed.stdout).trim().slice(-1000));
@@ -48,13 +76,29 @@ export function removeIntegratedWorktree(root,record) {
   if(!fs.existsSync(record.worktree)) {
     git(root,['worktree','prune'],{allowFailure:true});
     if(git(root,['show-ref','--verify','--quiet','refs/heads/'+record.branch],{allowFailure:true}).status===0) {
-      const branch=git(root,['branch','-d',record.branch],{allowFailure:true});
+      const branch=git(root,['branch',installerOnlyTip?'-D':'-d',record.branch],{allowFailure:true});
       if(branch.status!==0)errors.push(String(branch.stderr||branch.stdout).trim().slice(-1000));
     }
   }
-  record.cleanup=errors.length?{status:'PENDING',error:errors.join('\n')}:{status:'DONE'};
+  record.cleanup=errors.length?{status:'PENDING',error:errors.join('\n')}:{status:'DONE',commands_idle:true};
   save(recordPath(root,record.id),record);
   return {id:record.id,task_id:record.parent_task_id,worktree:record.worktree,branch:record.branch,...record.cleanup};
+}
+// Backend-only acknowledgement of an existing acceptance, never a task/result
+// authoring operation. Durable transport proof precedes worktree deletion.
+export function acknowledgeAssignmentTransport(root,input) {
+  check(!readAssignment(root),'ASSIGNMENT_READ_ONLY','Квитанцию транспорта сохраняет backend через main.');
+  return withLock(localPath(root,'operation.lock'),()=>{
+    assertPlanPermission(root);
+    const record=readJSON(recordPath(root,input.assignment_id)),acceptance=record.dialogue?.acceptance;
+    check(record.parent_scope_id===readPlan(root).scope_id&&record.phase==='INTEGRATED'&&record.dialogue_version===1
+      &&acceptance&&['message_id','attempt','source_commit'].every(k=>input[k]===acceptance[k]),
+      'ASSIGNMENT_TRANSPORT_STALE','Нужна завершающая квитанция текущей приёмки интегрированного назначения.');
+    record.dialogue.transport={message_id:input.message_id,attempt:input.attempt,source_commit:input.source_commit};
+    save(recordPath(root,record.id),record);
+    if(record.cleanup?.status==='PENDING')removeIntegratedWorktree(root,record);
+    return {ok:true,...record.dialogue.transport,cleanup:record.cleanup??null};
+  });
 }
 // Final orchestrator sweep: integrated leftovers are removed, everything else is only reported.
 export function cleanupAssignments(root) {
@@ -76,9 +120,12 @@ export function createAssignment(root,input,expectedRevision) {
   return withLock(localPath(root,'operation.lock'),()=>{
     if(fs.existsSync(file)) {
       const record=readJSON(file);verifyInput(record,input);
+      if(['ASSIGNED','INTEGRATED'].includes(record.phase))return assignmentStatusUnlocked(root,record.id);
+      assertPlanPermission(root);
       return resumeAssignment(root,record);
     }
     const {plan,resolved}=validate(root);
+    assertPlanPermission(root,plan);
     check(expectedRevision!==undefined && plan.plan_revision===Number(expectedRevision),'REVISION_CHANGED','Нужна текущая revision.');
     check(['parallel','orchestrated'].includes(plan.execution_strategy) && !plan.current_task_id && plan.execution_scope_status==='ACTIVE','ASSIGNMENT_POLICY','Назначения выдаются из активного parallel- или orchestrated-плана без основной микрозадачи.');
     ensureIdleGit(root);
@@ -108,7 +155,8 @@ export function createAssignment(root,input,expectedRevision) {
     check(git(root,['show-ref','--verify','--quiet','refs/heads/'+branch],{allowFailure:true}).status!==0,'ASSIGNMENT_BRANCH','Ветка уже занята.');
     const record={schema_version:1,id:input.id,parent_root:root,parent_scope_id:plan.scope_id,parent_task_id:task.id,
       worktree:target,branch,base_commit:input.base_commit,git_common_dir:commonDirectory(root),external_dependencies:dependencies,
-      config_digest:hash(fs.readFileSync(safePath(root,CONFIG))),phase:'PREPARED',setup:{}};
+      config_digest:hash(fs.readFileSync(safePath(root,CONFIG))),phase:'PREPARED',setup:{},
+      ...(plan.dialogue_version?{dialogue_version:plan.dialogue_version,attempt:1}: {})};
     save(file,record);
     return resumeAssignment(root,record);
   });
@@ -151,6 +199,7 @@ function resumeAssignment(root,record) {
 export function setupAssignment(root,id,{npmCi=false}={}) {
   check(!readAssignment(root),'ASSIGNMENT_NESTED','Подготовкой управляет основная сессия.');
   return withLock(localPath(root,'operation.lock'),()=>{
+    assertPlanPermission(root);
     const record=readJSON(recordPath(root,id)), child=record.worktree;
     ownWorktree(child,record);
     return withLock(localPath(child,'operation.lock'),()=>{

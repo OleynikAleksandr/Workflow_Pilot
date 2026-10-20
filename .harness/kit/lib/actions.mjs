@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { assertAssignment, assertAssignmentCommand, assertOrchestratedMain } from './assignment-contract.mjs';
+import {assertAssignmentDispatch} from './assignment-dialogue.mjs';
 import { activeIntegration } from './transaction-state.mjs';
 import { blockedTasks } from './signals.mjs';
 import { assertReviewPublication, finishReviewPublication, cleanupReview } from './review-state.mjs';
@@ -79,6 +80,8 @@ export function buildScopePlan(root, input, previous, config = readConfig(root))
       project_name: previous.project_name, plan_revision: previous.plan_revision + 1, scope_id: input.scope_id || 'scope-' + id(),
       execution_scope_status: 'ACTIVE', delivery_status: 'IN_PROGRESS', baseline_commit: head(root), current_task_id: null, blocked_reason: null };
     delete plan.approval_note;
+    // Creation only. Reading/extending an older scope must never change its route.
+    if(plan.execution_strategy==='orchestrated'&&input.dialogue_version===undefined)plan.dialogue_version=1;
     check(Array.isArray(input.tasks), 'PLAN_SCHEMA', 'Нужен список микрозадач.');
     plan.tasks = input.tasks.map((t, i) => {
       check(!t.implementation_status || t.implementation_status === 'TODO', 'PLAN_SCHEMA', 'Новый scope не может начинаться с завершённых задач.');
@@ -119,6 +122,7 @@ export function startTask(root, taskId, expectedRevision) {
   return locked(root, () => {
     noTransaction(root); assertSingleWriter(root, PLAN); const { plan, config } = validate(root); revision(plan, expectedRevision);
     const assignment = assertAssignment(root, plan, {ready:true});
+    assertAssignmentDispatch(root,assignment);
     check(plan.execution_strategy !== 'parallel' || assignment, 'PARALLEL_MAIN_READ_ONLY',
       'Основной parallel-план выполняют назначенные исполнители. Не начинайте task:start в main; запуском управляет кнопка выполнения плана пользователя. Уже начатую задачу сохраняет assignment:handoff.');
     check(plan.execution_scope_status === 'ACTIVE', 'SCOPE_NOT_ACTIVE', 'Реализация разрешена только в ACTIVE scope.');

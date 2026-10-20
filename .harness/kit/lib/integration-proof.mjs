@@ -1,6 +1,7 @@
 import { PLAN, check, json } from './common.mjs';
 import { git, isAncestor, commitHistory, commitPaths } from './git.mjs';
 import { parsePlan, renderPlan, isOrchestratedPlan } from './plan.mjs';
+import {sourceMigrationUpgrades} from './dialogue-migration-state.mjs';
 const planAt = (root,sha) => parsePlan(git(root,['show',sha+':'+PLAN]).stdout);
 const one = (commit,key) => {const values=commit.trailers[key];check(values?.length===1,'INTEGRATION_TRAILERS','Нужен единственный '+key);return values[0];};
 const taskContract = task => {
@@ -24,26 +25,42 @@ export function inspectIntegrationSource(root,source,task,parentScope,resolveRef
   check(assignment?.parent_scope_id===parentScope && assignment.parent_task_id===task.id,'INTEGRATION_SOURCE','Source принадлежит другому назначению.');
   const base=planAt(root,assignment.base_commit), original=base.tasks.find(t=>t.id===task.id);
   check(base.scope_id===parentScope && original && taskContract(original)===taskContract(task),'INTEGRATION_CONTRACT','Контракт задачи изменился после назначения.');
-  const commits=commitHistory(root,assignment.base_commit,source);
-  check(commits.length===2,'INTEGRATION_HISTORY','Разрешены только подготовка назначения и один implementation-коммит.');
-  const [implementation,preparation]=commits;
-  check(implementation.sha===source && implementation.parents.length===1 && implementation.parents[0]===preparation.sha
-    && preparation.parents.length===1 && preparation.parents[0]===assignment.base_commit,'INTEGRATION_HISTORY','Посторонние коммиты или merge в ветке исполнителя.');
-  for(const [commit,role] of [[implementation,'implementation'],[preparation,'assignment-plan']]) {
-    check(one(commit,'Workflow-Scope')===child.scope_id && one(commit,'Workflow-Role')===role,'INTEGRATION_TRAILERS','Неверная идентичность источника.');
-    one(commit,'Workflow-Transaction');
+  const history=commitHistory(root,assignment.base_commit,source),upgrades=sourceMigrationUpgrades(root,history,assignment);
+  const skip=new Map(upgrades.map(u=>[u.commit.sha,u.commit.parents[0]]));
+  const predecessor=sha=>{while(skip.has(sha))sha=skip.get(sha);return sha;};
+  const commits=history.filter(c=>!skip.has(c.sha));
+  const attempts=child.dialogue_version===1||assignment.dialogue_version===1 ? child.tasks[0].commit_ref.iteration??1 : 1;
+  check(Number.isSafeInteger(attempts) && attempts>0 && commits.length===2*attempts,
+    'INTEGRATION_HISTORY','Каждая попытка требует подготовки назначения и одного проверенного implementation-коммита.');
+  const allowed=allowedFiles(task);
+  for(let i=0;i<attempts;i++) {
+    const [implementation,preparation]=commits.slice(2*i,2*i+2), iteration=attempts-i;
+    const before=commits[2*i+2]?.sha??assignment.base_commit;
+    check(implementation.parents.length===1 && predecessor(implementation.parents[0])===preparation.sha
+      && preparation.parents.length===1 && predecessor(preparation.parents[0])===before,'INTEGRATION_HISTORY','Посторонние коммиты или merge в ветке исполнителя.');
+    for(const [commit,role] of [[implementation,'implementation'],[preparation,'assignment-plan']]) {
+      check(one(commit,'Workflow-Scope')===child.scope_id && one(commit,'Workflow-Role')===role,'INTEGRATION_TRAILERS','Неверная идентичность источника.');
+      one(commit,'Workflow-Transaction');
+    }
+    check(one(implementation,'Workflow-Task')===task.id
+      && Number(implementation.trailers['Workflow-Iteration']?.[0]??1)===iteration,'INTEGRATION_TRAILERS','Неверная задача или попытка источника.');
+    check(commitPaths(root,preparation.sha).every(p=>p===PLAN),'INTEGRATION_SCOPE','Подготовка назначения изменила исходники.');
+    const prepared=planAt(root,preparation.sha), finished=planAt(root,implementation.sha), childTask=finished.tasks[0];
+    check(json(prepared.assignment)===json(assignment) && json(finished.assignment)===json(assignment)
+      && prepared.tasks[0].commit_status==='PENDING' && childTask.commit_status==='DONE'
+      && (childTask.commit_ref.iteration??1)===iteration && (prepared.tasks[0].commit_ref.iteration??1)===iteration
+      && workerContract(original)===taskContract(childTask) && workerContract(original)===taskContract(prepared.tasks[0]),
+    'INTEGRATION_CONTRACT','Локальное задание не соответствует родительскому.');
+    const changes=commitPaths(root,implementation.sha);
+    check(changes.includes(PLAN) && changes.every(p=>allowed.includes(p)),'INTEGRATION_SCOPE','Попытка содержит чужие файлы.');
   }
-  check(one(implementation,'Workflow-Task')===task.id,'INTEGRATION_TRAILERS','Неверная задача источника.');
-  check(commitPaths(root,preparation.sha).every(p=>p===PLAN),'INTEGRATION_SCOPE','Подготовка назначения изменила исходники.');
-  const prepared=planAt(root,preparation.sha), childTask=child.tasks[0];
-  check(json(prepared.assignment)===json(assignment) && prepared.tasks[0].commit_status==='PENDING'
-    && childTask.commit_status==='DONE' && workerContract(original)===taskContract(childTask)
-    && workerContract(original)===taskContract(prepared.tasks[0]),'INTEGRATION_CONTRACT','Локальное задание не соответствует родительскому.');
-  const changed=commitPaths(root,source), allowed=allowedFiles(task);
+  const changed=commitPaths(root,source);
   check(changed.includes(PLAN) && changed.every(p=>allowed.includes(p)),'INTEGRATION_SCOPE','Source содержит чужие файлы.');
   // Installed runtime/configuration are inherited, never imported from a worker.
   const delta=git(root,['diff','--name-only','--no-renames',assignment.base_commit,source,'--']).stdout.trim().split('\n').filter(Boolean);
-  check(delta.every(p=>p===PLAN || !p.startsWith('.harness/') && !['scripts/workflow','scripts/workflow.mjs','scripts/workflow.cmd'].includes(p)),
+  const migratedFiles=new Map(upgrades.flatMap(u=>Object.entries(u.entry.files)));
+  check(delta.every(p=>p===PLAN || !p.startsWith('.harness/') && !['scripts/workflow','scripts/workflow.mjs','scripts/workflow.cmd'].includes(p)
+    ||migratedFiles.has(p)&&(git(root,['rev-parse',source+':'+p],{allowFailure:true}).stdout.trim()||null)===migratedFiles.get(p)),
     'INTEGRATION_SERVICE_FILES','Исполнитель не заменяет служебную конфигурацию main.');
   // Resolve only the declared dependencies, not every earlier independent task.
   const baseResolved=original.dependencies.length ? resolveReferences(root,
@@ -51,7 +68,7 @@ export function inspectIntegrationSource(root,source,task,parentScope,resolveRef
   check(json(assignment.external_dependencies.map(d=>d.task_id).sort())===json([...original.dependencies].sort())
     && assignment.external_dependencies.every(d=>baseResolved[d.task_id]?.sha===d.commit && isAncestor(root,d.commit,assignment.base_commit)),
     'DEPENDENCY_ORDER','Назначение не подтверждает интегрированные зависимости базы.');
-  return {child,assignment,changed};
+  return {child,assignment,changed,migration_service_paths:[...migratedFiles.keys()].filter(p=>!allowed.includes(p))};
 }
 
 export function verifyIntegrationCommit(root,commit,task,plan,resolveReferences) {

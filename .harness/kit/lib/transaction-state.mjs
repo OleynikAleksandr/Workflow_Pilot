@@ -8,14 +8,21 @@ export function assertIntegrationIdle(root) {
   check(!activeIntegration(root),'INTEGRATION_PENDING','main занят интеграцией; используйте integration:status/continue.');
 }
 export function assertIntegrationCommand(root,command) {
+  if(command==='plan:permission'||command==='assignment:dialogue-status')return;
   if(['status','validate','recover','plan:view','hook','hook:ack','git-hook','integration:status','integration:continue','integration:start','assignment:status','task:block','assignment:message','plan:escalate'].includes(command))return;
   assertIntegrationIdle(root);
 }
 export const saveJournal = (root, data) => atomic(localPath(root, 'transaction.json'), json(data));
-export const messageFor = t => t.message + '\n\nWorkflow-Scope: ' + (t.scope_id ?? 'NONE') + '\nWorkflow-Task: ' + (t.task_id ?? t.id) + '\nWorkflow-Role: ' + t.role + (t.role === 'implementation' ? '\nWorkflow-Iteration: ' + (t.task?.commit_ref?.iteration ?? 1) : '') + '\nWorkflow-Transaction: ' + t.id + (t.role === 'integration' ? '\nWorkflow-Source: ' + t.source_commit : '');
+export const messageFor = t => {
+  const migration=t.role==='kit-update'?/\n\nWorkflow-Dialogue-Migration: ([A-Za-z0-9][A-Za-z0-9_-]{0,79})$/.exec(t.message):null;
+  const message=migration?t.message.slice(0,migration.index):t.message;
+  return message + '\n\nWorkflow-Scope: ' + (t.scope_id ?? 'NONE') + '\nWorkflow-Task: ' + (t.task_id ?? t.id) + '\nWorkflow-Role: ' + t.role + (t.role === 'implementation' ? '\nWorkflow-Iteration: ' + (t.task?.commit_ref?.iteration ?? 1) : '') + '\nWorkflow-Transaction: ' + t.id + (t.role === 'integration' ? '\nWorkflow-Source: ' + t.source_commit : '')
+    +(migration?'\nWorkflow-Dialogue-Migration: '+migration[1]:'');
+};
 export const locked = (root, fn) => withLock(localPath(root, 'operation.lock'), () => { assertIntegrationIdle(root); return fn(); });
 export function checkServicePaths(role, files, PLAN = ' .harness/plans/todo-plan.md'.trim()) {
   const patterns = {
+    'dialogue-migration': p => p === PLAN || /^\.harness\/dialogue-migrations\/[A-Za-z0-9][A-Za-z0-9_-]{0,79}\.json$/.test(p),
     'assignment-plan': p => p === PLAN,
     'scope-plan': p => p === PLAN || p.startsWith('docs/') && /\.(md|markdown)$/.test(p),
     'plan-adjustment': p => p === PLAN || p === '.harness/workflow.json' || p.startsWith('docs/') && /\.(md|markdown)$/.test(p),
