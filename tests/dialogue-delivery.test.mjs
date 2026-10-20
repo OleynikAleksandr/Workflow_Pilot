@@ -69,6 +69,11 @@ test('participant validation retries transient integration reads but never retai
 
 test('read retries a Git replacement window but rejects persistent plan corruption',async()=>{
   const kit=new ParallelKit({});let reads=0;
+  for(const code of ['ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT']){
+    reads=0;kit.readSnapshot=async()=>{if(++reads===1)throw Object.assign(Error('concurrent replacement'),{code});return {confirmed:true};};
+    assert.deepEqual(await kit.read('/fixture'),{confirmed:true});assert.equal(reads,2);
+  }
+  reads=0;
   kit.readSnapshot=async()=>{if(++reads===1)throw Object.assign(Error('partial Git write'),{code:'PLAN_JSON'});return {confirmed:true};};
   assert.deepEqual(await kit.read('/fixture'),{confirmed:true});assert.equal(reads,2);
   reads=0;kit.readSnapshot=async()=>{reads++;throw Object.assign(Error('corrupt'),{code:'PLAN_JSON'});};

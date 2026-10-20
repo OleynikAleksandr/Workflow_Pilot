@@ -98,7 +98,11 @@ const reviewContinuation=new ReviewContinuation({selected:()=>store.selected(),c
   send:sendAutomation,onChange:()=>publish(),
   available,
   saveCheckpoint:async checkpoint=>{reviewCheckpoint=checkpoint;await saveSettings({reviewCheckpoint});}});
-const executionKit=new ParallelKit({plans:sessionPlans,setup:workspaceSetup});
+const executionKit=new ParallelKit({plans:sessionPlans,setup:workspaceSetup,onTiming:(workspace,id,span)=>{
+  const communication=getPlugin()?.communication,project=store.project(workspace);
+  const run=[...(communication?.runs.values()??[])].find(r=>r.project_id===project?.projectId&&!r.removed);
+  if(run)communication.recordKitTiming({project_id:run.project_id,scope_id:run.grant?.scope_id,assignment_id:id},span);
+}});
 // The parallel queue has the authoritative Kit confirmation; per-chat plan
 // projections must not bind a pre-plan ON while review/transaction is pending.
 const authorizedExecutionKit=Object.create(executionKit);
@@ -405,7 +409,7 @@ return Object.freeze({
   observeParticipant:target=>dialogue.observe(target),admitParticipant:target=>dialogue.admit(target),
   reconcileParticipant:target=>dialogue.reconcile(target),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),
-  communicationChanged:runId=>{
+  communicationChanged:(runId,events=[])=>{
     const run=getPlugin()?.communication.runs.get(runId);if(!run)return;
     const parent=store.snapshot().projects.find(p=>p.projectId===run.project_id&&!p.parentWorkspace);
     if(!parent)return;
@@ -414,7 +418,13 @@ return Object.freeze({
     if(uncertain&&['running','pausing'].includes(executionControl.view(parent.workspace,run.grant.scope_id).state)){
       executionControl.write(parent.workspace,run.grant.scope_id,'paused','unknown','Доставка '+uncertain.message_id+' — '+uncertain.delivery+'. Автоматического повтора нет.');
     }
-    for(const member of Object.values(run.members))liveRecord(dialogue.project(member.target.local_session_id))?.executor?.changed();
+    const global=!events.length||events.some(e=>/^(plan\.|backend\.|project\.)/.test(e.event_type));
+    const affected=new Set(events.flatMap(e=>{
+      const message=run.messages.find(m=>m.message_id===e.message_id);
+      return [e.participant_id,message?.recipient_id,message?.sender_id].filter(Boolean);
+    }));
+    for(const member of Object.values(run.members))if(global||affected.has(member.id))
+      liveRecord(dialogue.project(member.target.local_session_id))?.executor?.changed();
     void execution.signal(parent.workspace);publish();
   },
   attachSessions: sessions=>{if(liveSessions)throw new Error('WORKFLOW_SESSIONS_ALREADY_ATTACHED');liveSessions=sessions;},

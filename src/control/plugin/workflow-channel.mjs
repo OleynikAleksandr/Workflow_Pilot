@@ -11,7 +11,18 @@ const kinds=new Set(['assignment-start','continue','question','decision','result
 // never asks the user to renew that permission or authorizes another scope.
 export class WorkflowChannel {
   constructor(communication,{observe=()=>({canSend:false}),admit=async()=>false,reconcile=async()=>null,currentMessage=async()=>true}={}) {
-    Object.assign(this,{c:communication,observe,admit,reconcile,currentMessage});this.contents=new Map();this.turnProbes=new Map();
+    Object.assign(this,{c:communication,observe,admit,currentMessage});this.contents=new Map();this.turnProbes=new Map();
+    this.observationSpans=new Map();
+    this.reconcile=async target=>{
+      const started=performance.now();const value=await reconcile(target),elapsed=performance.now()-started;
+      const signature=JSON.stringify([value?.busy,value?.stopped,value?.commandsIdle,value?.turnId,value?.assistantRevision]);
+      if(this.observationSpans.get(target.local_session_id)!==signature||elapsed>=250){
+        this.observationSpans.set(target.local_session_id,signature);
+        if(this.observationSpans.size>256)this.observationSpans.delete(this.observationSpans.keys().next().value);
+        this.c.recordObserverTiming(target,elapsed,!!value);
+      }
+      return value;
+    };
   }
   async superseded(run,member,message){
     if(message.superseded)return true;
@@ -247,7 +258,7 @@ export class WorkflowChannel {
       this.c.event(run,'turn.waiting',{message_id:input.message_id,reason:'physical-completion-unconfirmed'});
     return {};
   }
-  dispose(){for(const p of this.turnProbes.values())clearTimeout(p.timer);this.turnProbes.clear();}
+  dispose(){for(const p of this.turnProbes.values())clearTimeout(p.timer);this.turnProbes.clear();this.observationSpans.clear();}
   async content(input) {
     const c=this.c;await c.ready;await c.tail;await c.enrollment.validateInput(input);
     const {run,member}=c.member(input),message=run.messages.find(m=>m.message_id===input.message_id);

@@ -48,6 +48,20 @@ function fixture(t) {
   return { root, plan };
 }
 
+test('inspection tolerates a replaced Git plan once, preserves permanent errors and records a bounded timing',async()=>{
+  for(const recovers of [true,false]){
+    let calls=0;const spans=[];
+    const plans=new SessionPlans({setup:{node:async()=>'/node',environment:{}},
+      run:async()=>({stdout:JSON.stringify(++calls===2&&recovers?{ok:true}:
+        {ok:false,code:'MISSING_FILE',message:'Отсутствует навигационный план проекта.'})})});
+    const result=plans.call('/main','assignment:status',[],null,{onTiming:span=>spans.push(span)});
+    if(recovers)assert.equal((await result).ok,true);else await assert.rejects(result,{code:'MISSING_FILE'});
+    assert.equal(calls,2);assert.equal(spans.length,1);assert.equal(spans[0].ok,recovers);
+    assert.ok(spans[0].elapsed_ms>=50);assert.ok(Date.parse(spans[0].ended_at)>=Date.parse(spans[0].started_at));
+    calls=0;await assert.rejects(plans.call('/main','commit'),{code:'MISSING_FILE'});assert.equal(calls,1);
+  }
+});
+
 test('every chat address projects the same current checkout plan', t => {
   const { root } = fixture(t);
   for (const sessionId of ['session-a', 'session-b', 'session-new']) {

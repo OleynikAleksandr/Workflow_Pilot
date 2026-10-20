@@ -18,7 +18,7 @@ export function projectVerifiedPlan(plan,resolved) {
 const exists=async file=>{try{await fs.access(file);return true;}catch(e){if(e.code==='ENOENT')return false;throw e;}};
 // All potentially long Kit/Git work stays outside Electron's main event loop.
 export class ParallelKit {
-  constructor({plans,setup,execute=plans?.run??executeFile}) {Object.assign(this,{plans,setup,execute});}
+  constructor({plans,setup,execute=plans?.run??executeFile,onTiming=()=>{}}) {Object.assign(this,{plans,setup,execute,onTiming});}
   async git(workspace,args) {
     await this.setup.node();
     return (await this.execute(this.setup.environment.WORKFLOW_GIT_BIN||'git',['-C',workspace,...args],
@@ -35,11 +35,11 @@ export class ParallelKit {
   }
   async read(workspace) {
     for(let attempt=0;;attempt++){
-      try{return await this.readSnapshot(workspace);}
+      try{return await this.readSnapshot(workspace,{retryTransient:attempt<2});}
       catch(error){
         // Git checkout/merge replaces the tracked plan outside Kit's atomic writer.
         // A bounded fresh read tolerates that window; persistent corruption still fails.
-        if(!['PLAN_CHANGED_DURING_READ','PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION'].includes(error.code)||attempt>=2)throw error;
+        if(!['PLAN_CHANGED_DURING_READ','PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION','ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT'].includes(error.code)||attempt>=2)throw error;
         await new Promise(resolve=>setTimeout(resolve,50));
       }
     }
@@ -53,7 +53,7 @@ export class ParallelKit {
       throw Object.assign(Error('Сначала завершите ранее начатый переход.'),{code:'DIALOGUE_MIGRATION_PENDING'});
     return {assignments:record.children.map(child=>child.record)};
   }
-  async readSnapshot(workspace) {
+  async readSnapshot(workspace,{retryTransient=true}={}) {
     const text=await fs.readFile(path.join(workspace,planFile),'utf8'),plan=parsePlan(text);
     if(!['parallel','orchestrated'].includes(plan.execution_strategy))return {workspace,plan,assignments:[],integration:{status:'IDLE'}};
     const beforeHead=await this.git(workspace,['rev-parse','HEAD']);
@@ -83,6 +83,11 @@ export class ParallelKit {
         // A concurrent child's commit also replaces its plan. A failed read is
         // not evidence of an unknown write: retry the whole coherent snapshot.
         if(['PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION'].includes(error.code))throw error;
+        // A revision updates the child plan and its contract under Kit locks.
+        // A reader between these writes must not turn a known writer into UNKNOWN.
+        if(await exists(path.join(gitDir,'workflow-kit','operation.lock')))
+          throw Object.assign(Error('Workflow Kit обновляет назначение; ждём завершения операции.'),{code:'WORKFLOW_LOCKED'});
+        if(retryTransient&&['ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT'].includes(error.code))throw error;
         assignments.push({...record,status:'UNKNOWN',error:{code:error.code,message:error.message}});
       }
     }
@@ -126,7 +131,8 @@ export class ParallelKit {
     return this.plans.call(workspace,'assignment:create',['--expected-revision',String(plan.plan_revision)],
       {id,task_id:task.id,base_commit:base,worktree:path.join(directory,id)});
   }
-  setupAssignment(workspace,id) {return this.plans.call(workspace,'assignment:setup',['--id',id,'--npm-ci'],null,{timeout:600000});}
+  setupAssignment(workspace,id) {return this.plans.call(workspace,'assignment:setup',['--id',id,'--npm-ci'],null,
+    {timeout:600000,onTiming:span=>this.onTiming(workspace,id,span)});}
   continueIntegration(workspace,id) {return this.plans.call(workspace,'integration:continue',['--id',id],null,{timeout:600000});}
   integrate(workspace,assignment) {return this.plans.call(workspace,'integration:start',[],
     {id:assignment.id,source_commit:assignment.source_commit},{timeout:600000});}

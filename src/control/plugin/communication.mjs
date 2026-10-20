@@ -18,11 +18,14 @@ export function communicationIdentity(metadata) {
     .map(key=>typeof metadata[key]==='string' && metadata[key].length<=512?metadata[key]:''))).digest('hex');
 }
 
-const MUTATIONS=['join','bind','enable','stop','send','probe','claim','verify','report','read','telemetry','sync'];
+const MUTATIONS=['join','bind','enable','stop','send','probe','claim','claimReady','verify','report','read','telemetry','telemetryBatch','sync'];
+const diagnostic=e=>e.component==='frontend'||['operation.timing','kit.timing','observer.timing','claim.deferred'].includes(e.event_type);
+const functional=e=>!diagnostic(e)&&!e.event_type.startsWith('wait.');
 const SECRET=/(?:Bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{12,}|(?:authorization|cookie|api[_-]?key|password|(?:access[_-]?)?token)\s*[:=]\s*\S+|https?:\/\/[^\s/:]+:[^\s/@]+@)/i;
 const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','report.failed',
   'stop.local','stop.failed','host.handshake','host.context_changed','visibility.changed','panel.pagehide','panel.dispose','panel.mount','panel.resume',
-  'wait.error','connection.restored']);
+  'wait.error','connection.restored','rpc.completed']);
+const RPC_OPERATIONS=new Set(['recover','bind','sync','wait','claim','claim_ready','verify','report','status','journal','stop','enable','export']);
 const ERROR_CODES=new Set(['SDK_TIMEOUT','SDK_REJECTED','SDK_ERROR','MCP_ERROR','NETWORK_ERROR','CONTEXT_CHANGED','DISPOSED']);
 const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 
@@ -33,7 +36,7 @@ export class PluginCommunication {
     Object.assign(this,{now,makeId,waitMs,store,onChange});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
-    this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;
+    this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
@@ -65,11 +68,14 @@ export class PluginCommunication {
     catch(error){this.critical=error.code??'PLUGIN_COMMUNICATION_STORE_WRITE';throw fail('STORE_WRITE','Не удалось сохранить журнал. Отправка заблокирована.');}
   }
   mutate(name,input) {
+    const queued=performance.now();
     const work=this.tail.then(async()=>{
+      const entered=performance.now();
       await this.ready;
       requireValue(!this.disposed,'CLOSED','Служба связи закрывается.');
       requireValue(!this.critical,'STORE_BLOCKED','Критическая ошибка журнала. Отправка заблокирована.');
       await this.enrollment.validateInput(input);
+      const validated=performance.now();
       const old=this.runs.get(input.run_id),panels=structuredClone(this.panels);
       if(old)this.runs.set(input.run_id,structuredClone(old));
       const offset=old?.events.length??0;
@@ -77,8 +83,19 @@ export class PluginCommunication {
         if(old)this.expire(this.runs.get(input.run_id));
         const result=await this['_'+name](input),run=this.runs.get(input.run_id);
         if(name==='observed')this.observedDenials.delete(input.run_id+':'+input.message_id);
-        if(run){await this.persist(run,offset);this.syncTimers(run);this.wake(run,run.events.slice(offset));
-          if(run.events.length>offset&&run.mode==='workflow')queueMicrotask(()=>this.onChange(run.id));}
+        if(run){
+          const changes=run.events.slice(offset),messageId=input.message_id??result?.message_id;
+          if(run.mode==='workflow'&&messageId&&changes.some(functional))
+            this.event(run,'operation.timing',{operation:name,message_id:messageId,clock_domain:'backend-monotonic',
+              queue_ms:Math.round(entered-queued),validation_ms:Math.round(validated-entered),handler_ms:Math.round(performance.now()-validated)});
+          const pending=this.timings.filter(t=>t.project_id===run.project_id&&t.scope_id===run.grant?.scope_id);
+          for(const t of pending)this.event(run,t.type??'kit.timing',{operation:t.operation,elapsed_ms:t.elapsed_ms,
+            clock_domain:'backend-monotonic',assignment_id:t.assignment_id,outcome:t.outcome,
+            started_at:t.started_at??null,ended_at:t.ended_at});
+          this.timings=this.timings.filter(t=>!pending.includes(t));
+          await this.persist(run,offset);this.syncTimers(run);this.wake(run,run.events.slice(offset));
+          if(changes.some(functional)&&run.mode==='workflow')queueMicrotask(()=>this.onChange(run.id,changes));
+        }
         return structuredClone(result);
       }catch(error) {
         this.panels=panels;if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
@@ -100,8 +117,28 @@ export class PluginCommunication {
       }
     });this.tail=work.catch(()=>{});return work;
   }
+  recordKitTiming(target,span){
+    if(!/^[a-z]+(?::[a-z-]+)?$/.test(span.operation)||!Number.isFinite(span.elapsed_ms))return;
+    this.timings.push({project_id:target.project_id,scope_id:target.scope_id,assignment_id:target.assignment_id??null,
+      operation:span.operation,elapsed_ms:Math.max(0,Math.round(span.elapsed_ms)),outcome:span.ok?'ok':'error',
+      started_at:span.started_at??null,ended_at:span.ended_at??new Date(this.now()).toISOString()});
+    if(this.timings.length>64)this.timings.shift();
+  }
+  recordObserverTiming(target,elapsed,ok){
+    this.timings.push({type:'observer.timing',project_id:target.project_id,scope_id:target.scope_id,
+      assignment_id:target.assignment_id??null,operation:'physical-state',elapsed_ms:Math.max(0,Math.round(elapsed)),outcome:ok?'observed':'unavailable',
+      ended_at:new Date(this.now()).toISOString()});
+    if(this.timings.length>64)this.timings.shift();
+  }
+  wakes(run,memberId,event){
+    if(!functional(event))return false;
+    if(run.mode!=='workflow')return true;
+    if(/^(plan\.|backend\.|project\.removed|operation\.denied)/.test(event.event_type))return true;
+    if(event.message_id)return run.messages.some(m=>m.message_id===event.message_id&&m.recipient_id===memberId);
+    return event.participant_id===memberId;
+  }
   wake(run,events) {
-    if(events.some(e=>!e.event_type.startsWith('wait.')))for(const waiter of this.waiters.values())if(waiter.runId===run.id)waiter.wake('event');
+    for(const waiter of this.waiters.values())if(waiter.runId===run.id&&events.some(e=>this.wakes(run,waiter.memberId,e)))waiter.wake('event');
   }
   syncTimers(run) {
     this.workflow.syncProbes(run);
@@ -194,7 +231,8 @@ export class PluginCommunication {
       await this.workflow.observed(run,member);return {};}
   observeSession(sessionId){for(const run of this.runs.values())if(run.mode==='workflow'&&Object.values(run.members).some(m=>m.target.local_session_id===sessionId)){
     void this.mutate('observed',{run_id:run.id,session_id:sessionId}).catch(()=>{});
-    for(const waiter of this.waiters.values())if(waiter.runId===run.id)waiter.wake('event');
+    for(const waiter of this.waiters.values())if(waiter.runId===run.id
+      &&run.members[waiter.memberId]?.target.local_session_id===sessionId)waiter.wake('event');
   }}
   async modelInput(input){
     if(input.run_id&&input.participant_id)return input;
@@ -383,7 +421,7 @@ export class PluginCommunication {
     await this.ready;await this.tail;const key=input.panel_instance_id;
     requireValue(!this.waiters.has(key),'WAIT_ACTIVE','У этой панели уже есть ожидание.');
     // Reserve before persistence so two simultaneous waits cannot pass together.
-    const holder={runId:input.run_id,wake:()=>{}};this.waiters.set(key,holder);
+    const holder={runId:input.run_id,memberId:input.participant_id,wake:()=>{}};this.waiters.set(key,holder);
     try {
       const prepared=await this.mutate('waitStart',input);
       if(prepared.immediate)return this.waitResult(input);
@@ -394,7 +432,8 @@ export class PluginCommunication {
         timer=setTimeout(()=>finish('timeout'),Math.min(this.waitMs,prepared.expires_at-this.now()));timer.unref?.();
         signal?.addEventListener('abort',cancel,{once:true});
         if(signal?.aborted)cancel();
-        else if(this.runs.get(input.run_id).events.length>prepared.seq)finish('event');
+        else {const run=this.runs.get(input.run_id);
+          if(run.events.slice(prepared.seq).some(e=>this.wakes(run,input.participant_id,e)))finish('event');}
       });
       if(!this.disposed&&!this.critical)await this.mutate('waitEnd',{...input,reason:holder.reason});
       await this.tail;return this.waitResult(input);
@@ -402,8 +441,12 @@ export class PluginCommunication {
   }
   _waitStart(input) {
     const {run,panel}=this.allowed(input);
+    // Only an already valid lease in this generation can be renewed by wait.
+    // Reconnection and expired leases still require explicit sync.
+    if(run.mode==='workflow')panel.expiresAt=this.now()+60000;
     requireValue(Number.isSafeInteger(input.after_seq)&&input.after_seq>=0&&input.after_seq<=run.events.length,'CURSOR','Некорректный курсор журнала.');
-    const value=this.waitResult(input);if(value.message_id||run.events.length>input.after_seq)return {immediate:true};
+    const value=this.waitResult(input);
+    if(value.message_id||run.events.slice(input.after_seq).some(e=>this.wakes(run,input.participant_id,e)))return {immediate:true};
     if(run.mode!=='workflow')this.event(run,'wait.started',{participant_id:input.participant_id,panel_instance_id:input.panel_instance_id});
     return {seq:run.events.length,expires_at:panel.expiresAt};
   }
@@ -415,14 +458,23 @@ export class PluginCommunication {
   waitResult(input) {
     const {run,member}=this.member(input),pending=run.mode==='workflow'?this.workflow.pending(run,member):run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
     const end=Math.min(input.after_seq+100,run.events.length),events=this.visibleEvents(run,member,run.events.slice(input.after_seq,end));
-    return {message_id:pending?.message_id??null,events,seq:end,
+    return {message_id:pending?.message_id??null,events,seq:end,expires_at:this.panels.get(input.panel_instance_id)?.expiresAt??0,
       stopped:member.stopped||member.generation!==input.permission_generation,critical_error:this.critical};
   }
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read,'CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
     if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message))return {deferred:true,superseded:true};
-    if(run.mode==='workflow'&&!await this.workflow.canClaim(run,member,message))return {deferred:true};
+    if(run.mode==='workflow'&&!await this.workflow.canClaim(run,member,message)){
+      const physical=this.workflow.observe(member.target),preceding=run.messages.find(m=>m.recipient_id===member.id
+        &&m.scope_id===run.grant.scope_id&&!m.reply_observed);
+      const reason=member.deliveryGate?'previous-turn':preceding?.message_id!==message.message_id?'previous-message':
+        physical.busy?'recipient-busy':!physical.canSend?'recipient-unavailable':'admission-denied';
+      if(message.claim_wait_reason!==reason){message.claim_wait_reason=reason;
+        this.event(run,'claim.deferred',{message_id:message.message_id,participant_id:member.id,reason});}
+      return {deferred:true,reason};
+    }
+    delete message.claim_wait_reason;
     message.delivery='claimed';message.delivery_attempt_id=this.makeId();message.panel_instance_id=input.panel_instance_id;
     if(run.mode==='workflow')message.claimed_at=this.now();
     message.permission_generation=member.generation;
@@ -436,13 +488,20 @@ export class PluginCommunication {
       && message.delivery_attempt_id===input.delivery_attempt_id,'CLAIM_DENIED','Нет подходящей попытки доставки.');
     return {...context,message};
   }
-  async _verify(input) {
+  async _claimReady(input){
+    const claimed=await this._claim(input);if(claimed.deferred)return claimed;
+    return {...claimed,...await this._verify({...input,delivery_attempt_id:claimed.delivery_attempt_id},true)};
+  }
+  async _verify(input,alreadyChecked=false) {
     const {run,member,message}=this.attempt(input);
     requireValue(message.delivery==='claimed' && !message.intent && message.permission_generation===member.generation,
       'CLAIM_DENIED','Намерение отправки уже было подтверждено. Повтор запрещён.');
     if(run.mode==='workflow'){
-      if(await this.workflow.superseded(run,member,message))return {superseded:true,expires_at:0};
-      requireValue(await this.workflow.admit(member.target)&&this.workflow.observe(member.target).canSend,'BUSY','Адресат занят. Попытка оставлена без повтора; требуется проверка.');
+      if(!alreadyChecked){
+        if(await this.workflow.superseded(run,member,message))return {superseded:true,expires_at:0};
+        requireValue(await this.workflow.admit(member.target)&&this.workflow.observe(member.target).canSend,'BUSY','Адресат занят. Попытка оставлена без повтора; требуется проверка.');
+      }
+      else requireValue(this.workflow.observe(member.target).canSend,'BUSY','Адресат изменился перед отправкой.');
       this.workflow.begin(run,member,message);
     }
     message.intent=true;
@@ -482,8 +541,18 @@ export class PluginCommunication {
     requireValue(data&&uuid(data.event_id)&&CLIENT_EVENTS.has(data.event_type)&&Number.isSafeInteger(data.client_sequence)
       &&data.client_sequence>=1&&typeof data.client_time==='string'&&!Number.isNaN(Date.parse(data.client_time))
       &&Number.isFinite(data.duration_ms)&&data.duration_ms>=0&&data.duration_ms<=86400000,'INPUT','Некорректное событие панели.');
-    const safe={event_id:data.event_id,event_type:data.event_type,client_sequence:data.client_sequence,client_time:new Date(data.client_time).toISOString(),duration_ms:data.duration_ms,
+    const safe={event_id:data.event_id,event_type:data.event_type,client_sequence:data.client_sequence,client_time:new Date(data.client_time).toISOString(),
+      duration_ms:data.duration_ms,duration_kind:'since-panel-mount',
       ...(data.error_code?{error_code:ERROR_CODES.has(data.error_code)?data.error_code:'MCP_ERROR'}:{})};
+    if(data.event_type==='rpc.completed'){
+      requireValue(RPC_OPERATIONS.has(data.operation)&&Number.isFinite(data.operation_ms)&&data.operation_ms>=0
+        &&data.operation_ms<=86400000,'INPUT','Некорректная длительность обращения панели.');
+      Object.assign(safe,{operation:data.operation,operation_ms:data.operation_ms,clock_domain:'panel-monotonic'});
+    }
+    else if(data.operation_ms!==undefined){
+      requireValue(Number.isFinite(data.operation_ms)&&data.operation_ms>=0&&data.operation_ms<=86400000,'INPUT','Некорректная длительность SDK.');
+      Object.assign(safe,{operation_ms:data.operation_ms,clock_domain:'panel-monotonic'});
+    }
     if(data.event_type==='host.handshake')Object.assign(safe,{message_supported:data.message_supported===true,
       build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,sdk_versions:SDK_VERSIONS});
     if(data.message_id){requireValue(run.messages.some(m=>m.message_id===data.message_id&&m.recipient_id===input.participant_id),'INPUT','Неизвестное сообщение события.');safe.message_id=data.message_id;}
@@ -499,11 +568,29 @@ export class PluginCommunication {
       panel_instance_id:input.panel_instance_id,participant_id:input.participant_id});
     return {seq:run.events.length};
   }
+  _telemetryBatch(input){
+    requireValue(Array.isArray(input.events)&&input.events.length>0&&input.events.length<=16,'INPUT','Нужно от 1 до 16 событий.');
+    for(const event of input.events)this._telemetry({...input,event});
+    return {seq:this.run(input).events.length};
+  }
   async status(input){
     await this.ready;await this.tail;await this.enrollment.validateInput(input);
     const value=structuredClone(this._status(input)),{run,member}=this.member(input);
     if(run.mode==='workflow'&&member.target.dialogue_version===1){
-      value.assignments=await this.assignment.roster(run,member);
+      if(input.view!=='panel')value.assignments=await this.assignment.roster(run,member);
+      else value.assignments=this.assignment.targets(run).filter(t=>t.role==='E'&&(member.role==='O'||t.local_session_id===member.target.local_session_id))
+        .map(t=>{
+          const messages=run.messages.filter(m=>m.assignment_id===t.assignment_id&&m.scope_id===run.grant.scope_id&&!m.superseded);
+          const attempt=Math.max(1,...messages.map(m=>m.attempt??1)),latest=kind=>messages.findLast(m=>m.kind===kind&&m.attempt===attempt);
+          const task=latest('task'),result=latest('result'),acceptance=latest('acceptance'),physical=this.workflow.observe(t);
+          return {task_id:t.task_id,assignment_id:t.assignment_id,attempt,projection:true,
+            phase:run.grant.phase==='complete'||acceptance?.kit_transport_closed?'INTEGRATED':'channel',
+            physical:physical?{busy:physical.busy===true,stopped:physical.stopped===true,commandsIdle:physical.commandsIdle===true}:null,
+            channel:this.workflow.progress(t.local_session_id),
+            dialogue:{attempt,grant:task?{message_id:task.message_id}:null,
+              result:result?{message_id:result.message_id,source_commit:result.source_commit}:null,
+              acceptance:acceptance?{message_id:acceptance.message_id,source_commit:acceptance.source_commit}:null}};
+        });
       value.pending_intents=Object.values(run.assignment_intents??{}).filter(i=>i.phase!=='published'
         &&(member.role==='O'||i.sender_id===member.id||i.target.local_session_id===member.target.local_session_id))
         .map(i=>({message_id:i.message_id,assignment_id:i.effect.assignment_id,phase:i.phase,error:i.error??null}));

@@ -8,10 +8,10 @@ export class SessionPlans {
   constructor({ setup = new WorkspaceSetup(), run = execute, files = desktopFiles, onWorkerStart = () => {} } = {}) {
     Object.assign(this, { setup, run, files, onWorkerStart });
   }
-  async call(workspace, command, args = [], input = null, { timeout = 120000, readRetry = false } = {}) {
+  async call(workspace, command, args = [], input = null, { timeout = 120000, readRetry = false, onTiming = null } = {}) {
     if (!path.isAbsolute(workspace)) throw fail('WORKSPACE_REQUIRED', 'Нужна абсолютная папка проекта.');
     const node = await this.setup.node();
-    let inputFile;
+    let inputFile,ok=false;const started=performance.now(),started_at=new Date().toISOString();
     try {
       if (input) {
         const directory = path.join(workspace, '.harness/runtime/session-plans');
@@ -31,13 +31,23 @@ export class SessionPlans {
       // Kit 1.8.2 can observe the transaction marker just before its owner removes
       // it. Re-read only inspection commands and this exact missing-marker race;
       // malformed data and all commands with effects keep their original failure.
+      const missingTransaction=result.code==='INVALID_JSON'
+        &&/(?:\/|\\)workflow-kit(?:\/|\\)transaction\.json$/.test(result.message??'')
+        &&/^ENOENT:/.test(result.details?.reason??'');
+      const replacedPlan=result.code==='MISSING_FILE'&&result.message==='Отсутствует навигационный план проекта.';
       if (!readRetry && !input && ['assignment:status','integration:status','validate'].includes(command)
-          && result.code === 'INVALID_JSON' && /(?:\/|\\)workflow-kit(?:\/|\\)transaction\.json$/.test(result.message ?? '')
-          && /^ENOENT:/.test(result.details?.reason ?? ''))
-        return this.call(workspace, command, args, null, { timeout, readRetry:true });
+          && (missingTransaction||replacedPlan))
+        {
+          if(replacedPlan)await new Promise(resolve=>setTimeout(resolve,50));
+          const result=await this.call(workspace, command, args, null, { timeout, readRetry:true });
+          ok=true;return result;
+        }
       if (!result.ok) throw fail(result.code ?? 'PLAN_COMMAND_FAILED', result.message ?? 'Команда плана не выполнена.');
+      ok=true;
       return result;
-    } finally { if (inputFile) await this.files.removeFile(inputFile).catch(() => {}); }
+    } finally { if (inputFile) await this.files.removeFile(inputFile).catch(() => {});
+      try{onTiming?.({operation:command,elapsed_ms:performance.now()-started,started_at,ended_at:new Date().toISOString(),ok});}catch{/* Diagnostics never alter a Kit outcome. */}
+    }
   }
   async loadContext(workspace, role = null) {
     try {

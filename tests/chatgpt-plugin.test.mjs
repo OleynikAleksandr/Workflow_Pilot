@@ -61,7 +61,7 @@ async function fixture(t){
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
 
-const communicationTools=['bind','claim','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','verify','wait'];
+const communicationTools=['bind','claim','claim_ready','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','telemetry_batch','verify','wait'];
 test('actual MCP exposes working send/status/yield and transfers selected UTF-8 context through the private bridge',async t=>{
   const f=await fixture(t),comm=f.plugin.communication;
   const o={project_id:'fixture',local_session_id:'o',origin_session_id:'o',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
@@ -186,7 +186,7 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.match(tools.find(t=>t.name==='workflow_communication_enable').description,/Working plans reject Enable/);
   assert.match(tools.find(t=>t.name==='workflow_communication_stop').description,/whole plan/);
   assert.match(tools.find(t=>t.name==='workflow_communication_stop').description,/only detaches/);
-  const appOnly=['bind','claim','enable','recover','report','stop','sync','telemetry','verify','wait'];
+  const appOnly=['bind','claim','claim_ready','enable','recover','report','stop','sync','telemetry','telemetry_batch','verify','wait'];
   for(const suffix of communicationTools){const tool=tools.find(t=>t.name==='workflow_communication_'+suffix);
     assert.ok(tool);assert.equal(tool._meta.ui.resourceUri,undefined,'data operations cannot recreate UI');
     assert.deepEqual(tool._meta.ui.visibility,appOnly.includes(suffix)?['app']:['journal','status','export'].includes(suffix)?['app','model']:['model']);
@@ -292,6 +292,9 @@ test('real SDK working channel starts automatically, reads full context and wait
   await eventually(()=>contexts.length===2);assert.equal(contexts[1],'Второе поручение');
   assert.equal(ui.calls.includes('workflow_communication_enable'),false);
   assert.equal(ui.calls.includes('workflow_communication_join'),false);assert.equal(ui.maxWaits,1);
+  assert.equal(ui.calls.includes('workflow_communication_claim_ready'),true);
+  assert.equal(ui.calls.includes('workflow_communication_verify'),false,'working delivery uses one admission round trip');
+  await eventually(()=>ui.calls.includes('workflow_communication_telemetry_batch'));
   ui.$('stop').click();await eventually(async()=>!(comm.runs.get(invitation.run_id).grant.active));
   await delay(80);assert.equal(ui.messages.length,2);assert.deepEqual(ui.errors,[]);
 });

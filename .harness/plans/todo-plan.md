@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 669,
+  "plan_revision": 671,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -70,7 +70,8 @@
       "src/control/workflow/parallel-kit.mjs",
       "src/control/workflow/session-plans.mjs",
       "tests/parallel-execution.test.mjs",
-      "src/control/sessions/session-plans.mjs"
+      "src/control/sessions/session-plans.mjs",
+      "tests/session-plans.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -176,8 +177,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "T002",
@@ -205,7 +206,9 @@
         "src/control/workflow/dialogue-delivery.mjs",
         "src/control/workflow/parallel-kit.mjs",
         "src/control/workflow/session-plans.mjs",
-        "src/control/sessions/session-plans.mjs"
+        "src/control/sessions/session-plans.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/session-plans.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -228,7 +231,23 @@
         "Измерение вызовов SessionPlans относится к существующему src/control/sessions/session-plans.mjs; путь src/control/workflow/session-plans.mjs в исходном перечне — опечатка, не создавать такой файл."
       ],
       "expected_commit_message": "feat: Ускорить доставку и измерять границы панели и backend",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/session-plans.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -565,7 +584,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 669
+Revision: 671
 
 ## Цель
 
@@ -588,10 +607,10 @@ Revision: 669
   - Файлы: src/control/plugin/assignment-dialogue.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/service.mjs, tools/codex-app-server-mcp/plugin.py, packages/workflow-kit/src/lib/role-protocol.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, src/control/workflow/parallel-execution.mjs, docs/planning/dialogue-latency-visibility.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Ускорить доставку и измерять границы панели и backend — Ожидает
-  - Git Commit: [PENDING] feat: Ускорить доставку и измерять границы панели и backend
+- [DONE] T002: Ускорить доставку и измерять границы панели и backend — Завершено
+  - Git Commit: [DONE] feat: Ускорить доставку и измерять границы панели и backend
   - Reference: dialogue-latency-visibility / T002 / implementation
-  - Файлы: src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/contracts/plugin-communication.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/session-plans.mjs, src/control/sessions/session-plans.mjs
+  - Файлы: src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/contracts/plugin-communication.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/session-plans.mjs, src/control/sessions/session-plans.mjs, tests/dialogue-delivery.test.mjs, tests/session-plans.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] T006: Перекрыть запуск DOCS и финализацию с независимыми хвостами диалога — Ожидает

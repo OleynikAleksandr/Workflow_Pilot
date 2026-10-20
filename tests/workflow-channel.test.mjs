@@ -28,6 +28,59 @@ async function fixture(t,currentMessage,dialogueKit=null){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+test('combined claim persists one send intent and cannot be repeated after a lost response',async t=>{
+  const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e);
+  const message=await queue(f.c,e);
+  const receipt=await f.c.claimReady({...b,message_id:message.message_id});
+  assert.ok(receipt.delivery_attempt_id);assert.ok(receipt.expires_at>0);
+  assert.equal(f.c.runs.get(b.run_id).messages[0].intent,true);
+  await assert.rejects(f.c.claimReady({...b,message_id:message.message_id}),{code:'PLUGIN_COMMUNICATION_CLAIM_DENIED'});
+  const restored=await f.create();
+  assert.equal(restored.runs.get(b.run_id).messages[0].delivery,'unknown');
+  assert.equal(restored.runs.get(b.run_id).events.filter(e=>e.event_type==='send.intent').length,1);
+});
+test('wait renews only a live lease in its current generation',async t=>{
+  const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e);
+  await queue(f.c,e);const initial=f.c.panels.get(b.panel_instance_id).expiresAt;
+  f.advance(59000);
+  const response=await f.c.wait({...b,after_seq:0});
+  assert.equal(response.expires_at,initial+59000);
+  f.advance(61000);
+  await assert.rejects(f.c.wait({...b,after_seq:response.seq}),{code:'PLUGIN_COMMUNICATION_STOPPED'});
+  await f.sync(f.c,b);await f.c.workflow.grant(f.o,'paused');
+  await assert.rejects(f.c.wait({...b,after_seq:response.seq}),{code:'PLUGIN_COMMUNICATION_STOPPED'});
+});
+test('batched diagnostic and sibling events do not wake a delivery waiter or scheduler',async t=>{
+  const f=await fixture(t),a=f.target('a'),b=f.target('b');await f.c.workflow.grant(f.o);
+  const first=await f.bind(f.c,a),second=await f.bind(f.c,b),run=()=>f.c.runs.get(first.run_id);
+  f.c.waitMs=1000;let changes=0,finished=false;f.c.onChange=()=>changes++;
+  await new Promise(resolve=>setImmediate(resolve));changes=0;
+  const waiting=f.c.wait({...first,after_seq:run().events.length}).then(value=>{finished=true;return value;});
+  await new Promise(resolve=>setTimeout(resolve,10));
+  const events=[1,2].map(n=>({event_id:randomUUID(),client_sequence:n,client_time:new Date().toISOString(),
+    duration_ms:n,event_type:'rpc.completed',operation:'status',operation_ms:12}));
+  await f.c.telemetryBatch({...second,events});await f.c.telemetryBatch({...second,events});
+  assert.equal(changes,0);assert.equal(run().events.filter(e=>e.event_type==='rpc.completed').length,2);
+  assert.equal(run().events.find(e=>e.event_type==='rpc.completed').duration_kind,'since-panel-mount');
+  await queue(f.c,b,'sibling');await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(finished,false);
+  const own=await queue(f.c,a,'own');assert.equal((await waiting).message_id,own.message_id);
+});
+test('slow full Kit roster cannot delay a sibling claim and panel projection performs no roster reads',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');
+  await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o),b=await f.bind(f.c,e);
+  const message=await queue(f.c,e);let entered,release,reads=0;
+  const started=new Promise(r=>entered=r),gate=new Promise(r=>release=r),original=kit.status;
+  kit.status=async(...args)=>{reads++;entered();await gate;return original(...args);};
+  const slow=f.c.status(o);await started;
+  try{
+    const panel=await f.c.status({...o,view:'panel'});
+    assert.equal(panel.assignments.length,1);assert.equal(reads,1);
+    const claimed=await f.c.claimReady({...b,message_id:message.message_id});
+    assert.ok(claimed.delivery_attempt_id);
+    assert.ok(f.c.runs.get(b.run_id).events.some(e=>e.event_type==='operation.timing'&&e.operation==='claimReady'));
+  }finally{release();await slow;}
+});
 test('panel status exposes own addressed text and all O assignments without marking messages read',async t=>{
   const f=await fixture(t,undefined,dialogueKitFixture()),e=f.target('e'),other=f.target('other');
   await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o),a=await f.bind(f.c,e),b=await f.bind(f.c,other);
@@ -510,9 +563,9 @@ test('one plan Start covers five later enrollments, expires only its SDK lease, 
     let b=await f.bind(f.c,target);assert.equal((await f.c.status(b)).stopped,false);
     assert.equal(pending(f.c,b),first.message_id);
     f.pages.get(target.local_session_id).canSend=false;assert.equal(pending(f.c,b),null);
-    assert.deepEqual(await f.c.claim({...b,message_id:first.message_id}),{deferred:true});
+    assert.deepEqual(await f.c.claim({...b,message_id:first.message_id}),{deferred:true,reason:'recipient-unavailable'});
     f.pages.get(target.local_session_id).canSend=true;f.admission.set(target.local_session_id,false);
-    assert.deepEqual(await f.c.claim({...b,message_id:first.message_id}),{deferred:true});f.admission.set(target.local_session_id,true);
+    assert.deepEqual(await f.c.claim({...b,message_id:first.message_id}),{deferred:true,reason:'admission-denied'});f.admission.set(target.local_session_id,true);
     await delivered(f,b,first.message_id);assert.equal(pending(f.c,b),second.message_id);
     f.advance(31*60*1000);assert.equal((await f.c.status(b)).stopped,false,'plan permission has no 30-minute deadline');
     await assert.rejects(f.c.claim({...b,message_id:second.message_id}),{code:'PLUGIN_COMMUNICATION_STOPPED'});
@@ -582,7 +635,7 @@ test('two live panels consume at most one delivery and cannot skip an uncertain 
   const first=await queue(f.c,e,'first'),second=await queue(f.c,e,'second');
   const results=await Promise.allSettled([f.c.claim({...b,message_id:first.message_id}),f.c.claim({...other,message_id:first.message_id})]);
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
-  assert.deepEqual(await f.c.claim({...other,message_id:second.message_id}),{deferred:true});
+  assert.deepEqual(await f.c.claim({...other,message_id:second.message_id}),{deferred:true,reason:'previous-message'});
   assert.equal(pending(f.c,other),null);
 });
 test('context files reject corruption and symlink substitution without changing the target',async t=>{

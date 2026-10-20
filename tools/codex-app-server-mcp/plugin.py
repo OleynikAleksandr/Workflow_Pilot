@@ -62,13 +62,15 @@ class AssignmentContext(BaseModel):
 class CommunicationEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_id: MessageId
-    event_type: Annotated[str, Field(pattern=r"^(sdk\.(invoked|accepted|rejected|timeout|error)|report\.failed|stop\.(local|failed)|host\.(handshake|context_changed)|visibility\.changed|panel\.(pagehide|dispose|mount|resume)|wait\.error|connection\.restored)$")]
+    event_type: Annotated[str, Field(pattern=r"^(sdk\.(invoked|accepted|rejected|timeout|error)|report\.failed|stop\.(local|failed)|host\.(handshake|context_changed)|visibility\.changed|panel\.(pagehide|dispose|mount|resume)|wait\.error|connection\.restored|rpc\.completed)$")]
     client_sequence: Annotated[int, Field(ge=1)]
     client_time: Annotated[str, Field(max_length=40)]
     duration_ms: Annotated[float, Field(ge=0, le=86400000)]
     message_id: MessageId | None = None
     error_code: Annotated[str | None, Field(max_length=80)] = None
     message_supported: bool | None = None
+    operation: Annotated[str | None, Field(max_length=32)] = None
+    operation_ms: Annotated[float | None, Field(ge=0, le=86400000)] = None
 
 
 def host_metadata(ctx: Context) -> dict[str, str]:
@@ -234,9 +236,10 @@ def register_plugin(mcp, state_root: Path):
         return await communication("probe", ctx, run_id=run_id, participant_id=participant_id, delay_ms=delay_ms)
 
     @mcp.tool(name="workflow_communication_status", annotations=READ, meta={"ui": {"visibility": ["app", "model"]}})
-    async def status(run_id: RunId, participant_id: ParticipantId, ctx: Context) -> CallToolResult:
+    async def status(run_id: RunId, participant_id: ParticipantId, ctx: Context,
+                     view: Annotated[Literal["full", "panel"], Field(description="full verifies the Kit roster; panel returns lightweight channel facts for background UI refresh. Neither grants permission.")] = "full") -> CallToolResult:
         """Read this participant's communication state without launching a model or returning UI."""
-        return await communication("status", ctx, run_id=run_id, participant_id=participant_id)
+        return await communication("status", ctx, run_id=run_id, participant_id=participant_id, view=view)
 
     @mcp.tool(name="workflow_communication_journal", annotations=READ, meta={"ui": {"visibility": ["app", "model"]}})
     async def journal(run_id: RunId, participant_id: ParticipantId, ctx: Context,
@@ -258,6 +261,11 @@ def register_plugin(mcp, state_root: Path):
     async def telemetry(binding: Binding, event: Annotated[CommunicationEvent, Field(description="One sanitized panel event; fixed event types and monotonic client sequence.")], ctx: Context) -> CallToolResult:
         """App-only record a bounded diagnostic event. Event IDs deduplicate retries and sequence gaps remain visible. Never include raw SDK responses, credentials or arbitrary errors."""
         return await communication("telemetry", ctx, binding=binding, event=event.model_dump(exclude_none=True))
+
+    @mcp.tool(name="workflow_communication_telemetry_batch", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
+    async def telemetry_batch(binding: Binding, events: Annotated[list[CommunicationEvent], Field(min_length=1, max_length=16, description="One to sixteen ordered sanitized events from the same bound panel; retries retain event IDs.")], ctx: Context) -> CallToolResult:
+        """App-only bounded ordered diagnostic batch. Duplicate event IDs are idempotent; no delivery or scheduler wake. duration_ms is time since panel mount, operation_ms is measured operation duration on that panel clock."""
+        return await communication("telemetryBatch", ctx, binding=binding, events=[event.model_dump(exclude_none=True) for event in events])
 
     @mcp.tool(name="workflow_communication_bind", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
     async def bind(binding: Binding, ctx: Context, message_supported: Annotated[bool, Field(description="True only when the connected SDK exposes openai/message.")] = False) -> CallToolResult:
@@ -294,6 +302,11 @@ def register_plugin(mcp, state_root: Path):
     async def claim(binding: Binding, message_id: MessageId, ctx: Context) -> CallToolResult:
         """App-only consume-once delivery claim. A lost claim result is never retried or returned to pending. Requires current permission and fresh matching host metadata."""
         return await communication("claim", ctx, binding=binding, message_id=message_id)
+
+    @mcp.tool(name="workflow_communication_claim_ready", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
+    async def claim_ready(binding: Binding, message_id: MessageId, ctx: Context) -> CallToolResult:
+        """App-only atomic consume-once claim and final identity/permission/admission check, with durable one-shot send intent. Call SDK immediately after a valid response. Lost/unknown response must never be retried. Legacy claim and verify remain available."""
+        return await communication("claimReady", ctx, binding=binding, message_id=message_id)
 
     @mcp.tool(name="workflow_communication_verify", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def verify(binding: Binding, message_id: MessageId, delivery_attempt_id: MessageId, ctx: Context) -> CallToolResult:

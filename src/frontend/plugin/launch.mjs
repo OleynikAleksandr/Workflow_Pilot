@@ -4,7 +4,8 @@ const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|ASSIGNMEN
 export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=10000}) {
   const ui=mountPanel({document}),$=ui.$,clock=()=>document.defaultView.performance.now(),started=clock();let panelId=uuid();
   let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false,stopping=false,loop=null,expiry=null,expiresAt=0;
-  let clientSequence=0,telemetry=[],flushing=null,dropped=0,exported='',exportRun='',serverError=null;
+  let clientSequence=0,telemetry=[],flushing=null,flushTimer=null,dropped=0,exported='',exportRun='',serverError=null;
+  let refreshing=null,refreshTimer=null;const sampledAt=new Map();
   let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false,workflow=false,recoveryFailures=0,retryTimer=null;
   let workflowTimer=null,resourceUri='ещё не получен';
   function watchWorkflow(){
@@ -44,26 +45,46 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     if(resumePending&&!busy&&!recovery&&!stopping&&!suspended&&!disposed){resumePending=false;queueMicrotask(()=>recover());}
   };
   const call=async(name,args={},options={})=>{
-    const result=await callTool('workflow_communication_'+name,args,{timeout:35000,...options});
+    const began=clock();
+    let result;
+    try{result=await callTool('workflow_communication_'+name,args,{timeout:35000,...options});}
+    catch(error){if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:'NETWORK_ERROR'});throw error;}
     if(/^ui:\/\/workflow-pilot\/panel-[a-f0-9]{64}\.html$/.test(result.structuredContent?.panel_resource_uri??''))resourceUri=result.structuredContent.panel_resource_uri;
-    if(result.isError)throw Object.assign(new Error(result.structuredContent?.error?.message??'MCP отклонил запрос.'),{code:result.structuredContent?.error?.code});
-    return result.structuredContent;
+    if(result.isError){
+      if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:'MCP_ERROR'});
+      throw Object.assign(new Error(result.structuredContent?.error?.message??'MCP отклонил запрос.'),{code:result.structuredContent?.error?.code});
+    }
+    const value=result.structuredContent;
+    if(!name.startsWith('telemetry')&&(!['wait','status','sync'].includes(name)||value?.message_id
+      ||clock()-(sampledAt.get(name)??-Infinity)>=30000)){
+      sampledAt.set(name,clock());
+      record('rpc.completed',{operation:name,operation_ms:clock()-began,...(args.message_id?{message_id:args.message_id}:{})});
+    }
+    return value;
   };
   function flush(){
+    clearTimeout(flushTimer);flushTimer=null;
     if(flushing||!binding||!telemetry.length)return flushing;
     flushing=(async()=>{while(telemetry.length){const entry=telemetry[0];
       if(!entry.binding){if(entry.panelId!==panelId){telemetry.shift();dropped++;continue;}entry.binding={...binding};}
-      try{await call('telemetry',{binding:entry.binding,event:entry.event});telemetry.shift();}catch{break;}
+      const signature=JSON.stringify(entry.binding),batch=[];
+      for(const item of telemetry.slice(0,16)){
+        if(!item.binding&&item.panelId===panelId)item.binding={...binding};
+        if(JSON.stringify(item.binding)!==signature)break;batch.push(item);
+      }
+      try{await call('telemetry_batch',{binding:entry.binding,events:batch.map(item=>item.event)});telemetry.splice(0,batch.length);}catch{break;}
       if(!disposed)ui.localEvents(telemetry.length,dropped);
     }})().finally(()=>{flushing=null;});return flushing;
   }
   function record(event_type,fields={}){
     const event={event_id:uuid(),event_type,client_sequence:++clientSequence,client_time:new Date().toISOString(),duration_ms:clock()-started,...fields};
     if(telemetry.length>=64)dropped++;else telemetry.push({event,panelId,binding:binding?{...binding}:null});
-    if(!disposed)ui.localEvents(telemetry.length,dropped);void flush();
+    if(!disposed)ui.localEvents(telemetry.length,dropped);
+    if(!flushTimer&&!flushing)flushTimer=setTimeout(()=>void flush(),50);
   }
   function localStop(text,state='idle'){
-    enabled=false;epoch++;abort?.abort();clearTimeout(expiry);clearTimeout(retryTimer);clearTimeout(workflowTimer);status(text,state);ready();
+    enabled=false;epoch++;abort?.abort();clearTimeout(expiry);clearTimeout(retryTimer);clearTimeout(workflowTimer);
+    clearTimeout(refreshTimer);refreshTimer=null;status(text,state);ready();
   }
   function stop(text='Остановлено локально; ждём подтверждения службы.',finalText=null,finalState='unknown',scope='panel'){
     if(stopPromise)return stopPromise;
@@ -79,24 +100,33 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   }
   async function refresh(reset=false){
     const current=binding,generation=epoch;
-    const value=await call('status',{run_id:current.run_id,participant_id:current.participant_id});
+    const value=await call('status',{run_id:current.run_id,participant_id:current.participant_id,view:reset?'full':'panel'});
     if(binding!==current||epoch!==generation||disposed||suspended)return value;
     if(!disposed){ui.snapshot({...value,expires_at:value.stopped?0:expiresAt});if(value.critical_error){serverError=value.critical_error;localStop('Журнал недоступен. Отправка заблокирована.','error');}}
     if(reset){let cursor=Math.max(0,value.seq-200);ui.feed([],cursor);
       while(cursor<value.seq){const page=await call('journal',{run_id:current.run_id,participant_id:current.participant_id,after_seq:cursor});
-        if(disposed||binding!==current||epoch!==generation)return;ui.feed(page.events);cursor=page.seq;}seq=cursor;
+        if(disposed||binding!==current||epoch!==generation)return;ui.feed(page.events);cursor=page.seq;}seq=Math.max(seq,cursor);
     }return value;
+  }
+  function scheduleRefresh(){
+    if(refreshing||refreshTimer||disposed||suspended)return;
+    const generation=epoch;
+    refreshTimer=setTimeout(()=>{
+      refreshTimer=null;if(disposed||suspended||epoch!==generation)return;
+      refreshing=refresh().catch(()=>{if(epoch===generation)status('Не удалось обновить отображение. Доставка проверяется отдельно.','error');})
+        .finally(()=>{refreshing=null;});
+    },500);
   }
   async function deliver(message_id,generation,signal){
     const current={...binding};
-    const ticket=await call('claim',{binding:current,message_id},{signal});
+    const ticket=await call(workflow?'claim_ready':'claim',{binding:current,message_id},{signal});
     if(ticket.deferred)return;
     if(!enabled||disposed||epoch!==generation)return;
     const args={binding:current,message_id:ticket.message_id,delivery_attempt_id:ticket.delivery_attempt_id};
-    const verified=await call('verify',args,{signal});
+    const verified=workflow?ticket:await call('verify',args,{signal});
     if(verified.superseded||!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
     status('Передаём запрос текущему разговору…','sending');
-    let outcome='unknown',timer;
+    let outcome='unknown',timer;const sdkStarted=clock();
     try {
       // These checks and the SDK invocation have no intervening await.
       const pending=getMessage().send({role:'user',content:[{type:'text',text:
@@ -106,7 +136,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         _meta:{'openai/message':{target:'active',send:true}}},{timeout:sendTimeoutMs});
       record('sdk.invoked',{message_id});
       const response=await Promise.race([pending,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('timeout'),{code:'SDK_TIMEOUT'})),sendTimeoutMs);})]);
-      outcome=response?.isError?'rejected':'accepted';record('sdk.'+outcome,{message_id});
+      outcome=response?.isError?'rejected':'accepted';record('sdk.'+outcome,{message_id,operation_ms:clock()-sdkStarted});
     }catch(error){const timeout=error.code==='SDK_TIMEOUT'||error.code===-32001;
       record(timeout?'sdk.timeout':'sdk.error',{message_id,error_code:timeout?'SDK_TIMEOUT':'SDK_ERROR'});}
     finally{clearTimeout(timer);}
@@ -121,11 +151,6 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     while(current()){
       let update;
       try{
-        if(workflow){const value=await call('sync',{binding,message_supported:!!getMessage()},{signal:controller.signal});
-          if(!current())return;
-          binding={...binding,permission_generation:value.permission_generation};expiresAt=value.expires_at;ui.snapshot(value);
-          if(value.stopped){localStop('Выполнение плана приостановлено.');return;}
-        }
         update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});}
       catch(error){
         if(!current())return;
@@ -137,13 +162,13 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       }
       if(!current())return;
       if(failures){record('connection.restored');status('Связь восстановлена. Ожидаем сообщение…','waiting');}failures=0;
-      ui.feed(update.events);seq=update.seq;void flush();
+      ui.feed(update.events);seq=update.seq;if(workflow&&update.expires_at)expiresAt=update.expires_at;
       if(update.stopped||update.critical_error){localStop(update.critical_error?'Ошибка журнала. Отправка запрещена.':'Разрешение отозвано.','error');return;}
       if(update.message_id){
         try{await deliver(update.message_id,generation,controller.signal);}
         catch{if(current())await stop('Доставка остановлена локально.','Исход попытки или отчёт не подтверждён. Повтора нет.');return;}
       }
-      if(current())try{await refresh();}catch{status('Не удалось обновить состояния. Журнал остаётся в службе.','error');}
+      if(current())scheduleRefresh();
     }
   }
   async function bind({automatic=false}={}){
@@ -152,7 +177,10 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,protocol_version:PROTOCOL,build_id:BUILD};
     try{const result=await call('bind',{binding:next,message_supported:!!getMessage()});if(disposed||suspended||epoch!==generation)return;binding=next;serverError=result.critical_error;
       workflow=result.mode==='workflow';ui.mode(result.mode);
-      record('host.handshake',{message_supported:!!getMessage()});await refresh(true);
+      record('host.handshake',{message_supported:!!getMessage()});
+      if(workflow)refreshing=refresh(true).catch(()=>{if(epoch===generation)status('Не удалось обновить журнал панели.','error');})
+        .finally(()=>{refreshing=null;});
+      else await refresh(true);
       if(disposed||suspended||epoch!==generation)return;
       status('Привязка подтверждена: '+result.role+'. '+(getMessage()?(workflow?'Ожидаем запуск плана.':'Включите связь вручную.'):'Хост не поддерживает openai/message; отправка недоступна.'));}
     catch(error){if(epoch===generation)status(error.message,'error');if(automatic)throw error;}finally{ready();watchWorkflow();}
@@ -227,6 +255,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     connectionError(){connected=false;serverError='SDK не подключён.';void stop('Не удалось подключить панель. Переоткройте её внутри ChatGPT.');ready();},
     suspend(){if(disposed||suspended)return;record('panel.pagehide');suspended=true;void stop('Панель приостановлена.');ready();},
     resume(){if(disposed||!suspended)return;suspended=false;record('panel.resume');resumePending=true;ready();},
-    dispose(reason='dispose'){if(disposed)return;record(reason==='pagehide'?'panel.pagehide':'panel.dispose');disposed=true;void stop('Панель закрывается; связь остановлена локально.');},
+    dispose(reason='dispose'){if(disposed)return;record(reason==='pagehide'?'panel.pagehide':'panel.dispose');disposed=true;
+      void flush();void stop('Панель закрывается; связь остановлена локально.');},
   };
 }

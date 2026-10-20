@@ -50,8 +50,10 @@ export class PluginProjects {
     if(!project)throw fail('PLUGIN_COMMUNICATION_PROJECT_REMOVED','Проект удалён.');
     try{
       for(let attempt=0;;attempt++)try{
-        return command==='assignment:dialogue-status'?await this.plans.call(project.workspace,command,['--id',input])
-          :await this.plans.call(project.workspace,command,[],input);
+        const timing={onTiming:span=>this.communication.recordKitTiming({...target,
+          assignment_id:typeof input==='string'?input:input?.assignment_id??target.assignment_id},span)};
+        return command==='assignment:dialogue-status'?await this.plans.call(project.workspace,command,['--id',input],null,timing)
+          :await this.plans.call(project.workspace,command,[],input,timing);
       }catch(error){
         if(command==='assignment:dialogue-status'&&['PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION','ENOENT'].includes(error.code)&&attempt<2){
           // Git replaces the parent plan during integration. Retry only this
