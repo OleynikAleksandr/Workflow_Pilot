@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 625,
+  "plan_revision": 626,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Один Start запускает исполнителей, которым оркестратор адресно выдаёт задачи и выбранный контекст; двусторонний диалог разрешает блокировки и доставляет результаты для приёмки, интеграции и завершения плана без участия пользователя в обычных шагах.",
   "acceptance_criteria": [
     "Планирование O, полный начальный DOM-контекст, Review и одна кнопка Start сохранены. E получают через DOM только правила/identity/bootstrap; рабочую задачу и минимальный контекст выбирает и отправляет O.",
@@ -200,6 +200,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/assignment-dialogue-reliability.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -1464,6 +1469,172 @@
       },
       "verification_kind": "package",
       "actual_files": []
+    },
+    {
+      "id": "T011",
+      "title": "Исправить обработку нескольких результатов и актуальность карточки оркестратора",
+      "why": "Исправить обработку нескольких результатов и актуальность карточки оркестратора",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/electron-smoke.mjs",
+        "package.json",
+        "package-lock.json",
+        "tools/codex-app-server-mcp/plugin.py"
+      ],
+      "documentation_paths": [
+        "docs/modules/assignment-dialogue-reliability.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "electron-smoke",
+        "executor-channel",
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Два прочитанных result с одним yield освобождаются только после свежего физического конца хода, включая pending без SDK; нет повторной отправки, ложного accepted или зависшего резервирования.",
+        "Сохранённые pending/read/yield после обновления восстанавливаются безопасно без resend и без нового пользовательского сообщения.",
+        "Карточка O и план показывают одинаковые 2/3; автоматический Start DOCS после двух проверенных интеграций подтверждён сквозной фикстурой.",
+        "Версия приложения и панели 0.5.9, установленный Kit не меняется; живой тест не изменяется в ходе разработки."
+      ],
+      "expected_commit_message": "feat: Исправить обработку нескольких результатов и актуальность карточки оркестратора",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "T011",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T011"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-2",
+      "title": "Собрать выпуск исправлений 0.5.9 для трёх ОС",
+      "why": "Собрать выпуск исправлений 0.5.9 для трёх ОС",
+      "dependencies": [
+        "T011",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/assignment-dialogue-reliability.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS единый sourceCommit, состав и digests, очистка Python-кэша перед сборкой."
+      ],
+      "expected_commit_message": "feat: Собрать выпуск исправлений 0.5.9 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "RELEASE-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-2",
+      "title": "Установить проверенный комплект 0.5.9",
+      "why": "Установить проверенный комплект 0.5.9",
+      "dependencies": [
+        "RELEASE-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/assignment-dialogue-reliability.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer без пересборки и остановки backend; при занятой службе verified pending с проверкой rollback."
+      ],
+      "expected_commit_message": "feat: Установить проверенный комплект 0.5.9",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "INSTALL-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-2",
+      "title": "Опубликовать исправления 0.5.9",
+      "why": "Опубликовать исправления 0.5.9",
+      "dependencies": [
+        "INSTALL-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/assignment-dialogue-reliability.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "GitHub Release, tag и assets проверены; remote main актуален; живая приёмка отдельно."
+      ],
+      "expected_commit_message": "feat: Опубликовать исправления 0.5.9",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "PUBLISH-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1485,10 +1656,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 625
+Revision: 626
 
 ## Цель
 
@@ -1591,6 +1762,36 @@ Revision: 625
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
+- [TODO] T011: Исправить обработку нескольких результатов и актуальность карточки оркестратора — Ожидает
+  - Git Commit: [PENDING] feat: Исправить обработку нескольких результатов и актуальность карточки оркестратора
+  - Reference: orchestrator-owned-dialogue-refactor / T011 / implementation
+  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/panel-dialogue-view.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, tools/codex-app-server-mcp/plugin.py, docs/modules/assignment-dialogue-reliability.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: orchestrator-owned-dialogue-refactor / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue-reliability.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T011
+- [TODO] RELEASE-2: Собрать выпуск исправлений 0.5.9 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать выпуск исправлений 0.5.9 для трёх ОС
+  - Reference: orchestrator-owned-dialogue-refactor / RELEASE-2 / implementation
+  - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T011, DOCS-2
+- [TODO] INSTALL-2: Установить проверенный комплект 0.5.9 — Ожидает
+  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.5.9
+  - Reference: orchestrator-owned-dialogue-refactor / INSTALL-2 / implementation
+  - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-2, DOCS-2
+- [TODO] PUBLISH-2: Опубликовать исправления 0.5.9 — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать исправления 0.5.9
+  - Reference: orchestrator-owned-dialogue-refactor / PUBLISH-2 / implementation
+  - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-2, DOCS-2
 
 ## Context Pack For This Cycle
 
@@ -1598,5 +1799,6 @@ Revision: 625
 - docs/planning/orchestrator-owned-dialogue-reliability.md
 - docs/planning/orchestrator-owned-dialogue-results.md
 - docs/architecture/OVERVIEW.md
+- docs/modules/assignment-dialogue-reliability.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
