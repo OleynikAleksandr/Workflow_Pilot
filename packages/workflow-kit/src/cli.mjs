@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import { handoffParallelTask, assertHandoffCommand } from './lib/task-handoff.mjs';
 import { startIntegration, continueIntegration, integrationStatus, assertIntegrationCommand } from './lib/task-integration.mjs';
-import { createAssignment, assignmentStatus, setupAssignment, cleanupAssignments, assertAssignmentCommand } from './lib/task-assignment.mjs';
+import { createAssignment, assignmentStatus, setupAssignment, cleanupAssignments, acknowledgeAssignmentTransport, assertAssignmentCommand } from './lib/task-assignment.mjs';
 import { blockTask, messageAssignment, escalatePlan } from './lib/signals.mjs';
 import {applyAssignmentDialogue,assignmentDialogueStatus} from './lib/assignment-dialogue.mjs';
 import {setPlanPermission} from './lib/plan-permission.mjs';
@@ -85,6 +85,7 @@ export async function main(argv = process.argv.slice(2)) {
       case 'assignment:status': result = assignmentStatus(root,opts.id); break;
       case 'assignment:setup': result = setupAssignment(root,opts.id,{npmCi:!!opts['npm-ci']}); break;
       case 'assignment:cleanup': result = cleanupAssignments(root); break;
+      case 'assignment:transport': result = acknowledgeAssignmentTransport(root,input()); break;
       case 'assignment:message': result = messageAssignment(root,opts.id,opts.text,opts['signal-id'],opts['block-id'],opts['approval-note']); break;
       case 'assignment:dialogue': result = applyAssignmentDialogue(root,input()); break;
       case 'assignment:dialogue-status': result = assignmentDialogueStatus(root,opts.id); break;

@@ -169,7 +169,13 @@ export class WorkflowChannel {
   async observeDialogue(run,member,message,gate,direct=false){
     if(!this.permitted(run,member)||!(message.read||message.superseded_read)||!message.yielded
       ||(!direct&&message.delivery!=='accepted'))return;
-    await this.c.enrollment.validate(member.target);
+    try{await this.c.enrollment.validate(member.target);}catch(error){
+      // Only an already read/yielded terminal receipt can outlive its checkout.
+      // This path is never used for enrollment, new sends or model API calls.
+      if(error.code!=='PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'||member.role!=='E'||message.kind!=='acceptance'
+        ||message.assignment_id!==member.target.assignment_id||message.scope_id!==member.target.scope_id||!this.c.verifyTerminal
+        ||!await this.c.verifyTerminal(member.target,message))throw error;
+    }
     const page=await this.reconcile(member.target);
     let baseline=gate.restoredBaseline??message.yielded.page;
     // Read/yield survives a backend restart; the old page no longer exists.

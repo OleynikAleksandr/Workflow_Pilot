@@ -9,7 +9,7 @@ import {createHash} from 'node:crypto';
 import {migrateAssignmentDialogue} from '../packages/workflow-kit/src/lib/dialogue-migration.mjs';
 import {setPlanPermission} from '../packages/workflow-kit/src/lib/plan-permission.mjs';
 import {applyAssignmentDialogue} from '../packages/workflow-kit/src/lib/assignment-dialogue.mjs';
-import {assignmentStatus,cleanupAssignments} from '../packages/workflow-kit/src/lib/task-assignment.mjs';
+import {assignmentStatus,cleanupAssignments,acknowledgeAssignmentTransport} from '../packages/workflow-kit/src/lib/task-assignment.mjs';
 import {startIntegration} from '../packages/workflow-kit/src/lib/task-integration.mjs';
 import {readPlan} from '../packages/workflow-kit/src/lib/plan.mjs';
 import {recover} from '../packages/workflow-kit/src/lib/recovery.mjs';
@@ -75,5 +75,8 @@ test('released 0.5.7 assignments migrate in a safe pause, preserve existing resu
   startIntegration(root,{id:two.id,source_commit:revised});assert.equal(validate(root).resolved.T002.source_commit,revised);
   send(three,'O','task','task-three');cli(three.worktree,'task:start','T003');
   assert.equal(readPlan(three.worktree).current_task_id,'T003');
-  assert.equal(cleanupAssignments(root).pending.length,0,'verified installer-only tip can be cleaned after its original result is integrated');
+  assert.equal(cleanupAssignments(root).pending.length,2,'migrated dialogue also waits for physical terminal receipts');
+  acknowledgeAssignmentTransport(root,{assignment_id:one.id,message_id:'accept-one',attempt:1,source_commit:shaOne});
+  acknowledgeAssignmentTransport(root,{assignment_id:two.id,message_id:'accept-two',attempt:2,source_commit:revised});
+  assert.equal(cleanupAssignments(root).pending.length,0,'verified installer-only tip is cleaned after its terminal receipt');
 });

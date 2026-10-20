@@ -46,7 +46,8 @@ export function assignmentDialogueStatus(root,id) {
   const decision=last&&signals.findLast(s=>s.kind==='assignment-message'&&s.assignment_id===record.id
     &&s.block_id===last.block_id&&(s.assignment_attempt??1)===(record.dialogue?.attempt??1));
   return {ok:true,id:record.id,task_id:record.parent_task_id,role,
-    contract_digest:contractDigest(task),
+    contract_digest:contractDigest(task),scope_id:record.parent_scope_id,worktree:record.worktree,
+    cleanup:record.cleanup??null,
     phase:record.phase,migration:record.migration??null,dialogue_version:record.dialogue_version??0,dialogue:record.dialogue??null,block:activeBlock(record),
     last_decision:decision?{id:decision.id,block_id:decision.block_id,attempt:record.dialogue?.attempt??1}:null};
 }

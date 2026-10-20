@@ -29,10 +29,11 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{}}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{}}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
+    this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
@@ -46,7 +47,7 @@ export class PluginCommunication {
     for(const run of this.runs.values()) {
       for(const id of run.removed_sessions??[])this.removedSessions.add(id);
       const offset=run.events.length;
-      if(run.grant){run.grant.active=false;run.grant.phase='paused';run.grant.reason='restart';run.grant.generation++;}
+      if(run.grant&&run.grant.phase!=='complete'){run.grant.active=false;run.grant.phase='paused';run.grant.reason='restart';run.grant.generation++;}
       for(const member of Object.values(run.members)){member.stopped=true;member.generation++;}
       for(const message of run.messages) {
         if(message.delivery==='claimed'){message.delivery='unknown';this.event(run,'send.unknown',{message_id:message.message_id});}
@@ -74,12 +75,16 @@ export class PluginCommunication {
       try {
         if(old)this.expire(this.runs.get(input.run_id));
         const result=await this['_'+name](input),run=this.runs.get(input.run_id);
+        if(name==='observed')this.observedDenials.delete(input.run_id+':'+input.message_id);
         if(run){await this.persist(run,offset);this.syncTimers(run);this.wake(run,run.events.slice(offset));
           if(run.events.length>offset&&run.mode==='workflow')queueMicrotask(()=>this.onChange(run.id));}
         return structuredClone(result);
       }catch(error) {
         this.panels=panels;if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
-        if(!this.critical&&old) {
+        const denialKey=input.run_id+':'+input.message_id;
+        const repeated=name==='observed'&&this.observedDenials.get(denialKey)===error.code;
+        if(name==='observed'){if(this.observedDenials.size>=2048)this.observedDenials.clear();this.observedDenials.set(denialKey,error.code);}
+        if(!this.critical&&old&&!repeated) {
           const denied=structuredClone(old);
           this.expire(denied);
           this.event(denied,name==='claim'?'claim.denied':name==='send'&&error.code==='PLUGIN_COMMUNICATION_CONFLICT'?'message.conflict':'operation.denied',
@@ -166,6 +171,7 @@ export class PluginCommunication {
   assignmentPrepare(input){return this.assignment.draft(input);}
   assignmentDispatch(input){return this.assignment.dispatch(input);}
   _assignmentPublish(input){return this.assignment.publish(input);}
+  _assignmentTransport(input){return this.assignment.transport(input);}
   _assignmentDeferred(input){return this.assignment.deferred(input);}
   _assignmentYield(input){return this.assignment.yielded(input);}
   assignmentSend(input){return this.assignment.send(input);}

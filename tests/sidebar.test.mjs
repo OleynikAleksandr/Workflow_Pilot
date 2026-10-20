@@ -23,6 +23,12 @@ test('external conversation stays visibly external; there is no PlanContinuation
   assert.match(f.document.getElementById('plan-continuation-message').textContent,/№2.*Выполнение плана запущено/);
   f.emit({...base,planRun:{state:'paused',reason:null,issue:null,complete:false}});
   assert.equal(button.textContent,'Продолжить');assert.equal(f.document.getElementById('plan-continuation-message').hidden,true);
+  f.emit({...base,planRun:{state:'running',complete:false},
+    execution:{phase:'finalizing',finalizationReason:'Ожидаем последние квитанции.'}});
+  assert.equal(button.hidden,false,'stop remains available while finalizing');
+  assert.match(f.document.getElementById('plan-run-message').textContent,/Завершение.*квитанции/);
+  f.emit({...base,planRun:{state:'complete',complete:true},execution:{phase:'complete'}});
+  assert.equal(button.hidden,true);assert.equal(f.document.getElementById('plan-run-message').hidden,true);
   assert.doesNotMatch(f.document.body.textContent,/втовыполнени/,'no text speaks of PlanContinuation');
 });
 

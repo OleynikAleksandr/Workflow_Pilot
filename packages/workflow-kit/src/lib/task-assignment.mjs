@@ -8,6 +8,7 @@ import { commitCandidate, completedTransaction, finishTransaction } from './tran
 import { prepareRuntime } from './platform.mjs';
 import {assertPlanPermission} from './plan-permission.mjs';
 import {migrationAttestation} from './dialogue-migration-state.mjs';
+import {assertAssignmentCommandsIdle} from './assignment-command-safety.mjs';
 
 import { assignmentRecords, validId, commonDirectory, recordPath, childRecordPath, readAssignment, save, plainPath, binding, localPlan, ownWorktree, assertAssignment, packageDirectories, environmentStatus, preparationSteps } from './assignment-contract.mjs';
 export { readAssignment, assertAssignment, assertAssignmentCommand, environmentStatus } from './assignment-contract.mjs';
@@ -44,6 +45,19 @@ export const assignmentStatus=(root,id)=>assignmentStatusUnlocked(root,id);
 // Only a verified INTEGRATED worktree is removed, never with force; its merged branch goes with git branch -d.
 export function removeIntegratedWorktree(root,record) {
   check(record.phase==='INTEGRATED','ASSIGNMENT_NOT_INTEGRATED','Удаляется только worktree подтверждённо интегрированного назначения.',{id:record.id});
+  if(record.dialogue_version===1){
+    const acceptance=record.dialogue?.acceptance,transport=record.dialogue?.transport;
+    const pending=reason=>{
+      record.cleanup={status:'PENDING',reason};save(recordPath(root,record.id),record);
+      return {id:record.id,task_id:record.parent_task_id,worktree:record.worktree,branch:record.branch,...record.cleanup};
+    };
+    if(!acceptance||!transport||['message_id','attempt','source_commit'].some(k=>transport[k]!==acceptance[k]))
+      return pending('terminal-receipt-pending');
+    try{assertAssignmentCommandsIdle(record);}catch(error){
+      if(error.code!=='ASSIGNMENT_COMMAND_ACTIVE')throw error;
+      return pending('executor-command-active');
+    }
+  }
   const errors=[];
   let installerOnlyTip=null;
   if(record.migration){
@@ -66,9 +80,25 @@ export function removeIntegratedWorktree(root,record) {
       if(branch.status!==0)errors.push(String(branch.stderr||branch.stdout).trim().slice(-1000));
     }
   }
-  record.cleanup=errors.length?{status:'PENDING',error:errors.join('\n')}:{status:'DONE'};
+  record.cleanup=errors.length?{status:'PENDING',error:errors.join('\n')}:{status:'DONE',commands_idle:true};
   save(recordPath(root,record.id),record);
   return {id:record.id,task_id:record.parent_task_id,worktree:record.worktree,branch:record.branch,...record.cleanup};
+}
+// Backend-only acknowledgement of an existing acceptance, never a task/result
+// authoring operation. Durable transport proof precedes worktree deletion.
+export function acknowledgeAssignmentTransport(root,input) {
+  check(!readAssignment(root),'ASSIGNMENT_READ_ONLY','Квитанцию транспорта сохраняет backend через main.');
+  return withLock(localPath(root,'operation.lock'),()=>{
+    assertPlanPermission(root);
+    const record=readJSON(recordPath(root,input.assignment_id)),acceptance=record.dialogue?.acceptance;
+    check(record.parent_scope_id===readPlan(root).scope_id&&record.phase==='INTEGRATED'&&record.dialogue_version===1
+      &&acceptance&&['message_id','attempt','source_commit'].every(k=>input[k]===acceptance[k]),
+      'ASSIGNMENT_TRANSPORT_STALE','Нужна завершающая квитанция текущей приёмки интегрированного назначения.');
+    record.dialogue.transport={message_id:input.message_id,attempt:input.attempt,source_commit:input.source_commit};
+    save(recordPath(root,record.id),record);
+    if(record.cleanup?.status==='PENDING')removeIntegratedWorktree(root,record);
+    return {ok:true,...record.dialogue.transport,cleanup:record.cleanup??null};
+  });
 }
 // Final orchestrator sweep: integrated leftovers are removed, everything else is only reported.
 export function cleanupAssignments(root) {

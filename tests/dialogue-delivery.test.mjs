@@ -30,6 +30,43 @@ test('finalization waits for live effects and unread deliveries, but a rejected 
   run.assignment_intents.other={effect:{scope_id:'another'},phase:'prepared'};assert.equal(settled(),true);
 });
 
+test('removed checkout terminal proof is narrow and requires parent identity and recorded idle cleanup',async()=>{
+  const target={role:'E',project_id:'p',scope_id:'s',local_session_id:'e',origin_session_id:'o',assignment_id:'a',task_id:'T001'};
+  const message={kind:'acceptance',assignment_id:'a',scope_id:'s',message_id:'m',attempt:1,source_commit:'a'.repeat(40),read:true,yielded:{}};
+  const child={workspace:'/worker',sessions:[{sessionId:'e',role:'executor',assignmentId:'a',taskId:'T001',
+    parentProjectId:'p',parentScopeId:'s',parentWorkspace:'/main',executionOriginSessionId:'o'}]};
+  const projects={snapshot:()=>({projects:[{workspace:'/main',projectId:'p',sessions:[]},child]})};
+  const plugin=new PluginProjects({projects,loadContext:async()=>null});
+  const state={phase:'INTEGRATED',scope_id:'s',task_id:'T001',worktree:'/worker',
+    cleanup:{status:'DONE',commands_idle:true},dialogue:{acceptance:message}};
+  plugin.participantTarget=async()=>({role:'O',project_id:'p',scope_id:'s'});
+  plugin.dialogueOperation=async()=>state;
+  try{
+    assert.equal(await plugin.terminalTarget(target,message),true);
+    assert.equal(await plugin.terminalTarget(target,{...message,kind:'task'}),false);
+    assert.equal(await plugin.terminalTarget(target,{...message,attempt:2}),false);
+    delete state.cleanup.commands_idle;assert.equal(await plugin.terminalTarget(target,message),false);
+    state.cleanup.commands_idle=true;child.sessions[0].parentProjectId='other';
+    assert.equal(await plugin.terminalTarget(target,message),false);
+  }finally{plugin.communication.dispose();await plugin.communication.tail;}
+});
+
+test('participant validation retries transient integration reads but never retains stale ownership',async()=>{
+  const plugin=new PluginProjects({projects:{snapshot:()=>({projects:[]})},loadContext:async()=>null});
+  let calls=0;const target={role:'O',local_session_id:'o'};
+  plugin.participantSnapshot=async()=>{
+    if(++calls===1)throw Object.assign(Error('plan replacement'),{code:'WORKFLOW_PLAN_INVALID'});
+    return calls===2?null:target;
+  };
+  try{
+    assert.deepEqual(await plugin.participantTarget('o'),target);assert.equal(calls,3);
+    calls=0;plugin.participantSnapshot=async()=>{calls++;return null;};
+    assert.equal(await plugin.participantTarget('o'),null);assert.equal(calls,3);
+    plugin.participantSnapshot=async()=>{throw Object.assign(Error('invalid'),{code:'WORKFLOW_PLAN_INVALID'});};
+    await assert.rejects(plugin.participantTarget('o'),{code:'WORKFLOW_PLAN_INVALID'});
+  }finally{plugin.communication.dispose();await plugin.communication.tail;}
+});
+
 test('read retries a Git replacement window but rejects persistent plan corruption',async()=>{
   const kit=new ParallelKit({});let reads=0;
   kit.readSnapshot=async()=>{if(++reads===1)throw Object.assign(Error('partial Git write'),{code:'PLAN_JSON'});return {confirmed:true};};

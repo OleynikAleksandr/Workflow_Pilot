@@ -247,6 +247,57 @@ async function sdk(f,b,id,outcome='accepted'){
   const args={...b,...attempt};await f.c.verify(args);await f.c.report({...args,outcome});return args;
 }
 async function observe(f,id){f.c.observeSession(id);await f.c.tail;}
+test('terminal acceptance survives verified cleanup but cannot authorize another API call',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');
+  await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
+  const result=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'result',
+    body:'Done',source_commit:'a'.repeat(40),idempotency_key:'result'});
+  await f.c.readMessage({metadata:meta('o'),message_id:result.message_id});
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const acceptance=await f.c.assignmentSend({metadata:meta('o'),recipient,attempt:1,kind:'acceptance',
+    result_id:result.message_id,source_commit:'a'.repeat(40),body:'Accepted',idempotency_key:'acceptance'});
+  await sdk(f,b,acceptance.message_id);await f.c.readMessage({metadata:meta('e'),message_id:acceptance.message_id});
+  const page=f.pages.get('e');page.busy=true;page.stopped=false;
+  await f.c.assignmentYield({metadata:meta('e'),message_ids:[acceptance.message_id],reason:'handled'});
+  f.targets.delete('e');
+  const input={run_id:b.run_id,message_id:acceptance.message_id};
+  for(let i=0;i<3;i++)await assert.rejects(f.c.mutate('observed',input),{code:'PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'});
+  assert.equal(f.c.runs.get(b.run_id).events.filter(e=>e.event_type==='operation.denied'&&e.operation==='observed').length,1);
+  f.c.verifyTerminal=async(target,message)=>target===e||target.local_session_id==='e'&&message.message_id===acceptance.message_id;
+  page.busy=false;page.stopped=true;page.assistantRevision++;
+  await f.c.mutate('observed',input);f.advance(600);await f.c.mutate('observed',input);
+  assert.equal(f.c.runs.get(b.run_id).messages.find(m=>m.message_id===acceptance.message_id).reply_observed,true);
+  await assert.rejects(f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'question',
+    body:'New work',idempotency_key:'forbidden'}),{code:'PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'});
+});
+test('completed grant remains complete after backend restart',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o);
+  await f.c.workflow.grant(f.o,'complete');f.c.dispose();await f.c.tail;
+  const next=await f.create(),grant=next.runs.get(o.run_id).grant;
+  assert.equal(grant.phase,'complete');assert.equal(grant.active,false);
+});
+test('Kit transport acknowledgement follows physical receipt and retries pending cleanup',async t=>{
+  const kit=dialogueKitFixture();let pendingCleanup=true,calls=0;
+  kit.status=async()=>({dialogue_version:1,phase:'INTEGRATED',dialogue:{attempt:1}});
+  kit.close=async(_target,input)=>{calls++;return {ok:true,...input,cleanup:{status:pendingCleanup?'PENDING':'DONE',reason:'executor-command-active'}};};
+  const f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);
+  const o=await f.bind(f.c,f.o),b=await f.bind(f.c,e);
+  const result=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'result',body:'Done',idempotency_key:'r'});
+  await f.c.readMessage({metadata:meta('o'),message_id:result.message_id});
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const a=await f.c.assignmentSend({metadata:meta('o'),recipient,attempt:1,kind:'acceptance',result_id:result.message_id,
+    source_commit:'a'.repeat(40),body:'Accepted',idempotency_key:'a'});
+  await sdk(f,b,a.message_id);await f.c.readMessage({metadata:meta('e'),message_id:a.message_id});
+  const page=f.pages.get('e');page.busy=true;page.stopped=false;
+  await f.c.assignmentYield({metadata:meta('e'),message_ids:[a.message_id],reason:'handled'});
+  await f.c.assignment.reconcile('p','s');assert.equal(calls,0,'yield is not physical completion');
+  page.busy=false;page.stopped=true;page.assistantRevision++;
+  await observe(f,'e');f.advance(600);await observe(f,'e');
+  await f.c.assignment.reconcile('p','s');
+  assert.equal(f.c.runs.get(o.run_id).messages.find(m=>m.message_id===a.message_id).kit_transport_closed,undefined);
+  pendingCleanup=false;await f.c.assignment.reconcile('p','s');await f.c.assignment.reconcile('p','s');
+  assert.equal(calls,2);assert.equal(f.c.runs.get(o.run_id).messages.find(m=>m.message_id===a.message_id).kit_transport_closed,true);
+});
 test('dialogue gate needs correlated yield and fresh physical completion, never a new user bubble',async t=>{
   const f=await fixture(t,undefined,dialogueKitFixture()),e=f.target('e');await f.c.workflow.grant(f.o);
   const o=await f.bind(f.c,f.o),b=await f.bind(f.c,e),page=f.pages.get('e');

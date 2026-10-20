@@ -179,7 +179,7 @@ export class AssignmentDialogue {
   }
   async reconcile(projectId,scopeId){
     await this.c.tail;
-    for(const run of this.c.runs.values())if(!run.removed&&run.project_id===projectId&&run.grant?.scope_id===scopeId)
+    for(const run of this.c.runs.values())if(!run.removed&&run.project_id===projectId&&run.grant?.scope_id===scopeId){
       for(const intent of Object.values(run.assignment_intents??{}))if(['prepared','deferred'].includes(intent.phase)){
         try{await this.complete(run.id,intent.message_id);}catch(error){
           if(run.removed||intent.phase==='retired')continue;
@@ -187,6 +187,36 @@ export class AssignmentDialogue {
             retry:false,code:String(error.code??'KIT_UNAVAILABLE'),message:String(error.message).slice(0,700)});
         }
       }
+      if(this.kit?.close&&run.grant.active)for(const message of run.messages.filter(m=>m.kind==='acceptance'
+        &&m.read&&m.yielded&&m.reply_observed&&!m.kit_transport_closed)){
+        const origin=run.members[message.sender_id]?.target;if(!origin)continue;
+        try{
+          const state=await this.state(origin,message.assignment_id);if(state.phase!=='INTEGRATED')continue;
+          const receipt=await this.kit.close(origin,{assignment_id:message.assignment_id,message_id:message.message_id,
+            attempt:message.attempt,source_commit:message.source_commit});
+          await this.c.mutate('assignmentTransport',{run_id:run.id,message_id:message.message_id,receipt});
+        }catch(error){await this.c.mutate('assignmentTransport',{run_id:run.id,message_id:message.message_id,
+          error:{code:String(error.code??'KIT_UNAVAILABLE'),message:String(error.message).slice(0,700)}});}
+      }
+    }
+  }
+  transport(input){
+    const run=this.c.run(input),message=run.messages.find(m=>m.message_id===input.message_id);
+    check(message?.kind==='acceptance'&&message.read&&message.yielded&&message.reply_observed,'TRANSPORT','Нет завершающей квитанции.');
+    if(input.error){
+      if(JSON.stringify(message.transport_error)!==JSON.stringify(input.error)){
+        message.transport_error=input.error;
+        this.c.event(run,'assignment.transport_waiting',{message_id:message.message_id,error_code:input.error.code});
+      }
+      return {pending:true};
+    }
+    check(input.receipt?.ok&&['message_id','attempt','source_commit'].every(k=>input.receipt[k]===message[k]),
+      'TRANSPORT','Kit не подтвердил точную завершающую квитанцию.');
+    if(input.receipt.cleanup?.status==='PENDING')return this.transport({...input,receipt:null,
+      error:{code:'CLEANUP_PENDING',message:input.receipt.cleanup.reason??input.receipt.cleanup.error??'Очистка ожидает завершения команд.'}});
+    message.kit_transport_closed=true;delete message.transport_error;
+    this.c.event(run,'assignment.transport_closed',{message_id:message.message_id,assignment_id:message.assignment_id});
+    return {closed:true};
   }
   async publish(input){
     const c=this.c,run=c.run(input),intent=run.assignment_intents?.[input.message_id];

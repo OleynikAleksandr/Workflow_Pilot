@@ -55,6 +55,9 @@ test('dialogue version 1 never merges READY and waits for terminal receipts befo
  f.runtime.channelSettled=()=>true;await f.runtime.signal('/main');assert.equal(f.calls.sent,1);
  await f.runtime.signal('/main');assert.equal(f.calls.sent,1);assert.equal(f.auth.enabled('/main','scope'),true);
  f.runtime.deliveryReceipt=()=>({reply_observed:true});await f.runtime.signal('/main');
+ assert.equal(f.auth.enabled('/main','scope'),true,'final words do not prove cleanup');
+ assert.equal(f.runtime.view('/main').phase,'finalizing');
+ f.state.assignments[0].cleanup={status:'DONE'};await f.runtime.signal('/main');
  assert.equal(f.auth.enabled('/main','scope'),false);assert.equal(f.calls.merged,0);
 });
 test('final READY returns control before DONE, then observes a distinct main reply without replay',async t=>{

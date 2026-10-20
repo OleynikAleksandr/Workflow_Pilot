@@ -17,9 +17,30 @@ export class PluginProjects {
   constructor({ projects, loadContext, plans=null,migrate=null, communicationStore = null, onChange = () => {}, observe, admit, reconcile, currentMessage, onCommunicationChange }) {
     Object.assign(this, { projects, loadContext, onChange,plans });
     this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id),
-      verifyTarget:id=>this.participantTarget(id),observe,admit,reconcile,currentMessage,onChange:onCommunicationChange,
+      verifyTarget:id=>this.participantTarget(id),verifyTerminal:(target,message)=>this.terminalTarget(target,message),
+      observe,admit,reconcile,currentMessage,onChange:onCommunicationChange,
       dialogueKit:plans?{status:(target,id)=>this.dialogueOperation(target,'assignment:dialogue-status',id),
+        close:(target,input)=>this.dialogueOperation(target,'assignment:transport',input),
         apply:(target,input)=>this.dialogueOperation(target,'assignment:dialogue',input),migrate}:null});
+  }
+  async terminalTarget(target,message){
+    if(target.role!=='E'||message.kind!=='acceptance'||!message.read||!message.yielded
+      ||message.assignment_id!==target.assignment_id||message.scope_id!==target.scope_id)return false;
+    const all=this.projects.snapshot().projects;
+    const child=all.find(p=>!p.archivedAt&&p.sessions.some(s=>s.sessionId===target.local_session_id&&!s.archivedAt));
+    const session=child?.sessions.find(s=>s.sessionId===target.local_session_id);
+    if(!session||session.external||session.closedPlanCommit||session.role!=='executor'
+      ||session.assignmentId!==target.assignment_id||session.taskId!==target.task_id
+      ||session.parentProjectId!==target.project_id||session.parentScopeId!==target.scope_id
+      ||session.executionOriginSessionId!==target.origin_session_id)return false;
+    const origin=await this.participantTarget(target.origin_session_id);
+    if(origin?.role!=='O'||origin.project_id!==target.project_id||origin.scope_id!==target.scope_id)return false;
+    const parent=all.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt);
+    if(!parent||session.parentWorkspace!==parent.workspace)return false;
+    const state=await this.dialogueOperation(origin,'assignment:dialogue-status',target.assignment_id);
+    return state.phase==='INTEGRATED'&&state.scope_id===target.scope_id&&state.task_id===target.task_id
+      &&state.worktree===child.workspace&&state.cleanup?.status==='DONE'&&state.cleanup.commands_idle===true
+      &&['message_id','attempt','source_commit'].every(k=>state.dialogue?.acceptance?.[k]===message[k]);
   }
   async dialogueOperation(target,command,input){
     const fresh=await this.participantTarget(target.local_session_id);
@@ -49,6 +70,19 @@ export class PluginProjects {
     catch(error){throw fail('PLUGIN_ASSIGNMENT_'+(error.code??'FAILED'),error.message);}
   }
   async participantTarget(sessionId) {
+    // Integration replaces the on-disk plan while concurrent recipients read
+    // their messages. Retry a fresh ownership read, never reuse a cached grant.
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        const target=await this.participantSnapshot(sessionId);
+        if(target||attempt===2)return target;
+      }catch(error){
+        if(!['WORKFLOW_PLAN_INVALID','WORKFLOW_NOT_INSTALLED','ENOENT'].includes(error.code)||attempt===2)throw error;
+      }
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
+  }
+  async participantSnapshot(sessionId) {
     const target=localParticipantTarget(this.projects,sessionId);if(!target)return null;
     const parent=this.projects.snapshot().projects.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt);
     if(!parent)return null;

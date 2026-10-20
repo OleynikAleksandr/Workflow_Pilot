@@ -6,7 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {createFixture} from './check-parallel-execution-fixture.mjs';
 import {createScope,startTask,applyConfig,status,commitDocumentation} from '../src/lib/actions.mjs';
 import {readPlan} from '../src/lib/plan.mjs';
-import {createAssignment,setupAssignment,assignmentStatus,cleanupAssignments} from '../src/lib/task-assignment.mjs';
+import {createAssignment,setupAssignment,assignmentStatus,cleanupAssignments,acknowledgeAssignmentTransport} from '../src/lib/task-assignment.mjs';
 import {startIntegration} from '../src/lib/task-integration.mjs';
 import {extendPlan} from '../src/lib/extend-plan.mjs';
 import {blockTask,messageAssignment,escalatePlan,readSignals,blockedTasks} from '../src/lib/signals.mjs';
@@ -281,6 +281,18 @@ try {
   assert.equal(fs.existsSync(a.worktree),true,'dialogue receipts survive integration');
   assert.equal(validate(root).resolved.T001.source_commit,second);
   assert.equal(git(root,'show',first+':README.md'),'# first result','previous proof is immutable');
-  assert.equal(cleanupAssignments(root).only_main,true,'explicit final cleanup removes integrated dialogue worktrees');
+  const early=cleanupAssignments(root);
+  assert.equal(early.only_main,false);assert.equal(early.pending[0].reason,'terminal-receipt-pending');
+  assert.equal(fs.existsSync(a.worktree),true,'early cleanup preserves the live terminal receipt');
+  const receipt={assignment_id:a.id,message_id:'accept-2',attempt:2,source_commit:second};
+  assert.throws(()=>acknowledgeAssignmentTransport(root,{...receipt,attempt:1}),{code:'ASSIGNMENT_TRANSPORT_STALE'});
+  fs.writeFileSync(marker,'{}');
+  assert.equal(acknowledgeAssignmentTransport(root,receipt).cleanup.reason,'executor-command-active');
+  assert.equal(fs.existsSync(a.worktree),true);
+  fs.rmSync(marker);
+  assert.equal(acknowledgeAssignmentTransport(root,receipt).cleanup.status,'DONE','pending cleanup resumes after transport and command completion');
+  assert.equal(fs.existsSync(a.worktree),false);
+  assert.equal(acknowledgeAssignmentTransport(root,receipt).cleanup.status,'DONE','duplicate terminal receipt is harmless');
+  assert.equal(cleanupAssignments(root).only_main,true);
   console.log(JSON.stringify({assignmentDialogue:true,dispatchRequired:true,acceptanceRequired:true,revisionHistory:true}));
 } finally {fs.rmSync(dialogueDirectory,{recursive:true,force:true});}

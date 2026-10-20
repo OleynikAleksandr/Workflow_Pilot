@@ -136,6 +136,8 @@ export class DialogueDelivery {
     const project=this.store.project(workspace);
     for(const run of this.getPlugin()?.communication.runs.values()??[])if(run.mode==='workflow'&&run.project_id===project?.projectId&&run.grant?.scope_id===scope){
       if(run.messages.some(m=>m.scope_id===scope&&!m.reply_observed&&!m.superseded))return false;
+      if(this.getPlugin().communication.assignment?.kit?.close&&run.messages.some(m=>m.scope_id===scope
+        &&m.kind==='acceptance'&&!m.kit_transport_closed))return false;
       if(Object.values(run.assignment_intents??{}).some(i=>i.effect.scope_id===scope&&['prepared','deferred'].includes(i.phase)))return false;
     }
     return true;

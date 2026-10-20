@@ -42,8 +42,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     const args=JSON.parse(notice.match(/аргументами (\{[^\n]+?\})\./)[1]);
     const call=async(name,input)=>{
       const r=await c.callTool({name:name.startsWith('assignment_')?'workflow_'+name:'workflow_communication_'+name,arguments:input,_meta:metadata});
-      assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId,
-        ...(r.isError?{target:await plugin.participantTarget(record.project()?.sessionId),proof:await store.assignmentProof(record.project()?.sessionId)}:{})}));return r.structuredContent;
+      assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
     };
     const message=await call('read_message',args);
     assert.equal(message.role_protocol,3);

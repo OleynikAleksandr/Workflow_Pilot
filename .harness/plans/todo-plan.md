@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 646,
+  "plan_revision": 648,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -1772,7 +1772,15 @@
         "tests/parallel-finalization.test.mjs",
         "tests/workflow-channel.test.mjs",
         "tests/sidebar.test.mjs",
-        "tests/panel-dialogue-view.test.mjs"
+        "tests/panel-dialogue-view.test.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/service.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/dialogue-migration.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs"
       ],
       "documentation_paths": [
         "docs/planning/dialogue-preparation-finalization.md"
@@ -1792,14 +1800,35 @@
         "При финализации показаны Завершение и причина; после complete нет активной Паузы/Продолжить, карточка и панель показывают 3/3, пользовательская приёмка scope остаётся отдельной."
       ],
       "expected_commit_message": "feat: Завершать канал и очищать назначения без зависшей Паузы",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T013",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/dialogue-migration.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "id": "T014",
@@ -2005,7 +2034,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 646
+Revision: 648
 
 ## Цель
 
@@ -2144,10 +2173,10 @@ Revision: 646
   - Файлы: src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/contracts/plugin-communication.mjs, src/execution/plugin/communication-store.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/recovery.mjs, src/control/context/context-session.mjs, tests/dialogue-delivery.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, src/contracts/backend.mjs, src/execution/plugin/bridge.mjs, tests/fixtures/automatic-agent-dialogue.mjs, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T013: Завершать канал и очищать назначения без зависшей Паузы — Ожидает
-  - Git Commit: [PENDING] feat: Завершать канал и очищать назначения без зависшей Паузы
+- [DONE] T013: Завершать канал и очищать назначения без зависшей Паузы — Завершено
+  - Git Commit: [DONE] feat: Завершать канал и очищать назначения без зависшей Паузы
   - Reference: orchestrator-owned-dialogue-refactor / T013 / implementation
-  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/enrollment.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, tests/parallel-finalization.test.mjs, tests/workflow-channel.test.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, docs/planning/dialogue-preparation-finalization.md
+  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/enrollment.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, tests/parallel-finalization.test.mjs, tests/workflow-channel.test.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, tests/dialogue-delivery.test.mjs, tests/dialogue-migration.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012
 - [TODO] T014: Проверить перекрытие подготовки, DOCS и окончание полного запуска — Ожидает

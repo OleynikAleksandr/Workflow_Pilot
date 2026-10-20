@@ -417,7 +417,8 @@ export class ParallelExecution {
     const orchestrated=plan.execution_strategy==='orchestrated';
     if(plan.dialogue_version===1){
       if(!plan.tasks.length||plan.tasks.some(t=>!isDeliveryTask(t)&&t.commit_status!=='DONE'))return false;
-      if(!this.channelSettled(workspace,plan.scope_id)){this.publish(workspace,{phase:'finalizing',error:null});return true;}
+      if(!this.channelSettled(workspace,plan.scope_id)){this.publish(workspace,{phase:'finalizing',
+        finalizationReason:'Ожидаем последние квитанции и подтверждённое завершение ходов.',error:null});return true;}
       return this.deliver(workspace,state,origin,ledger,()=>!this.closed&&!this.suspended.has(workspace)
         &&(this.canFinalize?this.canFinalize(workspace,plan.scope_id):enabled()));
     }
@@ -646,7 +647,13 @@ export class ParallelExecution {
       const next=ledger.delivery[key]={status:'pending',scope:plan.scope_id,sessionId:origin.sessionId};
       return this.handoff(workspace,state,origin,next,deliveryText(workspace,task),allowed,key);
     }
-    this.publish(workspace,{phase:'complete',delivery:null,error:null});
+    if(plan.dialogue_version===1&&(state.commandActive||!state.confirmed||!state.mainClean
+      ||state.assignments.some(a=>a.status!=='INTEGRATED'||a.cleanup?.status!=='DONE'))){
+      this.publish(workspace,{phase:'finalizing',delivery:'cleanup',error:null,
+        finalizationReason:'Ожидаем подтверждение очистки Kit и чистого main после итогового ответа.'});
+      return true;
+    }
+    this.publish(workspace,{phase:'complete',delivery:null,finalizationReason:null,error:null});
     await this.onComplete(workspace,plan.scope_id);
     return true;
   }

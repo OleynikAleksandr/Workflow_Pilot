@@ -462,6 +462,8 @@ function render(state) {
   $('execution-next-action').dataset.attention=String(['unknown','blocked'].includes(stages.main.status)
     ||['unknown'].includes(stages.diagnostic.status)||['unknown'].includes(stages.final.status));
   $('execution-message').textContent=execution.error?.message??({sending:'Поручение исправления отправляется…',sent:'Поручение исправления отправлено. Ждём основной чат.',unknown:'Исход отправки исправления неизвестен. Повтор не отправляется.'}[execution.correctionStatus])??({preparing:'Подготавливаем исполнителей…',merging:'Проверяем слияние в main…',
+    finalizing:'Завершение: '+(execution.finalizationReason??'проверяем квитанции и очистку.'),
+    delivering:'Завершение: ожидаем поставку и итоговую проверку оркестратора.',
     complete:'Все результаты интегрированы. Ожидается приёмка.',integration:'Интеграция удерживает main. Другие слияния ждут.',
     paused:'Выполнение плана на паузе. Новые задачи и сообщения не запускаются.',waiting:'Состояния исполнителей показаны в дереве. Пауза не означает вопрос пользователя.'}[execution.phase]??'Нажмите «Начать выполнение плана» для запуска готовых задач.');
   if(execution.finalizationStatus&&!execution.error)$('execution-message').textContent=({
@@ -478,7 +480,9 @@ function render(state) {
   $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue;
   const runReason = run?.issue ? 'Оркестратор плана не определён. Назначьте его в меню сессии.'
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
-      : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '') : '';
+      : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '')
+        : run?.state!=='complete'&&['finalizing','delivering'].includes(execution.phase)
+          ? 'Завершение. '+(execution.finalizationReason??'Ожидаем итоговую проверку и очистку.') : '';
   $('plan-run-message').hidden = !runReason; $('plan-run-message').textContent = runReason.trim();
   const auto = state.planContinuation ?? { phase: 'off', active: false, message: '' };
   const review=state.planReview??{enabled:false,supported:false,message:''};
