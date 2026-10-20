@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 702,
+  "plan_revision": 704,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -336,8 +336,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "RELEASE",
@@ -361,7 +361,10 @@
       ],
       "expected_commit_message": "feat: Собрать комплект трёх ОС",
       "verification_kind": "package",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -444,7 +447,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 702
+Revision: 704
 
 ## Цель
 
@@ -484,8 +487,8 @@ Revision: 702
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/chatgpt-plugin.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/release.md, docs/modules/project-compatibility.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/prepared-task-flow.md, docs/modules/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/chatgpt-plugin-acceptance.md, docs/acceptance/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/workflow-execution.md, packages/workflow-kit/src/templates/PLAN.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003
-- [TODO] RELEASE: Собрать комплект трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать комплект трёх ОС
+- [DONE] RELEASE: Собрать комплект трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать комплект трёх ОС
   - Reference: prepared-task-flow / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
