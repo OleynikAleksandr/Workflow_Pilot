@@ -219,6 +219,18 @@
       ],
       "timeout_ms": 600000,
       "evidence": "Проверка представления Review: отсутствие нормального PUBLISHED-текста/галочки/раунда, сохранение активных стадий, ошибок и переключателя; без реального Claude."
+    },
+    {
+      "id": "kit-upgrade",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ],
+      "timeout_ms": 600000,
+      "evidence": "Обновление с неизменяемых выпущенных Kit, включая 1.9.0: активная задача, сигналы, запреты незавершённых назначений и продолжение новым runtime."
     }
   ],
   "budget": {
