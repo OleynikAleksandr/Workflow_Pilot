@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 636,
+  "plan_revision": 638,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Один Start запускает исполнителей, которым оркестратор адресно выдаёт задачи и выбранный контекст; двусторонний диалог разрешает блокировки и доставляет результаты для приёмки, интеграции и завершения плана без участия пользователя в обычных шагах.",
   "acceptance_criteria": [
     "Планирование O, полный начальный DOM-контекст, Review и одна кнопка Start сохранены. E получают через DOM только правила/identity/bootstrap; рабочую задачу и минимальный контекст выбирает и отправляет O.",
@@ -1659,14 +1659,15 @@
         "GitHub Release, tag и assets проверены; remote main актуален; живая приёмка отдельно."
       ],
       "expected_commit_message": "feat: Опубликовать исправления 0.5.9",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "PUBLISH-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1688,10 +1689,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 636
+Revision: 638
 
 ## Цель
 
@@ -1818,8 +1819,8 @@ Revision: 636
   - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-2, DOCS-2
-- [TODO] PUBLISH-2: Опубликовать исправления 0.5.9 — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать исправления 0.5.9
+- [DONE] PUBLISH-2: Опубликовать исправления 0.5.9 — Завершено
+  - Git Commit: [DONE] feat: Опубликовать исправления 0.5.9
   - Reference: orchestrator-owned-dialogue-refactor / PUBLISH-2 / implementation
   - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
