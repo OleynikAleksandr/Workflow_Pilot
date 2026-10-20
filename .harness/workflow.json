@@ -231,6 +231,19 @@
       ],
       "timeout_ms": 600000,
       "evidence": "Обновление с неизменяемых выпущенных Kit, включая 1.9.0: активная задача, сигналы, запреты незавершённых назначений и продолжение новым runtime."
+    },
+    {
+      "id": "prepared-flow-cycle",
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-name-pattern=authorized fast cycle",
+        "tests/automatic-agent-dialogue.test.mjs"
+      ],
+      "required": false,
+      "timeout_ms": 300000,
+      "evidence": "Изолированный полный 2E/DOCS/cleanup/complete с ранними brief, очередью одного хода и прекращением ожидания. Без настоящих моделей."
     }
   ],
   "budget": {

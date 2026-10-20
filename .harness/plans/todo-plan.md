@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 694,
+  "plan_revision": 696,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -77,7 +77,7 @@
     ]
   },
   "baseline_commit": "68d47baf472b218c37cce32db4c484a5b342e243",
-  "current_task_id": null,
+  "current_task_id": "T003",
   "context_pack": {
     "documents": [
       {
@@ -213,7 +213,7 @@
       ]
     },
     {
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
@@ -415,8 +415,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
-Current Task: нет
-Revision: 694
+Current Task: T003
+Revision: 696
 
 ## Цель
 
@@ -444,7 +444,7 @@ Revision: 694
   - Файлы: src/frontend/plugin/launch.mjs, src/control/workflow/parallel-execution.mjs, src/contracts/dialogue-view.mjs, tests/chatgpt-plugin.test.mjs, tests/parallel-finalization.test.mjs, tests/panel-dialogue-view.test.mjs, tests/sidebar.test.mjs, tests/fixtures/plugin-host.mjs, docs/planning/prepared-task-flow.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Проверить полный цикл и согласовать версии выпуска — Ожидает
+- [IN_PROGRESS] T003: Проверить полный цикл и согласовать версии выпуска — В работе
   - Git Commit: [PENDING] feat: Проверить полный цикл и согласовать версии выпуска
   - Reference: prepared-task-flow / T003 / implementation
   - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, src/contracts/backend.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.2.tar.gz, tests/fixtures/released-kit/README.md, docs/planning/prepared-task-flow.md
