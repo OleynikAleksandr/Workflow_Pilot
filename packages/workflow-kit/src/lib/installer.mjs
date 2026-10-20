@@ -19,6 +19,7 @@ export const upgradeFrom = new Set(['1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1',
 upgradeFrom.add('1.8.2');
 upgradeFrom.add('1.9.0');
 upgradeFrom.add('1.9.1');
+upgradeFrom.add('1.9.2');
 function migrateNonePlanForContinuity(root) {
   const file = path.join(root, PLAN);
   if (!fs.existsSync(file)) return false;
