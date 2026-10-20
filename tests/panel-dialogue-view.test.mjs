@@ -17,6 +17,7 @@ test('observable plan stages separate transport, processing, integration, cleanu
   assert.equal(planActivity({...input,channel:{incoming:{kind:'recovery',read:true}}}).phase,'prepare');
   assert.equal(planActivity({...input,channel:{incoming:{kind:'finalization',read:true}}}).phase,'final');
   assert.equal(planActivity({...input,channel:{incoming:{kind:'finalization',read:true,handled:true}}}).phase,'turn-end');
+  assert.match(planActivity({...input,channel:{incoming:{kind:'finalization',read:true,handled:true}}}).label,/итоговый ответ/);
   assert.equal(planActivity({...input,execution:{...execution,integration:{status:'RUNNING'}}}).phase,'integration');
   assert.equal(planActivity({...input,execution:{...execution,commands:[{state:'running',reason:'Проверка main'}]}}).phase,'command');
   execution.assignments[0].cleanup.status='DONE';

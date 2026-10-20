@@ -121,7 +121,7 @@ export function deliveryText(workspace,task,state=null) {
     ...(state?[ 'Проверенные факты на момент поручения (не разрешение повторять эффекты): '+JSON.stringify({
       head:state.head,revision:state.plan.plan_revision,assignments:state.assignments.map(a=>({
         task_id:a.parent_task_id,source_commit:a.source_commit,integration_commit:a.integration_commit,cleanup:a.cleanup?.status??null}))})]:[]),
-    'Затем дай итоговый ответ пользователю: что сделано и проверено, ограничения и следующий шаг. План не архивируй без прямого поручения пользователя.'].join('\n');
+    'Затем дай короткий итоговый ответ пользователю: результат, проверки/ограничения и оставшаяся стадия либо приёмка. По умолчанию несколько предложений без повторного чтения WAL и таблиц таймингов. Подробный аналитический отчёт готовь только по прямому запросу пользователя, его требования имеют приоритет. Не называй complete подтверждённым до конца ответа и проверки backend. План не архивируй без прямого поручения пользователя.'].join('\n');
   return ['Выполни delivery-задачу плана оркестратора в main.','Workspace: '+JSON.stringify(workspace),
     'Задача '+task.id+' — '+task.title+'. Порядок: ./scripts/workflow task:start '+task.id+' → работа → commit --task '+task.id+'.',
     'Сбой окружения исправь и повтори. Если причина в коде — добавь исправляющую задачу через plan:extend и заверши ответ. Если устранить не можешь — plan:escalate --reason "причина" и опиши проблему пользователю.',
@@ -651,7 +651,8 @@ export class ParallelExecution {
             message:'Исход поручения оркестратору неизвестен. Проверьте его чат; повторная отправка не выполняется.'}});
           return true;
         }
-        if(['sent','queued','queuing'].includes(entry.status)){this.publish(workspace,{phase:'delivering',delivery:key,error:null});return true;}
+        if(['sent','queued','queuing'].includes(entry.status)){this.publish(workspace,{phase:'delivering',delivery:key,error:null,
+          finalizationReason:key==='cleanup'?'Ожидаем обработку итогового поручения и завершение ответа оркестратора.':null});return true;}
         this.publish(workspace,{phase:'attention',delivery:key,error:{code:'DELIVERY_NOT_DONE',
           message:'Оркестратор ответил, но шаг '+key+' не завершён. Обсудите с ним; повторная отправка не выполняется.'}});
         return true;
@@ -678,7 +679,11 @@ export class ParallelExecution {
       ||!this.channelSettled(workspace,plan.scope_id)||!this.physicalMainState(origin).stopped
       ||state.assignments.some(a=>a.status!=='INTEGRATED'||a.cleanup?.status!=='DONE'))){
       this.publish(workspace,{phase:'finalizing',delivery:'cleanup',error:null,
-        finalizationReason:'Ожидаем подтверждение очистки Kit и чистого main после итогового ответа.'});
+        finalizationReason:state.commandActive?'Ожидаем завершение команды в main.':!state.confirmed?'Проверяем актуальность доказательств Kit.':
+          !state.mainClean?'Ожидаем чистый main.':state.integration?.status!=='IDLE'?'Ожидаем завершение интеграции.':
+          !this.channelSettled(workspace,plan.scope_id)?'Ожидаем последние квитанции рабочего канала.':
+          !this.physicalMainState(origin).stopped?'Ожидаем физическое завершение итогового ответа оркестратора.':
+          'Ожидаем подтверждение очистки назначений Kit.'});
       return true;
     }
     this.publish(workspace,{phase:'complete',delivery:null,finalizationReason:null,error:null});

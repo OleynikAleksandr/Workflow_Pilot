@@ -55,7 +55,7 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
             if(request.params.name==='workflow_communication_wait')maxWaits=Math.max(maxWaits,++activeWaits);
             const result=await toolReply(request.params,await c.callTool({...request.params,_meta:currentMetadata}));
             if(request.params.name==='workflow_communication_wait')activeWaits--;
-            if(result?.transportError)deliver({jsonrpc:'2.0',id:request.id,error:{code:-32000,message:'Response connection lost'}});
+            if(result?.transportError)deliver({jsonrpc:'2.0',id:request.id,error:result.rpcError??{code:-32000,message:'Response connection lost'}});
             else deliver({jsonrpc:'2.0',id:request.id,result});
           }else if(request.method==='ui/message'){
             messages.push(request.params);const result=await onMessage(request.params);

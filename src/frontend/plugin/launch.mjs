@@ -1,21 +1,30 @@
 import {mountPanel} from './panel.mjs';
 import {COMMUNICATION_PROTOCOL as PROTOCOL,COMMUNICATION_BUILD as BUILD,communicationVersionMessage} from '../../contracts/backend.mjs';
 const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|ASSIGNMENT_CHANGED|VERSION|STOPPED|STORE_|CLOSED|LIMIT)/.test(code??'');
+// Hosts may reject JSON-RPC or return a tool error. Preserve structured codes;
+// never infer permission or completion from an arbitrary human message.
+function toolError(value){
+  const candidates=[value?.structuredContent?.error,value?.data?.structuredContent?.error,value?.data?.error,value?.error,value?.data,value];
+  for(const block of value?.content??[])if(block.type==='text')try{candidates.push(JSON.parse(block.text)?.error);}catch{}
+  const detail=candidates.find(e=>typeof e?.code==='string'&&/^PLUGIN_[A-Z_]+$/.test(e.code));
+  return Object.assign(new Error(detail?.message??value?.message??'MCP отклонил запрос.'),{code:detail?.code??'MCP_ERROR'});
+}
 export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=10000}) {
   const ui=mountPanel({document}),$=ui.$,clock=()=>document.defaultView.performance.now(),started=clock();let panelId=uuid();
   let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false,stopping=false,loop=null,expiry=null,expiresAt=0;
   let clientSequence=0,telemetry=[],flushing=null,flushTimer=null,dropped=0,exported='',exportRun='',serverError=null;
   let refreshing=null,refreshTimer=null;const sampledAt=new Map();
   let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false,workflow=false,recoveryFailures=0,retryTimer=null;
-  let workflowTimer=null,resourceUri='ещё не получен';
+  let workflowTimer=null,completedScope=null,resourceUri='ещё не получен';
   function watchWorkflow(){
     clearTimeout(workflowTimer);
-    if(!workflow||!binding||disposed||suspended||contextBlocked||!connected||serverError||loop)return;
+    if(!workflow||!binding||completedScope||disposed||suspended||contextBlocked||!connected||serverError||loop)return;
     workflowTimer=setTimeout(async()=>{
       if(busy||stopping){watchWorkflow();return;}
       const generation=epoch,current=binding;
       try{const value=await call('sync',{binding:current,message_supported:!!getMessage()});
         if(epoch!==generation||disposed||suspended||binding!==current)return;
+        if(finishCompleted(value,current,generation))return;
         binding={...current,permission_generation:value.permission_generation};expiresAt=value.expires_at;ui.snapshot(value);
         if(!value.stopped&&getMessage()){
           enabled=true;const token=++epoch;status('План выполняется. Ожидаем рабочее сообщение…','waiting');
@@ -31,13 +40,13 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const reason=disposed?'Панель завершена. Откройте её заново.':suspended?'Панель приостановлена до возвращения.':
       !connected?'SDK не подключён. Переоткройте панель, если подключение не завершится.':serverError?serverError:
       contextBlocked?'Контекст изменился. Нажмите «Восстановить данные».':busy?'Восстанавливаем данные или выполняем действие…':
-      stopping?'Ждём подтверждения остановки.':!binding?'Привязка не подтверждена. Восстановите данные или выберите запуск.':
+      stopping?'Ждём подтверждения остановки.':completedScope?'Выполнение завершено. Рабочее ожидание остановлено; ожидается ваша приёмка.':!binding?'Привязка не подтверждена. Восстановите данные или выберите запуск.':
       !getMessage()?'Хост не предоставил openai/message. Отправка недоступна.':enabled?'Связь включена.':loop?'Завершаем прежнее ожидание…':workflow?'Панель подключена. Ожидаем разрешение выполнения плана.':'Можно включить связь на 30 минут.';
     $('bind').disabled=unavailable||busy||enabled||!!binding||contextBlocked;
     $('recover').disabled=unavailable||busy||stopping||enabled;
     $('runs').disabled=unavailable||busy||enabled||!!binding;
-    $('enable').disabled=unavailable||contextBlocked||busy||stopping||!!loop||enabled||!binding||!getMessage()||!!serverError;
-    $('stop').disabled=disposed||!binding||stopping;
+    $('enable').disabled=unavailable||contextBlocked||busy||stopping||!!loop||enabled||!binding||!getMessage()||!!serverError||!!completedScope;
+    $('stop').disabled=disposed||!binding||stopping||!!completedScope;
     $('refresh').disabled=disposed||busy||enabled||!binding;
     $('export').disabled=disposed||busy||!binding;
     $('run').disabled=$('participant').disabled=!!binding||busy;
@@ -48,11 +57,13 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const began=clock();
     let result;
     try{result=await callTool('workflow_communication_'+name,args,{timeout:35000,...options});}
-    catch(error){if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:'NETWORK_ERROR'});throw error;}
+    catch(error){const normalized=toolError(error);
+      if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:normalized.code==='MCP_ERROR'?'NETWORK_ERROR':'MCP_ERROR'});
+      throw normalized;}
     if(/^ui:\/\/workflow-pilot\/panel-[a-f0-9]{64}\.html$/.test(result.structuredContent?.panel_resource_uri??''))resourceUri=result.structuredContent.panel_resource_uri;
     if(result.isError){
       if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:'MCP_ERROR'});
-      throw Object.assign(new Error(result.structuredContent?.error?.message??'MCP отклонил запрос.'),{code:result.structuredContent?.error?.code});
+      throw toolError(result);
     }
     const value=result.structuredContent;
     if(!name.startsWith('telemetry')&&(!['wait','status','sync'].includes(name)||value?.message_id
@@ -86,9 +97,16 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     enabled=false;epoch++;abort?.abort();clearTimeout(expiry);clearTimeout(retryTimer);clearTimeout(workflowTimer);
     clearTimeout(refreshTimer);refreshTimer=null;status(text,state);ready();
   }
+  function finishCompleted(value,current=binding,generation=epoch){
+    if(!workflow||disposed||suspended||binding!==current||epoch!==generation
+      ||value?.run_id!==current?.run_id||value?.participant_id!==current?.participant_id
+      ||value?.permission?.phase!=='complete'||!value.permission.scope_id)return false;
+    completedScope=value.permission.scope_id;expiresAt=0;ui.snapshot({...value,expires_at:0});
+    localStop('Выполнение завершено. Ожидание сообщений остановлено; ожидается ваша приёмка.');return true;
+  }
   function stop(text='Остановлено локально; ждём подтверждения службы.',finalText=null,finalState='unknown',scope='panel'){
     if(stopPromise)return stopPromise;
-    localStop(text);if(!binding)return Promise.resolve();const current={...binding},generation=epoch;
+    localStop(text);if(!binding||completedScope)return Promise.resolve();const current={...binding},generation=epoch;
     if(scope==='panel'&&current.permission_generation===undefined)return Promise.resolve();
     stopping=true;ready();record('stop.local');
     stopPromise=(async()=>{
@@ -102,6 +120,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const current=binding,generation=epoch;
     const value=await call('status',{run_id:current.run_id,participant_id:current.participant_id,view:reset?'full':'panel'});
     if(binding!==current||epoch!==generation||disposed||suspended)return value;
+    if(finishCompleted(value,current,generation))return value;
     if(!disposed){ui.snapshot({...value,expires_at:value.stopped?0:expiresAt});if(value.critical_error){serverError=value.critical_error;localStop('Журнал недоступен. Отправка заблокирована.','error');}}
     if(reset){let cursor=Math.max(0,value.seq-200);ui.feed([],cursor);
       while(cursor<value.seq){const page=await call('journal',{run_id:current.run_id,participant_id:current.participant_id,after_seq:cursor});
@@ -154,6 +173,15 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});}
       catch(error){
         if(!current())return;
+        // Some hosts omit structured tool errors. A fresh read-only snapshot
+        // can still prove complete; an unavailable snapshot proves nothing.
+        if(workflow)try{
+          const state=await refresh();
+          if(!current())return;
+          if(state?.stopped){localStop('Связь плана приостановлена. Ожидаем «Продолжить».');return;}
+        }catch{/* Network recovery below never repeats Send. */}
+        if(!current())return;
+        if(error.code==='PLUGIN_COMMUNICATION_STOPPED'){localStop('Разрешение связи отозвано. Проверяем состояние плана.');return;}
         if(terminal(error.code)){localStop(error.message,'error');return;}
         record('wait.error',{error_code:'NETWORK_ERROR'});status('Связь со службой потеряна. Повторяем только ожидание…','error');failures++;
         await new Promise(resolve=>{const finish=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',finish);resolve();};
@@ -163,7 +191,9 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       if(!current())return;
       if(failures){record('connection.restored');status('Связь восстановлена. Ожидаем сообщение…','waiting');}failures=0;
       ui.feed(update.events);seq=update.seq;if(workflow&&update.expires_at)expiresAt=update.expires_at;
-      if(update.stopped||update.critical_error){localStop(update.critical_error?'Ошибка журнала. Отправка запрещена.':'Разрешение отозвано.','error');return;}
+      if(update.stopped||update.critical_error){
+        if(workflow&&!update.critical_error)try{await refresh();if(!current())return;}catch{}
+        localStop(update.critical_error?'Ошибка журнала. Отправка запрещена.':'Разрешение отозвано.',update.critical_error?'error':'idle');return;}
       if(update.message_id){
         try{await deliver(update.message_id,generation,controller.signal);}
         catch{if(current())await stop('Доставка остановлена локально.','Исход попытки или отчёт не подтверждён. Повтора нет.');return;}
@@ -193,7 +223,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     recovery=(async()=>{
       await stopPromise;await loop;
       if(disposed||suspended||epoch!==generation)return;
-      if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;expiresAt=0;seq=0;ui.unbound();
+      if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;completedScope=null;expiresAt=0;seq=0;ui.unbound();
       const result=await call('recover');
       if(disposed||suspended||epoch!==generation)return;
       if(result.build_id!==BUILD||result.protocol_version!==PROTOCOL)throw Object.assign(Error(communicationVersionMessage({build_id:BUILD,protocol_version:PROTOCOL},result)),{code:'PLUGIN_COMMUNICATION_VERSION'});

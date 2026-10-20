@@ -324,6 +324,44 @@ test('real staged SDK -> Python MCP -> bridge -> Control: bind/enable/probe/wait
   assert.deepEqual(ui.errors,[]);
 });
 
+for(const shape of ['structured','rpc','stripped'])test('working panel settles complete without wait/sync retries: '+shape,async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;
+  const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
+  comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=()=>o;
+  comm.workflow.observe=()=>({canSend:true,stopped:true,busy:false,commandsIdle:true});
+  comm.waitMs=30;
+  const invitation=await comm.reserve(o);await bridge(t,f);const c=await client(t,f);
+  await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata});
+  const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?20:ms,toolReply:async(request,result)=>{
+    if(request.name==='workflow_communication_wait'&&result.isError){
+      if(shape==='rpc')return {transportError:true,rpcError:{code:-32000,message:'Host proxy',data:result.structuredContent}};
+      if(shape==='stripped')return {isError:true,content:result.content};
+    }
+    return result;
+  }});
+  await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
+  await comm.workflow.grant(o);
+  await eventually(()=>ui.calls.includes('workflow_communication_wait'));
+  await comm.workflow.grant(o,'paused');
+  await eventually(()=>ui.$('diagnostics').textContent.includes('Ожидание: остановлено'));
+  const beforeContinue=ui.calls.filter(n=>n==='workflow_communication_wait').length;
+  await comm.workflow.grant(o);
+  await eventually(()=>ui.calls.filter(n=>n==='workflow_communication_wait').length>beforeContinue);
+  await comm.workflow.grant(o,'complete');
+  await eventually(()=>ui.$('enable-reason').textContent.includes('Выполнение завершено'));
+  const count=()=>ui.calls.filter(n=>['workflow_communication_wait','workflow_communication_sync'].includes(n)).length;
+  const settled=count();await delay(180);assert.equal(count(),settled,'complete must stop polling');
+  assert.equal(ui.calls.includes('workflow_communication_stop'),false);
+  assert.equal(ui.$('stop').disabled,true);assert.equal(ui.$('recover').disabled,false);
+  assert.equal(ui.messages.length,0);
+  // New scope requires a fresh recovery, never revives the old grant.
+  o.scope_id='next-scope';await comm.workflow.grant(o);
+  await delay(60);assert.equal(count(),settled);
+  ui.$('recover').click();
+  await eventually(()=>count()>settled&&ui.$('diagnostics').textContent.includes('Ожидание: запущено'));
+  assert.deepEqual(ui.errors,[]);
+});
+
 test('fresh app-only metadata gates delivery, unsupported SDK cannot enable',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const args={run_id:'changed-host',role:'O'};

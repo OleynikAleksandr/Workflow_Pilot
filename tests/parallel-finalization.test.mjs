@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ParallelExecution,finalSourceState} from '../src/control/workflow/parallel-execution.mjs';
+import {ParallelExecution,finalSourceState,deliveryText} from '../src/control/workflow/parallel-execution.mjs';
 import {ProjectPlanContinuation} from '../src/control/workflow/project-plan-continuation.mjs';
 import {AutomationSendState} from '../src/control/workflow/automation-send-state.mjs';
 import fs from 'node:fs/promises';
@@ -17,6 +17,13 @@ import {ParallelKit} from '../src/control/workflow/parallel-kit.mjs';
 import {readCommandActivity} from '../src/control/workflow/command-activity.mjs';
 
 const {startFixtureWriter}=createRequire(import.meta.url)('./parallel-execution-smoke-fixture.cjs');
+
+test('normal finalization requests a short truthful report while retaining explicit user analytics and cleanup',()=>{
+ const text=deliveryText('/main',null,{head:'verified',plan:{plan_revision:1},assignments:[{parent_task_id:'DOCS',status:'INTEGRATED',cleanup:{status:'PENDING'}}]});
+ assert.match(text,/короткий итоговый/);assert.match(text,/без повторного чтения WAL/);
+ assert.match(text,/только по прямому запросу пользователя/);assert.match(text,/assignment:cleanup/);
+ assert.match(text,/Не называй complete подтверждённым/);
+});
 
 function fixture(t) {
  const origin={workspace:'/main',sessionId:'origin',projectId:'project',chatUrl:'https://chatgpt.com/c/main',executionSnapshot:{parallel_allowed:true,max_workers:2}};

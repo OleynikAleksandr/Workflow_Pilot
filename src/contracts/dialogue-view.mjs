@@ -50,7 +50,8 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     if(['unknown','rejected'].includes(incoming.delivery))return stage('attention','Доставка требует сверки'+task,'Автоматическая повторная отправка запрещена.','Канал связи');
     if(!incoming.read)return stage('delivery',incoming.delivery==='accepted'?'Ожидаем прочтение сообщения'+task:'Доставка сообщения'+task,
       waits[incoming.reason]??'Прочтение оркестратором ещё не подтверждено.','Канал связи');
-    if(incoming.handled)return stage('turn-end','Ожидаем завершение ответа'+task,'Сообщение обработано; физический конец хода ещё не подтверждён.');
+    if(incoming.handled)return stage('turn-end',incoming.kind==='finalization'?'Завершается итоговый ответ':'Ожидаем завершение ответа'+task,
+      'Сообщение обработано; физический конец хода ещё не подтверждён.');
     if(incoming.kind==='result')return stage('result','Обрабатывает результат'+task,'Результат прочитан; начало конкретной проверки ещё не подтверждено.');
     if(incoming.kind==='finalization')return stage('final','Готовит итоговый ответ','Итоговый ход начат; очистка и последние квитанции проверяются отдельно.');
     if(['ready','recovery'].includes(incoming.kind))return stage('prepare','Готовит поручение'+task,'Служебные данные прочитаны оркестратором.');

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 692,
+  "plan_revision": 694,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -164,8 +164,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "T002",
@@ -201,7 +201,16 @@
         "Поздние ответы не изменяют новую привязку; восстановление нового scope возможно."
       ],
       "expected_commit_message": "feat: Сократить обязательный итог и корректно завершать ожидание панели",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/contracts/dialogue-view.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/parallel-finalization.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -407,7 +416,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 692
+Revision: 694
 
 ## Цель
 
@@ -429,8 +438,8 @@ Revision: 692
   - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, tools/codex-app-server-mcp/plugin.py, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/prepared-task-flow.test.mjs, src/control/plugin/assignment-dialogue.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/recovery.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, packages/workflow-kit/src/templates/PLAN.md, docs/planning/prepared-task-flow.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Сократить обязательный итог и корректно завершать ожидание панели — Ожидает
-  - Git Commit: [PENDING] feat: Сократить обязательный итог и корректно завершать ожидание панели
+- [DONE] T002: Сократить обязательный итог и корректно завершать ожидание панели — Завершено
+  - Git Commit: [DONE] feat: Сократить обязательный итог и корректно завершать ожидание панели
   - Reference: prepared-task-flow / T002 / implementation
   - Файлы: src/frontend/plugin/launch.mjs, src/control/workflow/parallel-execution.mjs, src/contracts/dialogue-view.mjs, tests/chatgpt-plugin.test.mjs, tests/parallel-finalization.test.mjs, tests/panel-dialogue-view.test.mjs, tests/sidebar.test.mjs, tests/fixtures/plugin-host.mjs, docs/planning/prepared-task-flow.md
   - Параллельность: исключительное выполнение
