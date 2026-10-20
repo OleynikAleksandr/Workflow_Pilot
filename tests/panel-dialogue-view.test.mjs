@@ -4,6 +4,18 @@ import fs from 'node:fs/promises';
 import {JSDOM} from 'jsdom';
 import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 import {executorStatus} from '../src/control/workflow/execution-projection.mjs';
+import {currentPlanTasks} from '../src/contracts/dialogue-view.mjs';
+
+test('orchestrator card and plan use current integration facts instead of an older project snapshot',()=>{
+  const tasks=[{id:'T001',status:'done'},{id:'T002',status:'done'},{id:'DOCS',status:'pending'}];
+  const project={scopeId:'s',planExecution:{execution_strategy:'orchestrated'},
+    planView:{tasks:tasks.map(t=>t.id==='T002'?{...t,status:'working'}:t)}};
+  const execution={scopeId:'s',planView:{tasks}};
+  assert.equal(currentPlanTasks(project,execution).filter(t=>t.status==='done').length,2);
+  assert.equal(currentPlanTasks(project,execution).length,3);
+  assert.equal(currentPlanTasks(project,{...execution,scopeId:'old'}),project.planView.tasks);
+  assert.equal(currentPlanTasks({...project,planExecution:{execution_strategy:'sequential'}},execution),project.planView.tasks);
+});
 
 test('working UI separates report, acceptance and integration and renders addressed dialogue without HTML execution',async t=>{
   const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));

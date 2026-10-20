@@ -260,6 +260,48 @@ test('five independent recipients yield results to one FIFO, including read afte
   assert.equal(f.c.runs.get(o.run_id).events.filter(e=>e.event_type==='send.intent').length,5);
   assert.equal(f.c.runs.get(o.run_id).messages.filter(m=>m.reply_observed).length,5);
 });
+test('one O turn handles an SDK result and a queued result without another SDK send or false acceptance',async t=>{
+  const f=await fixture(t,undefined,dialogueKitFixture());await f.c.workflow.grant(f.o);
+  const o=await f.bind(f.c,f.o),ids=[];
+  for(const id of ['e1','e2','e3']){
+    await f.bind(f.c,f.target(id));
+    ids.push((await f.c.assignmentSend({metadata:meta(id),recipient:'orchestrator',kind:'result',attempt:1,
+      body:'Checked result',source_commit:'a'.repeat(40),idempotency_key:'result'})).message_id);
+  }
+  await sdk(f,o,ids[0]);const page=f.pages.get('o');page.busy=true;page.canSend=false;page.stopped=false;
+  for(const id of ids.slice(0,2))await f.c.readMessage({metadata:meta('o'),message_id:id});
+  await f.c.assignmentYield({metadata:meta('o'),message_ids:ids.slice(0,2),reason:'handled'});
+  await observe(f,'o');f.advance(600);await observe(f,'o');
+  assert.ok(f.c.runs.get(o.run_id).messages.every(m=>!m.reply_observed),'early yield cannot release any message');
+  page.busy=false;page.canSend=true;page.stopped=true;page.commandsIdle=false;
+  await observe(f,'o');f.advance(600);await observe(f,'o');
+  assert.ok(f.c.runs.get(o.run_id).messages.every(m=>!m.reply_observed),'active commands keep both messages reserved');
+  page.commandsIdle=true;await observe(f,'o');f.advance(600);
+  // Exercise the bounded probe for the message that has no SDK deliveryGate.
+  await f.c.mutate('observed',{run_id:o.run_id,message_id:ids[1]});
+  const messages=f.c.runs.get(o.run_id).messages;
+  assert.ok(messages.slice(0,2).every(m=>m.reply_observed));
+  assert.equal(messages[1].delivery,'pending','direct read is not an SDK accepted report');
+  assert.equal(messages[1].intent,undefined);
+  assert.equal(messages[2].read,false);assert.equal(pending(f.c,o),ids[2]);
+  assert.equal(f.c.runs.get(o.run_id).events.filter(e=>e.event_type==='send.intent').length,1);
+});
+test('legacy persisted direct read/yield recovers after restart and Continue with fresh restored idle, without resend',async t=>{
+  const f=await fixture(t,undefined,dialogueKitFixture());await f.c.workflow.grant(f.o);
+  const o=await f.bind(f.c,f.o);await f.bind(f.c,f.target('e'));
+  const sent=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',kind:'result',attempt:1,
+    body:'Checked result',source_commit:'a'.repeat(40),idempotency_key:'result'});
+  const page=f.pages.get('o');page.busy=true;page.stopped=false;page.canSend=false;
+  await f.c.readMessage({metadata:meta('o'),message_id:sent.message_id});
+  await f.c.assignmentYield({metadata:meta('o'),message_ids:[sent.message_id],reason:'handled'});
+  f.c.dispose();await f.c.tail;const restored=await f.create();f.c=restored;
+  page.documentId='restored-doc';page.busy=false;page.stopped=true;page.canSend=true;
+  await observe(f,'o');assert.equal(restored.runs.get(o.run_id).messages[0].reply_observed,false,'restart does not authorize completion');
+  await restored.workflow.grant(f.o);await f.bind(restored,f.o);
+  await observe(f,'o');f.advance(600);await observe(f,'o');f.advance(600);await observe(f,'o');
+  const run=restored.runs.get(o.run_id);assert.equal(run.messages[0].reply_observed,true);
+  assert.equal(run.messages[0].delivery,'pending');assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,0);
+});
 test('pause, timeout, changed document and stale attempt never manufacture physical completion',async t=>{
   const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);
   await f.bind(f.c,f.o);let b=await f.bind(f.c,e);

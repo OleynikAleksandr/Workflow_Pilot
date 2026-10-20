@@ -6,6 +6,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
   pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
+import {currentPlanTasks} from '../contracts/dialogue-view.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -215,7 +216,7 @@ function orchestratorState(workspace,session) {
   const project=store.project(workspace);
   if(session.closedPlanCommit||project?.scopeId!==session.orchestratorScopeId)return {label:'Выполнено',state:'complete'};
   const run=workflow.executionControl.view(workspace,session.orchestratorScopeId),view=execution.view(workspace);
-  const done=project.planView?.tasks?.filter(task=>task.status==='done').length??0,total=project.planView?.tasks?.length??0;
+  const tasks=currentPlanTasks(project,view),done=tasks.filter(task=>task.status==='done').length,total=tasks.length;
   const cleanup=(view.assignments??[]).filter(a=>a.status==='INTEGRATED'&&a.cleanup?.status==='PENDING').length;
   const attention=project.orchestrationIssue||view.error||run.reason==='escalation'||run.reason==='unknown';
   return {state:attention?'attention':run.state,label:(attention?'Требует внимания':orchestratorLabels[run.state])+' · '+done+'/'+total,cleanup};
@@ -233,8 +234,7 @@ function orchestratorPlanView(saved) {
   // Executors of a legacy parallel plan keep their own assignment card.
   if(saved.parentWorkspace&&!orchestrator)return null;
   const current=project.scopeId===scope&&orchestratedPlanActive(project);
-  const source=current?{objective:project.objective,tasks:(project.planExecution?.execution_strategy==='orchestrated'
-    ?execution.view(workspace).planView?.tasks:null)??project.planView?.tasks??[]}
+  const source=current?{objective:project.objective,tasks:currentPlanTasks(project,execution.view(workspace))}
     :orchestrator?.closedPlanCommit?closedPlan(workspace,orchestrator.closedPlanCommit):null;
   if(!source)return {scopeId:scope,objective:'',tasks:[],loading:true};
   const executors=projectExecutors(store.snapshot().projects,workspace,execution.view(workspace),liveRecord,

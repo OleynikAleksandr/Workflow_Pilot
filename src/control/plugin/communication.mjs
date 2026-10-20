@@ -174,7 +174,9 @@ export class PluginCommunication {
   _turnTimeout(input){return this.workflow.timeout(input);}
   async _observed(input){const run=this.run(input);for(const member of Object.values(run.members))
     if((!input.session_id||member.target.local_session_id===input.session_id)
-      &&(!input.message_id||member.deliveryGate?.message_id===input.message_id))await this.workflow.observed(run,member);return {};}
+      &&(!input.message_id||member.deliveryGate?.message_id===input.message_id
+        ||run.messages.some(m=>m.message_id===input.message_id&&m.recipient_id===member.id&&m.read&&m.yielded)))
+      await this.workflow.observed(run,member);return {};}
   observeSession(sessionId){for(const run of this.runs.values())if(run.mode==='workflow'&&Object.values(run.members).some(m=>m.target.local_session_id===sessionId)){
     void this.mutate('observed',{run_id:run.id,session_id:sessionId}).catch(()=>{});
     for(const waiter of this.waiters.values())if(waiter.runId===run.id)waiter.wake('event');

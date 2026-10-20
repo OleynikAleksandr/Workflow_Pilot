@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 626,
+  "plan_revision": 630,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -184,29 +184,19 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/orchestrator-owned-dialogue.md",
+        "path": "docs/modules/assignment-dialogue.md",
         "required": true,
-        "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
-      },
-      {
-        "path": "docs/planning/orchestrator-owned-dialogue-reliability.md",
-        "required": true,
-        "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
-      },
-      {
-        "path": "docs/planning/orchestrator-owned-dialogue-results.md",
-        "required": true,
-        "revision": "5018ffbf451ce744cb4ce5781507a0f7fd7e2e13"
-      },
-      {
-        "path": "docs/architecture/OVERVIEW.md",
-        "required": true,
-        "revision": "WORKTREE"
+        "revision": "25e19c2425f144155f933c10feaf8c9a71a86768"
       },
       {
         "path": "docs/modules/assignment-dialogue-reliability.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "25e19c2425f144155f933c10feaf8c9a71a86768"
+      },
+      {
+        "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "25e19c2425f144155f933c10feaf8c9a71a86768"
       }
     ],
     "include_last_completed_task": false,
@@ -1487,7 +1477,9 @@
         "tests/electron-smoke.mjs",
         "package.json",
         "package-lock.json",
-        "tools/codex-app-server-mcp/plugin.py"
+        "tools/codex-app-server-mcp/plugin.py",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs"
       ],
       "documentation_paths": [
         "docs/modules/assignment-dialogue-reliability.md"
@@ -1507,14 +1499,28 @@
         "Версия приложения и панели 0.5.9, установленный Kit не меняется; живой тест не изменяется в ходе разработки."
       ],
       "expected_commit_message": "feat: Исправить обработку нескольких результатов и актуальность карточки оркестратора",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T011",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -1659,7 +1665,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 626
+Revision: 630
 
 ## Цель
 
@@ -1762,10 +1768,10 @@ Revision: 626
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
-- [TODO] T011: Исправить обработку нескольких результатов и актуальность карточки оркестратора — Ожидает
-  - Git Commit: [PENDING] feat: Исправить обработку нескольких результатов и актуальность карточки оркестратора
+- [DONE] T011: Исправить обработку нескольких результатов и актуальность карточки оркестратора — Завершено
+  - Git Commit: [DONE] feat: Исправить обработку нескольких результатов и актуальность карточки оркестратора
   - Reference: orchestrator-owned-dialogue-refactor / T011 / implementation
-  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/panel-dialogue-view.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, tools/codex-app-server-mcp/plugin.py, docs/modules/assignment-dialogue-reliability.md
+  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/panel-dialogue-view.test.mjs, tests/electron-smoke.mjs, package.json, package-lock.json, tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, src/control/plugin/communication.mjs, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
@@ -1795,10 +1801,8 @@ Revision: 626
 
 ## Context Pack For This Cycle
 
-- docs/planning/orchestrator-owned-dialogue.md
-- docs/planning/orchestrator-owned-dialogue-reliability.md
-- docs/planning/orchestrator-owned-dialogue-results.md
-- docs/architecture/OVERVIEW.md
+- docs/modules/assignment-dialogue.md
 - docs/modules/assignment-dialogue-reliability.md
+- docs/architecture/OVERVIEW.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.

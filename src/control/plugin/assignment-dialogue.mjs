@@ -209,7 +209,7 @@ export class AssignmentDialogue {
         ||reply?.kind==='revision_request'&&reply.attempt===state.dialogue?.attempt&&reply.attempt===message.attempt+1,
         'STALE_ATTEMPT','Нельзя подтвердить обработку старой попытки.');
     }
-    for(const message of messages)if(!message.yielded){message.yielded={reason:input.reason,at:c.now(),page:structuredClone(c.workflow.observe(member.target))};
+    for(const message of messages)if(!message.yielded){message.yielded={reason:input.reason,at:c.now(),backend_id:c.backendId,page:structuredClone(c.workflow.observe(member.target))};
       if(message.intent&&['claimed','unknown'].includes(message.delivery)){
         message.delivery='accepted';message.resolved_by_read=true;
         c.event(run,'send.resolved',{message_id:message.message_id,evidence:'recipient-read-yield'});

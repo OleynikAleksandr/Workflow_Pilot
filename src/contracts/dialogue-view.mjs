@@ -1,4 +1,9 @@
 // A view of facts, never a transition or an execution permission.
+export function currentPlanTasks(project,execution) {
+  return (project?.planExecution?.execution_strategy==='orchestrated'&&execution?.scopeId===project.scopeId
+    ?execution.planView?.tasks:null)??project?.planView?.tasks??[];
+}
+
 export function assignmentStage({phase,status,dialogue,block,channel,physical}={}) {
   if(phase==='INTEGRATED'||status==='INTEGRATED')return {phase:'done',label:'Интеграция проверена'};
   if(channel&&!channel.registered)return {phase:'starting',label:'Ожидаем регистрацию исполнителя'};

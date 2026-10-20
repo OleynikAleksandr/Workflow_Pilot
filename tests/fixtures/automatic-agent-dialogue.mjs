@@ -16,7 +16,7 @@ import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,experience='chat',{owned=false,conversation=false,workers=2}={}){
+export async function automaticDialogue(t,experience='chat',{owned=false,conversation=false,workers=2,batchResults=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0;
@@ -54,6 +54,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     const project=record.project();notifications.push({...message,text,sessionId:project.sessionId});
     if(owned){
       assert.equal(message.dialogue_version,1);
+      const handled=[message.message_id];
       const roster=()=>call('participants',{});
       const send=payload=>call('assignment_send',{attempt:message.attempt??1,in_reply_to:message.assignment_id?message.message_id:undefined,
         idempotency_key:message.kind+':'+message.message_id,...payload});
@@ -129,16 +130,29 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
           await repairAndResume(target);
         }
       }else if(message.kind==='result'){
-        assert.equal(message.sender_role,'E');
-        const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
-        const status=await plans.call(root,'assignment:status',['--id',message.assignment_id]);
-        assert.equal(status.source_commit,message.source_commit);assert.equal(status.status,'READY_FOR_INTEGRATION');
-        const diff=await workflow.executionKit.git(root,['show','--stat',message.source_commit]);assert.ok(diff);
-        if(conversation&&message.task_id==='T001'&&message.attempt===1){
-          await send({recipient:target.recipient_ref,kind:'revision_request',result_id:message.message_id,source_commit:message.source_commit,body:'Revise the exact result for the second approved iteration.'});
-        }else{
-          await send({recipient:target.recipient_ref,kind:'acceptance',result_id:message.message_id,source_commit:message.source_commit,body:'Exact diff and checks accepted'});
-          await plans.call(root,'integration:start',[],{id:message.assignment_id,source_commit:message.source_commit});
+        const results=[message];
+        if(batchResults&&independent.includes(message.task_id)){
+          const sibling=()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
+            .find(m=>m.kind==='result'&&independent.includes(m.task_id)&&m.message_id!==message.message_id);
+          await wait(()=>sibling(),'second result queued while O handles first');
+          assert.equal(sibling().delivery,'pending');
+          const other=await call('read_message',{message_id:sibling().message_id});
+          results.push(other);handled.push(other.message_id);
+          notifications.push({...other,sessionId:project.sessionId,directRead:true});
+        }
+        for(const result of results){
+          assert.equal(result.sender_role,'E');
+          const target=(await roster()).assignments.find(a=>a.assignment_id===result.assignment_id);
+          const status=await plans.call(root,'assignment:status',['--id',result.assignment_id]);
+          assert.equal(status.source_commit,result.source_commit);assert.equal(status.status,'READY_FOR_INTEGRATION');
+          const diff=await workflow.executionKit.git(root,['show','--stat',result.source_commit]);assert.ok(diff);
+          if(conversation&&result.task_id==='T001'&&result.attempt===1){
+            await send({recipient:target.recipient_ref,kind:'revision_request',result_id:result.message_id,source_commit:result.source_commit,body:'Revise the exact result for the second approved iteration.'});
+          }else{
+            await send({recipient:target.recipient_ref,kind:'acceptance',result_id:result.message_id,source_commit:result.source_commit,
+              in_reply_to:result.message_id,idempotency_key:'accept:'+result.message_id,body:'Exact diff and checks accepted'});
+            await plans.call(root,'integration:start',[],{id:result.assignment_id,source_commit:result.source_commit});
+          }
         }
       }else if(message.kind==='acceptance'){
         assert.equal(message.sender_role,'O');
@@ -150,7 +164,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         assert.equal(message.sender_role,'backend');assert.match(text,/assignment:cleanup/);
         assert.equal((await plans.call(root,'assignment:cleanup')).only_main,true);
       }else throw Error('Unexpected owned dialogue: '+message.kind);
-      await call('assignment_yield',{message_ids:[message.message_id],reason:'handled'});return;
+      await call('assignment_yield',{message_ids:handled,reason:'handled'});return;
     }
     if(project.assignmentId){
       if(message.kind==='assignment-start'){
@@ -262,7 +276,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   await plans.call(root,'plan:create',[],{id:'dialogue-fixture',spec:'docs/planning/dialogue.md',stack:'Node fixture',objective:'Two independent assignments, a question and a dependent result',approval:'Isolated fixture authorized',
     parallel_allowed:true,max_workers:workers,execution_strategy:'orchestrated',execution_reason:'Independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,...(owned?{}:{dialogue_version:0}),
     acceptance:['One Start; complete work without manual panel action'],checks:[{id:'dependency',executable:'npm',args:['test'],required:false,timeout_ms:30000}],
-    tasks:[...independent.map(id=>task(id,taskFile[id])),task('T003','THIRD.md',independent)]});
+    tasks:[...independent.map(id=>task(id,taskFile[id])),...(batchResults?[]:[task('T003','THIRD.md',independent)])]});
   assert.equal(readPlan(root).dialogue_version,owned?1:0,'new owned plan defaults to dialogue; legacy fixture opts into its former contract');
   await store.reconcileRoles(root);await store.selectSession(root,origin.sessionId);workflow.execution.observe(root);
   await workflow.execution.signal(root);assert.equal(records.size,1,'publication alone opens no executor');
@@ -278,15 +292,17 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     return state.state==='complete';
   },'plan completion',workers===5?270000:180000);
   assert.equal(readPlan(root).delivery_status,'READY_FOR_ACCEPTANCE');
-  assert.deepEqual(readPlan(root).tasks.map(task=>task.commit_status),Array(workers+2).fill('DONE'));
-  assert.equal(records.size,workers+3,'one O, independent E, a dependent task and DOCS');
+  const taskCount=workers+(batchResults?1:2);
+  assert.deepEqual(readPlan(root).tasks.map(task=>task.commit_status),Array(taskCount).fill('DONE'));
+  assert.equal(records.size,taskCount+1,'one O and one E for each task including DOCS');
   for(const record of records.values()){
     assert.equal(record.bootstrapCount,1);assert.equal(record.domWorkSends,0);
     assert.equal(record.ui.calls.includes('workflow_communication_enable'),false);assert.equal(record.ui.calls.includes('workflow_communication_join'),false);
     assert.equal(record.project().experience,record===o?experience:'chat');
   }
   if(owned){
-    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,workers+2+(conversation&&kind==='result'?1:0),kind);
+    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,taskCount+(conversation&&kind==='result'?1:0),kind);
+    if(batchResults)assert.equal(notifications.filter(n=>n.directRead).length,1,'one result is read within the other SDK turn');
     if(conversation){
       assert.equal(sharedRepairs,1,'shared repair requires fresh parked facts and no user continuation');
       for(const kind of ['context_request','question','decision','revision_request'])assert.equal(notifications.filter(n=>n.kind===kind).length,1,kind);

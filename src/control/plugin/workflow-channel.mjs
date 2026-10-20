@@ -140,6 +140,14 @@ export class WorkflowChannel {
       userTurnId:page.userTurnId??null,assistantRevision:page.assistantRevision??0,userMessagesRevision:page.userMessagesRevision??0};
   }
   async observed(run,member) {
+    // A recipient may read several queued messages in one model turn. These
+    // have no SDK delivery gate, but still need their own fresh idle evidence.
+    for(const message of this.directlyHandled(run,member)){
+      const baseline=message.yielded.page;
+      if(!baseline)continue;
+      const gate=message.handlingGate??={documentId:baseline.documentId,observationSeq:baseline.observationSeq??0};
+      await this.observeDialogue(run,member,message,gate,true);
+    }
     const gate=member.deliveryGate;if(!gate)return;
     const message=run.messages.find(m=>m.message_id===gate.message_id);
     if(message?.dialogue_version===1)return this.observeDialogue(run,member,message,gate);
@@ -154,10 +162,25 @@ export class WorkflowChannel {
       }
     }
   }
-  async observeDialogue(run,member,message,gate){
-    if(!this.permitted(run,member)||!(message.read||message.superseded_read)||!message.yielded||message.delivery!=='accepted')return;
+  directlyHandled(run,member){
+    return run.messages.filter(m=>m.recipient_id===member.id&&m.scope_id===run.grant?.scope_id
+      &&m.dialogue_version===1&&m.delivery==='pending'&&!m.intent&&m.read&&m.yielded&&!m.reply_observed&&!m.superseded);
+  }
+  async observeDialogue(run,member,message,gate,direct=false){
+    if(!this.permitted(run,member)||!(message.read||message.superseded_read)||!message.yielded
+      ||(!direct&&message.delivery!=='accepted'))return;
     await this.c.enrollment.validate(member.target);
-    const page=await this.reconcile(member.target),baseline=message.yielded.page;
+    const page=await this.reconcile(member.target);
+    let baseline=gate.restoredBaseline??message.yielded.page;
+    // Read/yield survives a backend restart; the old page no longer exists.
+    // Observe the restored, verified recipient twice, without inventing SDK
+    // acceptance or replaying a message it already handled.
+    if(direct&&page&&baseline&&page.documentId!==baseline.documentId
+      &&message.yielded.backend_id!==this.c.backendId){
+      if(!page.stopped||page.busy||!page.canSend||!page.commandsIdle)return;
+      gate.restoredBaseline=structuredClone(page);gate.documentId=page.documentId;
+      gate.observationSeq=page.observationSeq;gate.seenBusy=true;delete gate.idle;return;
+    }
     if(!page||!baseline||page.documentId!==gate.documentId||page.documentId!==baseline.documentId
       ||page.observationSeq<=Math.max(gate.observationSeq,baseline.observationSeq??0))return;
     const reason=!page.commandsIdle?'commands-active':page.busy?'assistant-busy':!page.stopped?'page-unavailable'
@@ -176,15 +199,18 @@ export class WorkflowChannel {
       this.c.event(run,'turn.idle_candidate',{message_id:message.message_id});return;
     }
     if(page.observationSeq<=gate.idle.seq||this.c.now()-gate.idle.at<500)return;
-    message.reply_observed=true;delete member.deliveryGate;
+    message.reply_observed=true;
+    if(member.deliveryGate?.message_id===message.message_id)delete member.deliveryGate;
+    delete message.handlingGate;
     this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id,evidence:'read-yield-fresh-idle'});
   }
   syncProbes(run){
     if(this.c.disposed)return;
     const eligible=new Map(Object.values(run.members).flatMap(member=>{
       const gate=member.deliveryGate,message=run.messages.find(m=>m.message_id===gate?.message_id);
-      return this.permitted(run,member)&&message?.dialogue_version===1&&message.yielded&&!message.reply_observed
-        ?[[message.message_id,member]]:[];
+      if(!this.permitted(run,member))return [];
+      return [...(message?.dialogue_version===1&&message.yielded&&!message.reply_observed
+        ?[[message.message_id,member]]:[]),...this.directlyHandled(run,member).map(m=>[m.message_id,member])];
     }));
     for(const [id,p] of this.turnProbes)if(p.runId===run.id&&!eligible.has(id)){clearTimeout(p.timer);this.turnProbes.delete(id);}
     for(const [id] of eligible){
@@ -204,6 +230,8 @@ export class WorkflowChannel {
     const run=this.c.run(input),member=Object.values(run.members).find(m=>m.deliveryGate?.message_id===input.message_id);
     if(member){member.deliveryGate.wait_reason='physical-completion-unconfirmed';
       this.c.event(run,'turn.waiting',{message_id:input.message_id,reason:'physical-completion-unconfirmed'});}
+    else if(run.messages.some(m=>m.message_id===input.message_id&&m.handlingGate&&!m.reply_observed))
+      this.c.event(run,'turn.waiting',{message_id:input.message_id,reason:'physical-completion-unconfirmed'});
     return {};
   }
   dispose(){for(const p of this.turnProbes.values())clearTimeout(p.timer);this.turnProbes.clear();}
