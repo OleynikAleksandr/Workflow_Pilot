@@ -1,12 +1,12 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.10, Kit 1.9.1, протокол панели `3`, build `0.5.10-communication-3`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.11, Kit 1.9.2, протокол панели `3`, build `0.5.11-communication-3`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
 1. Пользователь открывает локальный проект и будущего оркестратора Chat или Work. Первое полное recovery через существующий DOM-путь содержит ограниченное приглашение. Агент вызывает `workflow_pilot_panel` и открывает панель; это не разрешение выполнять план.
 2. Обсуждение, Review и публикация сохраняют прежний путь. Публикация связывает scope с точным `execution_origin_session_id`, но не запускает работу.
-3. Одна кнопка «Начать выполнение плана» разрешает текущий scope. Control/ParallelExecution через Kit создаёт назначения, worktree и Chat-исполнителей в пределах max_workers. Пока E проходит bootstrap, O по уведомлению о назначении выбирает задачу/контекст и сохраняет prepare. После SDK/bind и конца bootstrap O получает ready и отправляет сохранённый draft через dispatch. До этого нет grant/публикации E. Backend assignment-start сохранён только для прежнего контракта.
+3. Одна кнопка Start разрешает scope. Control/ParallelExecution через Kit создаёт назначения, worktree и Chat-исполнителей в пределах max_workers. Пока E проходит bootstrap, O выбирает задачу/контекст и вызывает prepare с dispatch_when_ready=true. Backend сохраняет явную авторизацию и отправляет неизменяемый пакет после SDK/bind и конца bootstrap, без отдельного ready-хода. Без флага prepare остаётся черновиком. Backend assignment-start сохранён только для прежнего контракта.
 4. Поручения, продолжения, вопросы/решения, интеграции, delivery и итог передаются через канал. Пользователь не переносит run/participant, не открывает панели исполнителей, не вызывает join/Enable и не пишет «продолжай» при обычной технической блокировке.
 
 Панель не создаёт второй scheduler. Kit остаётся источником задач, назначений, проверок и DONE; локальный коммит исполнителя требует проверенной интеграции. [Оркестрация](orchestrated-execution.md) определяет волны и итоговую очистку. DOM передаёт полный начальный контекст O, минимальные обязательные правила/identity/bootstrap E, прежний Review и legacy. [Роли, рабочий API и приёмка результатов](assignment-dialogue.md) определяют dialogue_version=1. Выбранный маршрут `plugin-v1`/`legacy-dom` сохраняется; ошибки канала не переключают его скрыто на DOM.
@@ -23,7 +23,7 @@ Control резервирует случайное 32-байтовое пригл
 
 ## Разрешение и срок жизни
 
-Start/Continue выдаёт сохранённый допуск текущему плану, включая последующие назначения. Экспериментальный лимит 30 минут к работе плана не применяется. Короткая lease панели (60 секунд, продлеваемая sync) доказывает живой SDK и не выдаёт нового пользовательского согласия.
+Start/Continue выдаёт допуск текущему плану. Лимит 30 минут к нему не применяется. Lease SDK — 60 секунд: sync подтверждает её, wait продлевает только ещё действующую lease того же поколения. Истёкшая lease/restart требуют свежего sync; wait не возобновляет допуск. Старая авторизация draft после смены generation/boot требует подтверждения O.
 
 | Событие | Поведение |
 | --- | --- |
@@ -42,13 +42,13 @@ Start/Continue выдаёт сохранённый допуск текущему
 
 ## Доставка и блокировки
 
-Существующий observer страницы и журнал команд сообщают занятость и черновик. Перед SDK проверяются identity/назначение/generation/допуск, одноразовый claim/verify и durable send.intent. В новом диалоге FIFO освобождается по read + собственному yield + свежему физическому концу хода без обязательной новой пользовательской реплики. Ранний yield/старый idle не открывают вход; ограниченная read-only сверка не запускает модель. [Точный контракт](assignment-dialogue-reliability.md#sdk-fifo-и-конец-хода).
+Observer и журнал команд сообщают занятость/черновик. Перед SDK объединённый claim_ready проверяет identity/назначение/generation/допуск и сохраняет durable send.intent; старые claim/verify сохранены. Между подтверждением и SDK нет ожидания UI refresh/telemetry. FIFO освобождается по read + yield + свежему физическому концу без user bubble. Ранний yield/старый idle не открывают вход; read-only сверка не запускает модель. [Контракт](assignment-dialogue-reliability.md#sdk-fifo-и-конец-хода).
 
 `pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report не возвращает pending. UNKNOWN и остальные терминальные исходы не повторяются через SDK или DOM. После restart claimed становится unknown. Большой контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
 
 Рабочий model API — workflow_assignment_prepare/dispatch/send/yield/status: черновик O без grant, его отправка после готовности, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Yield.reason явно ограничен awaiting_reply/tasks_sent/result_sent/handled. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 
-[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 4: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
+[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 5: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
 
 ## MCP и SDK
 
@@ -57,7 +57,7 @@ SDK: ext-apps 1.7.5, mcp-extensions 0.2.0, MCP 1.32.1. Настоящий `App.c
 | Операция | Доступ и контракт |
 | --- | --- |
 | workflow_assignment_send / yield / status | Model-only; task/context/вопросы/result/acceptance, квитанции обработки и свой реестр без user transport ID |
-| workflow_assignment_prepare / dispatch | Model-only O; долговечный draft_id без grant, затем явная отправка после свежей проверки канала |
+| workflow_assignment_prepare / dispatch | Model-only O; prepare(dispatch_when_ready=true) либо dispatch(when_ready=true) явно разрешает отправку при готовности; без флага только прежний контракт |
 | workflow_assignment_migrate | Model-only; явный безопасный переход старого scope от O после паузы |
 
 | workflow_pilot_panel | Model, optional enrollment_ticket; мутация регистрации и UI. Без приглашения открывает существующую панель. Успех вызова не доказывает mount/SDK |
@@ -66,11 +66,12 @@ SDK: ext-apps 1.7.5, mcp-extensions 0.2.0, MCP 1.32.1. Настоящий `App.c
 | communication_participants | Model, без аргументов; актуальный разрешённый реестр |
 | communication_recover | App, свежая identity; автоматическое обнаружение своего назначения без выдачи допуска |
 | communication_bind / sync | App, binding/message_supported; bind подтверждает новую панель, sync продлевает присутствие и читает существующий допуск |
-| communication_wait | App, binding/after_seq; один long-poll до 25 секунд, timeout повторим |
+| communication_wait | App, binding/after_seq; один long-poll до 25 секунд, продление живой lease своего поколения |
 | communication_claim / verify / report | App, binding/message_id, для verify/report delivery_attempt_id; report: accepted/rejected/unknown |
+| communication_claim_ready | App; объединённые claim/verify с durable intent до SDK |
 | communication_stop | App, binding/scope; participant — явный Stop всего workflow-плана или одного legacy-участника; panel — отсоединение workflow-экземпляра или legacy Stop его поколения |
 | communication_status / journal / export | Model/App, run_id/participant_id; journal/export по 100 событий, export фиксирует through_seq до complete |
-| communication_telemetry | App, binding и очищенное событие с event_id/client_sequence |
+| communication_telemetry / telemetry_batch | App; очищенное событие или до 16 событий с event_id/client_sequence |
 
 Имена communication_* имеют префикс `workflow_`. Binding: run_id, participant_id, panel_instance_id, protocol_version, build_id и permission_generation для доставки; посторонние поля отклоняются. Read-only: status/journal/export/recover/participants/read_context. Регистрация, read-квитанция и остальные мутации имеют readOnlyHint=false. Ответы communication содержат panel_resource_uri текущего immutable MCP snapshot; это диагностика каталога, не новое UI-вложение или доказательство старого iframe. Recover также сообщает assignment_dialogue_version и role_protocol_version.
 
@@ -84,11 +85,11 @@ Control PluginCommunication сериализует мутации и подтв�
 
 WAL в собственном `plugin-communication`: legacy schema 1, workflow registry/WAL 2; состояние и последовательные события с SHA-цепочкой, без второго snapshot. Неизвестный формат отклоняется до записи, старый журнал не мигрирует молча. Контекст — неизменяемый файл по hash с fsync/O_NOFOLLOW и проверкой SHA при чтении. Повреждение, неполный хвост, внешний размер или symlink блокируют запись и сохраняют исходник/доступный префикс. На POSIX синхронизируется также каталог. Лимиты: 100 runs, 256 приглашений, 2048 workflow-сообщений (256 legacy), 20000 событий/run, WAL до 512 MiB. Превышение — явный отказ.
 
-Новый panel_instance_id создаётся при mount. Handshake → свежий recover → bind → sync; при позднем SDK восстановление ограничено и не создаёт модельных ходов. Исторический tool-result, включая старую версию/ошибку, не управляет актуальной привязкой или разрешением. Рабочий UI скрывает ручные поля/Enable, показывает роль, scope/task/assignment и причину неготовности; один run выбирается автоматически. Sync в ожидании разрешения выполняется раз в две секунды и перед wait. Backoff ошибок ожидания 250–5000 мс; binding/version/storage прекращает локальную доставку. Ошибка claim/verify/report не порождает повтор Send. Светлая/тёмная тема и узкая раскладка поддержаны.
+Новый panel_instance_id создаётся при mount. Handshake → recover → bind → sync; поздний SDK восстанавливается ограниченно без модельных ходов. Исторический tool-result не управляет актуальным допуском. UI скрывает ручные поля/Enable, показывает роль/назначение и причину неготовности. Sync при ожидании разрешения — раз в две секунды; рабочий wait продлевает живую lease сам. Backoff ошибок 250–5000 мс; binding/version/storage прекращает доставку, ошибка не повторяет Send. UI refresh объединён с задержкой 500 мс, не блокирует доставку и не читает полный Kit roster. Светлая/тёмная тема и узкая раскладка сохранены.
 
 Sidebar читает регистрацию, живой SDK, task/attempt/grant/result/acceptance и этап интеграции. Панель O показывает всех E и входящие/исходящие с авторами, адресатами и корреляцией; E — свой диалог. Read-only preview не отмечает read. После удаления сохранённый запрет сессий отзывает допуск, intent становится retired; поздние вызовы получают PROJECT_REMOVED. [Наблюдаемость](assignment-dialogue-reliability.md#наблюдаемость).
 
-Лента показывает последние 200 событий с фильтрами; экспорт собирает весь фиксированный through_seq, предлагает download или текст, ошибка не стирает журнал. Телеметрия имеет отдельные client_time/server_received_at, монотонный client_sequence, дедупликацию event_id и frontend.gap. Буфер 64 события; до bind события локальны, после уничтожения последние могут потеряться. Отсутствие server mount не доказывает отсутствие SDK. Intent не доказывает invocation, accepted не доказывает read. Сырые host payload, секреты и произвольные stack traces в телеметрию не записываются; фильтр секретов legacy-текста не является универсальным детектором.
+Лента показывает последние 200 событий; экспорт фиксирует through_seq и полноту. Пакетная телеметрия отправляется отдельно от доставки; буфер 64, пакет до 16. Разделены client_time/server_received_at и монотонные длительности операций, отмечены frontend.gap/diagnostic.gap. Измеряются очередь/handler/Kit/observer, RPC/SDK и причины отложенного claim. Диагностика не будит функциональную очередь; функциональные события адресны. Последние события уничтоженной панели могут отсутствовать. Intent ≠ invocation, accepted ≠ read; скрытое мышление модели неизвестно. Секреты/raw metadata/аргументы инструментов не входят в spans. [Тайминги и экспорт](dialogue-timing.md).
 
 Ошибки имеют isError/structuredContent.error и префикс PLUGIN_COMMUNICATION_: IDENTITY_REQUIRED, BINDING, VERSION, UNSUPPORTED, STOPPED, ASSIGNMENT_CHANGED, PROJECT_REMOVED, ENROLLMENT/ENROLLMENT_EXPIRED, MODE, CLAIM_DENIED, READ_DENIED, STALE_MESSAGE, CONTEXT, CONFLICT, STORE_*, LIMIT и ошибки входа/курсора. Не маскировать их повторным join/Enable или DOM Send.
 

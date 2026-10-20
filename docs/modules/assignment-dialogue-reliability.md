@@ -1,6 +1,6 @@
 # Надёжность рабочего диалога
 
-Дополнение [контракта O/E](assignment-dialogue.md) для Workflow Pilot 0.5.10 / Kit 1.9.1. Версия рабочего диалога 1 отделена от протокола панели 3 и версии ролей 4. Legacy sequential/parallel, прежний orchestrated без версии и ручной эксперимент не меняются молча.
+Дополнение [контракта O/E](assignment-dialogue.md) для Workflow Pilot 0.5.11 / Kit 1.9.2. Версия рабочего диалога 1 отделена от протокола панели 3 и версии ролей 5. Legacy sequential/parallel, прежний orchestrated без версии и ручной эксперимент не меняются молча.
 
 ## Источники состояния и восстановление операций
 
@@ -8,19 +8,19 @@ Kit хранит задачи, назначения, попытки, блоки�
 
 Порядок изменяющего сообщения: durable intent с payload и единым operation_id → проверяемый идемпотентный эффект Kit → публикация сообщения в WAL → SDK-доставка. До публикации SDK не получает сообщение. Сбой между шагами продолжает тот же ID/receipt. Это журнал согласования двух владельцев, не обещание общей транзакции Git/WAL.
 
-Фазы intent: draft/prepared/deferred/published/failed/retired. Draft сохраняется prepare без эффекта Kit и сообщения E; только явный dispatch O после свежего допуска переводит его к отправке. Idempotency связывает автора, scope и ключ; старый draft другого scope/attempt/контракта не отправляется. Временные lock, пауза, активная команда или незавершённая операция сохраняют deferred и точную причину. Постоянный отказ валидации остаётся failed; агент исправляет вход новой операцией. Удаление закрывает оставшиеся intent как retired. Диагностика их показывает; failed/retired не держат завершение уже исправленного плана навсегда. Prepared/deferred и необработанная доставка удерживают завершение. Повторы одинаковой ошибки не заполняют журнал бесконечными событиями.
+Фазы intent: draft/prepared/authorized/needs_confirmation/deferred/published/failed/retired. Обычный prepare сохраняет черновик; prepare с dispatch_when_ready=true или dispatch с when_ready=true явно разрешает отправку при готовности. Авторизация связана с generation/boot/recipient/assignment/attempt/digest; старое поколение требует needs_confirmation, а не автоматического возобновления. Idempotency связывает автора, scope и ключ. Временный lock/команда удерживает эффект, постоянный отказ остаётся failed, удаление закрывает intent как retired. Prepared/authorized/needs_confirmation/deferred и необработанная доставка удерживают завершение; failed/retired не держат исправленный план навсегда. UNKNOWN не повторяется. Ненужные не начатые ready/recovery того же назначения/попытки гасятся; read требует yield, существующий SDK intent сохраняет фактические квитанции.
 
 `assignment:dialogue` применяет эффект под блокировками main/назначения; `assignment:dialogue-status` читает состояние. Корреляция сигналов CLI и MCP исключает второй вопрос/ответ. Проверка источника, attempt, block_id, proof, SHA, роли и разрешённых путей не ослабляется ради recovery.
 
 ## Фоновые страницы и запуск
 
-Путь готовности: Start → Kit assignment/worktree → page → DOM-bootstrap → registration → mount/SDK/bind → физический конец bootstrap → ready O → task O → E. Ни наличие сессии, ни готовность composer, ни успешная регистрация не доказывают живую панель.
+Путь готовности: Start → Kit assignment/worktree → page → DOM-bootstrap → registration → mount/SDK/bind → физический конец bootstrap → разрешённый task O → E. Ни сессия, ни composer, ни регистрация не доказывают живую панель. Сохранённый авторизованный пакет отправляется по готовности без отдельного ready-хода O.
 
-Сразу после назначения recovery-уведомление O запускает подготовку параллельно bootstrap E. Prepare не зависит от готовности E, dispatch зависит от неё. Независимые E получают собственные ready и поручения; DOCS создаётся и готовится только после интеграций зависимостей. Барьер фикстуры удерживает E до сохранения draft и затем проверяет порядок task.prepared < binding.confirmed < message.persisted; это доказательство перекрытия этапов, не измерение скорости модели.
+Сразу после назначения recovery с recipient_ref запускает подготовку O параллельно bootstrap E. Небольшой текст включён целиком в read_message, большие части читаются отдельно. Prepare/авторизация не зависят от готовности E; публикация зависит. DOCS создаётся только после проверенных интеграций, но не ждёт конца независимого текстового ответа O. Команда, грязный main, незавершённая интеграция или stale база блокируют setup; Kit проверяет scope/revision/base под единственной блокировкой. WORKFLOW_LOCKED означает повторяемое ожидание, не разрешение удалить lock. Fixture проверяет task.prepared/авторизация < binding.confirmed < message.persisted, отсутствие лишнего ready/dispatch-хода и перекрытие DOCS/O; скорость модели этим не измеряется.
 
 ContextSession повторяет только проверку/подготовку до Send при позднем editor: ограниченные попытки, актуальная identity и epoch, без select/show/focus. Sending/sent/unknown не повторяются. Stop, удаление и смена поколения отменяют дальнейшую подготовку; поздний callback не открывает новую работу. Настоящий скрытый Electron fixture проверяет два и пять исполнителей без посещения карточек.
 
-Координатор читает согласованный снимок Kit/Git. При замене плана во время commit/merge повторяет ограниченное чтение; ошибка промежуточного чтения не превращается в неизвестный исход записи исполнителя. Стабильная порча остаётся ошибкой и не разрешает запуск. Свежие HEAD/revision/proof сверяются; неподтверждённое DONE не проецируется как выполненное.
+Координатор ограниченно перечитывает снимок Kit/Git при замене плана во время commit/merge, включая промежуточное несовпадение DONE/proof. Активная parent/child operation.lock даёт WORKFLOW_LOCKED; стабильная порча без writer остаётся UNKNOWN. Свежие HEAD/revision/proof сверяются, неподтверждённое DONE не проецируется как выполненное.
 
 Проверка принадлежности участника допускает до трёх новых чтений с паузой 50 мс при временно отсутствующем снимке, ENOENT или ошибке чтения плана/Kit. Старый успешный grant не кешируется как замена проверки; устойчивый отказ остаётся отказом. Kit-операции отдельно ограниченно перечитывают промежуточные ошибки проекции плана.
 
@@ -44,7 +44,9 @@ ContextSession повторяет только проверку/подготов
 
 Уже очищенный worktree не разрешает новые вызовы E. Узкий terminalTarget обслуживает только прежнюю acceptance с read/yield: сверяет identity сохранённой сессии, родителя O, scope/task/assignment, INTEGRATED, cleanup DONE/commands_idle, точные message/attempt/source_commit. Физический конец всё равно требует актуального документа и свежего idle. Отсутствие доказательства не превращается в observed или complete. Одинаковые denied дедуплицируются ограниченным буфером.
 
-Финальное поручение O ждёт терминальных подтверждений Kit. После delivery/cleanup и физического конца итогового O дополнительно нужны чистый main, отсутствие команд и INTEGRATED/cleanup DONE всех назначений. Затем execution/grant становятся complete; повтор и restart не возвращают paused. До этого UI показывает «Завершение» и причину ожидания, сохраняя остановку. После complete кнопка «Пауза» исчезает, O читает терминальные результаты из родительских записей и видит 3/3. Приёмка/архив scope остаются отдельными.
+После обязательных интеграций/delivery итоговое поручение O может перекрываться с последними acceptance E. Оно содержит актуальные SHA/proof/cleanup; смена состава или результата плана отменяет прежнее итоговое доказательство, UNKNOWN не повторяется. O пропускает cleanup только при явном DONE всех назначений; null/PENDING требует штатной команды. Сам transport_closed не доказывает очистку. Неизменившиеся проверки точного SHA повторно не запускаются без причины.
+
+Complete по-прежнему требует channelSettled, INTEGRATED/cleanup DONE всех назначений, чистого подтверждённого main, отсутствия команд и физического конца итогового O. Delivery с побочными эффектами сохраняет барьеры. Повтор/restart не возвращает complete в paused. До complete UI показывает интеграции и текущую стадию; после — приёмку пользователя без «Паузы». O читает доказательства из родительских записей после удаления worktree. Архив проекта при свежем complete не требует остановки и не означает приёмку scope.
 
 ## Пауза, restart и удаление
 
@@ -72,7 +74,7 @@ Start/Continue разрешает scope и его generation. Backend зерка
 
 Диагностика содержит build/protocol, URI текущего MCP snapshot, SDK, generation и очищенные наблюдения страницы. URI текущего каталога не выдаётся за доказательство того, какой старый iframe показывает хост. Панель имеет content-addressed HTML; старый ресурс не заменяется молча. [Обновление ресурса](chatgpt-plugin.md#ресурс-панели-и-обновление).
 
-Экспорт фиксирует through_seq, страницу/границы и полноту; ошибка сохраняет предыдущий экспорт. O получает журнал своего run, E — разрешённую видимость своего назначения. frontend.gap описывает клиентскую телеметрию, не потерю серверных seq. Последние события уничтоженной панели могут отсутствовать. Enrollment tickets, bearer, raw host metadata, cookies и секреты не включаются в журнал.
+Экспорт фиксирует through_seq, страницу/границы и полноту; ошибка сохраняет предыдущий экспорт. O получает журнал своего run, E — разрешённую видимость своего назначения. frontend.gap описывает клиентскую телеметрию, diagnostic.gap — переполнение backend-буфера измерений; это не потеря серверных seq. Последние события уничтоженной панели могут отсутствовать. Enrollment tickets, bearer, raw host metadata, cookies и секреты не включаются в диагностику. [Точный контракт таймингов, быстрого пути и UI](dialogue-timing.md).
 
 ## Проверки и граница доказательств
 
@@ -81,11 +83,11 @@ Start/Continue разрешает scope и его generation. Backend зерка
 | Проверка | Покрытие |
 | --- | --- |
 | automatic-agent-dialogue | Два и пять одновременно адресуемых E, O-selected task/context, result/acceptance/integration, зависимая задача, DOCS/cleanup; SDK без новых user bubbles |
-| preparation/finalization regression | Prepare до binding, dispatch после готовности, медленный сосед, ранняя cleanup PENDING, поздняя acceptance, реестр после удаления worktree и полный complete |
+| preparation/finalization regression | Авторизация до binding без лишнего ready-хода, inline/ref, медленный сосед, DOCS при ответе O, итог до terminal E, cleanup null/PENDING/DONE и полный complete |
 | conversation fixture | context_request до task:start, question → clarification → facts → decision по одному block_id, безопасный ремонт, revision и новая приёмка |
 | executor-background-startup / Electron | Настоящие скрытые страницы, composer/observer, 2/5 E без select/show, поздний editor, Stop и отсутствие повторного Send |
 | workflow-channel / plugin / store | FIFO, ранний yield/старый idle, занятость/черновик, intent/Kit/WAL/receipt fault injection, дубли, UNKNOWN, identity, чужой адрес, удаление |
 | Kit fixtures | Проверки source/attempt/acceptance, запреты main/чужих путей, dirty/transaction, конфликты/check failure, последовательные merge, DOCS и доказательства Git |
 | dialogue-migration / upgrade | Неизменяемый выпущенный Kit 1.8.2, пять точек прерывания, повтор worker/installer, сохранение готового SHA, revision и integrated без повторной работы |
 
-Полный контроль Kit состоит из обеих частей kit-check и kit-assignments. Также обязательны unit-all, architecture, electron-smoke, executor-channel, chatgpt-plugin и release-tooling; обновления проверяются migration-compatibility/kit-upgrade. Неизменяемый Kit 1.9.0 из v0.5.9 обновляется до 1.9.1 с сохранением начатой задачи и сигналов; незавершённые назначения/интеграции запрещают обычный update. Windows/Linux на Mac проверяются адаптерами и составом пакетов, не native-запуском. Review/fixtures и собранный релиз не являются PASS живого ChatGPT. [A–D](automatic-agent-dialogue-acceptance.md) принимает пользователь отдельно.
+Полный контроль Kit состоит из kit-check и kit-assignments. Обязательны unit-all, architecture, electron-smoke, executor-channel, chatgpt-plugin, release-tooling и kit-upgrade. Неизменяемый Kit 1.9.1 из v0.5.10 обновляется до 1.9.2 с сохранением начатой задачи/сигналов; незавершённые назначения/интеграции запрещают обычный update. Старые upgrade fixtures сохраняются. Windows/Linux на Mac проверяются адаптерами и составом пакетов, не native-запуском. Review/fixtures не являются PASS живого ChatGPT. [A–D](automatic-agent-dialogue-acceptance.md) принимает пользователь отдельно.

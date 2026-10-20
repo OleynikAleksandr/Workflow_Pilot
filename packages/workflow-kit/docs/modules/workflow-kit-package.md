@@ -1,6 +1,6 @@
 # Workflow Kit — контракт пакета
 
-`@webpilot/workflow-kit` 1.9.1 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
+`@webpilot/workflow-kit` 1.9.2 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
 
 ## Код
 - `index.mjs` — `VERSION`, `WorkflowError`, `getRuntimeRoot()`, `currentPlanView`, `sessionPlanView`, пространства `actions`, `plan`, `sessionPlans`, `recovery`, `installer`. Exports: `.`, `./cli`, `./install`, `./lib/*`, `./schemas/*`, `./templates/*`, `./examples/*`, `./WORKFLOW.md`; bin `workflow`. Экспорты и lib-подпути сохраняются: их импортируют потребители.
@@ -107,8 +107,8 @@ Prepare требует явного получателя либо manual; respon
 - модельный классификатор, модельный API, обязательные кнопки режимов.
 
 ## Проверки
-- `kit-check` (`npm run check --prefix packages/workflow-kit`): `check-package` (identity, exports, версия, состав `npm pack`), `check-consumer-contract` (`file:`/tarball без исходника, runtime = `src`), `check-runtime-fixture` (установка, recovery, rename, DOCS-N, pre-push, `before`, legacy-миграция, синтетическая 1.4.13) с `check-document-fixture` (28000/28001, index ≠ worktree, роли, docs:commit) и `check-project-recovery-fixture` (копия Workflow Pilot с исходниками Kit до/после нормализации: ≤ 144000 байт — запас ≥ 20% без сокращения плана, повышения бюджета и потери обязательного контекста — и ≤ 7 частей, задачи целы), `check-carryover-fixture`, `check-plan-review-fixture` (публикация, CLI, OFF, очистка).
-- unit-all: tests/workflow-kit-{recovery,source,upgrade}.test.mjs; upgrade с реальных 1.5.6 и 1.6.4: task:start → kit-update → commit новым runtime → следующая задача. kit-check также включает check-parallel-execution-fixture с Git worktree, npm-зависимостью и конфликтом. Проверки взаимно не заменяются.
+- `kit-check` (`npm run check:core --prefix packages/workflow-kit`): `check-package` (identity, exports, версия, состав `npm pack`), `check-consumer-contract` (`file:`/tarball без исходника, runtime = `src`), `check-runtime-fixture` (установка, recovery, rename, DOCS-N, pre-push, `before`, legacy-миграция, синтетическая 1.4.13) с `check-document-fixture` (28000/28001, index ≠ worktree, роли, docs:commit) и `check-project-recovery-fixture` (копия Workflow Pilot с исходниками Kit до/после нормализации: ≤ 144000 байт — запас ≥ 20% без сокращения плана, повышения бюджета и потери обязательного контекста — и ≤ 7 частей, задачи целы), `check-carryover-fixture`, `check-plan-review-fixture` (публикация, CLI, OFF, очистка).
+- unit-all: tests/workflow-kit-{recovery,source,upgrade}.test.mjs; upgrade с реальных 1.5.6 и 1.6.4: task:start → kit-update → commit новым runtime → следующая задача. kit-assignments (`npm run check:assignments --prefix packages/workflow-kit`) обязателен отдельно: назначения, worktree и конфликты.
 - Пользователь: живой ChatGPT, native Windows (`workflow.cmd`, PowerShell-hook, MinGit); fixtures на Mac их не заменяют, для нового приложения не подтверждены.
 
 ## Открыто

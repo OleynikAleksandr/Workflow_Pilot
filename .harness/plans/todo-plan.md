@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 679,
+  "plan_revision": 682,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -95,7 +95,9 @@
       "packages/workflow-kit/docs/modules/parallel-assignments.md",
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
       "tests/fixtures/released-kit/README.md",
-      "docs/acceptance/orchestrated-execution.md"
+      "docs/acceptance/orchestrated-execution.md",
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/modules/dialogue-timing.md"
     ]
   },
   "baseline_commit": "d920ff1db644d6c218a58f0f7cfde5f8af7743e8",
@@ -105,7 +107,7 @@
       {
         "path": "docs/planning/dialogue-latency-visibility.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "66b51f017caa49dc796e93107a9492cc974659bf"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -493,8 +495,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "DOCS",
@@ -528,7 +530,9 @@
         "packages/workflow-kit/docs/modules/parallel-assignments.md",
         "docs/modules/plugin-communication-handoff.md",
         "tests/fixtures/released-kit/README.md",
-        "docs/acceptance/orchestrated-execution.md"
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/dialogue-timing.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -539,7 +543,30 @@
         "Сверены версии app/Kit/build_id и отсутствие прежних требований ждать отдельный ready или останавливать complete при архивировании."
       ],
       "expected_commit_message": "docs: Актуализировать документацию перед выпуском",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/dialogue-latency-visibility.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "tests/fixtures/released-kit/README.md",
+        "docs/modules/dialogue-timing.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -650,7 +677,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 679
+Revision: 682
 
 ## Цель
 
@@ -703,10 +730,10 @@ Revision: 679
   - Файлы: tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, tests/electron-smoke.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.1.tar.gz, tests/workflow-kit-upgrade.test.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/common.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, src/contracts/backend.mjs, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/lib/role-protocol.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, tests/dialogue-delivery.test.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: Актуализировать документацию перед выпуском
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: Актуализировать документацию перед выпуском
   - Reference: dialogue-latency-visibility / DOCS / implementation
-  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/planning/dialogue-latency-visibility.md, docs/modules/orchestrated-execution.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/plugin-communication-handoff.md, tests/fixtures/released-kit/README.md, docs/acceptance/orchestrated-execution.md
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/planning/dialogue-latency-visibility.md, docs/modules/orchestrated-execution.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/plugin-communication-handoff.md, tests/fixtures/released-kit/README.md, docs/acceptance/orchestrated-execution.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/dialogue-timing.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T006, T003, T004, T005
 - [TODO] RELEASE: Собрать единый комплект трёх ОС — Ожидает

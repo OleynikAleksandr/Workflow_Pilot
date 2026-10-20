@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Workflow Pilot 0.5.10 — локальные проекты, планы Workflow Kit 1.9.1 и ChatGPT Web (Chat/Work), собственный MCP-исполнитель и [панель диалога](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор 0.6.115](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
+Workflow Pilot 0.5.11 — локальные проекты, планы Workflow Kit 1.9.2 и ChatGPT Web (Chat/Work), собственный MCP-исполнитель и [панель диалога](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор 0.6.115](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
 
 ## Устройство
 
@@ -20,17 +20,18 @@ Backend — фоновая служба с Control, Execution, Kit, stores, ст
 
 Одна кнопка Start/Пауза/Continue и Review сохранены. Новые orchestrated-планы имеют dialogue_version=1: O выбирает задачи/контекст, ведёт уточнения и принимает конкретные результаты перед интеграцией. Backend создаёт допустимые назначения, доставляет сообщения и пробуждает агентов; Kit хранит план/proof, WAL — текст/receipts. Автоматического merge по READY в новом режиме нет.
 
-O получает полный начальный DOM-recovery. E через DOM получает только обязательные правила/identity/приглашение панели, заканчивает bootstrap и ждёт task O. Одновременно с bootstrap O сохраняет выбранное поручение через prepare без grant/отправки. После SDK/bind и физического конца bootstrap ready идёт O, затем явный dispatch публикует сохранённые task/context E. Вопрос/уточнение/решение/result/acceptance идут по каналу. Роли из одного role-protocol.mjs (версия 4); панель 0.5.10-communication-3, протокол 3. [Полная схема и обязанности](../modules/assignment-dialogue.md).
+O получает полный начальный DOM-recovery. E через DOM получает только обязательные правила/identity/приглашение панели, заканчивает bootstrap и ждёт task O. Одновременно O сохраняет выбранное поручение через prepare с dispatch_when_ready=true: это явное разрешение отправить неизменяемый текст после SDK/bind и физического конца bootstrap без отдельного ready-хода. Обычный prepare без флага остаётся черновиком. Вопрос/уточнение/решение/result/acceptance идут по каналу. Роли из одного role-protocol.mjs (версия 5); панель 0.5.11-communication-3, протокол 3. [Полная схема и обязанности](../modules/assignment-dialogue.md).
 
 FIFO учитывает read, коррелированный yield и свежий физический конец хода без обязательного user bubble. Intent → идемпотентный Kit → WAL сохраняет эффект между сбоями. После вопроса следующий ответ не ждёт DONE. Неопределённый Send не повторяется. Закрытие окна сохраняет backend; restart требует одного Continue. Пауза запрещает новые назначения/пробуждения/интеграции, активный ход может сохранить outbox. DOCS/delivery/cleanup/итог и обработанные receipts предшествуют отключению связи.
 
-Терминальная acceptance требует read/yield/физического конца E и подтверждения backend в Kit до удаления worktree. Ранняя cleanup остаётся PENDING и автоматически продолжается. После cleanup и физического конца итогового O сохраняются complete и отзыв grant; restart не возвращает завершённый запуск в paused. Пока доказательства не полны, интерфейс показывает «Завершение» и причину. O видит все интегрированные назначения даже после очистки; приёмка scope пользователем остаётся отдельной.
+Терминальная acceptance требует read/yield/физического конца E и подтверждения backend в Kit до удаления worktree. DOCS после проверенных интеграций может запускаться при продолжающемся текстовом ответе O; итог O может обрабатываться до последних acceptance E. Ранняя cleanup остаётся PENDING и автоматически продолжается. Complete требует cleanup DONE, конца итогового O, чистого main и отсутствия команд; restart сохраняет завершение. Sidebar показывает стадию, причину и наблюдаемое время, отличает 3/3 интеграции от complete. После него явно ожидается приёмка пользователя; архив проекта её не заменяет и не предупреждает об остановке уже завершённого плана.
 
 Новые фоновое readiness и статус каждого E проверяются без выбора sidebar. URI панели — SHA-256 полного HTML, MCP обслуживает неизменяемый snapshot; старый iframe не обновляется от переустановки. Рабочие проекты/профили тестами не меняются. Старые планы сохраняют контракт; переход активного 0.5.7 — [явная миграция в паузе](../modules/assignment-dialogue-reliability.md#переход-старого-плана). Удаление незавершённого проекта сохраняет адресную остановку, журнал очистки и защиту соседей.
 
 ## Карта модулей
 
 - [Плагин/канал](../modules/chatgpt-plugin.md), [приёмка A–D](../modules/automatic-agent-dialogue-acceptance.md), [матрица](../modules/chatgpt-plugin-acceptance.md), [legacy P0/P1](../modules/plugin-communication-handoff.md).
+- [Тайминги и сокращение ожиданий](../modules/dialogue-timing.md): очередь, Kit, панель, SDK и наблюдаемые стадии без предположений о скрытом рассуждении модели.
 - [Backend](../modules/backend.md), [Desktop](../modules/desktop.md), [встроенное окно](../modules/native-window.md), [Browser](../modules/browser.md), [iPad/Tailscale](../modules/remote-access.md).
 - [Control](../modules/control.md), [workflow coordination](../modules/workflow-execution.md), [оркестрация](../modules/orchestrated-execution.md), [совместимость Kit](../modules/project-compatibility.md), [жизненный цикл проектов](../modules/project-lifecycle.md).
 - [Execution](../modules/execution.md), [Linux runtime](../modules/linux.md), [первый запуск](../modules/first-run-onboarding.md), [поставка](../modules/release.md).
@@ -41,6 +42,6 @@ FIFO учитывает read, коррелированный yield и свежи
 
 Запуск/установка — [README](../../README.md); состав — release-manifest.json. Installer обновляет Applications готовым bundle, при работающей службе оставляет проверенный pending; переключает версию пользователь.
 
-Автоматические проверки используют изолированные HTTP API/runtime/SDK/MCP/Kit/Git/Electron fixtures без модельных ходов и рабочих профилей. Включают два и пять E, подготовку до binding, отправку после него, многоходовую блокировку, result/revision/acceptance/интеграции, автоматический DOCS, раннюю cleanup и complete. В живом 0.5.9 подтверждены три интеграции и очистка, но финализация связи не завершилась. A–D 0.5.10 — NOT_RUN; ускорение модели ещё не измерено. [Подробная граница доказательств](../modules/automatic-agent-dialogue-acceptance.md).
+Автоматические проверки используют изолированные HTTP API/runtime/SDK/MCP/Kit/Git/Electron fixtures без модельных ходов и рабочих профилей. Включают два и пять E, авторизацию до binding и отправку после него без лишнего ready-хода, многоходовую блокировку, result/revision/acceptance/интеграции, перекрытие DOCS и финализации, раннюю cleanup и complete. В живом контрольном 0.5.10 подтверждены три интеграции, очистка и complete; новые оптимизации 0.5.11 ожидают живого измерения. A–D 0.5.11 — NOT_RUN. [Подробная граница доказательств](../modules/automatic-agent-dialogue-acceptance.md).
 
 Pending: полная macOS-служба/Finder/Dock/Spotlight/меню/clipboard/файлы, оркестрация/архив/восстановление E/to-do с настоящими чатами, встроенное/HTTP-окно, iPad через реальный Tailscale/мобильную сеть. Native Windows/Linux, UTM и clean-install отложены. Secure MCP Tunnel собственный; VPS без собственного маршрута — setup-required. История выпусков хранится в Git.

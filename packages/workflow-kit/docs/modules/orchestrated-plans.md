@@ -1,6 +1,6 @@
 # План оркестратора
 
-Workflow Kit 1.9.1 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
+Workflow Kit 1.9.2 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
 
 ## План
 
@@ -15,13 +15,15 @@ Workflow Kit 1.9.1 поддерживает `execution_strategy: "orchestrated"`
 
 ## Версия рабочего диалога
 
-Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 4. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
+Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 5. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
 
 Kit хранит grant/attempt/result/acceptance и идемпотентные operation_id через assignment:dialogue. task:start требует grant текущей попытки и plan permission; integration требует acceptance точного result_id/source_commit. Revision создаёт новую попытку до интеграции, сохраняет старые proof и отзывает acceptance. После INTEGRATED нужна новая задача. [Полный контракт](../../../../docs/modules/assignment-dialogue.md).
 
 Prepare O сохраняется в WAL без эффекта Kit; assignment:dialogue-status отдаёт digest требований для связи черновика с контрактом. Dispatch после свежего подтверждения канала проверяет этот digest, scope/assignment/attempt и только затем выдаёт grant. Общий task.context_pack автоматически E не передаётся.
 
 Plan:permission зеркалирует разрешение backend scope/generation; пауза запрещает новые назначения/task:start/resume/integration, но result/question активного хода можно сохранить. Старые планы сохраняют прежние правила. Миграция 0.5.7 выполняется только штатно при безопасной паузе, без повторной работы и ручной правки managed-файлов.
+
+Prepare с dispatch_when_ready=true хранит явную авторизацию O в WAL; Kit task grant возникает только после актуальной готовности канала. WORKFLOW_LOCKED во время подготовки назначения означает временную занятость единственного writer: сверить состояние и повторить тот же operation/idempotency key после освобождения, не повторяя совершённый эффект.
 
 ## Выполнение
 
