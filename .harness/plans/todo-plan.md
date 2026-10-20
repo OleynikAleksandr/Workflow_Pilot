@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 737,
+  "plan_revision": 739,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -923,14 +923,15 @@
         "Штатная установка без остановки службы, pending при занятой копии."
       ],
       "expected_commit_message": "feat: Установить готовую экспериментальную 0.5.15",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "INSTALL-PIP3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -952,10 +953,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 737
+Revision: 739
 
 ## Цель
 
@@ -1085,8 +1086,8 @@ Revision: 737
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-4
-- [TODO] INSTALL-PIP3: Установить готовую экспериментальную 0.5.15 — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовую экспериментальную 0.5.15
+- [DONE] INSTALL-PIP3: Установить готовую экспериментальную 0.5.15 — Завершено
+  - Git Commit: [DONE] feat: Установить готовую экспериментальную 0.5.15
   - Reference: prepared-task-flow / INSTALL-PIP3 / implementation
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
