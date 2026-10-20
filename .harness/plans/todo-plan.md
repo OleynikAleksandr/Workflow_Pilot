@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 717,
+  "plan_revision": 719,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -596,14 +596,17 @@
         "Комплекты трёх ОС из одного sourceCommit проверены; публикация GitHub не требуется."
       ],
       "expected_commit_message": "feat: Собрать экспериментальный комплект трёх ОС 0.5.13",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "BUILD-PIP",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-PIP",
@@ -659,7 +662,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 717
+Revision: 719
 
 ## Цель
 
@@ -735,8 +738,8 @@ Revision: 717
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/pip-probe.md, README.md, docs/modules/chatgpt-plugin.md, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: PIP-PROBE, PIP-INTEGRATE
-- [TODO] BUILD-PIP: Собрать экспериментальный комплект трёх ОС 0.5.13 — Ожидает
-  - Git Commit: [PENDING] feat: Собрать экспериментальный комплект трёх ОС 0.5.13
+- [DONE] BUILD-PIP: Собрать экспериментальный комплект трёх ОС 0.5.13 — Завершено
+  - Git Commit: [DONE] feat: Собрать экспериментальный комплект трёх ОС 0.5.13
   - Reference: prepared-task-flow / BUILD-PIP / implementation
   - Файлы: release-manifest.json, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение
