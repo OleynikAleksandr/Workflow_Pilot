@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 651,
+  "plan_revision": 652,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -145,7 +145,8 @@
       "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
       "scripts/prepare-agent-dialogue-experiment.mjs",
       "tests/dialogue-experiment.test.mjs",
-      "tests/dialogue-delivery.test.mjs"
+      "tests/dialogue-delivery.test.mjs",
+      "tests/fixtures/released-kit/kit-1.9.0.tar.gz"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-owned-dialogue.md",
@@ -190,12 +191,12 @@
         "revision": "25e19c2425f144155f933c10feaf8c9a71a86768"
       },
       {
-        "path": "docs/planning/dialogue-preparation-finalization.md",
+        "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "WORKTREE"
       },
       {
-        "path": "docs/architecture/OVERVIEW.md",
+        "path": "docs/planning/dialogue-preparation-finalization.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -1908,6 +1909,41 @@
       ]
     },
     {
+      "id": "T015",
+      "title": "Сохранить штатное обновление с Kit 1.9.0",
+      "why": "Сохранить штатное обновление с Kit 1.9.0",
+      "dependencies": [
+        "T014"
+      ],
+      "functional_paths": [
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/released-kit/kit-1.9.0.tar.gz"
+      ],
+      "documentation_paths": [
+        "docs/planning/dialogue-preparation-finalization.md"
+      ],
+      "verification_ids": [
+        "kit-upgrade",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Неизменяемый Kit 1.9.0 из v0.5.9 обновляется до 1.9.1; текущая задача, пользовательские изменения и сигналы сохранены.",
+        "Незавершённые назначения и интеграции запрещают update без записи; задача завершается новым runtime, следующая начинается."
+      ],
+      "expected_commit_message": "feat: Сохранить штатное обновление с Kit 1.9.0",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "T015",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
       "implementation_status": "TODO",
@@ -1922,7 +1958,8 @@
       "dependencies": [
         "T012",
         "T013",
-        "T014"
+        "T014",
+        "T015"
       ],
       "functional_paths": [],
       "documentation_paths": [
@@ -2055,7 +2092,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 651
+Revision: 652
 
 ## Цель
 
@@ -2206,12 +2243,18 @@ Revision: 651
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-finalization.test.mjs, tests/electron-smoke.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, src/contracts/backend.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/panel.mjs, tests/panel-dialogue-view.test.mjs, tests/workflow-channel.test.mjs, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
   - Зависимости: T013
+- [TODO] T015: Сохранить штатное обновление с Kit 1.9.0 — Ожидает
+  - Git Commit: [PENDING] feat: Сохранить штатное обновление с Kit 1.9.0
+  - Reference: orchestrator-owned-dialogue-refactor / T015 / implementation
+  - Файлы: packages/workflow-kit/src/lib/installer.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.0.tar.gz, docs/planning/dialogue-preparation-finalization.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T014
 - [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: orchestrator-owned-dialogue-refactor / DOCS-3 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T012, T013, T014
+  - Зависимости: T012, T013, T014, T015
 - [TODO] RELEASE-3: Собрать следующий выпуск для трёх ОС — Ожидает
   - Git Commit: [PENDING] feat: Собрать следующий выпуск для трёх ОС
   - Reference: orchestrator-owned-dialogue-refactor / RELEASE-3 / implementation
@@ -2234,7 +2277,7 @@ Revision: 651
 ## Context Pack For This Cycle
 
 - docs/modules/assignment-dialogue.md
-- docs/planning/dialogue-preparation-finalization.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/dialogue-preparation-finalization.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
