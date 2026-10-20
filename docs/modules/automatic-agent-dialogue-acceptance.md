@@ -1,8 +1,10 @@
 # Живая приёмка диалога O/E
 
-Workflow Pilot 0.5.8 / Kit 1.9.0 / панель `0.5.8-communication-3`, протокол панели 3, dialogue_version=1, роли 3. **A–D — NOT_RUN** до отдельного пользовательского опыта. [Рабочий контракт](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md).
+Workflow Pilot 0.5.9 / Kit 1.9.0 / панель `0.5.9-communication-3`, протокол панели 3, dialogue_version=1, роли 3. **A–D — NOT_RUN** до отдельного пользовательского опыта. [Рабочий контракт](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md).
 
 Предыдущий Test_02 на 0.5.7 — **FAIL целевого workflow**: активация потребовала посещения карточек, два проверенных коммита не сопровождались адресными отчётами и завершением плана O. Регистрация, accepted/read backend-поручений и READY не доказывали авторство O или полный цикл. Прежний S1 0.5.6 также FAIL запуска. Исправления, fixtures и Review эти факты не отменяют.
+
+Опыт A на 0.5.8, `Workflow_Pilot_Panel_Test01` / `working-dialogue-test-01`, 20.10.2026 — **FAIL полного цикла перед DOCS**. До seq133 подтверждены автоматический bootstrap двух E без посещения карточек, O-authored task, E-authored result, acceptance и обе Git-интеграции. O прочитал второй result в ходе обработки первого и подтвердил оба через yield; второй остался pending/read/handled без физического завершения в очереди. Backend вернул MAIN_CHAT_NOT_READY, DOCS не создалась. Карточка O показывала устаревшие 1/3, план — верные 2/3. В 0.5.9 добавлены исправления и автоматическая регрессия; новый живой PASS ещё не получен.
 
 ## Подготовка и фиксация
 

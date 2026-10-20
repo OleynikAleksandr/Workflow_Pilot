@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Workflow Pilot 0.5.8 — локальные проекты, планы Workflow Kit 1.9.0 и ChatGPT Web (Chat/Work), собственный MCP-исполнитель и [панель диалога](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор 0.6.115](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
+Workflow Pilot 0.5.9 — локальные проекты, планы Workflow Kit 1.9.0 и ChatGPT Web (Chat/Work), собственный MCP-исполнитель и [панель диалога](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор 0.6.115](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
 
 ## Устройство
 
@@ -20,7 +20,7 @@ Backend — фоновая служба с Control, Execution, Kit, stores, ст
 
 Одна кнопка Start/Пауза/Continue и Review сохранены. Новые orchestrated-планы имеют dialogue_version=1: O выбирает задачи/контекст, ведёт уточнения и принимает конкретные результаты перед интеграцией. Backend создаёт допустимые назначения, доставляет сообщения и пробуждает агентов; Kit хранит план/proof, WAL — текст/receipts. Автоматического merge по READY в новом режиме нет.
 
-O получает полный начальный DOM-recovery. E через DOM получает только обязательные правила/identity/приглашение панели, заканчивает bootstrap и ждёт task O. После SDK/bind ready идёт O, затем task/context E; вопрос/уточнение/решение/result/acceptance идут по каналу. Роли из одного role-protocol.mjs (версия 3); панель 0.5.8-communication-3, протокол 3. [Полная схема и обязанности](../modules/assignment-dialogue.md).
+O получает полный начальный DOM-recovery. E через DOM получает только обязательные правила/identity/приглашение панели, заканчивает bootstrap и ждёт task O. После SDK/bind ready идёт O, затем task/context E; вопрос/уточнение/решение/result/acceptance идут по каналу. Роли из одного role-protocol.mjs (версия 3); панель 0.5.9-communication-3, протокол 3. [Полная схема и обязанности](../modules/assignment-dialogue.md).
 
 FIFO учитывает read, коррелированный yield и свежий физический конец хода без обязательного user bubble. Intent → идемпотентный Kit → WAL сохраняет эффект между сбоями. После вопроса следующий ответ не ждёт DONE. Неопределённый Send не повторяется. Закрытие окна сохраняет backend; restart требует одного Continue. Пауза запрещает новые назначения/пробуждения/интеграции, активный ход может сохранить outbox. DOCS/delivery/cleanup/итог и обработанные receipts предшествуют отключению связи.
 
@@ -39,6 +39,6 @@ FIFO учитывает read, коррелированный yield и свежи
 
 Запуск/установка — [README](../../README.md); состав — release-manifest.json. Installer обновляет Applications готовым bundle, при работающей службе оставляет проверенный pending; переключает версию пользователь.
 
-Автоматические проверки используют изолированные HTTP API/runtime/SDK/MCP/Kit/Git/Electron fixtures без модельных ходов и рабочих профилей. Включают два и пять E, выбранный контекст, многоходовую блокировку, result/revision/acceptance/интеграции и DOCS. S1 0.5.6 и Test_02 0.5.7 — FAIL целевого workflow. A–D 0.5.8 — NOT_RUN. Ранее пользователь сообщил об обмене прежней пары при закрытом интерфейсе и живой службе; это не приёмка новых назначений.
+Автоматические проверки используют изолированные HTTP API/runtime/SDK/MCP/Kit/Git/Electron fixtures без модельных ходов и рабочих профилей. Включают два и пять E, выбранный контекст, многоходовую блокировку, result/revision/acceptance/интеграции и DOCS. S1 0.5.6 и Test_02 0.5.7 — FAIL целевого workflow. A–D 0.5.9 — NOT_RUN. Ранее пользователь сообщил об обмене прежней пары при закрытом интерфейсе и живой службе; это не приёмка новых назначений.
 
 Pending: полная macOS-служба/Finder/Dock/Spotlight/меню/clipboard/файлы, оркестрация/архив/восстановление E/to-do с настоящими чатами, встроенное/HTTP-окно, iPad через реальный Tailscale/мобильную сеть. Native Windows/Linux, UTM и clean-install отложены. Secure MCP Tunnel собственный; VPS без собственного маршрута — setup-required. История выпусков хранится в Git.

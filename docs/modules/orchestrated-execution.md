@@ -1,6 +1,6 @@
 # Оркестрованное выполнение плана
 
-Новые планы Workflow Pilot 0.5.8 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
+Новые планы Workflow Pilot 0.5.9 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
 
 ## Роли и принадлежность
 
@@ -46,4 +46,4 @@ ExecutionControl хранит not-started/running/pausing/paused/complete, пр�
 
 Реальные Kit/Git, HTTP Start, Python MCP, staged SDK и Control проходят автоматические fixtures с двумя и пятью E, без пользовательских bubbles на каждом SDK-ходе. Скрытый Electron проверяет фоновый bootstrap/observer/composer без select/show. Legacy assertions сохранены отдельными случаями. [Матрица восстановления](assignment-dialogue-reliability.md#проверки-и-граница-доказательств).
 
-Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.8 — NOT_RUN. Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.
+Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.9 — NOT_RUN. Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.
