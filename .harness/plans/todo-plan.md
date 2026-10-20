@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 682,
+  "plan_revision": 684,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -569,8 +569,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "RELEASE",
@@ -594,7 +594,10 @@
       ],
       "expected_commit_message": "feat: Собрать единый комплект трёх ОС",
       "verification_kind": "package",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -677,7 +680,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 682
+Revision: 684
 
 ## Цель
 
@@ -736,8 +739,8 @@ Revision: 682
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/planning/dialogue-latency-visibility.md, docs/modules/orchestrated-execution.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/plugin-communication-handoff.md, tests/fixtures/released-kit/README.md, docs/acceptance/orchestrated-execution.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/dialogue-timing.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T006, T003, T004, T005
-- [TODO] RELEASE: Собрать единый комплект трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать единый комплект трёх ОС
+- [DONE] RELEASE: Собрать единый комплект трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать единый комплект трёх ОС
   - Reference: dialogue-latency-visibility / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
