@@ -232,6 +232,7 @@ async function action(method, ...args) {
 // Agent time: current (or last) request and the session total, in minutes and seconds.
 let agentTicker = null;
 let executorTicker = null;
+let stageTicker = null;
 const agentClock = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0'); };
 const agentSpoken = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return Math.floor(seconds / 60) + ' мин ' + seconds % 60 + ' с'; };
 function renderAgentTime(selected) {
@@ -266,6 +267,17 @@ function renderExecutorTimes() {
     node.setAttribute('aria-label','Наблюдаемая работа '+agentSpoken(active)+', ожидание '+agentSpoken(waiting));
   }};
   paint();if(nodes.some(node=>['working','waiting'].includes(node.executorTime?.phase)))executorTicker=setInterval(paint,1000);
+}
+
+function renderStageTimes() {
+  clearInterval(stageTicker);stageTicker=null;
+  const nodes=[...document.querySelectorAll('[data-stage-time]')],received=performance.now();
+  const paint=()=>{for(const node of nodes){
+    const elapsed=(node.stageTime?.elapsedMs??0)+(node.stageActive?Math.max(0,performance.now()-received):0);
+    node.textContent='На этой стадии '+agentClock(elapsed);
+    node.title='Время с начала наблюдения этой стадии службой; не время размышления модели. После перезапуска отсчёт начинается заново.';
+  }};
+  paint();if(nodes.some(node=>node.stageActive))stageTicker=setInterval(paint,1000);
 }
 
 function render(state) {
@@ -433,7 +445,6 @@ function render(state) {
     .find(item => item.assignmentId === selected.assignmentId && item.workspace === selected.workspace);
   $('assignment-title').textContent = assigned?.title ?? selected?.taskId ?? '';
   $('assignment-status').textContent = assigned?.label ?? 'Состояние назначения ещё не подтверждено.';
-  renderExecutorTimes();
   const execution=state.execution??{};
   const commandIssues=$('command-issues');
   commandIssues.replaceChildren();
@@ -447,12 +458,15 @@ function render(state) {
     }
   }
   const parallel=selected?.planExecution?.execution_strategy==='parallel'||(!!selected?.assignmentId&&!planExecutor);
-  $('execution-actions').hidden=!parallel;
+  const orchestrated=state.orchestratorPlan;
+  const activity=state.planRun?.activity;
+  $('execution-actions').hidden=!parallel&&!orchestrated;
   const stages=executionFinalStages(execution);
   const stageList=$('execution-stages');
+  stageList.setAttribute('aria-label',orchestrated?'Наблюдаемая стадия выполнения':'Проверяемые этапы завершения');
   stageList.replaceChildren();
-  for(const [key,label] of [['source','Источник'],['main','Общий main'],['diagnostic','Диагностика'],
-    ['final','Финальное поручение'],['reply','Итоговый ответ']]) {
+  for(const [key,label] of (orchestrated?[]:[['source','Источник'],['main','Общий main'],['diagnostic','Диагностика'],
+    ['final','Финальное поручение'],['reply','Итоговый ответ']])) {
     const line=document.createElement('li');line.dataset.stage=key;line.dataset.status=stages[key].status;
     const heading=document.createElement('strong');heading.textContent=label;
     const description=document.createElement('span');description.textContent=stages[key].text;
@@ -472,6 +486,18 @@ function render(state) {
     unknown:'Исход итоговой отправки неизвестен. Повтор не отправляется.',
     'reply-observed':'Итоговый ответ завершён. Ожидается приёмка.',
   })[execution.finalizationStatus]??$('execution-message').textContent;
+  if(orchestrated){
+    $('execution-message').textContent=activity?.label??'Ожидаем сведения о текущей стадии.';
+    $('execution-next-action').textContent=activity?.reason??'';
+    $('execution-next-action').dataset.attention=String(activity?.phase==='attention');
+    if(activity){
+      const line=document.createElement('li'),heading=document.createElement('strong'),time=document.createElement('span');
+      line.dataset.stage=activity.phase;heading.textContent=activity.actor;
+      time.dataset.stageTime='plan';time.stageTime=activity;
+      time.stageActive=!['complete','paused','ready'].includes(activity.phase);
+      line.append(heading,time);stageList.append(line);
+    }
+  }
   const run = state.planRun;
   const runLabels = { 'not-started': 'Начать выполнение плана', running: 'Пауза', pausing: 'Пауза…', paused: 'Продолжить' };
   $('plan-run-toggle').hidden = !run || run.state === 'complete' || run.complete;
@@ -481,6 +507,7 @@ function render(state) {
   const runReason = run?.issue ? 'Оркестратор плана не определён. Назначьте его в меню сессии.'
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
       : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '')
+        : orchestrated&&run?.state==='complete'?'Выполнение завершено — ожидается ваша приёмка.'
         : run?.state!=='complete'&&['finalizing','delivering'].includes(execution.phase)
           ? 'Завершение. '+(execution.finalizationReason??'Ожидаем итоговую проверку и очистку.') : '';
   $('plan-run-message').hidden = !runReason; $('plan-run-message').textContent = runReason.trim();
@@ -504,8 +531,7 @@ function render(state) {
   $('plan-continuation-message').dataset.reason = auto.reason ?? '';
 
   renderAgentTime(selected);
-  const orchestrated = state.orchestratorPlan;
-  const plan = orchestrated ? { state: orchestrated.loading ? 'working' : orchestrated.tasks.every(t => t.status === 'done') ? 'awaiting-acceptance' : 'working',
+  const plan = orchestrated ? { state: orchestrated.current===false?'closed':run?.state==='complete'?'awaiting-acceptance':'working',
       completed: orchestrated.tasks.filter(t => t.status === 'done').length, total: orchestrated.tasks.length, tasks: orchestrated.tasks, blockedReason: orchestrated.error }
     : (selected?.planExecution?.execution_strategy==='parallel' ? execution.planView
     : selected?.planView) ?? { state: 'not-created', completed: 0, total: 0, tasks: [], blockedReason: null };
@@ -514,7 +540,8 @@ function render(state) {
       : count % 10 >= 2 && count % 10 <= 4 && !(count % 100 >= 12 && count % 100 <= 14) ? 'задачи' : 'задач';
     const completedText = count => count === 1 ? 'Задача выполнена'
       : plural(count) === 'задача' ? `Все ${count} задача выполнена` : `Все ${count} ${plural(count)} выполнены`;
-    const statusText = plan.state === 'awaiting-acceptance' ? completedText(plan.total)
+    const statusText = orchestrated&&plan.state!=='closed'?`Задачи интегрированы: ${plan.completed}/${plan.total}`
+      : plan.state === 'awaiting-acceptance' ? completedText(plan.total)
       : plan.state === 'blocked' ? `План заблокирован · ${plan.completed} из ${plan.total} выполнено`
         : plan.state === 'closed' ? 'Scope завершён и архивирован'
           : plan.state === 'not-created' ? 'План ещё не создан'
@@ -523,15 +550,17 @@ function render(state) {
     $('plan-title').textContent = orchestrated ? orchestrated.objective || 'План оркестратора'
       : selected.assignmentId ? execution.objective??'Общий план проекта' : selected.scopeId ? selected.objective : '';
     $('plan-status').textContent = statusText; $('plan-status').dataset.state = plan.state;
-    $('plan-note').hidden = plan.state !== 'closed';
-    $('plan-note').textContent = plan.state === 'closed' ? 'Проект готов к следующему новому плану.' : '';
+    const needsAcceptance=!!orchestrated&&plan.state==='awaiting-acceptance';
+    $('plan-note').hidden = plan.state !== 'closed'&&!needsAcceptance;
+    $('plan-note').textContent = plan.state === 'closed' ? 'Проект готов к следующему новому плану.'
+      :needsAcceptance?'Сообщите оркестратору: «Принимаю результат, закрой план». Архив проекта не заменяет приёмку плана.':'';
     const planReason = selected.planReadError?.message ?? plan.blockedReason ?? '';
     $('plan-reason').hidden = !planReason; $('plan-reason').textContent = planReason;
     $('plan-tasks').replaceChildren(...plan.tasks.map(task => {
       const item = document.createElement('li'); item.className = 'plan-task'; item.dataset.status = task.status;
       const mark = document.createElement('span'); mark.className = 'plan-task-state'; mark.setAttribute('role', 'img');
       // The mark alone means nothing to a screen reader: its status is spoken as text.
-      mark.setAttribute('aria-label', task.status === 'done' ? 'выполнена' : task.status === 'current' ? 'текущая' : 'не начата');
+      mark.setAttribute('aria-label', task.status === 'done' ? orchestrated?'интеграция проверена':'выполнена' : task.status === 'current' ? 'текущая' : 'не начата');
       mark.textContent = task.status === 'done' ? '✓' : task.status === 'current' ? '●' : '○';
       const body = document.createElement('div'), title = document.createElement('strong');
       const id=document.createElement('span');id.className='plan-task-id';id.textContent=task.id;
@@ -540,6 +569,8 @@ function render(state) {
       const status=document.createElement('small');status.className='plan-task-status';
       status.textContent=task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
       body.append(id,title,mode,status);
+      if(task.stageTime){const time=document.createElement('small');time.dataset.stageTime=task.id;
+        time.stageTime=task.stageTime;time.stageActive=!['done','paused'].includes(task.stageTime.phase);body.append(time);}
       if (task.time) { const time = document.createElement('span'); time.dataset.executorTime = task.target?.sessionId ?? task.id; time.executorTime = task.time; body.append(time); }
       // A started task opens its executor's session; an unstarted or done one only shows its row.
       if (orchestrated && task.target && task.status !== 'done') {
@@ -609,6 +640,8 @@ function render(state) {
       if (list.scrollTop !== top) list.scrollTop = top;
     }
   }
+  renderExecutorTimes();
+  renderStageTimes();
 }
 
 $('add-workspace').addEventListener('click', () => action('chooseWorkspace'));

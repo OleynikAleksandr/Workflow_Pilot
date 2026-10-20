@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 673,
+  "plan_revision": 675,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -308,8 +308,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "T003",
@@ -330,7 +330,9 @@
         "tests/panel-dialogue-view.test.mjs",
         "tests/parallel-execution-ui.test.mjs",
         "tests/electron-smoke.mjs",
-        "tests/executor-startup-lifecycle.test.mjs"
+        "tests/executor-startup-lifecycle.test.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -348,7 +350,17 @@
         "Native/HTTP contract одинаков, старые переключатели не возвращаются."
       ],
       "expected_commit_message": "feat: Показывать текущие действия и отличать интеграции от завершения плана",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -600,7 +612,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 673
+Revision: 675
 
 ## Цель
 
@@ -635,10 +647,10 @@ Revision: 673
   - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/assignment-dialogue.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, tests/parallel-execution.test.mjs, tests/workflow-channel.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs, src/control/workflow/parallel-kit.mjs, tests/parallel-finalization.test.mjs, tests/dialogue-delivery.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T003: Показывать текущие действия и отличать интеграции от завершения плана — Ожидает
-  - Git Commit: [PENDING] feat: Показывать текущие действия и отличать интеграции от завершения плана
+- [DONE] T003: Показывать текущие действия и отличать интеграции от завершения плана — Завершено
+  - Git Commit: [DONE] feat: Показывать текущие действия и отличать интеграции от завершения плана
   - Reference: dialogue-latency-visibility / T003 / implementation
-  - Файлы: src/contracts/dialogue-view.mjs, src/contracts/workflow-view.mjs, src/control/workflow/execution-projection.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/plugin/panel.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/parallel-execution-ui.test.mjs, tests/electron-smoke.mjs, tests/executor-startup-lifecycle.test.mjs
+  - Файлы: src/contracts/dialogue-view.mjs, src/contracts/workflow-view.mjs, src/control/workflow/execution-projection.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/plugin/panel.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/parallel-execution-ui.test.mjs, tests/electron-smoke.mjs, tests/executor-startup-lifecycle.test.mjs, src/control/plugin/workflow-channel.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T006
 - [TODO] T004: Согласовать приёмку плана и архивирование завершённого проекта — Ожидает

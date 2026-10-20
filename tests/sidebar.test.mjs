@@ -4,6 +4,34 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 
+test('three integrations keep the observed final stage and Pause until durable complete, then explain acceptance',async t=>{
+  const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
+  const plan={scopeId:'scope',objective:'Опыт',current:true,tasks:['T001','T002','DOCS'].map(id=>
+    ({id,title:id,status:'done',label:'Интеграция проверена'}))};
+  const state={...base,selected:{...base.selected,scopeId:'scope'},orchestratorPlan:plan,
+    planRun:{state:'running',complete:false,activity:{phase:'cleanup',label:'План завершается',
+      actor:'Workflow Kit',reason:'Ожидаем квитанции и очистку.',elapsedMs:65000}}};
+  f.emit(state);
+  assert.equal($('plan-status').textContent,'Задачи интегрированы: 3/3');
+  assert.equal($('plan-status').dataset.state,'working');
+  assert.equal($('plan-run-toggle').hidden,false);
+  assert.equal($('execution-actions').hidden,false);
+  assert.equal($('execution-message').textContent,'План завершается');
+  assert.match($('execution-next-action').textContent,/квитанции/);
+  assert.match(f.document.querySelector('[data-stage-time=plan]').textContent,/01:05/);
+  assert.equal($('plan-note').hidden,true);
+  assert.doesNotMatch($('plan-card').textContent,/Все 3 задачи выполнены/);
+  f.emit({...state,planRun:{state:'complete',complete:true,activity:{phase:'complete',
+    label:'Выполнение завершено — ожидается ваша приёмка',actor:'План',elapsedMs:0}}});
+  assert.equal($('plan-run-toggle').hidden,true);
+  assert.match($('plan-run-message').textContent,/ожидается ваша приёмка/);
+  assert.match($('plan-note').textContent,/Принимаю результат, закрой план/);
+  assert.equal($('plan-status').dataset.state,'awaiting-acceptance');
+  f.emit({...state,orchestratorPlan:{...plan,current:false},planRun:null});
+  assert.equal($('plan-status').dataset.state,'closed');
+  assert.match($('plan-note').textContent,/следующему новому плану/);
+});
+
 test('external conversation stays visibly external; there is no PlanContinuation switch, only the plan button',async t=>{
   const f=await fixture(t),base=f.state;
   assert.equal(f.document.getElementById('plan-continuation-toggle'),null,'no PlanContinuation button at all');
@@ -396,7 +424,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.equal(f.document.querySelector('.plan-task[data-current=true] .plan-task-id').textContent,'T002');
   assert.equal(f.document.getElementById('plan-card').hidden,false,'the to-do plan stays in the sidebar');
   assert.equal(f.document.getElementById('assignment-card').hidden,true,'no separate executor card');
-  assert.equal(f.document.getElementById('execution-actions').hidden,true);
+  assert.equal(f.document.getElementById('execution-actions').hidden,false,'orchestrated stages stay visible');
   assert.equal(f.document.getElementById('plan-continuation-message').hidden,true,'no PlanContinuation text in the new scheme');
   assert.equal(f.document.querySelector('.project').dataset.workspace,'/demo','the tree keeps the parent project');
   // Archiving a project with an active plan asks first; a refusal sends nothing.

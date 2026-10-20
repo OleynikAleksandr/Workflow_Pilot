@@ -6,7 +6,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
   pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
-import {currentPlanTasks} from '../contracts/dialogue-view.mjs';
+import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -35,6 +35,7 @@ const control = createControl({storageFile:path.join(dataDir, 'workspaces.json')
   getExecutionSettings:()=>preferences.parallelExecution, git:(workspace,args)=>executionKit.git(workspace,['--no-optional-locks',...args])});
 const preferences=control.configureSettings({file:settingsFile,workflowSnapshot:()=>workflow.snapshot()});
 const store = control.projects;
+const observeActivity=activityClock();
 const deletionHooks = smoke ? {beforeFinish:null} : null;
 // State of the Codex App Server executor, the local MCP backend of both systems.
 const runtimeFolder = defaultRuntimeFolder(os.homedir(), process.platform);
@@ -210,6 +211,12 @@ function closedPlan(workspace,commit) {
   return null;
 }
 const orchestratorLabels={'not-started':'Готов к запуску',running:'Выполняется',pausing:'Пауза…',paused:'Пауза',complete:'Выполнено'};
+function executorViews(projects,workspace) {
+  return projectExecutors(projects,workspace,execution.view(workspace),liveRecord,
+    target=>plugin?.communication.workflow.progress(target.sessionId)).map(item=>({...item,
+      stageTime:observeActivity(JSON.stringify([store.project(workspace)?.projectId,item.parentScopeId,item.assignmentId,item.attempt]),
+        {phase:item.phase,label:item.label})}));
+}
 function orchestratorState(workspace,session) {
   if(session.role!=='orchestrator')return null;
   if(!session.orchestratorScopeId)return {label:'Планирование',state:'planning'};
@@ -219,7 +226,8 @@ function orchestratorState(workspace,session) {
   const tasks=currentPlanTasks(project,view),done=tasks.filter(task=>task.status==='done').length,total=tasks.length;
   const cleanup=(view.assignments??[]).filter(a=>a.status==='INTEGRATED'&&a.cleanup?.status==='PENDING').length;
   const attention=project.orchestrationIssue||view.error||run.reason==='escalation'||run.reason==='unknown';
-  return {state:attention?'attention':run.state,label:(attention?'Требует внимания':orchestratorLabels[run.state])+' · '+done+'/'+total,cleanup};
+  const label=run.state==='running'&&total>0&&done===total?'Завершается':orchestratorLabels[run.state];
+  return {state:attention?'attention':run.state,label:(attention?'Требует внимания':label)+' · '+done+'/'+total,cleanup};
 }
 // The to-do plan of the selected orchestrator: rows of started tasks open the session of their executor,
 // delivery opens the orchestrator; a done row opens nothing, so the orchestrator stays in the right pane.
@@ -237,8 +245,7 @@ function orchestratorPlanView(saved) {
   const source=current?{objective:project.objective,tasks:currentPlanTasks(project,execution.view(workspace))}
     :orchestrator?.closedPlanCommit?closedPlan(workspace,orchestrator.closedPlanCommit):null;
   if(!source)return {scopeId:scope,objective:'',tasks:[],loading:true};
-  const executors=projectExecutors(store.snapshot().projects,workspace,execution.view(workspace),liveRecord,
-    target=>plugin?.communication.workflow.progress(target.sessionId)).filter(e=>e.parentScopeId===scope);
+  const executors=executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope);
   const planned=new Map((project.planView?.tasks??[]).map(task=>[task.id,task]));
   return {scopeId:scope,objective:source.objective,current,error:source.error??null,
     tasks:source.tasks.map(task=>{
@@ -246,7 +253,8 @@ function orchestratorPlanView(saved) {
       const delivery=task.delivery??planned.get(task.id)?.delivery??/main/.test(task.executionLabel??'');
       const target=['pending','done'].includes(task.status)?null:delivery?orchestrator&&{workspace,sessionId:orchestrator.sessionId}
         :own&&{workspace:own.workspace,sessionId:own.sessionId};
-      return {...task,label:own&&task.status!=='done'?own.label:task.label,time:own?.time??null,target:target??null};
+      return {...task,label:own&&task.status!=='done'?own.label:task.label,time:own?.time??null,
+        stageTime:task.status!=='done'?own?.stageTime??null:null,target:target??null};
     })};
 }
 // The state of the one run/pause button of the selected project's orchestrated plan.
@@ -254,8 +262,14 @@ function planRunView(saved) {
   const workspace=saved?.parentWorkspace??saved?.workspace,project=workspace&&store.project(workspace);
   if(!project||saved.external||!project.scopeId||!['ACTIVE','BLOCKED'].includes(project.scopeStatus))return null;
   const complete=project.planView?.tasks?.length>0&&project.planView.tasks.every(task=>task.status==='done');
-  if(project.planExecution?.execution_strategy==='orchestrated')
-    return {workspace,scopeId:project.scopeId,...workflow.executionControl.view(workspace,project.scopeId),issue:project.orchestrationIssue??null,complete};
+  if(project.planExecution?.execution_strategy==='orchestrated'){
+    const run=workflow.executionControl.view(workspace,project.scopeId),view=execution.view(workspace);
+    const origin=project.planExecution.execution_origin_session_id,record=origin&&liveRecord({workspace,sessionId:origin});
+    const activity=planActivity({run:{...run,issue:project.orchestrationIssue},execution:view.scopeId===project.scopeId?view:{},
+      channel:origin&&plugin?.communication.workflow.progress(origin),physical:record?.pageState.current?.state});
+    return {workspace,scopeId:project.scopeId,...run,issue:project.orchestrationIssue??null,complete:run.state==='complete',
+      activity:observeActivity(JSON.stringify([project.projectId,project.scopeId,'plan']),activity)};
+  }
   // A plan of the former model: the button shows whether its continuation engine runs.
   const running=workflow.projectPlanContinuation.enabled(workspace,project.scopeId);
   const started=workflow.executionControl.view(workspace,project.scopeId).state!=='not-started';
@@ -275,8 +289,7 @@ function snapshot() {
     activity:[...liveSessions.all()].some(r=>(r.identity?.workspace===workspace
       ||store.project(r.identity?.workspace)?.parentWorkspace===workspace)&&r.pageState.current?.state.busy)?'working'
       :execution.view(workspace).error||sessions.some(s=>liveRecord({workspace,sessionId:s.sessionId})?.controller.state.error)?'attention':'idle',
-    executors:projectExecutors(projects,workspace,execution.view(workspace),liveRecord,
-      target=>plugin?.communication.workflow.progress(target.sessionId)),
+    executors:executorViews(projects,workspace),
     sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, chatUrl, title, createdAt, external, role, orchestratorScopeId, closedPlanCommit }) =>
       ({ sessionId, experience, chatUrl, title, createdAt, external:!!external, role:role??null, orchestratorScopeId:orchestratorScopeId??null,
         orchestratorState:orchestratorState(workspace,{role,orchestratorScopeId,closedPlanCommit}) })),

@@ -4,7 +4,33 @@ import fs from 'node:fs/promises';
 import {JSDOM} from 'jsdom';
 import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 import {executorStatus} from '../src/control/workflow/execution-projection.mjs';
-import {currentPlanTasks} from '../src/contracts/dialogue-view.mjs';
+import {currentPlanTasks,planActivity,activityClock,assignmentStage} from '../src/contracts/dialogue-view.mjs';
+
+test('observable plan stages separate transport, processing, integration, cleanup and durable completion',()=>{
+  const execution={planView:{tasks:[{status:'done'}]},assignments:[{cleanup:{status:'PENDING'}}]};
+  const input={run:{state:'running'},execution};
+  assert.equal(planActivity(input).phase,'cleanup');
+  assert.equal(planActivity({...input,channel:{incoming:{kind:'result',task_id:'T001',read:true}}}).phase,'result');
+  assert.doesNotMatch(planActivity({...input,channel:{incoming:{kind:'result',read:true}}}).label,/проверка|тест/i);
+  assert.equal(planActivity({...input,channel:{incoming:{kind:'result',read:false,delivery:'accepted'}}}).phase,'delivery');
+  assert.match(planActivity({...input,channel:{incoming:{kind:'result',read:false,reason:'previous-turn'}}}).reason,/предыдущего хода/);
+  assert.equal(planActivity({...input,channel:{incoming:{kind:'recovery',read:true}}}).phase,'prepare');
+  assert.equal(planActivity({...input,channel:{incoming:{kind:'finalization',read:true}}}).phase,'final');
+  assert.equal(planActivity({...input,channel:{incoming:{kind:'finalization',read:true,handled:true}}}).phase,'turn-end');
+  assert.equal(planActivity({...input,execution:{...execution,integration:{status:'RUNNING'}}}).phase,'integration');
+  assert.equal(planActivity({...input,execution:{...execution,commands:[{state:'running',reason:'Проверка main'}]}}).phase,'command');
+  execution.assignments[0].cleanup.status='DONE';
+  assert.equal(planActivity(input).phase,'finalizing','cleanup alone is not complete');
+  assert.equal(planActivity({...input,run:{state:'complete'}}).phase,'complete');
+  assert.equal(planActivity({...input,run:{state:'paused'}}).phase,'paused');
+  assert.equal(assignmentStage({channel:{registered:false,draft:{phase:'authorized'}}}).phase,'waiting-channel');
+  let now=10;const clock=activityClock({now:()=>now,limit:2}),stage={phase:'result',label:'Результат'};
+  assert.equal(clock('one',stage).elapsedMs,0);now=1010;
+  assert.equal(clock('one',stage).elapsedMs,1000,'unchanged observations preserve elapsed time');
+  assert.equal(clock('one',{...stage,phase:'final'}).elapsedMs,0,'new stage starts a new interval');
+  clock('two',stage);clock('three',stage);now=2010;
+  assert.equal(clock('one',stage).elapsedMs,0,'bounded observation cache does not invent old durations');
+});
 
 test('orchestrator card and plan use current integration facts instead of an older project snapshot',()=>{
   const tasks=[{id:'T001',status:'done'},{id:'T002',status:'done'},{id:'DOCS',status:'pending'}];
@@ -39,6 +65,7 @@ test('working UI separates report, acceptance and integration and renders addres
   ui.snapshot({mode:'workflow',role:'O',participant_id:'o',permission:{phase:'complete'},stopped:true,messages:[],
     assignments:['T001','T002','DOCS'].map(task_id=>({task_id,assignment_id:task_id,phase:'INTEGRATED',terminal:true}))});
   assert.match(ui.$('permission').textContent,/Выполнение завершено.*3\/3.*связь отключена/);
+  assert.match(ui.$('permission').textContent,/Принимаю результат, закрой план/);
   assert.doesNotMatch(ui.$('roster').textContent,/SDK:.*не подтверждён/);
   ui.unbound();assert.equal(ui.$('roster').textContent,'');assert.equal(ui.$('roster-section').hidden,true);
 });
