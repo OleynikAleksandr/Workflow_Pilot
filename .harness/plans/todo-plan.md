@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 690,
+  "plan_revision": 692,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -96,8 +96,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "T001",
@@ -145,7 +145,23 @@
         "O-only brief запрашивается parent Kit с полномочием O и выдаётся только member.role=O. Simple plan:create сохраняет task_brief указанной DOCS, schema и runtime проверяют поле."
       ],
       "expected_commit_message": "feat: Сохранять ранние поручения и обрабатывать назначения одним ходом",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "packages/workflow-kit/src/schemas/plan.schema.json",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/prepared-task-flow.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -391,7 +407,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 690
+Revision: 692
 
 ## Цель
 
@@ -407,8 +423,8 @@ Revision: 690
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Прямое поручение работать одним агентом; тесно связанные контракты Kit, канала и панели.
 
-- [TODO] T001: Сохранять ранние поручения и обрабатывать назначения одним ходом — Ожидает
-  - Git Commit: [PENDING] feat: Сохранять ранние поручения и обрабатывать назначения одним ходом
+- [DONE] T001: Сохранять ранние поручения и обрабатывать назначения одним ходом — Завершено
+  - Git Commit: [DONE] feat: Сохранять ранние поручения и обрабатывать назначения одним ходом
   - Reference: prepared-task-flow / T001 / implementation
   - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, tools/codex-app-server-mcp/plugin.py, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/prepared-task-flow.test.mjs, src/control/plugin/assignment-dialogue.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/recovery.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, packages/workflow-kit/src/templates/PLAN.md, docs/planning/prepared-task-flow.md
   - Параллельность: исключительное выполнение

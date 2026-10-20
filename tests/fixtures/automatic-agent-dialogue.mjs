@@ -64,7 +64,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
       assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
     };
     const message=await call('read_message',args);
-    assert.equal(message.role_protocol,5);
+    assert.equal(message.role_protocol,6);
     let text=fast&&message.inline_context?.complete?message.inline_context.text:'';
     for(let part=0,total=text?0:1;part<total;part++){
       const value=await call('read_context',{message_id:message.message_id,context_ref:message.context_ref,part});

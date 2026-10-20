@@ -161,6 +161,7 @@
         "properties": {
           "parallel_safe": {"type": "boolean", "description": "False means exclusive worker execution in a parallel or orchestrated plan, not execution by the planner."},
           "context_pack": {"$ref": "#/$defs/context_pack"},
+          "task_brief": {"type":"string","minLength":1,"maxLength":12000,"description":"Orchestrator-authored planning draft, not execution permission. Runtime additionally enforces at most 12000 UTF-8 bytes and non-whitespace text."},
           "commit_ref": {
             "type": "object",
             "required": ["scope_id", "task_id", "role"],

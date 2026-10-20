@@ -22,7 +22,8 @@ const allowed = {
 const initial = () => ({version:ASSIGNMENT_DIALOGUE_VERSION,attempt:1,grant:null,result:null,acceptance:null,history:[],operations:{}});
 const contractDigest=task=>hash(json(task&&{title:task.title,why:task.why,functional_paths:task.functional_paths,
   documentation_paths:task.documentation_paths,acceptance_criteria:task.acceptance_criteria,
-  verification_ids:task.verification_ids,dependencies:task.dependencies,context_pack:task.context_pack}));
+  verification_ids:task.verification_ids,dependencies:task.dependencies,context_pack:task.context_pack,
+  ...(Object.hasOwn(task,'task_brief')?{task_brief:task.task_brief}:{})}));
 
 function activeBlock(record) {
   const signals=readSignals(record.parent_root),block=latestBlock(signals,{scope_id:record.parent_scope_id,
@@ -46,6 +47,7 @@ export function assignmentDialogueStatus(root,id) {
   const decision=last&&signals.findLast(s=>s.kind==='assignment-message'&&s.assignment_id===record.id
     &&s.block_id===last.block_id&&(s.assignment_attempt??1)===(record.dialogue?.attempt??1));
   return {ok:true,id:record.id,task_id:record.parent_task_id,role,
+    ...(role==='O'&&task?.task_brief?{task_brief:task.task_brief}:{}),
     contract_digest:contractDigest(task),scope_id:record.parent_scope_id,worktree:record.worktree,
     cleanup:record.cleanup??null,
     phase:record.phase,migration:record.migration??null,dialogue_version:record.dialogue_version??0,dialogue:record.dialogue??null,block:activeBlock(record),

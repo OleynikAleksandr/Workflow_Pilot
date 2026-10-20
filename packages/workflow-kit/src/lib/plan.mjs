@@ -166,6 +166,8 @@ export function validatePlan(p) {
   }
   const byId = new Map(p.tasks.map(t => [t.id, t]));
   for (const t of p.tasks) {
+    if(Object.hasOwn(t,'task_brief'))check(typeof t.task_brief==='string'&&t.task_brief.trim().length>0
+      &&Buffer.byteLength(t.task_brief,'utf8')<=12000,'PLAN_SCHEMA','task_brief: непустой текст оркестратора не более 12000 байт UTF-8.');
     check(t.verification_kind === undefined || ['code','package','installed'].includes(t.verification_kind), 'PLAN_SCHEMA', 'verification_kind задачи: code, package или installed.', {task_id:t.id,field:'verification_kind',received:t.verification_kind});
     for (const f of ['id', 'title', 'why', 'expected_commit_message']) string(t[f], f);
     check(/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(t.id), 'PLAN_SCHEMA', 'Некорректный task ID.');

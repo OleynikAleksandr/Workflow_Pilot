@@ -252,6 +252,20 @@ export class PluginCommunication {
     if(message.superseded||!message.service||message.sender_role!=='backend')return message;
     const {run,member}=this.member(binding);
     if(member.role==='O'&&message.assignment_id)message.recipient_ref=this.assignment.recipientRef(run,message.assignment_id);
+    const preparation=m=>m.service&&m.sender_role==='backend'&&m.kind==='recovery'&&m.idempotency_key?.startsWith('prepare:');
+    const stored=run.messages.find(m=>m.message_id===message.message_id);
+    if(member.role==='O'&&stored&&preparation(stored)&&message.dialogue_version===1){
+      const state=await this.assignment.state(member.target,message.assignment_id);
+      // Parent Kit is queried as O; the child contract never authorizes a task.
+      await this.enrollment.validate(member.target);
+      if(state.task_brief)message.task_brief=state.task_brief;
+      message.contract_digest=state.contract_digest;
+      const fresh=this.member(binding);
+      message.preparation_queue=fresh.run.messages.filter(m=>preparation(m)&&m.recipient_id===fresh.member.id
+        &&m.scope_id===message.scope_id&&m.scope_id===fresh.run.grant?.scope_id&&!m.read&&!m.intent&&!m.reply_observed&&!m.superseded)
+        .slice(0,8).map(m=>({message_id:m.message_id,task_id:m.task_id,assignment_id:m.assignment_id,attempt:m.attempt,
+          recipient_ref:this.assignment.recipientRef(fresh.run,m.assignment_id)}));
+    }
     if(message.context_ref){
       const content=await this.workflow.content({...binding,context_ref:message.context_ref,part:0});
       if(content.total===1&&content.bytes<=12000){

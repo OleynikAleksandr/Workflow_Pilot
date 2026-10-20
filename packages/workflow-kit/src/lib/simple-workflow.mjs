@@ -27,7 +27,9 @@ export function createSimplePlan(root,input) {
     const implicitSpec=input.execution_strategy==='orchestrated'?[]:[input.spec];
     return {...(Object.hasOwn(t,'parallel_safe')?{parallel_safe:t.parallel_safe}:{}),...(Object.hasOwn(t,'context_pack')?{context_pack:taskContextPack(t.context_pack)}:{}),id:t.id??'T'+String(i+1).padStart(3,'0'),title:t.title,why:t.why??t.title,dependencies:t.dependencies??[],functional_paths:files.filter(f=>!f.endsWith('.md')),documentation_paths:[...new Set([...implicitSpec,...files.filter(f=>f.endsWith('.md'))])],verification_ids:verification,verification_kind:t.verification_kind??'code',acceptance_criteria:t.acceptance??[t.title],expected_commit_message:t.commit??'feat: '+t.title};
   });
-  for (const task of tasks) {
+  for (const [index,task] of tasks.entries()) {
+    const source=input.tasks[index];
+    if(source&&Object.hasOwn(source,'task_brief'))task.task_brief=source.task_brief;
     check(['code','package','installed'].includes(task.verification_kind),'PLAN_SCHEMA','Некорректный verification_kind.',{task_id:task.id});
     taskChecks(task,config);
   }
@@ -37,6 +39,8 @@ export function createSimplePlan(root,input) {
   const work=withoutDocs.filter(t=>!['package','installed'].includes(t.verification_kind));
   const finalTask={id:'DOCS',title:'Актуализация всех документов проекта',why:'Сохранить актуальный контекст для следующего агента',dependencies:work.map(t=>t.id),functional_paths:[],documentation_paths:documentation,verification_ids:[],acceptance_criteria:['Документы соответствуют результату'],expected_commit_message:'docs: актуализировать контекст проекта'};
   const normalizedDelivery=delivery.map(t=>({...t,dependencies:[...new Set([...t.dependencies,'DOCS'])]}));
+  const explicitDocs=tasks.find(t=>t.id==='DOCS');
+  if(explicitDocs&&Object.hasOwn(explicitDocs,'task_brief'))finalTask.task_brief=explicitDocs.task_brief;
   // An orchestrated plan always ends with DOCS, with or without a release.
   tasks.splice(0,tasks.length,...work,...(delivery.length||input.execution_strategy==='orchestrated' ? [finalTask,...normalizedDelivery] : []));
   const policy=Object.fromEntries([...EXECUTION_POLICY_FIELDS,'execution_origin_session_id','release','dialogue_version'].filter(key=>Object.hasOwn(input,key)).map(key=>[key,input[key]]));

@@ -135,6 +135,29 @@ function dialogueKitFixture(){
       effects.set(input.operation_id,receipt);states.set(input.assignment_id,{attempt:input.attempt,grant:input.kind==='task'?{message_id:input.message_id}:null});
       return receipt;}};
 }
+test('one O turn explicitly reads queued preparations and authorizes both, without forged receipts or a second SDK turn',async t=>{
+  const kit=dialogueKitFixture(),base=kit.status;
+  kit.status=async(target,id)=>({...await base(target,id),...(target.role==='O'?{task_brief:'Draft '+id}:{})});
+  const f=await fixture(t,undefined,kit),a=f.target('a'),b=f.target('b');
+  await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o);
+  await f.c.reserve(a);await f.c.reserve(b);
+  const enqueue=target=>f.c.workflow.enqueue(f.o,{key:'prepare:'+target.assignment_id,kind:'recovery',text:'Prepare',
+    subject:{assignment_id:target.assignment_id,task_id:target.task_id},attempt:1});
+  const first=await enqueue(a),second=await enqueue(b);
+  const one=await f.c.readMessage({metadata:meta('o'),message_id:first.message_id});
+  assert.equal(one.task_brief,'Draft a-a');assert.equal(one.preparation_queue.length,1);
+  assert.equal(one.preparation_queue[0].message_id,second.message_id);
+  assert.equal(f.c.runs.get(o.run_id).messages.find(m=>m.message_id===second.message_id).read,false);
+  const two=await f.c.readMessage({metadata:meta('o'),message_id:second.message_id});
+  for(const m of [one,two])await f.c.assignmentPrepare({metadata:meta('o'),recipient:m.recipient_ref,attempt:1,
+    body:m.task_brief+' verified by O',dispatch_when_ready:true,idempotency_key:m.message_id});
+  await f.bind(f.c,a);await f.bind(f.c,b);await f.c.assignment.reconcile('p','s');
+  const run=f.c.runs.get(o.run_id),tasks=run.messages.filter(m=>m.kind==='task');
+  assert.equal(tasks.length,2);assert.ok(tasks.every(m=>m.sender_role==='O'));
+  assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,0,'direct read does not forge an SDK send');
+  assert.equal(Object.hasOwn((await f.c.assignmentStatus({metadata:meta('a')})).assignments[0],'task_brief'),false);
+  assert.equal((await f.c.assignmentStatus({metadata:meta('o')})).assignments[0].task_brief,'Draft a-a');
+});
 test('O prepares while E is unbound; only explicit dispatch after live channel grants work once',async t=>{
   const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');
   await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.c.reserve(e);
@@ -266,7 +289,7 @@ test('working API derives author, addresses distinct assignments and sends immut
     body:'Реализуй только модуль e',contexts:[{source:'contract-e.md',commit:'a'.repeat(40),text}],idempotency_key:'task-e'};
   const sent=await f.c.assignmentSend(input),read=await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
   assert.equal(read.sender_role,'O');assert.equal(read.assignment_id,'a-e');assert.equal(kit.calls,1);
-  assert.equal(read.role_protocol,5);assert.match(read.instructions,/ДИАЛОГ 1/);
+  assert.equal(read.role_protocol,6);assert.match(read.instructions,/ДИАЛОГ 1/);
   assert.match(read.instructions,/обязательно отправь orchestrator result/);
   assert.doesNotMatch(read.instructions,/Полный context_pack — в recovery/);
   let content='';for(let part=0,total=1;part<total;part++){
@@ -626,7 +649,7 @@ test('large UTF-8 context is complete, immutable, identity scoped and persists w
   assert.equal((await queue(f.c,e,'large',text)).message_id,m.message_id);
   await assert.rejects(queue(f.c,e,'large',text+'!'),{code:'PLUGIN_COMMUNICATION_CONFLICT'});
   const value=await f.c.readMessage({message_id:m.message_id,metadata:meta('e')});let complete='';
-  assert.equal(value.role_protocol,5);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
+  assert.equal(value.role_protocol,6);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
   assert.match(value.instructions,/не повторяют recovery и не запускают задачу заново/);
   for(let part=0,total=1;part<total;part++){
     const page=await f.c.content({message_id:m.message_id,context_ref:value.context_ref,part,metadata:meta('e')});
