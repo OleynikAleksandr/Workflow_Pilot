@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 721,
+  "plan_revision": 722,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -108,6 +108,11 @@
         "path": "docs/planning/pip-probe.md",
         "required": true,
         "revision": "f3f208ebe33b1794517e1ddadff5242d488524ee"
+      },
+      {
+        "path": "docs/modules/pip-probe.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -639,6 +644,130 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "PIP-INLINE",
+      "title": "Открывать пробник из ленты без fullscreen",
+      "why": "Открывать пробник из ленты без fullscreen",
+      "dependencies": [],
+      "functional_paths": [
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/experiments/pip-probe/view.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tests/pip-probe.test.mjs",
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "pip-probe",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Переписка объявляет только inline/pip в ресурсе и SDK initialize; вызов модели предпочитает inline, без thread entrypoint.",
+        "Сохраняется запрос PiP и честная диагностика режима; версия 0.5.14; основная рабочая панель не меняется."
+      ],
+      "expected_commit_message": "feat: Открывать пробник из ленты без fullscreen",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "PIP-INLINE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "PIP-INLINE"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/pip-probe.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "BUILD-PIP2",
+      "title": "Собрать экспериментальную 0.5.14 для трёх ОС",
+      "why": "Собрать экспериментальную 0.5.14 для трёх ОС",
+      "dependencies": [
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Единый sourceCommit и проверенные комплекты трёх ОС, без публикации GitHub."
+      ],
+      "expected_commit_message": "feat: Собрать экспериментальную 0.5.14 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "BUILD-PIP2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-PIP2",
+      "title": "Установить готовую экспериментальную 0.5.14",
+      "why": "Установить готовую экспериментальную 0.5.14",
+      "dependencies": [
+        "BUILD-PIP2",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатная установка с подписью и откатом; работающая служба не останавливается, при необходимости pending."
+      ],
+      "expected_commit_message": "feat: Установить готовую экспериментальную 0.5.14",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "INSTALL-PIP2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -660,10 +789,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 721
+Revision: 722
 
 ## Цель
 
@@ -751,6 +880,30 @@ Revision: 721
   - Файлы: release-manifest.json, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-PIP, DOCS-2
+- [TODO] PIP-INLINE: Открывать пробник из ленты без fullscreen — Ожидает
+  - Git Commit: [PENDING] feat: Открывать пробник из ленты без fullscreen
+  - Reference: prepared-task-flow / PIP-INLINE / implementation
+  - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tools/codex-app-server-mcp/pip_probe.py, tests/pip-probe.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: prepared-task-flow / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PIP-INLINE
+- [TODO] BUILD-PIP2: Собрать экспериментальную 0.5.14 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать экспериментальную 0.5.14 для трёх ОС
+  - Reference: prepared-task-flow / BUILD-PIP2 / implementation
+  - Файлы: release-manifest.json, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-3
+- [TODO] INSTALL-PIP2: Установить готовую экспериментальную 0.5.14 — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовую экспериментальную 0.5.14
+  - Reference: prepared-task-flow / INSTALL-PIP2 / implementation
+  - Файлы: release-manifest.json, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD-PIP2, DOCS-3
 
 ## Context Pack For This Cycle
 
@@ -758,5 +911,6 @@ Revision: 721
 - docs/architecture/OVERVIEW.md
 - docs/modules/chatgpt-plugin.md
 - docs/planning/pip-probe.md
+- docs/modules/pip-probe.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
