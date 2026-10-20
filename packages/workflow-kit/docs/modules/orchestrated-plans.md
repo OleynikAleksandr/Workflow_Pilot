@@ -1,6 +1,6 @@
 # План оркестратора
 
-Workflow Kit 1.9.2 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
+Workflow Kit 1.9.3 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
 
 ## План
 
@@ -13,9 +13,11 @@ Workflow Kit 1.9.2 поддерживает `execution_strategy: "orchestrated"`
 
 В упрощённом plan:create общая спецификация orchestrated-плана — read-контекст, не неявная область записи каждого E. DOCS владеет переносом/удалением. Явно общие documentation_paths всё равно запрещают одновременные назначения; legacy parallel сохранён.
 
+Необязательное task_brief — непустая основа поручения O до 12000 байт UTF-8. Сохраняется plan:create/review/plan:apply, включая явно указанную DOCS, входит в digest плана/назначения. Неверный тип и превышение размера отклоняются. Старые задачи без поля совместимы. Это не task grant: после Start O сверяет актуальные факты и авторизует окончательный текст через канал. Child contract сохраняет brief для проверки интеграции, но recovery/bootstrap/status исполнителя его не выводят; статус родительского Kit возвращает поле O. Для DOCS заранее пишутся только стабильные требования, фактические результаты добавляются O после зависимостей.
+
 ## Версия рабочего диалога
 
-Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 5. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
+Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 6. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
 
 Kit хранит grant/attempt/result/acceptance и идемпотентные operation_id через assignment:dialogue. task:start требует grant текущей попытки и plan permission; integration требует acceptance точного result_id/source_commit. Revision создаёт новую попытку до интеграции, сохраняет старые proof и отзывает acceptance. После INTEGRATED нужна новая задача. [Полный контракт](../../../../docs/modules/assignment-dialogue.md).
 

@@ -1,6 +1,6 @@
 # Единая поставка Workflow Pilot
 
-Версия 0.5.11. Порядок: DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Каждый пакет содержит клиент, backend и MCP; helper-bundle нет, тестовые флаги запрещены. Codex исключён из приёмки. Native Windows/Linux, VM и clean-install остаются pending; сначала пользователь проверяет Mac.
+Версия 0.5.12. Порядок: DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Каждый пакет содержит клиент, backend и MCP; helper-bundle нет, тестовые флаги запрещены. Codex исключён из приёмки. Native Windows/Linux, VM и clean-install остаются pending; сначала пользователь проверяет Mac.
 
 ## Комплект
 

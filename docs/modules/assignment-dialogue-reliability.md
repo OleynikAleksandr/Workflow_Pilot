@@ -1,6 +1,6 @@
 # Надёжность рабочего диалога
 
-Дополнение [контракта O/E](assignment-dialogue.md) для Workflow Pilot 0.5.11 / Kit 1.9.2. Версия рабочего диалога 1 отделена от протокола панели 3 и версии ролей 5. Legacy sequential/parallel, прежний orchestrated без версии и ручной эксперимент не меняются молча.
+Дополнение [контракта O/E](assignment-dialogue.md) для Workflow Pilot 0.5.12 / Kit 1.9.3. Версия рабочего диалога 1 отделена от протокола панели 3 и версии ролей 6. Legacy sequential/parallel, прежний orchestrated без версии и ручной эксперимент не меняются молча.
 
 ## Источники состояния и восстановление операций
 
@@ -78,6 +78,8 @@ Start/Continue разрешает scope и его generation. Backend зерка
 
 ## Проверки и граница доказательств
 
+Ранний task_brief проверяется на roundtrip, размер UTF-8, изменение Review/contract digest и O-only выдачу без нарушения child contract. Сквозной fixture читает две доступные подготовки за один SDK-ход, затем проходит DOCS/cleanup/complete. SDK fixtures сохраняют код STOPPED через isError и JSON-RPC rejection; даже при потере кода завершение определяется свежим status. Проверяются pause→Continue, восстановление нового scope и отсутствие wait/sync после complete.
+
 Автоматические suites используют реальные API Start, Control, Execution adapters, Kit CLI/Git, HTTP Python MCP, staged HTML и SDK; физический ChatGPT, модель и lifecycle-команды заменены на обозначенной границе. Нет рабочих профилей или новых модельных команд.
 
 | Проверка | Покрытие |
@@ -90,4 +92,4 @@ Start/Continue разрешает scope и его generation. Backend зерка
 | Kit fixtures | Проверки source/attempt/acceptance, запреты main/чужих путей, dirty/transaction, конфликты/check failure, последовательные merge, DOCS и доказательства Git |
 | dialogue-migration / upgrade | Неизменяемый выпущенный Kit 1.8.2, пять точек прерывания, повтор worker/installer, сохранение готового SHA, revision и integrated без повторной работы |
 
-Полный контроль Kit состоит из kit-check и kit-assignments. Обязательны unit-all, architecture, electron-smoke, executor-channel, chatgpt-plugin, release-tooling и kit-upgrade. Неизменяемый Kit 1.9.1 из v0.5.10 обновляется до 1.9.2 с сохранением начатой задачи/сигналов; незавершённые назначения/интеграции запрещают обычный update. Старые upgrade fixtures сохраняются. Windows/Linux на Mac проверяются адаптерами и составом пакетов, не native-запуском. Review/fixtures не являются PASS живого ChatGPT. [A–D](automatic-agent-dialogue-acceptance.md) принимает пользователь отдельно.
+Полный контроль Kit состоит из kit-check и kit-assignments. Для изменений выбираются затронутые suites и сквозной сценарий; уже успешные проверки неизменённой части не повторяются без причины. При полном контроле доступны unit-all, architecture, electron-smoke, executor-channel, chatgpt-plugin, release-tooling и kit-upgrade. Проверки фактических релизных пакетов обязательны. Неизменяемый Kit 1.9.2 из v0.5.11 обновляется до 1.9.3 с сохранением начатой задачи/сигналов; незавершённые назначения/интеграции запрещают обычный update. Старые upgrade fixtures сохраняются. Windows/Linux на Mac проверяются адаптерами и составом пакетов, не native-запуском. Review/fixtures не являются PASS живого ChatGPT. [A–D](automatic-agent-dialogue-acceptance.md) принимает пользователь отдельно.

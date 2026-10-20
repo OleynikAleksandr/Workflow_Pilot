@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.11, Kit 1.9.2, протокол панели `3`, build `0.5.11-communication-3`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.12, Kit 1.9.3, протокол панели `3`, build `0.5.12-communication-3`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
@@ -48,7 +48,7 @@ Observer и журнал команд сообщают занятость/чер
 
 Рабочий model API — workflow_assignment_prepare/dispatch/send/yield/status: черновик O без grant, его отправка после готовности, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Yield.reason явно ограничен awaiting_reply/tasks_sent/result_sent/handled. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 
-[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 5: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
+[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 6: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
 
 ## MCP и SDK
 
@@ -92,6 +92,8 @@ Sidebar читает регистрацию, живой SDK, task/attempt/grant/
 Лента показывает последние 200 событий; экспорт фиксирует through_seq и полноту. Пакетная телеметрия отправляется отдельно от доставки; буфер 64, пакет до 16. Разделены client_time/server_received_at и монотонные длительности операций, отмечены frontend.gap/diagnostic.gap. Измеряются очередь/handler/Kit/observer, RPC/SDK и причины отложенного claim. Диагностика не будит функциональную очередь; функциональные события адресны. Последние события уничтоженной панели могут отсутствовать. Intent ≠ invocation, accepted ≠ read; скрытое мышление модели неизвестно. Секреты/raw metadata/аргументы инструментов не входят в spans. [Тайминги и экспорт](dialogue-timing.md).
 
 Ошибки имеют isError/structuredContent.error и префикс PLUGIN_COMMUNICATION_: IDENTITY_REQUIRED, BINDING, VERSION, UNSUPPORTED, STOPPED, ASSIGNMENT_CHANGED, PROJECT_REMOVED, ENROLLMENT/ENROLLMENT_EXPIRED, MODE, CLAIM_DENIED, READ_DENIED, STALE_MESSAGE, CONTEXT, CONFLICT, STORE_*, LIMIT и ошибки входа/курсора. Не маскировать их повторным join/Enable или DOM Send.
+
+Код ошибки сохраняется также при отклонении SDK Promise. Свежий status/sync с complete прекращает wait/sync текущей привязки без Stop. При ошибке ожидания запрашивается status: pause сохраняет Continue; недоступный status не считается complete. Поздний ответ проверяется по binding/epoch. Recover позволяет явно получить новую привязку; старый допуск не возобновляется.
 
 ## Прямое подключение и поставка
 
