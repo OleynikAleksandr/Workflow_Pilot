@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 666,
+  "plan_revision": 667,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -254,7 +254,8 @@
         "Финальное поручение может обрабатываться параллельно acceptance E после всех обязательных интеграций/delivery; его факты о SHA/proof/cleanup актуальны. Delivery с побочными эффектами сохраняет прежние ограничения.",
         "Cleanup вызывается при null/PENDING, пропускается только при явном DONE всех назначений. Ранний cleanup оставляет PENDING и продолжается backend после terminal receipt; transport_closed не считается cleanup DONE.",
         "Complete сохраняется только после channelSettled, всех cleanup DONE, чистого подтверждённого main, отсутствия команд и конца O. Ошибка, новая задача, restart/Stop/UNKNOWN не вызывают повторный итог или ложное завершение.",
-        "Fixtures отдельно проверяют overlap DOCS/O и final/E, нулевые/ожидающие/завершённые cleanup, отсутствие повторных проверок неизменившегося SHA; истинный новый main требует новой проверки."
+        "Fixtures отдельно проверяют overlap DOCS/O и final/E, нулевые/ожидающие/завершённые cleanup, отсутствие повторных проверок неизменившегося SHA; истинный новый main требует новой проверки.",
+        "Проверить Kit-команду O во время длительного setup DOCS: WORKFLOW_LOCKED означает повторяемое ожидание занятости без эскалации пользователю и без повтора уже совершённого эффекта. Ролевой протокол явно объясняет временную блокировку при подготовке назначения; повтор использует прежний operation/idempotency key и актуальное состояние."
       ],
       "expected_commit_message": "fix: перекрыть независимые стадии DOCS и завершения",
       "parallel_safe": false
@@ -552,7 +553,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 666
+Revision: 667
 
 ## Цель
 
