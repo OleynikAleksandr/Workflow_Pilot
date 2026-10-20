@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 704,
+  "plan_revision": 706,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -367,8 +367,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "INSTALL",
@@ -393,7 +393,8 @@
       ],
       "expected_commit_message": "feat: Установить готовое macOS приложение",
       "verification_kind": "installed",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -447,7 +448,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 704
+Revision: 706
 
 ## Цель
 
@@ -493,8 +494,8 @@ Revision: 704
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить готовое macOS приложение — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовое macOS приложение
+- [DONE] INSTALL: Установить готовое macOS приложение — Завершено
+  - Git Commit: [DONE] feat: Установить готовое macOS приложение
   - Reference: prepared-task-flow / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
