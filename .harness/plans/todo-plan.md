@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 686,
+  "plan_revision": 688,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Сократить лишние последовательные ожидания O↔E и сделать все стадии, тайминги и приёмку плана понятными до завершения и архива.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/dialogue-latency-visibility.md",
@@ -630,8 +630,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "PUBLISH",
@@ -656,7 +656,8 @@
       ],
       "expected_commit_message": "feat: Опубликовать выпуск на GitHub",
       "verification_kind": "package",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -678,10 +679,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 686
+Revision: 688
 
 ## Цель
 
@@ -752,8 +753,8 @@ Revision: 686
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать выпуск на GitHub
+- [DONE] PUBLISH: Опубликовать выпуск на GitHub — Завершено
+  - Git Commit: [DONE] feat: Опубликовать выпуск на GitHub
   - Reference: dialogue-latency-visibility / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
