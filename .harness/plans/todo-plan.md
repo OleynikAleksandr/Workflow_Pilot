@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 634,
+  "plan_revision": 636,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -1627,14 +1627,15 @@
         "Штатный installer без пересборки и остановки backend; при занятой службе verified pending с проверкой rollback."
       ],
       "expected_commit_message": "feat: Установить проверенный комплект 0.5.9",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "INSTALL-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-2",
@@ -1690,7 +1691,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 634
+Revision: 636
 
 ## Цель
 
@@ -1811,8 +1812,8 @@ Revision: 634
   - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: T011, DOCS-2
-- [TODO] INSTALL-2: Установить проверенный комплект 0.5.9 — Ожидает
-  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.5.9
+- [DONE] INSTALL-2: Установить проверенный комплект 0.5.9 — Завершено
+  - Git Commit: [DONE] feat: Установить проверенный комплект 0.5.9
   - Reference: orchestrator-owned-dialogue-refactor / INSTALL-2 / implementation
   - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
