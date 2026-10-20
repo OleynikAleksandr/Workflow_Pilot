@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 712,
+  "plan_revision": 713,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -54,7 +54,11 @@
       "release-manifest.json",
       "tools/experiments/pip-probe/server.mjs",
       "tools/experiments/pip-probe/view.mjs",
-      "tests/pip-probe.test.mjs"
+      "tests/pip-probe.test.mjs",
+      "tools/codex-app-server-mcp/pip_probe.py",
+      "scripts/stage-chatgpt-plugin.mjs",
+      "scripts/check-pip-probe.mjs",
+      ".gitignore"
     ],
     "documentation_paths": [
       "packages/workflow-kit/src/templates/PLAN.md",
@@ -96,6 +100,11 @@
       },
       {
         "path": "docs/modules/chatgpt-plugin.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/pip-probe.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -474,6 +483,135 @@
         "tools/experiments/pip-probe/server.mjs",
         "tools/experiments/pip-probe/view.mjs"
       ]
+    },
+    {
+      "id": "PIP-INTEGRATE",
+      "title": "Включить пассивный PiP пробник в экспериментальную версию 0.5.13",
+      "why": "Включить пассивный PiP пробник в экспериментальную версию 0.5.13",
+      "dependencies": [],
+      "functional_paths": [
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/experiments/pip-probe/view.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tools/codex-app-server-mcp/plugin.py",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "scripts/check-pip-probe.mjs",
+        "tests/pip-probe.test.mjs",
+        ".gitignore",
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/pip-probe.md"
+      ],
+      "verification_ids": [
+        "pip-probe",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Пробник доступен в реальном каталоге рабочего MCP отдельно от основной панели, только синтетические данные.",
+        "Закрытие PiP не вызывает Stop или отправку агенту; UI показывает фактически предоставленный режим; версии согласованы."
+      ],
+      "expected_commit_message": "feat: Включить пассивный PiP пробник в экспериментальную версию 0.5.13",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "PIP-INTEGRATE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "PIP-PROBE",
+        "PIP-INTEGRATE"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/pip-probe.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "BUILD-PIP",
+      "title": "Собрать экспериментальный комплект трёх ОС 0.5.13",
+      "why": "Собрать экспериментальный комплект трёх ОС 0.5.13",
+      "dependencies": [
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/pip-probe.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Комплекты трёх ОС из одного sourceCommit проверены; публикация GitHub не требуется."
+      ],
+      "expected_commit_message": "feat: Собрать экспериментальный комплект трёх ОС 0.5.13",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "BUILD-PIP",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-PIP",
+      "title": "Установить готовую экспериментальную macOS сборку",
+      "why": "Установить готовую экспериментальную macOS сборку",
+      "dependencies": [
+        "BUILD-PIP",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/pip-probe.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer проверяет версию, manifest, подпись и rollback; при работающем backend проверенная pending копия без остановки службы."
+      ],
+      "expected_commit_message": "feat: Установить готовую экспериментальную macOS сборку",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "INSTALL-PIP",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -495,10 +633,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 712
+Revision: 713
 
 ## Цель
 
@@ -562,11 +700,36 @@ Revision: 712
   - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tests/pip-probe.test.mjs, docs/modules/chatgpt-plugin.md, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
+- [TODO] PIP-INTEGRATE: Включить пассивный PiP пробник в экспериментальную версию 0.5.13 — Ожидает
+  - Git Commit: [PENDING] feat: Включить пассивный PiP пробник в экспериментальную версию 0.5.13
+  - Reference: prepared-task-flow / PIP-INTEGRATE / implementation
+  - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tools/codex-app-server-mcp/pip_probe.py, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, scripts/check-pip-probe.mjs, tests/pip-probe.test.mjs, .gitignore, package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: prepared-task-flow / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PIP-PROBE, PIP-INTEGRATE
+- [TODO] BUILD-PIP: Собрать экспериментальный комплект трёх ОС 0.5.13 — Ожидает
+  - Git Commit: [PENDING] feat: Собрать экспериментальный комплект трёх ОС 0.5.13
+  - Reference: prepared-task-flow / BUILD-PIP / implementation
+  - Файлы: release-manifest.json, docs/planning/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-2
+- [TODO] INSTALL-PIP: Установить готовую экспериментальную macOS сборку — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовую экспериментальную macOS сборку
+  - Reference: prepared-task-flow / INSTALL-PIP / implementation
+  - Файлы: release-manifest.json, docs/planning/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD-PIP, DOCS-2
 
 ## Context Pack For This Cycle
 
 - docs/planning/prepared-task-flow.md
 - docs/architecture/OVERVIEW.md
 - docs/modules/chatgpt-plugin.md
+- docs/planning/pip-probe.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
