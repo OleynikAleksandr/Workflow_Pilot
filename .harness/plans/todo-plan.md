@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 713,
+  "plan_revision": 715,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -515,14 +515,26 @@
         "Закрытие PiP не вызывает Stop или отправку агенту; UI показывает фактически предоставленный режим; версии согласованы."
       ],
       "expected_commit_message": "feat: Включить пассивный PiP пробник в экспериментальную версию 0.5.13",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "PIP-INTEGRATE",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        ".gitignore",
+        "package-lock.json",
+        "package.json",
+        "scripts/check-pip-probe.mjs",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "src/contracts/backend.mjs",
+        "tests/pip-probe.test.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tools/experiments/pip-probe/server.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -636,7 +648,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 713
+Revision: 715
 
 ## Цель
 
@@ -700,8 +712,8 @@ Revision: 713
   - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tests/pip-probe.test.mjs, docs/modules/chatgpt-plugin.md, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] PIP-INTEGRATE: Включить пассивный PiP пробник в экспериментальную версию 0.5.13 — Ожидает
-  - Git Commit: [PENDING] feat: Включить пассивный PiP пробник в экспериментальную версию 0.5.13
+- [DONE] PIP-INTEGRATE: Включить пассивный PiP пробник в экспериментальную версию 0.5.13 — Завершено
+  - Git Commit: [DONE] feat: Включить пассивный PiP пробник в экспериментальную версию 0.5.13
   - Reference: prepared-task-flow / PIP-INTEGRATE / implementation
   - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tools/codex-app-server-mcp/pip_probe.py, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, scripts/check-pip-probe.mjs, tests/pip-probe.test.mjs, .gitignore, package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение

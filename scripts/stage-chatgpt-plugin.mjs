@@ -5,6 +5,7 @@ import { Script } from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_APP_VERSION} from '../src/contracts/backend.mjs';
 import {verifyPluginResource} from './check-plugin-resource.mjs';
+import {buildProbeResources} from '../tools/experiments/pip-probe/server.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 export function pluginHtml(html,script,notices=[]) {
   const marker='<!-- plugin-script -->';
@@ -31,6 +32,10 @@ const notices=await Promise.all(['@openai/mcp-extensions','@modelcontextprotocol
 const bundled=pluginHtml(html,result.outputFiles[0].text,notices);
 verifyPluginResource({html:bundled,version,appVersion:COMMUNICATION_APP_VERSION,build:COMMUNICATION_BUILD,protocol:COMMUNICATION_PROTOCOL});
 await fs.writeFile(path.join(root,'tools/codex-app-server-mcp/plugin-ui.html'),bundled);
+for (const {kind, html} of await buildProbeResources()) {
+  await fs.writeFile(path.join(root,`tools/codex-app-server-mcp/pip-probe-${kind}.html`),
+    html+'\n<!-- Bundled dependencies\n'+notices.join('\n\n').replace(/-->/g,'-- >')+'\n-->\n');
+}
 console.log('Workflow Pilot plugin UI staged.');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))await stageChatgptPlugin();

@@ -7,19 +7,8 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
-export async function createProbeServer() {
-  const server = new McpServer({name: 'Workflow Pilot isolated PiP probe', version: '1.0.0'});
-  const started = Date.now(), instance = randomUUID();
-  registerAppTool(server, 'pip_probe_status', {
-    description: 'Synthetic clock only. No project, agent, permission or message data.',
-    inputSchema: {},
-    annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false},
-    _meta: {ui: {visibility: ['app']}},
-  }, async () => ({
-    content: [],
-    structuredContent: {synthetic: true, instance, serverTime: new Date().toISOString(),
-      tick: Math.floor((Date.now() - started) / 1000)},
-  }));
+export async function buildProbeResources() {
+  const resources = [];
   for (const kind of ['plan', 'dialogue']) {
     const bundled = await build({
       stdin: {
@@ -47,6 +36,24 @@ export async function createProbeServer() {
       <p>Закройте только окно переписки и проверьте, что счётчик основной панели продолжает расти.</p>
       <script>${script}</script></html>`;
     const uri = `ui://workflow-pilot-probe/${kind}-${createHash('sha256').update(html).digest('hex')}.html`;
+    resources.push({kind, title, uri, html});
+  }
+  return resources;
+}
+export async function createProbeServer() {
+  const server = new McpServer({name: 'Workflow Pilot isolated PiP probe', version: '1.0.0'});
+  const started = Date.now(), instance = randomUUID();
+  registerAppTool(server, 'pip_probe_status', {
+    description: 'Synthetic clock only. No project, agent, permission or message data.',
+    inputSchema: {},
+    annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false},
+    _meta: {ui: {visibility: ['app']}},
+  }, async () => ({
+    content: [],
+    structuredContent: {synthetic: true, instance, serverTime: new Date().toISOString(),
+      tick: Math.floor((Date.now() - started) / 1000)},
+  }));
+  for (const {kind, title, uri, html} of await buildProbeResources()) {
     registerAppResource(server, `pip_probe_${kind}`, uri, {}, async () => ({contents: [{
       uri, mimeType: RESOURCE_MIME_TYPE, text: html,
       _meta: {

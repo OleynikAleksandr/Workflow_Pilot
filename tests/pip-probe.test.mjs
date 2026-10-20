@@ -4,6 +4,10 @@ import {JSDOM} from 'jsdom';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {mountProbe} from '../tools/experiments/pip-probe/view.mjs';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
 
 function fixture(t, kind, mode = 'pip') {
   const dom = new JSDOM(['actual','available','clock','tick','count','connection','request','pip']
@@ -74,4 +78,42 @@ test('real MCP exposes distinct immutable UI resources and only synthetic status
   const result = await client.callTool({name:'pip_probe_status',arguments:{}});
   assert.equal(result.structuredContent.synthetic, true);
   assert.deepEqual(Object.keys(result.structuredContent).sort(), ['instance','serverTime','synthetic','tick']);
+});
+
+test('packaged Python MCP exposes both passive probes beside the real panel without accessing backend state', async t => {
+  const root = path.resolve(import.meta.dirname, '..');
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'workflow-pip-'));
+  t.after(() => fs.rm(temp, {recursive:true, force:true}));
+  const toolsDir = path.join(temp, 'tools');
+  await fs.mkdir(toolsDir);
+  for (const file of ['plugin.py', 'pip_probe.py', 'plugin-ui.html', 'pip-probe-plan.html', 'pip-probe-dialogue.html']) {
+    await fs.copyFile(path.join(root, 'tools/codex-app-server-mcp', file), path.join(toolsDir, file));
+  }
+  const state = path.join(temp, 'state');
+  const client = new Client({name:'packaged-probe-test',version:'1'});
+  const transport = new StdioClientTransport({
+    command:path.join(root, '.harness/runtime/test-python/bin/python'),
+    args:['-B', path.join(root,'tests/fixtures/plugin-server.py'),toolsDir,state], stderr:'pipe',
+  });
+  t.after(() => client.close());
+  await client.connect(transport);
+  const tools = (await client.listTools()).tools;
+  assert.ok(tools.some(tool => tool.name === 'workflow_pilot_panel'));
+  for (const kind of ['plan','dialogue']) {
+    const tool = tools.find(tool => tool.name === `pip_probe_open_${kind}`);
+    assert.equal(tool.annotations.readOnlyHint, true);
+    const uri = tool._meta.ui.resourceUri;
+    const resource = (await client.readResource({uri})).contents[0];
+    assert.equal(uri, `ui://workflow-pilot-probe/${kind}-${createHash('sha256').update(resource.text).digest('hex')}.html`);
+    assert.equal(resource._meta['openai/ui'].preferredDisplayMode, kind === 'dialogue' ? 'pip' : 'inline');
+    assert.equal((await client.callTool({name:tool.name,arguments:{}})).isError, false);
+    await fs.writeFile(path.join(toolsDir,`pip-probe-${kind}.html`), 'changed on disk');
+    assert.equal((await client.readResource({uri})).contents[0].text, resource.text);
+  }
+  const status = tools.find(tool=>tool.name === 'pip_probe_status');
+  assert.deepEqual(status._meta.ui.visibility, ['app']);
+  const result = await client.callTool({name:status.name,arguments:{}});
+  assert.equal(result.structuredContent.synthetic,true);
+  assert.deepEqual(Object.keys(result.structuredContent).sort(), ['instance','serverTime','synthetic','tick']);
+  await assert.rejects(fs.access(state), {code:'ENOENT'});
 });
