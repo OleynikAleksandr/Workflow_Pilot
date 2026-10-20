@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 708,
+  "plan_revision": 709,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -51,7 +51,10 @@
       "tests/workflow-kit-upgrade.test.mjs",
       "tests/fixtures/released-kit/manifest.json",
       "tests/fixtures/released-kit/kit-1.9.2.tar.gz",
-      "release-manifest.json"
+      "release-manifest.json",
+      "tools/experiments/pip-probe/server.mjs",
+      "tools/experiments/pip-probe/view.mjs",
+      "tests/pip-probe.test.mjs"
     ],
     "documentation_paths": [
       "packages/workflow-kit/src/templates/PLAN.md",
@@ -73,7 +76,8 @@
       "docs/modules/chatgpt-plugin-acceptance.md",
       "docs/acceptance/orchestrated-execution.md",
       "docs/modules/plugin-communication-handoff.md",
-      "docs/modules/workflow-execution.md"
+      "docs/modules/workflow-execution.md",
+      "docs/planning/pip-probe.md"
     ]
   },
   "baseline_commit": "68d47baf472b218c37cce32db4c484a5b342e243",
@@ -87,6 +91,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/chatgpt-plugin.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -425,6 +434,40 @@
       "verification_kind": "package",
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "PIP-PROBE",
+      "title": "Подготовить изолированный опыт основной панели и отдельного PiP",
+      "why": "Подготовить изолированный опыт основной панели и отдельного PiP",
+      "dependencies": [],
+      "functional_paths": [
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/experiments/pip-probe/view.mjs",
+        "tests/pip-probe.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md",
+        "docs/planning/pip-probe.md"
+      ],
+      "verification_ids": [
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Два отдельных MCP UI ресурса; PiP запрашивается через установленный SDK, показывается фактический режим и отказ.",
+        "Тестовый сервер не подключается к рабочему backend и не имеет средств отправки агентам или остановки плана.",
+        "Закрытие PiP завершает только собственные таймеры; изолированный тест проверяет продолжающееся обновление основной панели.",
+        "Живое одновременное отображение ChatGPT и сохранение реального канала не объявляются подтвержденными из fixture; подготовлен конкретный порядок пользовательской проверки."
+      ],
+      "expected_commit_message": "feat: Подготовить изолированный опыт основной панели и отдельного PiP",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "PIP-PROBE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -446,10 +489,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 708
+Revision: 709
 
 ## Цель
 
@@ -507,10 +550,17 @@ Revision: 708
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
+- [TODO] PIP-PROBE: Подготовить изолированный опыт основной панели и отдельного PiP — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить изолированный опыт основной панели и отдельного PiP
+  - Reference: prepared-task-flow / PIP-PROBE / implementation
+  - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tests/pip-probe.test.mjs, docs/modules/chatgpt-plugin.md, docs/planning/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
 
 ## Context Pack For This Cycle
 
 - docs/planning/prepared-task-flow.md
 - docs/architecture/OVERVIEW.md
+- docs/modules/chatgpt-plugin.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
