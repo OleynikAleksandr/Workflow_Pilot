@@ -11,7 +11,7 @@ const kinds=new Set(['assignment-start','continue','question','decision','result
 // never asks the user to renew that permission or authorizes another scope.
 export class WorkflowChannel {
   constructor(communication,{observe=()=>({canSend:false}),admit=async()=>false,reconcile=async()=>null,currentMessage=async()=>true}={}) {
-    Object.assign(this,{c:communication,observe,admit,currentMessage});this.contents=new Map();this.turnProbes=new Map();
+    Object.assign(this,{c:communication,observe,admission:admit,currentMessage});this.contents=new Map();this.turnProbes=new Map();
     this.observationSpans=new Map();
     this.reconcile=async target=>{
       const started=performance.now();const value=await reconcile(target),elapsed=performance.now()-started;
@@ -155,9 +155,24 @@ export class WorkflowChannel {
     const first=run.messages.find(m=>m.recipient_id===member.id&&m.scope_id===run.grant.scope_id&&!m.reply_observed);
     return first?.delivery==='pending'&&!first.read?first:null;
   }
-  async canClaim(run,member,message) {
-    if(this.pending(run,member)?.message_id!==message.message_id)return false;
-    return await this.admit(member.target)===true&&this.observe(member.target).canSend===true;
+  async admit(target){
+    const result=await this.admission(target);
+    return result===true||result?.allowed===true;
+  }
+  physicalBlock(target){
+    const page=this.observe(target);
+    return page.manualStopped?'manual-stop':page.draftPresent?'recipient-draft':
+      page.busy?'recipient-busy':!page.canSend?'recipient-unavailable':null;
+  }
+  async claimBlockReason(run,member,message) {
+    if(member.deliveryGate)return 'previous-turn';
+    const first=run.messages.find(m=>m.recipient_id===member.id&&m.scope_id===run.grant.scope_id&&!m.reply_observed);
+    if(first?.message_id!==message.message_id)return 'previous-message';
+    const physical=this.physicalBlock(member.target);if(physical)return physical;
+    if(!this.permitted(run,member))return 'admission-denied';
+    const admitted=await this.admission(member.target);
+    if(admitted!==true&&admitted?.allowed!==true)return admitted?.reason==='commands-active'?'commands-active':'admission-denied';
+    return this.physicalBlock(member.target);
   }
   begin(run,member,message) {
     const page=this.observe(member.target);

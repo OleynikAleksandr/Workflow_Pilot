@@ -27,7 +27,7 @@ export class DialogueDelivery {
   project(sessionId){const p=this.store.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));return p&&this.store.project(p.workspace,sessionId);}
   observe(target){
     const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState.current;
-    return {...executorPageState(record),documentId:page?.documentId??null,
+    return {...executorPageState(record),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
       observationSeq:page?.seq??0,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
   }
@@ -46,8 +46,9 @@ export class DialogueDelivery {
   async admit(target){
     const project=this.project(target.local_session_id);
     if(!this.uses(project)||!(this.owned(project)?['running']:['running','pausing']).includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)
-      ||!this.observe(target).canSend)return false;
-    return !(await readCommandActivity(project.workspace)).commandActive;
+      ||!this.observe(target).canSend)return {allowed:false,reason:'admission-denied'};
+    return (await readCommandActivity(project.workspace)).commandActive
+      ?{allowed:false,reason:'commands-active'}:{allowed:true};
   }
   async prepareBootstrap(project){
     if(!AUTOMATIC_DIALOGUE_ENABLED||!['orchestrator','executor'].includes(project.role))return null;
@@ -58,7 +59,7 @@ export class DialogueDelivery {
       const origin=this.project(project.executionOriginSessionId);
       if(origin)await this.send(origin,'Назначение создано; подключение исполнителя продолжается параллельно. Сейчас подготовьте task и выбранный контекст через workflow_assignment_prepare с dispatch_when_ready=true: это явное разрешение отправить сохранённое поручение при подтверждённой готовности канала. Используйте recipient_ref из read_message, attempt=1. Отдельного ready и dispatch ждать не нужно. Без dispatch_when_ready сохраняется только черновик. Данные backend: '+JSON.stringify({
         assignment_id:project.assignmentId,task_id:project.taskId}), 'recovery',{
-        key:'prepare:'+project.assignmentId,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt:1});
+        key:'prepare:'+project.assignmentId+':v2',subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt:1});
     }
     return ticket;
   }

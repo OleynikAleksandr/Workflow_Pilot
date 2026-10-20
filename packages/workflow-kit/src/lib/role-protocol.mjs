@@ -1,5 +1,5 @@
 // Canonical role text: full recovery and addressed channel reads use the same version.
-export const ROLE_PROTOCOL_VERSION=4;
+export const ROLE_PROTOCOL_VERSION=5;
 export const ROLE_TEXT={
   orchestrator:[
     'РОЛЬ: ОРКЕСТРАТОР',

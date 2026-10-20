@@ -9,6 +9,17 @@ import path from 'node:path';
 import {createFixture,planFixture} from '../packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs';
 import {readPlan} from '../packages/workflow-kit/src/lib/plan.mjs';
 
+test('bootstrap preparation uses a new immutable message key when upgraded instructions change',async()=>{
+  const sent=[],project={role:'executor',workspace:'/child',parentWorkspace:'/main',parentScopeId:'scope',
+    sessionId:'e',assignmentId:'a',taskId:'T001',executionOriginSessionId:'o'};
+  const origin={workspace:'/main',sessionId:'o'};
+  const delivery=new DialogueDelivery({store:{project:()=>({planExecution:{dialogue_version:1}})},
+    getPlugin:()=>({reserveParticipant:async()=>({ticket:'fixture'})}),route:()=> 'plugin-v1'});
+  delivery.project=()=>origin;delivery.send=async(_origin,text,kind,options)=>sent.push({text,kind,...options});
+  await delivery.prepareBootstrap(project);await delivery.prepareBootstrap(project);
+  assert.equal(sent[0].key,'prepare:a:v2');assert.equal(sent[1].key,sent[0].key);
+  assert.match(sent[0].text,/dispatch_when_ready=true/);
+});
 test('assignment contract reads tolerate a Git replacement window but not persistent corruption',async()=>{
   let calls=0,broken=false;
   const target={local_session_id:'o',role:'O',scope_id:'scope',assignment_id:null};

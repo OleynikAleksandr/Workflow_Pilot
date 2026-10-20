@@ -6,5 +6,5 @@ test('orchestrator-owned dialogue: context request, multihop block, revision/res
   {timeout:300000},async t=>{await automaticDialogue(t,'work',{owned:true,conversation:true});});
 test('five simultaneous executors receive O-selected tasks and return checked results through real Start/MCP/SDK/Kit',
   {timeout:300000},async t=>{await automaticDialogue(t,'chat',{owned:true,workers:5});});
-test('two results handled in one O turn integrate and automatically start DOCS without another user action',
+test('authorized fast cycle: inline preparation, no ready turn, two results, overlapping DOCS and finalization',
   {timeout:300000},async t=>{await automaticDialogue(t,'work',{owned:true,batchResults:true});});

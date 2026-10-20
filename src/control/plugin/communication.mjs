@@ -19,7 +19,7 @@ export function communicationIdentity(metadata) {
 }
 
 const MUTATIONS=['join','bind','enable','stop','send','probe','claim','claimReady','verify','report','read','telemetry','telemetryBatch','sync'];
-const diagnostic=e=>e.component==='frontend'||['operation.timing','kit.timing','observer.timing','claim.deferred'].includes(e.event_type);
+const diagnostic=e=>e.component==='frontend'||['operation.timing','kit.timing','observer.timing','diagnostic.gap','claim.deferred'].includes(e.event_type);
 const functional=e=>!diagnostic(e)&&!e.event_type.startsWith('wait.');
 const SECRET=/(?:Bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{12,}|(?:authorization|cookie|api[_-]?key|password|(?:access[_-]?)?token)\s*[:=]\s*\S+|https?:\/\/[^\s/:]+:[^\s/@]+@)/i;
 const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','report.failed',
@@ -36,7 +36,7 @@ export class PluginCommunication {
     Object.assign(this,{now,makeId,waitMs,store,onChange});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
-    this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];
+    this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];this.timingDrops=0;
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
@@ -92,8 +92,12 @@ export class PluginCommunication {
           for(const t of pending)this.event(run,t.type??'kit.timing',{operation:t.operation,elapsed_ms:t.elapsed_ms,
             clock_domain:'backend-monotonic',assignment_id:t.assignment_id,outcome:t.outcome,
             started_at:t.started_at??null,ended_at:t.ended_at});
-          this.timings=this.timings.filter(t=>!pending.includes(t));
-          await this.persist(run,offset);this.syncTimers(run);this.wake(run,run.events.slice(offset));
+          const dropped=this.timingDrops;
+          if(dropped)this.event(run,'diagnostic.gap',{component:'backend',buffer:'timing',dropped,
+            attribution:'backend-buffer-not-assignment'});
+          await this.persist(run,offset);
+          this.timings=this.timings.filter(t=>!pending.includes(t));this.timingDrops-=dropped;
+          this.syncTimers(run);this.wake(run,run.events.slice(offset));
           if(changes.some(functional)&&run.mode==='workflow')queueMicrotask(()=>this.onChange(run.id,changes));
         }
         return structuredClone(result);
@@ -122,13 +126,13 @@ export class PluginCommunication {
     this.timings.push({project_id:target.project_id,scope_id:target.scope_id,assignment_id:target.assignment_id??null,
       operation:span.operation,elapsed_ms:Math.max(0,Math.round(span.elapsed_ms)),outcome:span.ok?'ok':'error',
       started_at:span.started_at??null,ended_at:span.ended_at??new Date(this.now()).toISOString()});
-    if(this.timings.length>64)this.timings.shift();
+    if(this.timings.length>64){this.timings.shift();this.timingDrops++;}
   }
   recordObserverTiming(target,elapsed,ok){
     this.timings.push({type:'observer.timing',project_id:target.project_id,scope_id:target.scope_id,
       assignment_id:target.assignment_id??null,operation:'physical-state',elapsed_ms:Math.max(0,Math.round(elapsed)),outcome:ok?'observed':'unavailable',
       ended_at:new Date(this.now()).toISOString()});
-    if(this.timings.length>64)this.timings.shift();
+    if(this.timings.length>64){this.timings.shift();this.timingDrops++;}
   }
   wakes(run,memberId,event){
     if(!functional(event))return false;
@@ -465,11 +469,8 @@ export class PluginCommunication {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read,'CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
     if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message))return {deferred:true,superseded:true};
-    if(run.mode==='workflow'&&!await this.workflow.canClaim(run,member,message)){
-      const physical=this.workflow.observe(member.target),preceding=run.messages.find(m=>m.recipient_id===member.id
-        &&m.scope_id===run.grant.scope_id&&!m.reply_observed);
-      const reason=member.deliveryGate?'previous-turn':preceding?.message_id!==message.message_id?'previous-message':
-        physical.busy?'recipient-busy':!physical.canSend?'recipient-unavailable':'admission-denied';
+    const reason=run.mode==='workflow'?await this.workflow.claimBlockReason(run,member,message):null;
+    if(reason){
       if(message.claim_wait_reason!==reason){message.claim_wait_reason=reason;
         this.event(run,'claim.deferred',{message_id:message.message_id,participant_id:member.id,reason});}
       return {deferred:true,reason};

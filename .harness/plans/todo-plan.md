@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 677,
+  "plan_revision": 679,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -414,8 +414,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "dialogue-latency-visibility",
         "task_id": "T005",
@@ -439,7 +439,13 @@
         "package-lock.json",
         "packages/workflow-kit/package.json",
         "src/contracts/backend.mjs",
-        "tests/fixtures/released-kit/README.md"
+        "tests/fixtures/released-kit/README.md",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -464,7 +470,27 @@
         "Полный fixture доказывает отсутствие лишнего ready-хода, inline служебные данные, bootstrap DOCS при активном ответе O и итог до terminal E без преждевременного complete. Контролируемые задержки проверяют число вызовов и границы, не скорость живой модели."
       ],
       "expected_commit_message": "feat: Проверить полный быстрый цикл и согласовать новый выпуск",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/released-kit/kit-1.9.1.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-channel.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -624,7 +650,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 677
+Revision: 679
 
 ## Цель
 
@@ -671,10 +697,10 @@ Revision: 677
   - Файлы: src/control/sessions/workspace-session.mjs, src/control/projects/service.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/sidebar.test.mjs, tests/workspace-session.test.mjs, tests/workspace-deletion.test.mjs, tests/session-roles.test.mjs, tests/backend-lifecycle.test.mjs, src/control/workflow/coordination.mjs, tests/execution-control.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Проверить полный быстрый цикл и согласовать новый выпуск — Ожидает
-  - Git Commit: [PENDING] feat: Проверить полный быстрый цикл и согласовать новый выпуск
+- [DONE] T005: Проверить полный быстрый цикл и согласовать новый выпуск — Завершено
+  - Git Commit: [DONE] feat: Проверить полный быстрый цикл и согласовать новый выпуск
   - Reference: dialogue-latency-visibility / T005 / implementation
-  - Файлы: tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, tests/electron-smoke.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.1.tar.gz, tests/workflow-kit-upgrade.test.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/common.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, src/contracts/backend.mjs, tests/fixtures/released-kit/README.md
+  - Файлы: tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, tests/electron-smoke.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.1.tar.gz, tests/workflow-kit-upgrade.test.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/common.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, src/contracts/backend.mjs, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/lib/role-protocol.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, tests/dialogue-delivery.test.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T004
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

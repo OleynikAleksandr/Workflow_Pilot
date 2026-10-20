@@ -22,6 +22,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
   const drafts=new Map();
+  const fast=owned&&batchResults,modelCalls=[];
   const root=createFixture(directory,{setupDelayMs:owned&&batchResults?1500:0}),setup={node:async()=>process.execPath,
     environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
       GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
@@ -58,12 +59,14 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     const metadata=record.metadata,notice=request.content.find(item=>item.type==='text').text;
     const args=JSON.parse(notice.match(/аргументами (\{[^\n]+?\})\./)[1]);
     const call=async(name,input)=>{
+      modelCalls.push(name);
       const r=await c.callTool({name:name.startsWith('assignment_')?'workflow_'+name:'workflow_communication_'+name,arguments:input,_meta:metadata});
       assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
     };
     const message=await call('read_message',args);
-    assert.equal(message.role_protocol,4);
-    let text='';for(let part=0,total=1;part<total;part++){
+    assert.equal(message.role_protocol,5);
+    let text=fast&&message.inline_context?.complete?message.inline_context.text:'';
+    for(let part=0,total=text?0:1;part<total;part++){
       const value=await call('read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
       text+=value.text;total=value.total;
     }
@@ -92,6 +95,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         sharedRepair=null;
       };
       if(message.kind==='ready'){
+        assert.equal(fast,false,'authorized preparation needs no extra ready model turn');
         assert.equal(message.sender_role,'backend');
         if(message.task_id==='T003')assert.ok(readPlan(root).tasks.filter(t=>independent.includes(t.id)).every(t=>t.commit_status==='DONE'));
         if(message.task_id==='DOCS')assert.ok(readPlan(root).tasks.filter(t=>t.id!=='DOCS').every(t=>t.commit_status==='DONE'));
@@ -143,11 +147,13 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         assert.equal(message.sender_role,'backend');
         if(text.includes('workflow_assignment_prepare')){
           if(message.task_id==='DOCS')assert.ok(readPlan(root).tasks.filter(t=>t.id!=='DOCS').every(t=>t.commit_status==='DONE'));
-          const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);assert.ok(target);
+          const target=fast?{recipient_ref:message.recipient_ref}:(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
+          assert.ok(target?.recipient_ref);
+          if(fast)assert.equal(message.inline_context?.complete,true,'small service message includes its complete context');
           const prepared=await call('assignment_prepare',{recipient:target.recipient_ref,attempt:message.attempt,
             body:'Implement only '+message.task_id+' and return the checked commit.',
             contexts:[{source:'orchestrator-selection',text:'Selected context for '+message.task_id}],
-            idempotency_key:'prepare:'+message.assignment_id});
+            idempotency_key:'prepare:'+message.assignment_id,...(fast?{dispatch_when_ready:true}:{})});
           assert.equal(prepared.published,false);
           const record=[...records.values()].find(r=>r.project()?.assignmentId===message.assignment_id);
           if(record)assert.equal(record.bootstrapCount,0,'preparation overlaps unfinished bootstrap');
@@ -360,7 +366,12 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   }
   if(owned){
     assert.equal(drafts.size,taskCount);
-    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,taskCount+(conversation&&kind==='result'?1:0),kind);
+    for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,
+      fast&&kind==='ready'?0:taskCount+(conversation&&kind==='result'?1:0),kind);
+    if(fast){
+      assert.equal(modelCalls.filter(n=>n==='assignment_prepare').length,taskCount);
+      assert.equal(modelCalls.filter(n=>n==='assignment_dispatch').length,0,'no second model call to authorize dispatch');
+    }
     if(batchResults)assert.equal(notifications.filter(n=>n.directRead).length,1,'one result is read within the other SDK turn');
     if(conversation){
       assert.equal(sharedRepairs,1,'shared repair requires fresh parked facts and no user continuation');
@@ -382,6 +393,10 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     const bound=run.events.find(e=>e.event_type==='binding.confirmed'&&e.participant_id===member.id);
     const sent=run.events.find(e=>e.event_type==='message.persisted'&&e.message_id===draftId);
     assert.ok(prepared.seq<bound.seq&&bound.seq<sent.seq,'prepare precedes binding; dispatch follows binding');
+    if(fast){
+      const authorized=run.events.find(e=>e.event_type==='task.dispatch_requested'&&e.message_id===draftId);
+      assert.ok(authorized&&authorized.seq<bound.seq,'explicit authorization is saved before readiness');
+    }
   }
   if(batchResults){assert.equal(earlyCleanup,true);assert.equal(setupLockChecked,true);assert.equal(docsOverlap,true);assert.equal(finalOverlap,true);}
   assert.equal(workflow.executionControl.snapshot()[root].route,'plugin-v1');

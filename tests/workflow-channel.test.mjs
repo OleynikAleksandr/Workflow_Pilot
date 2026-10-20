@@ -81,6 +81,37 @@ test('slow full Kit roster cannot delay a sibling claim and panel projection per
     assert.ok(f.c.runs.get(b.run_id).events.some(e=>e.event_type==='operation.timing'&&e.operation==='claimReady'));
   }finally{release();await slow;}
 });
+test('bounded backend timing records explicit gaps without waking functional consumers',async t=>{
+  const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);
+  const b=await f.bind(f.c,e);let changes=0;
+  await new Promise(resolve=>setImmediate(resolve));f.c.onChange=()=>changes++;
+  for(let n=0;n<70;n++)f.c.recordKitTiming(e,{operation:'status',elapsed_ms:n,ok:true});
+  assert.equal(f.c.timings.length,64);
+  await f.c.telemetryBatch({...b,events:[{event_id:randomUUID(),client_sequence:1,
+    client_time:new Date().toISOString(),duration_ms:1,event_type:'rpc.completed',operation:'status',operation_ms:1}]});
+  const events=f.c.runs.get(b.run_id).events;
+  assert.equal(events.filter(e=>e.event_type==='kit.timing').length,64);
+  assert.equal(events.find(e=>e.event_type==='diagnostic.gap').dropped,6);
+  assert.equal(changes,0);assert.equal(f.c.timingDrops,0);assert.equal(f.c.timings.length,0);
+});
+test('claim distinguishes draft, manual stop and active commands; structured denial never authorizes verify',async t=>{
+  const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);
+  const b=await f.bind(f.c,e),message=await queue(f.c,e),input={...b,message_id:message.message_id};
+  const page=f.pages.get('e');
+  for(const [field,reason] of [['draftPresent','recipient-draft'],['manualStopped','manual-stop']]){
+    page[field]=true;
+    assert.deepEqual(await f.c.claim(input),{deferred:true,reason});
+    await f.c.claim(input);
+    assert.equal(f.c.runs.get(b.run_id).events.filter(e=>e.event_type==='claim.deferred'&&e.reason===reason).length,1);
+    page[field]=false;
+  }
+  f.c.workflow.admission=async()=>({allowed:false,reason:'commands-active'});
+  assert.deepEqual(await f.c.claim(input),{deferred:true,reason:'commands-active'});
+  f.c.workflow.admission=async()=>({allowed:true});
+  const claimed=await f.c.claim(input);
+  f.c.workflow.admission=async()=>({allowed:false,reason:'commands-active'});
+  await assert.rejects(f.c.verify({...input,...claimed}),{code:'PLUGIN_COMMUNICATION_BUSY'});
+});
 test('panel status exposes own addressed text and all O assignments without marking messages read',async t=>{
   const f=await fixture(t,undefined,dialogueKitFixture()),e=f.target('e'),other=f.target('other');
   await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o),a=await f.bind(f.c,e),b=await f.bind(f.c,other);
@@ -235,7 +266,7 @@ test('working API derives author, addresses distinct assignments and sends immut
     body:'Реализуй только модуль e',contexts:[{source:'contract-e.md',commit:'a'.repeat(40),text}],idempotency_key:'task-e'};
   const sent=await f.c.assignmentSend(input),read=await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
   assert.equal(read.sender_role,'O');assert.equal(read.assignment_id,'a-e');assert.equal(kit.calls,1);
-  assert.equal(read.role_protocol,4);assert.match(read.instructions,/ДИАЛОГ 1/);
+  assert.equal(read.role_protocol,5);assert.match(read.instructions,/ДИАЛОГ 1/);
   assert.match(read.instructions,/обязательно отправь orchestrator result/);
   assert.doesNotMatch(read.instructions,/Полный context_pack — в recovery/);
   let content='';for(let part=0,total=1;part<total;part++){
@@ -595,7 +626,7 @@ test('large UTF-8 context is complete, immutable, identity scoped and persists w
   assert.equal((await queue(f.c,e,'large',text)).message_id,m.message_id);
   await assert.rejects(queue(f.c,e,'large',text+'!'),{code:'PLUGIN_COMMUNICATION_CONFLICT'});
   const value=await f.c.readMessage({message_id:m.message_id,metadata:meta('e')});let complete='';
-  assert.equal(value.role_protocol,4);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
+  assert.equal(value.role_protocol,5);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
   assert.match(value.instructions,/не повторяют recovery и не запускают задачу заново/);
   for(let part=0,total=1;part<total;part++){
     const page=await f.c.content({message_id:m.message_id,context_ref:value.context_ref,part,metadata:meta('e')});

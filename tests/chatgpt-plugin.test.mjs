@@ -104,7 +104,7 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   assert.equal(result.isError,false,JSON.stringify(result));assert.equal(effects.length,1);assert.equal(effects[0].target.role,'O');
   const message_id=result.structuredContent.message_id;
   const read=await call('e','workflow_communication_read_message',{message_id});assert.equal(read.structuredContent.sender_role,'O');
-  assert.equal(read.structuredContent.role_protocol,4);
+  assert.equal(read.structuredContent.role_protocol,5);
   assert.match(read.structuredContent.instructions,/обязательно отправь orchestrator result/);
   assert.match(read.structuredContent.instructions,/workflow_assignment_yield/);
   const context=await call('e','workflow_communication_read_context',{message_id,context_ref:read.structuredContent.contexts[0].sha256});
@@ -266,14 +266,14 @@ test('real SDK working channel starts automatically, reads full context and wait
   const e={...o,local_session_id:'worker',role:'E',assignment_id:'assignment',task_id:'T001'};
   comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?o:id==='worker'?e:null;
   const page={canSend:false,stopped:false,busy:true,documentId:'doc',turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1};
-  comm.workflow.observe=()=>page;comm.workflow.admit=async()=>page.canSend;comm.waitMs=30;
+  comm.workflow.observe=()=>page;comm.workflow.admission=async()=>page.canSend;comm.waitMs=30;
   const invitation=await comm.reserve(e);await bridge(t,f);const c=await client(t,f);
   await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata});
   const contexts=[];
   const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?30:ms,onMessage:async request=>{
     const args=notificationArgs(request);assert.deepEqual(Object.keys(args),['message_id']);
     const message=await modelTool(c,metadata,'read_message',args);let text='';
-    assert.equal(message.role_protocol,4);assert.match(message.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
+    assert.equal(message.role_protocol,5);assert.match(message.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
     for(let part=0,total=1;part<total;part++){
       const content=await modelTool(c,metadata,'read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
       text+=content.text;total=content.total;
@@ -712,7 +712,7 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   const capabilities=await c.callTool({name:'workflow_communication_recover',arguments:{},_meta:metadata});
   assert.equal(capabilities.structuredContent.panel_resource_uri,panel._meta.ui.resourceUri);
   assert.equal(capabilities.structuredContent.assignment_dialogue_version,1);
-  assert.equal(capabilities.structuredContent.role_protocol_version,4);
+  assert.equal(capabilities.structuredContent.role_protocol_version,5);
   for(const name of ['workflow_assignment_send','workflow_assignment_yield','workflow_assignment_status','workflow_assignment_migrate'])
     assert.deepEqual(tools.find(tool=>tool.name===name)._meta.ui.visibility,['model']);
   assert.equal(resource.contents[0].mimeType,'text/html;profile=mcp-app');

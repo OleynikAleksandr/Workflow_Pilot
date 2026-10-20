@@ -2,6 +2,15 @@
   "repository": "https://github.com/OleynikAleksandr/Project-Web-Pilot",
   "archives": [
     {
+      "ref": "v0.5.10",
+      "repository": "https://github.com/OleynikAleksandr/Workflow_Pilot",
+      "commit": "b383d2fe837bf07fc6f10b83b18e5d8a6fb56947",
+      "source_path": "packages/workflow-kit/src",
+      "version": "1.9.1",
+      "file": "kit-1.9.1.tar.gz",
+      "sha256": "f1a75ebdac54bb66b1f22d3eee4ca04139beca50f9ad25cc6ad6918aa2a18480"
+    },
+    {
       "ref": "v0.5.9",
       "repository": "https://github.com/OleynikAleksandr/Workflow_Pilot",
       "commit": "6fffc2ecd5415415f1ed509c34e54986f039f87e",
