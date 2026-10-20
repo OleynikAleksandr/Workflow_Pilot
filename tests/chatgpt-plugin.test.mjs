@@ -74,6 +74,8 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   const catalogue=(await c.listTools()).tools;
   assert.match(catalogue.find(x=>x.name==='workflow_communication_send_message').description,/workflow_assignment_send/);
   assert.match(catalogue.find(x=>x.name==='workflow_assignment_send').description,/sends result after checked commit/);
+  assert.deepEqual(catalogue.find(x=>x.name==='workflow_assignment_yield').inputSchema.properties.reason.enum,
+    ['awaiting_reply','tasks_sent','result_sent','handled']);
   const call=(who,name,args={})=>c.callTool({name,arguments:args,_meta:{'openai/session':who}});
   await comm.workflow.grant(o);
   for(const target of [o,e]){const invite=await comm.reserve(target);
@@ -81,8 +83,17 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   const roster=await call('o','workflow_communication_participants');
   const recipient=roster.structuredContent.assignments[0].recipient_ref;
   const text='Только нужный исполнителю контракт 😀\n'.repeat(5000);
-  const result=await call('o','workflow_assignment_send',{recipient,kind:'task',attempt:1,body:'Реализуй назначенный модуль',
+  const draft=await call('o','workflow_assignment_prepare',{recipient,attempt:1,body:'Реализуй назначенный модуль',
     contexts:[{source:'selected-contract',text}],idempotency_key:'real-mcp-task'});
+  assert.equal(draft.isError,false,JSON.stringify(draft));assert.equal(effects.length,0);
+  const early=await call('o','workflow_assignment_dispatch',{draft_id:draft.structuredContent.draft_id});
+  assert.equal(early.isError,true);
+  const member=Object.values([...comm.runs.values()][0].members).find(m=>m.role==='E');
+  const binding={...comm.enrollment.publicMember([...comm.runs.values()][0],member),metadata:{'openai/session':'e'},
+    panel_instance_id:randomUUID(),build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
+  await comm.bind({...binding,message_supported:true});await comm.sync({...binding,message_supported:true});
+  comm.workflow.reconcile=async()=>({stopped:true,busy:false,commandsIdle:true});
+  const result=await call('o','workflow_assignment_dispatch',{draft_id:draft.structuredContent.draft_id});
   assert.equal(result.isError,false,JSON.stringify(result));assert.equal(effects.length,1);assert.equal(effects[0].target.role,'O');
   const message_id=result.structuredContent.message_id;
   const read=await call('e','workflow_communication_read_message',{message_id});assert.equal(read.structuredContent.sender_role,'O');

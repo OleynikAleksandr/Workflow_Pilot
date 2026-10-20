@@ -20,6 +20,9 @@ const allowed = {
   E: new Set(['context_request','context','question','clarification','result']),
 };
 const initial = () => ({version:ASSIGNMENT_DIALOGUE_VERSION,attempt:1,grant:null,result:null,acceptance:null,history:[],operations:{}});
+const contractDigest=task=>hash(json(task&&{title:task.title,why:task.why,functional_paths:task.functional_paths,
+  documentation_paths:task.documentation_paths,acceptance_criteria:task.acceptance_criteria,
+  verification_ids:task.verification_ids,dependencies:task.dependencies,context_pack:task.context_pack}));
 
 function activeBlock(record) {
   const signals=readSignals(record.parent_root),block=latestBlock(signals,{scope_id:record.parent_scope_id,
@@ -37,11 +40,13 @@ function target(root, id) {
 }
 export function assignmentDialogueStatus(root,id) {
   const {record,role}=target(root,id);
+  const task=readPlan(record.parent_root).tasks.find(t=>t.id===record.parent_task_id);
   const signals=readSignals(record.parent_root),last=latestBlock(signals,{scope_id:record.parent_scope_id,
     task_id:record.parent_task_id,assignment_id:record.id,assignment_attempt:record.dialogue?.attempt??1});
   const decision=last&&signals.findLast(s=>s.kind==='assignment-message'&&s.assignment_id===record.id
     &&s.block_id===last.block_id&&(s.assignment_attempt??1)===(record.dialogue?.attempt??1));
   return {ok:true,id:record.id,task_id:record.parent_task_id,role,
+    contract_digest:contractDigest(task),
     phase:record.phase,migration:record.migration??null,dialogue_version:record.dialogue_version??0,dialogue:record.dialogue??null,block:activeBlock(record),
     last_decision:decision?{id:decision.id,block_id:decision.block_id,attempt:record.dialogue?.attempt??1}:null};
 }
@@ -130,6 +135,8 @@ export function applyAssignmentDialogue(root,input) {
     const d=record.dialogue??=initial(), fingerprint=hash(json({role,...input}));
     const previous=d.operations[input.operation_id];
     if(previous){check(previous.fingerprint===fingerprint,'ASSIGNMENT_DIALOGUE_CONFLICT','Ключ уже использован с другим содержимым.');return {...previous.receipt,duplicate:true};}
+    if(input.kind==='task'&&input.contract_digest)check(input.contract_digest===contractDigest(plan.tasks.find(t=>t.id===record.parent_task_id)),
+      'ASSIGNMENT_CONTRACT_CHANGED','Требования изменились после подготовки. Оркестратор должен подготовить новое поручение.');
     if(input.kind==='task'||input.kind==='revision_request'||input.resume)assertPlanPermission(parent,plan);
     check(record.phase==='ASSIGNED' && input.attempt===d.attempt,'ASSIGNMENT_STALE','Назначение или попытка уже изменились.');
     check(!input.blocking||(role==='E'&&input.kind==='question'),'ASSIGNMENT_DIALOGUE_INPUT','blocking допустим только для вопроса E.');

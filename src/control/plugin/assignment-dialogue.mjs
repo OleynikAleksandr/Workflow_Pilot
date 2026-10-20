@@ -80,17 +80,46 @@ export class AssignmentDialogue {
     const result=await this.c.mutate('assignmentIntent',{...binding,payload,key:input.idempotency_key});
     return this.complete(binding.run_id,result.message_id);
   }
+  async draft(input){
+    const binding=await this.input(input),payload=assignmentPayload({...input,kind:'task'});
+    return this.c.mutate('assignmentIntent',{...binding,payload,key:input.idempotency_key,draft:true});
+  }
+  async dispatch(input){
+    const binding=await this.input(input);
+    const result=await this.c.mutate('assignmentDispatch',{...binding,draft_id:input.draft_id});
+    return this.complete(binding.run_id,result.message_id);
+  }
+  async ready(target){
+    const progress=this.c.workflow.progress(target.local_session_id),physical=await this.c.workflow.reconcile(target);
+    check(progress?.sdk&&progress.permitted&&physical?.stopped&&!physical.busy&&physical.commandsIdle===true,
+      'CHANNEL_NOT_READY','Задание сохраните через workflow_assignment_prepare. Отправка требует текущего SDK, привязки и конца bootstrap; ждите ready без опроса модели.');
+  }
+  async dispatchDraft(input){
+    const {run,member}=this.c.member(input),intent=run.assignment_intents?.[input.draft_id];
+    check(member.role==='O'&&intent?.sender_id===member.id&&intent.effect.kind==='task','ROLE','Нужен собственный черновик O.');
+    if(intent.phase!=='draft')return {message_id:intent.message_id};
+    await this.c.enrollment.validate(intent.target);
+    const state=await this.state(member.target,intent.effect.assignment_id);
+    check(state.contract_digest===intent.contract_digest&&(state.dialogue?.attempt??1)===intent.effect.attempt,
+      'STALE_DRAFT','Изменились требования или попытка. Подготовьте новое поручение.');
+    await this.ready(intent.target);
+    intent.phase='prepared';
+    this.c.event(run,'task.dispatch_requested',{message_id:intent.message_id,assignment_id:intent.effect.assignment_id});
+    return {message_id:intent.message_id};
+  }
   async prepare(input){
     const c=this.c,{run,member}=c.member(input),payload=input.payload;
     check(run.mode==='workflow'&&run.grant&&!run.removed,'MODE','Нужен рабочий план.');
     check(allowed[member.role].has(payload.kind),'ROLE','Роль не допускает это сообщение.');
+    check(!input.draft||member.role==='O'&&payload.kind==='task','ROLE','Подготовка доступна только оркестратору для task.');
     const fingerprint=hash(JSON.stringify(payload)),key=hash(JSON.stringify([member.id,input.key]));
     const previous=Object.values(run.assignment_intents??{}).find(i=>i.key===key);
-    if(previous){check(previous.fingerprint===fingerprint,'CONFLICT','Этот ключ уже использован с другим содержимым.');return {message_id:previous.message_id};}
+    if(previous){check(previous.fingerprint===fingerprint,'CONFLICT','Этот ключ уже использован с другим содержимым.');return {message_id:previous.message_id,draft_id:previous.message_id,phase:previous.phase};}
     check(run.grant.phase!=='complete','STOPPED','План уже завершён.');
     const target=await this.target(run,member,payload.recipient),worker=member.role==='E'?member.target:target;
     const state=await this.state(member.target,worker.assignment_id);
     check((state.dialogue?.attempt??1)===payload.attempt,'STALE_ATTEMPT','Попытка изменилась. Прочитайте статус назначения.');
+    if(payload.kind==='task'&&!input.draft)await this.ready(target);
     if(payload.in_reply_to){const parent=run.messages.find(m=>m.message_id===payload.in_reply_to);
       check(parent?.recipient_id===member.id&&parent.read&&parent.assignment_id===worker.assignment_id&&parent.attempt===payload.attempt,
         'CORRELATION','Ответ требует прочитанного сообщения текущей попытки своего назначения.');}
@@ -106,28 +135,32 @@ export class AssignmentDialogue {
     const messageId=c.makeId(),operationId='message:'+messageId;
     const effect={assignment_id:worker.assignment_id,scope_id:run.grant.scope_id,attempt:payload.attempt,
       operation_id:operationId,message_id:messageId,kind:payload.kind,source_commit:payload.source_commit,result_id:payload.result_id,
-      block_id:payload.block_id,problem_id:payload.problem_id,blocking:payload.blocking,resume:payload.resume,content_digest:fingerprint};
+      block_id:payload.block_id,problem_id:payload.problem_id,blocking:payload.blocking,resume:payload.resume,content_digest:fingerprint,
+      ...(state.contract_digest?{contract_digest:state.contract_digest}:{})};
     const intent={message_id:messageId,operation_id:operationId,key,fingerprint,sender_id:member.id,source:member.target,target,
-      effect,context_ref:content,contexts,in_reply_to:payload.in_reply_to,phase:'prepared',created_at:new Date(c.now()).toISOString()};
+      effect,context_ref:content,contexts,in_reply_to:payload.in_reply_to,contract_digest:state.contract_digest,
+      phase:input.draft?'draft':'prepared',created_at:new Date(c.now()).toISOString()};
     (run.assignment_intents??={})[messageId]=structuredClone(intent);
-    c.event(run,'message.intent',{message_id:messageId,assignment_id:worker.assignment_id,kind:payload.kind});
-    return {message_id:messageId};
+    c.event(run,input.draft?'task.prepared':'message.intent',{message_id:messageId,assignment_id:worker.assignment_id,kind:payload.kind});
+    return {message_id:messageId,...(input.draft?{draft_id:messageId,phase:'draft',published:false}: {})};
   }
   complete(runId,messageId){
     const key=runId+':'+messageId;if(this.pending.has(key))return this.pending.get(key);
     const work=(async()=>{
       await this.c.tail;const run=this.c.runs.get(runId),intent=run?.assignment_intents?.[messageId];
       check(intent&&!run.removed,'INTENT','Намерение недоступно.');
+      check(intent.phase!=='draft','DRAFT_NOT_DISPATCHED','Черновик не отправлен. После ready вызовите workflow_assignment_dispatch.');
       if(intent.phase==='published')return this.c.workflow.receipt(run.messages.find(m=>m.message_id===messageId));
       check(!['failed','retired'].includes(intent.phase),'INTENT_CLOSED','Операция закрыта; прочитайте её точную ошибку в status.');
       let receipt;
       try{await this.c.enrollment.validate(intent.source);await this.c.enrollment.validate(intent.target);
+        if(intent.effect.kind==='task')await this.ready(intent.target);
         receipt=await this.kit.apply(intent.source,intent.effect);}
       catch(error){
         // The same durable operation survives a paused plan, process restart or
         // an interrupted CLI response. Permanent validation is visible, not retried.
         const code=String(error.code??'KIT_UNAVAILABLE');
-        const retry=/(?:WORKFLOW_LOCKED|PLAN_PAUSED|TEST_INTERRUPTION|KIT_UNAVAILABLE|TIMEOUT|ECONN|EPIPE|COMMAND_ACTIVE|COMMAND_UNKNOWN|INTEGRATION_PENDING|TRANSACTION_PENDING)$/.test(code);
+        const retry=/(?:CHANNEL_NOT_READY|WORKFLOW_LOCKED|PLAN_PAUSED|TEST_INTERRUPTION|KIT_UNAVAILABLE|TIMEOUT|ECONN|EPIPE|COMMAND_ACTIVE|COMMAND_UNKNOWN|INTEGRATION_PENDING|TRANSACTION_PENDING)$/.test(code);
         await this.c.mutate('assignmentDeferred',{run_id:runId,message_id:messageId,retry,code,message:String(error.message).slice(0,700)});
         if(!retry)throw error;
         return {message_id:messageId,operation_id:intent.operation_id,persisted:true,published:false,phase:'deferred',error:{code,message:String(error.message).slice(0,700)}};
@@ -182,7 +215,8 @@ export class AssignmentDialogue {
     const {run,member}=this.c.member(binding);
     const pending=Object.values(run.assignment_intents??{}).filter(i=>i.sender_id===member.id&&i.phase!=='published');
     return {permission:this.c.workflow.state(run),assignments:await this.roster(run,member),
-      pending_intents:pending.map(i=>({message_id:i.message_id,operation_id:i.operation_id,phase:i.phase,error:i.error??null})),
+      pending_intents:pending.map(i=>({message_id:i.message_id,draft_id:i.phase==='draft'?i.message_id:undefined,
+        assignment_id:i.effect.assignment_id,attempt:i.effect.attempt,operation_id:i.operation_id,phase:i.phase,error:i.error??null})),
       messages:run.messages.filter(m=>(m.sender_id===member.id||m.recipient_id===member.id)&&m.scope_id===run.grant?.scope_id)
         .map(m=>({...this.c.workflow.receipt(m),kind:m.kind,assignment_id:m.assignment_id,attempt:m.attempt,sender_role:m.sender_role,in_reply_to:m.in_reply_to}))};
   }

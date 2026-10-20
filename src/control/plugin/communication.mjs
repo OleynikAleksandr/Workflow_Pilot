@@ -162,6 +162,9 @@ export class PluginCommunication {
   _grant(input){return this.workflow._grant(input);}
   _enqueue(input){return this.workflow._enqueue(input);}
   _assignmentIntent(input){return this.assignment.prepare(input);}
+  _assignmentDispatch(input){return this.assignment.dispatchDraft(input);}
+  assignmentPrepare(input){return this.assignment.draft(input);}
+  assignmentDispatch(input){return this.assignment.dispatch(input);}
   _assignmentPublish(input){return this.assignment.publish(input);}
   _assignmentDeferred(input){return this.assignment.deferred(input);}
   _assignmentYield(input){return this.assignment.yielded(input);}

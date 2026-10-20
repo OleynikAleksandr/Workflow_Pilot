@@ -32,6 +32,11 @@ export class PluginProjects {
         return command==='assignment:dialogue-status'?await this.plans.call(project.workspace,command,['--id',input])
           :await this.plans.call(project.workspace,command,[],input);
       }catch(error){
+        if(command==='assignment:dialogue-status'&&['PLAN_JSON','PLAN_MARKERS','PLAN_PROJECTION','ENOENT'].includes(error.code)&&attempt<2){
+          // Git replaces the parent plan during integration. Retry only this
+          // read; a stable invalid contract still fails closed.
+          await new Promise(resolve=>setTimeout(resolve,50));continue;
+        }
         // Kit reports this before acquiring its operation lock. Preserve the
         // durable operation ID while another assignment finishes its effect.
         if(command!=='assignment:dialogue'||error.code!=='WORKFLOW_LOCKED'||attempt>=40)throw error;

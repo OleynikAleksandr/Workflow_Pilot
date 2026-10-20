@@ -53,7 +53,14 @@ export class DialogueDelivery {
     if(!AUTOMATIC_DIALOGUE_ENABLED||!['orchestrator','executor'].includes(project.role))return null;
     const selected=this.route(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId);
     if(selected==='legacy-dom'||project.role==='executor'&&selected!=='plugin-v1')return null;
-    return this.getPlugin().reserveParticipant(project.sessionId);
+    const ticket=await this.getPlugin().reserveParticipant(project.sessionId);
+    if(project.role==='executor'&&this.owned(project)){
+      const origin=this.project(project.executionOriginSessionId);
+      if(origin)await this.send(origin,'Назначение создано; подключение исполнителя продолжается параллельно. Сейчас подготовьте task и выбранный контекст через workflow_assignment_prepare. Черновик не разрешает работу. После ready отправьте его через workflow_assignment_dispatch. Данные backend: '+JSON.stringify({
+        assignment_id:project.assignmentId,task_id:project.taskId}), 'recovery',{
+        key:'prepare:'+project.assignmentId,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt:1});
+    }
+    return ticket;
   }
   async permission(workspace,scope,phase){
     if(this.route(workspace,scope)!=='plugin-v1')return;

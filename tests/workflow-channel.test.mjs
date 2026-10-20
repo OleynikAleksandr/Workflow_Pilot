@@ -51,6 +51,40 @@ function dialogueKitFixture(){
       effects.set(input.operation_id,receipt);states.set(input.assignment_id,{attempt:input.attempt,grant:input.kind==='task'?{message_id:input.message_id}:null});
       return receipt;}};
 }
+test('O prepares while E is unbound; only explicit dispatch after live channel grants work once',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');
+  await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.c.reserve(e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const input={metadata:meta('o'),recipient,attempt:1,body:'Selected task',contexts:[{source:'contract',text:'Only necessary context'}],idempotency_key:'draft'};
+  const draft=await f.c.assignmentPrepare(input);
+  assert.equal(draft.phase,'draft');assert.equal(kit.calls,0);
+  await f.c.assignment.reconcile('p','s');assert.equal(kit.calls,0);
+  await assert.rejects(f.c.assignmentDispatch({metadata:meta('o'),draft_id:draft.draft_id}),{code:'PLUGIN_COMMUNICATION_CHANNEL_NOT_READY'});
+  await assert.rejects(f.c.assignmentSend({...input,kind:'task',idempotency_key:'early'}),{code:'PLUGIN_COMMUNICATION_CHANNEL_NOT_READY'});
+  const b=await f.bind(f.c,e);
+  const restored=await f.create();await restored.workflow.grant(f.o);await f.bind(restored,e);
+  const status=await restored.assignmentStatus({metadata:meta('o')});
+  assert.equal(status.pending_intents[0].draft_id,draft.draft_id);
+  await assert.rejects(restored.assignmentDispatch({metadata:meta('e'),draft_id:draft.draft_id}),{code:'PLUGIN_COMMUNICATION_ROLE'});
+  const sent=await restored.assignmentDispatch({metadata:meta('o'),draft_id:draft.draft_id});
+  assert.equal(kit.calls,1);
+  assert.equal((await restored.assignmentDispatch({metadata:meta('o'),draft_id:draft.draft_id})).message_id,sent.message_id);
+  assert.equal(kit.calls,1);
+  const read=await restored.readMessage({metadata:meta('e'),message_id:sent.message_id});
+  assert.equal((await restored.content({metadata:meta('e'),message_id:sent.message_id,context_ref:read.context_ref,part:0})).text,'Selected task');
+});
+test('draft survives pause but rejects changed requirements before grant',async t=>{
+  const kit=dialogueKitFixture(),original=kit.status;let digest='original';
+  kit.status=async(...args)=>({...await original(...args),contract_digest:digest});
+  const f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const d=await f.c.assignmentPrepare({metadata:meta('o'),recipient,attempt:1,body:'Task',idempotency_key:'d'});
+  await f.c.workflow.grant(f.o,'paused');
+  await assert.rejects(f.c.assignmentDispatch({metadata:meta('o'),draft_id:d.draft_id}),{code:'PLUGIN_COMMUNICATION_CHANNEL_NOT_READY'});
+  await f.c.workflow.grant(f.o);await f.sync(f.c,b);digest='changed';
+  await assert.rejects(f.c.assignmentDispatch({metadata:meta('o'),draft_id:d.draft_id}),{code:'PLUGIN_COMMUNICATION_STALE_DRAFT'});
+  assert.equal(kit.calls,0);
+});
 test('working API derives author, addresses distinct assignments and sends immutable selected context',async t=>{
   const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e'),other=f.target('other');
   await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.bind(f.c,e);await f.bind(f.c,other);
@@ -99,6 +133,7 @@ test('persisted intent resumes the same Kit effect after publication failure and
   assert.equal(kit.calls,1);assert.equal(f.c.runs.get(b.run_id).messages.length,0);
   const restored=await f.create(),status=await restored.assignmentStatus({metadata:meta('o')});
   assert.equal(status.pending_intents.length,1);assert.equal(kit.calls,1);
+  await restored.workflow.grant(f.o);await f.bind(restored,e);
   await restored.assignment.reconcile('p','s');
   const result=restored.runs.get(b.run_id).messages[0];
   assert.equal(result.message_id,status.pending_intents[0].message_id);assert.equal(kit.calls,1);

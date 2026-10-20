@@ -17,7 +17,7 @@ export async function startPluginBridge({ directory, panel, list, open, connect,
       const chunks=[];let bytes=0;
       for await(const chunk of req) {bytes+=chunk.length;if(bytes>2*1024*1024)return reply(413,{error:{code:'TOO_LARGE',message:'Запрос слишком велик.'}});chunks.push(chunk);}
       const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
-      if(bytes>16384&&input.action!=='communication.assignmentSend')return reply(413,{error:{code:'TOO_LARGE',message:'Запрос слишком велик.'}});
+      if(bytes>16384&&!['communication.assignmentSend','communication.assignmentPrepare'].includes(input.action))return reply(413,{error:{code:'TOO_LARGE',message:'Запрос слишком велик.'}});
       // Only the classified plugin actions exist; agent MCP channels are not bridge actions.
       if(!['read','ui-mutation'].includes(PLUGIN_ACTION_CLASS[input?.action]))
         return reply(400,{error:{code:'PLUGIN_ACTION_INVALID',message:'Неизвестное действие плагина.'}});

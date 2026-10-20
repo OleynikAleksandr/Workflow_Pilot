@@ -284,6 +284,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   assert.equal(started.status,'completed',JSON.stringify(started));
   assert.equal(workflow.executionControl.view(root,'dialogue-fixture').state,'running','HTTP API runs the real plan button coordinator');
   await wait(()=>{
+    if(errors.length)throw errors[0];
     const state=workflow.executionControl.view(root,'dialogue-fixture');
     if(state.state==='paused')throw Error('Unexpected pause: '+JSON.stringify({state,
       messages:[...plugin.communication.runs.values()].flatMap(r=>r.messages.map(m=>({id:m.message_id,kind:m.kind,task:m.task_id,

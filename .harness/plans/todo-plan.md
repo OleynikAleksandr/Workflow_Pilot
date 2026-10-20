@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 640,
+  "plan_revision": 646,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -186,21 +186,16 @@
     "documents": [
       {
         "path": "docs/modules/assignment-dialogue.md",
-        "required": true,
-        "revision": "25e19c2425f144155f933c10feaf8c9a71a86768"
-      },
-      {
-        "path": "docs/modules/assignment-dialogue-reliability.md",
-        "required": true,
-        "revision": "25e19c2425f144155f933c10feaf8c9a71a86768"
-      },
-      {
-        "path": "docs/architecture/OVERVIEW.md",
-        "required": true,
+        "required": false,
         "revision": "25e19c2425f144155f933c10feaf8c9a71a86768"
       },
       {
         "path": "docs/planning/dialogue-preparation-finalization.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -1699,7 +1694,10 @@
         "tests/dialogue-delivery.test.mjs",
         "tests/workflow-channel.test.mjs",
         "tests/chatgpt-plugin.test.mjs",
-        "tests/codex-app-server-mcp.test.mjs"
+        "tests/codex-app-server-mcp.test.mjs",
+        "src/contracts/backend.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs"
       ],
       "documentation_paths": [
         "docs/planning/dialogue-preparation-finalization.md",
@@ -1721,14 +1719,31 @@
         "Единые инструкции роли/startup/Kit/MCP/backend различают подготовку и отправку; yield.reason явно перечислен в фактической схеме и описаниях, без обучения агента через ошибку."
       ],
       "expected_commit_message": "feat: Готовить поручения O одновременно с запуском E и отправлять после готовности канала",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T012",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/dialogue-preparation-finalization.md",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "T013",
@@ -1990,7 +2005,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 640
+Revision: 646
 
 ## Цель
 
@@ -2123,10 +2138,10 @@ Revision: 640
   - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL-2, DOCS-2
-- [TODO] T012: Готовить поручения O одновременно с запуском E и отправлять после готовности канала — Ожидает
-  - Git Commit: [PENDING] feat: Готовить поручения O одновременно с запуском E и отправлять после готовности канала
+- [DONE] T012: Готовить поручения O одновременно с запуском E и отправлять после готовности канала — Завершено
+  - Git Commit: [DONE] feat: Готовить поручения O одновременно с запуском E и отправлять после готовности канала
   - Reference: orchestrator-owned-dialogue-refactor / T012 / implementation
-  - Файлы: src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/contracts/plugin-communication.mjs, src/execution/plugin/communication-store.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/recovery.mjs, src/control/context/context-session.mjs, tests/dialogue-delivery.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
+  - Файлы: src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/contracts/plugin-communication.mjs, src/execution/plugin/communication-store.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/recovery.mjs, src/control/context/context-session.mjs, tests/dialogue-delivery.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, src/contracts/backend.mjs, src/execution/plugin/bridge.mjs, tests/fixtures/automatic-agent-dialogue.mjs, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T013: Завершать канал и очищать назначения без зависшей Паузы — Ожидает
@@ -2169,8 +2184,7 @@ Revision: 640
 ## Context Pack For This Cycle
 
 - docs/modules/assignment-dialogue.md
-- docs/modules/assignment-dialogue-reliability.md
-- docs/architecture/OVERVIEW.md
 - docs/planning/dialogue-preparation-finalization.md
+- docs/architecture/OVERVIEW.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.

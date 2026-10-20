@@ -2,6 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
 import {ParallelKit} from '../src/control/workflow/parallel-kit.mjs';
+import {PluginProjects} from '../src/control/plugin/service.mjs';
+
+test('assignment contract reads tolerate a Git replacement window but not persistent corruption',async()=>{
+  let calls=0,broken=false;
+  const target={local_session_id:'o',role:'O',scope_id:'scope',assignment_id:null};
+  const plugin=new PluginProjects({projects:{snapshot:()=>({projects:[{workspace:'/fixture',sessions:[{sessionId:'o'}]}]})},
+    plans:{call:async()=>{if(broken||++calls<3)throw Object.assign(Error('replacement'),{code:'PLAN_JSON'});return {ok:true};}}});
+  plugin.participantTarget=async()=>target;
+  try{
+    assert.deepEqual(await plugin.dialogueOperation(target,'assignment:dialogue-status','a'),{ok:true});
+    assert.equal(calls,3);broken=true;
+    await assert.rejects(plugin.dialogueOperation(target,'assignment:dialogue-status','a'),{code:'PLUGIN_ASSIGNMENT_PLAN_JSON'});
+  }finally{plugin.communication.dispose();await plugin.communication.tail;}
+});
 
 test('finalization waits for live effects and unread deliveries, but a rejected intent cannot strand a corrected plan',()=>{
   const run={mode:'workflow',project_id:'project',grant:{scope_id:'scope'},messages:[],assignment_intents:{}};

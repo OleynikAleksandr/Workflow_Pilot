@@ -5,7 +5,7 @@ import json
 import re
 from hashlib import sha256
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from mcp.server.fastmcp import Context
@@ -194,9 +194,23 @@ def register_plugin(mcp, state_root: Path):
                                    in_reply_to=in_reply_to, source_commit=source_commit, result_id=result_id,
                                    block_id=block_id, problem_id=problem_id, blocking=blocking, resume=resume)
 
+    @mcp.tool(name="workflow_assignment_prepare", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def assignment_prepare(recipient: RunId, attempt: Annotated[int, Field(ge=1, description="Current assignment attempt from participants.")],
+                                 body: Annotated[str, Field(min_length=1, max_length=1048576, description="Orchestrator-authored task text; no secrets.")],
+                                 idempotency_key: RunId, ctx: Context,
+                                 contexts: Annotated[list[AssignmentContext] | None, Field(max_length=16, description="Selected context sources for this executor only.")] = None) -> CallToolResult:
+        """Orchestrator only: prepare a durable task and selected context while executor bootstrap is running. Does not grant, publish or send work. Save draft_id. After channel ready call workflow_assignment_dispatch; status lists your drafts. Same key/content is idempotent. Do not poll while waiting."""
+        return await communication("assignmentPrepare", ctx, recipient=recipient, attempt=attempt, body=body,
+                                   idempotency_key=idempotency_key, contexts=[c.model_dump() for c in contexts or []])
+
+    @mcp.tool(name="workflow_assignment_dispatch", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def assignment_dispatch(draft_id: MessageId, ctx: Context) -> CallToolResult:
+        """Orchestrator sends its saved task only after current binding, SDK and physical bootstrap completion. Validates assignment, attempt and requirements again. Repeated calls return the same receipt, never repeat UNKNOWN. Not-ready keeps the draft: yield and wait for ready."""
+        return await communication("assignmentDispatch", ctx, draft_id=draft_id)
+
     @mcp.tool(name="workflow_assignment_yield", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def assignment_yield(message_ids: Annotated[list[MessageId], Field(min_length=1, max_length=32, description="Read incoming messages processed during this turn.")],
-                               reason: Annotated[str, Field(pattern=r"^(awaiting_reply|tasks_sent|result_sent|handled)$", description="Reason for ending the turn; never task completion proof.")], ctx: Context) -> CallToolResult:
+                               reason: Annotated[Literal["awaiting_reply", "tasks_sent", "result_sent", "handled"], Field(description="awaiting_reply: waiting (including channel ready); tasks_sent: tasks sent; result_sent: result sent; handled: other processing. Never task completion proof.")], ctx: Context) -> CallToolResult:
         """Acknowledge processing of read incoming messages, then finish the turn. This is not DONE, acceptance or proof that generation stopped. Backend additionally observes physical completion before another SDK wakeup. No model polling or user Continue is needed for an ordinary reply."""
         return await communication("assignmentYield", ctx, message_ids=message_ids, reason=reason)
 

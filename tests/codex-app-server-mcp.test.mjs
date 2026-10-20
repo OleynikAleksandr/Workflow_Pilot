@@ -965,7 +965,7 @@ test('App Server MCP answers a stale session id without initialize after a resta
     'apply_patch', 'bridge_status', 'computer_capture_screen', 'computer_capture_window',
     'computer_list_windows', 'exec_command',
     'turn_watchdog', 'view_image',
-    'workflow_assignment_migrate', 'workflow_assignment_send', 'workflow_assignment_status', 'workflow_assignment_yield',
+    'workflow_assignment_dispatch', 'workflow_assignment_migrate', 'workflow_assignment_prepare', 'workflow_assignment_send', 'workflow_assignment_status', 'workflow_assignment_yield',
     'workflow_communication_bind', 'workflow_communication_claim', 'workflow_communication_enable',
     'workflow_communication_export',
     'workflow_communication_join', 'workflow_communication_journal', 'workflow_communication_participants', 'workflow_communication_probe',
@@ -1174,7 +1174,7 @@ print(json.dumps(out, ensure_ascii=False))
   assert.doesNotMatch(out.instructions, /Workflow Kit|recover|context|part=|after key/i);
   assert.deepEqual(out.tools, ['apply_patch', 'bridge_status', 'computer_capture_screen', 'computer_capture_window',
     'computer_list_windows', 'exec_command', 'turn_watchdog', 'view_image',
-    'workflow_assignment_migrate', 'workflow_assignment_send', 'workflow_assignment_status', 'workflow_assignment_yield',
+    'workflow_assignment_dispatch', 'workflow_assignment_migrate', 'workflow_assignment_prepare', 'workflow_assignment_send', 'workflow_assignment_status', 'workflow_assignment_yield',
     'workflow_communication_bind', 'workflow_communication_claim', 'workflow_communication_enable',
     'workflow_communication_export',
     'workflow_communication_join', 'workflow_communication_journal', 'workflow_communication_participants', 'workflow_communication_probe',
