@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 665,
+  "plan_revision": 666,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "dialogue-latency-visibility",
@@ -69,7 +69,8 @@
       "src/control/workflow/coordination.mjs",
       "src/control/workflow/parallel-kit.mjs",
       "src/control/workflow/session-plans.mjs",
-      "tests/parallel-execution.test.mjs"
+      "tests/parallel-execution.test.mjs",
+      "src/control/sessions/session-plans.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -191,7 +192,8 @@
         "src/control/workflow/coordination.mjs",
         "src/control/workflow/dialogue-delivery.mjs",
         "src/control/workflow/parallel-kit.mjs",
-        "src/control/workflow/session-plans.mjs"
+        "src/control/workflow/session-plans.mjs",
+        "src/control/sessions/session-plans.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -210,7 +212,8 @@
         "Панель использует объединённый claim/verify с прежними проверками и durable intent, старые API остаются. Wait продлевает только действующую lease того же поколения; sync не нужен перед каждым циклом.",
         "Диагностические и чужие события не создают функциональные пробуждения; изменение разрешения/удаление/ошибка будит нужных участников. UI refresh не запускает полный Kit roster на каждый wake.",
         "Queue/handler/Kit/observer spans и причины deferred измеряются отдельно; mount duration не выдаётся за длительность операции. Не менее одного fixture с медленной диагностикой/Kit status проверяет отсутствие блокировки доставки соседу.",
-        "Медленные чтения выводятся из общей очереди только при повторной проверке актуального поколения/ревизии перед эффектом. TTL-кэш не заменяет разрешение; оставшиеся последовательные проверки измеряются."
+        "Медленные чтения выводятся из общей очереди только при повторной проверке актуального поколения/ревизии перед эффектом. TTL-кэш не заменяет разрешение; оставшиеся последовательные проверки измеряются.",
+        "Измерение вызовов SessionPlans относится к существующему src/control/sessions/session-plans.mjs; путь src/control/workflow/session-plans.mjs в исходном перечне — опечатка, не создавать такой файл."
       ],
       "expected_commit_message": "feat: Ускорить доставку и измерять границы панели и backend",
       "parallel_safe": false
@@ -549,7 +552,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: dialogue-latency-visibility
 Current Task: нет
-Revision: 665
+Revision: 666
 
 ## Цель
 
@@ -575,7 +578,7 @@ Revision: 665
 - [TODO] T002: Ускорить доставку и измерять границы панели и backend — Ожидает
   - Git Commit: [PENDING] feat: Ускорить доставку и измерять границы панели и backend
   - Reference: dialogue-latency-visibility / T002 / implementation
-  - Файлы: src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/contracts/plugin-communication.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/session-plans.mjs
+  - Файлы: src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/contracts/plugin-communication.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-kit.mjs, src/control/workflow/session-plans.mjs, src/control/sessions/session-plans.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] T006: Перекрыть запуск DOCS и финализацию с независимыми хвостами диалога — Ожидает
