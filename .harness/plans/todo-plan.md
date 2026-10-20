@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 730,
+  "plan_revision": 731,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -789,6 +789,129 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "PIP-ONLY",
+      "title": "Ограничить пробник переписки только режимом PiP",
+      "why": "Ограничить пробник переписки только режимом PiP",
+      "dependencies": [],
+      "functional_paths": [
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tests/pip-probe.test.mjs",
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "pip-probe",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Ресурс и SDK initialize переписки поддерживают только pip; ресурс предпочитает pip, отсутствует preferredModelDisplayMode inline/fullscreen.",
+        "Неизменность основного рабочего канала; реальные Node/Python MCP проверены; видимая метка опыта только PiP; версия 0.5.15."
+      ],
+      "expected_commit_message": "feat: Ограничить пробник переписки только режимом PiP",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "PIP-ONLY",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-4",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "DOCS-4",
+        "role": "implementation",
+        "iteration": 4
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "PIP-ONLY"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/pip-probe.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "BUILD-PIP3",
+      "title": "Собрать экспериментальную 0.5.15 для трёх ОС",
+      "why": "Собрать экспериментальную 0.5.15 для трёх ОС",
+      "dependencies": [
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Проверенные комплекты из единого sourceCommit без GitHub публикации."
+      ],
+      "expected_commit_message": "feat: Собрать экспериментальную 0.5.15 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "BUILD-PIP3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-PIP3",
+      "title": "Установить готовую экспериментальную 0.5.15",
+      "why": "Установить готовую экспериментальную 0.5.15",
+      "dependencies": [
+        "BUILD-PIP3",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатная установка без остановки службы, pending при занятой копии."
+      ],
+      "expected_commit_message": "feat: Установить готовую экспериментальную 0.5.15",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "INSTALL-PIP3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -810,10 +933,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 730
+Revision: 731
 
 ## Цель
 
@@ -925,6 +1048,30 @@ Revision: 730
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-PIP2, DOCS-3
+- [TODO] PIP-ONLY: Ограничить пробник переписки только режимом PiP — Ожидает
+  - Git Commit: [PENDING] feat: Ограничить пробник переписки только режимом PiP
+  - Reference: prepared-task-flow / PIP-ONLY / implementation
+  - Файлы: tools/experiments/pip-probe/server.mjs, tools/codex-app-server-mcp/pip_probe.py, tests/pip-probe.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: prepared-task-flow / DOCS-4 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PIP-ONLY
+- [TODO] BUILD-PIP3: Собрать экспериментальную 0.5.15 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать экспериментальную 0.5.15 для трёх ОС
+  - Reference: prepared-task-flow / BUILD-PIP3 / implementation
+  - Файлы: release-manifest.json, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-4
+- [TODO] INSTALL-PIP3: Установить готовую экспериментальную 0.5.15 — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовую экспериментальную 0.5.15
+  - Reference: prepared-task-flow / INSTALL-PIP3 / implementation
+  - Файлы: release-manifest.json, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD-PIP3, DOCS-4
 
 ## Context Pack For This Cycle
 
