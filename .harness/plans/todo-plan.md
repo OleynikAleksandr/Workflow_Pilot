@@ -4,22 +4,87 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 689,
+  "plan_revision": 690,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
-  "scope_id": null,
-  "execution_scope_status": "NONE",
+  "scope_id": "prepared-task-flow",
+  "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
-  "objective": "Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.",
-  "acceptance_criteria": [],
+  "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
+  "acceptance_criteria": [
+    "Выполнен контракт docs/planning/prepared-task-flow.md",
+    "Проверены и опубликованы комплекты трёх ОС, выполнена штатная установка macOS."
+  ],
   "approved_scope": {
-    "functional_paths": [],
-    "documentation_paths": []
+    "functional_paths": [
+      "packages/workflow-kit/src/lib/plan.mjs",
+      "packages/workflow-kit/src/lib/simple-workflow.mjs",
+      "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+      "packages/workflow-kit/src/lib/role-protocol.mjs",
+      "packages/workflow-kit/src/lib/command-help.mjs",
+      "src/control/plugin/communication.mjs",
+      "src/control/workflow/dialogue-delivery.mjs",
+      "tools/codex-app-server-mcp/plugin.py",
+      "tests/workflow-channel.test.mjs",
+      "tests/dialogue-delivery.test.mjs",
+      "tests/codex-app-server-mcp.test.mjs",
+      "tests/prepared-task-flow.test.mjs",
+      "src/control/plugin/assignment-dialogue.mjs",
+      "packages/workflow-kit/src/schemas/plan.schema.json",
+      "packages/workflow-kit/src/lib/recovery.mjs",
+      "tests/fixtures/automatic-agent-dialogue.mjs",
+      "tests/chatgpt-plugin.test.mjs",
+      "src/frontend/plugin/launch.mjs",
+      "src/control/workflow/parallel-execution.mjs",
+      "src/contracts/dialogue-view.mjs",
+      "tests/parallel-finalization.test.mjs",
+      "tests/panel-dialogue-view.test.mjs",
+      "tests/sidebar.test.mjs",
+      "tests/fixtures/plugin-host.mjs",
+      "package.json",
+      "package-lock.json",
+      "packages/workflow-kit/package.json",
+      "packages/workflow-kit/src/lib/common.mjs",
+      "packages/workflow-kit/src/lib/installer.mjs",
+      "src/contracts/backend.mjs",
+      "tests/automatic-agent-dialogue.test.mjs",
+      "tests/workflow-kit-upgrade.test.mjs",
+      "tests/fixtures/released-kit/manifest.json",
+      "tests/fixtures/released-kit/kit-1.9.2.tar.gz",
+      "release-manifest.json"
+    ],
+    "documentation_paths": [
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "docs/planning/prepared-task-flow.md",
+      "tests/fixtures/released-kit/README.md",
+      "README.md",
+      "docs/architecture/OVERVIEW.md",
+      "docs/modules/dialogue-timing.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/chatgpt-plugin.md",
+      "docs/modules/automatic-agent-dialogue-acceptance.md",
+      "docs/modules/release.md",
+      "docs/modules/project-compatibility.md",
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+      "packages/workflow-kit/docs/modules/parallel-assignments.md",
+      "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+      "docs/modules/orchestrated-execution.md",
+      "docs/modules/assignment-dialogue-reliability.md",
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/acceptance/orchestrated-execution.md",
+      "docs/modules/plugin-communication-handoff.md",
+      "docs/modules/workflow-execution.md"
+    ]
   },
-  "baseline_commit": null,
+  "baseline_commit": "68d47baf472b218c37cce32db4c484a5b342e243",
   "current_task_id": null,
   "context_pack": {
     "documents": [
+      {
+        "path": "docs/planning/prepared-task-flow.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
       {
         "path": "docs/architecture/OVERVIEW.md",
         "required": true,
@@ -29,40 +94,365 @@
     "include_last_completed_task": false,
     "dependency_task_ids": []
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "T001",
+        "role": "implementation"
+      },
+      "dependencies": [],
+      "functional_paths": [
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/workflow-channel.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/prepared-task-flow.test.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/schemas/plan.schema.json",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "documentation_paths": [
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "docs/planning/prepared-task-flow.md"
+      ],
+      "verification_ids": [
+        "architecture",
+        "executor-channel",
+        "unit-all",
+        "kit-check",
+        "kit-assignments"
+      ],
+      "id": "T001",
+      "title": "Сохранять ранние поручения и обрабатывать назначения одним ходом",
+      "why": "Сохранять ранние поручения и обрабатывать назначения одним ходом",
+      "acceptance_criteria": [
+        "task_brief сохраняется, проверяется и доступен только O; старые планы совместимы; digest меняется с brief.",
+        "Один read возвращает ограниченную очередь независимых подготовок без фиктивного read; O читает и авторизует их в одном ходе.",
+        "Канонические роли, Kit help, MCP и ошибки согласованы; до Start нет отправки; DOCS дополняется подтверждёнными фактами.",
+        "Версия ролей повышена; brief остаётся в child contract, но не выдаётся E через recovery/bootstrap/status. Интеграция с неизменённым brief проходит; изменение контракта отвергается.",
+        "O-only brief запрашивается parent Kit с полномочием O и выдаётся только member.role=O. Simple plan:create сохраняет task_brief указанной DOCS, schema и runtime проверяют поле."
+      ],
+      "expected_commit_message": "feat: Сохранять ранние поручения и обрабатывать назначения одним ходом",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "T002",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T001"
+      ],
+      "functional_paths": [
+        "src/frontend/plugin/launch.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/fixtures/plugin-host.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/prepared-task-flow.md"
+      ],
+      "verification_ids": [
+        "architecture",
+        "chatgpt-plugin",
+        "unit-all"
+      ],
+      "id": "T002",
+      "title": "Сократить обязательный итог и корректно завершать ожидание панели",
+      "why": "Сократить обязательный итог и корректно завершать ожидание панели",
+      "acceptance_criteria": [
+        "Короткий итог по умолчанию и точная видимая стадия без ослабления complete.",
+        "STOPPED сохраняет код; подтверждённый complete прекращает wait/sync без Stop; pause→Continue и network recovery работают.",
+        "Поздние ответы не изменяют новую привязку; восстановление нового scope возможно."
+      ],
+      "expected_commit_message": "feat: Сократить обязательный итог и корректно завершать ожидание панели",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "T003",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T002"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "src/contracts/backend.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/released-kit/kit-1.9.2.tar.gz"
+      ],
+      "documentation_paths": [
+        "tests/fixtures/released-kit/README.md",
+        "docs/planning/prepared-task-flow.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "kit-check",
+        "kit-assignments",
+        "executor-channel",
+        "chatgpt-plugin",
+        "electron-smoke",
+        "release-tooling",
+        "kit-upgrade"
+      ],
+      "id": "T003",
+      "title": "Проверить полный цикл и согласовать версии выпуска",
+      "why": "Проверить полный цикл и согласовать версии выпуска",
+      "acceptance_criteria": [
+        "Полный fixture доказывает 2E/DOCS/finalization без лишних ходов и без ожидания после complete.",
+        "Свободные версии app/Kit/role согласованы, upgrade сохраняет предыдущие планы; живая скорость не объявляется доказанной."
+      ],
+      "expected_commit_message": "feat: Проверить полный цикл и согласовать версии выпуска",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "DOCS",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T001",
+        "T002",
+        "T003"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/release.md",
+        "docs/modules/project-compatibility.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "docs/planning/prepared-task-flow.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/workflow-execution.md",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "tests/fixtures/released-kit/README.md"
+      ],
+      "verification_ids": [],
+      "id": "DOCS",
+      "title": "Актуализация всех документов проекта",
+      "why": "Актуализация всех документов проекта",
+      "acceptance_criteria": [
+        "Контракты соответствуют выпуску; spec перенесена и удалена с required Git blob."
+      ],
+      "expected_commit_message": "docs: Актуализация всех документов проекта",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "RELEASE",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "id": "RELEASE",
+      "title": "Собрать комплект трёх ОС",
+      "why": "Собрать комплект трёх ОС",
+      "acceptance_criteria": [
+        "Проверены фактические артефакты, единый sourceCommit и ограничения поставки."
+      ],
+      "expected_commit_message": "feat: Собрать комплект трёх ОС",
+      "verification_kind": "package",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "INSTALL",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "RELEASE",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "id": "INSTALL",
+      "title": "Установить готовое macOS приложение",
+      "why": "Установить готовое macOS приложение",
+      "acceptance_criteria": [
+        "Проверены фактические артефакты, единый sourceCommit и ограничения поставки."
+      ],
+      "expected_commit_message": "feat: Установить готовое macOS приложение",
+      "verification_kind": "installed",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "PUBLISH",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "INSTALL",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "github-release"
+      ],
+      "id": "PUBLISH",
+      "title": "Опубликовать проверенный GitHub Release",
+      "why": "Опубликовать проверенный GitHub Release",
+      "acceptance_criteria": [
+        "Проверены фактические артефакты, единый sourceCommit и ограничения поставки."
+      ],
+      "expected_commit_message": "feat: Опубликовать проверенный GitHub Release",
+      "verification_kind": "package",
+      "parallel_safe": false
+    }
+  ],
   "blocked_reason": null,
   "user_decisions": [
     {
-      "id": "881e934b-fcfd-40e1-af91-9fb092b8c773",
-      "text": "Пользователь 20.10.2026 прямо поручил закрыть текущий план и открыть новый на подготовку поручений заранее, сокращение последовательных ходов, короткий итог и остановку ожидания после complete.",
-      "recorded_at": "2026-10-20T15:24:08.456Z"
+      "id": "374e8b1d-bb31-448d-bcf0-044353642a91",
+      "text": "Пользователь 20.10.2026 поручил закрыть прежний план и реализовать эти улучшения до публикации нового релиза без пауз.",
+      "recorded_at": "2026-10-20T15:33:56.950Z"
     }
   ],
-  "archived_scope_id": "dialogue-latency-visibility"
+  "parallel_allowed": false,
+  "max_workers": 1,
+  "execution_strategy": "sequential",
+  "execution_reason": "Прямое поручение работать одним агентом; тесно связанные контракты Kit, канала и панели."
 }
 ```
 <!-- workflow-state:end -->
 
 ## Состояние
 
-Execution Scope Status: NONE
+Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
-Scope: не создан
+Scope: prepared-task-flow
 Current Task: нет
-Revision: 689
+Revision: 690
 
 ## Цель
 
-Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.
+Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.
 
 ## Критерии приёмки
 
+- Выполнен контракт docs/planning/prepared-task-flow.md
+- Проверены и опубликованы комплекты трёх ОС, выполнена штатная установка macOS.
 
 ## Микрозадачи
 
+Выполнение: sequential; разрешено: false; лимит: 1
+Причина: Прямое поручение работать одним агентом; тесно связанные контракты Kit, канала и панели.
+
+- [TODO] T001: Сохранять ранние поручения и обрабатывать назначения одним ходом — Ожидает
+  - Git Commit: [PENDING] feat: Сохранять ранние поручения и обрабатывать назначения одним ходом
+  - Reference: prepared-task-flow / T001 / implementation
+  - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, tools/codex-app-server-mcp/plugin.py, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/prepared-task-flow.test.mjs, src/control/plugin/assignment-dialogue.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/recovery.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, packages/workflow-kit/src/templates/PLAN.md, docs/planning/prepared-task-flow.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T002: Сократить обязательный итог и корректно завершать ожидание панели — Ожидает
+  - Git Commit: [PENDING] feat: Сократить обязательный итог и корректно завершать ожидание панели
+  - Reference: prepared-task-flow / T002 / implementation
+  - Файлы: src/frontend/plugin/launch.mjs, src/control/workflow/parallel-execution.mjs, src/contracts/dialogue-view.mjs, tests/chatgpt-plugin.test.mjs, tests/parallel-finalization.test.mjs, tests/panel-dialogue-view.test.mjs, tests/sidebar.test.mjs, tests/fixtures/plugin-host.mjs, docs/planning/prepared-task-flow.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T001
+- [TODO] T003: Проверить полный цикл и согласовать версии выпуска — Ожидает
+  - Git Commit: [PENDING] feat: Проверить полный цикл и согласовать версии выпуска
+  - Reference: prepared-task-flow / T003 / implementation
+  - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, src/contracts/backend.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.2.tar.gz, tests/fixtures/released-kit/README.md, docs/planning/prepared-task-flow.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T002
+- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: Актуализация всех документов проекта
+  - Reference: prepared-task-flow / DOCS / implementation
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/chatgpt-plugin.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/release.md, docs/modules/project-compatibility.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/prepared-task-flow.md, docs/modules/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/chatgpt-plugin-acceptance.md, docs/acceptance/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/workflow-execution.md, packages/workflow-kit/src/templates/PLAN.md, tests/fixtures/released-kit/README.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T001, T002, T003
+- [TODO] RELEASE: Собрать комплект трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать комплект трёх ОС
+  - Reference: prepared-task-flow / RELEASE / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS
+- [TODO] INSTALL: Установить готовое macOS приложение — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовое macOS приложение
+  - Reference: prepared-task-flow / INSTALL / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE, DOCS
+- [TODO] PUBLISH: Опубликовать проверенный GitHub Release — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать проверенный GitHub Release
+  - Reference: prepared-task-flow / PUBLISH / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL, DOCS
 
 ## Context Pack For This Cycle
 
+- docs/planning/prepared-task-flow.md
 - docs/architecture/OVERVIEW.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
