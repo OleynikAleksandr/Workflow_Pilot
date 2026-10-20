@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 657,
+  "plan_revision": 659,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -2041,14 +2041,17 @@
         "После DOCS-3 единый sourceCommit и проверенные macOS/Windows/Linux архивы; перед каждой сборкой удалены только разрешённые Python-кэши; подпись и digests проверены."
       ],
       "expected_commit_message": "feat: Собрать следующий выпуск для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "RELEASE-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-3",
@@ -2135,7 +2138,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 657
+Revision: 659
 
 ## Цель
 
@@ -2298,8 +2301,8 @@ Revision: 657
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012, T013, T014, T015
-- [TODO] RELEASE-3: Собрать следующий выпуск для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать следующий выпуск для трёх ОС
+- [DONE] RELEASE-3: Собрать следующий выпуск для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать следующий выпуск для трёх ОС
   - Reference: orchestrator-owned-dialogue-refactor / RELEASE-3 / implementation
   - Файлы: release-manifest.json, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
