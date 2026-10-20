@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 659,
+  "plan_revision": 661,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -2075,14 +2075,15 @@
         "Штатный installer проверяет версию/manifest/подпись/rollback без пересборки и остановки backend; verified pending явно отделён от установленной активной версии."
       ],
       "expected_commit_message": "feat: Установить готовый проверенный macOS-комплект",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "INSTALL-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-3",
@@ -2138,7 +2139,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 659
+Revision: 661
 
 ## Цель
 
@@ -2307,8 +2308,8 @@ Revision: 659
   - Файлы: release-manifest.json, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
   - Зависимости: T014, DOCS-3
-- [TODO] INSTALL-3: Установить готовый проверенный macOS-комплект — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовый проверенный macOS-комплект
+- [DONE] INSTALL-3: Установить готовый проверенный macOS-комплект — Завершено
+  - Git Commit: [DONE] feat: Установить готовый проверенный macOS-комплект
   - Reference: orchestrator-owned-dialogue-refactor / INSTALL-3 / implementation
   - Файлы: release-manifest.json, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
