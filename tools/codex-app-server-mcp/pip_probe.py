@@ -32,13 +32,14 @@ def register_pip_probe(mcp, directory: Path):
         @mcp.resource(uri, name=f"pip_probe_{kind}", title=title,
                       mime_type="text/html;profile=mcp-app",
                       meta={"ui": {"csp": {"connectDomains": [], "resourceDomains": []}},
-                            "openai/ui": {"availableDisplayModes": ["inline", "fullscreen", "pip"],
-                                          "preferredDisplayMode": "pip" if kind == "dialogue" else "inline"}})
+                            "openai/ui": {"availableDisplayModes": ["inline", "pip"] if kind == "dialogue" else ["inline", "fullscreen"],
+                                          "preferredDisplayMode": "inline"}})
         def resource() -> str:
             return html
 
         @mcp.tool(name=f"pip_probe_open_{kind}", title=title, description=description,
-                  annotations=READ, meta={"ui": {"resourceUri": uri}})
+                  annotations=READ, meta={"ui": {"resourceUri": uri},
+                                         "openai/ui": {"preferredModelDisplayMode": "inline"}})
         def open_view() -> CallToolResult:
             return CallToolResult(content=[TextContent(
                 type="text", text=f"{title}: запрошено открытие. Режим и совместная видимость ещё не подтверждены.")])
@@ -47,7 +48,7 @@ def register_pip_probe(mcp, directory: Path):
                   "Open an optional synthetic plan placeholder for an isolated two-view experiment. "
                   "This is not the real project plan; use workflow_pilot_panel for the real panel.")
     register_view("dialogue", "Тестовая переписка · PiP",
-                  "Open a separate passive synthetic dialogue probe and request PiP, alongside the existing "
+                  "Open a passive synthetic dialogue probe inline in the conversation, then request PiP, alongside the existing "
                   "Workflow Pilot panel. Only for an explicitly requested experiment. No real messages, "
                   "agent commands or plan changes. Tool success does not prove PiP or simultaneous visibility; "
                   "the user must check both views and close/reopen only this probe.")

@@ -10,7 +10,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 
 function fixture(t, kind, mode = 'pip') {
-  const dom = new JSDOM(['actual','available','clock','tick','count','connection','request','pip']
+  const dom = new JSDOM(['initial','actual','available','clock','tick','count','connection','request','pip']
     .map(id => `<button id="${id}"></button>`).join(''));
   t.after(() => dom.window.close());
   const callbacks = new Map(), calls = []; let n = 0, resolvePending;
@@ -36,6 +36,8 @@ function fixture(t, kind, mode = 'pip') {
 test('closing passive PiP does not stop the independent plan viewer or issue agent commands', async t => {
   const plan = fixture(t, 'plan'), pip = fixture(t, 'dialogue');
   await plan.view.start(); await pip.view.start();
+  assert.equal(pip.dom.window.document.getElementById('initial').textContent, 'inline');
+  assert.equal(pip.dom.window.document.getElementById('actual').textContent, 'pip');
   assert.match(pip.dom.window.document.getElementById('request').textContent, /предоставил PiP/);
   await pip.app.onteardown();
   const before = plan.calls.length;
@@ -70,9 +72,12 @@ test('real MCP exposes distinct immutable UI resources and only synthetic status
   assert.equal(new Set(uris).size, 2);
   for (const uri of uris) {
     const resource = (await client.readResource({uri})).contents[0];
-    assert.ok(resource._meta['openai/ui'].availableDisplayModes.includes('pip'));
+    assert.deepEqual(resource._meta['openai/ui'].availableDisplayModes,
+      uri.includes('/dialogue-') ? ['inline','pip'] : ['inline','fullscreen']);
+    assert.equal(resource._meta['openai/ui'].preferredDisplayMode, 'inline');
     assert.match(resource.text, /Изолированный опыт/);
     const tool = tools.find(t=>t._meta?.ui?.resourceUri === uri);
+    assert.deepEqual(tool._meta['openai/ui'], {preferredModelDisplayMode:'inline'});
     assert.equal((await client.callTool({name:tool.name,arguments:{}})).isError, undefined);
   }
   const result = await client.callTool({name:'pip_probe_status',arguments:{}});
@@ -105,7 +110,10 @@ test('packaged Python MCP exposes both passive probes beside the real panel with
     const uri = tool._meta.ui.resourceUri;
     const resource = (await client.readResource({uri})).contents[0];
     assert.equal(uri, `ui://workflow-pilot-probe/${kind}-${createHash('sha256').update(resource.text).digest('hex')}.html`);
-    assert.equal(resource._meta['openai/ui'].preferredDisplayMode, kind === 'dialogue' ? 'pip' : 'inline');
+    assert.equal(resource._meta['openai/ui'].preferredDisplayMode, 'inline');
+    assert.deepEqual(resource._meta['openai/ui'].availableDisplayModes,
+      kind === 'dialogue' ? ['inline','pip'] : ['inline','fullscreen']);
+    assert.deepEqual(tool._meta['openai/ui'], {preferredModelDisplayMode:'inline'});
     assert.equal((await client.callTool({name:tool.name,arguments:{}})).isError, false);
     await fs.writeFile(path.join(toolsDir,`pip-probe-${kind}.html`), 'changed on disk');
     assert.equal((await client.readResource({uri})).contents[0].text, resource.text);

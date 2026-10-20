@@ -55,6 +55,7 @@ export function mountProbe({app, document, kind, timers = globalThis}) {
       await app.connect();
       if (disposed) return;
       context();
+      out('initial').textContent = app.getHostContext()?.displayMode ?? 'не сообщён';
       void refresh();
       if (kind === 'dialogue') await requestPip();
     },
