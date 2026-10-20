@@ -44,7 +44,7 @@ test('panel status exposes own addressed text and all O assignments without mark
 function dialogueKitFixture(){
   const effects=new Map(),states=new Map();let calls=0;
   return {effects,get calls(){return calls;},
-    status:async(_target,id)=>({dialogue_version:1,dialogue:states.get(id)??{attempt:1}}),
+    status:async(_target,id)=>({dialogue_version:1,contract_digest:'fixture-contract',dialogue:states.get(id)??{attempt:1}}),
     apply:async(target,input)=>{if(effects.has(input.operation_id))return {...effects.get(input.operation_id),duplicate:true};
       calls++;const receipt={ok:true,operation_id:input.operation_id,message_id:input.message_id,assignment_id:input.assignment_id,
         task_id:'t-'+input.assignment_id.slice(2),attempt:input.attempt,kind:input.kind};
@@ -85,6 +85,19 @@ test('draft survives pause but rejects changed requirements before grant',async 
   await assert.rejects(f.c.assignmentDispatch({metadata:meta('o'),draft_id:d.draft_id}),{code:'PLUGIN_COMMUNICATION_STALE_DRAFT'});
   assert.equal(kit.calls,0);
 });
+test('a slow unbound executor does not delay dispatch to a ready sibling; old Kit cannot prepare',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),slow=f.target('slow'),fast=f.target('fast');
+  await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.c.reserve(slow);await f.bind(f.c,fast);
+  const assignments=(await f.c.roster({metadata:meta('o')})).assignments;
+  const drafts=[];
+  for(const a of assignments)drafts.push(await f.c.assignmentPrepare({metadata:meta('o'),recipient:a.recipient_ref,attempt:1,
+    body:'Selected '+a.task_id,idempotency_key:a.assignment_id}));
+  await assert.rejects(f.c.assignmentDispatch({metadata:meta('o'),draft_id:drafts[0].draft_id}),{code:'PLUGIN_COMMUNICATION_CHANNEL_NOT_READY'});
+  await f.c.assignmentDispatch({metadata:meta('o'),draft_id:drafts[1].draft_id});assert.equal(kit.calls,1);
+  kit.status=async()=>({dialogue_version:1,dialogue:{attempt:1}});
+  await assert.rejects(f.c.assignmentPrepare({metadata:meta('o'),recipient:assignments[0].recipient_ref,attempt:1,
+    body:'Other',idempotency_key:'old-kit'}),{code:'PLUGIN_COMMUNICATION_CAPABILITY'});
+});
 test('working API derives author, addresses distinct assignments and sends immutable selected context',async t=>{
   const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e'),other=f.target('other');
   await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.bind(f.c,e);await f.bind(f.c,other);
@@ -94,7 +107,7 @@ test('working API derives author, addresses distinct assignments and sends immut
     body:'Реализуй только модуль e',contexts:[{source:'contract-e.md',commit:'a'.repeat(40),text}],idempotency_key:'task-e'};
   const sent=await f.c.assignmentSend(input),read=await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
   assert.equal(read.sender_role,'O');assert.equal(read.assignment_id,'a-e');assert.equal(kit.calls,1);
-  assert.equal(read.role_protocol,3);assert.match(read.instructions,/ДИАЛОГ 1/);
+  assert.equal(read.role_protocol,4);assert.match(read.instructions,/ДИАЛОГ 1/);
   assert.match(read.instructions,/обязательно отправь orchestrator result/);
   assert.doesNotMatch(read.instructions,/Полный context_pack — в recovery/);
   let content='';for(let part=0,total=1;part<total;part++){
@@ -453,7 +466,7 @@ test('large UTF-8 context is complete, immutable, identity scoped and persists w
   assert.equal((await queue(f.c,e,'large',text)).message_id,m.message_id);
   await assert.rejects(queue(f.c,e,'large',text+'!'),{code:'PLUGIN_COMMUNICATION_CONFLICT'});
   const value=await f.c.readMessage({message_id:m.message_id,metadata:meta('e')});let complete='';
-  assert.equal(value.role_protocol,3);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
+  assert.equal(value.role_protocol,4);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
   assert.match(value.instructions,/не повторяют recovery и не запускают задачу заново/);
   for(let part=0,total=1;part<total;part++){
     const page=await f.c.content({message_id:m.message_id,context_ref:value.context_ref,part,metadata:meta('e')});

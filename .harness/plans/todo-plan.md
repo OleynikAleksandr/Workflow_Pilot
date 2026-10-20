@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 648,
+  "plan_revision": 650,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
@@ -1854,7 +1854,13 @@
         "packages/workflow-kit/package.json",
         "packages/workflow-kit/src/lib/common.mjs",
         "tools/codex-app-server-mcp/plugin.py",
-        "scripts/stage-chatgpt-plugin.mjs"
+        "scripts/stage-chatgpt-plugin.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/dialogue-preparation-finalization.md"
@@ -1877,14 +1883,29 @@
         "Подготовлен следующий свободный app/Kit номер, согласованы MCP/панель/ресурс/installer; проверка фактической yield schema включена. Живой тест и службы не изменяются."
       ],
       "expected_commit_message": "feat: Проверить перекрытие подготовки, DOCS и окончание полного запуска",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "T014",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "id": "DOCS-3",
@@ -2034,7 +2055,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 648
+Revision: 650
 
 ## Цель
 
@@ -2179,10 +2200,10 @@ Revision: 648
   - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/enrollment.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, tests/parallel-finalization.test.mjs, tests/workflow-channel.test.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, tests/dialogue-delivery.test.mjs, tests/dialogue-migration.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
   - Зависимости: T012
-- [TODO] T014: Проверить перекрытие подготовки, DOCS и окончание полного запуска — Ожидает
-  - Git Commit: [PENDING] feat: Проверить перекрытие подготовки, DOCS и окончание полного запуска
+- [DONE] T014: Проверить перекрытие подготовки, DOCS и окончание полного запуска — Завершено
+  - Git Commit: [DONE] feat: Проверить перекрытие подготовки, DOCS и окончание полного запуска
   - Reference: orchestrator-owned-dialogue-refactor / T014 / implementation
-  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-finalization.test.mjs, tests/electron-smoke.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, src/contracts/backend.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, docs/planning/dialogue-preparation-finalization.md
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-finalization.test.mjs, tests/electron-smoke.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, src/contracts/backend.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/panel.mjs, tests/panel-dialogue-view.test.mjs, tests/workflow-channel.test.mjs, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
   - Зависимости: T013
 - [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает

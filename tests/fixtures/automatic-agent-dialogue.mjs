@@ -19,7 +19,8 @@ import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 export async function automaticDialogue(t,experience='chat',{owned=false,conversation=false,workers=2,batchResults=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
-  let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0;
+  let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false;
+  const drafts=new Map();
   const root=createFixture(directory),setup={node:async()=>process.execPath,
     environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
       GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
@@ -45,7 +46,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
       assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
     };
     const message=await call('read_message',args);
-    assert.equal(message.role_protocol,3);
+    assert.equal(message.role_protocol,4);
     let text='';for(let part=0,total=1;part<total;part++){
       const value=await call('read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
       text+=value.text;total=value.total;
@@ -79,8 +80,8 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         if(message.task_id==='T003')assert.ok(readPlan(root).tasks.filter(t=>independent.includes(t.id)).every(t=>t.commit_status==='DONE'));
         if(message.task_id==='DOCS')assert.ok(readPlan(root).tasks.filter(t=>t.id!=='DOCS').every(t=>t.commit_status==='DONE'));
         const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);assert.ok(target);
-        await send({recipient:target.recipient_ref,kind:'task',body:'Implement only '+message.task_id+' and return the checked commit.',
-          contexts:[{source:'orchestrator-selection',text:'Selected context for '+message.task_id}]});
+        assert.ok(drafts.has(message.assignment_id),'O has already prepared before ready');
+        await call('assignment_dispatch',{draft_id:drafts.get(message.assignment_id)});
       }else if(message.kind==='task'){
         assert.equal(message.sender_role,'O');assert.equal(record.bootstrapCount,1);
         let selected='';for(let part=0,total=1;part<total;part++){
@@ -124,6 +125,22 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         assert.equal(message.attempt,2);await completeWork();
       }else if(message.kind==='recovery'){
         assert.equal(message.sender_role,'backend');
+        if(text.includes('workflow_assignment_prepare')){
+          if(message.task_id==='DOCS')assert.ok(readPlan(root).tasks.filter(t=>t.id!=='DOCS').every(t=>t.commit_status==='DONE'));
+          const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);assert.ok(target);
+          const prepared=await call('assignment_prepare',{recipient:target.recipient_ref,attempt:message.attempt,
+            body:'Implement only '+message.task_id+' and return the checked commit.',
+            contexts:[{source:'orchestrator-selection',text:'Selected context for '+message.task_id}],
+            idempotency_key:'prepare:'+message.assignment_id});
+          assert.equal(prepared.published,false);
+          const record=[...records.values()].find(r=>r.project()?.assignmentId===message.assignment_id);
+          if(record)assert.equal(record.bootstrapCount,0,'preparation overlaps unfinished bootstrap');
+          const state=(await call('assignment_status',{})).assignments.find(a=>a.assignment_id===message.assignment_id);
+          assert.ok(!state.dialogue?.grant,'draft does not grant work');
+          assert.equal([...plugin.communication.runs.values()].flatMap(r=>r.messages)
+            .some(m=>m.assignment_id===message.assignment_id&&m.kind==='task'),false);
+          drafts.set(message.assignment_id,prepared.draft_id);
+        }
         if(sharedRepair?.assignment_id===message.assignment_id){
           const target=(await roster()).assignments.find(a=>a.assignment_id===message.assignment_id);
           await repairAndResume(target);
@@ -151,12 +168,19 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
             await send({recipient:target.recipient_ref,kind:'acceptance',result_id:result.message_id,source_commit:result.source_commit,
               in_reply_to:result.message_id,idempotency_key:'accept:'+result.message_id,body:'Exact diff and checks accepted'});
             await plans.call(root,'integration:start',[],{id:result.assignment_id,source_commit:result.source_commit});
+            if(batchResults&&result.task_id==='DOCS'){
+              const cleanup=await plans.call(root,'assignment:cleanup');
+              assert.equal(cleanup.only_main,false);
+              assert.ok(cleanup.pending.some(a=>a.id===result.assignment_id&&a.reason==='terminal-receipt-pending'));
+              earlyCleanup=true;
+            }
           }
         }
       }else if(message.kind==='acceptance'){
         assert.equal(message.sender_role,'O');
         await wait(async()=>JSON.parse(await fs.readFile(path.join(root,'.git/workflow-kit/assignments',project.assignmentId+'.json'),'utf8')).phase==='INTEGRATED',
           'integration before late acceptance receipt');
+        if(batchResults&&project.taskId==='DOCS')await wait(()=>earlyCleanup,'early cleanup request before terminal yield');
         assert.ok((await fs.stat(project.workspace)).isDirectory(),'worktree survives until acceptance is handled');
       }
       else if(message.kind==='finalization'){
@@ -210,6 +234,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         assert.equal(record.bootstrapCount,0,'initial context is not replayed');assert.ok(input.attachments.length);
         await input.onBeforeFill();await input.onBeforeSend();composer.inFlight=true;page.busy=true;
         try{
+          if(owned&&project.assignmentId)await wait(()=>drafts.has(project.assignmentId),'O prepares while E bootstrap is unfinished');
           const invitation=JSON.parse(input.text.match(/workflow_pilot_panel с аргументами (\{"enrollment_ticket":"[a-f0-9]+"\})/)[1]);
           const registered=await c.callTool({name:'workflow_pilot_panel',arguments:invitation,_meta:record.metadata});
           assert.equal(registered.isError,false,JSON.stringify(registered.structuredContent));
@@ -301,6 +326,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     assert.equal(record.project().experience,record===o?experience:'chat');
   }
   if(owned){
+    assert.equal(drafts.size,taskCount);
     for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,taskCount+(conversation&&kind==='result'?1:0),kind);
     if(batchResults)assert.equal(notifications.filter(n=>n.directRead).length,1,'one result is read within the other SDK turn');
     if(conversation){
@@ -310,9 +336,21 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     }
     assert.equal(notifications.some(n=>['assignment-start','continue'].includes(n.kind)),false);
     assert.ok([...records.values()].every(r=>r.pageState.current.state.userMessagesRevision===1),'SDK creates no user bubble');
+    const completed=await c.callTool({name:'workflow_communication_participants',arguments:{},_meta:o.metadata});
+    assert.equal(completed.isError,false);
+    assert.equal(completed.structuredContent.assignments.length,taskCount);
+    assert.ok(completed.structuredContent.assignments.every(a=>a.phase==='INTEGRATED'&&!a.error),'cleanup preserves O read-only completion view');
   }else{assert.equal(notifications.filter(n=>n.kind==='question').length,1);assert.equal(notifications.filter(n=>n.kind==='decision').length,1);}
   assert.equal((await plans.call(root,'assignment:cleanup')).only_main,true);
   const run=[...plugin.communication.runs.values()][0];assert.equal(run.grant.phase,'complete');assert.equal(run.grant.active,false);
+  if(owned)for(const [assignmentId,draftId] of drafts){
+    const prepared=run.events.find(e=>e.event_type==='task.prepared'&&e.message_id===draftId);
+    const member=Object.values(run.members).find(m=>m.target.assignment_id===assignmentId);
+    const bound=run.events.find(e=>e.event_type==='binding.confirmed'&&e.participant_id===member.id);
+    const sent=run.events.find(e=>e.event_type==='message.persisted'&&e.message_id===draftId);
+    assert.ok(prepared.seq<bound.seq&&bound.seq<sent.seq,'prepare precedes binding; dispatch follows binding');
+  }
+  if(batchResults)assert.equal(earlyCleanup,true);
   assert.equal(workflow.executionControl.snapshot()[root].route,'plugin-v1');
   runtime.verify();
   return {notifications,run,root};

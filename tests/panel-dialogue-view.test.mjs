@@ -36,5 +36,9 @@ test('working UI separates report, acceptance and integration and renders addres
   assert.match(ui.$('messages').textContent,/В ответ на task-two/);
   assert.equal(ui.$('messages').querySelector('script'),null);
   assert.match(ui.$('roster').textContent,/T002.*Интеграция проверена/);
+  ui.snapshot({mode:'workflow',role:'O',participant_id:'o',permission:{phase:'complete'},stopped:true,messages:[],
+    assignments:['T001','T002','DOCS'].map(task_id=>({task_id,assignment_id:task_id,phase:'INTEGRATED',terminal:true}))});
+  assert.match(ui.$('permission').textContent,/Выполнение завершено.*3\/3.*связь отключена/);
+  assert.doesNotMatch(ui.$('roster').textContent,/SDK:.*не подтверждён/);
   ui.unbound();assert.equal(ui.$('roster').textContent,'');assert.equal(ui.$('roster-section').hidden,true);
 });

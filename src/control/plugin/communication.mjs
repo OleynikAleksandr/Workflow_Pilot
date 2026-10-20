@@ -83,7 +83,11 @@ export class PluginCommunication {
         this.panels=panels;if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
         const denialKey=input.run_id+':'+input.message_id;
         const repeated=name==='observed'&&this.observedDenials.get(denialKey)===error.code;
-        if(name==='observed'){if(this.observedDenials.size>=2048)this.observedDenials.clear();this.observedDenials.set(denialKey,error.code);}
+        if(name==='observed'){
+          if(!this.observedDenials.has(denialKey)&&this.observedDenials.size>=2048)
+            this.observedDenials.delete(this.observedDenials.keys().next().value);
+          this.observedDenials.set(denialKey,error.code);
+        }
         if(!this.critical&&old&&!repeated) {
           const denied=structuredClone(old);
           this.expire(denied);

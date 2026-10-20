@@ -57,14 +57,16 @@ export function mountPanel({document}) {
       if(value.assignments){$('roster-section').hidden=false;$('roster').replaceChildren();
         for(const assignment of value.assignments){const li=document.createElement('li'),detail=document.createElement('span');
           li.textContent=assignment.task_id+' · попытка '+(assignment.attempt??1)+' · '+(assignment.error?.message??assignmentStage(assignment).label);
-          detail.textContent=['Назначение '+assignment.assignment_id,'SDK: '+(assignment.channel?.sdk?'подключён':'не подтверждён'),
+          detail.textContent=assignment.terminal?'Работа интегрирована; worktree очищен.':['Назначение '+assignment.assignment_id,'SDK: '+(assignment.channel?.sdk?'подключён':'не подтверждён'),
             'поколение '+(assignment.channel?.generation??'—'),assignment.physical?.busy?'ход выполняется':assignment.physical?.stopped?'физическая остановка подтверждена':'состояние хода неизвестно',
             assignment.dialogue?.result?.source_commit?'коммит '+assignment.dialogue.result.source_commit:null].filter(Boolean).join(' · ');
           li.append(detail);$('roster').append(li);}
         text('outbox',(value.pending_intents??[]).map(i=>`${i.assignment_id}: ${i.phase}${i.error?' · '+i.error.message:''}`).join('\n'));}
       text('identity',value.mode==='workflow'?(value.role==='O'?'Оркестратор плана':`Исполнитель · ${value.task_id}\nНазначение ${value.assignment_id}`):`Роль ${value.role} · участник ${value.participant_id}`);
       text('binding',`Привязка подтверждена · ${value.conversation_key}`);
-      text('permission',value.mode==='workflow'?`План: ${value.permission?.phase??'ожидает запуска'} · ${value.stopped?'отправка приостановлена':'связь разрешена на время выполнения'}`:
+      text('permission',value.mode==='workflow'?(value.permission?.phase==='complete'
+        ?`Выполнение завершено · ${(value.assignments??[]).filter(a=>a.phase==='INTEGRATED').length}/${(value.assignments??[]).length} · связь отключена`
+        :`План: ${value.permission?.phase??'ожидает запуска'} · ${value.stopped?'отправка приостановлена':'связь разрешена на время выполнения'}`):
         `Поколение ${value.permission_generation} · ${value.expires_at?'до '+new Date(value.expires_at).toLocaleTimeString('ru'):'разрешение не выдано'}`);
       const incoming=value.messages.filter(m=>m.recipient_id===value.participant_id&&!m.superseded);
       text('queue',`${incoming.filter(m=>!m.read).length} непрочитанных · ${incoming.filter(m=>m.delivery==='pending'&&!m.read).length} ожидают уведомления`);

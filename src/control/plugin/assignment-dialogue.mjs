@@ -70,7 +70,22 @@ export class AssignmentDialogue {
             document_id:physical.documentId??null,observation_seq:physical.observationSeq??0}:null,
           parked:!!state.block&&physical?.stopped===true&&physical.commandsIdle===true&&!physical.busy,
           dialogue:state.dialogue?{grant:state.dialogue.grant,result:state.dialogue.result,acceptance:state.dialogue.acceptance}:null});
-      }catch(error){assignments.push({recipient_ref:member.role==='O'?reference(run,target):'orchestrator',task_id:target.task_id,
+      }catch(error){
+        // A parent may read its integrated record after cleanup. This view
+        // grants neither model access for the deleted E nor another delivery.
+        if(member.role==='O'&&target.project_id===member.target.project_id&&target.scope_id===run.grant?.scope_id){
+          try{
+            const state=await this.state(member.target,target.assignment_id);
+            if(state.id===target.assignment_id&&state.scope_id===target.scope_id&&state.task_id===target.task_id
+              &&state.phase==='INTEGRATED'&&state.cleanup?.status==='DONE'){
+              assignments.push({recipient_ref:reference(run,target),task_id:target.task_id,assignment_id:target.assignment_id,
+                attempt:state.dialogue?.attempt??1,phase:'INTEGRATED',terminal:true,dialogue_version:state.dialogue_version,
+                dialogue:state.dialogue?{result:state.dialogue.result,acceptance:state.dialogue.acceptance}:null});
+              continue;
+            }
+          }catch{/* A missing parent proof remains the original concrete error. */}
+        }
+        assignments.push({recipient_ref:member.role==='O'?reference(run,target):'orchestrator',task_id:target.task_id,
         assignment_id:target.assignment_id,error:{code:error.code,message:error.message}});}
     }
     return assignments;
@@ -97,6 +112,7 @@ export class AssignmentDialogue {
   async dispatchDraft(input){
     const {run,member}=this.c.member(input),intent=run.assignment_intents?.[input.draft_id];
     check(member.role==='O'&&intent?.sender_id===member.id&&intent.effect.kind==='task','ROLE','Нужен собственный черновик O.');
+    check(intent.effect.scope_id===run.grant?.scope_id,'STALE_DRAFT','Черновик относится к другому плану.');
     if(intent.phase!=='draft')return {message_id:intent.message_id};
     await this.c.enrollment.validate(intent.target);
     const state=await this.state(member.target,intent.effect.assignment_id);
@@ -112,12 +128,15 @@ export class AssignmentDialogue {
     check(run.mode==='workflow'&&run.grant&&!run.removed,'MODE','Нужен рабочий план.');
     check(allowed[member.role].has(payload.kind),'ROLE','Роль не допускает это сообщение.');
     check(!input.draft||member.role==='O'&&payload.kind==='task','ROLE','Подготовка доступна только оркестратору для task.');
-    const fingerprint=hash(JSON.stringify(payload)),key=hash(JSON.stringify([member.id,input.key]));
-    const previous=Object.values(run.assignment_intents??{}).find(i=>i.key===key);
+    const fingerprint=hash(JSON.stringify(payload)),key=hash(JSON.stringify([member.id,run.grant.scope_id,input.key]));
+    const legacyKey=hash(JSON.stringify([member.id,input.key]));
+    const previous=Object.values(run.assignment_intents??{}).find(i=>i.effect.scope_id===run.grant.scope_id&&(i.key===key||i.key===legacyKey));
     if(previous){check(previous.fingerprint===fingerprint,'CONFLICT','Этот ключ уже использован с другим содержимым.');return {message_id:previous.message_id,draft_id:previous.message_id,phase:previous.phase};}
     check(run.grant.phase!=='complete','STOPPED','План уже завершён.');
     const target=await this.target(run,member,payload.recipient),worker=member.role==='E'?member.target:target;
     const state=await this.state(member.target,worker.assignment_id);
+    check(!input.draft||typeof state.contract_digest==='string'&&state.contract_digest.length>0,
+      'CAPABILITY','Обновите Workflow Kit проекта: подготовка требует проверяемой версии требований назначения.');
     check((state.dialogue?.attempt??1)===payload.attempt,'STALE_ATTEMPT','Попытка изменилась. Прочитайте статус назначения.');
     if(payload.kind==='task'&&!input.draft)await this.ready(target);
     if(payload.in_reply_to){const parent=run.messages.find(m=>m.message_id===payload.in_reply_to);
