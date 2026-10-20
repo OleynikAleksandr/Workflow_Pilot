@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 661,
+  "plan_revision": 663,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Один Start запускает исполнителей, которым оркестратор адресно выдаёт задачи и выбранный контекст; двусторонний диалог разрешает блокировки и доставляет результаты для приёмки, интеграции и завершения плана без участия пользователя в обычных шагах.",
   "acceptance_criteria": [
     "Планирование O, полный начальный DOM-контекст, Review и одна кнопка Start сохранены. E получают через DOM только правила/identity/bootstrap; рабочую задачу и минимальный контекст выбирает и отправляет O.",
@@ -2107,14 +2107,15 @@
         "GitHub Release содержит полный комплект и проверенные assets/tag; пользователь получает опыт автоматической подготовки и complete, фактические ограничения и статус установки."
       ],
       "expected_commit_message": "feat: Опубликовать выпуск и передать повторный живой тест",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-owned-dialogue-refactor",
         "task_id": "PUBLISH-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -2136,10 +2137,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 661
+Revision: 663
 
 ## Цель
 
@@ -2314,8 +2315,8 @@ Revision: 661
   - Файлы: release-manifest.json, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-3, DOCS-3
-- [TODO] PUBLISH-3: Опубликовать выпуск и передать повторный живой тест — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать выпуск и передать повторный живой тест
+- [DONE] PUBLISH-3: Опубликовать выпуск и передать повторный живой тест — Завершено
+  - Git Commit: [DONE] feat: Опубликовать выпуск и передать повторный живой тест
   - Reference: orchestrator-owned-dialogue-refactor / PUBLISH-3 / implementation
   - Файлы: release-manifest.json, docs/planning/dialogue-preparation-finalization.md
   - Параллельность: исключительное выполнение
