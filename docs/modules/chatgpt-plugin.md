@@ -1,6 +1,8 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.12, Kit 1.9.3, протокол панели `3`, build `0.5.12-communication-3`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.13 (экспериментальная сборка), Kit 1.9.3, протокол панели `3`, build `0.5.13-communication-3`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. Рабочий контракт 0.5.12 сохранён; [приёмка A–D](automatic-agent-dialogue-acceptance.md) не заменяется проверкой PiP.
+
+В MCP добавлены пассивные `pip_probe_open_dialogue`, `pip_probe_open_plan` и app-only `pip_probe_status`: отдельные ресурсы и синтетические данные без backend-моста. [Опыт PiP](pip-probe.md): закрытие останавливает только обновления пробника; совместную видимость и работу агентов проверяет пользователь.
 
 ## Пользовательский путь
 

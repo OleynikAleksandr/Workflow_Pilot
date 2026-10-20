@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 715,
+  "plan_revision": 717,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -81,7 +81,8 @@
       "docs/acceptance/orchestrated-execution.md",
       "docs/modules/plugin-communication-handoff.md",
       "docs/modules/workflow-execution.md",
-      "docs/planning/pip-probe.md"
+      "docs/planning/pip-probe.md",
+      "docs/modules/pip-probe.md"
     ]
   },
   "baseline_commit": "68d47baf472b218c37cce32db4c484a5b342e243",
@@ -106,7 +107,7 @@
       {
         "path": "docs/planning/pip-probe.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "f3f208ebe33b1794517e1ddadff5242d488524ee"
       }
     ],
     "include_last_completed_task": false,
@@ -539,8 +540,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "DOCS-2",
@@ -555,14 +556,24 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/pip-probe.md"
+        "docs/planning/pip-probe.md",
+        "README.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/pip-probe.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/pip-probe.md",
+        "docs/planning/pip-probe.md"
+      ]
     },
     {
       "id": "BUILD-PIP",
@@ -648,7 +659,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 715
+Revision: 717
 
 ## Цель
 
@@ -718,10 +729,10 @@ Revision: 715
   - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tools/codex-app-server-mcp/pip_probe.py, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, scripts/check-pip-probe.mjs, tests/pip-probe.test.mjs, .gitignore, package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: prepared-task-flow / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/pip-probe.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/pip-probe.md, README.md, docs/modules/chatgpt-plugin.md, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: PIP-PROBE, PIP-INTEGRATE
 - [TODO] BUILD-PIP: Собрать экспериментальный комплект трёх ОС 0.5.13 — Ожидает
