@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 731,
+  "plan_revision": 733,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -816,14 +816,22 @@
         "Неизменность основного рабочего канала; реальные Node/Python MCP проверены; видимая метка опыта только PiP; версия 0.5.15."
       ],
       "expected_commit_message": "feat: Ограничить пробник переписки только режимом PiP",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "PIP-ONLY",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "tests/pip-probe.test.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tools/experiments/pip-probe/server.mjs"
+      ]
     },
     {
       "id": "DOCS-4",
@@ -936,7 +944,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 731
+Revision: 733
 
 ## Цель
 
@@ -1048,8 +1056,8 @@ Revision: 731
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-PIP2, DOCS-3
-- [TODO] PIP-ONLY: Ограничить пробник переписки только режимом PiP — Ожидает
-  - Git Commit: [PENDING] feat: Ограничить пробник переписки только режимом PiP
+- [DONE] PIP-ONLY: Ограничить пробник переписки только режимом PiP — Завершено
+  - Git Commit: [DONE] feat: Ограничить пробник переписки только режимом PiP
   - Reference: prepared-task-flow / PIP-ONLY / implementation
   - Файлы: tools/experiments/pip-probe/server.mjs, tools/codex-app-server-mcp/pip_probe.py, tests/pip-probe.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение

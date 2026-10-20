@@ -73,11 +73,11 @@ test('real MCP exposes distinct immutable UI resources and only synthetic status
   for (const uri of uris) {
     const resource = (await client.readResource({uri})).contents[0];
     assert.deepEqual(resource._meta['openai/ui'].availableDisplayModes,
-      uri.includes('/dialogue-') ? ['inline','pip'] : ['inline','fullscreen']);
-    assert.equal(resource._meta['openai/ui'].preferredDisplayMode, 'inline');
+      uri.includes('/dialogue-') ? ['pip'] : ['inline','fullscreen']);
+    assert.equal(resource._meta['openai/ui'].preferredDisplayMode, uri.includes('/dialogue-') ? 'pip' : 'inline');
     assert.match(resource.text, /Изолированный опыт/);
     const tool = tools.find(t=>t._meta?.ui?.resourceUri === uri);
-    assert.deepEqual(tool._meta['openai/ui'], {preferredModelDisplayMode:'inline'});
+    assert.deepEqual(tool._meta['openai/ui'], uri.includes('/dialogue-') ? undefined : {preferredModelDisplayMode:'inline'});
     assert.equal((await client.callTool({name:tool.name,arguments:{}})).isError, undefined);
   }
   const result = await client.callTool({name:'pip_probe_status',arguments:{}});
@@ -110,10 +110,11 @@ test('packaged Python MCP exposes both passive probes beside the real panel with
     const uri = tool._meta.ui.resourceUri;
     const resource = (await client.readResource({uri})).contents[0];
     assert.equal(uri, `ui://workflow-pilot-probe/${kind}-${createHash('sha256').update(resource.text).digest('hex')}.html`);
-    assert.equal(resource._meta['openai/ui'].preferredDisplayMode, 'inline');
+    assert.equal(resource._meta['openai/ui'].preferredDisplayMode, kind === 'dialogue' ? 'pip' : 'inline');
     assert.deepEqual(resource._meta['openai/ui'].availableDisplayModes,
-      kind === 'dialogue' ? ['inline','pip'] : ['inline','fullscreen']);
-    assert.deepEqual(tool._meta['openai/ui'], {preferredModelDisplayMode:'inline'});
+      kind === 'dialogue' ? ['pip'] : ['inline','fullscreen']);
+    assert.deepEqual(tool._meta['openai/ui'], kind === 'dialogue' ? undefined : {preferredModelDisplayMode:'inline'});
+    if (kind === 'dialogue') assert.match(resource.text, /Режим эксперимента: только PiP/);
     assert.equal((await client.callTool({name:tool.name,arguments:{}})).isError, false);
     await fs.writeFile(path.join(toolsDir,`pip-probe-${kind}.html`), 'changed on disk');
     assert.equal((await client.readResource({uri})).contents[0].text, resource.text);
