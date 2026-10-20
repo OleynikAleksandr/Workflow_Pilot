@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 638,
+  "plan_revision": 639,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-owned-dialogue-refactor",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Один Start запускает исполнителей, которым оркестратор адресно выдаёт задачи и выбранный контекст; двусторонний диалог разрешает блокировки и доставляет результаты для приёмки, интеграции и завершения плана без участия пользователя в обычных шагах.",
   "acceptance_criteria": [
     "Планирование O, полный начальный DOM-контекст, Review и одна кнопка Start сохранены. E получают через DOM только правила/identity/bootstrap; рабочую задачу и минимальный контекст выбирает и отправляет O.",
@@ -176,7 +176,8 @@
       "packages/workflow-kit/src/WORKFLOW.md",
       "packages/workflow-kit/src/templates/PLAN.md",
       "docs/modules/assignment-dialogue.md",
-      "docs/modules/assignment-dialogue-reliability.md"
+      "docs/modules/assignment-dialogue-reliability.md",
+      "docs/planning/dialogue-preparation-finalization.md"
     ]
   },
   "baseline_commit": "99e36fd1df663fb269ddf6f695423f5bd5a44fe9",
@@ -197,6 +198,11 @@
         "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "25e19c2425f144155f933c10feaf8c9a71a86768"
+      },
+      {
+        "path": "docs/planning/dialogue-preparation-finalization.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -1668,6 +1674,298 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "T012",
+      "title": "Готовить поручения O одновременно с запуском E и отправлять после готовности канала",
+      "why": "Готовить поручения O одновременно с запуском E и отправлять после готовности канала",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "src/execution/plugin/communication-store.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tools/codex-app-server-mcp/server.py",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "src/control/context/context-session.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/dialogue-preparation-finalization.md",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "packages/workflow-kit/src/WORKFLOW.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "executor-channel",
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Start уведомляет O о допустимых назначениях до завершения bootstrap; подготовка выбранного контекста и задач идёт одновременно с запуском E. Backend не автор поручения.",
+        "Долговечный черновик O не создаёт task grant и не доставляется E. Только действие O после свежего подтверждения binding/SDK/конца bootstrap публикует задание; ранний send отклоняется без эффекта.",
+        "Сохранены адресность, зависимости DOCS, лимиты, идемпотентность и UNKNOWN; Pause/Continue/restart/смена попытки и требований не отправляют устаревший текст.",
+        "Единые инструкции роли/startup/Kit/MCP/backend различают подготовку и отправку; yield.reason явно перечислен в фактической схеме и описаниях, без обучения агента через ошибку."
+      ],
+      "expected_commit_message": "feat: Готовить поручения O одновременно с запуском E и отправлять после готовности канала",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "T012",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T013",
+      "title": "Завершать канал и очищать назначения без зависшей Паузы",
+      "why": "Завершать канал и очищать назначения без зависшей Паузы",
+      "dependencies": [
+        "T012"
+      ],
+      "functional_paths": [
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/scripts/check-task-assignment-fixture.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/panel-dialogue-view.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/dialogue-preparation-finalization.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "kit-check",
+        "kit-assignments",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Регрессия воспроизводит read/yield последнего acceptance, раннюю cleanup и поздний observed; устранена причинная гонка, не только подпись кнопки.",
+        "Очистка ждёт доказанного конца E и автоматически продолжается; обработка существующей терминальной квитанции не даёт полномочий на новую работу и не требует существующего удалённого worktree.",
+        "После DOCS/delivery/cleanup и физического конца итогового O выполнение complete отзывает grant идемпотентно; нет цикла ожиданий, фиктивных квитанций и потока одинаковых denied.",
+        "При финализации показаны Завершение и причина; после complete нет активной Паузы/Продолжить, карточка и панель показывают 3/3, пользовательская приёмка scope остаётся отдельной."
+      ],
+      "expected_commit_message": "feat: Завершать канал и очищать назначения без зависшей Паузы",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "T013",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "T014",
+      "title": "Проверить перекрытие подготовки, DOCS и окончание полного запуска",
+      "why": "Проверить перекрытие подготовки, DOCS и окончание полного запуска",
+      "dependencies": [
+        "T013"
+      ],
+      "functional_paths": [
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/dialogue-runtime.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/panel-resource-upgrade.test.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "scripts/stage-chatgpt-plugin.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/dialogue-preparation-finalization.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "kit-check",
+        "kit-assignments",
+        "executor-channel",
+        "chatgpt-plugin",
+        "electron-smoke",
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Start с 2 и 5 E без открытия карточек доказывает перекрытие подготовки с bootstrap, запрет раннего grant/send, независимость медленного E и отсутствие дублей.",
+        "Две интеграции автоматически запускают DOCS; полный путь до cleanup/complete проходит при поздних квитанциях, restart и Pause/Continue. UNKNOWN не повторяется.",
+        "Отдельные метки подготовки/готовности/отправки/read/cleanup/complete позволяют сравнить живой DOCS с базой 121 с; fixtures не объявляются доказательством ускорения модели.",
+        "Подготовлен следующий свободный app/Kit номер, согласованы MCP/панель/ресурс/installer; проверка фактической yield schema включена. Живой тест и службы не изменяются."
+      ],
+      "expected_commit_message": "feat: Проверить перекрытие подготовки, DOCS и окончание полного запуска",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "T014",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "T012",
+        "T013",
+        "T014"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/dialogue-preparation-finalization.md",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/templates/PROTOTYPE.md",
+        "packages/workflow-kit/src/WORKFLOW.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-3",
+      "title": "Собрать следующий выпуск для трёх ОС",
+      "why": "Собрать следующий выпуск для трёх ОС",
+      "dependencies": [
+        "T014",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/dialogue-preparation-finalization.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS-3 единый sourceCommit и проверенные macOS/Windows/Linux архивы; перед каждой сборкой удалены только разрешённые Python-кэши; подпись и digests проверены."
+      ],
+      "expected_commit_message": "feat: Собрать следующий выпуск для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "RELEASE-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-3",
+      "title": "Установить готовый проверенный macOS-комплект",
+      "why": "Установить готовый проверенный macOS-комплект",
+      "dependencies": [
+        "RELEASE-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/dialogue-preparation-finalization.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer проверяет версию/manifest/подпись/rollback без пересборки и остановки backend; verified pending явно отделён от установленной активной версии."
+      ],
+      "expected_commit_message": "feat: Установить готовый проверенный macOS-комплект",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "INSTALL-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-3",
+      "title": "Опубликовать выпуск и передать повторный живой тест",
+      "why": "Опубликовать выпуск и передать повторный живой тест",
+      "dependencies": [
+        "INSTALL-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/dialogue-preparation-finalization.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "GitHub Release содержит полный комплект и проверенные assets/tag; пользователь получает опыт автоматической подготовки и complete, фактические ограничения и статус установки."
+      ],
+      "expected_commit_message": "feat: Опубликовать выпуск и передать повторный живой тест",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-owned-dialogue-refactor",
+        "task_id": "PUBLISH-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1689,10 +1987,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: orchestrator-owned-dialogue-refactor
 Current Task: нет
-Revision: 638
+Revision: 639
 
 ## Цель
 
@@ -1825,11 +2123,54 @@ Revision: 638
   - Файлы: release-manifest.json, docs/modules/assignment-dialogue-reliability.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL-2, DOCS-2
+- [TODO] T012: Готовить поручения O одновременно с запуском E и отправлять после готовности канала — Ожидает
+  - Git Commit: [PENDING] feat: Готовить поручения O одновременно с запуском E и отправлять после готовности канала
+  - Reference: orchestrator-owned-dialogue-refactor / T012 / implementation
+  - Файлы: src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/enrollment.mjs, src/contracts/plugin-communication.mjs, src/execution/plugin/communication-store.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/server.py, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/recovery.mjs, src/control/context/context-session.mjs, tests/dialogue-delivery.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T013: Завершать канал и очищать назначения без зависшей Паузы — Ожидает
+  - Git Commit: [PENDING] feat: Завершать канал и очищать назначения без зависшей Паузы
+  - Reference: orchestrator-owned-dialogue-refactor / T013 / implementation
+  - Файлы: src/control/workflow/parallel-execution.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/enrollment.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, packages/workflow-kit/src/lib/task-assignment.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/scripts/check-task-assignment-fixture.mjs, tests/parallel-finalization.test.mjs, tests/workflow-channel.test.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, docs/planning/dialogue-preparation-finalization.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T012
+- [TODO] T014: Проверить перекрытие подготовки, DOCS и окончание полного запуска — Ожидает
+  - Git Commit: [PENDING] feat: Проверить перекрытие подготовки, DOCS и окончание полного запуска
+  - Reference: orchestrator-owned-dialogue-refactor / T014 / implementation
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/dialogue-runtime.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-finalization.test.mjs, tests/electron-smoke.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, src/contracts/backend.mjs, package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, tools/codex-app-server-mcp/plugin.py, scripts/stage-chatgpt-plugin.mjs, docs/planning/dialogue-preparation-finalization.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T013
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: orchestrator-owned-dialogue-refactor / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/dialogue-preparation-finalization.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/templates/PROTOTYPE.md, packages/workflow-kit/src/WORKFLOW.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T012, T013, T014
+- [TODO] RELEASE-3: Собрать следующий выпуск для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать следующий выпуск для трёх ОС
+  - Reference: orchestrator-owned-dialogue-refactor / RELEASE-3 / implementation
+  - Файлы: release-manifest.json, docs/planning/dialogue-preparation-finalization.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T014, DOCS-3
+- [TODO] INSTALL-3: Установить готовый проверенный macOS-комплект — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовый проверенный macOS-комплект
+  - Reference: orchestrator-owned-dialogue-refactor / INSTALL-3 / implementation
+  - Файлы: release-manifest.json, docs/planning/dialogue-preparation-finalization.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-3, DOCS-3
+- [TODO] PUBLISH-3: Опубликовать выпуск и передать повторный живой тест — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать выпуск и передать повторный живой тест
+  - Reference: orchestrator-owned-dialogue-refactor / PUBLISH-3 / implementation
+  - Файлы: release-manifest.json, docs/planning/dialogue-preparation-finalization.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-3, DOCS-3
 
 ## Context Pack For This Cycle
 
 - docs/modules/assignment-dialogue.md
 - docs/modules/assignment-dialogue-reliability.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/dialogue-preparation-finalization.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
