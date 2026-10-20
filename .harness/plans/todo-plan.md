@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 709,
+  "plan_revision": 711,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -460,14 +460,20 @@
         "Живое одновременное отображение ChatGPT и сохранение реального канала не объявляются подтвержденными из fixture; подготовлен конкретный порядок пользовательской проверки."
       ],
       "expected_commit_message": "feat: Подготовить изолированный опыт основной панели и отдельного PiP",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "PIP-PROBE",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/pip-probe.md",
+        "tests/pip-probe.test.mjs",
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/experiments/pip-probe/view.mjs"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -489,10 +495,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 709
+Revision: 711
 
 ## Цель
 
@@ -550,8 +556,8 @@ Revision: 709
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
-- [TODO] PIP-PROBE: Подготовить изолированный опыт основной панели и отдельного PiP — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить изолированный опыт основной панели и отдельного PiP
+- [DONE] PIP-PROBE: Подготовить изолированный опыт основной панели и отдельного PiP — Завершено
+  - Git Commit: [DONE] feat: Подготовить изолированный опыт основной панели и отдельного PiP
   - Reference: prepared-task-flow / PIP-PROBE / implementation
   - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tests/pip-probe.test.mjs, docs/modules/chatgpt-plugin.md, docs/planning/pip-probe.md
   - Параллельность: исключительное выполнение
