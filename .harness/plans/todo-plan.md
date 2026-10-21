@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 817,
+  "plan_revision": 819,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Стартовый контекст O через панель без DOM-вложений, проверенный выпуск и установка",
   "acceptance_criteria": [
     "Новая O-сессия получает полный пакет через панель без вложений на изолированных fixtures; живая приёмка pending",
@@ -524,14 +524,15 @@
         "Установка или pending подтверждены installer; служба и приложение не останавливались"
       ],
       "expected_commit_message": "feat: Установить готовый выпуск 0.5.21",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "INSTALL-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -553,10 +554,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 817
+Revision: 819
 
 ## Цель
 
@@ -621,8 +622,8 @@ Revision: 817
   - Файлы: release-manifest.json, docs/planning/startup-latency.md
   - Параллельность: исключительное выполнение
   - Зависимости: FAST-START, DOCS-2
-- [TODO] INSTALL-2: Установить готовый выпуск 0.5.21 — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовый выпуск 0.5.21
+- [DONE] INSTALL-2: Установить готовый выпуск 0.5.21 — Завершено
+  - Git Commit: [DONE] feat: Установить готовый выпуск 0.5.21
   - Reference: orchestrator-panel-startup / INSTALL-2 / implementation
   - Файлы: docs/planning/startup-latency.md
   - Параллельность: исключительное выполнение
