@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 815,
+  "plan_revision": 817,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -492,14 +492,17 @@
         "После DOCS собран проверенный комплект из одного sourceCommit; Python cache исключён"
       ],
       "expected_commit_message": "feat: Собрать комплект 0.5.21 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "BUILD-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-2",
@@ -553,7 +556,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 815
+Revision: 817
 
 ## Цель
 
@@ -612,8 +615,8 @@ Revision: 815
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-latency.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: FAST-START
-- [TODO] BUILD-2: Собрать комплект 0.5.21 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать комплект 0.5.21 для трёх ОС
+- [DONE] BUILD-2: Собрать комплект 0.5.21 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать комплект 0.5.21 для трёх ОС
   - Reference: orchestrator-panel-startup / BUILD-2 / implementation
   - Файлы: release-manifest.json, docs/planning/startup-latency.md
   - Параллельность: исключительное выполнение

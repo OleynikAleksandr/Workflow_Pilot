@@ -1,14 +1,14 @@
 {
   "schemaVersion": 2,
-  "version": "0.5.20",
-  "sourceCommit": "54480db4ac4d7a816f279c075a8f325c8437b081",
+  "version": "0.5.21",
+  "sourceCommit": "6058c64bdc32152480d53c03faf2f9df20710ec6",
   "sourceFiles": 250,
   "sources": {
     "LICENSE": "43a6559711f10402ae87af80b8ac779ed3df6af92aba3f2ed85bf80d4ebf3c69",
     "packages/workflow-kit/package.json": "9ef131eac09dc96527894f4cf588d08bb78de3bd0c77cee7d3e917ef55174e10",
     "packages/workflow-kit/index.mjs": "3daab9251d8ceab8c3b54148469848d263c27dd731782dd64b4e3484fcc85dba",
-    "package.json": "71f11ba4833839c7b61c61bf5ba08d0804d6f7a11bff4cabf0e89392e25b3b8a",
-    "package-lock.json": "f9e9204e5c2f718df85c39c7ff2b598135445897faa74c36565d8247a347dde2",
+    "package.json": "9dd54b07fb349c46a036b4cac4d1f5b5d9d0b7b16d264e86ed90ea0efd2f9cf1",
+    "package-lock.json": "2241302959fe59ef9aec22508cb286fe4282f94d8bbfa4d8a2673b504f86bcb2",
     "src/backend/bootstrap.mjs": "4820a3bc6d44928de634f5e93646d102b2adbea629859815bc6ed3d07f3af67d",
     "src/backend/control-lease.mjs": "1fabe048b528c08af1aa74c5cc80063dacaa664ba41def7e440b37b720da2775",
     "src/backend/desktop-model.mjs": "b54f26690bffefcf2453ec300100a63d0711554a0fe60f074c4b79426f71eb11",
@@ -31,7 +31,7 @@
     "src/chatgpt-composer.mjs": "b3e9ca8c2b9db94ac8f42d35526e1770058229fef7607ddd38d20f7282dcfac7",
     "src/chatgpt-dom.mjs": "b913cf4298d106e48f80430a5ff694fa439ee010d40b3e974278becc7768f9ba",
     "src/chatgpt-experience.mjs": "80dc2e64c637b6be497ea692552530b951351c84015584b5b9093bc3b998037f",
-    "src/contracts/backend.mjs": "cf7a810048fe42b369ce03255dd8d862f0bfe490dc12a45a0e80a9aeec48c3ec",
+    "src/contracts/backend.mjs": "05ef9e26b180e034cbb8d065904464164927421132f6eee3c9957f9350b9f7a9",
     "src/contracts/browser-presentation.mjs": "d6bceb184efa4b1e8611787df6cd2f01348448cc3ff13bd2369c8f98a3350500",
     "src/contracts/browser.mjs": "4371e1c4957e45259f3f0e377155c93c2f59318261f1e871be4e55ddae663af3",
     "src/contracts/chat-colors.mjs": "2f230f2905566624cb4e3a4af3c88acfb1132e70eccd9f45bd97b6efc02d651a",
@@ -45,20 +45,20 @@
     "src/contracts/parallel-settings.mjs": "1a768f67cde937a3de46bb789ae7331da5e271616f53a6944179b2a58bfb8a3d",
     "src/contracts/plugin-communication.mjs": "777104019958286692a8f991ff5353943c05dee72fccad76289c6a5a330d9799",
     "src/contracts/remote.mjs": "b43f7efcf9e82c5a5d9c6a8263038c70e0d2e530ccc2c86114d103b714314dce",
-    "src/contracts/startup-view.mjs": "b17402106a61a5d748fe08458ff5dc8b0120f13ec95ab9c2697b9d6310650dec",
+    "src/contracts/startup-view.mjs": "e088142eda8787317c3b845c805407793996ca5cf364aa72445f7b1ca536c725",
     "src/contracts/tunnel.mjs": "77b702b2e6521fb58a298a065b857cae34554e655b6a9fa14332652e72962c96",
     "src/contracts/workflow-view.mjs": "f3af5765cb9d8d17bd35198ca54dc163a2ea0fa208bc04a26bf6929a8d1c6ca8",
     "src/control/context/context-cache.mjs": "4c2dd8116305a8f5a98e49ddc7c41853ac280c1abff3bb52676dc85861601fbe",
     "src/control/context/context-inputs.mjs": "df9d571412ad65a9ededac0d4c6b36e712febb879bc0a788d14a97b7a79b0202",
-    "src/control/context/context-session.mjs": "96c894e47f4265120baa211f1611b26ab1baa8ad4f1c103a7da321667b91ebe9",
+    "src/control/context/context-session.mjs": "967d72ab61f7b1e5a26700cdcde7ee1f01c3ad25d6f6a8d6620625b68f1afc9c",
     "src/control/context/service.mjs": "6644d460735b11e9de44cf624799905899247ba7ad94ecf37bcf5a6b3fde8508",
     "src/control/facade.mjs": "a0bfe9a4c940fc4d71bbb00cf9f466cac9803576fe31eb82b6b67fba07af884d",
     "src/control/plugin/assignment-dialogue.mjs": "6d725c93210e4aa9dca4a013a13eef8c94121888d99475aa2f20efa3ed19abc7",
-    "src/control/plugin/communication.mjs": "bc21e0fa627f99eef82ff98b984619137e025089dfebfbf52fdc4e47d1f8e1d1",
+    "src/control/plugin/communication.mjs": "6676db292efb04f406bfad72f092c1af5d227dfd8bca8a29e8d9e7e885e6fcc0",
     "src/control/plugin/enrollment.mjs": "b15ad3c4dca64b3d40e0d274e071fa80d8ddb07e7161949c1bc7c7d8c2364ded",
-    "src/control/plugin/service.mjs": "6980bad3e5e8d380b5b0b9264144673db1f682c1ab86b1d450643ad25c2325d5",
-    "src/control/plugin/startup-context.mjs": "cce6b848807c1eec18d0e8a1fa256e2832841217f1c551b10bec2d1d2b5a12d8",
-    "src/control/plugin/workflow-channel.mjs": "7fa0eeca82da874623bef0117a17272e4a43f25667a7f45a5bf680f5c97d16d4",
+    "src/control/plugin/service.mjs": "bdfbff776b3b51eef09fd9f0d3317f935bfe52376823f52368527b92faea5b03",
+    "src/control/plugin/startup-context.mjs": "42b78a13c311b9caf10973813d413f2016665d5a264c6488184dd6990ff9afe0",
+    "src/control/plugin/workflow-channel.mjs": "bf17a03a27fc4f07c0a59483feffb00ff7f13c7656b97133e3b48356bd725640",
     "src/control/projects/lifecycle.mjs": "7a521061d62d8b64d6476f8de8b6e2b1f6b199a38a38c56a006a812139b7bc1b",
     "src/control/projects/project-doctor.mjs": "8db20c96b6e61b385d870a8b83a19fec1833cf7809ca506dd7efe19fb88b66af",
     "src/control/projects/project-state-cleanup.mjs": "7fe6e3dde16a3a074506e79b99175583302d374f3e30120f4f2a7b25c40ea01c",
@@ -166,7 +166,7 @@
     "src/frontend/desktop/ui/workspace-setup.mjs": "82eea0da937584297fd43bec77abbbc396560173e14a4ee51a241b8d2fdba78b",
     "src/frontend/plugin/app.mjs": "53d5628e25225835f1883e4ff23b990844e99d6b2c55aa64419041064fab40b7",
     "src/frontend/plugin/index.html": "a3feedf7d40e79f5c8329883250bf67ae45ed51a2f312a9898a72d61cbcdb741",
-    "src/frontend/plugin/launch.mjs": "1ff8fb83945c76500f8ec8d96d00234fd3f4b154331567cdb69b517349d8b286",
+    "src/frontend/plugin/launch.mjs": "c25997736310720e2f468295b0f806cba82fa4446781d75f077e3a0ec877a9a6",
     "src/frontend/plugin/panel.mjs": "b219482c1efe3dd36d2ef6436def58a8d2334b415c98695e453d61b092489628",
     "src/frontend/web/app.mjs": "793a9460a3703c052de48e2c45169abcab3f3734af6e7c32d241dd4541fa1a57",
     "src/frontend/web/index.html": "4beeccb5db9b5f4e5d54b78b1cc2ca4f62805e35eed057f30b51abef98c7b9d8",
@@ -245,8 +245,8 @@
     "tools/codex-app-server-mcp/control.py": "875b1aabb6edcade7e8c1162ea1969ff6af4454dc50f9dc0d5bbe4c86ea19043",
     "tools/codex-app-server-mcp/linux_desktop.py": "5fb02227a28c41bcdae333154c4ee1dc4736f31912f000e38d4c1945cb910676",
     "tools/codex-app-server-mcp/linux_runtime.py": "6efa1bcc6c81cbd3bd3f8e62937422f385f4d3daa23a00843bff003baca94883",
-    "tools/codex-app-server-mcp/plugin-ui.html": "4feba97af0375c3ac6287fb0a41100b48b0e4d5606ce59ca4838eead785bee75",
-    "tools/codex-app-server-mcp/plugin.py": "985bb6f4e350572b5d9ee1bd7b9401e36987aa742bf7c72ac49810e339327508",
+    "tools/codex-app-server-mcp/plugin-ui.html": "9064889eb175ae9fd7b8548cbfbd065b3c1650a8ea24c28f031082e1091e88a3",
+    "tools/codex-app-server-mcp/plugin.py": "5e69c26185438246b2ed735d06370917ee2f5e2f92d453cc0a49afdca84b4ea4",
     "tools/codex-app-server-mcp/requirements-linux.in": "081ff759c914456b2886a63fbd100855e8e2a75facfbd281ca016f862f99b8ce",
     "tools/codex-app-server-mcp/requirements-linux.lock": "3f9979e11eb6f454af921ff9cf734b811b7e7e98064f8dfb5929178443237752",
     "tools/codex-app-server-mcp/requirements.txt": "62e88d43fb5d987eb9cd6c21cd01a82037d6a7357123fcc6e2a474dd1a3e697b",
@@ -256,7 +256,7 @@
     "tools/codex-app-server-mcp/windows_notify.ps1": "6b67095838698735bdd44981e744cac2b572427252bc7ebd56face2293b9acdb"
   },
   "locks": {
-    "package-lock.json": "f9e9204e5c2f718df85c39c7ff2b598135445897faa74c36565d8247a347dde2",
+    "package-lock.json": "2241302959fe59ef9aec22508cb286fe4282f94d8bbfa4d8a2673b504f86bcb2",
     "tools/codex-app-server-mcp/codex-tools.lock.json": "ac2d9de8ef62562b78b1d8ee2fb75cf15375a68aa802ecd4435c47c8ebf73068",
     "tools/codex-app-server-mcp/requirements-linux.lock": "3f9979e11eb6f454af921ff9cf734b811b7e7e98064f8dfb5929178443237752"
   },
@@ -272,7 +272,7 @@
     "identity": "A0F7CEBAE465D22E7A0CD3FFC3C5F785589A85A5",
     "teamId": "JG9T5YMR4M",
     "identifier": "com.oleynik.WorkflowPilot",
-    "cdhash": "119648f6c575b5fb9fadebaeb7b28418db7a138b",
+    "cdhash": "8baf5c884fc0057fc113cd8d5357427a4a02b1af",
     "requirement": "identifier \"com.oleynik.WorkflowPilot\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: alexandrovichroman@gmail.com (DQT97QNYK6)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */"
   },
   "artifacts": [
@@ -280,31 +280,31 @@
       "platform": "macOS arm64",
       "os": "darwin",
       "arch": "arm64",
-      "asarSha256": "71188a0f4ccacbb30f5d34cda28d08370d1c378aa00c117998c58485aa3042ee",
+      "asarSha256": "748784b57aeb4c4afec5279bf5b981327c0b0c1b0a328e584f3492a613dedaa1",
       "packageFiles": 365,
-      "file": "Workflow-Pilot-0.5.20-macOS-arm64.zip",
-      "bytes": 185822349,
-      "sha256": "cc41bf7e70a368a55cccd2cf4a148af80e03ce06dd9b9d513963c98c6c1d891a"
+      "file": "Workflow-Pilot-0.5.21-macOS-arm64.zip",
+      "bytes": 185823646,
+      "sha256": "496e231bbcef36704897cf87baece7b0d46cce4f36e967956bec0d333da0caed"
     },
     {
       "platform": "Windows x64",
       "os": "win32",
       "arch": "x64",
-      "asarSha256": "71188a0f4ccacbb30f5d34cda28d08370d1c378aa00c117998c58485aa3042ee",
+      "asarSha256": "748784b57aeb4c4afec5279bf5b981327c0b0c1b0a328e584f3492a613dedaa1",
       "packageFiles": 2152,
-      "file": "Workflow-Pilot-0.5.20-Windows-x64.zip",
-      "bytes": 321770406,
-      "sha256": "c42326098329eb47a2e7fc6474495cc10837825762e5fa4cc1f8d4c42a0ed8e3"
+      "file": "Workflow-Pilot-0.5.21-Windows-x64.zip",
+      "bytes": 321771712,
+      "sha256": "14f9ed551a6bc80d5a2495340ed58057144a0afc54d83ecf50bd696619eac47b"
     },
     {
       "platform": "Linux x64",
       "os": "linux",
       "arch": "x64",
-      "asarSha256": "71188a0f4ccacbb30f5d34cda28d08370d1c378aa00c117998c58485aa3042ee",
+      "asarSha256": "748784b57aeb4c4afec5279bf5b981327c0b0c1b0a328e584f3492a613dedaa1",
       "packageFiles": 9685,
-      "file": "Workflow-Pilot-0.5.20-Linux-x64.tar.gz",
-      "bytes": 380161984,
-      "sha256": "c03760e576f92cc1892342ea37ba0c9556a52fa727961766eedd915d732a791d"
+      "file": "Workflow-Pilot-0.5.21-Linux-x64.tar.gz",
+      "bytes": 380163476,
+      "sha256": "6bf9f1ea9d5a097c460026839de29b6cae3a1bf282f2ac67af7080d2a7cf5909"
     }
   ],
   "windowsRuntimeArchive": {
@@ -316,12 +316,12 @@
     {
       "file": "SHA256SUMS.txt",
       "bytes": 414,
-      "sha256": "20a19619ed1539f86032772a73934ae559a36bfc0fa1ca8c5dfdf81818d91ccd"
+      "sha256": "0c505047b2c406c0c93f5babce42fd9cebafb31d2e109c49e9e538d7c211e63f"
     },
     {
       "file": "INSTALL.txt",
       "bytes": 2076,
-      "sha256": "0dc081df6f3d169497523ffe87c0a200217afead4dda8dd3178caa4f596163e1"
+      "sha256": "85b64f973714ed01e857d09743d906b927337a415beb63db3131c52821d67fa6"
     }
   ],
   "nativeMacTested": false,
