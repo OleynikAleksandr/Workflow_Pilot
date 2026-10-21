@@ -95,15 +95,14 @@ export function prepareReview(root, input) {
     const response_file = typeof input.response === 'string' && input.response.trim() ? prefix+'-changes.txt' : null;
     if (typeof input.response==='string' && input.response.trim()) atomic(safePath(dir,response_file),input.response);
     const files = [scope_file,plan_file,...(response_file?[response_file]:[])];
-    const exhausted=continuing && round>=old.max_rounds;
-    const s = saveReview(root, {version:1,enabled:old.enabled,generation:old.generation,stage:exhausted?'NEEDS_USER':'PREPARED',run_id,
-      scope_id:scope.scope_id,round,max_rounds:continuing?old.max_rounds:4,claude_session_id:continuing?old.claude_session_id:null,
+    const s = saveReview(root, {version:1,enabled:old.enabled,generation:old.generation,stage:'PREPARED',run_id,
+      scope_id:scope.scope_id,round,claude_session_id:continuing?old.claude_session_id:null,
       ...recipient,
       review_history:history,
       base_head:head(root),base_revision:previous.plan_revision,documents,scope_file,plan_file,response_file,
-      error:exhausted?{code:'REVIEW_ROUND_LIMIT',message:'Лимит раундов. Спросите пользователя о продолжении.'}:null,
+      error:null,
       plan_digest:reviewPlanDigest(candidate),input_hashes:Object.fromEntries(files.map(f=>[f,hash(fs.readFileSync(safePath(dir,f)))]))});
-    return {ok:true,...s,run_directory:dir,next_action:exhausted?'Спросить пользователя; review:resolve':'review:run'};
+    return {ok:true,...s,run_directory:dir,next_action:'review:run'};
   });
 }
 export function resolveReview(root, action, note) {
@@ -114,8 +113,7 @@ export function resolveReview(root, action, note) {
       'REVIEW_RESOLUTION', 'Укажите action retry|publish|cancel и note с решением пользователя.');
     if (action !== 'cancel') checkReviewInputs(root,s);
     const stage = action === 'cancel' ? 'CANCELLED' : action === 'publish' ? 'AGREED' : 'PREPARED';
-    return {ok:true,...saveReview(root,{...s,stage,user_decision:{action,note},error:null,notification_handled:false,
-      max_rounds:action==='retry'?Math.max(s.max_rounds,s.round+1):s.max_rounds})};
+    return {ok:true,...saveReview(root,{...s,stage,user_decision:{action,note},error:null,notification_handled:false})};
   });
 }
 export function reviewStatus(root) {

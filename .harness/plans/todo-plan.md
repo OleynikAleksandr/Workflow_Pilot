@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 844,
+  "plan_revision": 847,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -34,7 +34,6 @@
       "tests/workflow-kit-upgrade.test.mjs",
       "tests/fixtures/released-kit/manifest.json",
       "tests/fixtures/released-kit/kit-1.9.3.tar.gz",
-      "tests/fixtures/released-kit/README.md",
       "src/control/workflow/plan-review.mjs",
       "tests/plan-review.test.mjs",
       "src/control/plugin/startup-context.mjs",
@@ -73,7 +72,8 @@
       "docs/architecture/OVERVIEW.md",
       "docs/modules/orchestrator-startup.md",
       "docs/modules/assignment-dialogue.md",
-      "docs/modules/orchestrated-execution.md"
+      "docs/modules/orchestrated-execution.md",
+      "tests/fixtures/released-kit/README.md"
     ]
   },
   "baseline_commit": "d5e5f608133c75aba527e3aae15836765169ac41",
@@ -101,8 +101,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "FIX-REVIEW",
@@ -123,12 +123,12 @@
         "tests/workflow-kit-upgrade.test.mjs",
         "tests/fixtures/released-kit/manifest.json",
         "tests/fixtures/released-kit/kit-1.9.3.tar.gz",
-        "tests/fixtures/released-kit/README.md",
         "src/control/workflow/plan-review.mjs",
         "tests/plan-review.test.mjs"
       ],
       "documentation_paths": [
-        "packages/workflow-kit/README.md"
+        "packages/workflow-kit/README.md",
+        "tests/fixtures/released-kit/README.md"
       ],
       "verification_ids": [
         "kit-check",
@@ -149,7 +149,25 @@
       ],
       "expected_commit_message": "fix: убрать искусственные пределы Claude Review",
       "task_brief": "Первая задача раздела I. По секции I.0 спецификации и ToDo FIX-REVIEW убери обязательный max-turns, 15-минутный таймер, предел раундов. Не заменяй новым порогом. Повышение версии Kit с 1.9.3, common.mjs, package.json, lockfile, installer upgradeFrom.add('1.9.3'), UI без «Раунд N из 4». Создай закреплённый kit-1.9.3.tar.gz из точного Git commit выпуска 0.5.23 7279f9277cd03aa87c1bfad7a3ef00b9fb7ea97a, запиши SHA-256 и commit в manifest и добавь 1.9.3 в extract-list upgrade fixture. Замени старые REVIEW_TIMEOUT/REVIEW_ROUND_LIMIT тестами CLI failure, ESRCH, restart/retry same session, старого max_rounds и JSON. Не устанавливай Kit в этот checkout без отдельного решения пользователя. Запусти kit-check, kit-assignments, kit-upgrade, plan-review-ui, затем Kit commit.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/claude-review.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/plan-review.mjs",
+        "src/control/workflow/plan-review.mjs",
+        "tests/fixtures/released-kit/README.md",
+        "tests/fixtures/released-kit/kit-1.9.3.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/plan-review.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -366,7 +384,8 @@
         "docs/modules/assignment-dialogue.md",
         "docs/modules/orchestrated-execution.md",
         "packages/workflow-kit/README.md",
-        "docs/acceptance/interruption-recovery.md"
+        "docs/acceptance/interruption-recovery.md",
+        "tests/fixtures/released-kit/README.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -404,7 +423,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 844
+Revision: 847
 
 ## Цель
 
@@ -424,10 +443,10 @@ Revision: 844
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Это связанная правка одного startup-контракта, общей проекции состояния и интерфейса; тесты опираются на исправления, документация — на проверенный код. Параллельность здесь не уменьшает зависимостей, зато создаёт конфликты записи. Публикация из независимого обсуждающего чата не должна выдавать себя за оркестратора.
 
-- [TODO] FIX-REVIEW: I · Убрать пределы ходов и времени Claude Review — Ожидает
-  - Git Commit: [PENDING] fix: убрать искусственные пределы Claude Review
+- [DONE] FIX-REVIEW: I · Убрать пределы ходов и времени Claude Review — Завершено
+  - Git Commit: [DONE] fix: убрать искусственные пределы Claude Review
   - Reference: recovery-status-interruptions / FIX-REVIEW / implementation
-  - Файлы: packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.3.tar.gz, tests/fixtures/released-kit/README.md, src/control/workflow/plan-review.mjs, tests/plan-review.test.mjs, packages/workflow-kit/README.md
+  - Файлы: packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.3.tar.gz, src/control/workflow/plan-review.mjs, tests/plan-review.test.mjs, packages/workflow-kit/README.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] FIX-STARTUP: I · Startup S — подтвердить дочитанный снимок при изменении плана — Ожидает
@@ -463,7 +482,7 @@ Revision: 844
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: зафиксировать исправленный startup и подготовленные испытания
   - Reference: recovery-status-interruptions / DOCS / implementation
-  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, packages/workflow-kit/README.md, docs/acceptance/interruption-recovery.md
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, packages/workflow-kit/README.md, docs/acceptance/interruption-recovery.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-REVIEW, FIX-STARTUP, FIX-STARTUP-UI, FIX-PROGRESS, TEST-REGRESSION, TEST-PLAYBOOK
 

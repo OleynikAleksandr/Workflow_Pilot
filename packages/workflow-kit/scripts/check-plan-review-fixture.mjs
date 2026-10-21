@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { install } from '../src/lib/installer.mjs';
-import { readReview, setReviewEnabled, prepareReview, respondReview, saveReview, publishReview, resolveReview, cancelReview, reviewSummary } from '../src/lib/plan-review.mjs';
+import { readReview, setReviewEnabled, prepareReview, respondReview, saveReview, publishReview, resolveReview, cancelReview, reviewSummary, reviewStatus } from '../src/lib/plan-review.mjs';
 import { createScope, repair, startTask } from '../src/lib/actions.mjs';
 import { createSimplePlan } from '../src/lib/simple-workflow.mjs';
 import { readPlan } from '../src/lib/plan.mjs';
@@ -154,7 +154,7 @@ try {
   {
     const {root,input}=fixture();setReviewEnabled(root,true);prepareReview(root,input);
     const calls=[];
-    const fake=(verdict,{timeout=false,badSession=false}={})=>(command,args,options)=>{
+    const fake=(verdict,{timeout=false,badSession=false,exitCode=0,badJson=false}={})=>(command,args,options)=>{
       assert.equal(fs.existsSync(localPath(root,'operation.lock')),false,'Claude spawn must not hold Kit lock');
       assert.equal(options.shell,false);assert.equal(options.cwd,root);
       calls.push(args);
@@ -165,8 +165,8 @@ try {
         if(timeout)return;
         queueMicrotask(()=>{
           const i=args.indexOf('--resume')>=0?args.indexOf('--resume'):args.indexOf('--session-id');
-          fs.writeSync(options.stdio[1],JSON.stringify({subtype:'success',is_error:false,session_id:badSession?'wrong':args[i+1],modelUsage:{[REVIEW_MODEL]:{}},structured_output:verdict}));
-          child.emit('close',0);
+          fs.writeSync(options.stdio[1],badJson?'{invalid json':JSON.stringify({subtype:'success',is_error:false,session_id:badSession?'wrong':args[i+1],modelUsage:{[REVIEW_MODEL]:{}},structured_output:verdict}));
+          child.emit('close',exitCode);
         });
       };
       return child;
@@ -175,6 +175,8 @@ try {
     const approval={verdict:'approved',summary:'Согласовано',findings:[]};
     const first=await runReview(root,{}, {spawn:fake(changes)});
     assert.equal(first.stage,'AUTHOR_PENDING');assert.equal(first.round,1);
+    assert.equal(calls[0].includes('--max-turns'),false,'unlimited turns by default');
+    assert.equal(readReview(root).max_rounds,undefined,'new runs have no round limit');
     assert.ok(calls[0].includes('--session-id'));
     assert.equal(fs.readFileSync(path.join(first.run_directory,first.review_file),'utf8').includes('F1'),true);
     expect('REVIEW_RESPONSE',()=>prepareReview(root,{...input,response:'Одна строка вместо позиции не заменяет review:respond.'}));
@@ -191,15 +193,56 @@ try {
     const fourth=await runReview(root,{timeoutMs:100}, {spawn:fake(approval,{timeout:true})});
     assert.equal(fourth.stage,'NEEDS_USER');assert.equal(fourth.error.code,'REVIEW_TIMEOUT');
     resolveReview(root,'retry','Ещё один раунд по решению пользователя');
+    state(root,{max_rounds:1}); // Older state must not impose a hidden gate.
     const fifth=await runReview(root,{}, {spawn:fake(changes)});
-    assert.equal(fifth.stage,'NEEDS_USER');assert.equal(fifth.error.code,'REVIEW_ROUND_LIMIT');
+    assert.equal(fifth.stage,'AUTHOR_PENDING');assert.equal(fifth.round,5);
+    assert.equal(fifth.error,null,'legacy max_rounds is ignored');
     assert.deepEqual(fifth.review_history.map(r=>r.round),[1,2,5],'failed attempts preserve successful reviews without inventing responses');
-    resolveReview(root,'retry','Пользователь разрешил ещё один раунд');
-    await assert.rejects(runReview(root,{}, {spawn:()=>assert.fail('unanswered review must block spawning')}),e=>e.code==='REVIEW_RESPONSE');
+    expect('REVIEW_RESPONSE',()=>prepareReview(root,input));
     respond(root,'revise','Принимаю F1, порядок подготовки файла нуждается в уточнении перед следующей попыткой согласования.');
-    assert.equal((await runReview(root,{}, {spawn:fake(approval)})).stage,'AGREED');
+    prepareReview(root,input);
+    const sixth=await runReview(root,{}, {spawn:fake(approval)});
+    assert.equal(sixth.stage,'AGREED');assert.equal(sixth.round,6);
     assert.equal(fs.existsSync(localPath(root,'operation.lock')),false);
     expect('REVIEW_FORMAT',()=>parseVerdict({structured_output:{...approval,findings:changes.findings}}));
+  }
+  {
+    const {root,input}=fixture();setReviewEnabled(root,true);prepareReview(root,input);
+    const failed=await runReview(root,{}, {spawn:(_command,args,options)=>{
+      assert.equal(args.includes('--max-turns'),false);
+      const child=new EventEmitter();child.stdin=new EventEmitter();child.stdin.end=()=>queueMicrotask(()=>{
+        fs.writeSync(options.stdio[1],'{not JSON');child.emit('close',0);
+      });return child;
+    }});
+    assert.equal(failed.stage,'NEEDS_USER');assert.equal(failed.error.code,'REVIEW_FORMAT');
+    assert.deepEqual(failed.review_history,[],'invalid JSON cannot fabricate approval');
+    resolveReview(root,'retry','Разрешён повтор после ошибочного JSON');
+    const errored=await runReview(root,{}, {spawn:(_command,args,options)=>{
+      const child=new EventEmitter();child.stdin=new EventEmitter();child.stdin.end=()=>queueMicrotask(()=>child.emit('close',1));return child;
+    }});
+    assert.equal(errored.stage,'NEEDS_USER');assert.equal(errored.error.code,'REVIEW_CLI_ERROR');
+    assert.deepEqual(errored.review_history,[]);
+    await assert.rejects(runReview(root,{}, {spawn:()=>assert.fail('must not launch twice')}),e=>e.code==='REVIEW_NOT_READY');
+  }
+  {
+    const {root,input}=fixture();setReviewEnabled(root,true);prepareReview(root,input);
+    state(root,{stage:'RUNNING',round:1,launch_id:'crashed-run',runner_pid:2147483647,
+      requested_session_id:'saved-claude-session',claude_session_id:'saved-claude-session',review_history:[]});
+    const crashed=reviewStatus(root);
+    assert.equal(crashed.stage,'NEEDS_USER');assert.equal(crashed.error.code,'REVIEW_INTERRUPTED');
+    assert.equal(reviewStatus(root).generation,crashed.generation,'repeated status is idempotent');
+    await assert.rejects(runReview(root,{}, {spawn:()=>assert.fail('crash must not auto-spawn')}),e=>e.code==='REVIEW_NOT_READY');
+    resolveReview(root,'retry','Разрешено восстановление потерянного runner');
+    const recovered=await runReview(root,{}, {spawn:(_command,args,options)=>{
+      assert.equal(args[args.indexOf('--resume')+1],'saved-claude-session');
+      assert.equal(args.includes('--max-turns'),false);
+      const child=new EventEmitter();child.stdin=new EventEmitter();child.stdin.end=()=>queueMicrotask(()=>{
+        fs.writeSync(options.stdio[1],JSON.stringify({subtype:'success',is_error:false,
+          session_id:'saved-claude-session',modelUsage:{[REVIEW_MODEL]:{}},structured_output:approval}));child.emit('close',0);
+      });return child;
+    }});
+    assert.equal(recovered.stage,'AGREED');assert.equal(recovered.round,2);
+    assert.equal(recovered.claude_session_id,'saved-claude-session');
   }
   {
     const {root,scope,input}=fixture();setReviewEnabled(root,true);const prepared=prepareReview(root,input);
@@ -269,17 +312,16 @@ try {
       await simulate(root);
       respond(root,'needs_user','Не согласен с достаточностью приёмки: требование пользователя конфликтует с автоматической проверкой. Нужно его решение о публикации с этим ограничением.');
     }else{
+      // A needs_user verdict is an explicit author dispute, not an exhausted round counter.
       state(root,{max_rounds:1});
       await simulate(root,{verdict:'changes_requested',summary:'Нужен пользователь',findings:[{id:'F1',severity:'major',status:'open',reason:'Требование остаётся спорным.'}]});
+      respond(root,'needs_user','F1 остаётся нерешённым существенным спором: автор просит отдельное решение пользователя перед публикацией.');
     }
     assert.equal(readReview(root).stage,'NEEDS_USER');
     expect('REVIEW_REQUIRED',()=>publishReview(root));
     expect('REVIEW_BUSY',()=>prepareReview(root,input));
     resolveReview(root,'publish','Пользователь явно разрешил публикацию с сохранённым спором.');
-    if(!respondFirst){
-      expect('REVIEW_RESPONSE',()=>publishReview(root));
-      respond(root,'needs_user','F1 остаётся нерешённым существенным спором; пользователь разрешил публикацию с ним. Не объявляю замечание снятым или согласованным.');
-    }
+    if(!respondFirst)assert.equal(readReview(root).review_history.at(-1).author_response.disposition,'needs_user');
     assert.equal(publishReview(root).ok,true,'explicit user override permits an unresolved author/reviewer dispute');
     assert.equal(readReview(root).review_history.at(-1).author_response.disposition,'needs_user');
     startTask(root,'T001');

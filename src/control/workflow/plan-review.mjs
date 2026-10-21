@@ -60,7 +60,7 @@ export class PlanReviewClient {
     const indicator=attention?'attention':!enabled?'none':['RUNNING','PUBLISHING'].includes(s?.stage)?'working'
       :['AGREED','PUBLISHED'].includes(s?.stage)?'success':['PREPARED','AUTHOR_PENDING'].includes(s?.stage)?'waiting':'none';
     return {enabled,supported:this.supported,error:this.error,stage:s?.stage??'IDLE',round:s?.round??0,indicator,
-      message:this.error || s?.cleanup_error || this.activityError || (enabled?[s?.round?`Раунд ${s.round} из ${s.max_rounds??4}.`:'',messages[s?.stage]??'',s?.error?.message??''].filter(Boolean).join(' '):'')};
+      message:this.error || s?.cleanup_error || this.activityError || (enabled?[s?.round?`Раунд ${s.round}.`:'',messages[s?.stage]??'',s?.error?.message??''].filter(Boolean).join(' '):'')};
   }
   dispose(){this.disposed=true;this.cancel(this.timer);this.timer=null;}
 }

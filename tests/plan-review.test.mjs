@@ -11,9 +11,8 @@ import { once, EventEmitter } from 'node:events';
 import { install } from '@webpilot/workflow-kit/lib/installer';
 import { setReviewEnabled, readReview } from '@webpilot/workflow-kit/lib/plan-review';
 import { runReview, REVIEW_MODEL } from '@webpilot/workflow-kit/lib/claude-review';
-import { startupMessage } from '../src/control/context/context-session.mjs';
 
-test('startup ID through normal prepare and simulated Claude round routes pauses and restart only to its recipient',async t=>{
+test('explicit session ID through normal prepare and simulated Claude round routes pauses and restart only to its recipient',async t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'review-routing-'));
   let flow,client;
   t.after(()=>{flow?.dispose();client?.dispose();fs.rmSync(root,{recursive:true,force:true});});
@@ -24,8 +23,7 @@ test('startup ID through normal prepare and simulated Claude round routes pauses
   const spec='docs/planning/review.md';fs.mkdirSync(path.join(root,'docs/planning'),{recursive:true});
   fs.writeFileSync(path.join(root,spec),'# Review routing fixture\n');
   let selected={workspace:root,sessionId:'web-pilot-fixture',chatUrl:'https://chatgpt.com/c/routing-fixture',scopeId:null};
-  const text=startupMessage({...selected,name:'Fixture'},'fixture-request',{parts:[{}]});
-  const recipient=JSON.parse(text.match(/\{"recipient_session_id":"[^"]+"\}/)[0]);
+  const recipient={recipient_session_id:selected.sessionId};
   const scope={scope_id:'routing',objective:'Check routing',approval_note:'User requests a fixture plan',acceptance_criteria:['Correct route'],
     approved_scope:{functional_paths:[],documentation_paths:[spec]},context_pack:{documents:[{path:spec,required:true}]},
     tasks:[{id:'T001',title:'Fixture',why:'Check routing',functional_paths:[],documentation_paths:[spec],verification_ids:[],
@@ -161,7 +159,7 @@ test('Review policy belongs to checkout, survives selection changes and rejects 
   const restored=new PlanReviewClient({selected:()=>selected,supports:()=>true,read:r=>states.get(r)});
   restored.observeSelection();assert.equal(restored.view().enabled,true);
   states.set('/project-a',{enabled:true,stage:'NEEDS_USER',round:4,max_rounds:4,error:{message:'Остался спор'}});
-  client.refresh();assert.match(client.view().message,/Раунд 4 из 4/);assert.match(client.view().message,/Остался спор/);
+  client.refresh();assert.match(client.view().message,/Раунд 4\./);assert.doesNotMatch(client.view().message,/из 4/);assert.match(client.view().message,/Остался спор/);
   client.setEnabled({workspace:'/project-a',enabled:false});assert.equal(client.view().message,'');
 });
 
