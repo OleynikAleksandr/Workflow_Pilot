@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 746,
+  "plan_revision": 748,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -1071,14 +1071,15 @@
         "Штатный installer сверяет подпись, manifest и rollback; служба не останавливается, при необходимости pending."
       ],
       "expected_commit_message": "feat: Установить готовую экспериментальную 0.5.16",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "INSTALL-PIP4",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1100,10 +1101,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 746
+Revision: 748
 
 ## Цель
 
@@ -1257,8 +1258,8 @@ Revision: 746
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: PIP-GESTURE, DOCS-5
-- [TODO] INSTALL-PIP4: Установить готовую экспериментальную 0.5.16 — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовую экспериментальную 0.5.16
+- [DONE] INSTALL-PIP4: Установить готовую экспериментальную 0.5.16 — Завершено
+  - Git Commit: [DONE] feat: Установить готовую экспериментальную 0.5.16
   - Reference: prepared-task-flow / INSTALL-PIP4 / implementation
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
