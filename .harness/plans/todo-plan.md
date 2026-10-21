@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 830,
+  "plan_revision": 832,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -779,14 +779,25 @@
         "Версия 0.5.23; журнал живого проекта не редактируется"
       ],
       "expected_commit_message": "feat: Исправить сохранение обычного чата S в журнале стартового канала",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "STARTUP-WAL",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/execution/plugin/communication-store.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/plugin-communication-store.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tests/startup-context.test.mjs"
+      ]
     },
     {
       "id": "BUILD-4",
@@ -869,7 +880,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 830
+Revision: 832
 
 ## Цель
 
@@ -964,8 +975,8 @@ Revision: 830
   - Файлы: docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-3, DOCS-3
-- [TODO] STARTUP-WAL: Исправить сохранение обычного чата S в журнале стартового канала — Ожидает
-  - Git Commit: [PENDING] feat: Исправить сохранение обычного чата S в журнале стартового канала
+- [DONE] STARTUP-WAL: Исправить сохранение обычного чата S в журнале стартового канала — Завершено
+  - Git Commit: [DONE] feat: Исправить сохранение обычного чата S в журнале стартового канала
   - Reference: orchestrator-panel-startup / STARTUP-WAL / implementation
   - Файлы: src/execution/plugin/communication-store.mjs, src/control/plugin/communication.mjs, tests/startup-context.test.mjs, tests/plugin-communication-store.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение

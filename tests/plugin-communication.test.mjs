@@ -121,6 +121,20 @@ test('failed save never acknowledges a message or Send intent; critical state re
   assert.doesNotMatch(JSON.stringify(await comm.export(O)),/Bearer|private/);
 });
 
+test('save failure exposes a safe storage code without leaking the underlying error',async t=>{
+  for(const cause of ['PLUGIN_COMMUNICATION_STORE_VERSION','Bearer private']){
+    const {comm,O,E,store}=await fixture(t);await enable(comm,E);
+    comm.store={...store,append:async()=>{throw Object.assign(Error('cookie=private; disk details'),{code:cause});}};
+    const code=cause==='PLUGIN_COMMUNICATION_STORE_VERSION'?cause:'PLUGIN_COMMUNICATION_STORE_WRITE';
+    await assert.rejects(send(comm,O,E),e=>{
+      assert.equal(e.code,'PLUGIN_COMMUNICATION_STORE_WRITE');assert.ok(e.message.includes(code));
+      assert.doesNotMatch(e.message,/cookie|private|Bearer|disk details/);return true;
+    });
+    assert.equal(comm.critical,code);
+    assert.equal((await comm.status(O)).messages.length,0);
+  }
+});
+
 test('telemetry is deduplicated, gaps are visible, export is paged/frozen and excludes secrets/other runs',async t=>{
   const {comm,O,E}=await fixture(t);
   const data={event_id:randomUUID(),event_type:'host.handshake',client_sequence:3,client_time:new Date().toISOString(),duration_ms:0,

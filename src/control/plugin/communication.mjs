@@ -67,7 +67,11 @@ export class PluginCommunication {
   async persist(run,offset) {
     const {events,...state}=run;
     try{if(events.length>offset)await this.store?.append(state,events.slice(offset));}
-    catch(error){this.critical=error.code??'PLUGIN_COMMUNICATION_STORE_WRITE';throw fail('STORE_WRITE','Не удалось сохранить журнал. Отправка заблокирована.');}
+    catch(error){
+      const code=/^PLUGIN_COMMUNICATION_STORE_[A-Z_]+$/.test(error.code??'')?error.code:'PLUGIN_COMMUNICATION_STORE_WRITE';
+      this.critical=code;
+      throw fail('STORE_WRITE','Не удалось сохранить журнал. Отправка заблокирована. Код причины: '+code+'.');
+    }
   }
   mutate(name,input) {
     const queued=performance.now();

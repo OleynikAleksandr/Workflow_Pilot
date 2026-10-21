@@ -84,3 +84,17 @@ test('an unsupported registry or WAL version blocks writes without rewriting the
   await assert.rejects(next.append(state,[event(1)]),{code:'PLUGIN_COMMUNICATION_STORE_BLOCKED'});
   assert.equal(await fs.readFile(file(dir),'utf8'),text);
 });
+
+test('workflow WAL persists O, E and S while rejecting unknown roles before changing the journal',async t=>{
+  const dir=await directory(t),store=await openCommunicationStore(dir);
+  const workflow={...state,registry_version:2,mode:'workflow',enrollments:{},members:Object.fromEntries(
+    ['O','E','S'].map(role=>[role,{id:role,role,target:{role}}]))};
+  await store.append(workflow,[event(1)]);
+  const next=await openCommunicationStore(dir),loaded=next.load();
+  assert.deepEqual(loaded.issues,[]);assert.deepEqual(loaded.runs[0].members,workflow.members);
+  const before=await fs.readFile(file(dir),'utf8');
+  await assert.rejects(next.append({...workflow,members:{X:{id:'X',role:'X',target:{role:'X'}}}},[event(2)]),{code:'PLUGIN_COMMUNICATION_STORE_VERSION'});
+  assert.equal(await fs.readFile(file(dir),'utf8'),before);
+  await next.append(workflow,[event(2)]);
+  assert.equal((await openCommunicationStore(dir)).load().runs[0].events.length,2);
+});

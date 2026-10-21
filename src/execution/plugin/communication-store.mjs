@@ -8,7 +8,7 @@ const failure=code=>Object.assign(new Error('Журнал связи недос�
 const encode=value=>JSON.stringify(value);
 const supportedState=state=>state?.registry_version===undefined&&!state?.mode||state?.registry_version===2&&state.mode==='workflow'
   &&state.enrollments&&typeof state.enrollments==='object'
-  &&Object.entries(state.members??{}).every(([id,member])=>id===member.id&&member.target&&['O','E'].includes(member.role));
+  &&Object.entries(state.members??{}).every(([id,member])=>id===member.id&&member.target&&['O','E','S'].includes(member.role));
 
 // One fsynced JSONL transaction contains the new state and its contiguous events.
 // The WAL, not a separately replaced snapshot, is the only source of truth.

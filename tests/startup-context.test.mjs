@@ -18,7 +18,9 @@ test('ordinary chats receive complete panel recovery for every plan strategy wit
     const project={workspace:'/fixture',projectId:'p',scopeId:status==='NONE'?null:'scope',scopeStatus:status,
       deliveryStatus:'READY_FOR_ACCEPTANCE',sessions:[session],planExecution:{execution_strategy:strategy,execution_origin_session_id:'other'}};
     const projects={snapshot:()=>({projects:[project]}),project:()=>project,inspect:async()=>project};
-    const plugin=new PluginProjects({projects});t.after(()=>plugin.communication.dispose());
+    const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-startup-role-')));
+    const plugin=new PluginProjects({projects,communicationStore:await openCommunicationStore(directory)});
+    t.after(async()=>{plugin.communication.dispose();await plugin.communication.tail;await fs.rm(directory,{recursive:true,force:true});});
     const target=localParticipantTarget(projects,'chat');assert.equal(target.role,status==='NONE'?'O':'S');
     const invitation=await plugin.reserveParticipant('chat');
     const text='Полный контекст 🪟\n'.repeat(2000);
@@ -34,6 +36,16 @@ test('ordinary chats receive complete panel recovery for every plan strategy wit
     assert.equal(run.events.some(e=>e.event_type==='send.intent'),false);
     if(target.role==='S')await assert.rejects(plugin.communication.workflow.grant(target),{code:'PLUGIN_COMMUNICATION_MODE'});
     assert.equal(session.role,status==='NONE'?'orchestrator':'discussion');
+    plugin.communication.dispose();await plugin.communication.tail;
+    const recovered=new PluginProjects({projects,communicationStore:await openCommunicationStore(directory)});
+    t.after(async()=>{recovered.communication.dispose();await recovered.communication.tail;});
+    await recovered.communication.ready;
+    assert.equal(recovered.communication.critical,null);
+    const resumed=await recovered.panel({enrollment_ticket:invitation.enrollment_ticket,metadata});
+    assert.equal(resumed.registration.role,target.role);
+    assert.equal(recovered.communication.startup.progress('chat','startup').complete,true);
+    assert.equal(recovered.communication.runs.get(resumed.registration.run_id).grant,undefined);
+    recovered.communication.dispose();await recovered.communication.tail;
   }
 });
 

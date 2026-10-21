@@ -226,6 +226,16 @@ test('the real project projection reserves the published origin even though pers
   const chat=await f.plugin.reserveParticipant(discussion.sessionId);
   assert.notEqual(chat.run_id,initial.run_id);
   const chatTarget=await f.plugin.participantTarget(discussion.sessionId);assert.equal(chatTarget.role,'S');
+  await f.plugin.communication.startup.stage(chatTarget,{request_id:'discussion-start',text:'Контекст обычного чата'});
+  await bridge(t,f);const c=await client(t,f);
+  const opened=await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:chat.enrollment_ticket},_meta:{'openai/session':'discussion-fixture'}});
+  assert.equal(opened.isError,false,JSON.stringify(opened.structuredContent?.error));
+  assert.equal(opened.structuredContent.registration.role,'S');
+  const first=opened.structuredContent.startup_context;
+  assert.equal(first.text,'Контекст обычного чата');
+  const ack=await c.callTool({name:'workflow_startup_complete',arguments:{message_id:first.message_id,context_sha256:first.context_ref},_meta:{'openai/session':'discussion-fixture'}});
+  assert.equal(ack.isError,false,JSON.stringify(ack.structuredContent?.error));
+  assert.equal(ack.structuredContent.complete,true);
   await assert.rejects(f.plugin.communication.workflow.grant(chatTarget),{code:'PLUGIN_COMMUNICATION_MODE'});
 });
 test('real MCP panel enrolls an existing assignment using fresh host identity without an external session',async t=>{
