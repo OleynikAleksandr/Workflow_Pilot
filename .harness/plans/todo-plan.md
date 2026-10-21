@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 758,
+  "plan_revision": 760,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -149,8 +149,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "BUILD",
@@ -174,7 +174,10 @@
         "Собрать проверенный комплект 0.5.17 для трёх ОС согласно спецификации; фактические ограничения сохранены."
       ],
       "expected_commit_message": "chore: Собрать проверенный комплект 0.5.17 для трёх ОС",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -228,7 +231,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 758
+Revision: 760
 
 ## Цель
 
@@ -256,8 +259,8 @@ Revision: 758
   - Файлы: docs/planning/restore-stable-release.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/acceptance/orchestrated-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: VERSION
-- [TODO] BUILD: Собрать проверенный комплект 0.5.17 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] chore: Собрать проверенный комплект 0.5.17 для трёх ОС
+- [DONE] BUILD: Собрать проверенный комплект 0.5.17 для трёх ОС — Завершено
+  - Git Commit: [DONE] chore: Собрать проверенный комплект 0.5.17 для трёх ОС
   - Reference: restore-stable-release / BUILD / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
