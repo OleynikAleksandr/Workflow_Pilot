@@ -67,6 +67,21 @@ test('background startup observation stops at dispatch and cannot revive a cance
   await new Promise(resolve=>setTimeout(resolve,550));assert.equal(reads,1);
 });
 
+test('ordinary orchestrator readiness is reconciled without selecting its card',async t=>{
+  const f=fixture(t);Object.assign(f.projects.a,{chatUrl:null});
+  const a=f.manager.ensure(f.projects.a);a.ready=true;a.controller.attach(f.projects.a);
+  let reads=0,ticks=0;
+  f.composers.get(f.view(a).webContents).observeSnapshot=async()=>{reads++;return {version:1,documentId:'startup-doc-123',seq:1,
+    state:{url:'https://chatgpt.com/',editorAvailable:true,writable:true,busy:false,sendEnabled:false,
+      editorRevision:1,draftRevision:0,userMessageCount:0,userMessagesRevision:0}};};
+  f.manager.tick=()=>{ticks++;a.controller.emit({phase:'preparing-message'});};
+  a.controller.emit({phase:'waiting-experience'});
+  await new Promise(resolve=>setTimeout(resolve,550));
+  assert.equal(reads,1);assert.ok(ticks>=1);assert.equal(f.manager.visible,null);
+  f.projects.a.preparationPaused=true;a.controller.emit({phase:'waiting-experience'});
+  assert.equal(a.startupObservation.timer,null);
+});
+
 test('independent sessions keep pages, controllers and timers when switching or moving their presentation',async t=>{
   const f=fixture(t),a=f.manager.ensure(f.projects.a),b=f.manager.ensure(f.projects.b),host=f.host(),otherHost=f.host();
   assert.notEqual(f.view(a),f.view(b));assert.notEqual(a.controller,b.controller);assert.notEqual(a.composer,b.composer);

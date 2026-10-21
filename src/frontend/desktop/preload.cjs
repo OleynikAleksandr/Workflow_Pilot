@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('webPilot', Object.freeze({
   returnToChat: () => ipcRenderer.invoke('pilot:return-chat'),
   reconnect: () => ipcRenderer.invoke('pilot:reconnect'),
   retry: () => ipcRenderer.invoke('pilot:retry'),
+  cancelContext: () => ipcRenderer.invoke('pilot:cancel-context'),
   reload: () => ipcRenderer.invoke('pilot:reload'),
   approveRemoteDevice: pairingId => ipcRenderer.invoke('pilot:remote-approve', pairingId),
   rejectRemoteDevice: pairingId => ipcRenderer.invoke('pilot:remote-reject', pairingId),

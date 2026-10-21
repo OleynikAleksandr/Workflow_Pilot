@@ -44,6 +44,19 @@ test('explicit preparation retry retains drafts and cannot replay a sent or unkn
     assert.equal(await f.controller.resumePreparation(),false);assert.equal(f.sends(),0);
   }
 });
+test('cancel preparation invalidates pending send, persists pause and only explicit retry resumes',async()=>{
+  const f=controllerFixture();let release,options;const deliver=f.composer.deliver;
+  f.composer.deliver=async input=>{options=input;input.onUploadProgress({ready:1,total:2});await new Promise(resolve=>{release=resolve;});return {state:'cancelled'};};
+  const run=f.controller.tick();while(!release)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.controller.state.phase,'waiting-attachments');
+  await f.controller.cancelPreparation();assert.equal(options.canContinue(),false);assert.equal(f.saved.preparationPaused,true);
+  release();await run;await f.controller.tick();assert.equal(f.controller.state.phase,'preparation-paused');assert.equal(f.sends(),0);
+  f.controller.attach(f.saved);await f.controller.tick();assert.equal(f.controller.state.phase,'preparation-paused');
+  f.composer.deliver=async input=>{assert.equal(input.retryAttachments,true);return deliver(input);};
+  await f.controller.retry();assert.equal(f.saved.preparationPaused,false);assert.equal(f.sends(),1);
+  assert.equal(await f.controller.cancelPreparation(),false);await f.controller.retry();assert.equal(f.sends(),1);
+});
+
 function packet(){
   const context='ПОЛНЫЙ КОНТЕКСТ\nОписание проекта\nПлан\n\nНезавершённые изменения\nКОНЕЦ';
   return {delivery_protocol:'inline-context-v1',ack_required:false,status:'ready',completeness:'COMPLETE',workspace:project.workspace,session_id:project.sessionId,plan_id:project.scopeId,

@@ -133,6 +133,7 @@ export class ContextSession {
   }
 
   attach(project, { freshDraft = false } = {}) {
+    this.preparationPaused = project.preparationPaused === true;
     this.serviceRetries = 0;
     this.retryGeneration = null;
     this.warmState = { requested: 0, started: -1, pending: false };
@@ -142,7 +143,7 @@ export class ContextSession {
     this.rerunRequested = false;
     this.active = { workspace: project.workspace, sessionId: project.sessionId };
     this.servicesReady = false;
-    this.emit({ phase: 'selected', messageSent: project.attempt?.protocol === CONTEXT_PROTOCOL && project.attempt.state === 'sent',
+    this.emit({ phase: this.preparationPaused ? 'preparation-paused' : 'selected', messageSent: project.attempt?.protocol === CONTEXT_PROTOCOL && project.attempt.state === 'sent',
       delivery: null, error: null, projectInfo: null });
   }
 
@@ -155,6 +156,17 @@ export class ContextSession {
   emit(patch) {
     this.state = { ...this.state, ...patch, servicesReady: this.servicesReady };
     this.onChange(structuredClone(this.state));
+  }
+
+  async cancelPreparation() {
+    if (!this.active) return false;
+    const project = this.store.project(this.active.workspace, this.active.sessionId), attempt = project?.attempt;
+    if (!project || attempt?.sendStartedAtMs || ['sending','sent','acknowledged','unknown'].includes(attempt?.state)) return false;
+    this.preparationPaused = true;
+    this.generation++; this.retryGeneration = null; this.rerunRequested = false;
+    await this.store.updateSession(project.workspace, project.sessionId, { preparationPaused: true });
+    this.emit({ phase: 'preparation-paused', error: null });
+    return true;
   }
 
   current(generation) {
@@ -189,6 +201,10 @@ export class ContextSession {
       if(!this.pending)return this.tick();
       return;
     }
+    this.retryAttachments = this.retryAttachments || !!attempt?.attachments?.length && (project.preparationPaused
+      || ['ATTACHMENTS_PENDING','ATTACHMENTS_FAILED'].includes(this.state.error?.code));
+    if (project.preparationPaused) await this.store.updateSession(project.workspace, project.sessionId, { preparationPaused: false });
+    this.preparationPaused = false;
     if (this.pending) { this.retryGeneration = this.generation; return; }
     this.retryGeneration = null;
     this.servicesReady = false;
@@ -260,7 +276,7 @@ export class ContextSession {
   }
 
   async tick() {
-    if (!this.active || this.state.phase === 'error') return;
+    if (!this.active || this.preparationPaused || this.state.phase === 'error') return;
     if (this.pending) { this.rerunRequested = true; return; }
     const generation = this.generation;
     this.pending = true;
@@ -268,6 +284,7 @@ export class ContextSession {
     try {
       project = this.store.project(this.active.workspace);
       if (!project || !this.current(generation)) return;
+      if (project.preparationPaused) { this.emit({ phase: 'preparation-paused', error: null }); return; }
       let info = await this.inspectProject(project.workspace, project.sessionId, generation);
       if (!this.current(generation)) return;
       if (info.projectId !== project.projectId) throw failure('PROJECT_REPLACED', 'В этой папке теперь другой проект. Старый чат сохранён.');
@@ -440,6 +457,12 @@ export class ContextSession {
       const deliveryStarted = performance.now();
       const result = await this.composer.deliver({ text: attempt.text, requestId: attempt.requestId,
         attachments: attempt.attachments,
+        retryAttachments: this.retryAttachments === true,
+        onUploadProgress: progress => {
+          if (this.current(generation) && (this.state.phase !== 'waiting-attachments'
+            || this.state.uploadProgress?.ready !== progress.ready || this.state.uploadProgress?.total !== progress.total))
+            this.emit({ phase: 'waiting-attachments', uploadProgress: progress });
+        },
         expectedExperience: project.chatUrl ? null : experience,
         canContinue: () => this.current(generation) && this.atExpectedChat(project, attempt) && (!this.canSendContext||this.canSendContext(project)), onBeforeFill: async () => {
           const latest = { ...project, ...await this.inspectProject(project.workspace, project.sessionId, generation) };
@@ -481,6 +504,7 @@ export class ContextSession {
         error: { code: error.code ?? 'CONTEXT_ERROR', message: error.message } });
     } finally {
       this.pending = false;
+      if (this.retryGeneration == null) this.retryAttachments = false;
       this.onIdle?.();
       const retryGeneration = this.retryGeneration;
       this.retryGeneration = null;

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 765,
+  "plan_revision": 767,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -275,14 +275,32 @@
         "Зависшее собственное вложение повторяется только после проверенного удаления; готовые и чужие сохраняются; UNKNOWN и удаление пользователем не дают повторного Send."
       ],
       "expected_commit_message": "feat: Восстановить автоматическую подготовку и повтор загрузки контекста",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "FIX-STARTUP",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/desktop.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/progress.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "docs/planning/startup-recovery.md"
+      ]
     },
     {
       "id": "FORCE-STOP",
@@ -430,7 +448,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 765
+Revision: 767
 
 ## Цель
 
@@ -470,8 +488,8 @@ Revision: 765
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD, DOCS
-- [TODO] FIX-STARTUP: Восстановить автоматическую подготовку и повтор загрузки контекста — Ожидает
-  - Git Commit: [PENDING] feat: Восстановить автоматическую подготовку и повтор загрузки контекста
+- [DONE] FIX-STARTUP: Восстановить автоматическую подготовку и повтор загрузки контекста — Завершено
+  - Git Commit: [DONE] feat: Восстановить автоматическую подготовку и повтор загрузки контекста
   - Reference: restore-stable-release / FIX-STARTUP / implementation
   - Файлы: src/execution/browser/chatgpt-composer.mjs, src/control/context/context-session.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/backend/desktop-model.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/progress.mjs, tests/chatgpt-composer.test.mjs, tests/context-session.test.mjs, tests/session-runtime.test.mjs, tests/workspace-session.test.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/backend-desktop-model.test.mjs, docs/planning/startup-recovery.md
   - Параллельность: исключительное выполнение

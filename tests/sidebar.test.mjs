@@ -121,6 +121,17 @@ test('plan rows separate identity, planned mode and current status, including fi
 });
 
 
+test('upload wait offers cancellation and errors allow a fresh session without a locked sidebar',async t=>{
+  const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
+  f.window.webPilot.cancelContext=async()=>{f.calls.push(['cancelContext']);return {};};
+  f.emit({...base,context:{phase:'waiting-attachments',uploadProgress:{ready:1,total:2}}});
+  assert.equal($('cancel-context').hidden,false);assert.match($('session-notice-detail').textContent,/1 из 2/);
+  $('cancel-context').click();await new Promise(resolve=>setImmediate(resolve));
+  assert.ok(f.calls.some(call=>call[0]==='cancelContext'));assert.equal($('open-settings').disabled,false);
+  f.emit({...base,context:{phase:'preparation-paused'}});
+  assert.equal($('retry-context').hidden,false);assert.equal($('new-context-session').hidden,false);
+});
+
 async function fixture(t) {
   const html = await fs.readFile(new URL('../src/frontend/desktop/ui/index.html', import.meta.url), 'utf8');
   const source = await fs.readFile(new URL('../src/frontend/desktop/ui/sidebar.mjs', import.meta.url), 'utf8');

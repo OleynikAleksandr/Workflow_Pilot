@@ -1219,7 +1219,13 @@ function registerIpc() {
     startupError = null;
     const current = store.selected();
     if (current) workspaceHealth = { ...workspaceHealth, sessionId: current.sessionId };
-    if (attachController(current)) await controller.retry();
+    if (attachController(current)) {
+      const target = controller;
+      void target.retry().catch(error => target.emit({ phase: 'error', error: { code: error.code ?? 'CONTEXT_ERROR', message: error.message } }));
+    }
+  });
+  registerAction('pilot:cancel-context', async () => {
+    if (controller) await controller.cancelPreparation();
   });
   // Devices are confirmed and removed only from the Mac, never from a remote client.
   const localRemote = () => {

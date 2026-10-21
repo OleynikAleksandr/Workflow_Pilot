@@ -148,6 +148,8 @@ const phases = {
   'waiting-draft': ['В поле есть черновик', 'Закончите или уберите свой черновик. Стартовое сообщение подождёт.', 'working'],
   'waiting-generation': ['Ждём завершения ответа', 'ChatGPT отвечает. Передача контекста начнётся, когда поле освободится.', 'working'],
   'preparing-message': ['Вставляем контекст', 'Передаём подготовленный пакет редактору ChatGPT.', 'working'],
+  'waiting-attachments': ['Ожидаем обработку вложений ChatGPT', 'Сообщение будет отправлено после готовности всех частей.', 'working'],
+  'preparation-paused': ['Подготовка отменена', 'Текст и вложения сохранены. Можно повторить подготовку или создать новую сессию.', 'attention'],
   sending: ['Передаём контекст', 'Отправляем полный контекст проекта одним сообщением.', 'working'],
   'waiting-chat': ['Контекст отправлен', 'Можно продолжать разговор. Адрес чата сохранится при его появлении.', 'success'],
   delivered: ['Контекст передан', 'Полный пакет отправлен в этот чат. Агент кратко подтвердит получение и опишет проект.', 'success'],
@@ -586,14 +588,17 @@ function render(state) {
     }));
   } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; }
   const [title, detail] = context.phase==='external-session' ? ['Открыто в ChatGPT','Продолжайте разговор в приложении ChatGPT. Эта сессия подключена через плагин Workflow Pilot.'] : phases[context.phase] ?? phases.selected;
-  const attention=['external-session','error','prepared-stale','waiting-draft','waiting-login','waiting-experience','chat-changed','send-unknown'].includes(context.phase);
+  const preparing=['preparing','loading-context','preparing-message','waiting-attachments','waiting-composer','waiting-experience','waiting-login','waiting-draft'].includes(context.phase);
+  const attention=preparing||['preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);
   const started=selected?.manualStart||context.messageSent||['sending','unknown','sent','acknowledged'].includes(selected?.attempt?.state);
   $('session-notice').hidden=!selected||!attention||!!state.setup||!!state.settings;
   $('session-notice-title').textContent=(selected?.title||'Текущая сессия')+' · '+title;
-  $('session-notice-detail').textContent=context.error?.message??detail;
-  $('retry-context').hidden=started||!['error','prepared-stale'].includes(context.phase);
+  $('session-notice-detail').textContent=context.phase==='waiting-attachments' && context.uploadProgress
+    ? `Готово ${context.uploadProgress.ready} из ${context.uploadProgress.total} частей. Можно отменить ожидание; черновик сохранится.` : context.error?.message??detail;
+  $('retry-context').hidden=started||!['error','prepared-stale','preparation-paused'].includes(context.phase);
+  $('cancel-context').hidden=started||!preparing;
   $('observe-context').hidden=context.phase!=='send-unknown';
-  $('new-context-session').hidden=context.phase==='external-session'||!started&&context.phase!=='send-unknown';
+  $('new-context-session').hidden=context.phase==='external-session'||!started&&!['send-unknown','error','preparation-paused'].includes(context.phase);
   $('return-chat').hidden = context.phase !== 'chat-changed';
   $('connection-detail').textContent = state.localRuntime ? `${state.localRuntime.label} · встроенный MCP` : state.runtimeFolder;
   const delivery = context.delivery;
@@ -654,6 +659,7 @@ $('plan-run-toggle').addEventListener('click', () => action('togglePlanExecution
 $('plan-review-toggle').addEventListener('click', () => action('setPlanReview', {workspace:currentState?.selected?.workspace,enabled:!currentState?.planReview?.enabled}));
 $('reconnect-chat').addEventListener('click', () => action('reconnect'));
 $('retry-context').addEventListener('click', () => action('retry'));
+$('cancel-context').addEventListener('click', () => action('cancelContext'));
 $('observe-context').addEventListener('click', () => action('retry'));
 $('new-context-session').addEventListener('click', () => {
   const selected=currentState?.selected;

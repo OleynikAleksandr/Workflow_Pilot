@@ -46,6 +46,7 @@ export const DESKTOP_CHANNELS = Object.freeze({
     "pilot:new-session",
     "pilot:return-chat",
     "pilot:retry",
+    "pilot:cancel-context",
     "pilot:reload",
     "pilot:remote-approve",
     "pilot:remote-reject",

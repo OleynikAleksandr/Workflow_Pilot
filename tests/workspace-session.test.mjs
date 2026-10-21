@@ -10,6 +10,13 @@ import { sessionExecutionMessage } from '../src/control/context/context-session.
 
 const directoryLink = (target, link) => fs.symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir');
 
+test('new workspace reveals selected session and retains preparation cancellation after restart',async t=>{
+  const {project,store}=await fixture(t),root=await project('Start');const selected=await store.select(root);
+  assert.equal(store.snapshot().projects[0].expanded,true);
+  await store.updateSession(selected.workspace,selected.sessionId,{preparationPaused:true});
+  const restored=new WorkspaceSessions(store.file);await restored.load();assert.equal(restored.project(selected.workspace).preparationPaused,true);
+});
+
 test('integration projection retains the Git-proven parent identity while the worktree contains the child plan',async t=>{
   const {project}=await fixture(t),root=await project('Merging');
   const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8'}).trim();

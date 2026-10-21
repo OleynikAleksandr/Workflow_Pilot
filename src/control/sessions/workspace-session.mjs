@@ -212,7 +212,7 @@ export const unsentExecutor = session => !!session?.assignmentId && !session.cha
 const activeOrchestrator = (project, session) => session.role === 'orchestrator' && !!session.orchestratorScopeId
   && session.orchestratorScopeId === project.scopeId && activeScope(project.scopeStatus);
 const invalid = () => new WorkspaceError('SESSIONS_INVALID', 'Формат сохранённых проектов не поддерживается. Исходный файл сохранён.');
-const sessionFields = ['planId', 'originSessionId', 'legacyPlanId', 'lastNamedScopeId', 'sessionId', 'experience', 'chatUrl', 'manualStart', 'attempt', 'receipt', 'title', 'titleSource', 'createdAt', 'lastOpenedAt', 'archivedAt', 'executionSnapshot', 'external'];
+const sessionFields = ['planId', 'originSessionId', 'legacyPlanId', 'lastNamedScopeId', 'sessionId', 'experience', 'chatUrl', 'manualStart', 'preparationPaused', 'attempt', 'receipt', 'title', 'titleSource', 'createdAt', 'lastOpenedAt', 'archivedAt', 'executionSnapshot', 'external'];
 const explicitTitleSources = new Set(['manual', 'scope']);
 
 function localName(value, { empty = 'Нужно непустое название.', code = 'TITLE_INVALID' } = {}) {
@@ -278,6 +278,7 @@ function validate(data) {
           || (s.chatUrl !== null && (!normalizeChatUrl(s.chatUrl) || normalizeChatUrl(s.chatUrl) !== s.chatUrl
             || !conversationUrlCompatibleWithExperience(s.chatUrl, s.experience)))) throw invalid();
       if (s.manualStart !== undefined && typeof s.manualStart !== 'boolean') throw invalid();
+      if (s.preparationPaused !== undefined && typeof s.preparationPaused !== 'boolean') throw invalid();
       if (s.external !== undefined && (s.external?.provider !== 'chatgpt-plugin'
           || !/^[0-9a-f]{64}$/.test(s.external.conversationKey ?? '')
           || !/^[0-9a-f-]{36}$/i.test(s.external.requestId ?? '') || s.chatUrl !== null)) throw invalid();
@@ -588,7 +589,7 @@ export class WorkspaceSessions {
         const session = this.createSession(experience);
         const role = newSessionRole(info);
         if (role) session.role = role;
-        project = { ...info, selectedSessionId: session.sessionId, sessions: [session], expanded: false, archivedAt: null };
+        project = { ...info, selectedSessionId: session.sessionId, sessions: [session], expanded: true, archivedAt: null };
         data.projects.unshift(project);
       } else Object.assign(project, info);
       if (latest) {
@@ -879,12 +880,13 @@ export class WorkspaceSessions {
   updateSession(workspace, sessionId, patch, { background = false } = {}) {
     return this.mutate(data => {
       const { project, session } = this.activeRecord(workspace, sessionId, data, { background });
-      if (Object.keys(patch).some(k => !['attempt', 'receipt', 'manualStart','conversationRecovery'].includes(k))) throw new Error('INVALID_SESSION_PATCH');
+      if (Object.keys(patch).some(k => !['attempt', 'receipt', 'manualStart','preparationPaused','conversationRecovery'].includes(k))) throw new Error('INVALID_SESSION_PATCH');
       if(patch.conversationRecovery!==undefined) {
         const c=patch.conversationRecovery;
         if(!c||typeof c.key!=='string'||typeof c.used!=='boolean'||[c.cooldownUntil,c.stoppedAt].some(n=>n!==null&&(!Number.isFinite(n)||n<0)))throw new Error('INVALID_SESSION_PATCH');
       }
       if (patch.manualStart !== undefined && typeof patch.manualStart !== 'boolean') throw new Error('INVALID_SESSION_PATCH');
+      if (patch.preparationPaused !== undefined && typeof patch.preparationPaused !== 'boolean') throw new Error('INVALID_SESSION_PATCH');
       Object.assign(session, copy(patch)); return currentView(project, sessionId);
     });
   }

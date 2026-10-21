@@ -17,6 +17,7 @@ const actionLabels = {
 const phaseLabels = {
   preparing: 'Проверяем подключение и службы', 'loading-context': 'Подготавливаем контекст',
   'preparing-message': 'Вставляем контекст в сообщение', sending: 'Отправляем контекст',
+  'waiting-attachments': 'Ожидаем обработку вложений ChatGPT',
   'waiting-generation': 'Ждём завершения ответа ChatGPT',
 };
 const phaseLabel = context => phaseLabels[context?.phase];

@@ -6,7 +6,7 @@ class ComposerError extends Error {
 }
 
 // Runs only in the visible ChatGPT document. No page internals, cookies or API requests.
-export function pageOperation({ action = 'inspect', text = '', requestId = '', expectedExperience = null, diagnose = false, draftToken = '', attachments = [] } = {}, dom = createChatGPTDOM(CHATGPT_SELECTORS)) {
+export function pageOperation({ action = 'inspect', text = '', requestId = '', expectedExperience = null, diagnose = false, draftToken = '', attachments = [], attachmentIndex = null } = {}, dom = createChatGPTDOM(CHATGPT_SELECTORS)) {
   const { first } = dom;
   const editor = dom.editor();
   const busy = dom.busy();
@@ -30,27 +30,39 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
     draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount: messages.length, experience };
   // Only visible composer cards count. Message history cannot prove draft uploads.
   const attachmentKey = Symbol.for('web-pilot-file-paste');
+  let cards = [], attachmentStates = [];
   if (attachments.length) {
     const nodes = [...document.querySelectorAll('[title],[aria-label],span,div,p')].filter(node => dom.visible(node)
       && !node.closest(dom.selectors.user + ',' + dom.selectors.assistant + ',pre,code,[contenteditable="true"]'));
-    const cards = attachments.map(file => {
+    cards = attachments.map(file => {
       const labels = nodes.filter(node => node.getAttribute('title') === file.name || node.getAttribute('aria-label') === file.name
         || (!node.children.length && (node.textContent ?? '').trim() === file.name));
+      const matches = new Set();
       for (const label of labels) {
         for (let card = label, depth = 0; card && depth < 5 && card.tagName !== 'FORM'; card = card.parentElement, depth++) {
           const remove = [...card.querySelectorAll('button')].some(button => /remove|delete|удалить/i.test(button.getAttribute('aria-label') ?? button.getAttribute('title') ?? button.textContent ?? ''));
-          if (remove) return card;
+          if (remove) { matches.add(card); break; }
         }
       }
-      return null;
+      return matches.size === 1 ? [...matches][0] : null;
     });
     const progress = '[role="progressbar"],[aria-busy="true"],[data-state="uploading"],[data-testid="upload-progress"],.animate-spin';
     const failed = card => card.matches('[role="alert"],[data-state="error"]') || !!card.querySelector('[role="alert"],[data-state="error"]')
       || /upload failed|failed to upload|ошибка загрузки|не удалось загрузить/i.test(card.textContent ?? '');
+    attachmentStates = cards.map(card => !card ? 'missing' : cards.filter(other => other === card).length !== 1 ? 'ambiguous'
+      : failed(card) ? 'failed' : card.matches(progress) || card.querySelector(progress) ? 'pending' : 'ready');
+    result.attachmentStates = attachmentStates;
+    result.attachmentsTotal = attachments.length;
+    result.attachmentsReadyCount = attachmentStates.filter(state => state === 'ready').length;
     result.attachmentsPresent = cards.filter(Boolean).length;
     result.attachmentsFailed = cards.some(card => card && failed(card));
     result.attachmentsReady = cards.every(card => card && !failed(card) && !card.matches(progress) && !card.querySelector(progress))
       && new Set(cards).size === attachments.length && sendEnabled;
+    const owned = editor?.[attachmentKey];
+    if (owned?.requestId === requestId && owned.identity === JSON.stringify(attachments)) {
+      owned.cards ??= [];
+      cards.forEach((card, index) => { if (card && !owned.cards[index]) owned.cards[index] = card; });
+    }
   }
   if (diagnose) {
     let mismatchIndex = 0;
@@ -137,6 +149,35 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
       return { ...result, action: 'experience-selecting' };
     }
     if (experience !== expectedExperience) return { ...result, action: 'deferred', reason: 'EXPERIENCE_UNCONFIRMED' };
+  }
+  if (action === 'retry-remove-attachment' || action === 'retry-paste-attachment') {
+    const owned = editor[attachmentKey], index = attachmentIndex, card = cards[index];
+    if (!Number.isInteger(index) || !attachments[index] || !owned || owned.requestId !== requestId
+        || owned.identity !== JSON.stringify(attachments) || !draftMatches)
+      return { ...result, action: 'deferred', reason: 'ATTACHMENTS_CHANGED' };
+    if (action === 'retry-remove-attachment') {
+      if (owned.replacing != null) return { ...result, action: owned.replacing === index && !card ? 'attachment-removed' : 'deferred', reason: 'ATTACHMENTS_PENDING' };
+      if (attachmentStates.some(state => ['missing','ambiguous'].includes(state)))
+        return { ...result, action: 'deferred', reason: 'ATTACHMENTS_CHANGED' };
+      if (owned.cards?.[index] !== card) return { ...result, action: 'deferred', reason: 'ATTACHMENTS_CHANGED' };
+      if (attachmentStates[index] === 'ready') return { ...result, action: 'attachment-ready' };
+      const buttons = [...card.querySelectorAll('button')].filter(button => dom.visible(button)
+        && /remove|delete|удалить/i.test(button.getAttribute('aria-label') ?? button.getAttribute('title') ?? button.textContent ?? ''));
+      if (buttons.length !== 1 || buttons[0].disabled || buttons[0].getAttribute('aria-disabled') === 'true')
+        return { ...result, action: 'deferred', reason: 'ATTACHMENTS_CHANGED' };
+      owned.replacing = index; // Record before clicking: an uncertain removal is never clicked twice.
+      buttons[0].click();
+      return { ...result, action: 'attachment-removing' };
+    }
+    if (owned.replacing !== index || card || attachmentStates.some((state, i) => i !== index && ['missing','ambiguous'].includes(state)))
+      return { ...result, action: 'deferred', reason: 'ATTACHMENTS_CHANGED' };
+    const data = new DataTransfer(), file = attachments[index];
+    data.items.add(new File([file.text], file.name, { type: 'text/markdown', lastModified: 0 }));
+    owned.replacing = null; // Mark before paste; a thrown event must not duplicate a file.
+    owned.cards[index] = null;
+    editor.focus();
+    editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+    return { ...result, action: 'attachment-restarted' };
   }
   if (action === 'attach') {
     if (!attachments.length || !requestId || attachments.some(file => !file.name || typeof file.text !== 'string'))
@@ -227,7 +268,7 @@ export class ChatGPTComposer {
     this.filledRequest = null;
   }
 
-  async inspect({ text = '', requestId = '', action = 'inspect', expectedExperience = null, canContinue = () => true, draftToken = '', attachments = [] } = {}) {
+  async inspect({ text = '', requestId = '', action = 'inspect', expectedExperience = null, canContinue = () => true, draftToken = '', attachments = [], attachmentIndex = null } = {}) {
     const current = this.contents.getURL();
     let url;
     try { url = new URL(current); } catch { return { login: true, editorAvailable: false, url: current }; }
@@ -239,7 +280,7 @@ export class ChatGPTComposer {
     const started = this.now();
     if (diagnose && action !== 'inspect') this.trace('action-start', { action, requestId });
     const documentKey = this.documentKey();
-    let observation = await this.contents.executeJavaScript(pageScript({ action, text, requestId, expectedExperience, diagnose, draftToken, attachments }), action !== 'inspect');
+    let observation = await this.contents.executeJavaScript(pageScript({ action, text, requestId, expectedExperience, diagnose, draftToken, attachments, attachmentIndex }), action !== 'inspect');
     if (observation.action === 'paste-ready') {
       if (!canContinue() || this.documentKey() !== documentKey)
         return { action: 'deferred', reason: 'CHAT_CHANGED' };
@@ -250,10 +291,10 @@ export class ChatGPTComposer {
     if (diagnose) {
       const { diagnostic, editorAvailable, writable, login, busy, draftLength, draftMatches, sendEnabled,
         messageSeen, userMessageCount, experience, connectionError, insertionMethod, pasteHandled,
-        attachmentsPresent, attachmentsReady, attachmentsFailed, action: outcome, reason } = observation;
+        attachmentsPresent, attachmentsReady, attachmentsFailed, attachmentsTotal, attachmentsReadyCount, attachmentStates, action: outcome, reason } = observation;
       this.trace('observation', { action, requestId, diagnostic, editorAvailable, writable, login, busy,
         draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount, experience, connectionError, insertionMethod, pasteHandled,
-        attachmentsPresent, attachmentsReady, attachmentsFailed, outcome, reason },
+        attachmentsPresent, attachmentsReady, attachmentsFailed, attachmentsTotal, attachmentsReadyCount, attachmentStates, outcome, reason },
         Math.max(0, this.now() - started));
     }
     if (observation.reason === 'PASTE_UNHANDLED')
@@ -317,12 +358,18 @@ export class ChatGPTComposer {
     return result;
   }
 
-  async waitForSendReady(args, version, canContinue) {
+  async waitForSendReady(args, version, canContinue, onUploadProgress = () => {}) {
     const deadline = this.now() + (args.attachments?.length ? this.attachmentTimeoutMs : this.timeoutMs);
-    let observation;
+    let observation; const seen = new Set();
     do {
       if (!canContinue()) return observation ?? {};
       observation = await this.inspect(args);
+      if (args.attachments?.length) {
+        if (observation.attachmentStates?.some((state, index) => state === 'missing' && seen.has(index)))
+          throw new ComposerError('ATTACHMENTS_CHANGED', 'Вложение удалено во время подготовки. Отправка остановлена; создайте новую сессию или восстановите полный пакет.');
+        observation.attachmentStates?.forEach((state, index) => { if (state !== 'missing') seen.add(index); });
+        onUploadProgress({ ready: observation.attachmentsReadyCount ?? 0, total: args.attachments.length });
+      }
       if (observation.messageSeen || observation.login || observation.busy || observation.connectionError
           || observation.attachmentsFailed || (observation.sendEnabled && observation.writable
             && (!args.attachments?.length || observation.attachmentsReady))) return observation;
@@ -331,6 +378,32 @@ export class ChatGPTComposer {
       if (signal.cancelled || signal.timeout && !args.attachments?.length) return observation;
     } while (this.now() < deadline);
     return observation;
+  }
+
+  async restartAttachments(args, canContinue) {
+    const documentKey = this.documentKey(), current = () => canContinue() && this.documentKey() === documentKey;
+    const snapshot = await this.inspect(args);
+    if (!snapshot.draftMatches || snapshot.attachmentStates?.some(state => ['missing','ambiguous'].includes(state)))
+      throw new ComposerError('ATTACHMENTS_CHANGED', 'Черновик или вложения изменены. Автоматический повтор отменён; создайте новую сессию.');
+    for (const [attachmentIndex, state] of (snapshot.attachmentStates ?? []).entries()) {
+      if (state === 'ready') continue;
+      if (!current()) return false;
+      let result = await this.inspect({ ...args, attachmentIndex, action: 'retry-remove-attachment' });
+      if (result.action === 'attachment-ready') continue;
+      if (!['attachment-removing','attachment-removed'].includes(result.action))
+        throw new ComposerError('ATTACHMENTS_CHANGED', 'Не удалось подтвердить принадлежность вложения. Оно сохранено; начните новую сессию.');
+      const deadline = this.now() + this.timeoutMs;
+      while (current()) {
+        const observed = await this.inspect(args);
+        if (observed.attachmentStates?.[attachmentIndex] === 'missing') break;
+        if (this.now() >= deadline) throw new ComposerError('ATTACHMENT_REMOVE_PENDING', 'ChatGPT не подтвердил удаление вложения. Повторная загрузка не начата.');
+        await this.waitForObservedChange(this.pageState?.version ?? 0, Math.min(deadline, this.now() + 250), current);
+      }
+      if (!current()) return false;
+      result = await this.inspect({ ...args, attachmentIndex, action: 'retry-paste-attachment' });
+      if (result.action !== 'attachment-restarted') throw new ComposerError('ATTACHMENTS_CHANGED', 'Вложения изменились. Повторная загрузка остановлена.');
+    }
+    return current();
   }
 
   async waitForObservedChange(version, deadline, canContinue) {
@@ -393,7 +466,7 @@ export class ChatGPTComposer {
     }
   }
 
-  async deliverInternal({ text, requestId, attachments = [], expectedExperience = null, canContinue = () => true, onBeforeFill = async () => {}, onBeforeSend = async () => {} }) {
+  async deliverInternal({ text, requestId, attachments = [], expectedExperience = null, retryAttachments = false, onUploadProgress = () => {}, canContinue = () => true, onBeforeFill = async () => {}, onBeforeSend = async () => {} }) {
     if (this.inFlight) throw new ComposerError('SEND_IN_PROGRESS', 'Другая отправка ещё не завершилась.');
     if (typeof text !== 'string' || !text || !requestId || !text.includes(requestId)) throw new ComposerError('MESSAGE_INVALID', 'Не подготовлено стартовое сообщение.');
     this.inFlight = true;
@@ -407,6 +480,10 @@ export class ChatGPTComposer {
       if (observation.messageSeen) return { state: 'sent', recovered: true, observation };
       if (!canContinue()) return { state: 'cancelled' };
       const fillVersion = this.pageState?.version ?? 0;
+      if (retryAttachments && attachments.length) {
+        await onBeforeFill();
+        if (!canContinue() || !await this.restartAttachments({ text, requestId, attachments, expectedExperience }, canContinue)) return { state: 'cancelled' };
+      }
       if (attachments.length && (this.attachmentRequest?.requestId !== requestId || this.attachmentRequest.documentKey !== this.documentKey())) {
         await onBeforeFill();
         if (!canContinue()) return { state: 'cancelled' };
@@ -429,7 +506,7 @@ export class ChatGPTComposer {
         if (!canContinue() || this.documentKey() !== documentKey) return { state: 'cancelled' };
         this.filledRequest = { requestId, documentKey };
       }
-      observation = await this.waitForSendReady({ text, requestId, attachments }, fillVersion, canContinue);
+      observation = await this.waitForSendReady({ text, requestId, attachments }, fillVersion, canContinue, onUploadProgress);
       if (!canContinue()) return { state: 'cancelled' };
       if (observation.messageSeen) return { state: 'sent', recovered: true, observation };
       if (attachments.length && !observation.attachmentsReady)

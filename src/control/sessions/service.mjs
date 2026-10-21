@@ -118,8 +118,8 @@ export class SessionRuntimes {
   }
   syncStartupObservation(record){
     const project=record.project(),attempt=project?.attempt,controller=record.controller;
-    const eligible=controller&&record.identity?.assignmentId&&record.ready&&!record.disposed&&!this.paused&&!record.loading
-      &&!project?.archivedAt&&!project?.sessionArchivedAt&&!project?.manualStart&&!project?.chatUrl
+    const eligible=controller&&record.ready&&!record.disposed&&!this.paused&&!record.loading
+      &&!project?.archivedAt&&!project?.sessionArchivedAt&&!project?.manualStart&&!project?.preparationPaused&&!project?.chatUrl
       &&!attempt?.sendStartedAtMs&&!['sending','sent','acknowledged','unknown'].includes(attempt?.state)
       &&['waiting-composer','waiting-experience','waiting-login'].includes(controller.state.phase);
     let probe=record.startupObservation;

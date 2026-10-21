@@ -94,6 +94,46 @@ test('a card renamed by ChatGPT is not recognised and never sent',async()=>{
   f.dom.window.close();
 });
 
+test('explicit retry replaces only the owned pending file after removal and sends once',async t=>{
+  const f=attachmentFixture({uploading:true});t.after(()=>f.dom.window.close());
+  await assert.rejects(f.composer.deliver(f.request),{code:'ATTACHMENTS_PENDING'});
+  const cards=[...f.document.querySelectorAll('form > div')];
+  cards.slice(1).forEach(card=>card.removeAttribute('aria-busy'));
+  cards[0].querySelector('button').onclick=()=>cards[0].remove();
+  f.editor.addEventListener('paste',()=>{for(const card of f.document.querySelectorAll('[aria-busy]'))card.removeAttribute('aria-busy');});
+  assert.equal((await f.composer.deliver({...f.request,retryAttachments:true})).state,'sent');
+  assert.equal(f.pastes(),2);assert.equal(f.received.length,8);assert.equal(f.received[7].name,f.request.attachments[0].name);
+  assert.equal(await f.received[7].text(),f.request.attachments[0].text);
+  assert.ok(cards.slice(1).every(card=>card.isConnected));assert.equal(f.sends(),1);
+  assert.equal((await f.composer.deliver({...f.request,retryAttachments:true})).state,'sent');assert.equal(f.pastes(),2);
+});
+
+test('retry refuses changed draft, missing files, ambiguous cards and lost ownership',async t=>{
+  for(const change of ['draft','missing','ownership','ambiguous']){
+    const f=attachmentFixture({uploading:true});t.after(()=>f.dom.window.close());
+    await assert.rejects(f.composer.deliver(f.request),{code:'ATTACHMENTS_PENDING'});
+    if(change==='draft')f.editor.value+=' user edit';
+    if(change==='missing')f.document.querySelector('form > div').remove();
+    if(change==='ownership')delete f.editor[f.dom.window.Symbol.for('web-pilot-file-paste')];
+    if(change==='ambiguous'){
+      const cards=[...f.document.querySelectorAll('form > div')];
+      cards[0].append(cards[1].querySelector('span'));cards[1].remove();
+    }
+    await assert.rejects(f.composer.deliver({...f.request,retryAttachments:true}),{code:'ATTACHMENTS_CHANGED'});
+    assert.equal(f.pastes(),1);assert.equal(f.sends(),0);
+  }
+});
+
+test('manual file removal ends upload wait immediately; cancellation cannot send',async t=>{
+  for(const cancel of [false,true]){
+    const f=attachmentFixture({uploading:true});t.after(()=>f.dom.window.close());let current=true,waits=0;
+    f.composer.wait=async()=>{waits++;if(cancel)current=false;else f.document.querySelector('form > div').remove();};
+    if(cancel)assert.equal((await f.composer.deliver({...f.request,canContinue:()=>current})).state,'cancelled');
+    else await assert.rejects(f.composer.deliver(f.request),{code:'ATTACHMENTS_CHANGED'});
+    assert.equal(waits,1);assert.equal(f.sends(),0);
+  }
+});
+
 for (const outcome of ['ready', 'pending', 'failed']) test('attachment deadline with fake clock: '+outcome, async()=>{
   const f=attachmentFixture({uploading:true}), records=[];
   let time=0;
