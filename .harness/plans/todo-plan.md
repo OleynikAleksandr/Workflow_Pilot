@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 822,
+  "plan_revision": 824,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -624,8 +624,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "DOCS-3",
@@ -640,14 +640,45 @@
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
         "docs/modules/orchestrator-startup.md",
-        "docs/planning/universal-startup.md"
+        "docs/planning/universal-startup.md",
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/universal-startup.md"
+      ]
     },
     {
       "id": "BUILD-3",
@@ -733,7 +764,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 822
+Revision: 824
 
 ## Цель
 
@@ -810,10 +841,10 @@ Revision: 822
   - Файлы: src/**, tools/codex-app-server-mcp/**, tests/**, package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/context/legacy-attachment-message.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/chatgpt-plugin.test.mjs, tests/context-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tools/codex-app-server-mcp/plugin.py, docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: orchestrator-panel-startup / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/browser.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/control.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: ALL-START
 - [TODO] BUILD-3: Собрать выпуск 0.5.22 для трёх ОС — Ожидает
