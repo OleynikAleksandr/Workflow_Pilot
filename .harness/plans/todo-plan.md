@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 806,
+  "plan_revision": 808,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -44,7 +44,8 @@
       "tests/fixtures/automatic-agent-dialogue.mjs",
       "tests/sidebar.test.mjs",
       "tests/startup-context.test.mjs",
-      "tools/codex-app-server-mcp/plugin.py"
+      "tools/codex-app-server-mcp/plugin.py",
+      "release-manifest.json"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-panel-startup.md",
@@ -273,8 +274,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "BUILD",
@@ -284,7 +285,9 @@
         "VERSION",
         "DOCS"
       ],
-      "functional_paths": [],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
       "documentation_paths": [
         "docs/planning/orchestrator-panel-startup.md"
       ],
@@ -300,7 +303,10 @@
         "Manifest и комплекты трёх ОС имеют один sourceCommit"
       ],
       "expected_commit_message": "build: Собрать проверенный комплект 0.5.20 для трёх ОС",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -355,7 +361,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 806
+Revision: 808
 
 ## Цель
 
@@ -390,10 +396,10 @@ Revision: 806
   - Файлы: README.md, docs/**, docs/planning/orchestrator-panel-startup.md, docs/architecture/OVERVIEW.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/browser.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/control.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md, docs/modules/workflow-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: STARTUP, VERSION
-- [TODO] BUILD: Собрать проверенный комплект 0.5.20 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] build: Собрать проверенный комплект 0.5.20 для трёх ОС
+- [DONE] BUILD: Собрать проверенный комплект 0.5.20 для трёх ОС — Завершено
+  - Git Commit: [DONE] build: Собрать проверенный комплект 0.5.20 для трёх ОС
   - Reference: orchestrator-panel-startup / BUILD / implementation
-  - Файлы: docs/planning/orchestrator-panel-startup.md
+  - Файлы: release-manifest.json, docs/planning/orchestrator-panel-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: VERSION, DOCS
 - [TODO] INSTALL: Установить готовое macOS-приложение 0.5.20 — Ожидает
