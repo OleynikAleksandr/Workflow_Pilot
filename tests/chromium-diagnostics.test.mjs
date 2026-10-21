@@ -206,6 +206,68 @@ test('DiagnosticJsonl writes valid JSONL and rotates bounded files', async () =>
 
 import { EventEmitter } from 'node:events';
 import { ChromiumDiagnostics } from '../src/execution/browser/diagnostics.mjs';
+import { AttachmentDiagnostics } from '../src/execution/browser/attachment-diagnostics.mjs';
+
+test('attachment observation separates stall, resumed data and completion without payloads', () => {
+  let now = 0;
+  const events = [];
+  const observer = new AttachmentDiagnostics((event, fields) => events.push({ event, ...fields }), { now: () => now });
+  observer.observe('Network.requestWillBeSent', { requestId: '1', request: {
+    method: 'POST', url: 'https://chatgpt.com/backend-api/files/PRIVATE_FILE?token=SECRET', postData: 'PRIVATE_BODY' } });
+  now = 1000;
+  observer.observe('Network.responseReceived', { requestId: '1', response: { status: 200, mimeType: 'text/event-stream' } });
+  now = 31000; observer.sweep(); observer.sweep();
+  assert.equal(events.filter(e => e.event === 'no-progress').length, 1);
+  assert.equal(events.at(-1).idleMs, 30000);
+  now = 32000;
+  observer.observe('Network.dataReceived', { requestId: '1', dataLength: 42, data: 'SECRET_BODY' });
+  assert.equal(events.at(-1).event, 'resumed');
+  assert.equal(events.at(-1).bytes, 42);
+  now = 33000;
+  observer.observe('Network.loadingFinished', { requestId: '1', encodedDataLength: 80 });
+  assert.equal(events.at(-1).elapsedMs, 33000);
+  assert.equal(events.at(-1).event, 'finished');
+  assert.equal(observer.requests.size, 0);
+  assert.doesNotMatch(JSON.stringify(events), /PRIVATE|SECRET|https|token/);
+});
+
+test('attachment registry is bounded, ignores foreign traffic and cleans timer at boundaries', () => {
+  let now = 0;
+  const events = [];
+  const observer = new AttachmentDiagnostics((event, fields) => events.push({ event, ...fields }), { now: () => now, maxRequests: 2 });
+  const request = (id, url = 'https://files.oaiusercontent.com/PRIVATE?sig=SECRET') => observer.observe('Network.requestWillBeSent', {
+    requestId: id, request: { method: 'PUT', url } });
+  request('foreign', 'https://evil.example/');
+  assert.equal(observer.requests.size, 0);
+  request('1'); request('2'); request('3');
+  assert.equal(observer.requests.size, 2);
+  assert.equal(events.find(e => e.event === 'evicted').requestId, '1');
+  observer.observe('Network.loadingFailed', { requestId: '2', canceled: true, errorText: 'SECRET' });
+  assert.equal(events.at(-1).canceled, true);
+  now = 600000; observer.sweep();
+  assert.equal(observer.requests.size, 0);
+  assert.equal(events.at(-1).event, 'expired');
+  observer.start(); request('4'); observer.clear('navigation');
+  assert.equal(observer.timer, null);
+  assert.equal(observer.requests.size, 0);
+  assert.equal(events.at(-1).boundary, 'navigation');
+  assert.doesNotMatch(JSON.stringify(events), /PRIVATE|SECRET|evil/);
+});
+
+test('Chromium CDP file metadata reaches diagnostic journal and navigation ends observation', async t => {
+  const { diagnostics, contents, file } = await startupDiagnostics(t);
+  const send = (method, params) => contents.debugger.emit('message', {}, method, params);
+  send('Network.requestWillBeSent', { requestId: 'file-fixture', request: { method: 'POST', url: 'https://chatgpt.com/backend-api/files' } });
+  send('Network.responseReceived', { requestId: 'file-fixture', response: { url: 'https://chatgpt.com/backend-api/files', status: 200, mimeType: 'application/json' } });
+  send('Network.dataReceived', { requestId: 'file-fixture', dataLength: 23 });
+  contents.emit('did-navigate', {}, 'https://chatgpt.com/');
+  await diagnostics.stop();
+  const rows = (await fs.readFile(file, 'utf8')).trim().split('\n').map(line => JSON.parse(line)).filter(row => row.source === 'attachments');
+  assert.deepEqual(rows.map(row => row.event), ['started', 'response', 'progress', 'observation-ended']);
+  assert.equal(rows[2].bytes, 23);
+  assert.equal(rows[3].boundary, 'navigation');
+  assert.equal(diagnostics.attachments.timer, null);
+});
 
 async function startupDiagnostics(t, { pendingDebugger = false } = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'web-pilot-early-diagnostics-'));

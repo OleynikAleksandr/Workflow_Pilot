@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 786,
+  "plan_revision": 788,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -49,7 +49,8 @@
       "src/backend/force-stop.mjs",
       "src/frontend/client/service-stop.mjs",
       "src/execution/browser/diagnostics.mjs",
-      "tests/chromium-diagnostics.test.mjs"
+      "tests/chromium-diagnostics.test.mjs",
+      "src/execution/browser/attachment-diagnostics.mjs"
     ],
     "documentation_paths": [
       "docs/planning/restore-stable-release.md",
@@ -579,7 +580,8 @@
       ],
       "functional_paths": [
         "src/execution/browser/diagnostics.mjs",
-        "tests/chromium-diagnostics.test.mjs"
+        "tests/chromium-diagnostics.test.mjs",
+        "src/execution/browser/attachment-diagnostics.mjs"
       ],
       "documentation_paths": [
         "docs/planning/attachment-retry-diagnostics.md"
@@ -592,14 +594,19 @@
         "Добавить ограниченную диагностику обработки вложений"
       ],
       "expected_commit_message": "feat: Добавить ограниченную диагностику обработки вложений",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "DIAG-ATTACH",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/execution/browser/attachment-diagnostics.mjs",
+        "src/execution/browser/diagnostics.mjs",
+        "tests/chromium-diagnostics.test.mjs"
+      ]
     },
     {
       "id": "VERSION-3",
@@ -746,7 +753,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 786
+Revision: 788
 
 ## Цель
 
@@ -828,10 +835,10 @@ Revision: 786
   - Файлы: src/execution/browser/chatgpt-composer.mjs, tests/chatgpt-composer.test.mjs, docs/planning/attachment-retry-diagnostics.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DIAG-ATTACH: Добавить ограниченную диагностику обработки вложений — Ожидает
-  - Git Commit: [PENDING] feat: Добавить ограниченную диагностику обработки вложений
+- [DONE] DIAG-ATTACH: Добавить ограниченную диагностику обработки вложений — Завершено
+  - Git Commit: [DONE] feat: Добавить ограниченную диагностику обработки вложений
   - Reference: restore-stable-release / DIAG-ATTACH / implementation
-  - Файлы: src/execution/browser/diagnostics.mjs, tests/chromium-diagnostics.test.mjs, docs/planning/attachment-retry-diagnostics.md
+  - Файлы: src/execution/browser/diagnostics.mjs, tests/chromium-diagnostics.test.mjs, src/execution/browser/attachment-diagnostics.mjs, docs/planning/attachment-retry-diagnostics.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-RETRY
 - [TODO] VERSION-3: Согласовать версию 0.5.19 — Ожидает

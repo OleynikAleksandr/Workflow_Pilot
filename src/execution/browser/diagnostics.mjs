@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { queueDiagnosticFile } from '../files/diagnostics.mjs';
 import { StartupNetworkTrace } from './startup-network-trace.mjs';
+import { AttachmentDiagnostics } from './attachment-diagnostics.mjs';
 import { normalizeLoginEvidence } from './page-state.mjs';
 
 const STARTUP_EVENTS = new Set(['session-start', 'navigation-requested', 'navigation-waiting', 'load-url-failed',
@@ -356,6 +357,7 @@ export class ChromiumDiagnostics {
     this.onConversationRateLimit = onConversationRateLimit;
     this.allowFixture = allowFixture;
     this.log = new DiagnosticJsonl(file, { maxBytes, owner });
+    this.attachments = new AttachmentDiagnostics((event, fields) => this.log.record('attachments', event, fields));
     this.networkTrace = startupNetwork ? new StartupNetworkTrace(contents.session?.netLog, path.join(path.dirname(file), 'startup-network.json')) : null;
     this.handlers = [];
     this.lastDomPulse = null;
@@ -380,6 +382,7 @@ export class ChromiumDiagnostics {
     this.started = true;
     await this.log.init();
     this.log.record('diagnostics', 'session-start', metadata);
+    this.attachments.start();
     this.#listenNative();
     await this.networkTrace?.start();
     // CDP may wait for the first renderer; it must never delay that navigation.
@@ -417,6 +420,8 @@ export class ChromiumDiagnostics {
     this.#on('did-stop-loading', () => this.log.record('webContents', 'did-stop-loading', { url: safeUrl(this.contents.getURL()) }));
     this.#on('did-finish-load', () => this.log.record('webContents', 'did-finish-load', { url: safeUrl(this.contents.getURL()) }));
     this.#on('did-navigate', (_event, url) => {
+      this.attachments.clear('navigation');
+      this.attachments.start();
       this.lastContextUsage = null;
       this.log.record('webContents', 'did-navigate', { url: safeUrl(url) });
     });
@@ -426,7 +431,10 @@ export class ChromiumDiagnostics {
     });
     this.#on('unresponsive', () => this.log.record('webContents', 'unresponsive'));
     this.#on('responsive', () => this.log.record('webContents', 'responsive'));
-    this.#on('render-process-gone', (_event, details) => this.log.record('webContents', 'render-process-gone', { reason: details?.reason, exitCode: details?.exitCode }));
+    this.#on('render-process-gone', (_event, details) => {
+      this.attachments.clear('renderer-gone');
+      this.log.record('webContents', 'render-process-gone', { reason: details?.reason, exitCode: details?.exitCode });
+    });
   }
 
   async #attachDebugger() {
@@ -448,11 +456,16 @@ export class ChromiumDiagnostics {
   }
 
   onDebuggerDetach(_event, reason) {
+    this.attachments.clear('detached');
     this.attachedByUs = false;
     this.log.record('cdp', 'detached', { reason: safeSignal(reason) ?? 'unknown' });
   }
 
   onDebuggerMessage(_event, method, params = {}) {
+    if (this.started) {
+      this.attachments.start();
+      this.attachments.observe(method, params);
+    }
     const base = { method };
     if (method === 'Network.requestWillBeSent') {
       return this.log.record('cdp', 'request', { ...base, requestId: params.requestId, requestMethod: params.request?.method,
@@ -618,6 +631,7 @@ export class ChromiumDiagnostics {
   async stop() {
     if (!this.started) return;
     this.started = false;
+    this.attachments.clear('closed');
     this.lastDomPulse = null;
     this.streamResponses.clear();
     this.serviceResponses.clear();
