@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 788,
+  "plan_revision": 790,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -631,14 +631,19 @@
         "Согласовать версию 0.5.19"
       ],
       "expected_commit_message": "feat: Согласовать версию 0.5.19",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "VERSION-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs"
+      ]
     },
     {
       "id": "DOCS-3",
@@ -753,7 +758,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 788
+Revision: 790
 
 ## Цель
 
@@ -841,8 +846,8 @@ Revision: 788
   - Файлы: src/execution/browser/diagnostics.mjs, tests/chromium-diagnostics.test.mjs, src/execution/browser/attachment-diagnostics.mjs, docs/planning/attachment-retry-diagnostics.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-RETRY
-- [TODO] VERSION-3: Согласовать версию 0.5.19 — Ожидает
-  - Git Commit: [PENDING] feat: Согласовать версию 0.5.19
+- [DONE] VERSION-3: Согласовать версию 0.5.19 — Завершено
+  - Git Commit: [DONE] feat: Согласовать версию 0.5.19
   - Reference: restore-stable-release / VERSION-3 / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/attachment-retry-diagnostics.md
   - Параллельность: исключительное выполнение
