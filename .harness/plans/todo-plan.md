@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 804,
+  "plan_revision": 806,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -50,7 +50,21 @@
       "docs/planning/orchestrator-panel-startup.md",
       "README.md",
       "docs/**",
-      "docs/architecture/OVERVIEW.md"
+      "docs/architecture/OVERVIEW.md",
+      "docs/acceptance/orchestrated-execution.md",
+      "docs/modules/assignment-dialogue-reliability.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/automatic-agent-dialogue-acceptance.md",
+      "docs/modules/browser.md",
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/modules/chatgpt-plugin.md",
+      "docs/modules/control.md",
+      "docs/modules/dialogue-timing.md",
+      "docs/modules/orchestrated-execution.md",
+      "docs/modules/orchestrator-startup.md",
+      "docs/modules/plugin-communication-handoff.md",
+      "docs/modules/release.md",
+      "docs/modules/workflow-execution.md"
     ]
   },
   "baseline_commit": "f2182b36578b1412cfb7d48985c91d449944d7aa",
@@ -60,7 +74,7 @@
       {
         "path": "docs/planning/orchestrator-panel-startup.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "8a0d8bd864f301d68683f5d11937fac45812ca11"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -197,8 +211,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "DOCS",
@@ -213,7 +227,21 @@
         "README.md",
         "docs/**",
         "docs/planning/orchestrator-panel-startup.md",
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -223,7 +251,26 @@
         "README/OVERVIEW/модульные контракты отражают реализацию; live acceptance pending; временная выпущенная спецификация перенесена и удалена"
       ],
       "expected_commit_message": "docs: описать стартовый канал оркестратора",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/orchestrator-panel-startup.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -308,7 +355,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 804
+Revision: 806
 
 ## Цель
 
@@ -337,10 +384,10 @@ Revision: 804
   - Файлы: package.json, package-lock.json, src/**, tests/**, src/contracts/backend.mjs, docs/planning/orchestrator-panel-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: STARTUP
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: описать стартовый канал оркестратора
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: описать стартовый канал оркестратора
   - Reference: orchestrator-panel-startup / DOCS / implementation
-  - Файлы: README.md, docs/**, docs/planning/orchestrator-panel-startup.md, docs/architecture/OVERVIEW.md
+  - Файлы: README.md, docs/**, docs/planning/orchestrator-panel-startup.md, docs/architecture/OVERVIEW.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/browser.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/control.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md, docs/modules/workflow-execution.md
   - Параллельность: исключительное выполнение
   - Зависимости: STARTUP, VERSION
 - [TODO] BUILD: Собрать проверенный комплект 0.5.20 для трёх ОС — Ожидает

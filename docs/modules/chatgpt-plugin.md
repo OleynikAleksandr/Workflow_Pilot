@@ -1,17 +1,17 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.19, Kit 1.9.3, протокол панели `3`, build `0.5.19-communication-3`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.20, Kit 1.9.3, протокол панели `4`, build `0.5.20-communication-4`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
-PiP-пробник удалён из исходников, MCP-каталога и поставляемых ресурсов. Остаётся основная панель Workflow Pilot; её рабочий API соответствует стабильной 0.5.12. Уже сохранённые старые результаты инструментов у хоста могут оставаться в истории разговора, но новые инструменты PiP сервер не объявляет.
+Основная панель Workflow Pilot обслуживает стартовый контекст O и рабочий диалог. PiP-пробник отсутствует.
 
-1. Пользователь открывает локальный проект и будущего оркестратора Chat или Work. Первое полное recovery через существующий DOM-путь содержит ограниченное приглашение. Агент вызывает `workflow_pilot_panel` и открывает панель; это не разрешение выполнять план.
+1. Пользователь открывает локальный проект и будущего оркестратора Chat или Work. DOM передаёт короткое приглашение `workflow_pilot_panel`, без вложений. После конца bootstrap O получает и подтверждает все части [стартового контекста](orchestrator-startup.md); это не разрешение выполнять план.
 2. Обсуждение, Review и публикация сохраняют прежний путь. Публикация связывает scope с точным `execution_origin_session_id`, но не запускает работу.
 3. Одна кнопка Start разрешает scope. Control/ParallelExecution через Kit создаёт назначения, worktree и Chat-исполнителей в пределах max_workers. Пока E проходит bootstrap, O выбирает задачу/контекст и вызывает prepare с dispatch_when_ready=true. Backend сохраняет явную авторизацию и отправляет неизменяемый пакет после SDK/bind и конца bootstrap, без отдельного ready-хода. Без флага prepare остаётся черновиком. Backend assignment-start сохранён только для прежнего контракта.
 4. Поручения, продолжения, вопросы/решения, интеграции, delivery и итог передаются через канал. Пользователь не переносит run/participant, не открывает панели исполнителей, не вызывает join/Enable и не пишет «продолжай» при обычной технической блокировке.
 
-Панель не создаёт второй scheduler. Kit остаётся источником задач, назначений, проверок и DONE; локальный коммит исполнителя требует проверенной интеграции. [Оркестрация](orchestrated-execution.md) определяет волны и итоговую очистку. DOM передаёт полный начальный контекст O, минимальные обязательные правила/identity/bootstrap E, прежний Review и legacy. [Роли, рабочий API и приёмка результатов](assignment-dialogue.md) определяют dialogue_version=1. Выбранный маршрут `plugin-v1`/`legacy-dom` сохраняется; ошибки канала не переключают его скрыто на DOM.
+Панель не создаёт второй scheduler. Kit остаётся источником задач, назначений, проверок и DONE; локальный коммит исполнителя требует проверенной интеграции. [Оркестрация](orchestrated-execution.md) определяет волны и итоговую очистку. DOM передаёт короткое приглашение O, минимальные обязательные правила/identity/bootstrap E, прежний Review и legacy. [Роли, рабочий API и приёмка результатов](assignment-dialogue.md) определяют dialogue_version=1. Выбранный маршрут `plugin-v1`/`legacy-dom` сохраняется; ошибки канала не переключают его скрыто на DOM.
 
 ## Регистрация и адресация
 
@@ -46,7 +46,7 @@ Start/Continue выдаёт допуск текущему плану. Лимит
 
 Observer и журнал команд сообщают занятость/черновик. Перед SDK объединённый claim_ready проверяет identity/назначение/generation/допуск и сохраняет durable send.intent; старые claim/verify сохранены. Между подтверждением и SDK нет ожидания UI refresh/telemetry. FIFO освобождается по read + yield + свежему физическому концу без user bubble. Ранний yield/старый idle не открывают вход; read-only сверка не запускает модель. [Контракт](assignment-dialogue-reliability.md#sdk-fifo-и-конец-хода).
 
-`pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report не возвращает pending. UNKNOWN и остальные терминальные исходы не повторяются через SDK или DOM. После restart claimed становится unknown. Большой контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
+`pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report не возвращает pending. UNKNOWN и остальные терминальные исходы не повторяются через SDK или DOM. После restart claimed становится unknown. Стартовый контекст имеет [отдельный контракт](orchestrator-startup.md). Рабочий контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
 
 Рабочий model API — workflow_assignment_prepare/dispatch/send/yield/status: черновик O без grant, его отправка после готовности, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Yield.reason явно ограничен awaiting_reply/tasks_sent/result_sent/handled. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 

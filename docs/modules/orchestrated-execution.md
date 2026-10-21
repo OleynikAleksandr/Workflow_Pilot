@@ -1,10 +1,10 @@
 # Оркестрованное выполнение плана
 
-Новые планы Workflow Pilot 0.5.19 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
+Новые планы Workflow Pilot 0.5.20 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
 
 ## Роли и принадлежность
 
-Новая сессия без плана — кандидат O: полный recovery через DOM, обсуждение spec/to-do, Review при ON, публикация без запуска. `execution_origin_session_id` выбирает опубликованного O по сохранённой роли; Settings не меняют снимок плана. Другие новые сессии активного проекта — обсуждение: план не меняют, документы создают только по просьбе в `.workflow-temp/` вне Git.
+Новая сессия без плана — кандидат O: короткое приглашение через DOM и полный [recovery через панель](orchestrator-startup.md), обсуждение spec/to-do, Review при ON, публикация без запуска. `execution_origin_session_id` выбирает опубликованного O по сохранённой роли; Settings не меняют снимок плана. Другие новые сессии активного проекта — обсуждение: план не меняют, документы создают только по просьбе в `.workflow-temp/` вне Git.
 
 E работает в Chat независимо от режима O Chat/Work. Bootstrap содержит обязательные правила, собственный worktree/назначение и приглашение панели. O заранее готовит и разрешает отправку собственного поручения; backend доставляет его после service ready. task.context_pack служит O списком для отбора, не автоматическим вложением E. E не начинает task:start по bootstrap.
 
@@ -46,4 +46,4 @@ ExecutionControl хранит not-started/running/pausing/paused/complete, пр�
 
 Реальные Kit/Git, HTTP Start, Python MCP, staged SDK и Control проходят автоматические fixtures с двумя и пятью E, без пользовательских bubbles на каждом SDK-ходе. Скрытый Electron проверяет фоновый bootstrap/observer/composer без select/show. Legacy assertions сохранены отдельными случаями. [Матрица восстановления](assignment-dialogue-reliability.md#проверки-и-граница-доказательств).
 
-Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.19 — NOT_RUN. Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.
+Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.20 — NOT_RUN. Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.

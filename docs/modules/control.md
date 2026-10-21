@@ -4,7 +4,7 @@
 
 ProjectsService владеет WorkspaceSessions и очередью записи. select/newSession/bindChat/snapshot/whenIdle предоставляют операции и отделённые снимки. Setup.preview возвращает token, apply перепроверяет входы. Doctor, readiness, deletion и lifecycle находятся в Control/projects. Проекты и логические сессии принадлежат Control; один current plan checkout принадлежит Kit. SessionPlans вызывает установленный Kit; ContextService проверяет recovery и кеширует по актуальным входам. Отдельного плана чата нет.
 
-Ключ сессии включает workspace/sessionId/assignmentId/taskId. Scoped store отклоняет чужой адрес; смена видимого проекта не меняет фонового владельца. Контекст отправляется однократно, UNKNOWN запрещает автоматический повтор; restart сохраняет привязки. Исходы Send — в [Browser](browser.md).
+Ключ сессии включает workspace/sessionId/assignmentId/taskId. Scoped store отклоняет чужой адрес; смена видимого проекта не меняет фонового владельца. Контекст отправляется однократно, UNKNOWN запрещает автоматический повтор; restart сохраняет привязки. Новый O использует [стартовый канал панели](orchestrator-startup.md): ContextSession сохраняет короткий bootstrap и неизменяемый recovery, DialogueDelivery проверяет свежесть и готовность, StartupContext хранит пакет и квитанции в существующем WAL. Исходы Send — в [Browser](browser.md).
 
 Новый проект раскрывается сразу. Для всех автоматических несостоявшихся стартов, включая обычного O, readiness повторно проверяется ограниченное время без выбора карточки: до 60 наблюдений с интервалом 500 мс, с проверкой документа и поколения. Отправка, отмена и закрытое назначение прекращают наблюдение.
 
