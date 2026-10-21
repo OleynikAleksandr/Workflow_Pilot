@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 778,
+  "plan_revision": 780,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -484,14 +484,17 @@
         "Собрать проверенный выпуск 0.5.18 для трёх ОС"
       ],
       "expected_commit_message": "feat: Собрать проверенный выпуск 0.5.18 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "BUILD-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-2",
@@ -547,7 +550,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 778
+Revision: 780
 
 ## Цель
 
@@ -611,8 +614,8 @@ Revision: 778
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-recovery.md, docs/modules/release.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/control.md, docs/modules/dialogue-timing.md, docs/modules/native-window.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/backend-shutdown.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP, FORCE-STOP, VERSION-2
-- [TODO] BUILD-2: Собрать проверенный выпуск 0.5.18 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.18 для трёх ОС
+- [DONE] BUILD-2: Собрать проверенный выпуск 0.5.18 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать проверенный выпуск 0.5.18 для трёх ОС
   - Reference: restore-stable-release / BUILD-2 / implementation
   - Файлы: release-manifest.json, docs/planning/startup-recovery.md
   - Параллельность: исключительное выполнение
