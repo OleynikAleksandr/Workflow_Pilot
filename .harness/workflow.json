@@ -301,6 +301,23 @@
       "required": false,
       "timeout_ms": 180000,
       "evidence": "Этапы file transfer, stall/resume, очистка и отсутствие payload в логах."
+    },
+    {
+      "id": "orchestrator-startup",
+      "kind": "test",
+      "required": false,
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/startup-context.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/progress.test.mjs"
+      ],
+      "timeout_ms": 300000,
+      "evidence": "Изолированные проверки стартового канала O, bootstrap, receipts, restart, UNKNOWN и UI."
     }
   ],
   "budget": {
