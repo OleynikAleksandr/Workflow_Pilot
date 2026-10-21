@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 825,
+  "plan_revision": 827,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -702,14 +702,17 @@
         "После DOCS один sourceCommit и проверенный состав без Python cache"
       ],
       "expected_commit_message": "feat: Собрать выпуск 0.5.22 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "BUILD-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-3",
@@ -764,7 +767,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 825
+Revision: 827
 
 ## Цель
 
@@ -847,8 +850,8 @@ Revision: 825
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/browser.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/control.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: ALL-START
-- [TODO] BUILD-3: Собрать выпуск 0.5.22 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать выпуск 0.5.22 для трёх ОС
+- [DONE] BUILD-3: Собрать выпуск 0.5.22 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать выпуск 0.5.22 для трёх ОС
   - Reference: orchestrator-panel-startup / BUILD-3 / implementation
   - Файлы: release-manifest.json, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
