@@ -1,6 +1,6 @@
 # Тайминги и сокращение ожиданий диалога
 
-Контракт Workflow Pilot 0.5.17 / Kit 1.9.3. [Протокол O/E](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [живая приёмка](automatic-agent-dialogue-acceptance.md). Источник событий — существующий WAL и его экспорт; отдельного журнала истины нет.
+Контракт Workflow Pilot 0.5.18 / Kit 1.9.3. [Протокол O/E](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [живая приёмка](automatic-agent-dialogue-acceptance.md). Источник событий — существующий WAL и его экспорт; отдельного журнала истины нет.
 
 ## Независимые стадии
 
@@ -69,4 +69,4 @@ Sidebar и панель показывают известную стадию, у
 
 Изолированные fixtures используют настоящие API/SDK/MCP/Kit/Git с подставленной физической моделью. Проверены авторизация до binding, отправка после готовности без лишнего O-хода, медленная диагностика, DOCS/O и final/E overlap, ранняя cleanup и строгий complete. Они доказывают последовательность/число вызовов и сохранность ограничений, не скорость живого ChatGPT.
 
-В следующем пользовательском опыте записать prepare/authorization/ready/persisted/claim/SDK/read/result/acceptance/integration/transport_closed/cleanup/O-end/complete для двух E и DOCS. Сравнить каждую стадию, проверить промежуточные подписи sidebar, приёмку и архив complete. Не повторять проверки неизменившегося SHA без причины. Недоступные spans, UNKNOWN и gaps указывать явно. A–D 0.5.17 пока NOT_RUN.
+В следующем пользовательском опыте записать prepare/authorization/ready/persisted/claim/SDK/read/result/acceptance/integration/transport_closed/cleanup/O-end/complete для двух E и DOCS. Сравнить каждую стадию, проверить промежуточные подписи sidebar, приёмку и архив complete. Не повторять проверки неизменившегося SHA без причины. Недоступные spans, UNKNOWN и gaps указывать явно. A–D 0.5.18 пока NOT_RUN.

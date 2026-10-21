@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 776,
+  "plan_revision": 778,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -63,7 +63,12 @@
       "docs/modules/chatgpt-plugin-acceptance.md",
       "docs/modules/plugin-communication-handoff.md",
       "docs/acceptance/orchestrated-execution.md",
-      "docs/planning/startup-recovery.md"
+      "docs/planning/startup-recovery.md",
+      "docs/modules/backend.md",
+      "docs/modules/browser.md",
+      "docs/modules/control.md",
+      "docs/modules/native-window.md",
+      "docs/modules/backend-shutdown.md"
     ]
   },
   "baseline_commit": "f4ca5a07ecdc0c604fa2c45d45636c2e5dafcf1e",
@@ -396,8 +401,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "DOCS-2",
@@ -414,14 +419,49 @@
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
         "docs/planning/startup-recovery.md",
-        "docs/modules/release.md"
+        "docs/modules/release.md",
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/native-window.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/backend-shutdown.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/native-window.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/startup-recovery.md",
+        "docs/modules/backend-shutdown.md"
+      ]
     },
     {
       "id": "BUILD-2",
@@ -507,7 +547,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 776
+Revision: 778
 
 ## Цель
 
@@ -565,10 +605,10 @@ Revision: 776
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/release.md, docs/architecture/OVERVIEW.md, docs/planning/startup-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: FORCE-STOP
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: restore-stable-release / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-recovery.md, docs/modules/release.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-recovery.md, docs/modules/release.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/control.md, docs/modules/dialogue-timing.md, docs/modules/native-window.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/backend-shutdown.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP, FORCE-STOP, VERSION-2
 - [TODO] BUILD-2: Собрать проверенный выпуск 0.5.18 для трёх ОС — Ожидает
