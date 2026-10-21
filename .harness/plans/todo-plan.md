@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 832,
+  "plan_revision": 833,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -800,11 +800,39 @@
       ]
     },
     {
+      "id": "DOCS-4",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "DOCS-4",
+        "role": "implementation",
+        "iteration": 4
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "STARTUP-WAL"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/orchestrator-startup.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
       "id": "BUILD-4",
       "title": "Собрать проверенный выпуск 0.5.23 для трёх ОС",
       "why": "Собрать проверенный выпуск 0.5.23 для трёх ОС",
       "dependencies": [
-        "STARTUP-WAL"
+        "STARTUP-WAL",
+        "DOCS-4"
       ],
       "functional_paths": [
         "release-manifest.json"
@@ -815,7 +843,7 @@
       "verification_ids": [
         "three-platform-release"
       ],
-      "verification_kind": "code",
+      "verification_kind": "package",
       "acceptance_criteria": [
         "DOCS до сборки; один sourceCommit; перед каждой production сборкой исключён Python cache"
       ],
@@ -834,7 +862,8 @@
       "title": "Установить готовый выпуск 0.5.23",
       "why": "Установить готовый выпуск 0.5.23",
       "dependencies": [
-        "BUILD-4"
+        "BUILD-4",
+        "DOCS-4"
       ],
       "functional_paths": [],
       "documentation_paths": [
@@ -843,7 +872,7 @@
       "verification_ids": [
         "release-installed"
       ],
-      "verification_kind": "code",
+      "verification_kind": "installed",
       "acceptance_criteria": [
         "Штатный installer проверил подпись manifest и rollback; приложение и служба не останавливаются"
       ],
@@ -880,7 +909,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 832
+Revision: 833
 
 ## Цель
 
@@ -981,18 +1010,24 @@ Revision: 832
   - Файлы: src/execution/plugin/communication-store.mjs, src/control/plugin/communication.mjs, tests/startup-context.test.mjs, tests/plugin-communication-store.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
+- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: orchestrator-panel-startup / DOCS-4 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: STARTUP-WAL
 - [TODO] BUILD-4: Собрать проверенный выпуск 0.5.23 для трёх ОС — Ожидает
   - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.23 для трёх ОС
   - Reference: orchestrator-panel-startup / BUILD-4 / implementation
   - Файлы: release-manifest.json, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
-  - Зависимости: STARTUP-WAL
+  - Зависимости: STARTUP-WAL, DOCS-4
 - [TODO] INSTALL-4: Установить готовый выпуск 0.5.23 — Ожидает
   - Git Commit: [PENDING] feat: Установить готовый выпуск 0.5.23
   - Reference: orchestrator-panel-startup / INSTALL-4 / implementation
   - Файлы: docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
-  - Зависимости: BUILD-4
+  - Зависимости: BUILD-4, DOCS-4
 
 ## Context Pack For This Cycle
 
