@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 739,
+  "plan_revision": 740,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -932,6 +932,133 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "PIP-GESTURE",
+      "title": "Воспроизвести официальный PiP запрос по действию пользователя",
+      "why": "Воспроизвести официальный PiP запрос по действию пользователя",
+      "dependencies": [],
+      "functional_paths": [
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/experiments/pip-probe/view.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tests/pip-probe.test.mjs",
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "pip-probe",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "После connect и tool-result запрос выполняется только по кнопке; capabilities и metadata диалогового ресурса без принудительного выбора режима, как официальный request-display-mode пример.",
+        "Два явных опыта: MCP requestDisplayMode и window.openai.requestDisplayMode при наличии. Нет автоматического fallback, результаты, события режима и ошибки различаются; undefined не выдаётся за отказ.",
+        "Ограниченный журнал только диагностических полей; основной канал не меняется; teardown отменяет свои ожидания и поздние ответы.",
+        "Версия 0.5.16; адресные UI lifecycle и реальные Node/Python MCP проверки. Успех сборки не доказывает плавающий PiP в живом хосте."
+      ],
+      "expected_commit_message": "feat: Воспроизвести официальный PiP запрос по действию пользователя",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "PIP-GESTURE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-5",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "DOCS-5",
+        "role": "implementation",
+        "iteration": 5
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "PIP-GESTURE"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/pip-probe.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "BUILD-PIP4",
+      "title": "Собрать экспериментальную 0.5.16 для трёх ОС",
+      "why": "Собрать экспериментальную 0.5.16 для трёх ОС",
+      "dependencies": [
+        "PIP-GESTURE",
+        "DOCS-5"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS проверены комплекты трёх ОС из одного sourceCommit, без публикации GitHub как в предыдущих опытах."
+      ],
+      "expected_commit_message": "feat: Собрать экспериментальную 0.5.16 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "BUILD-PIP4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-PIP4",
+      "title": "Установить готовую экспериментальную 0.5.16",
+      "why": "Установить готовую экспериментальную 0.5.16",
+      "dependencies": [
+        "BUILD-PIP4",
+        "DOCS-5"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer сверяет подпись, manifest и rollback; служба не останавливается, при необходимости pending."
+      ],
+      "expected_commit_message": "feat: Установить готовую экспериментальную 0.5.16",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "INSTALL-PIP4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -953,10 +1080,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 739
+Revision: 740
 
 ## Цель
 
@@ -1092,6 +1219,30 @@ Revision: 739
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-PIP3, DOCS-4
+- [TODO] PIP-GESTURE: Воспроизвести официальный PiP запрос по действию пользователя — Ожидает
+  - Git Commit: [PENDING] feat: Воспроизвести официальный PiP запрос по действию пользователя
+  - Reference: prepared-task-flow / PIP-GESTURE / implementation
+  - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tools/codex-app-server-mcp/pip_probe.py, tests/pip-probe.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-5: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: prepared-task-flow / DOCS-5 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PIP-GESTURE
+- [TODO] BUILD-PIP4: Собрать экспериментальную 0.5.16 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать экспериментальную 0.5.16 для трёх ОС
+  - Reference: prepared-task-flow / BUILD-PIP4 / implementation
+  - Файлы: release-manifest.json, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PIP-GESTURE, DOCS-5
+- [TODO] INSTALL-PIP4: Установить готовую экспериментальную 0.5.16 — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовую экспериментальную 0.5.16
+  - Reference: prepared-task-flow / INSTALL-PIP4 / implementation
+  - Файлы: release-manifest.json, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD-PIP4, DOCS-5
 
 ## Context Pack For This Cycle
 
