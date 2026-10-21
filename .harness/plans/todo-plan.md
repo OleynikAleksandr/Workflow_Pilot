@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 748,
+  "plan_revision": 749,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -100,17 +100,17 @@
         "revision": "WORKTREE"
       },
       {
-        "path": "docs/modules/chatgpt-plugin.md",
-        "required": true,
-        "revision": "WORKTREE"
-      },
-      {
         "path": "docs/planning/pip-probe.md",
         "required": true,
         "revision": "f3f208ebe33b1794517e1ddadff5242d488524ee"
       },
       {
         "path": "docs/modules/pip-probe.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/chatgpt-plugin.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -1080,6 +1080,51 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "REMOVE-PIP",
+      "title": "Удалить эксперименты PiP и восстановить код стабильной 0.5.12",
+      "why": "Удалить эксперименты PiP и восстановить код стабильной 0.5.12",
+      "dependencies": [],
+      "functional_paths": [
+        ".gitignore",
+        "package-lock.json",
+        "package.json",
+        "release-manifest.json",
+        "scripts/check-pip-probe.mjs",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "src/contracts/backend.mjs",
+        "tests/pip-probe.test.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/experiments/pip-probe/view.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/chatgpt-plugin.md",
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/pip-probe.md"
+      ],
+      "verification_ids": [
+        "architecture",
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Все продуктовые исходники, версии и документация совпадают с 6c10ea2 до PiP; история Git и установленный Kit сохранены.",
+        "Экспериментальные MCP инструменты, ресурсы, staging, тесты и профиль проверки удалены; основная панель и канал проходят адресные проверки.",
+        "Это откат кодовой базы без новой сборки, публикации или вмешательства в работающую службу."
+      ],
+      "expected_commit_message": "revert: удалить эксперименты PiP и восстановить стабильную 0.5.12",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "prepared-task-flow",
+        "task_id": "REMOVE-PIP",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1101,10 +1146,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 748
+Revision: 749
 
 ## Цель
 
@@ -1264,13 +1309,19 @@ Revision: 748
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-PIP4, DOCS-5
+- [TODO] REMOVE-PIP: Удалить эксперименты PiP и восстановить код стабильной 0.5.12 — Ожидает
+  - Git Commit: [PENDING] revert: удалить эксперименты PiP и восстановить стабильную 0.5.12
+  - Reference: prepared-task-flow / REMOVE-PIP / implementation
+  - Файлы: .gitignore, package-lock.json, package.json, release-manifest.json, scripts/check-pip-probe.mjs, scripts/stage-chatgpt-plugin.mjs, src/contracts/backend.mjs, tests/pip-probe.test.mjs, tools/codex-app-server-mcp/pip_probe.py, tools/codex-app-server-mcp/plugin.py, tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, docs/modules/chatgpt-plugin.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/pip-probe.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
 
 ## Context Pack For This Cycle
 
 - docs/planning/prepared-task-flow.md
 - docs/architecture/OVERVIEW.md
-- docs/modules/chatgpt-plugin.md
 - docs/planning/pip-probe.md
 - docs/modules/pip-probe.md
+- docs/modules/chatgpt-plugin.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
