@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 810,
+  "plan_revision": 811,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Стартовый контекст O через панель без DOM-вложений, проверенный выпуск и установка",
   "acceptance_criteria": [
     "Новая O-сессия получает полный пакет через панель без вложений на изолированных fixtures; живая приёмка pending",
@@ -65,7 +65,8 @@
       "docs/modules/orchestrator-startup.md",
       "docs/modules/plugin-communication-handoff.md",
       "docs/modules/release.md",
-      "docs/modules/workflow-execution.md"
+      "docs/modules/workflow-execution.md",
+      "docs/planning/startup-latency.md"
     ]
   },
   "baseline_commit": "f2182b36578b1412cfb7d48985c91d449944d7aa",
@@ -79,6 +80,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/startup-latency.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -338,6 +344,132 @@
       "expected_commit_message": "build: Установить готовое macOS-приложение 0.5.20",
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "FAST-START",
+      "title": "Получать стартовый контекст O в одном ходе через панель",
+      "why": "Получать стартовый контекст O в одном ходе через панель",
+      "dependencies": [],
+      "functional_paths": [
+        "src/**",
+        "tools/codex-app-server-mcp/**",
+        "tests/**",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-latency.md"
+      ],
+      "verification_ids": [
+        "orchestrator-startup",
+        "architecture",
+        "chatgpt-plugin",
+        "startup-recovery",
+        "prepared-flow-cycle",
+        "executor-channel"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Новый старт возвращает первую часть в panel и не выполняет SDK Send; остаток и ack в том же ходе",
+        "Адресные проверки включают restart/stale/чужого получателя/старый UNKNOWN/отсутствие grant",
+        "Версия 0.5.21; bootstrap, MCP и backend согласованы"
+      ],
+      "expected_commit_message": "feat: Получать стартовый контекст O в одном ходе через панель",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "FAST-START",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "FAST-START"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/startup-latency.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "BUILD-2",
+      "title": "Собрать комплект 0.5.21 для трёх ОС",
+      "why": "Собрать комплект 0.5.21 для трёх ОС",
+      "dependencies": [
+        "FAST-START",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-latency.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS собран проверенный комплект из одного sourceCommit; Python cache исключён"
+      ],
+      "expected_commit_message": "feat: Собрать комплект 0.5.21 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "BUILD-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-2",
+      "title": "Установить готовый выпуск 0.5.21",
+      "why": "Установить готовый выпуск 0.5.21",
+      "dependencies": [
+        "BUILD-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/planning/startup-latency.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установка или pending подтверждены installer; служба и приложение не останавливались"
+      ],
+      "expected_commit_message": "feat: Установить готовый выпуск 0.5.21",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "INSTALL-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -359,10 +491,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 810
+Revision: 811
 
 ## Цель
 
@@ -409,10 +541,35 @@ Revision: 810
   - Файлы: docs/planning/orchestrator-panel-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD, DOCS
+- [TODO] FAST-START: Получать стартовый контекст O в одном ходе через панель — Ожидает
+  - Git Commit: [PENDING] feat: Получать стартовый контекст O в одном ходе через панель
+  - Reference: orchestrator-panel-startup / FAST-START / implementation
+  - Файлы: src/**, tools/codex-app-server-mcp/**, tests/**, package.json, package-lock.json, docs/planning/startup-latency.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: orchestrator-panel-startup / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-latency.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FAST-START
+- [TODO] BUILD-2: Собрать комплект 0.5.21 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать комплект 0.5.21 для трёх ОС
+  - Reference: orchestrator-panel-startup / BUILD-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/startup-latency.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FAST-START, DOCS-2
+- [TODO] INSTALL-2: Установить готовый выпуск 0.5.21 — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовый выпуск 0.5.21
+  - Reference: orchestrator-panel-startup / INSTALL-2 / implementation
+  - Файлы: docs/planning/startup-latency.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD-2, DOCS-2
 
 ## Context Pack For This Cycle
 
 - docs/planning/orchestrator-panel-startup.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/startup-latency.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
