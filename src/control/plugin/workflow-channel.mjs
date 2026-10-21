@@ -156,7 +156,7 @@ export class WorkflowChannel {
   pending(run,member) {
     if(!this.transportPermitted(run,member)||member.deliveryGate||!this.observe(member.target).canSend)return null;
     const first=this.first(run,member);
-    return first?.delivery==='pending'&&!first.read?first:null;
+    return first?.delivery==='pending'&&!first.read&&first.delivery_mode!=='model-pull'?first:null;
   }
   async admit(target,message){
     const result=await this.admission(target,message);

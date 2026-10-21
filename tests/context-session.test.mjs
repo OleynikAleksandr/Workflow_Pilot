@@ -123,6 +123,8 @@ test('orchestrator panel bootstrap sends no attachments and stages the complete 
   f.composer.deliver=async options=>{
     assert.equal(staged,1);assert.deepEqual(options.attachments,[]);
     assert.match(options.text,/workflow_pilot_panel/);assert.doesNotMatch(options.text,/ПОЛНЫЙ КОНТЕКСТ|\/mnt\/data/);
+    assert.match(options.text,/startup_context/);assert.match(options.text,/в этом же ходе/);
+    assert.doesNotMatch(options.text,/После открытия панели заверши этот ход/);
     assert.equal(options.text.includes(packet().context),false);await options.onBeforeFill();await options.onBeforeSend();sent++;return {state:'sent'};
   };
   await f.controller.tick();assert.equal(sent,1);assert.equal(f.controller.state.phase,'startup-channel');

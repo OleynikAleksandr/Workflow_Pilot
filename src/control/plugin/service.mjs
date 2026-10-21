@@ -108,16 +108,18 @@ export class PluginProjects {
   async panel({enrollment_ticket,metadata}={}) {
     await this.communication.ready;
     const registration=enrollment_ticket?await this.communication.enroll(enrollment_ticket,metadata):null;
-    let startup_resume,binding=registration;
+    let startup_resume,startup_context,binding=registration;
     if(!binding&&metadata)try{binding=await this.communication.modelInput({metadata});
       await this.communication.enrollment.validateInput(binding);
     }catch{/* An unregistered panel still opens its normal connection view. */}
     if(binding){
       const c=this.communication,run=c.runs.get(binding.run_id),member=run.members[binding.participant_id],m=c.startup.message(run,member.target.local_session_id);
-      if(m?.intent&&!m.startup_complete&&!m.superseded)startup_resume={message_id:m.message_id,
+      if(m?.delivery_mode==='model-pull'&&!m.startup_complete)
+        startup_context=await c.startupOpen({metadata,message_id:m.message_id});
+      else if(m?.intent&&!m.startup_complete&&!m.superseded)startup_resume={message_id:m.message_id,
         instructions:'Продолжите чтение того же стартового пакета через workflow_communication_read_message/read_context и подтвердите workflow_startup_complete. Повтор уведомления не требуется.'};
     }
-    return {...(registration?{registration}:{}),...(startup_resume?{startup_resume}:{}),communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
+    return {...(registration?{registration}:{}),...(startup_context?{startup_context}:{}),...(startup_resume?{startup_resume}:{}),communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       storage:this.communication.store?'durable':'memory',critical_error:this.communication.critical}};
   }
   list() {

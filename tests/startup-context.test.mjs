@@ -10,7 +10,7 @@ import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
 import {startupView} from '../src/contracts/startup-view.mjs';
 const metadata={'openai/session':'startup-fixture','openai/subject':'local-test'};
 const target={project_id:'p',local_session_id:'o',origin_session_id:'o',role:'O',scope_id:null,assignment_id:null,task_id:null};
-async function fixture(t){
+async function fixture(t,{delivery_mode='sdk-notification'}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-startup-'))),instances=[];
   let valid=true,current=true,canSend=true,admitted=true;
   const create=async()=>{
@@ -19,7 +19,7 @@ async function fixture(t){
     instances.push(c);await c.ready;return c;
   };
   const c=await create(),invitation=await c.reserve(target);
-  const staged=await c.startup.stage(target,{request_id:'request-1',text:'Полный контекст 🪟\n'.repeat(4000)});
+  const staged=await c.startup.stage(target,{request_id:'request-1',text:'Полный контекст 🪟\n'.repeat(4000),delivery_mode});
   const registration=await c.enroll(invitation.enrollment_ticket,metadata);
   const bind=async comm=>{
     const input={...registration,metadata,panel_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,message_supported:true};
@@ -66,6 +66,7 @@ test('pre-plan startup uses binding and physical admission, all UTF-8 parts and 
 
 test('partial startup receipts survive reconnect and restart; UNKNOWN is never sent again',async t=>{
   const f=await fixture(t),{c,input}=f;
+  delete c.runs.get(input.run_id).messages[0].delivery_mode; // Actual 0.5.20 WAL shape.
   const ticket=await c.claimReady(input),m=await c.readMessage(input);
   await c.content({...input,context_ref:m.context_ref,part:0});
   c.dispose();await c.tail;
@@ -120,4 +121,54 @@ test('UI separates bootstrap, reading, confirmation and uncertain delivery',()=>
   assert.match(startupView({read:true,parts_read:1,total_parts:3}).detail,/1 из 3/);
   assert.equal(startupView({complete:true}).phase,'startup-ready');
   assert.equal(startupView({delivery:'unknown'}).phase,'startup-uncertain');
+});
+
+test('model-pull startup is durable, idempotent and never schedules SDK even before the first read',async t=>{
+  const f=await fixture(t,{delivery_mode:'model-pull'}),{c,input}=f;
+  const run=()=>c.runs.get(input.run_id),member=()=>run().members[input.participant_id];
+  assert.equal(c.workflow.pending(run(),member()),null);
+  await assert.rejects(c.claimReady(input),{code:'PLUGIN_COMMUNICATION_CLAIM_DENIED'});
+  f.setBusy(true);c.panels.clear(); // Tool reading does not await idle page or iframe.
+  const first=await c.startupOpen({metadata,message_id:input.message_id});
+  assert.equal(first.part,0);assert.ok(first.total>2);assert.ok(Buffer.byteLength(JSON.stringify(first))<28000);
+  assert.equal(c.startup.progress('o','request-1').parts_read,1);
+  assert.deepEqual(await c.readMessage({metadata,message_id:first.message_id}),first);
+  await assert.rejects(c.startup.stage(target,{request_id:'replacement',text:'changed'}),{code:'PLUGIN_COMMUNICATION_CONFLICT'});
+  await assert.rejects(c.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_INCOMPLETE'});
+  await assert.rejects(c.startupOpen({metadata:{'openai/session':'foreign'},message_id:first.message_id}),{code:'PLUGIN_COMMUNICATION_BINDING'});
+  c.dispose();await c.tail;
+  const next=await f.create();
+  assert.deepEqual(await next.startupOpen({metadata,message_id:first.message_id}),first);
+  const parts=await Promise.all(Array.from({length:first.total-1},(_,i)=>next.content({metadata,message_id:first.message_id,context_ref:first.context_ref,part:i+1})));
+  assert.equal(first.text+parts.map(p=>p.text).join(''),'Полный контекст 🪟\n'.repeat(4000));
+  const ack=await next.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref});
+  assert.equal(ack.complete,true);assert.equal(next.runs.get(input.run_id).grant,undefined);
+  assert.equal(next.runs.get(input.run_id).messages[0].reply_observed,false);
+  assert.equal(next.runs.get(input.run_id).events.filter(e=>e.event_type==='send.intent').length,0);
+  f.setCurrent(false);await assert.rejects(next.startupOpen({metadata,message_id:first.message_id}),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
+  f.setValid(false);await assert.rejects(next.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'});
+});
+
+test('failed model-pull content read cannot persist a receipt; legacy intent cannot switch transport',async t=>{
+  const f=await fixture(t,{delivery_mode:'model-pull'}),{c,input}=f;
+  const original=c.store;c.store={...original,readContent:async()=>{throw Error('fixture read failure');}};
+  await assert.rejects(c.startupOpen(input),/fixture read failure/);
+  assert.equal(c.startup.progress('o','request-1').read,false);assert.equal(c.startup.progress('o','request-1').parts_read,0);
+  c.store=original;
+  f.setCurrent(false);await assert.rejects(c.startupOpen(input),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
+  f.setCurrent(true);await c.startupOpen(input);
+  const old=await fixture(t);await old.c.claimReady(old.input);
+  await assert.rejects(old.c.startupOpen(old.input),{code:'PLUGIN_COMMUNICATION_MODE'});
+});
+
+test('model-pull rejects an enrolled executor and a removed project',async t=>{
+  const f=await fixture(t,{delivery_mode:'model-pull'}),{c,input}=f;
+  const executor={...target,local_session_id:'e',role:'E',assignment_id:'assignment',task_id:'T001'};
+  c.enrollment.resolveTarget=id=>id==='o'?target:id==='e'?executor:null;
+  const ticket=await c.reserve(executor),eMeta={'openai/session':'executor-fixture'};
+  await c.enroll(ticket.enrollment_ticket,eMeta);
+  await assert.rejects(c.startupOpen({message_id:input.message_id,metadata:eMeta}),{code:'PLUGIN_COMMUNICATION_BINDING'});
+  await c.startupOpen(input);
+  await c.removeProjects([{sessionIds:['o']}]);
+  await assert.rejects(c.startupOpen(input),{code:'PLUGIN_COMMUNICATION_PROJECT_REMOVED'});
 });

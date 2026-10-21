@@ -300,6 +300,18 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
           const invitation=JSON.parse(input.text.match(/workflow_pilot_panel с аргументами (\{"enrollment_ticket":"[a-f0-9]+"\})/)[1]);
           const registered=await c.callTool({name:'workflow_pilot_panel',arguments:invitation,_meta:record.metadata});
           assert.equal(registered.isError,false,JSON.stringify(registered.structuredContent));
+          const startup=registered.structuredContent.startup_context;
+          if(startup){
+            assert.equal(project.assignmentId,undefined);
+            for(let part=1;part<startup.total;part++){
+              const value=await c.callTool({name:'workflow_communication_read_context',arguments:{
+                message_id:startup.message_id,context_ref:startup.context_ref,part},_meta:record.metadata});
+              assert.equal(value.isError,false);
+            }
+            const ack=await c.callTool({name:'workflow_startup_complete',arguments:{
+              message_id:startup.message_id,context_sha256:startup.context_ref},_meta:record.metadata});
+            assert.equal(ack.isError,false);record.startupComplete=true;
+          }
           record.bootstrapCount++;record.registration=registered.structuredContent.registration;
           record.ui=await communicationHtml(testPort,c,{hostMetadata:record.metadata,timerMs:ms=>ms===2000?40:ms,
             onMessage:request=>{
@@ -367,7 +379,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   assert.equal((await plugin.communication.recover({metadata:o.metadata})).participants.length,1);
   await wait(()=>[...plugin.communication.runs.values()].some(r=>r.messages.some(m=>m.kind==='startup-context'&&m.startup_complete)),'startup context receipt');
   await wait(()=>!o.pageState.current.state.busy,'startup physical end');
-  assert.equal(o.ui.messages.length,1,'startup context uses one notification without plan permission');
+  assert.equal(o.ui.messages.length,0,'startup context is read in the opening tool turn without an SDK notification');
   await fs.mkdir(path.join(root,'docs/planning'),{recursive:true});
   await fs.writeFile(path.join(root,'docs/planning/dialogue.md'),'# Isolated automatic dialogue\n');
   const task=(id,file,dependencies=[])=>({id,title:'Write '+file,why:'Actual automatic dialogue fixture',dependencies,parallel_safe:true,

@@ -62,13 +62,43 @@ async function fixture(t){
 }
 
 const communicationTools=['bind','claim','claim_ready','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','telemetry_batch','verify','wait'];
+test('startup panel returns first context in the same MCP turn without iframe readiness or a second SDK wakeup',async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;
+  const target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};
+  comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?target:null;
+  comm.workflow.observe=()=>({canSend:false,busy:true});comm.workflow.admission=async()=>false;
+  const invite=await comm.reserve(target),text='Контекст 🪟 '.repeat(2500);
+  const staged=await comm.startup.stage(target,{request_id:'pull-request',text});
+  await bridge(t,f);const c=await client(t,f);
+  const call=(name,args={})=>c.callTool({name,arguments:args,_meta:metadata});
+  const opened=await call('workflow_pilot_panel',{enrollment_ticket:invite.enrollment_ticket});
+  assert.equal(opened.isError,false);const first=opened.structuredContent.startup_context;
+  assert.equal(first.message_id,staged.message_id);assert.equal(first.part,0);assert.ok(first.total>1);
+  assert.ok(Buffer.byteLength(JSON.stringify(opened.structuredContent))<28000);
+  const retry=await call('workflow_pilot_panel');assert.deepEqual(retry.structuredContent.startup_context,first);
+  const early=await call('workflow_startup_complete',{message_id:first.message_id,context_sha256:first.context_ref});assert.equal(early.isError,true);
+  const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?10:ms});
+  await eventually(()=>ui.calls.includes('workflow_communication_sync'));
+  let actual=first.text;
+  for(let part=1;part<first.total;part++){
+    const r=await call('workflow_communication_read_context',{message_id:first.message_id,context_ref:first.context_ref,part});
+    assert.equal(r.isError,false);actual+=r.structuredContent.text;
+  }
+  assert.equal(actual,text);
+  const ack=await call('workflow_startup_complete',{message_id:first.message_id,context_sha256:first.context_ref});assert.equal(ack.structuredContent.complete,true);
+  await eventually(()=>ui.dom.window.document.body.textContent.includes('Можно ставить задачу'));
+  assert.equal(ui.messages.length,0);
+  for(const name of ['wait','claim_ready','report'])assert.equal(ui.calls.includes('workflow_communication_'+name),false,name);
+  const run=[...comm.runs.values()][0];assert.equal(run.grant,undefined);assert.equal(run.messages[0].intent,undefined);
+  assert.deepEqual(ui.errors,[]);
+});
 test('pre-plan orchestrator receives all startup context through actual MCP and panel SDK without enabling a plan',async t=>{
   const f=await fixture(t),comm=f.plugin.communication;
   const target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};
   comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?target:null;
   comm.workflow.observe=()=>({canSend:true,stopped:true});comm.workflow.admission=async()=>true;
   const invite=await comm.reserve(target),text='Контекст 🪟 '.repeat(3500);
-  const staged=await comm.startup.stage(target,{request_id:'sdk-request',text});
+  const staged=await comm.startup.stage(target,{request_id:'sdk-request',text,delivery_mode:'sdk-notification'});
   await bridge(t,f);const c=await client(t,f);
   await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
   let done=false;

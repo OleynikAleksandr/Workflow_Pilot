@@ -250,7 +250,10 @@ export class PluginCommunication {
     return {...input,run_id:matches[0].run.id,participant_id:matches[0].member.id};
   }
   async readMessage(input){
-    const binding=await this.modelInput(input),message=await this.read(binding);
+    const binding=await this.modelInput(input),{run:startupRun}=this.member(binding);
+    if(startupRun.messages.some(m=>m.message_id===input.message_id&&m.kind==='startup-context'&&m.delivery_mode==='model-pull'))
+      return this.mutate('startupOpen',binding);
+    const message=await this.read(binding);
     if(message.kind==='startup-context')return {...message,instructions:message.superseded
       ?'Стартовый пакет устарел. Не читайте и не подтверждайте его; требуется актуальный контекст проекта.':STARTUP_INSTRUCTIONS};
     if(message.superseded||!message.service||message.sender_role!=='backend')return message;
@@ -281,6 +284,8 @@ export class PluginCommunication {
     return message;
   }
   _startupStage(input){return this.startup.staged(input);}
+  _startupOpen(input){return this.startup.open(input);}
+  async startupOpen(input){return this.mutate('startupOpen',await this.modelInput(input));}
   _startupPart(input){return this.startup.part(input);}
   _startupComplete(input){return this.startup.completed(input);}
   async startupComplete(input){return this.mutate('startupComplete',await this.modelInput(input));}
@@ -494,7 +499,8 @@ export class PluginCommunication {
   }
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
-    requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read,'CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
+    requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read
+      && message.delivery_mode!=='model-pull','CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
     if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message))return {deferred:true,superseded:true};
     const reason=run.mode==='workflow'?await this.workflow.claimBlockReason(run,member,message):null;
     if(reason){

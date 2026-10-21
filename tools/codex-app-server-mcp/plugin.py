@@ -160,13 +160,13 @@ def register_plugin(mcp, state_root: Path):
     async def read_message(message_id: MessageId, ctx: Context,
                            run_id: Annotated[str | None, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$", description="Legacy run only; omit for automatically registered working plans.")] = None,
                            participant_id: Annotated[str | None, Field(max_length=128, description="Legacy participant only; working plans derive it from host identity.")] = None) -> CallToolResult:
-        """Read an addressed message, current role instructions and record receipt. Small service messages include complete inline_context with digest and recipient_ref: use them directly without another context/participants read. Otherwise read all referenced context parts. Apply the role update without replaying completed work. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
+        """Read an addressed message, current role instructions and record receipt. Startup model-pull returns the first numbered context part directly; read remaining parts and confirm workflow_startup_complete in this same turn. Small service messages include complete inline_context with digest and recipient_ref: use them directly without another context/participants read. Otherwise read all referenced context parts. Apply the role update without replaying completed work. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
         return await communication("readMessage", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id)
 
     @mcp.tool(name="workflow_communication_read_context", annotations=READ, meta={"ui": {"visibility": ["model"]}})
-    async def read_context(message_id: MessageId, context_ref: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque context reference returned by read_message.")], ctx: Context,
+    async def read_context(message_id: MessageId, context_ref: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque context reference returned by read_message or panel startup_context.")], ctx: Context,
                            part: Annotated[int, Field(ge=0, description="Zero-based part; read through total-1.")] = 0) -> CallToolResult:
-        """Read the complete working instruction in numbered UTF-8 parts. Read zero through total-1 before acting; no truncation. Fresh identity, current assignment and block correlation must match. STALE_MESSAGE means do not execute the old decision. No UI or model turn is created."""
+        """Read the complete working instruction in numbered UTF-8 parts. Read zero through total-1 before acting; no truncation. A startup part already included in panel startup_context or read_message needs no repeated read; independent remaining startup parts may be requested in parallel within the same turn. Fresh identity, current assignment and block correlation must match. STALE_MESSAGE means do not execute the old decision. No UI or model turn is created."""
         return await communication("content", ctx, message_id=message_id, context_ref=context_ref, part=part)
 
     @mcp.tool(name="workflow_communication_participants", annotations=READ, meta={"ui": {"visibility": ["model"]}})
@@ -178,7 +178,7 @@ def register_plugin(mcp, state_root: Path):
     async def startup_complete(message_id: MessageId,
                                context_sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$", description="Exact context_ref of the startup message after reading every part.")],
                                ctx: Context) -> CallToolResult:
-        """Confirm the orchestrator's initial recovery only after reading every part via workflow_communication_read_context. INCOMPLETE requires reading missing parts; never invent a receipt. Idempotent for the same packet and bound host identity. This does not authorize task:start or start a plan. Give a short project confirmation and end the turn; no assignment_yield or model wait is needed."""
+        """Confirm the orchestrator's initial recovery only after reading every part, including the first part returned in panel startup_context and remaining parts via workflow_communication_read_context. INCOMPLETE requires reading missing parts; never invent a receipt. Idempotent for the same packet and bound host identity. This does not authorize task:start or start a plan. Give a short project confirmation and end the turn; no assignment_yield or model wait is needed."""
         return await communication("startupComplete", ctx, message_id=message_id, context_sha256=context_sha256)
 
     @mcp.tool(name="workflow_assignment_send", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
@@ -344,7 +344,7 @@ def register_plugin(mcp, state_root: Path):
     @mcp.tool(name="workflow_pilot_panel", title="Workflow Pilot", annotations=CONNECT,
               meta={"ui": ui, "openai/ui": {"entrypoints": [{"type": "global"}, {"type": "thread"}]}})
     async def panel(ctx: Context, enrollment_ticket: Annotated[str | None, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque invitation from this session's Workflow Pilot startup context; never invent or share it.")] = None) -> CallToolResult:
-        """Open Workflow Pilot beside this conversation. With the bootstrap invitation, register this existing local session using fresh host identity; retrying the same binding is safe. No manual run/participant transfer or join is required for working plans. Without an invitation, open the existing panel. Success does not prove panel readiness, permission or model wakeup; never bypass host confirmations."""
+        """Open Workflow Pilot beside this conversation. With the bootstrap invitation, register this existing local session using fresh host identity; retrying the same binding is safe. If startup_context is returned, read its included first part now, read remaining parts through workflow_communication_read_context and confirm workflow_startup_complete in this same turn. Do not end the turn to wait for another startup notification. No manual run/participant transfer or join is required for working plans. Without an invitation, open the existing panel. Success does not prove iframe readiness, permission or model wakeup; never bypass host confirmations. Executor bootstrap and legacy startup_resume retain their supplied instructions."""
         return result(await asyncio.to_thread(bridge.call, {"action": "panel", "metadata": host_metadata(ctx),
                                                             **({"enrollment_ticket": enrollment_ticket} if enrollment_ticket else {})}))
 

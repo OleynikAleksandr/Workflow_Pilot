@@ -39,10 +39,10 @@ export const contextPartName = (part, requestId) => {
 // toolRules: extra session rules of the local executor of this platform (runtime.startupRules).
 export function startupMessage(project, requestId, packet, toolRules = [], bootstrap = null) {
   if(bootstrap?.context_transport==='panel'&&project.role==='orchestrator')return [
-    'Начало сессии оркестратора Workflow Pilot. Сейчас только подключение панели; полный контекст придёт через неё отдельным уведомлением.',
+    'Начало сессии оркестратора Workflow Pilot. Открой панель и получи стартовый контекст через MCP в этом же ходе, без вложений.',
     `Идентификатор отправки: ${requestId}`,
     'Один раз вызови workflow_pilot_panel с аргументами '+JSON.stringify({enrollment_ticket:bootstrap.enrollment_ticket})+'. Приглашение только для этого разговора: не публикуй и не сохраняй его.',
-    'После открытия панели заверши этот ход коротким ответом. Не жди уведомление в цикле, не вызывай join/probe/Enable, не создавай план и не выполняй task:start. Не читай контекст из файлов или вложений: его передаст приложение.',
+    'В ответе workflow_pilot_panel получишь startup_context с первой частью текста и инструкциями. Прочитай её, остальные части получи через workflow_communication_read_context и подтверди полный пакет через workflow_startup_complete. Только после этого кратко подтверди восстановление проекта и заверши ход. Не жди отдельного уведомления, не вызывай join/probe/Enable, не создавай план и не выполняй task:start. Если startup_context отсутствует или есть ошибка, сообщи это; не выдумывай контекст и не обходи подтверждения.',
     'Не обходи подтверждения хоста; при отказе сообщи точную причину. Не запускай других агентов, не управляй мышью, клавиатурой и окнами. Ответь по-русски.',
   ].join('\n');
   if(project.assignmentId&&packet.recovery_profile==='assignment-dialogue-v1'){
