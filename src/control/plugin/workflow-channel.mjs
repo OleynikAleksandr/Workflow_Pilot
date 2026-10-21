@@ -79,7 +79,7 @@ export class WorkflowChannel {
       initial:initial?{message_id:initial.message_id,delivery:initial.delivery,read:initial.read,handled:!!initial.yielded,physical_complete:!!initial.reply_observed}:null};
   }
   permitted(run,member) {
-    return run.grant?.active===true&&run.grant.boot===this.c.backendId&&!member.stopped
+    return ['O','E'].includes(member.role)&&run.grant?.active===true&&run.grant.boot===this.c.backendId&&!member.stopped
       &&(member.role==='O'||member.target.scope_id===run.grant.scope_id);
   }
   transportPermitted(run,member){return this.permitted(run,member)||this.c.startup.active(run,member);}
@@ -168,6 +168,7 @@ export class WorkflowChannel {
       page.busy?'recipient-busy':!page.canSend?'recipient-unavailable':null;
   }
   async claimBlockReason(run,member,message) {
+    if(message.kind!=='startup-context'&&this.c.startup.active(run,member))return 'previous-message';
     if(member.deliveryGate)return 'previous-turn';
     const first=this.first(run,member);
     if(first?.message_id!==message.message_id)return 'previous-message';

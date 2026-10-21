@@ -26,8 +26,8 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         if(epoch!==generation||disposed||suspended||binding!==current)return;
         if(finishCompleted(value,current,generation))return;
         binding={...current,permission_generation:value.permission_generation};expiresAt=value.expires_at;ui.snapshot(value);
-        if(value.startup?.delivery_mode==='model-pull'&&!value.permission?.active){
-          status(value.startup.complete?'Стартовый контекст подтверждён. Можно ставить задачу.':'Оркестратор получает контекст в текущем ходе через MCP.','waiting');
+        if(value.startup?.delivery_mode==='model-pull'&&(!value.startup.complete||!value.permission?.active)){
+          status(value.startup.complete?'Стартовый контекст подтверждён. Можно ставить задачу.':'Агент получает контекст в текущем ходе через MCP.','waiting');
           return; // Display only: no SDK wakeup or long poll for model-pull.
         }
         if(!value.stopped&&getMessage()){

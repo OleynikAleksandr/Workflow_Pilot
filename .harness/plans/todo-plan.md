@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 820,
+  "plan_revision": 822,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -45,7 +45,10 @@
       "tests/sidebar.test.mjs",
       "tests/startup-context.test.mjs",
       "tools/codex-app-server-mcp/plugin.py",
-      "release-manifest.json"
+      "release-manifest.json",
+      "src/control/context/legacy-attachment-message.mjs",
+      "src/control/plugin/enrollment.mjs",
+      "tests/plugin-enrollment.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-panel-startup.md",
@@ -550,7 +553,23 @@
         "tools/codex-app-server-mcp/**",
         "tests/**",
         "package.json",
-        "package-lock.json"
+        "package-lock.json",
+        "src/contracts/backend.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/context/legacy-attachment-message.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
       ],
       "documentation_paths": [
         "docs/modules/orchestrator-startup.md",
@@ -572,14 +591,35 @@
         "Адресные проверки чужого получателя, restart, grant, полного пакета, E bootstrap и обычного чата; версия 0.5.22"
       ],
       "expected_commit_message": "feat: Единый старт любой сессии через панель без DOM-вложений",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "ALL-START",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/universal-startup.md",
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/context/legacy-attachment-message.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-3",
@@ -693,7 +733,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 820
+Revision: 822
 
 ## Цель
 
@@ -764,10 +804,10 @@ Revision: 820
   - Файлы: docs/planning/startup-latency.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-2, DOCS-2
-- [TODO] ALL-START: Единый старт любой сессии через панель без DOM-вложений — Ожидает
-  - Git Commit: [PENDING] feat: Единый старт любой сессии через панель без DOM-вложений
+- [DONE] ALL-START: Единый старт любой сессии через панель без DOM-вложений — Завершено
+  - Git Commit: [DONE] feat: Единый старт любой сессии через панель без DOM-вложений
   - Reference: orchestrator-panel-startup / ALL-START / implementation
-  - Файлы: src/**, tools/codex-app-server-mcp/**, tests/**, package.json, package-lock.json, docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
+  - Файлы: src/**, tools/codex-app-server-mcp/**, tests/**, package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/context/legacy-attachment-message.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/chatgpt-plugin.test.mjs, tests/context-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tools/codex-app-server-mcp/plugin.py, docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает

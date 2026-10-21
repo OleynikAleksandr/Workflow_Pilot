@@ -3,7 +3,7 @@ import {workflowRunId} from './enrollment.mjs';
 
 const hash=text=>createHash('sha256').update(text).digest('hex');
 const check=(ok,code,message)=>{if(!ok)throw Object.assign(Error(message),{code:'PLUGIN_COMMUNICATION_'+code});};
-export const STARTUP_INSTRUCTIONS='Это полный стартовый контекст оркестратора, не поручение реализации. Продолжай в этом же ходе. Прочитай текст включённой части (part); повторно её запрашивать не нужно. Все остальные части получи через workflow_communication_read_context с этим message_id/context_ref, part от 0 до total-1; независимые части можно запросить параллельно. Если текст части не включён, прочитай все части. После полного чтения вызови workflow_startup_complete с message_id и context_sha256=context_ref. Не подтверждай неполный пакет. Затем кратко подтверди восстановление проекта и заверши ход. Не вызывай assignment_yield, task:start или ожидание очереди; запуск плана разрешает пользователь.';
+export const STARTUP_INSTRUCTIONS='Это полный стартовый контекст сессии, не поручение реализации. Продолжай в этом же ходе. Прочитай текст включённой части (part); повторно её запрашивать не нужно. Все остальные части получи через workflow_communication_read_context с этим message_id/context_ref, part от 0 до total-1; независимые части можно запросить параллельно. Если текст части не включён, прочитай все части. После полного чтения вызови workflow_startup_complete с message_id и context_sha256=context_ref. Не подтверждай неполный пакет. Затем кратко подтверди восстановление проекта и заверши ход. Не вызывай assignment_yield, task:start или ожидание очереди; запуск плана разрешает пользователь.';
 export function contextParts(text,limit=12000){
   const parts=[];let part='',bytes=0;
   for(const char of text){const size=Buffer.byteLength(char);if(bytes+size>limit){parts.push(part);part='';bytes=0;}part+=char;bytes+=size;}
@@ -15,11 +15,11 @@ export function contextParts(text,limit=12000){
 export class StartupContext {
   constructor(communication){this.c=communication;}
   message(run,session){return run?.messages.findLast(m=>m.kind==='startup-context'&&m.recipient_session_id===session&&!m.superseded);}
-  active(run,member){const m=this.message(run,member.target?.local_session_id);return member.role==='O'&&!!m&&!m.startup_complete;}
+  active(run,member){const m=this.message(run,member.target?.local_session_id);return ['O','E','S'].includes(member.role)&&!!m&&!m.startup_complete;}
   stage(target,input){return this.c.mutate('startupStage',{...input,target,run_id:workflowRunId(target)});}
   async staged(input){
     const c=this.c,{target,text,request_id}=input;
-    check(target.role==='O'&&!target.assignment_id,'MODE','Стартовый пакет предназначен только оркестратору.');
+    check(['O','E','S'].includes(target.role),'MODE','Нужна зарегистрированная сессия стартового пакета.');
     check(typeof request_id==='string'&&request_id.length<=128&&request_id.length>0,'INPUT','Нет идентификатора старта.');
     check(typeof text==='string'&&text.trim()&&Buffer.byteLength(text)<=220000,'CONTEXT','Стартовый пакет пуст или слишком велик; он не обрезан.');
     const run=c.enrollment.ensureRun(target),digest=hash(text);
@@ -39,8 +39,8 @@ export class StartupContext {
     const member=Object.values(run.members).find(m=>m.target.local_session_id===target.local_session_id);
     const message={message_id:c.makeId(),kind:'startup-context',service:true,sender_role:'backend',sender_id:null,
       recipient_id:member?.id??null,recipient_session_id:target.local_session_id,scope_id:target.scope_id,
-      assignment_id:null,task_id:null,request_id,context_ref:ref,context_bytes:Buffer.byteLength(text),
-      total_parts:contextParts(text,24000).length,parts_read:[],body:'Стартовый контекст оркестратора',
+      assignment_id:target.assignment_id??null,task_id:target.task_id??null,request_id,context_ref:ref,context_bytes:Buffer.byteLength(text),
+      total_parts:contextParts(text,24000).length,parts_read:[],body:'Стартовый контекст сессии',
       delivery_mode:input.delivery_mode??'model-pull',delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
     run.messages.push(message);c.event(run,'startup.prepared',{message_id:message.message_id,participant_id:member?.id??null,
       context_bytes:message.context_bytes,total_parts:message.total_parts});return this.view(message);
@@ -55,7 +55,7 @@ export class StartupContext {
   }
   async own(input){
     const {run,member}=this.c.member(input),m=run.messages.find(m=>m.message_id===input.message_id);
-    check(member.role==='O'&&m?.kind==='startup-context'&&m.recipient_id===member.id,'READ_DENIED','Стартовый пакет недоступен этому разговору.');
+    check(['O','E','S'].includes(member.role)&&m?.kind==='startup-context'&&m.recipient_id===member.id,'READ_DENIED','Стартовый пакет недоступен этому разговору.');
     check(!m.superseded&&await this.c.workflow.currentMessage(member.target,m),
       'STALE_MESSAGE','Стартовый пакет устарел. Не подтверждайте его; обновите контекст проекта.');
     return {run,member,m};

@@ -89,7 +89,7 @@ test('local session resolver refuses external, archived, wrong origin and unrela
   session.external={provider:'chatgpt-plugin'};assert.equal(localParticipantTarget(projects,'worker'),null);delete session.external;
   parent.projectId='other';assert.equal(localParticipantTarget(projects,'worker'),null);parent.projectId='project';
   origin.archivedAt='today';assert.equal(localParticipantTarget(projects,'worker'),null);delete origin.archivedAt;
-  parent.planExecution.execution_origin_session_id='other';assert.equal(localParticipantTarget(projects,'orchestrator'),null);
+  parent.planExecution.execution_origin_session_id='other';assert.equal(localParticipantTarget(projects,'orchestrator').role,'S');
   assert.equal(localParticipantTarget(projects,'worker'),null);
 });
 

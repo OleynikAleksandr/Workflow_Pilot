@@ -63,7 +63,7 @@ export function mountPanel({document}) {
             assignment.dialogue?.result?.source_commit?'коммит '+assignment.dialogue.result.source_commit:null].filter(Boolean).join(' · ');
           li.append(detail);$('roster').append(li);}
         text('outbox',(value.pending_intents??[]).map(i=>`${i.assignment_id}: ${i.phase}${i.error?' · '+i.error.message:''}`).join('\n'));}
-      text('identity',value.mode==='workflow'?(value.role==='O'?'Оркестратор плана':`Исполнитель · ${value.task_id}\nНазначение ${value.assignment_id}`):`Роль ${value.role} · участник ${value.participant_id}`);
+      text('identity',value.mode==='workflow'?(value.role==='O'?'Оркестратор плана':value.role==='S'?'Чат проекта':`Исполнитель · ${value.task_id}\nНазначение ${value.assignment_id}`):`Роль ${value.role} · участник ${value.participant_id}`);
       text('binding',`Привязка подтверждена · ${value.conversation_key}`);
       text('permission',value.mode==='workflow'?(value.permission?.phase==='complete'
         ?`Выполнение завершено · ${(value.assignments??[]).filter(a=>a.phase==='INTEGRATED').length}/${(value.assignments??[]).length} · связь отключена. Ожидается ваша приёмка: сообщите оркестратору «Принимаю результат, закрой план».`

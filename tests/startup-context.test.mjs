@@ -8,8 +8,46 @@ import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '..
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
 import {startupView} from '../src/contracts/startup-view.mjs';
+import {PluginProjects} from '../src/control/plugin/service.mjs';
+import {localParticipantTarget} from '../src/control/plugin/enrollment.mjs';
 const metadata={'openai/session':'startup-fixture','openai/subject':'local-test'};
 const target={project_id:'p',local_session_id:'o',origin_session_id:'o',role:'O',scope_id:null,assignment_id:null,task_id:null};
+test('ordinary chats receive complete panel recovery for every plan strategy without acquiring a grant',async t=>{
+  for(const strategy of ['sequential','parallel','orchestrated'])for(const status of ['NONE','ACTIVE','BLOCKED']){
+    const session={sessionId:'chat',role:status==='NONE'?'orchestrator':'discussion'};
+    const project={workspace:'/fixture',projectId:'p',scopeId:status==='NONE'?null:'scope',scopeStatus:status,
+      deliveryStatus:'READY_FOR_ACCEPTANCE',sessions:[session],planExecution:{execution_strategy:strategy,execution_origin_session_id:'other'}};
+    const projects={snapshot:()=>({projects:[project]}),project:()=>project,inspect:async()=>project};
+    const plugin=new PluginProjects({projects});t.after(()=>plugin.communication.dispose());
+    const target=localParticipantTarget(projects,'chat');assert.equal(target.role,status==='NONE'?'O':'S');
+    const invitation=await plugin.reserveParticipant('chat');
+    const text='Полный контекст 🪟\n'.repeat(2000);
+    await plugin.communication.startup.stage(target,{request_id:'startup',text});
+    const opened=await plugin.panel({enrollment_ticket:invitation.enrollment_ticket,metadata});
+    const first=opened.startup_context;assert.equal(first.part,0);assert.ok(first.total>1);
+    await assert.rejects(plugin.communication.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_INCOMPLETE'});
+    const parts=[first.text];
+    for(let part=1;part<first.total;part++)parts.push((await plugin.communication.content({metadata,message_id:first.message_id,context_ref:first.context_ref,part})).text);
+    assert.equal(parts.join(''),text);
+    assert.equal((await plugin.communication.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref})).complete,true);
+    const run=plugin.communication.runs.get(opened.registration.run_id);assert.equal(run.grant,undefined);
+    assert.equal(run.events.some(e=>e.event_type==='send.intent'),false);
+    if(target.role==='S')await assert.rejects(plugin.communication.workflow.grant(target),{code:'PLUGIN_COMMUNICATION_MODE'});
+    assert.equal(session.role,status==='NONE'?'orchestrator':'discussion');
+  }
+});
+
+test('executor startup is addressed separately and gates work until its own all-parts receipt',async t=>{
+  const e={...target,local_session_id:'e',role:'E',scope_id:'scope',assignment_id:'a',task_id:'T001'};
+  const c=new PluginCommunication({resolveTarget:id=>id==='e'?e:target,observe:()=>({canSend:true}),admit:async()=>true});t.after(()=>c.dispose());
+  const invitation=await c.reserve(e);await c.startup.stage(e,{request_id:'e-start',text:'Правила назначения'});
+  const joined=await c.enroll(invitation.enrollment_ticket,metadata),run=c.runs.get(joined.run_id),member=run.members[joined.participant_id];
+  const m=c.startup.message(run,'e');
+  assert.equal(await c.workflow.claimBlockReason(run,member,{message_id:'task',kind:'task'}),'previous-message');
+  const first=await c.startupOpen({metadata,message_id:m.message_id});assert.equal(first.text,'Правила назначения');
+  assert.equal((await c.startupComplete({metadata,message_id:m.message_id,context_sha256:first.context_ref})).complete,true);
+  assert.equal(c.startup.active(c.runs.get(joined.run_id),member),false);assert.equal(c.runs.get(joined.run_id).grant,undefined);
+});
 async function fixture(t,{delivery_mode='sdk-notification'}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-startup-'))),instances=[];
   let valid=true,current=true,canSend=true,admitted=true;

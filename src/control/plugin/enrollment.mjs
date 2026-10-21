@@ -111,9 +111,11 @@ export function localParticipantTarget(projects,sessionId) {
       scope_id:session.parentScopeId,assignment_id:session.assignmentId,task_id:session.taskId,
       ...(parent.planExecution?.dialogue_version===1?{dialogue_version:1}:{})};
   }
-  if(session.role!=='orchestrator'||project.parentWorkspace)return null;
+  if(project.parentWorkspace)return null;
   const published=project.scopeId&&['ACTIVE','BLOCKED'].includes(project.scopeStatus);
-  if(published&&project.planExecution?.execution_origin_session_id!==sessionId)return null;
+  if(session.role!=='orchestrator'||published&&project.planExecution?.execution_origin_session_id!==sessionId)
+    return {project_id:project.projectId,local_session_id:sessionId,origin_session_id:sessionId,role:'S',
+      scope_id:project.scopeId??null,assignment_id:null,task_id:null};
   return {project_id:project.projectId,local_session_id:sessionId,origin_session_id:sessionId,role:'O',
     // Publication and persisted role reconciliation are separate operations.
     // The fresh plan's exact origin is authoritative during that interval.

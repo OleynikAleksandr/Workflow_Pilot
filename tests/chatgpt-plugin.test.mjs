@@ -223,7 +223,10 @@ test('the real project projection reserves the published origin even though pers
   assert.equal(registered.registration.local_session_id,origin.sessionId);
   const next=await f.plugin.reserveParticipant(origin.sessionId);assert.equal(next.run_id,initial.run_id);
   const discussion=await f.store.newSession(workspace,'chat');
-  await assert.rejects(f.plugin.reserveParticipant(discussion.sessionId),{code:'PLUGIN_PARTICIPANT_UNAVAILABLE'});
+  const chat=await f.plugin.reserveParticipant(discussion.sessionId);
+  assert.notEqual(chat.run_id,initial.run_id);
+  const chatTarget=await f.plugin.participantTarget(discussion.sessionId);assert.equal(chatTarget.role,'S');
+  await assert.rejects(f.plugin.communication.workflow.grant(chatTarget),{code:'PLUGIN_COMMUNICATION_MODE'});
 });
 test('real MCP panel enrolls an existing assignment using fresh host identity without an external session',async t=>{
   const f=await fixture(t),before=f.store.snapshot(),target={project_id:'fixture',local_session_id:'worker',

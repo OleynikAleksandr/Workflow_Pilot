@@ -62,9 +62,7 @@ export class DialogueDelivery {
       ?{allowed:false,reason:'commands-active'}:{allowed:true};
   }
   async prepareBootstrap(project){
-    if(!AUTOMATIC_DIALOGUE_ENABLED||!['orchestrator','executor'].includes(project.role))return null;
-    const selected=this.route(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId);
-    if(project.role==='executor'&&selected!=='plugin-v1')return null;
+    if(!AUTOMATIC_DIALOGUE_ENABLED)throw Object.assign(Error('Канал стартового контекста отключён.'),{code:'STARTUP_CHANNEL_REQUIRED'});
     const ticket=await this.getPlugin().reserveParticipant(project.sessionId);
     if(project.role==='executor'&&this.owned(project)){
       const origin=this.project(project.executionOriginSessionId);
@@ -72,11 +70,11 @@ export class DialogueDelivery {
         assignment_id:project.assignmentId,task_id:project.taskId}), 'recovery',{
         key:'prepare:'+project.assignmentId+':v2',subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt:1});
     }
-    return project.role==='orchestrator'?{...ticket,context_transport:'panel'}:ticket;
+    return {...ticket,context_transport:'panel'};
   }
   async stageStartup(project,attempt){
     const plugin=this.getPlugin(),target=await plugin.participantTarget(project.sessionId);
-    if(!target)throw Object.assign(Error('Оркестратор стартового пакета не подтверждён.'),{code:'PLUGIN_PARTICIPANT_UNAVAILABLE'});
+    if(!target)throw Object.assign(Error('Получатель стартового пакета не подтверждён.'),{code:'PLUGIN_PARTICIPANT_UNAVAILABLE'});
     return plugin.communication.startup.stage(target,{request_id:attempt.requestId,text:attempt.startupText});
   }
   async permission(workspace,scope,phase){

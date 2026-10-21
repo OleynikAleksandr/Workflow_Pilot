@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { ContextCache } from '../src/control/context/context-cache.mjs';
-import { ContextSession, externalClientLine, packetMatchesProject, startupMessage } from '../src/control/context/context-session.mjs';
+import { ContextSession, externalClientLine, packetMatchesProject, startupMessage as panelStartupMessage, orchestratorStartupContext } from '../src/control/context/context-session.mjs';
+import {legacyAttachmentMessage as startupMessage} from '../src/control/context/legacy-attachment-message.mjs';
+const invitation={context_transport:'panel',enrollment_ticket:'a'.repeat(64)};
 import * as contextSessionModule from '../src/control/context/context-session.mjs';
 import { EXECUTOR_TOOL_RULES } from '../src/execution/runtime/service.mjs';
 
@@ -12,6 +14,26 @@ const project={workspace:'/Projects/Мой проект',projectId:'id-1',name:'
 const facts={project_id:project.projectId,project_name:project.name,plan_revision:7,scope_id:'scope-1',
   execution_scope_status:'ACTIVE',delivery_status:'IN_PROGRESS',task_id:'T001',task_title:'Read'};
 const now=2000000;
+test('every session role uses only a short panel bootstrap and its full role-specific packet',async()=>{
+  for(const role of [undefined,'discussion','orchestrator','executor']){
+    const f=controllerFixture({chatUrl:null});f.info.role=role;
+    if(role==='executor')Object.assign(f.info,{assignmentId:'a',taskId:'T001',parentWorkspace:'/main'});
+    let staged=false;
+    f.runtime.stageStartup=async(p,a)=>{staged=true;assert.ok(a.startupText.includes(packet().context));
+      if(role==='executor')assert.match(a.startupText,/жди отдельное рабочее поручение/);};
+    const deliver=f.composer.deliver;f.composer.deliver=async args=>{assert.equal(staged,true);assert.deepEqual(args.attachments,[]);return deliver(args);};
+    await f.controller.tick();assert.equal(f.sends(),1);assert.equal(f.saved.attempt.contextTransport,'panel');
+  }
+  const f=controllerFixture();delete f.runtime.prepareBootstrap;await f.controller.tick();
+  assert.equal(f.sends(),0);assert.equal(f.controller.state.error.code,'STARTUP_CHANNEL_REQUIRED');
+});
+
+test('old unsent attachment drafts are blocked without deleting them or retrying Send',async()=>{
+  const f=controllerFixture();await f.controller.tick();const old={...f.saved.attempt,state:'prepared',contextTransport:undefined,attachments:[{name:'old.md',text:'preserve'}]};
+  await f.store.updateSession('','',{attempt:old});f.controller.attach(f.saved);await f.controller.tick();
+  assert.equal(f.controller.state.error.code,'LEGACY_CONTEXT_DISABLED');assert.equal(f.sends(),1);
+  assert.deepEqual(f.saved.attempt.attachments,old.attachments);await f.controller.retry();assert.equal(f.sends(),1);
+});
 
 test('transient lifecycle contention resumes automatically, while Stop invalidates the retry',async()=>{
   const f=controllerFixture({chatUrl:null});let tries=0;
@@ -52,7 +74,7 @@ test('cancel preparation invalidates pending send, persists pause and only expli
   await f.controller.cancelPreparation();assert.equal(options.canContinue(),false);assert.equal(f.saved.preparationPaused,true);
   release();await run;await f.controller.tick();assert.equal(f.controller.state.phase,'preparation-paused');assert.equal(f.sends(),0);
   f.controller.attach(f.saved);await f.controller.tick();assert.equal(f.controller.state.phase,'preparation-paused');
-  f.composer.deliver=async input=>{assert.equal(input.retryAttachments,true);return deliver(input);};
+  f.composer.deliver=async input=>{assert.equal(input.retryAttachments,false);return deliver(input);};
   await f.controller.retry();assert.equal(f.saved.preparationPaused,false);assert.equal(f.sends(),1);
   assert.equal(await f.controller.cancelPreparation(),false);await f.controller.retry();assert.equal(f.sends(),1);
 });
@@ -72,12 +94,11 @@ function controllerFixture({ savedAttempt=null, chatUrl=project.chatUrl }={}){
     const {sessionId,experience,chatUrl,attempt,receipt,...result}=info;return structuredClone(result);},
     updateSession:async(_w,_s,patch)=>{saved={...saved,...structuredClone(patch)};return structuredClone(saved);},
     bindChat:async(_w,_s,url)=>{saved.chatUrl=url;return structuredClone(saved);}};
-  const runtime={ensure:async()=>({}),loadContext:async()=>{loads++;return packet();}};
+  const runtime={ensure:async()=>({}),prepareBootstrap:async()=>invitation,stageStartup:async()=>{},startupProgress:()=>({complete:true}),loadContext:async()=>{loads++;return packet();}};
   const composer={inspect:async options=>({...inspection,
     ...(options?.action==='select-experience'?{action: (inspection.experience??store.project().experience)===options.expectedExperience
       ?'experience-confirmed':'experience-selecting'}:{})}),getURL:()=>inspection.url,deliver:async options=>{
-    assert.equal(saved.attempt.state,'prepared');assert.equal(options.attachments.map(p=>p.text).join('\n\n'),packet().context);
-    assert.deepEqual(options.attachments.map(p=>p.name),packet().parts.map(p=>`context-testrequ-${String(p.index).padStart(2,'0')}-of-${p.total}.md`));assert.ok(!options.text.includes(packet().context));
+    assert.equal(saved.attempt.state,'prepared');assert.deepEqual(options.attachments,[]);assert.ok(saved.attempt.startupText.includes(packet().context));assert.ok(!options.text.includes(packet().context));
     if(!options.canContinue())return {state:'cancelled'};
     await options.onBeforeFill?.();
     await options.onBeforeSend();if(!options.canContinue())return {state:'cancelled'};
@@ -159,7 +180,7 @@ test('dialogue executor bootstrap carries only rules and identity and requires i
 test('bootstrap is reserved once before the actual first send and never replayed on a later tick',async()=>{
   const f=controllerFixture({chatUrl:null});let reservations=0;
   f.runtime.prepareBootstrap=async current=>{reservations++;assert.equal(current.sessionId,project.sessionId);
-    return {enrollment_ticket:'b'.repeat(64),expires_at:now+1000};};
+    return {context_transport:'panel',enrollment_ticket:'b'.repeat(64),expires_at:now+1000};};
   await f.controller.tick();await f.controller.tick();
   assert.equal(reservations,1);assert.equal(f.sends(),1);
   assert.equal(f.saved.attempt.dialogueRoute,'plugin-v1');assert.ok(f.saved.attempt.text.includes('b'.repeat(64)));
@@ -190,7 +211,7 @@ test('attachment failure keeps its request and complete payload on explicit retr
   const f=controllerFixture({chatUrl:null}),deliver=f.composer.deliver;
   f.composer.deliver=async()=>{throw Object.assign(Error('pending upload'),{code:'ATTACHMENTS_PENDING'});};
   await f.controller.tick();assert.equal(f.controller.state.phase,'error');
-  const saved=structuredClone(f.saved.attempt);assert.equal(saved.attachments.length,1);
+  const saved=structuredClone(f.saved.attempt);assert.equal(saved.attachments.length,0);
   f.composer.deliver=deliver;await f.controller.retry();
   assert.equal(f.saved.attempt.requestId,saved.requestId);
   assert.deepEqual(f.saved.attempt.attachments,saved.attachments);
@@ -327,7 +348,7 @@ test('Work session keeps provenance when ChatGPT moves from /work/ to shared /c/
   };
   f.controller.attach({...f.saved,experience:'work'});
   await f.controller.tick();
-  assert.equal(f.loads(),1); assert.equal(f.controller.state.phase,'waiting-chat');
+  assert.equal(f.loads(),1); assert.equal(f.controller.state.phase,'startup-channel');
   await f.controller.tick();
   assert.equal(f.controller.state.phase,'delivered');
   assert.equal(f.saved.experience,'work');
@@ -589,10 +610,10 @@ test('a new session sends one start message with the full packet and the rules o
   f.composer.deliver = async options => { texts.push(options.text); return deliver(options); };
   await f.controller.tick();
   assert.equal(f.loads(), 1); assert.equal(f.sends(), 1);
-  assert.deepEqual(texts, [startupMessage(project, 'wp-request-test-request', packet(), EXECUTOR_TOOL_RULES)]);
+  assert.deepEqual(texts, [panelStartupMessage(project, 'wp-request-test-request', packet(), EXECUTOR_TOOL_RULES,invitation)]);
   assert.equal(f.saved.attempt.packet.contextMode, undefined);
   assert.equal(f.saved.attempt.packet.facts.plan_revision, 7);
-  assert.equal(f.controller.state.phase, 'waiting-chat');
+  assert.equal(f.controller.state.phase, 'startup-channel');
   assert.equal('contextMode' in f.controller.state, false, 'there is one delivery mode');
   await f.controller.tick();
   assert.equal(f.saved.chatUrl, project.chatUrl); assert.equal(f.controller.state.phase, 'delivered');
@@ -632,12 +653,12 @@ test('a prepared short MCP start message is never sent: the full packet replaces
   await f.controller.tick();
   assert.equal(f.loads(), 1); assert.equal(f.sends(), 1, 'the full packet is sent instead');
   assert.notEqual(f.saved.attempt.requestId, 'mcp-request');
-  assert.equal(f.controller.state.phase, 'waiting-chat');
+  assert.equal(f.controller.state.phase, 'startup-channel');
   const drafted = controllerFixture({ savedAttempt: mcpStarted('prepared') });
   Object.assign(drafted.inspection, { draftLength: 17, draftMatches: true });
   drafted.composer.hasFilled = () => true;
   await drafted.controller.tick();
-  assert.equal(drafted.controller.state.phase, 'prepared-stale');
+  assert.equal(drafted.controller.state.error.code, 'LEGACY_CONTEXT_DISABLED');
   assert.equal(drafted.loads(), 0); assert.equal(drafted.sends(), 0);
 });
 

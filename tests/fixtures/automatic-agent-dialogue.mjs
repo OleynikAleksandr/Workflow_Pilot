@@ -293,7 +293,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
       sendUserMessage:async()=>{record.domWorkSends++;throw Error('Working message attempted DOM fallback');},
       deliver:async input=>{
         assert.equal(record.bootstrapCount,0,'initial context is not replayed');
-        assert.equal(input.attachments.length>0,!!project.assignmentId);
+        assert.deepEqual(input.attachments,[]);
         await input.onBeforeFill();await input.onBeforeSend();composer.inFlight=true;page.busy=true;
         const bootstrap=async()=>{
           if(owned&&project.assignmentId)await wait(()=>drafts.has(project.assignmentId),'O prepares while E bootstrap is unfinished');
@@ -302,7 +302,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
           assert.equal(registered.isError,false,JSON.stringify(registered.structuredContent));
           const startup=registered.structuredContent.startup_context;
           if(startup){
-            assert.equal(project.assignmentId,undefined);
+            assert.ok(startup.text);
             for(let part=1;part<startup.total;part++){
               const value=await c.callTool({name:'workflow_communication_read_context',arguments:{
                 message_id:startup.message_id,context_ref:startup.context_ref,part},_meta:record.metadata});
