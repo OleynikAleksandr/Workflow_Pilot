@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 829,
+  "plan_revision": 830,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Стартовый контекст O через панель без DOM-вложений, проверенный выпуск и установка",
   "acceptance_criteria": [
     "Новая O-сессия получает полный пакет через панель без вложений на изолированных fixtures; живая приёмка pending",
@@ -48,7 +48,10 @@
       "release-manifest.json",
       "src/control/context/legacy-attachment-message.mjs",
       "src/control/plugin/enrollment.mjs",
-      "tests/plugin-enrollment.test.mjs"
+      "tests/plugin-enrollment.test.mjs",
+      "src/execution/plugin/communication-store.mjs",
+      "tests/plugin-communication-store.test.mjs",
+      "tests/plugin-communication.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/orchestrator-panel-startup.md",
@@ -744,6 +747,104 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "STARTUP-WAL",
+      "title": "Исправить сохранение обычного чата S в журнале стартового канала",
+      "why": "Исправить сохранение обычного чата S в журнале стартового канала",
+      "dependencies": [],
+      "functional_paths": [
+        "src/execution/plugin/communication-store.mjs",
+        "src/control/plugin/communication.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/plugin-communication-store.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/orchestrator-startup.md"
+      ],
+      "verification_ids": [
+        "orchestrator-startup",
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Публичный MCP panel/read/startup_complete работает с реальным файловым WAL для O/E/S; S сохраняется и восстанавливается без grant",
+        "Проверка журнала разрешает только известные O/E/S; повреждённый и неизвестный формат отклоняется без изменения файлов",
+        "Ошибка сохранения содержит безопасный код причины без исходного текста ошибки/секретов",
+        "Версия 0.5.23; журнал живого проекта не редактируется"
+      ],
+      "expected_commit_message": "feat: Исправить сохранение обычного чата S в журнале стартового канала",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "STARTUP-WAL",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "BUILD-4",
+      "title": "Собрать проверенный выпуск 0.5.23 для трёх ОС",
+      "why": "Собрать проверенный выпуск 0.5.23 для трёх ОС",
+      "dependencies": [
+        "STARTUP-WAL"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/orchestrator-startup.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "DOCS до сборки; один sourceCommit; перед каждой production сборкой исключён Python cache"
+      ],
+      "expected_commit_message": "feat: Собрать проверенный выпуск 0.5.23 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "BUILD-4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-4",
+      "title": "Установить готовый выпуск 0.5.23",
+      "why": "Установить готовый выпуск 0.5.23",
+      "dependencies": [
+        "BUILD-4"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/modules/orchestrator-startup.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Штатный installer проверил подпись manifest и rollback; приложение и служба не останавливаются"
+      ],
+      "expected_commit_message": "feat: Установить готовый выпуск 0.5.23",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "INSTALL-4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -765,10 +866,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 829
+Revision: 830
 
 ## Цель
 
@@ -863,6 +964,24 @@ Revision: 829
   - Файлы: docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-3, DOCS-3
+- [TODO] STARTUP-WAL: Исправить сохранение обычного чата S в журнале стартового канала — Ожидает
+  - Git Commit: [PENDING] feat: Исправить сохранение обычного чата S в журнале стартового канала
+  - Reference: orchestrator-panel-startup / STARTUP-WAL / implementation
+  - Файлы: src/execution/plugin/communication-store.mjs, src/control/plugin/communication.mjs, tests/startup-context.test.mjs, tests/plugin-communication-store.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/orchestrator-startup.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] BUILD-4: Собрать проверенный выпуск 0.5.23 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.23 для трёх ОС
+  - Reference: orchestrator-panel-startup / BUILD-4 / implementation
+  - Файлы: release-manifest.json, docs/modules/orchestrator-startup.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: STARTUP-WAL
+- [TODO] INSTALL-4: Установить готовый выпуск 0.5.23 — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовый выпуск 0.5.23
+  - Reference: orchestrator-panel-startup / INSTALL-4 / implementation
+  - Файлы: docs/modules/orchestrator-startup.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD-4
 
 ## Context Pack For This Cycle
 
