@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 802,
+  "plan_revision": 804,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -156,8 +156,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "VERSION",
@@ -170,7 +170,8 @@
         "package.json",
         "package-lock.json",
         "src/**",
-        "tests/**"
+        "tests/**",
+        "src/contracts/backend.mjs"
       ],
       "documentation_paths": [
         "docs/planning/orchestrator-panel-startup.md"
@@ -188,7 +189,12 @@
         "Сверены role-protocol и шаблоны Kit, startup/MCP/ошибки; Kit не меняется"
       ],
       "expected_commit_message": "feat: Согласовать версию 0.5.20 и контракты инструкций",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -302,7 +308,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 802
+Revision: 804
 
 ## Цель
 
@@ -325,10 +331,10 @@ Revision: 802
   - Файлы: src/**, tools/codex-app-server-mcp/**, tests/**, src/backend/desktop-model.mjs, src/contracts/backend.mjs, src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/desktop/ui/progress.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/context-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/sidebar.test.mjs, tests/startup-context.test.mjs, tools/codex-app-server-mcp/plugin.py, docs/planning/orchestrator-panel-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] VERSION: Согласовать версию 0.5.20 и контракты инструкций — Ожидает
-  - Git Commit: [PENDING] feat: Согласовать версию 0.5.20 и контракты инструкций
+- [DONE] VERSION: Согласовать версию 0.5.20 и контракты инструкций — Завершено
+  - Git Commit: [DONE] feat: Согласовать версию 0.5.20 и контракты инструкций
   - Reference: orchestrator-panel-startup / VERSION / implementation
-  - Файлы: package.json, package-lock.json, src/**, tests/**, docs/planning/orchestrator-panel-startup.md
+  - Файлы: package.json, package-lock.json, src/**, tests/**, src/contracts/backend.mjs, docs/planning/orchestrator-panel-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: STARTUP
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
