@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 775,
+  "plan_revision": 776,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -419,9 +419,7 @@
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
-      "verification_ids": [
-        "chatgpt-plugin"
-      ],
+      "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
       "parallel_safe": false
     },
@@ -509,7 +507,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 775
+Revision: 776
 
 ## Цель
 
