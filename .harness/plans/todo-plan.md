@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 749,
+  "plan_revision": 751,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Заранее готовить поручения, сократить последовательные ходы и итог, останавливать ожидание после complete; опубликовать новый выпуск.",
   "acceptance_criteria": [
     "Выполнен контракт docs/planning/prepared-task-flow.md",
@@ -107,7 +107,7 @@
       {
         "path": "docs/modules/pip-probe.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "3710c8963a58d1bbb0e7357fc20b9aa4ac56e767"
       },
       {
         "path": "docs/modules/chatgpt-plugin.md",
@@ -1117,14 +1117,32 @@
         "Это откат кодовой базы без новой сборки, публикации или вмешательства в работающую службу."
       ],
       "expected_commit_message": "revert: удалить эксперименты PiP и восстановить стабильную 0.5.12",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "REMOVE-PIP",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        ".gitignore",
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/pip-probe.md",
+        "package-lock.json",
+        "package.json",
+        "release-manifest.json",
+        "scripts/check-pip-probe.mjs",
+        "scripts/stage-chatgpt-plugin.mjs",
+        "src/contracts/backend.mjs",
+        "tests/pip-probe.test.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/experiments/pip-probe/view.mjs"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -1146,10 +1164,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 749
+Revision: 751
 
 ## Цель
 
@@ -1309,8 +1327,8 @@ Revision: 749
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-PIP4, DOCS-5
-- [TODO] REMOVE-PIP: Удалить эксперименты PiP и восстановить код стабильной 0.5.12 — Ожидает
-  - Git Commit: [PENDING] revert: удалить эксперименты PiP и восстановить стабильную 0.5.12
+- [DONE] REMOVE-PIP: Удалить эксперименты PiP и восстановить код стабильной 0.5.12 — Завершено
+  - Git Commit: [DONE] revert: удалить эксперименты PiP и восстановить стабильную 0.5.12
   - Reference: prepared-task-flow / REMOVE-PIP / implementation
   - Файлы: .gitignore, package-lock.json, package.json, release-manifest.json, scripts/check-pip-probe.mjs, scripts/stage-chatgpt-plugin.mjs, src/contracts/backend.mjs, tests/pip-probe.test.mjs, tools/codex-app-server-mcp/pip_probe.py, tools/codex-app-server-mcp/plugin.py, tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, docs/modules/chatgpt-plugin.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение

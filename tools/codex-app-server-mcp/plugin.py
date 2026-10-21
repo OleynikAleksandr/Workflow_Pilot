@@ -11,7 +11,6 @@ from uuid import uuid4
 from mcp.server.fastmcp import Context
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import BaseModel, ConfigDict, Field
-from pip_probe import register_pip_probe
 
 LEGACY_UI_URI = "ui://workflow-pilot/projects-v1.html"
 
@@ -129,7 +128,6 @@ def result(data: dict[str, Any]) -> CallToolResult:
 
 
 def register_plugin(mcp, state_root: Path):
-    register_pip_probe(mcp, Path(__file__).parent)
     bridge = PluginBridge(state_root)
     ui_uri, panel_html = load_panel_resource(Path(__file__).parent / "plugin-ui.html")
     ui = {"resourceUri": ui_uri}
