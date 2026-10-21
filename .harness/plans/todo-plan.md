@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 784,
+  "plan_revision": 786,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -556,14 +556,19 @@
         "Исправить распознавание повторных вложений"
       ],
       "expected_commit_message": "feat: Исправить распознавание повторных вложений",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "FIX-RETRY",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/execution/browser/chatgpt-composer.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "docs/planning/attachment-retry-diagnostics.md"
+      ]
     },
     {
       "id": "DIAG-ATTACH",
@@ -741,7 +746,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 784
+Revision: 786
 
 ## Цель
 
@@ -817,8 +822,8 @@ Revision: 784
   - Файлы: release-manifest.json, docs/planning/startup-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-2, DOCS-2
-- [TODO] FIX-RETRY: Исправить распознавание повторных вложений — Ожидает
-  - Git Commit: [PENDING] feat: Исправить распознавание повторных вложений
+- [DONE] FIX-RETRY: Исправить распознавание повторных вложений — Завершено
+  - Git Commit: [DONE] feat: Исправить распознавание повторных вложений
   - Reference: restore-stable-release / FIX-RETRY / implementation
   - Файлы: src/execution/browser/chatgpt-composer.mjs, tests/chatgpt-composer.test.mjs, docs/planning/attachment-retry-diagnostics.md
   - Параллельность: исключительное выполнение

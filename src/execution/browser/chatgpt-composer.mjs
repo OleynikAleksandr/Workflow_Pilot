@@ -30,36 +30,54 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
     draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount: messages.length, experience };
   // Only visible composer cards count. Message history cannot prove draft uploads.
   const attachmentKey = Symbol.for('web-pilot-file-paste');
-  let cards = [], attachmentStates = [];
+  const owner = editor?.[attachmentKey];
+  const owned = owner?.requestId === requestId && owner.identity === JSON.stringify(attachments) ? owner : null;
+  let cards = [], attachmentStates = [], attachmentMatches = [];
   if (attachments.length) {
     const nodes = [...document.querySelectorAll('[title],[aria-label],span,div,p')].filter(node => dom.visible(node)
       && !node.closest(dom.selectors.user + ',' + dom.selectors.assistant + ',pre,code,[contenteditable="true"]'));
-    cards = attachments.map(file => {
-      const labels = nodes.filter(node => node.getAttribute('title') === file.name || node.getAttribute('aria-label') === file.name
-        || (!node.children.length && (node.textContent ?? '').trim() === file.name));
-      const matches = new Set();
-      for (const label of labels) {
+    cards = attachments.map((file, index) => {
+      const expectedName = owned?.retryNames?.[index] ?? file.name;
+      // A server duplicate suffix is accepted only for the unguessable name
+      // created by our own retry in this document, never for arbitrary files.
+      const dot = expectedName.lastIndexOf('.'), stem = dot < 0 ? expectedName : expectedName.slice(0, dot);
+      const extension = dot < 0 ? '' : expectedName.slice(dot);
+      const matchName = value => value === expectedName ? 'exact' : owned?.retryNames?.[index]
+        && value?.startsWith(stem) && value.endsWith(extension)
+        && /^ ?\([1-9]\d*\)$/.test(value.slice(stem.length, extension ? -extension.length : undefined)) ? 'retry-renamed' : null;
+      const labels = nodes.map(node => ({node, match: matchName(node.getAttribute('title'))
+        ?? matchName(node.getAttribute('aria-label')) ?? (!node.children.length && matchName((node.textContent ?? '').trim()))})).filter(x => x.match);
+      const matches = new Map(); let renamed = false;
+      for (const {node: label, match} of labels) {
         for (let card = label, depth = 0; card && depth < 5 && card.tagName !== 'FORM'; card = card.parentElement, depth++) {
-          const remove = [...card.querySelectorAll('button')].some(button => /remove|delete|удалить/i.test(button.getAttribute('aria-label') ?? button.getAttribute('title') ?? button.textContent ?? ''));
-          if (remove) { matches.add(card); break; }
+          const remove = [...card.querySelectorAll('button')].filter(button => /remove|delete|удалить/i.test(button.getAttribute('aria-label') ?? button.getAttribute('title') ?? button.textContent ?? ''));
+          if (remove.length > 1) break;
+          if (remove.length === 1) {
+            const previous = matches.get(remove[0]);
+            if (!previous || card.contains(previous)) matches.set(remove[0], card);
+            renamed ||= match === 'retry-renamed'; break;
+          }
         }
       }
-      return matches.size === 1 ? [...matches][0] : null;
+      attachmentMatches.push({index, candidates: matches.size, match: matches.size > 1 ? 'ambiguous'
+        : matches.size === 0 ? 'missing' : renamed ? 'retry-renamed' : 'exact', retry: !!owned?.retryNames?.[index]});
+      return matches.size === 1 ? [...matches.values()][0] : null;
     });
     const progress = '[role="progressbar"],[aria-busy="true"],[data-state="uploading"],[data-testid="upload-progress"],.animate-spin';
     const failed = card => card.matches('[role="alert"],[data-state="error"]') || !!card.querySelector('[role="alert"],[data-state="error"]')
       || /upload failed|failed to upload|ошибка загрузки|не удалось загрузить/i.test(card.textContent ?? '');
-    attachmentStates = cards.map(card => !card ? 'missing' : cards.filter(other => other === card).length !== 1 ? 'ambiguous'
+    attachmentStates = cards.map((card, index) => attachmentMatches[index].candidates > 1 ? 'ambiguous' : !card ? 'missing' : cards.filter(other => other === card).length !== 1 ? 'ambiguous'
       : failed(card) ? 'failed' : card.matches(progress) || card.querySelector(progress) ? 'pending' : 'ready');
     result.attachmentStates = attachmentStates;
+    result.attachmentMatches = attachmentMatches;
+    result.attachmentOwnershipChanged = !!owned?.touched;
     result.attachmentsTotal = attachments.length;
     result.attachmentsReadyCount = attachmentStates.filter(state => state === 'ready').length;
     result.attachmentsPresent = cards.filter(Boolean).length;
     result.attachmentsFailed = cards.some(card => card && failed(card));
     result.attachmentsReady = cards.every(card => card && !failed(card) && !card.matches(progress) && !card.querySelector(progress))
-      && new Set(cards).size === attachments.length && sendEnabled;
-    const owned = editor?.[attachmentKey];
-    if (owned?.requestId === requestId && owned.identity === JSON.stringify(attachments)) {
+      && new Set(cards).size === attachments.length && sendEnabled && !owned?.touched;
+    if (owned) {
       owned.cards ??= [];
       cards.forEach((card, index) => { if (card && !owned.cards[index]) owned.cards[index] = card; });
     }
@@ -153,7 +171,7 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
   if (action === 'retry-remove-attachment' || action === 'retry-paste-attachment') {
     const owned = editor[attachmentKey], index = attachmentIndex, card = cards[index];
     if (!Number.isInteger(index) || !attachments[index] || !owned || owned.requestId !== requestId
-        || owned.identity !== JSON.stringify(attachments) || !draftMatches)
+        || owned.identity !== JSON.stringify(attachments) || owned.touched || !draftMatches)
       return { ...result, action: 'deferred', reason: 'ATTACHMENTS_CHANGED' };
     if (action === 'retry-remove-attachment') {
       if (owned.replacing != null) return { ...result, action: owned.replacing === index && !card ? 'attachment-removed' : 'deferred', reason: 'ATTACHMENTS_PENDING' };
@@ -172,7 +190,10 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
     if (owned.replacing !== index || card || attachmentStates.some((state, i) => i !== index && ['missing','ambiguous'].includes(state)))
       return { ...result, action: 'deferred', reason: 'ATTACHMENTS_CHANGED' };
     const data = new DataTransfer(), file = attachments[index];
-    data.items.add(new File([file.text], file.name, { type: 'text/markdown', lastModified: 0 }));
+    const dot = file.name.lastIndexOf('.'), stem = dot < 0 ? file.name : file.name.slice(0, dot), extension = dot < 0 ? '' : file.name.slice(dot);
+    const name = `${stem}-retry-${crypto.randomUUID()}${extension}`;
+    owned.retryNames ??= []; owned.retryNames[index] = name;
+    data.items.add(new File([file.text], name, { type: 'text/markdown', lastModified: 0 }));
     owned.replacing = null; // Mark before paste; a thrown event must not duplicate a file.
     owned.cards[index] = null;
     editor.focus();
@@ -194,6 +215,21 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
     for (const file of attachments) data.items.add(new File([file.text], file.name, { type: 'text/markdown', lastModified: 0 }));
     // Mark before dispatch: a thrown event or partial upload must never cause a second paste.
     editor[attachmentKey] = { requestId, identity };
+    const listenerKey = Symbol.for('web-pilot-file-edit-listener');
+    if (!editor[listenerKey]) {
+      const edited = event => {
+        if (!event.isTrusted) return;
+        const target = event.target, scope = editor.closest('form') ?? editor.parentElement;
+        if (!scope?.contains(target)) return;
+        const button = target.closest?.('button');
+        const remove = button && /remove|delete|удалить/i.test(button.getAttribute('aria-label') ?? button.getAttribute('title') ?? button.textContent ?? '');
+        if (event.type === 'drop' || event.type === 'paste' && event.clipboardData?.files?.length
+            || event.type === 'change' && target.type === 'file' || event.type === 'click' && remove)
+          if (editor[attachmentKey]) editor[attachmentKey].touched = true;
+      };
+      for (const type of ['paste','drop','change','click']) document.addEventListener(type, edited, true);
+      editor[listenerKey] = true;
+    }
     editor.focus();
     editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
     return { ...result, action: 'attachments-dispatched' };
@@ -291,10 +327,10 @@ export class ChatGPTComposer {
     if (diagnose) {
       const { diagnostic, editorAvailable, writable, login, busy, draftLength, draftMatches, sendEnabled,
         messageSeen, userMessageCount, experience, connectionError, insertionMethod, pasteHandled,
-        attachmentsPresent, attachmentsReady, attachmentsFailed, attachmentsTotal, attachmentsReadyCount, attachmentStates, action: outcome, reason } = observation;
+        attachmentsPresent, attachmentsReady, attachmentsFailed, attachmentsTotal, attachmentsReadyCount, attachmentStates, attachmentMatches, attachmentOwnershipChanged, action: outcome, reason } = observation;
       this.trace('observation', { action, requestId, diagnostic, editorAvailable, writable, login, busy,
         draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount, experience, connectionError, insertionMethod, pasteHandled,
-        attachmentsPresent, attachmentsReady, attachmentsFailed, attachmentsTotal, attachmentsReadyCount, attachmentStates, outcome, reason },
+        attachmentsPresent, attachmentsReady, attachmentsFailed, attachmentsTotal, attachmentsReadyCount, attachmentStates, attachmentMatches, attachmentOwnershipChanged, outcome, reason },
         Math.max(0, this.now() - started));
     }
     if (observation.reason === 'PASTE_UNHANDLED')
@@ -359,16 +395,30 @@ export class ChatGPTComposer {
   }
 
   async waitForSendReady(args, version, canContinue, onUploadProgress = () => {}) {
-    const deadline = this.now() + (args.attachments?.length ? this.attachmentTimeoutMs : this.timeoutMs);
-    let observation; const seen = new Set();
+    const started = this.now(), deadline = started + (args.attachments?.length ? this.attachmentTimeoutMs : this.timeoutMs);
+    let observation, signature = '', changedAt = started, loggedAt = started; const seen = new Set(), missingSince = new Map();
     do {
       if (!canContinue()) return observation ?? {};
       observation = await this.inspect(args);
       if (args.attachments?.length) {
-        if (observation.attachmentStates?.some((state, index) => state === 'missing' && seen.has(index)))
-          throw new ComposerError('ATTACHMENTS_CHANGED', 'Вложение удалено во время подготовки. Отправка остановлена; создайте новую сессию или восстановите полный пакет.');
+        if (observation.attachmentOwnershipChanged)
+          throw new ComposerError('ATTACHMENTS_CHANGED', 'Вложения изменены вручную. Автоматическая отправка остановлена.');
+        observation.attachmentStates?.forEach((state, index) => {
+          if (state === 'missing' && seen.has(index)) {
+            if (!missingSince.has(index)) missingSince.set(index, this.now());
+          } else missingSince.delete(index);
+        });
+        if ([...missingSince.values()].some(time => this.now() - time >= 750))
+          throw new ComposerError('ATTACHMENTS_CHANGED', 'Не удалось повторно распознать вложение. Отправка остановлена; проверьте полный пакет.');
         observation.attachmentStates?.forEach((state, index) => { if (state !== 'missing') seen.add(index); });
         onUploadProgress({ ready: observation.attachmentsReadyCount ?? 0, total: args.attachments.length });
+        const next = JSON.stringify([observation.attachmentStates, observation.attachmentMatches, observation.sendEnabled]);
+        if (next !== signature) { signature = next; changedAt = this.now(); }
+        if (this.now() - loggedAt >= 15000) {
+          this.trace('attachment-wait', {requestId: args.requestId, attachmentStates: observation.attachmentStates,
+            attachmentMatches: observation.attachmentMatches, waitMs: this.now() - started, unchangedMs: this.now() - changedAt});
+          loggedAt = this.now();
+        }
       }
       if (observation.messageSeen || observation.login || observation.busy || observation.connectionError
           || observation.attachmentsFailed || (observation.sendEnabled && observation.writable
@@ -377,6 +427,7 @@ export class ChatGPTComposer {
       version = signal.version ?? version;
       if (signal.cancelled || signal.timeout && !args.attachments?.length) return observation;
     } while (this.now() < deadline);
+    if (missingSince.size) throw new ComposerError('ATTACHMENTS_CHANGED', 'Не удалось распознать полный пакет вложений. Отправка остановлена.');
     return observation;
   }
 
@@ -402,6 +453,17 @@ export class ChatGPTComposer {
       if (!current()) return false;
       result = await this.inspect({ ...args, attachmentIndex, action: 'retry-paste-attachment' });
       if (result.action !== 'attachment-restarted') throw new ComposerError('ATTACHMENTS_CHANGED', 'Вложения изменились. Повторная загрузка остановлена.');
+      // React may mount the new card asynchronously. Do not remove the next
+      // pending part while the previous replacement is still unaccounted for.
+      const appearDeadline = this.now() + this.timeoutMs;
+      while (current()) {
+        const observed = await this.inspect(args), state = observed.attachmentStates?.[attachmentIndex];
+        if (observed.attachmentOwnershipChanged || state === 'ambiguous')
+          throw new ComposerError('ATTACHMENTS_CHANGED', 'Повторное вложение не удалось однозначно распознать.');
+        if (state && state !== 'missing') break;
+        if (this.now() >= appearDeadline) throw new ComposerError('ATTACHMENTS_PENDING', 'ChatGPT ещё не показал повторное вложение. Отправка не выполнялась.');
+        await this.waitForObservedChange(this.pageState?.version ?? 0, Math.min(appearDeadline, this.now() + 250), current);
+      }
     }
     return current();
   }

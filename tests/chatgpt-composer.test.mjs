@@ -102,7 +102,7 @@ test('explicit retry replaces only the owned pending file after removal and send
   cards[0].querySelector('button').onclick=()=>cards[0].remove();
   f.editor.addEventListener('paste',()=>{for(const card of f.document.querySelectorAll('[aria-busy]'))card.removeAttribute('aria-busy');});
   assert.equal((await f.composer.deliver({...f.request,retryAttachments:true})).state,'sent');
-  assert.equal(f.pastes(),2);assert.equal(f.received.length,8);assert.equal(f.received[7].name,f.request.attachments[0].name);
+  assert.equal(f.pastes(),2);assert.equal(f.received.length,8);assert.match(f.received[7].name,/^part-1-retry-[a-f0-9-]{36}\.md$/);
   assert.equal(await f.received[7].text(),f.request.attachments[0].text);
   assert.ok(cards.slice(1).every(card=>card.isConnected));assert.equal(f.sends(),1);
   assert.equal((await f.composer.deliver({...f.request,retryAttachments:true})).state,'sent');assert.equal(f.pastes(),2);
@@ -124,14 +124,67 @@ test('retry refuses changed draft, missing files, ambiguous cards and lost owner
   }
 });
 
-test('manual file removal ends upload wait immediately; cancellation cannot send',async t=>{
+test('persistent file removal ends upload wait; cancellation cannot send',async t=>{
   for(const cancel of [false,true]){
     const f=attachmentFixture({uploading:true});t.after(()=>f.dom.window.close());let current=true,waits=0;
-    f.composer.wait=async()=>{waits++;if(cancel)current=false;else f.document.querySelector('form > div').remove();};
+    const wait=f.composer.wait;
+    f.composer.wait=async ms=>{await wait(ms);waits++;if(cancel)current=false;else if(waits===1)f.document.querySelector('form > div').remove();};
     if(cancel)assert.equal((await f.composer.deliver({...f.request,canContinue:()=>current})).state,'cancelled');
     else await assert.rejects(f.composer.deliver(f.request),{code:'ATTACHMENTS_CHANGED'});
-    assert.equal(waits,1);assert.equal(f.sends(),0);
+    assert.ok(waits>=1&&waits<=5);assert.equal(f.sends(),0);
   }
+});
+
+test('retry recognises server suffix and replaced DOM while retaining ready parts and exact contents',async t=>{
+  for(const mode of ['late-rename','replace-node','async-multiple','duplicate','foreign','manual']) {
+    const f=attachmentFixture({uploading:true});t.after(()=>f.dom.window.close());
+    const listeners={},add=f.document.addEventListener.bind(f.document);
+    f.document.addEventListener=(type,fn,...rest)=>{if(['paste','drop','click','change'].includes(type))listeners[type]=fn;return add(type,fn,...rest);};
+    await assert.rejects(f.composer.deliver(f.request),{code:'ATTACHMENTS_PENDING'});
+    const originals=[...f.document.querySelectorAll('form > div')],count=mode==='async-multiple'?2:1;
+    originals.slice(count).forEach(card=>card.removeAttribute('aria-busy'));
+    originals.slice(0,count).forEach(card=>card.querySelector('button').onclick=()=>card.remove());
+    const pending=[];const wait=f.composer.wait;
+    f.composer.wait=async ms=>{await wait(ms);for(const card of pending.splice(0)) {
+      if(!card.isConnected)f.editor.before(card);
+      card.removeAttribute('aria-busy');card.querySelector('span').textContent=card.querySelector('span').textContent.replace(/\.md$/,' (1).md');
+      if(mode==='replace-node')card.replaceWith(card.cloneNode(true));
+    }};
+    f.editor.addEventListener('paste',()=>{
+      const card=[...f.document.querySelectorAll('form > div')].at(-1);
+      if(mode==='foreign'){card.querySelector('span').textContent='unrelated.md';card.removeAttribute('aria-busy');return;}
+      if(mode==='duplicate'){card.removeAttribute('aria-busy');f.editor.before(card.cloneNode(true));return;}
+      if(mode==='manual')listeners.drop({isTrusted:true,target:f.editor,type:'drop'});
+      if(mode==='async-multiple')card.remove();
+      pending.push(card);
+    });
+    if(['duplicate','foreign','manual'].includes(mode)) {
+      await assert.rejects(f.composer.deliver({...f.request,retryAttachments:true}),e=>['ATTACHMENTS_CHANGED','ATTACHMENTS_PENDING'].includes(e.code));
+      assert.equal(f.sends(),0);
+    } else {
+      assert.equal((await f.composer.deliver({...f.request,retryAttachments:true})).state,'sent');
+      assert.equal(f.sends(),1);assert.equal(f.pastes(),1+count);
+      assert.ok(originals.slice(count).every(card=>card.isConnected));
+      for(const file of f.received.slice(7))assert.equal(await file.text(),'я'.repeat(14000));
+      assert.equal((await f.composer.deliver({...f.request,retryAttachments:true})).state,'sent');assert.equal(f.sends(),1);
+    }
+  }
+});
+
+test('a brief card remount is not reported as user deletion',async t=>{
+  const f=attachmentFixture({uploading:true});t.after(()=>f.dom.window.close());let time=0,turn=0,removed;
+  f.composer.now=()=>time;f.composer.attachmentTimeoutMs=3000;
+  f.composer.wait=async()=>{time+=250;if(++turn===1){removed=f.document.querySelector('form > div');removed.remove();}
+    else {f.editor.before(removed);for(const c of f.document.querySelectorAll('[aria-busy]'))c.removeAttribute('aria-busy');}};
+  assert.equal((await f.composer.deliver(f.request)).state,'sent');assert.equal(f.sends(),1);
+});
+
+test('attachment wait diagnostics contain indices and intervals without filenames or content',async t=>{
+  const f=attachmentFixture({uploading:true});t.after(()=>f.dom.window.close());let time=0;const rows=[];
+  f.composer.now=()=>time;f.composer.attachmentTimeoutMs=31000;f.composer.wait=async()=>{time+=15000;};f.composer.trace=(event,data)=>rows.push({event,...data});
+  await assert.rejects(f.composer.deliver(f.request),{code:'ATTACHMENTS_PENDING'});
+  const waits=rows.filter(x=>x.event==='attachment-wait');assert.equal(waits.length,2);assert.equal(waits[1].unchangedMs,30000);
+  assert.equal(JSON.stringify(waits).includes('part-1.md'),false);assert.equal(JSON.stringify(waits).includes('яя'),false);
 });
 
 for (const outcome of ['ready', 'pending', 'failed']) test('attachment deadline with fake clock: '+outcome, async()=>{
