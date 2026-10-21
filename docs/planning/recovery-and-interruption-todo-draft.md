@@ -17,19 +17,18 @@
 3. Старый scope `orchestrator-panel-startup` принят и закрыт
    Git-коммитом `cd62d1f` (17/17 DONE). **Не возвращать его.**
 4. Новый scope: `recovery-status-interruptions`. Два раздела ниже
-   объединяют **семь**, а не две микрозадачи. Пока Review
-   `NEEDS_USER`, нельзя начинать задачи или вручную изменять
-   управляемый `.harness/plans/todo-plan.md`.
-5. Review включён. Первый запуск завершился
-   `REVIEW_CLI_ERROR / error_max_turns` на 30 ходах без отзыва.
-   21.10.2026 пользователь прямо разрешил **увеличить эти числа
-   временно и повторить Review**: применить
-   `review:resolve --action retry`, обновить подготовленные документы
-   и нормализованный план, поднять лимиты до 1000 ходов / 7200000 мс
-   исключительно для текущего запуска, затем вернуть штатные
-   runtime-файлы и продолжить Review-протокол. Не объявлять технический
-   повтор положительной рецензией и не обходить Review публикацией.
-   Долговременное решение — FIX-REVIEW: убрать искусственные лимиты.
+   объединяют **семь**, а не две микрозадачи. Начинать задачи
+   только после подтверждённой публикации через `workflow status`;
+   `.harness/plans/todo-plan.md` вручную не редактировать.
+5. **История (не повторять):** первый Review остановился на лимите
+   30 ходов без отзыва. По разрешению пользователя от 21.10.2026
+   старый раунд отменён, новый проведён с временным лимитом
+   1000 ходов / 7200000 мс на изолированной копии runner.
+   Получены 5 major и 3 minor замечания, статус `AUTHOR_PENDING`;
+   авторская позиция `revise` сохранена через `review:respond`.
+   Следующая сессия читает **актуальный** `review:status`,
+   не повторяет cancel/retry или временное увеличение лимитов.
+   Постоянное решение — FIX-REVIEW.
 6. Форма предстоящей публикации существует локально в
    `.harness/runtime/review-input.json`, но это игнорируемый Git
    runtime, на него **нельзя полагаться** после нового запуска.
@@ -79,12 +78,22 @@
 `packages/workflow-kit/src/lib/plan-review.mjs`,
 `packages/workflow-kit/src/lib/review-state.mjs`,
 `packages/workflow-kit/src/lib/command-help.mjs`,
+`packages/workflow-kit/src/lib/common.mjs`,
+`packages/workflow-kit/src/lib/installer.mjs`,
+`packages/workflow-kit/package.json`, `package-lock.json`,
 `packages/workflow-kit/scripts/check-plan-review-fixture.mjs`,
+`tests/workflow-kit-upgrade.test.mjs`,
+`tests/fixtures/released-kit/manifest.json`,
+`tests/fixtures/released-kit/kit-1.9.3.tar.gz`,
+`tests/fixtures/released-kit/README.md`,
+`src/control/workflow/plan-review.mjs`,
+`tests/plan-review.test.mjs`,
 `packages/workflow-kit/README.md`.
 Установленная `.harness/kit` меняется только штатным installer;
 не оставлять в ней временных ручных правок.
 
-Проверки: **вместе** `kit-check` и `kit-assignments`.
+Проверки: **вместе** `kit-check`, `kit-assignments`,
+`kit-upgrade`, `plan-review-ui`.
 
 Критерии: штатный Claude CLI работает без `--max-turns` и
 жёсткого таймера 15 минут; число ходов и раундов не ограничено
@@ -93,6 +102,29 @@
 диагностируются и восстанавливаются без второго запуска или потери
 review-позиции; JSON verdict по-прежнему проверяется.
 Не добавлять новый watchdog и не ослаблять проверки.
+Обязательно повысить версию Kit в package.json/common.mjs,
+обновить lockfile, `upgradeFrom.add('1.9.3')` в installer
+и тест обновления с неизменным baseline 1.9.3/v0.5.23.
+Создать immutable archive Kit 1.9.3 **из commit
+`7279f9277cd03aa87c1bfad7a3ef00b9fb7ea97a`** (точный
+sourceCommit выпуска 0.5.23, не отсутствующий тег);
+зафиксировать исходный commit и SHA-256 в
+`tests/fixtures/released-kit/manifest.json`, актуализировать
+README fixtures и добавить `1.9.3` в список `extract`
+теста `workflow-kit-upgrade.test.mjs`. Не подменять архив
+новым Kit; его состав и SHA подтверждаются fixture.
+До отдельного разрешения на установку в текущем checkout
+продолжает действовать старая `.harness/kit`; перед будущим
+installer выполнить inspect/doctor, не обходить конфликты.
+Убрать из продуктового UI текст «Раунд N из 4».
+
+В fixture заменить старые `REVIEW_TIMEOUT` и
+`REVIEW_ROUND_LIMIT` проверками внешнего CLI termination
+→ `REVIEW_CLI_ERROR/NEEDS_USER`, `reviewStatus` при смерти
+runner (`ESRCH`), продолжения того же `claude_session_id`,
+совместимости старого поля `max_rounds`, ручного retry и
+отказа на неверный JSON. Ограниченный режим допускается
+только по явному выбору пользователя.
 
 Коммит: `fix: убрать искусственные пределы Claude Review`.
 
@@ -106,7 +138,8 @@ review-позиции; JSON verdict по-прежнему проверяется
 `tests/plugin-communication-store.test.mjs`,
 `tests/dialogue-delivery.test.mjs`.
 
-Проверки Kit: `orchestrator-startup`, `chatgpt-plugin`.
+Проверки Kit: `orchestrator-startup`, `chatgpt-plugin`,
+`unit-all` (в том числе файловый WAL).
 
 Критерии: после part0 для S при rev5 и интеграции соседней задачи
 до rev6 дочитывание 3/3 и `startup_complete` проходят,
@@ -126,13 +159,19 @@ review-позиции; JSON verdict по-прежнему проверяется
 `src/control/context/context-session.mjs`,
 `src/contracts/startup-view.mjs`,
 `src/frontend/desktop/ui/sidebar.mjs`,
+`src/backend/desktop-model.mjs`,
+`src/frontend/desktop/ui/progress.mjs`,
+`src/control/plugin/service.mjs`,
 `src/frontend/plugin/panel.mjs`,
 `tests/startup-context.test.mjs`,
 `tests/context-session.test.mjs`,
 `tests/sidebar.test.mjs`,
-`tests/panel-dialogue-view.test.mjs`.
+`tests/panel-dialogue-view.test.mjs`,
+`tests/backend-desktop-model.test.mjs`,
+`tests/progress.test.mjs`.
 
-Проверки: `orchestrator-startup`, `startup-recovery`.
+Проверки: `orchestrator-startup`, `startup-recovery`,
+`chatgpt-plugin`, `unit-all`.
 
 Критерии: UI/API различают pending/reading n/N/complete/stale/error;
 `startup_complete=true` побеждает устаревшее
@@ -150,12 +189,18 @@ SDK-accepted/DOM sent не подменяют receipt.
 `src/frontend/plugin/panel.mjs`,
 `src/backend/desktop-model.mjs`,
 `src/control/workflow/coordination.mjs`,
+`src/control/plugin/workflow-channel.mjs`,
+`src/control/plugin/assignment-dialogue.mjs`,
 `tests/sidebar.test.mjs`,
+`tests/backend-desktop-model.test.mjs`,
+`tests/parallel-execution-ui.test.mjs`,
+`tests/workspace-session.test.mjs`,
 `tests/panel-dialogue-view.test.mjs`,
-`tests/automatic-agent-dialogue.test.mjs`.
+`tests/automatic-agent-dialogue.test.mjs`,
+`tests/plugin-communication.test.mjs`.
 
 Проверки: `startup-recovery`, `prepared-flow-cycle`,
-`chatgpt-plugin`.
+`chatgpt-plugin`, `unit-all`.
 
 Критерии: одновременно `результаты исполнителей X/N` (только
 подтверждённые commit/result) и `интегрировано Y/N` (Kit main);
@@ -165,6 +210,16 @@ SDK-accepted/DOM sent не подменяют receipt.
 а не PASS/FAIL; `ACTIVE/READY_FOR_ACCEPTANCE` + DONE означает
 ожидание пользователя, не продолжающуюся работу. Обновление
 штатной моделью backend/SSE без нового scheduler/polling.
+Ответы инструментов O из `workflow-channel`/
+`assignment-dialogue` сообщают фактическую стадию: авторизованное
+`dispatch_when_ready` при `delivery:pending` не означает
+SDK-доставку или начало работы. Не менять role-protocol без
+отдельной версии Kit и полного upgrade.
+При реальном изменении проекции сессии разрешён
+`src/control/sessions/workspace-session.mjs`; в противном
+случае не менять его. Контракт awaiting-acceptance
+проверяют `parallel-execution-ui` и `workspace-session`;
+не оставлять их за границами файлов проверки.
 
 Коммит: `feat: показывать проверенные этапы прогресса и доставки`.
 
@@ -190,6 +245,10 @@ production backend и не отключают реальную сеть.
 Инварианты: одна интеграция, сохранённый SHA, нет повторной
 приёмки, нет второго task/worktree, нет потери DONE или
 побочного эффекта для соседнего проекта.
+Если fixture найдёт реальный production-дефект, не ослаблять
+assertions и не менять продуктовый код в TEST-REGRESSION.
+Сохранить `task:block` и добавить отдельное исправление через
+`plan:extend`.
 
 Коммит: `test: сценарии идемпотентного восстановления O и E`.
 
