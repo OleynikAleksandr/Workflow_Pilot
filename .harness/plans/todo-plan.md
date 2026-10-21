@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 764,
+  "plan_revision": 765,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -21,12 +21,30 @@
       "package-lock.json",
       "src/contracts/backend.mjs",
       "release-manifest.json",
-      "src",
-      "tests",
-      "src/backend",
-      "src/frontend/desktop",
       "tests/backend-shutdown.test.mjs",
-      "tests/desktop-client.test.mjs"
+      "tests/desktop-client.test.mjs",
+      "src/execution/browser/chatgpt-composer.mjs",
+      "src/control/context/context-session.mjs",
+      "src/control/sessions/service.mjs",
+      "src/control/sessions/workspace-session.mjs",
+      "src/backend/desktop-model.mjs",
+      "src/contracts/desktop.mjs",
+      "src/frontend/desktop/preload.cjs",
+      "src/frontend/desktop/ui/index.html",
+      "src/frontend/desktop/ui/sidebar.mjs",
+      "src/frontend/desktop/ui/progress.mjs",
+      "tests/chatgpt-composer.test.mjs",
+      "tests/context-session.test.mjs",
+      "tests/session-runtime.test.mjs",
+      "tests/workspace-session.test.mjs",
+      "tests/sidebar.test.mjs",
+      "tests/progress.test.mjs",
+      "tests/backend-desktop-model.test.mjs",
+      "src/backend/shutdown.mjs",
+      "src/backend/status-menu.mjs",
+      "src/backend/main.mjs",
+      "src/backend/host.mjs",
+      "src/frontend/desktop/client.mjs"
     ],
     "documentation_paths": [
       "docs/planning/restore-stable-release.md",
@@ -227,8 +245,23 @@
       "why": "Восстановить автоматическую подготовку и повтор загрузки контекста",
       "dependencies": [],
       "functional_paths": [
-        "src",
-        "tests"
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/desktop.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/progress.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/progress.test.mjs",
+        "tests/backend-desktop-model.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/startup-recovery.md"
@@ -259,14 +292,15 @@
         "FIX-STARTUP"
       ],
       "functional_paths": [
-        "src/backend",
-        "src/frontend/desktop",
+        "src/backend/shutdown.mjs",
+        "src/backend/status-menu.mjs",
+        "src/backend/main.mjs",
+        "src/backend/host.mjs",
+        "src/frontend/desktop/client.mjs",
         "tests/backend-shutdown.test.mjs",
         "tests/desktop-client.test.mjs"
       ],
-      "documentation_paths": [
-        "docs/planning/startup-recovery.md"
-      ],
+      "documentation_paths": [],
       "verification_ids": [
         "force-stop"
       ],
@@ -396,7 +430,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 764
+Revision: 765
 
 ## Цель
 
@@ -439,13 +473,13 @@ Revision: 764
 - [TODO] FIX-STARTUP: Восстановить автоматическую подготовку и повтор загрузки контекста — Ожидает
   - Git Commit: [PENDING] feat: Восстановить автоматическую подготовку и повтор загрузки контекста
   - Reference: restore-stable-release / FIX-STARTUP / implementation
-  - Файлы: src, tests, docs/planning/startup-recovery.md
+  - Файлы: src/execution/browser/chatgpt-composer.mjs, src/control/context/context-session.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/backend/desktop-model.mjs, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/progress.mjs, tests/chatgpt-composer.test.mjs, tests/context-session.test.mjs, tests/session-runtime.test.mjs, tests/workspace-session.test.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/backend-desktop-model.test.mjs, docs/planning/startup-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] FORCE-STOP: Добавить подтверждаемую принудительную остановку собственной службы — Ожидает
   - Git Commit: [PENDING] feat: Добавить подтверждаемую принудительную остановку собственной службы
   - Reference: restore-stable-release / FORCE-STOP / implementation
-  - Файлы: src/backend, src/frontend/desktop, tests/backend-shutdown.test.mjs, tests/desktop-client.test.mjs, docs/planning/startup-recovery.md
+  - Файлы: src/backend/shutdown.mjs, src/backend/status-menu.mjs, src/backend/main.mjs, src/backend/host.mjs, src/frontend/desktop/client.mjs, tests/backend-shutdown.test.mjs, tests/desktop-client.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
