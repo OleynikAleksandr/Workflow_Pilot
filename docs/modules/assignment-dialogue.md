@@ -27,7 +27,8 @@ sequenceDiagram
     U->>B: Start
     B->>K: Допустимое назначение и worktree
     par Запуск исполнителя
-        B->>E: DOM: правила, identity, приглашение панели
+        B->>E: DOM: короткое приглашение панели
+        E->>B: panel/read_context/startup_complete: правила и identity
         E->>B: Панель / SDK, конец bootstrap
     and Подготовка оркестратором
         B->>O: service recovery: назначение создано
