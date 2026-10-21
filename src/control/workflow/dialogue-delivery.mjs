@@ -9,6 +9,12 @@ const hash=value=>createHash('sha256').update(value).digest('hex');
 export class DialogueDelivery {
   constructor({store,getPlugin,record,route,state,signals,kitPermission=async()=>{}}){Object.assign(this,{store,getPlugin,record,route,state,signals,kitPermission});}
   async currentMessage(target,message){
+    if(message.kind==='startup-context'){
+      const project=this.project(target.local_session_id),attempt=project?.attempt;
+      if(!project||project.preparationPaused||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel')return false;
+      const info=await this.store.inspect(project.workspace,project.sessionId);
+      return await this.record(project)?.controller.packetIsCurrent(attempt.packet,{...project,...info})===true;
+    }
     if(message.dialogue_version===1&&message.assignment_id){
       const state=await this.getPlugin().communication.assignment.state(target,message.assignment_id);
       if((state.dialogue?.attempt??1)!==message.attempt)return false;
@@ -43,8 +49,13 @@ export class DialogueDelivery {
     })(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),2000);timer.unref?.();})]);}
     finally{clearTimeout(timer);}
   }
-  async admit(target){
+  async admit(target,message){
     const project=this.project(target.local_session_id);
+    if(message?.kind==='startup-context'){
+      if(!project||project.attempt?.state!=='sent'||project.attempt.requestId!==message.request_id
+        ||!this.observe(target).canSend||!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
+      return (await readCommandActivity(project.workspace)).commandActive?{allowed:false,reason:'commands-active'}:{allowed:true};
+    }
     if(!this.uses(project)||!(this.owned(project)?['running']:['running','pausing']).includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)
       ||!this.observe(target).canSend)return {allowed:false,reason:'admission-denied'};
     return (await readCommandActivity(project.workspace)).commandActive
@@ -53,7 +64,7 @@ export class DialogueDelivery {
   async prepareBootstrap(project){
     if(!AUTOMATIC_DIALOGUE_ENABLED||!['orchestrator','executor'].includes(project.role))return null;
     const selected=this.route(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId);
-    if(selected==='legacy-dom'||project.role==='executor'&&selected!=='plugin-v1')return null;
+    if(project.role==='executor'&&selected!=='plugin-v1')return null;
     const ticket=await this.getPlugin().reserveParticipant(project.sessionId);
     if(project.role==='executor'&&this.owned(project)){
       const origin=this.project(project.executionOriginSessionId);
@@ -61,7 +72,12 @@ export class DialogueDelivery {
         assignment_id:project.assignmentId,task_id:project.taskId}), 'recovery',{
         key:'prepare:'+project.assignmentId+':v2',subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt:1});
     }
-    return ticket;
+    return project.role==='orchestrator'?{...ticket,context_transport:'panel'}:ticket;
+  }
+  async stageStartup(project,attempt){
+    const plugin=this.getPlugin(),target=await plugin.participantTarget(project.sessionId);
+    if(!target)throw Object.assign(Error('Оркестратор стартового пакета не подтверждён.'),{code:'PLUGIN_PARTICIPANT_UNAVAILABLE'});
+    return plugin.communication.startup.stage(target,{request_id:attempt.requestId,text:attempt.startupText});
   }
   async permission(workspace,scope,phase){
     if(this.route(workspace,scope)!=='plugin-v1')return;
@@ -141,13 +157,13 @@ export class DialogueDelivery {
   reserved(project){
     if(!this.uses(project))return false;
     for(const run of this.getPlugin()?.communication.runs.values()??[])if(run.mode==='workflow')
-      if(run.messages.some(m=>m.recipient_session_id===project.sessionId&&m.scope_id===(project.parentScopeId??project.scopeId)&&!m.reply_observed))return true;
+      if(run.messages.some(m=>m.recipient_session_id===project.sessionId&&m.scope_id===(project.parentScopeId??project.scopeId)&&!m.reply_observed&&!m.startup_complete))return true;
     return false;
   }
   settled(workspace,scope){
     const project=this.store.project(workspace);
     for(const run of this.getPlugin()?.communication.runs.values()??[])if(run.mode==='workflow'&&run.project_id===project?.projectId&&run.grant?.scope_id===scope){
-      if(run.messages.some(m=>m.scope_id===scope&&!m.reply_observed&&!m.superseded))return false;
+      if(run.messages.some(m=>m.scope_id===scope&&!m.reply_observed&&!m.superseded&&!m.startup_complete))return false;
       if(this.getPlugin().communication.assignment?.kit?.close&&run.messages.some(m=>m.scope_id===scope
         &&m.kind==='acceptance'&&!m.kit_transport_closed))return false;
       if(Object.values(run.assignment_intents??{}).some(i=>i.effect.scope_id===scope&&['authorized','needs_confirmation','prepared','deferred'].includes(i.phase)))return false;

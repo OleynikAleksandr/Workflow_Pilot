@@ -406,7 +406,9 @@ return Object.freeze({
   },
   retireCommunication:identities=>getPlugin()?.communication.removeProjects(identities),
   prepareBootstrap:project=>{if(held(project))throw recoveryError();return dialogue.prepareBootstrap(project);},
-  observeParticipant:target=>dialogue.observe(target),admitParticipant:target=>dialogue.admit(target),
+  stageStartup:(project,attempt)=>dialogue.stageStartup(project,attempt),
+  startupProgress:(sessionId,requestId)=>getPlugin()?.communication.startup.progress(sessionId,requestId),
+  observeParticipant:target=>dialogue.observe(target),admitParticipant:(target,message)=>dialogue.admit(target,message),
   reconcileParticipant:target=>dialogue.reconcile(target),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),
   communicationChanged:(runId,events=[])=>{
@@ -425,6 +427,10 @@ return Object.freeze({
     }));
     for(const member of Object.values(run.members))if(global||affected.has(member.id))
       liveRecord(dialogue.project(member.target.local_session_id))?.executor?.changed();
+    for(const event of events)if(event.event_type==='startup.complete'){
+      const member=run.members[event.participant_id];
+      if(member)void liveRecord(dialogue.project(member.target.local_session_id))?.controller.tick();
+    }
     void execution.signal(parent.workspace);publish();
   },
   attachSessions: sessions=>{if(liveSessions)throw new Error('WORKFLOW_SESSIONS_ALREADY_ATTACHED');liveSessions=sessions;},

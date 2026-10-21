@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
+import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
 import {ASSIGNMENT_DIALOGUE_VERSION} from '../../contracts/plugin-communication.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate} from '@webpilot/workflow-kit/lib/role-protocol';
 
@@ -41,6 +42,7 @@ export class PluginCommunication {
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
     this.assignment=new AssignmentDialogue(this,dialogueKit);
+    this.startup=new StartupContext(this);
     this.ready=this.restore();
   }
   async restore() {
@@ -249,6 +251,8 @@ export class PluginCommunication {
   }
   async readMessage(input){
     const binding=await this.modelInput(input),message=await this.read(binding);
+    if(message.kind==='startup-context')return {...message,instructions:message.superseded
+      ?'Стартовый пакет устарел. Не читайте и не подтверждайте его; требуется актуальный контекст проекта.':STARTUP_INSTRUCTIONS};
     if(message.superseded||!message.service||message.sender_role!=='backend')return message;
     const {run,member}=this.member(binding);
     if(member.role==='O'&&message.assignment_id)message.recipient_ref=this.assignment.recipientRef(run,message.assignment_id);
@@ -276,7 +280,15 @@ export class PluginCommunication {
     }
     return message;
   }
-  async content(input){return this.workflow.content(await this.modelInput(input));}
+  _startupStage(input){return this.startup.staged(input);}
+  _startupPart(input){return this.startup.part(input);}
+  _startupComplete(input){return this.startup.completed(input);}
+  async startupComplete(input){return this.mutate('startupComplete',await this.modelInput(input));}
+  async content(input){
+    const binding=await this.modelInput(input),{run}=this.member(binding);
+    return run.messages.some(m=>m.message_id===input.message_id&&m.kind==='startup-context')
+      ?this.mutate('startupPart',binding):this.workflow.content(binding);
+  }
   async roster(input){input=await this.modelInput(input);await this.enrollment.validateInput(input);const {run,member}=this.member(input),participants=[];
     for(const candidate of Object.values(run.members))if(candidate.id===member.id||member.role==='O'){
       try{await this.enrollment.validate(candidate.target);participants.push(this.enrollment.publicMember(run,candidate));}catch{}
@@ -293,8 +305,8 @@ export class PluginCommunication {
   }
   allowed(input) {
     const context=this.panel(input),{run,member,panel}=context;
-    if(run.mode==='workflow')requireValue(this.workflow.permitted(run,member)&&panel.messageSupported,'STOPPED','План приостановлен или SDK недоступен.');
-    requireValue(!member.stopped && panel.expiresAt>this.now() && panel.generation===member.generation
+    if(run.mode==='workflow')requireValue(this.workflow.transportPermitted(run,member)&&panel.messageSupported,'STOPPED','Передача приостановлена или SDK недоступен.');
+    requireValue((!member.stopped||run.mode==='workflow'&&this.startup.active(run,member)) && panel.expiresAt>this.now() && panel.generation===member.generation
       && input.permission_generation===member.generation,'STOPPED','Связь остановлена или срок разрешения истёк.');
     return context;
   }
@@ -336,7 +348,8 @@ export class PluginCommunication {
     return {run_id:run.id,participant_id:member.id,role:member.role,conversation_key:member.identity,
       ...(run.mode==='workflow'?this.enrollment.publicMember(run,member):{}),
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
-      permission_generation:member.generation,stopped:run.mode==='workflow'?!this.workflow.permitted(run,member):member.stopped||expiresAt<=this.now(),
+      permission_generation:member.generation,stopped:run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped||expiresAt<=this.now(),
+      startup:run.mode==='workflow'?this.startup.view(this.startup.message(run,member.target.local_session_id)):null,
       ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:[...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.messageSupported&&p.expiresAt>this.now())}:{}),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:expiresAt,
@@ -477,7 +490,7 @@ export class PluginCommunication {
     const {run,member}=this.member(input),pending=run.mode==='workflow'?this.workflow.pending(run,member):run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
     const end=Math.min(input.after_seq+100,run.events.length),events=this.visibleEvents(run,member,run.events.slice(input.after_seq,end));
     return {message_id:pending?.message_id??null,events,seq:end,expires_at:this.panels.get(input.panel_instance_id)?.expiresAt??0,
-      stopped:member.stopped||member.generation!==input.permission_generation,critical_error:this.critical};
+      stopped:(run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped)||member.generation!==input.permission_generation,critical_error:this.critical};
   }
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
@@ -514,7 +527,7 @@ export class PluginCommunication {
     if(run.mode==='workflow'){
       if(!alreadyChecked){
         if(await this.workflow.superseded(run,member,message))return {superseded:true,expires_at:0};
-        requireValue(await this.workflow.admit(member.target)&&this.workflow.observe(member.target).canSend,'BUSY','Адресат занят. Попытка оставлена без повтора; требуется проверка.');
+        requireValue(await this.workflow.admit(member.target,message)&&this.workflow.observe(member.target).canSend,'BUSY','Адресат занят. Попытка оставлена без повтора; требуется проверка.');
       }
       else requireValue(this.workflow.observe(member.target).canSend,'BUSY','Адресат изменился перед отправкой.');
       this.workflow.begin(run,member,message);

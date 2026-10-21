@@ -86,6 +86,8 @@ const workspaceSetup = control.configureProjects({
 });
 const {runtime:sessionContextRuntime, cache:contextCache} = control.configureContext({getRuntime:()=>runtime,
   prepareBootstrap:project=>workflow.prepareBootstrap(project),
+  stageStartup:(project,attempt)=>workflow.stageStartup(project,attempt),
+  startupProgress:(id,request)=>workflow.startupProgress(id,request),
   loadFixture:smoke ? workspace=>runtime.loadContext(workspace) : null, onChange:()=>publish()});
 // Agent time: wall clock while ChatGPT shows its Stop control; each finished request is added to its own session.
 let agentTimer, pageState, conversationRecovery;
@@ -308,7 +310,10 @@ function snapshot() {
     planRun: planRunView(saved),
     orchestratorPlan: orchestratorPlanView(saved),
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
-    selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true} : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
+    selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
+      : saved?.attempt?.contextTransport==='panel'&&saved.attempt.state==='sent'
+        ? {...controller?.state,startup:workflow.startupProgress(saved.sessionId,saved.attempt.requestId),phase:'startup-channel'}
+        : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
     contextPreparation: { busy: selected ? contextCache.isBuilding(selected.workspace) : false },
     runtimeFolder, platform: process.platform,
     // The same view on both systems: the executor, the selected ChatGPT channel and the state of its services.

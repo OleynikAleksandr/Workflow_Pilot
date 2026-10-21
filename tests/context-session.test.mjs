@@ -112,6 +112,24 @@ test('the first message contains the exact complete packet and asks for a short 
   assert.ok(text.includes('Интерфейсом компьютера не управляй: не двигай мышь, не нажимай клавиши и не переключай окна — ни инструментами, ни командами (osascript, System Events, cliclick и подобными). Список окон и снимки экрана и окна (`computer_list_windows`, `computer_capture_screen`, `computer_capture_window`) разрешены. Живую проверку интерфейса выполняет пользователь.'));
 });
 
+test('orchestrator panel bootstrap sends no attachments and stages the complete context before DOM Send',async()=>{
+  const f=controllerFixture({chatUrl:null});f.info.role='orchestrator';let staged=0,sent=0,complete=false;
+  f.runtime.prepareBootstrap=async()=>({context_transport:'panel',enrollment_ticket:'a'.repeat(64),expires_at:now+100000});
+  f.runtime.stageStartup=async(_project,attempt)=>{
+    assert.equal(f.saved.attempt.requestId,attempt.requestId);assert.ok(attempt.startupText.includes(packet().context));
+    assert.match(attempt.startupText,/recipient_session_id/);assert.match(attempt.startupText,/workflow_startup_complete/);staged++;
+  };
+  f.runtime.startupProgress=()=>({complete});
+  f.composer.deliver=async options=>{
+    assert.equal(staged,1);assert.deepEqual(options.attachments,[]);
+    assert.match(options.text,/workflow_pilot_panel/);assert.doesNotMatch(options.text,/ПОЛНЫЙ КОНТЕКСТ|\/mnt\/data/);
+    assert.equal(options.text.includes(packet().context),false);await options.onBeforeFill();await options.onBeforeSend();sent++;return {state:'sent'};
+  };
+  await f.controller.tick();assert.equal(sent,1);assert.equal(f.controller.state.phase,'startup-channel');
+  await f.controller.tick();assert.equal(sent,1);assert.equal(staged,1);
+  complete=true;await f.controller.tick();assert.equal(f.controller.state.phase,'delivered');assert.equal(sent,1);
+});
+
 test('automatic bootstrap reads recovery then opens only its panel; an executor does not start work in that turn',()=>{
   const invitation={enrollment_ticket:'a'.repeat(64),expires_at:now+1000};
   for(const experience of ['chat','work']){

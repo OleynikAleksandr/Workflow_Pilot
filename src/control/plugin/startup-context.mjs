@@ -1,0 +1,84 @@
+import {createHash} from 'node:crypto';
+import {workflowRunId} from './enrollment.mjs';
+
+const hash=text=>createHash('sha256').update(text).digest('hex');
+const check=(ok,code,message)=>{if(!ok)throw Object.assign(Error(message),{code:'PLUGIN_COMMUNICATION_'+code});};
+export const STARTUP_INSTRUCTIONS='Это полный стартовый контекст оркестратора, не поручение реализации. Прочитай ВСЕ части через workflow_communication_read_context с этим message_id/context_ref, part от 0 до total-1. После полного чтения вызови workflow_startup_complete с message_id и context_sha256=context_ref. Не подтверждай неполный пакет. Затем кратко подтверди восстановление проекта и заверши ход. Не вызывай assignment_yield, task:start или ожидание очереди; запуск плана разрешает пользователь.';
+export function contextParts(text,limit=12000){
+  const parts=[];let part='',bytes=0;
+  for(const char of text){const size=Buffer.byteLength(char);if(bytes+size>limit){parts.push(part);part='';bytes=0;}part+=char;bytes+=size;}
+  parts.push(part);return parts;
+}
+
+// A narrow pre-plan lane, using the same durable messages, binding and SDK
+// intent as assignments. It never creates or changes a plan grant.
+export class StartupContext {
+  constructor(communication){this.c=communication;}
+  message(run,session){return run?.messages.findLast(m=>m.kind==='startup-context'&&m.recipient_session_id===session&&!m.superseded);}
+  active(run,member){const m=this.message(run,member.target?.local_session_id);return member.role==='O'&&!!m&&!m.startup_complete;}
+  stage(target,input){return this.c.mutate('startupStage',{...input,target,run_id:workflowRunId(target)});}
+  async staged(input){
+    const c=this.c,{target,text,request_id}=input;
+    check(target.role==='O'&&!target.assignment_id,'MODE','Стартовый пакет предназначен только оркестратору.');
+    check(typeof request_id==='string'&&request_id.length<=128&&request_id.length>0,'INPUT','Нет идентификатора старта.');
+    check(typeof text==='string'&&text.trim()&&Buffer.byteLength(text)<=220000,'CONTEXT','Стартовый пакет пуст или слишком велик; он не обрезан.');
+    const run=c.enrollment.ensureRun(target),digest=hash(text);
+    const existing=run.messages.find(m=>m.kind==='startup-context'&&m.request_id===request_id&&m.recipient_session_id===target.local_session_id);
+    if(existing){
+      check(existing.context_ref===digest,'CONFLICT','Нельзя заменить сохранённый стартовый пакет.');
+      if(existing.superseded&&!existing.intent){existing.superseded=false;existing.delivery='pending';
+        c.event(run,'startup.resumed',{message_id:existing.message_id});}
+      return this.view(existing);
+    }
+    const old=this.message(run,target.local_session_id);
+    check(!old||!old.intent||old.startup_complete,'CONFLICT','Исход прежней отправки не подтверждён. Повтор запрещён.');
+    check(run.messages.length<2048,'LIMIT','Достигнут лимит сообщений.');
+    const ref=c.store?await c.store.putContent(text):digest;
+    if(!c.store)c.workflow.contents.set(ref,text);
+    if(old&&!old.startup_complete){old.superseded=true;old.delivery='superseded';}
+    const member=Object.values(run.members).find(m=>m.target.local_session_id===target.local_session_id);
+    const message={message_id:c.makeId(),kind:'startup-context',service:true,sender_role:'backend',sender_id:null,
+      recipient_id:member?.id??null,recipient_session_id:target.local_session_id,scope_id:target.scope_id,
+      assignment_id:null,task_id:null,request_id,context_ref:ref,context_bytes:Buffer.byteLength(text),
+      total_parts:contextParts(text,24000).length,parts_read:[],body:'Стартовый контекст оркестратора',
+      delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
+    run.messages.push(message);c.event(run,'startup.prepared',{message_id:message.message_id,participant_id:member?.id??null,
+      context_bytes:message.context_bytes,total_parts:message.total_parts});return this.view(message);
+  }
+  view(m){return m?{message_id:m.message_id,request_id:m.request_id,delivery:m.delivery,read:m.read,
+    complete:!!m.startup_complete,superseded:!!m.superseded,parts_read:m.parts_read.length,total_parts:m.total_parts}:null;}
+  progress(sessionId,requestId){
+    const target=this.c.enrollment.resolveTarget?.(sessionId);if(!target||this.c.removedSessions.has(sessionId))return null;
+    const run=this.c.runs.get(workflowRunId(target));
+    const m=run?.messages.findLast(m=>m.kind==='startup-context'&&m.recipient_session_id===sessionId&&m.request_id===requestId);
+    return this.view(m);
+  }
+  async own(input){
+    const {run,member}=this.c.member(input),m=run.messages.find(m=>m.message_id===input.message_id);
+    check(member.role==='O'&&m?.kind==='startup-context'&&m.recipient_id===member.id,'READ_DENIED','Стартовый пакет недоступен этому разговору.');
+    check(!m.superseded&&await this.c.workflow.currentMessage(member.target,m),
+      'STALE_MESSAGE','Стартовый пакет устарел. Не подтверждайте его; обновите контекст проекта.');
+    return {run,member,m};
+  }
+  async part(input){
+    const {run,m}=await this.own(input);
+    check(m.read&&input.context_ref===m.context_ref,'READ_DENIED','Сначала прочитайте адресное стартовое сообщение.');
+    const text=this.c.store?await this.c.store.readContent(m.context_ref):this.c.workflow.contents.get(m.context_ref);
+    check(typeof text==='string'&&hash(text)===m.context_ref,'CONTEXT','Сохранённый контекст повреждён.');
+    const parts=contextParts(text,24000),index=input.part??0;
+    check(Number.isInteger(index)&&index>=0&&index<parts.length,'INPUT','Неверная часть контекста.');
+    if(!m.parts_read.includes(index)){m.parts_read.push(index);this.c.event(run,'startup.part_returned',{
+      message_id:m.message_id,part:index,total_parts:parts.length});}
+    return {message_id:m.message_id,context_ref:m.context_ref,sha256:m.context_ref,part:index,total:parts.length,
+      bytes:m.context_bytes,text:parts[index],instructions:STARTUP_INSTRUCTIONS};
+  }
+  async completed(input){
+    const {run,member,m}=await this.own(input);
+    check(input.context_sha256===m.context_ref,'CONTEXT','Digest не совпадает со стартовым пакетом.');
+    check(m.read&&m.parts_read.length===m.total_parts,'INCOMPLETE','Прочитайте все части стартового контекста перед подтверждением.');
+    if(!m.startup_complete){m.startup_complete=true;
+      if(member.deliveryGate?.message_id===m.message_id)delete member.deliveryGate;
+      this.c.event(run,'startup.complete',{message_id:m.message_id,participant_id:member.id,total_parts:m.total_parts});}
+    return {...this.view(m),instructions:'Контекст полностью получен и подтверждён. Кратко сообщите о восстановлении проекта. Выполнение плана не разрешено этим подтверждением.'};
+  }
+}

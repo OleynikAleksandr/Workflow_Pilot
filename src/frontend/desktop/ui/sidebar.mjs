@@ -2,6 +2,7 @@ import { createProgress, operationLabel } from './progress.mjs';
 import { settingsPanelView } from './settings-panel.mjs';
 import { workspaceSetupView } from './workspace-setup.mjs';
 import { executionFinalStages } from '../../../contracts/workflow-view.mjs';
+import {startupView} from '../../../contracts/startup-view.mjs';
 const $ = id => document.getElementById(id);
 const api = window.webPilot;
 let lastProjects = '';
@@ -587,9 +588,10 @@ function render(state) {
       item.append(mark, body); return item;
     }));
   } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; }
-  const [title, detail] = context.phase==='external-session' ? ['Открыто в ChatGPT','Продолжайте разговор в приложении ChatGPT. Эта сессия подключена через плагин Workflow Pilot.'] : phases[context.phase] ?? phases.selected;
+  const startup=context.phase==='startup-channel'?startupView(context.startup):null;
+  const [title, detail] = startup?[startup.title,startup.detail]:context.phase==='external-session' ? ['Открыто в ChatGPT','Продолжайте разговор в приложении ChatGPT. Эта сессия подключена через плагин Workflow Pilot.'] : phases[context.phase] ?? phases.selected;
   const preparing=['preparing','loading-context','preparing-message','waiting-attachments','waiting-composer','waiting-experience','waiting-login','waiting-draft'].includes(context.phase);
-  const attention=preparing||['preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);
+  const attention=!!startup||preparing||['preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);
   const started=selected?.manualStart||context.messageSent||['sending','unknown','sent','acknowledged'].includes(selected?.attempt?.state);
   $('session-notice').hidden=!selected||!attention||!!state.setup||!!state.settings;
   $('session-notice-title').textContent=(selected?.title||'Текущая сессия')+' · '+title;

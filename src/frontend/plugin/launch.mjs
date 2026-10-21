@@ -27,7 +27,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         if(finishCompleted(value,current,generation))return;
         binding={...current,permission_generation:value.permission_generation};expiresAt=value.expires_at;ui.snapshot(value);
         if(!value.stopped&&getMessage()){
-          enabled=true;const token=++epoch;status('План выполняется. Ожидаем рабочее сообщение…','waiting');
+          enabled=true;const token=++epoch;status(value.startup&&!value.startup.complete?'Ожидаем стартовый контекст через панель…':'План выполняется. Ожидаем рабочее сообщение…','waiting');
           loop=listen(token).finally(()=>{loop=null;ready();watchWorkflow();});
         }
       }catch(error){status(error.message,'error');if(terminal(error.code)&&error.code!=='PLUGIN_COMMUNICATION_STOPPED')serverError=error.message;}
@@ -149,7 +149,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     try {
       // These checks and the SDK invocation have no intervening await.
       const pending=getMessage().send({role:'user',content:[{type:'text',text:
-        (workflow?'Рабочее поручение текущего плана Workflow Pilot. Вызови workflow_communication_read_message с аргументами ':'Для включённого пользователем опыта Workflow Pilot вызови workflow_communication_read_message с аргументами ')+
+        (workflow?'Адресное сообщение Workflow Pilot. Вызови workflow_communication_read_message с аргументами ':'Для включённого пользователем опыта Workflow Pilot вызови workflow_communication_read_message с аргументами ')+
         JSON.stringify(workflow?{message_id}:{run_id:current.run_id,participant_id:current.participant_id,message_id})+
         '. Не открывай другую панель и не повторяй уведомление. Чтение сообщения — отдельная квитанция.'}],
         _meta:{'openai/message':{target:'active',send:true}}},{timeout:sendTimeoutMs});
@@ -178,7 +178,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         if(workflow)try{
           const state=await refresh();
           if(!current())return;
-          if(state?.stopped){localStop('Связь плана приостановлена. Ожидаем «Продолжить».');return;}
+          if(state?.stopped){localStop(state.startup?.complete&&!state.permission?.active?'Стартовый контекст подтверждён. Можно ставить задачу.':'Связь плана приостановлена. Ожидаем «Продолжить».');return;}
         }catch{/* Network recovery below never repeats Send. */}
         if(!current())return;
         if(error.code==='PLUGIN_COMMUNICATION_STOPPED'){localStop('Разрешение связи отозвано. Проверяем состояние плана.');return;}

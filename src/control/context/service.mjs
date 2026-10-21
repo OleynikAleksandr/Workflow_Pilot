@@ -5,10 +5,11 @@ import { SESSION_ROLES } from '../sessions/workspace-session.mjs';
 
 export class ContextService {
   #cache;
-  constructor({execution, plans, setup, getRuntime, loadFixture = null, prepareBootstrap = async()=>null, onChange}) {
+  constructor({execution, plans, setup, getRuntime, loadFixture = null, prepareBootstrap = async()=>null, stageStartup, startupProgress, onChange}) {
     this.runtime = Object.freeze({
       ensure: () => execution.ensureServices(),
       prepareBootstrap,
+      stageStartup,startupProgress,
       get startupRules() { return getRuntime()?.startupRules ?? []; },
       async loadContext(workspace, role = null) {
         if (loadFixture) return loadFixture(workspace, role);

@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
+import {startupView} from '../src/contracts/startup-view.mjs';
+
+test('startup panel context stays visible until all parts are confirmed',async t=>{
+  const f=await fixture(t),$=id=>f.document.getElementById(id);
+  f.emit({...f.state,context:{phase:'startup-channel',messageSent:true,startup:{read:true,parts_read:1,total_parts:3}}});
+  assert.equal($('session-notice').hidden,false);assert.match($('session-notice-title').textContent,/читает контекст/);
+  assert.match($('session-notice-detail').textContent,/1 из 3/);
+  f.emit({...f.state,context:{phase:'startup-channel',messageSent:true,startup:{complete:true}}});
+  assert.match($('session-notice-title').textContent,/Контекст восстановлен/);
+});
 
 test('three integrations keep the observed final stage and Pause until durable complete, then explain acceptance',async t=>{
   const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
@@ -138,6 +148,7 @@ async function fixture(t) {
   const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true, url: 'https://fixture.invalid/' });
   t.after(async () => { await new Promise(resolve => setTimeout(resolve, 0)); dom.window.close(); });
   const { window } = dom, document = window.document, calls = [];
+  window.startupView=startupView;
   // JSDOM has no top layer. Electron smoke verifies native popover geometry.
   const query = document.querySelectorAll.bind(document);
   document.querySelectorAll = selector => query(selector.replaceAll(':popover-open', '[data-test-open]'));

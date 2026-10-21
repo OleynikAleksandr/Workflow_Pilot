@@ -82,6 +82,9 @@ export class WorkflowChannel {
     return run.grant?.active===true&&run.grant.boot===this.c.backendId&&!member.stopped
       &&(member.role==='O'||member.target.scope_id===run.grant.scope_id);
   }
+  transportPermitted(run,member){return this.permitted(run,member)||this.c.startup.active(run,member);}
+  first(run,member){return run.messages.find(m=>m.recipient_id===member.id&&!m.superseded&&!m.startup_complete
+    &&(m.kind==='startup-context'||m.scope_id===run.grant?.scope_id)&&!m.reply_observed);}
   attach(run,member) {
     if(run.grant){member.generation=run.grant.generation;member.stopped=!run.grant.active;}
     for(const message of run.messages)if(message.recipient_session_id===member.target.local_session_id&&!message.recipient_id)
@@ -151,12 +154,12 @@ export class WorkflowChannel {
       block_id:message.block_id??null,problem_id:message.problem_id??null,repair_attempt:message.repair_attempt??null,
       escalation_required:message.escalation_required===true}:{})};}
   pending(run,member) {
-    if(!this.permitted(run,member)||member.deliveryGate||!this.observe(member.target).canSend)return null;
-    const first=run.messages.find(m=>m.recipient_id===member.id&&m.scope_id===run.grant.scope_id&&!m.reply_observed);
+    if(!this.transportPermitted(run,member)||member.deliveryGate||!this.observe(member.target).canSend)return null;
+    const first=this.first(run,member);
     return first?.delivery==='pending'&&!first.read?first:null;
   }
-  async admit(target){
-    const result=await this.admission(target);
+  async admit(target,message){
+    const result=await this.admission(target,message);
     return result===true||result?.allowed===true;
   }
   physicalBlock(target){
@@ -166,11 +169,11 @@ export class WorkflowChannel {
   }
   async claimBlockReason(run,member,message) {
     if(member.deliveryGate)return 'previous-turn';
-    const first=run.messages.find(m=>m.recipient_id===member.id&&m.scope_id===run.grant.scope_id&&!m.reply_observed);
+    const first=this.first(run,member);
     if(first?.message_id!==message.message_id)return 'previous-message';
     const physical=this.physicalBlock(member.target);if(physical)return physical;
-    if(!this.permitted(run,member))return 'admission-denied';
-    const admitted=await this.admission(member.target);
+    if(!(message.kind==='startup-context'?this.c.startup.active(run,member):this.permitted(run,member)))return 'admission-denied';
+    const admitted=await this.admission(member.target,message);
     if(admitted!==true&&admitted?.allowed!==true)return admitted?.reason==='commands-active'?'commands-active':'admission-denied';
     return this.physicalBlock(member.target);
   }
@@ -191,6 +194,7 @@ export class WorkflowChannel {
     }
     const gate=member.deliveryGate;if(!gate)return;
     const message=run.messages.find(m=>m.message_id===gate.message_id);
+    if(message?.kind==='startup-context')return; // Explicit all-parts receipt closes this lane, not an inferred model reply.
     if(message?.dialogue_version===1)return this.observeDialogue(run,member,message,gate);
     const page=this.observe(member.target);
     const native=gate.turnId&&page.turnId&&gate.turnId!==page.turnId&&gate.userTurnId&&page.userTurnId&&gate.userTurnId!==page.userTurnId;

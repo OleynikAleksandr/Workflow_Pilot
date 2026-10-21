@@ -63,14 +63,20 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
       const r=await c.callTool({name:name.startsWith('assignment_')?'workflow_'+name:'workflow_communication_'+name,arguments:input,_meta:metadata});
       assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
     };
-    if(fast&&!record.project().assignmentId&&!preparationTurn){
-      // Fixture host holds its first O turn until both notifications exist.
-      // Product never waits for a wave: exercise an already available queue.
+    if(fast&&!record.project().assignmentId&&record.startupComplete&&!preparationTurn){
+      // Hold only the first work turn, after the separate startup receipt.
       preparationTurn=true;
       await wait(()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
         .filter(m=>m.idempotency_key?.startsWith('prepare:')).length===2,'two queued preparations');
     }
     const message=await call('read_message',args);
+    if(message.kind==='startup-context'){
+      for(let part=0,total=1;part<total;part++){
+        const value=await call('read_context',{message_id:message.message_id,context_ref:message.context_ref,part});total=value.total;
+      }
+      const result=await c.callTool({name:'workflow_startup_complete',arguments:{message_id:message.message_id,context_sha256:message.context_ref},_meta:metadata});
+      assert.equal(result.isError,false);record.startupComplete=true;return;
+    }
     assert.equal(message.role_protocol,6);
     let text=fast&&message.inline_context?.complete?message.inline_context.text:'';
     for(let part=0,total=text?0:1;part<total;part++){
@@ -286,7 +292,8 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         ...(action==='select-experience'?{action:'experience-confirmed'}:{})}),
       sendUserMessage:async()=>{record.domWorkSends++;throw Error('Working message attempted DOM fallback');},
       deliver:async input=>{
-        assert.equal(record.bootstrapCount,0,'initial context is not replayed');assert.ok(input.attachments.length);
+        assert.equal(record.bootstrapCount,0,'initial context is not replayed');
+        assert.equal(input.attachments.length>0,!!project.assignmentId);
         await input.onBeforeFill();await input.onBeforeSend();composer.inFlight=true;page.busy=true;
         const bootstrap=async()=>{
           if(owned&&project.assignmentId)await wait(()=>drafts.has(project.assignmentId),'O prepares while E bootstrap is unfinished');
@@ -318,7 +325,8 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         }finally{composer.inFlight=false;}
       }};
     record.controller=new ContextSession({store:sessionStore(store,record.identity),composer,
-      runtime:{ensure:()=>runtime.ensure(),loadContext:(workspace,role)=>plans.loadContext(workspace,role),prepareBootstrap:p=>workflow.prepareBootstrap(p)},
+      runtime:{ensure:()=>runtime.ensure(),loadContext:(workspace,role)=>plans.loadContext(workspace,role),prepareBootstrap:p=>workflow.prepareBootstrap(p),
+        stageStartup:(...args)=>workflow.stageStartup(...args),startupProgress:(...args)=>workflow.startupProgress(...args)},
       onChange:()=>{if(record.controller?.state.phase==='error')error(new Error(JSON.stringify(record.controller.state.error)));}});
     records.set(project.sessionId,record);return record;
   }
@@ -357,7 +365,9 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   assert.ok(o.ui,JSON.stringify(o.controller.state));
   await wait(()=>o.ui.$('binding').textContent.includes('подтверждена'),'orchestrator bootstrap');
   assert.equal((await plugin.communication.recover({metadata:o.metadata})).participants.length,1);
-  assert.equal(o.ui.messages.length,0,'bootstrap before scope has no permission');
+  await wait(()=>[...plugin.communication.runs.values()].some(r=>r.messages.some(m=>m.kind==='startup-context'&&m.startup_complete)),'startup context receipt');
+  await wait(()=>!o.pageState.current.state.busy,'startup physical end');
+  assert.equal(o.ui.messages.length,1,'startup context uses one notification without plan permission');
   await fs.mkdir(path.join(root,'docs/planning'),{recursive:true});
   await fs.writeFile(path.join(root,'docs/planning/dialogue.md'),'# Isolated automatic dialogue\n');
   const task=(id,file,dependencies=[])=>({id,title:'Write '+file,why:'Actual automatic dialogue fixture',dependencies,parallel_safe:true,

@@ -174,6 +174,13 @@ def register_plugin(mcp, state_root: Path):
         """Read current plan participants and assignment recipient_ref/attempt from verified host identity. O sees its executors; E addresses orchestrator. block is Kit state; parked requires a current stopped page and idle local commands. Check parked for every affected E before shared environment repair; otherwise yield and await service recovery. No copied IDs. Legacy capability errors require safe migration."""
         return await communication("roster", ctx)
 
+    @mcp.tool(name="workflow_startup_complete", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def startup_complete(message_id: MessageId,
+                               context_sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$", description="Exact context_ref of the startup message after reading every part.")],
+                               ctx: Context) -> CallToolResult:
+        """Confirm the orchestrator's initial recovery only after reading every part via workflow_communication_read_context. INCOMPLETE requires reading missing parts; never invent a receipt. Idempotent for the same packet and bound host identity. This does not authorize task:start or start a plan. Give a short project confirmation and end the turn; no assignment_yield or model wait is needed."""
+        return await communication("startupComplete", ctx, message_id=message_id, context_sha256=context_sha256)
+
     @mcp.tool(name="workflow_assignment_send", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def assignment_send(
             recipient: Annotated[str, Field(min_length=1, max_length=240, description="O uses recipient_ref from participants; E uses orchestrator.")],

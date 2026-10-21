@@ -1,3 +1,4 @@
+import {startupView} from '../../../contracts/startup-view.mjs';
 const actionLabels = {
   runDoctor: 'Проверяем и восстанавливаем проект', continueDoctor: 'Возвращаемся к работе', reviewDoctorProject: 'Проверяем папку',
   newSession: 'Создаём сессию',
@@ -22,6 +23,10 @@ const phaseLabels = {
 };
 const phaseLabel = context => phaseLabels[context?.phase];
 export function operationLabel(state = {}, action = null) {
+  if(state.context?.phase==='startup-channel'){
+    const view=startupView(state.context.startup);
+    return ['startup-ready','startup-stale','startup-uncertain'].includes(view.phase)?null:view.title;
+  }
   if(state.execution?.phase==='preparing')return 'Подготавливаем worktree и чат исполнителя';
   if(state.execution?.phase==='merging')return 'Проверяем и сливаем результат в main';
   if (['repairing','verifying','services'].includes(state.doctor?.phase)) return 'Доктор проекта: проверка и восстановление';

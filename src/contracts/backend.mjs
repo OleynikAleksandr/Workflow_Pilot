@@ -57,6 +57,7 @@ export const PLUGIN_ACTION_CLASS = Object.freeze({
   'communication.telemetry':'ui-mutation', 'communication.export':'read', 'communication.recover':'read',
   'communication.sync':'ui-mutation', 'communication.readMessage':'ui-mutation',
   'communication.content':'read', 'communication.roster':'read',
+  'communication.startupComplete':'ui-mutation',
   'communication.assignmentSend':'ui-mutation','communication.assignmentYield':'ui-mutation','communication.assignmentStatus':'read',
   'communication.assignmentMigrate':'ui-mutation',
   'communication.assignmentPrepare':'ui-mutation','communication.assignmentDispatch':'ui-mutation',

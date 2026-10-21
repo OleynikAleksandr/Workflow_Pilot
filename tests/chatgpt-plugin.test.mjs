@@ -62,6 +62,35 @@ async function fixture(t){
 }
 
 const communicationTools=['bind','claim','claim_ready','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','telemetry_batch','verify','wait'];
+test('pre-plan orchestrator receives all startup context through actual MCP and panel SDK without enabling a plan',async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;
+  const target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};
+  comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?target:null;
+  comm.workflow.observe=()=>({canSend:true,stopped:true});comm.workflow.admission=async()=>true;
+  const invite=await comm.reserve(target),text='Контекст 🪟 '.repeat(3500);
+  const staged=await comm.startup.stage(target,{request_id:'sdk-request',text});
+  await bridge(t,f);const c=await client(t,f);
+  await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
+  let done=false;
+  const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?10:ms,onMessage:async()=>{
+    const call=(name,args)=>c.callTool({name,arguments:args,_meta:metadata});
+    const read=await call('workflow_communication_read_message',{message_id:staged.message_id});
+    assert.equal(read.isError,false);const m=read.structuredContent;
+    const early=await call('workflow_startup_complete',{message_id:m.message_id,context_sha256:m.context_ref});assert.equal(early.isError,true);
+    let actual='';for(let part=0,total=1;part<total;part++){
+      const result=await call('workflow_communication_read_context',{message_id:m.message_id,context_ref:m.context_ref,part});
+      assert.equal(result.isError,false);actual+=result.structuredContent.text;total=result.structuredContent.total;
+    }
+    assert.equal(actual,text);
+    const ack=await call('workflow_startup_complete',{message_id:m.message_id,context_sha256:m.context_ref});
+    assert.equal(ack.isError,false);assert.equal(ack.structuredContent.complete,true);done=true;return {};
+  }});
+  await eventually(()=>done);
+  assert.equal(ui.messages.length,1);assert.equal(ui.calls.includes('workflow_communication_enable'),false);
+  const run=[...comm.runs.values()][0];assert.equal(run.grant,undefined);
+  assert.equal(run.messages.filter(m=>m.kind==='startup-context').length,1);
+  assert.deepEqual(ui.errors,[]);
+});
 test('actual MCP exposes working send/status/yield and transfers selected UTF-8 context through the private bridge',async t=>{
   const f=await fixture(t),comm=f.plugin.communication;
   const o={project_id:'fixture',local_session_id:'o',origin_session_id:'o',role:'O',scope_id:'scope',assignment_id:null,task_id:null};

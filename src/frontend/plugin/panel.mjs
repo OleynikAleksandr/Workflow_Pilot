@@ -1,4 +1,5 @@
 import {assignmentStage} from '../../contracts/dialogue-view.mjs';
+import {startupView} from '../../contracts/startup-view.mjs';
 const delivery={pending:'Сохранено · в очереди',claimed:'Попытка начата',accepted:'Принято хостом',rejected:'Отклонено',unknown:'Исход неизвестен',superseded:'Устарело'};
 const sender=message=>message.sender_role==='O'?'Оркестратор':message.sender_role==='E'?'Исполнитель':'Приложение';
 const label=message=>[sender(message)+' → '+(message.sender_role==='E'?'Оркестратор':message.task_id?'Исполнитель':'Оркестратор'),
@@ -68,6 +69,10 @@ export function mountPanel({document}) {
         ?`Выполнение завершено · ${(value.assignments??[]).filter(a=>a.phase==='INTEGRATED').length}/${(value.assignments??[]).length} · связь отключена. Ожидается ваша приёмка: сообщите оркестратору «Принимаю результат, закрой план».`
         :`План: ${value.permission?.phase??'ожидает запуска'} · ${value.stopped?'отправка приостановлена':'связь разрешена на время выполнения'}. Интеграции назначений: ${(value.assignments??[]).filter(a=>a.phase==='INTEGRATED').length}/${(value.assignments??[]).length}. Завершение всего плана ещё не подтверждено.`):
         `Поколение ${value.permission_generation} · ${value.expires_at?'до '+new Date(value.expires_at).toLocaleTimeString('ru'):'разрешение не выдано'}`);
+      if(value.startup&&!value.permission?.active){
+        const view=startupView(value.startup);text('permission',view.title+'. '+view.detail);
+        $('stop').hidden=!value.permission?.scope_id;
+      }else $('stop').hidden=false;
       const incoming=value.messages.filter(m=>m.recipient_id===value.participant_id&&!m.superseded);
       text('queue',`${incoming.filter(m=>!m.read).length} непрочитанных · ${incoming.filter(m=>m.delivery==='pending'&&!m.read).length} ожидают уведомления`);
       const lastMessage=value.messages.at(-1);
