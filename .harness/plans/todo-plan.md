@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 813,
+  "plan_revision": 815,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -86,7 +86,7 @@
       {
         "path": "docs/planning/startup-latency.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "59ce9e40e7d7966fee33583d3b3d1bf2a1db7345"
       }
     ],
     "include_last_completed_task": false,
@@ -418,8 +418,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "DOCS-2",
@@ -433,14 +433,42 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/startup-latency.md"
+        "docs/planning/startup-latency.md",
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/startup-latency.md"
+      ]
     },
     {
       "id": "BUILD-2",
@@ -525,7 +553,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 813
+Revision: 815
 
 ## Цель
 
@@ -578,10 +606,10 @@ Revision: 813
   - Файлы: src/**, tools/codex-app-server-mcp/**, tests/**, package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/workflow-channel.mjs, src/frontend/plugin/launch.mjs, tests/chatgpt-plugin.test.mjs, tests/context-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/startup-context.test.mjs, tools/codex-app-server-mcp/plugin.py, docs/planning/startup-latency.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: orchestrator-panel-startup / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-latency.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-latency.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: FAST-START
 - [TODO] BUILD-2: Собрать комплект 0.5.21 для трёх ОС — Ожидает
