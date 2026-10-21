@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 790,
+  "plan_revision": 793,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -102,7 +102,7 @@
       {
         "path": "docs/planning/attachment-retry-diagnostics.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "5171468d291a6d295c3313f6c9e6e1e6ba74ff5f"
       }
     ],
     "include_last_completed_task": false,
@@ -648,8 +648,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "DOCS-3",
@@ -665,14 +665,42 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/attachment-retry-diagnostics.md"
+        "docs/planning/attachment-retry-diagnostics.md",
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/attachment-retry-diagnostics.md"
+      ]
     },
     {
       "id": "BUILD-3",
@@ -758,7 +786,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 790
+Revision: 793
 
 ## Цель
 
@@ -852,10 +880,10 @@ Revision: 790
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/attachment-retry-diagnostics.md
   - Параллельность: исключительное выполнение
   - Зависимости: DIAG-ATTACH
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: restore-stable-release / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/attachment-retry-diagnostics.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/attachment-retry-diagnostics.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/browser.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-RETRY, DIAG-ATTACH, VERSION-3
 - [TODO] BUILD-3: Собрать проверенный выпуск 0.5.19 для трёх ОС — Ожидает
