@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 793,
+  "plan_revision": 795,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -723,14 +723,17 @@
         "Собрать проверенный выпуск 0.5.19 для трёх ОС"
       ],
       "expected_commit_message": "feat: Собрать проверенный выпуск 0.5.19 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "BUILD-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-3",
@@ -786,7 +789,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 793
+Revision: 795
 
 ## Цель
 
@@ -886,8 +889,8 @@ Revision: 793
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/attachment-retry-diagnostics.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/browser.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-RETRY, DIAG-ATTACH, VERSION-3
-- [TODO] BUILD-3: Собрать проверенный выпуск 0.5.19 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.19 для трёх ОС
+- [DONE] BUILD-3: Собрать проверенный выпуск 0.5.19 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать проверенный выпуск 0.5.19 для трёх ОС
   - Reference: restore-stable-release / BUILD-3 / implementation
   - Файлы: release-manifest.json, docs/planning/attachment-retry-diagnostics.md
   - Параллельность: исключительное выполнение
