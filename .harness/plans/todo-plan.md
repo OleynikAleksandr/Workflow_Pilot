@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 744,
+  "plan_revision": 746,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -1037,14 +1037,17 @@
         "После DOCS проверены комплекты трёх ОС из одного sourceCommit, без публикации GitHub как в предыдущих опытах."
       ],
       "expected_commit_message": "feat: Собрать экспериментальную 0.5.16 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "BUILD-PIP4",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-PIP4",
@@ -1100,7 +1103,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 744
+Revision: 746
 
 ## Цель
 
@@ -1248,8 +1251,8 @@ Revision: 744
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/pip-probe.md, README.md, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: PIP-GESTURE
-- [TODO] BUILD-PIP4: Собрать экспериментальную 0.5.16 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать экспериментальную 0.5.16 для трёх ОС
+- [DONE] BUILD-PIP4: Собрать экспериментальную 0.5.16 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать экспериментальную 0.5.16 для трёх ОС
   - Reference: prepared-task-flow / BUILD-PIP4 / implementation
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
