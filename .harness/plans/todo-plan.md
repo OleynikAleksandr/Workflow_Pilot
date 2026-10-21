@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 760,
+  "plan_revision": 762,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Выдать проверенный новый выпуск без PiP экспериментов на основе стабильной 0.5.12",
   "acceptance_criteria": [
     "0.5.17 без экспериментальных исходников и ресурсов, основной канал сохранён.",
@@ -180,8 +180,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "INSTALL",
@@ -206,7 +206,8 @@
         "Установить готовый macOS комплект 0.5.17 согласно спецификации; фактические ограничения сохранены."
       ],
       "expected_commit_message": "chore: Установить готовый macOS комплект 0.5.17",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -228,10 +229,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: restore-stable-release
 Current Task: нет
-Revision: 760
+Revision: 762
 
 ## Цель
 
@@ -265,8 +266,8 @@ Revision: 760
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить готовый macOS комплект 0.5.17 — Ожидает
-  - Git Commit: [PENDING] chore: Установить готовый macOS комплект 0.5.17
+- [DONE] INSTALL: Установить готовый macOS комплект 0.5.17 — Завершено
+  - Git Commit: [DONE] chore: Установить готовый macOS комплект 0.5.17
   - Reference: restore-stable-release / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
