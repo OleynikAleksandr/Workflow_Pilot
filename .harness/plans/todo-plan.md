@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 740,
+  "plan_revision": 742,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -962,14 +962,23 @@
         "Версия 0.5.16; адресные UI lifecycle и реальные Node/Python MCP проверки. Успех сборки не доказывает плавающий PiP в живом хосте."
       ],
       "expected_commit_message": "feat: Воспроизвести официальный PiP запрос по действию пользователя",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "PIP-GESTURE",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "tests/pip-probe.test.mjs",
+        "tools/codex-app-server-mcp/pip_probe.py",
+        "tools/experiments/pip-probe/server.mjs",
+        "tools/experiments/pip-probe/view.mjs"
+      ]
     },
     {
       "id": "DOCS-5",
@@ -1083,7 +1092,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 740
+Revision: 742
 
 ## Цель
 
@@ -1219,8 +1228,8 @@ Revision: 740
   - Файлы: release-manifest.json, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-PIP3, DOCS-4
-- [TODO] PIP-GESTURE: Воспроизвести официальный PiP запрос по действию пользователя — Ожидает
-  - Git Commit: [PENDING] feat: Воспроизвести официальный PiP запрос по действию пользователя
+- [DONE] PIP-GESTURE: Воспроизвести официальный PiP запрос по действию пользователя — Завершено
+  - Git Commit: [DONE] feat: Воспроизвести официальный PiP запрос по действию пользователя
   - Reference: prepared-task-flow / PIP-GESTURE / implementation
   - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tools/codex-app-server-mcp/pip_probe.py, tests/pip-probe.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение

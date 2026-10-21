@@ -32,8 +32,8 @@ def register_pip_probe(mcp, directory: Path):
         @mcp.resource(uri, name=f"pip_probe_{kind}", title=title,
                       mime_type="text/html;profile=mcp-app",
                       meta={"ui": {"csp": {"connectDomains": [], "resourceDomains": []}},
-                            "openai/ui": {"availableDisplayModes": ["pip"] if kind == "dialogue" else ["inline", "fullscreen"],
-                                          "preferredDisplayMode": "pip" if kind == "dialogue" else "inline"}})
+                            **({"openai/ui": {"availableDisplayModes": ["inline", "fullscreen"],
+                                               "preferredDisplayMode": "inline"}} if kind == "plan" else {})})
         def resource() -> str:
             return html
 
@@ -41,14 +41,15 @@ def register_pip_probe(mcp, directory: Path):
                   annotations=READ, meta={"ui": {"resourceUri": uri},
                                          **({"openai/ui": {"preferredModelDisplayMode": "inline"}} if kind == "plan" else {})})
         def open_view() -> CallToolResult:
-            return CallToolResult(content=[TextContent(
-                type="text", text=f"{title}: запрошено открытие. Режим и совместная видимость ещё не подтверждены.")])
+            return CallToolResult(structuredContent={"synthetic": True, "kind": kind, "probeVersion": "1.3.0"},
+                                 content=[TextContent(type="text", text=f"{title}: открыта площадка запуска. "
+                                 "Для PiP пользователь нажимает кнопку; режим и совместная видимость ещё не подтверждены.")])
 
     register_view("plan", "Тестовая панель плана",
                   "Open an optional synthetic plan placeholder for an isolated two-view experiment. "
                   "This is not the real project plan; use workflow_pilot_panel for the real panel.")
     register_view("dialogue", "Тестовая переписка · PiP",
-                  "Open a passive synthetic dialogue probe supporting only PiP, alongside the existing "
-                  "Workflow Pilot panel. Only for an explicitly requested experiment. No real messages, "
+                  "Open a passive synthetic PiP probe. Wait for the tool result, then ask the user to press "
+                  "the MCP PiP button. No automatic mode change. Only for an explicitly requested experiment. No real messages, "
                   "agent commands or plan changes. Tool success does not prove PiP or simultaneous visibility; "
                   "the user must check both views and close/reopen only this probe.")
