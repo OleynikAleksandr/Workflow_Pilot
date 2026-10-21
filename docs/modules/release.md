@@ -1,8 +1,10 @@
 # Единая поставка Workflow Pilot
 
-Версия 0.5.12. Порядок: DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Каждый пакет содержит клиент, backend и MCP; helper-bundle нет, тестовые флаги запрещены. Codex исключён из приёмки. Native Windows/Linux, VM и clean-install остаются pending; сначала пользователь проверяет Mac.
+Версия 0.5.17. Порядок: DOCS → RELEASE → INSTALL; PUBLISH — по отдельному поручению. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Каждый пакет содержит клиент, backend и MCP; helper-bundle нет, тестовые флаги запрещены. Codex исключён из приёмки. Native Windows/Linux, VM и clean-install остаются pending; сначала пользователь проверяет Mac.
 
 ## Комплект
+
+0.5.13–0.5.16 были экспериментальными PiP-комплектами; их история сохранена в Git, а 0.5.17 на продуктовой основе 6c10ea2 без пробника заменяет установленную 0.5.16. GitHub-публикация этого тестового комплекта не входит в текущий заказ.
 
 Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`. Цели и симлинки проверяются до записи. Без любой платформы полный выпуск запрещён.
 

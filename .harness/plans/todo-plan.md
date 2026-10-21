@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 756,
+  "plan_revision": 758,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -45,7 +45,7 @@
       {
         "path": "docs/planning/restore-stable-release.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "acc0e778b2b0aa79de7c911be82df5a38f2d37ff"
       },
       {
         "path": "docs/modules/release.md",
@@ -96,8 +96,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "DOCS",
@@ -131,7 +131,22 @@
         "Актуализировать документацию стабильного выпуска согласно спецификации; фактические ограничения сохранены."
       ],
       "expected_commit_message": "docs: Актуализировать документацию стабильного выпуска",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md",
+        "docs/planning/restore-stable-release.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -213,7 +228,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 756
+Revision: 758
 
 ## Цель
 
@@ -235,8 +250,8 @@ Revision: 756
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: Актуализировать документацию стабильного выпуска
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: Актуализировать документацию стабильного выпуска
   - Reference: restore-stable-release / DOCS / implementation
   - Файлы: docs/planning/restore-stable-release.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/acceptance/orchestrated-execution.md
   - Параллельность: исключительное выполнение
