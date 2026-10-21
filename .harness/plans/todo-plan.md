@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 819,
+  "plan_revision": 820,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Стартовый контекст O через панель без DOM-вложений, проверенный выпуск и установка",
   "acceptance_criteria": [
     "Новая O-сессия получает полный пакет через панель без вложений на изолированных fixtures; живая приёмка pending",
@@ -66,7 +66,8 @@
       "docs/modules/plugin-communication-handoff.md",
       "docs/modules/release.md",
       "docs/modules/workflow-execution.md",
-      "docs/planning/startup-latency.md"
+      "docs/planning/startup-latency.md",
+      "docs/planning/universal-startup.md"
     ]
   },
   "baseline_commit": "f2182b36578b1412cfb7d48985c91d449944d7aa",
@@ -87,6 +88,11 @@
         "path": "docs/planning/startup-latency.md",
         "required": true,
         "revision": "59ce9e40e7d7966fee33583d3b3d1bf2a1db7345"
+      },
+      {
+        "path": "docs/modules/orchestrator-startup.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -533,6 +539,136 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "ALL-START",
+      "title": "Единый старт любой сессии через панель без DOM-вложений",
+      "why": "Единый старт любой сессии через панель без DOM-вложений",
+      "dependencies": [],
+      "functional_paths": [
+        "src/**",
+        "tools/codex-app-server-mcp/**",
+        "tests/**",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/orchestrator-startup.md",
+        "docs/planning/universal-startup.md"
+      ],
+      "verification_ids": [
+        "orchestrator-startup",
+        "architecture",
+        "chatgpt-plugin",
+        "startup-recovery",
+        "prepared-flow-cycle",
+        "executor-channel"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Любая новая управляемая сессия O/E/обсуждение/legacy получает только короткое DOM-приглашение; весь ролевой контекст возвращается через panel/read/complete",
+        "Нет плана, ACTIVE/BLOCKED/READY_FOR_ACCEPTANCE, sequential/parallel/orchestrated не меняют транспорт и не повышают полномочия",
+        "Модуль DOM-вложений сохранён, новые и неотправленные попытки fail closed; отправленные/UNKNOWN не повторяются",
+        "Адресные проверки чужого получателя, restart, grant, полного пакета, E bootstrap и обычного чата; версия 0.5.22"
+      ],
+      "expected_commit_message": "feat: Единый старт любой сессии через панель без DOM-вложений",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "ALL-START",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "ALL-START"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/planning/universal-startup.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "BUILD-3",
+      "title": "Собрать выпуск 0.5.22 для трёх ОС",
+      "why": "Собрать выпуск 0.5.22 для трёх ОС",
+      "dependencies": [
+        "ALL-START",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/orchestrator-startup.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS один sourceCommit и проверенный состав без Python cache"
+      ],
+      "expected_commit_message": "feat: Собрать выпуск 0.5.22 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "BUILD-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-3",
+      "title": "Установить готовый macOS выпуск 0.5.22",
+      "why": "Установить готовый macOS выпуск 0.5.22",
+      "dependencies": [
+        "BUILD-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/modules/orchestrator-startup.md",
+        "docs/planning/universal-startup.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Installer проверил подпись manifest rollback; приложение и служба не останавливаются, pending допускается"
+      ],
+      "expected_commit_message": "feat: Установить готовый macOS выпуск 0.5.22",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "orchestrator-panel-startup",
+        "task_id": "INSTALL-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -554,10 +690,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 819
+Revision: 820
 
 ## Цель
 
@@ -628,11 +764,36 @@ Revision: 819
   - Файлы: docs/planning/startup-latency.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-2, DOCS-2
+- [TODO] ALL-START: Единый старт любой сессии через панель без DOM-вложений — Ожидает
+  - Git Commit: [PENDING] feat: Единый старт любой сессии через панель без DOM-вложений
+  - Reference: orchestrator-panel-startup / ALL-START / implementation
+  - Файлы: src/**, tools/codex-app-server-mcp/**, tests/**, package.json, package-lock.json, docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: orchestrator-panel-startup / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: ALL-START
+- [TODO] BUILD-3: Собрать выпуск 0.5.22 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать выпуск 0.5.22 для трёх ОС
+  - Reference: orchestrator-panel-startup / BUILD-3 / implementation
+  - Файлы: release-manifest.json, docs/modules/orchestrator-startup.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: ALL-START, DOCS-3
+- [TODO] INSTALL-3: Установить готовый macOS выпуск 0.5.22 — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовый macOS выпуск 0.5.22
+  - Reference: orchestrator-panel-startup / INSTALL-3 / implementation
+  - Файлы: docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD-3, DOCS-3
 
 ## Context Pack For This Cycle
 
 - docs/planning/orchestrator-panel-startup.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/startup-latency.md
+- docs/modules/orchestrator-startup.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
