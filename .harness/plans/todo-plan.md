@@ -4,22 +4,54 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 753,
+  "plan_revision": 754,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
-  "scope_id": null,
-  "execution_scope_status": "NONE",
+  "scope_id": "restore-stable-release",
+  "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
-  "objective": "Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.",
-  "acceptance_criteria": [],
+  "objective": "Выдать проверенный новый выпуск без PiP экспериментов на основе стабильной 0.5.12",
+  "acceptance_criteria": [
+    "0.5.17 без экспериментальных исходников и ресурсов, основной канал сохранён.",
+    "Проверены три ОС из одного sourceCommit; штатная установка macOS либо проверенный pending без остановки службы."
+  ],
   "approved_scope": {
-    "functional_paths": [],
-    "documentation_paths": []
+    "functional_paths": [
+      "package.json",
+      "package-lock.json",
+      "src/contracts/backend.mjs",
+      "release-manifest.json"
+    ],
+    "documentation_paths": [
+      "docs/planning/restore-stable-release.md",
+      "README.md",
+      "docs/architecture/OVERVIEW.md",
+      "docs/modules/chatgpt-plugin.md",
+      "docs/modules/release.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/assignment-dialogue-reliability.md",
+      "docs/modules/automatic-agent-dialogue-acceptance.md",
+      "docs/modules/dialogue-timing.md",
+      "docs/modules/orchestrated-execution.md",
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/modules/plugin-communication-handoff.md",
+      "docs/acceptance/orchestrated-execution.md"
+    ]
   },
-  "baseline_commit": null,
+  "baseline_commit": "f4ca5a07ecdc0c604fa2c45d45636c2e5dafcf1e",
   "current_task_id": null,
   "context_pack": {
     "documents": [
+      {
+        "path": "docs/planning/restore-stable-release.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/release.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
       {
         "path": "docs/architecture/OVERVIEW.md",
         "required": true,
@@ -29,40 +61,198 @@
     "include_last_completed_task": false,
     "dependency_task_ids": []
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "VERSION",
+        "role": "implementation"
+      },
+      "dependencies": [],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "chatgpt-plugin"
+      ],
+      "id": "VERSION",
+      "title": "Согласовать версию 0.5.17 без PiP",
+      "why": "Согласовать версию 0.5.17 без PiP",
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Согласовать версию 0.5.17 без PiP согласно спецификации; фактические ограничения сохранены."
+      ],
+      "expected_commit_message": "chore: Согласовать версию 0.5.17 без PiP",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "DOCS",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "VERSION"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/planning/restore-stable-release.md",
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/release.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/acceptance/orchestrated-execution.md"
+      ],
+      "verification_ids": [],
+      "id": "DOCS",
+      "title": "Актуализация всех документов проекта",
+      "why": "Актуализировать документацию стабильного выпуска",
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Актуализировать документацию стабильного выпуска согласно спецификации; фактические ограничения сохранены."
+      ],
+      "expected_commit_message": "docs: Актуализировать документацию стабильного выпуска",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "BUILD",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "id": "BUILD",
+      "title": "Собрать проверенный комплект 0.5.17 для трёх ОС",
+      "why": "Собрать проверенный комплект 0.5.17 для трёх ОС",
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Собрать проверенный комплект 0.5.17 для трёх ОС согласно спецификации; фактические ограничения сохранены."
+      ],
+      "expected_commit_message": "chore: Собрать проверенный комплект 0.5.17 для трёх ОС",
+      "parallel_safe": false
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "INSTALL",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "BUILD",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "id": "INSTALL",
+      "title": "Установить готовый macOS комплект 0.5.17",
+      "why": "Установить готовый macOS комплект 0.5.17",
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установить готовый macOS комплект 0.5.17 согласно спецификации; фактические ограничения сохранены."
+      ],
+      "expected_commit_message": "chore: Установить готовый macOS комплект 0.5.17",
+      "parallel_safe": false
+    }
+  ],
   "blocked_reason": null,
   "user_decisions": [
     {
-      "id": "bec864f1-619b-4a1a-b658-258bb63d6912",
-      "text": "Пользователь 21.10.2026 завершил эксперименты Picture in Picture и поручил удалить их, вернув код к состоянию до опытов. Очистка подтверждена адресными проверками; новый выпуск без PiP готовится отдельно.",
-      "recorded_at": "2026-10-21T10:02:22.464Z"
+      "id": "34183606-ebb0-4e6f-b166-8dea1232f280",
+      "text": "Пользователь 21.10.2026 поручил удалить эксперименты и собрать новый релиз для тестов.",
+      "recorded_at": "2026-10-21T10:06:07.519Z"
     }
   ],
-  "archived_scope_id": "prepared-task-flow"
+  "parallel_allowed": false,
+  "max_workers": 1,
+  "execution_strategy": "sequential",
+  "execution_reason": "Продолжение разработки одним агентом по правилам проекта; последовательная поставка после очистки."
 }
 ```
 <!-- workflow-state:end -->
 
 ## Состояние
 
-Execution Scope Status: NONE
+Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
-Scope: не создан
+Scope: restore-stable-release
 Current Task: нет
-Revision: 753
+Revision: 754
 
 ## Цель
 
-Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.
+Выдать проверенный новый выпуск без PiP экспериментов на основе стабильной 0.5.12
 
 ## Критерии приёмки
 
+- 0.5.17 без экспериментальных исходников и ресурсов, основной канал сохранён.
+- Проверены три ОС из одного sourceCommit; штатная установка macOS либо проверенный pending без остановки службы.
 
 ## Микрозадачи
 
+Выполнение: sequential; разрешено: false; лимит: 1
+Причина: Продолжение разработки одним агентом по правилам проекта; последовательная поставка после очистки.
+
+- [TODO] VERSION: Согласовать версию 0.5.17 без PiP — Ожидает
+  - Git Commit: [PENDING] chore: Согласовать версию 0.5.17 без PiP
+  - Reference: restore-stable-release / VERSION / implementation
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: Актуализировать документацию стабильного выпуска
+  - Reference: restore-stable-release / DOCS / implementation
+  - Файлы: docs/planning/restore-stable-release.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/plugin-communication-handoff.md, docs/acceptance/orchestrated-execution.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: VERSION
+- [TODO] BUILD: Собрать проверенный комплект 0.5.17 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] chore: Собрать проверенный комплект 0.5.17 для трёх ОС
+  - Reference: restore-stable-release / BUILD / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS
+- [TODO] INSTALL: Установить готовый macOS комплект 0.5.17 — Ожидает
+  - Git Commit: [PENDING] chore: Установить готовый macOS комплект 0.5.17
+  - Reference: restore-stable-release / INSTALL / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD, DOCS
 
 ## Context Pack For This Cycle
 
+- docs/planning/restore-stable-release.md
+- docs/modules/release.md
 - docs/architecture/OVERVIEW.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
