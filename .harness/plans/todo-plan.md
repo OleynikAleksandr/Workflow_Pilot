@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 827,
+  "plan_revision": 829,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Стартовый контекст O через панель без DOM-вложений, проверенный выпуск и установка",
   "acceptance_criteria": [
     "Новая O-сессия получает полный пакет через панель без вложений на изолированных fixtures; живая приёмка pending",
@@ -735,14 +735,15 @@
         "Installer проверил подпись manifest rollback; приложение и служба не останавливаются, pending допускается"
       ],
       "expected_commit_message": "feat: Установить готовый macOS выпуск 0.5.22",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "INSTALL-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -764,10 +765,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 827
+Revision: 829
 
 ## Цель
 
@@ -856,8 +857,8 @@ Revision: 827
   - Файлы: release-manifest.json, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: ALL-START, DOCS-3
-- [TODO] INSTALL-3: Установить готовый macOS выпуск 0.5.22 — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовый macOS выпуск 0.5.22
+- [DONE] INSTALL-3: Установить готовый macOS выпуск 0.5.22 — Завершено
+  - Git Commit: [DONE] feat: Установить готовый macOS выпуск 0.5.22
   - Reference: orchestrator-panel-startup / INSTALL-3 / implementation
   - Файлы: docs/modules/orchestrator-startup.md, docs/planning/universal-startup.md
   - Параллельность: исключительное выполнение
