@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 808,
+  "plan_revision": 810,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Стартовый контекст O через панель без DOM-вложений, проверенный выпуск и установка",
   "acceptance_criteria": [
     "Новая O-сессия получает полный пакет через панель без вложений на изолированных fixtures; живая приёмка pending",
@@ -309,8 +309,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "INSTALL",
@@ -336,7 +336,8 @@
         "Приложение и backend не останавливались"
       ],
       "expected_commit_message": "build: Установить готовое macOS-приложение 0.5.20",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -358,10 +359,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 808
+Revision: 810
 
 ## Цель
 
@@ -402,8 +403,8 @@ Revision: 808
   - Файлы: release-manifest.json, docs/planning/orchestrator-panel-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: VERSION, DOCS
-- [TODO] INSTALL: Установить готовое macOS-приложение 0.5.20 — Ожидает
-  - Git Commit: [PENDING] build: Установить готовое macOS-приложение 0.5.20
+- [DONE] INSTALL: Установить готовое macOS-приложение 0.5.20 — Завершено
+  - Git Commit: [DONE] build: Установить готовое macOS-приложение 0.5.20
   - Reference: orchestrator-panel-startup / INSTALL / implementation
   - Файлы: docs/planning/orchestrator-panel-startup.md
   - Параллельность: исключительное выполнение
