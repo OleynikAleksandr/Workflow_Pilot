@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 833,
+  "plan_revision": 835,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
@@ -802,8 +802,8 @@
     {
       "id": "DOCS-4",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "DOCS-4",
@@ -817,14 +817,40 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/orchestrator-startup.md"
+        "docs/modules/orchestrator-startup.md",
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
+      ]
     },
     {
       "id": "BUILD-4",
@@ -909,7 +935,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 833
+Revision: 835
 
 ## Цель
 
@@ -1010,10 +1036,10 @@ Revision: 833
   - Файлы: src/execution/plugin/communication-store.mjs, src/control/plugin/communication.mjs, tests/startup-context.test.mjs, tests/plugin-communication-store.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-4: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: orchestrator-panel-startup / DOCS-4 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, README.md, docs/acceptance/orchestrated-execution.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: STARTUP-WAL
 - [TODO] BUILD-4: Собрать проверенный выпуск 0.5.23 для трёх ОС — Ожидает

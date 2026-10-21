@@ -1,10 +1,10 @@
 # Тайминги и сокращение ожиданий диалога
 
-Контракт Workflow Pilot 0.5.22 / Kit 1.9.3. [Протокол O/E](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [живая приёмка](automatic-agent-dialogue-acceptance.md). Источник событий — существующий WAL и его экспорт; отдельного журнала истины нет.
+Контракт Workflow Pilot 0.5.23 / Kit 1.9.3. [Протокол O/E](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [живая приёмка](automatic-agent-dialogue-acceptance.md). Источник событий — существующий WAL и его экспорт; отдельного журнала истины нет.
 
 ## Независимые стадии
 
-Старт O в 0.5.22 использует [model-pull](orchestrator-startup.md): пакет готов до DOM-приглашения, первая часть возвращается panel, остальные и ack идут в том же ходе. startup.prepared → enrollment.confirmed → startup.open_returned/part_returned → startup.complete образуют его наблюдаемую цепочку. Нет обязательного конца bootstrap и повторного SDK-пробуждения. Панель подключается независимо; её recover/bind/sync/journal не задерживают MCP-выдачу. Для старых SDK-пакетов сохраняется прежняя цепочка. Сравнивать надо времена выдачи частей и подтверждения, не принимать их за время размышления модели или физический конец текста ответа.
+Старт O в 0.5.23 использует [model-pull](orchestrator-startup.md): пакет готов до DOM-приглашения, первая часть возвращается panel, остальные и ack идут в том же ходе. startup.prepared → enrollment.confirmed → startup.open_returned/part_returned → startup.complete образуют его наблюдаемую цепочку. Нет обязательного конца bootstrap и повторного SDK-пробуждения. Панель подключается независимо; её recover/bind/sync/journal не задерживают MCP-выдачу. Для старых SDK-пакетов сохраняется прежняя цепочка. Сравнивать надо времена выдачи частей и подтверждения, не принимать их за время размышления модели или физический конец текста ответа.
 
 O сохраняет основу поручений task_brief при планировании, до Start. После создания назначения read_message возвращает её и ограниченную preparation_queue; O явно читает уже доступные уведомления и авторизует несколько поручений за один ход. Нет ожидания полной волны. Для DOCS заранее сохраняются стабильные требования, факты интеграций добавляются позже. [Полный контракт](assignment-dialogue.md#подготовка-одновременно-с-bootstrap).
 
@@ -71,4 +71,4 @@ Sidebar и панель показывают известную стадию, у
 
 Изолированные fixtures используют настоящие API/SDK/MCP/Kit/Git с подставленной физической моделью. Проверены авторизация до binding, отправка после готовности без лишнего O-хода, медленная диагностика, DOCS/O и final/E overlap, ранняя cleanup и строгий complete. Они доказывают последовательность/число вызовов и сохранность ограничений, не скорость живого ChatGPT.
 
-В следующем пользовательском опыте записать prepare/authorization/ready/persisted/claim/SDK/read/result/acceptance/integration/transport_closed/cleanup/O-end/complete для двух E и DOCS. Сравнить каждую стадию, проверить промежуточные подписи sidebar, приёмку и архив complete. Не повторять проверки неизменившегося SHA без причины. Недоступные spans, UNKNOWN и gaps указывать явно. A–D 0.5.22 пока NOT_RUN.
+В следующем пользовательском опыте записать prepare/authorization/ready/persisted/claim/SDK/read/result/acceptance/integration/transport_closed/cleanup/O-end/complete для двух E и DOCS. Сравнить каждую стадию, проверить промежуточные подписи sidebar, приёмку и архив complete. Не повторять проверки неизменившегося SHA без причины. Недоступные spans, UNKNOWN и gaps указывать явно. A–D 0.5.23 пока NOT_RUN.
