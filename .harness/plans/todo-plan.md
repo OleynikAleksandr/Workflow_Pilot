@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 783,
+  "plan_revision": 784,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Выдать проверенный новый выпуск без PiP экспериментов на основе стабильной 0.5.12",
   "acceptance_criteria": [
     "0.5.17 без экспериментальных исходников и ресурсов, основной канал сохранён.",
@@ -47,7 +47,9 @@
       "src/frontend/desktop/client.mjs",
       "src/backend/operations.mjs",
       "src/backend/force-stop.mjs",
-      "src/frontend/client/service-stop.mjs"
+      "src/frontend/client/service-stop.mjs",
+      "src/execution/browser/diagnostics.mjs",
+      "tests/chromium-diagnostics.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/restore-stable-release.md",
@@ -68,7 +70,8 @@
       "docs/modules/browser.md",
       "docs/modules/control.md",
       "docs/modules/native-window.md",
-      "docs/modules/backend-shutdown.md"
+      "docs/modules/backend-shutdown.md",
+      "docs/planning/attachment-retry-diagnostics.md"
     ]
   },
   "baseline_commit": "f4ca5a07ecdc0c604fa2c45d45636c2e5dafcf1e",
@@ -92,6 +95,11 @@
       },
       {
         "path": "docs/modules/release.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/attachment-retry-diagnostics.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -527,6 +535,188 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "FIX-RETRY",
+      "title": "Исправить распознавание повторных вложений",
+      "why": "Исправить распознавание повторных вложений",
+      "dependencies": [],
+      "functional_paths": [
+        "src/execution/browser/chatgpt-composer.mjs",
+        "tests/chatgpt-composer.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/attachment-retry-diagnostics.md"
+      ],
+      "verification_ids": [
+        "attachment-retry"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Исправить распознавание повторных вложений"
+      ],
+      "expected_commit_message": "feat: Исправить распознавание повторных вложений",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "FIX-RETRY",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DIAG-ATTACH",
+      "title": "Добавить ограниченную диагностику обработки вложений",
+      "why": "Добавить ограниченную диагностику обработки вложений",
+      "dependencies": [
+        "FIX-RETRY"
+      ],
+      "functional_paths": [
+        "src/execution/browser/diagnostics.mjs",
+        "tests/chromium-diagnostics.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/attachment-retry-diagnostics.md"
+      ],
+      "verification_ids": [
+        "attachment-diagnostics"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Добавить ограниченную диагностику обработки вложений"
+      ],
+      "expected_commit_message": "feat: Добавить ограниченную диагностику обработки вложений",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "DIAG-ATTACH",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "VERSION-3",
+      "title": "Согласовать версию 0.5.19",
+      "why": "Согласовать версию 0.5.19",
+      "dependencies": [
+        "DIAG-ATTACH"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/attachment-retry-diagnostics.md"
+      ],
+      "verification_ids": [
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Согласовать версию 0.5.19"
+      ],
+      "expected_commit_message": "feat: Согласовать версию 0.5.19",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "VERSION-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "FIX-RETRY",
+        "DIAG-ATTACH",
+        "VERSION-3"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/attachment-retry-diagnostics.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "BUILD-3",
+      "title": "Собрать проверенный выпуск 0.5.19 для трёх ОС",
+      "why": "Собрать проверенный выпуск 0.5.19 для трёх ОС",
+      "dependencies": [
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/attachment-retry-diagnostics.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Собрать проверенный выпуск 0.5.19 для трёх ОС"
+      ],
+      "expected_commit_message": "feat: Собрать проверенный выпуск 0.5.19 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "BUILD-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-3",
+      "title": "Установить проверенный комплект 0.5.19",
+      "why": "Установить проверенный комплект 0.5.19",
+      "dependencies": [
+        "BUILD-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/attachment-retry-diagnostics.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установить проверенный комплект 0.5.19"
+      ],
+      "expected_commit_message": "feat: Установить проверенный комплект 0.5.19",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "INSTALL-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -548,10 +738,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 783
+Revision: 784
 
 ## Цель
 
@@ -627,6 +817,42 @@ Revision: 783
   - Файлы: release-manifest.json, docs/planning/startup-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUILD-2, DOCS-2
+- [TODO] FIX-RETRY: Исправить распознавание повторных вложений — Ожидает
+  - Git Commit: [PENDING] feat: Исправить распознавание повторных вложений
+  - Reference: restore-stable-release / FIX-RETRY / implementation
+  - Файлы: src/execution/browser/chatgpt-composer.mjs, tests/chatgpt-composer.test.mjs, docs/planning/attachment-retry-diagnostics.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DIAG-ATTACH: Добавить ограниченную диагностику обработки вложений — Ожидает
+  - Git Commit: [PENDING] feat: Добавить ограниченную диагностику обработки вложений
+  - Reference: restore-stable-release / DIAG-ATTACH / implementation
+  - Файлы: src/execution/browser/diagnostics.mjs, tests/chromium-diagnostics.test.mjs, docs/planning/attachment-retry-diagnostics.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FIX-RETRY
+- [TODO] VERSION-3: Согласовать версию 0.5.19 — Ожидает
+  - Git Commit: [PENDING] feat: Согласовать версию 0.5.19
+  - Reference: restore-stable-release / VERSION-3 / implementation
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/attachment-retry-diagnostics.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DIAG-ATTACH
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: restore-stable-release / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/attachment-retry-diagnostics.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FIX-RETRY, DIAG-ATTACH, VERSION-3
+- [TODO] BUILD-3: Собрать проверенный выпуск 0.5.19 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.19 для трёх ОС
+  - Reference: restore-stable-release / BUILD-3 / implementation
+  - Файлы: release-manifest.json, docs/planning/attachment-retry-diagnostics.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-3
+- [TODO] INSTALL-3: Установить проверенный комплект 0.5.19 — Ожидает
+  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.5.19
+  - Reference: restore-stable-release / INSTALL-3 / implementation
+  - Файлы: release-manifest.json, docs/planning/attachment-retry-diagnostics.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUILD-3, DOCS-3
 
 ## Context Pack For This Cycle
 
@@ -634,5 +860,6 @@ Revision: 783
 - docs/architecture/OVERVIEW.md
 - docs/planning/startup-recovery.md
 - docs/modules/release.md
+- docs/planning/attachment-retry-diagnostics.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
