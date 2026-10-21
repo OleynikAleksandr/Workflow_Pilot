@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 742,
+  "plan_revision": 744,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "prepared-task-flow",
@@ -983,8 +983,8 @@
     {
       "id": "DOCS-5",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "prepared-task-flow",
         "task_id": "DOCS-5",
@@ -998,14 +998,22 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/pip-probe.md"
+        "docs/modules/pip-probe.md",
+        "README.md",
+        "docs/modules/chatgpt-plugin.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/pip-probe.md"
+      ]
     },
     {
       "id": "BUILD-PIP4",
@@ -1092,7 +1100,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: prepared-task-flow
 Current Task: нет
-Revision: 742
+Revision: 744
 
 ## Цель
 
@@ -1234,10 +1242,10 @@ Revision: 742
   - Файлы: tools/experiments/pip-probe/server.mjs, tools/experiments/pip-probe/view.mjs, tools/codex-app-server-mcp/pip_probe.py, tests/pip-probe.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/pip-probe.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-5: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-5: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: prepared-task-flow / DOCS-5 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/pip-probe.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/pip-probe.md, README.md, docs/modules/chatgpt-plugin.md
   - Параллельность: исключительное выполнение
   - Зависимости: PIP-GESTURE
 - [TODO] BUILD-PIP4: Собрать экспериментальную 0.5.16 для трёх ОС — Ожидает
