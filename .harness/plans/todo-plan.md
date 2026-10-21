@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 754,
+  "plan_revision": 756,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -63,8 +63,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "restore-stable-release",
         "task_id": "VERSION",
@@ -88,7 +88,12 @@
         "Согласовать версию 0.5.17 без PiP согласно спецификации; фактические ограничения сохранены."
       ],
       "expected_commit_message": "chore: Согласовать версию 0.5.17 без PiP",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -208,7 +213,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 754
+Revision: 756
 
 ## Цель
 
@@ -224,8 +229,8 @@ Revision: 754
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Продолжение разработки одним агентом по правилам проекта; последовательная поставка после очистки.
 
-- [TODO] VERSION: Согласовать версию 0.5.17 без PiP — Ожидает
-  - Git Commit: [PENDING] chore: Согласовать версию 0.5.17 без PiP
+- [DONE] VERSION: Согласовать версию 0.5.17 без PiP — Завершено
+  - Git Commit: [DONE] chore: Согласовать версию 0.5.17 без PiP
   - Reference: restore-stable-release / VERSION / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs
   - Параллельность: исключительное выполнение
