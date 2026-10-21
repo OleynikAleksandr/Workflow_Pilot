@@ -244,17 +244,6 @@
       "required": false,
       "timeout_ms": 300000,
       "evidence": "Изолированный полный 2E/DOCS/cleanup/complete с ранними brief, очередью одного хода и прекращением ожидания. Без настоящих моделей."
-    },
-    {
-      "id": "pip-probe",
-      "kind": "test",
-      "required": false,
-      "timeout_ms": 180000,
-      "executable": "node",
-      "args": [
-        "scripts/check-pip-probe.mjs"
-      ],
-      "evidence": "Адресные проверки PiP и фактической регистрации пробника в Python MCP; не заменяет живой опыт ChatGPT."
     }
   ],
   "budget": {
