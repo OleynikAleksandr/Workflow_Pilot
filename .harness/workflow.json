@@ -276,6 +276,31 @@
       ],
       "timeout_ms": 180000,
       "evidence": "Штатная и принудительная остановка, подтверждение и адресность собственного процесса."
+    },
+    {
+      "id": "attachment-retry",
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/context-session.test.mjs"
+      ],
+      "required": false,
+      "timeout_ms": 180000,
+      "evidence": "Повторные имена, асинхронные карточки, отмена и ровно один Send на fixtures."
+    },
+    {
+      "id": "attachment-diagnostics",
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/chromium-diagnostics.test.mjs"
+      ],
+      "required": false,
+      "timeout_ms": 180000,
+      "evidence": "Этапы file transfer, stall/resume, очистка и отсутствие payload в логах."
     }
   ],
   "budget": {
