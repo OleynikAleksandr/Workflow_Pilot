@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 837,
+  "plan_revision": 839,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "orchestrator-panel-startup",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Стартовый контекст O через панель без DOM-вложений, проверенный выпуск и установка",
   "acceptance_criteria": [
     "Новая O-сессия получает полный пакет через панель без вложений на изолированных fixtures; живая приёмка pending",
@@ -906,14 +906,15 @@
         "Штатный installer проверил подпись manifest и rollback; приложение и служба не останавливаются"
       ],
       "expected_commit_message": "feat: Установить готовый выпуск 0.5.23",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "orchestrator-panel-startup",
         "task_id": "INSTALL-4",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -935,10 +936,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: orchestrator-panel-startup
 Current Task: нет
-Revision: 837
+Revision: 839
 
 ## Цель
 
@@ -1051,8 +1052,8 @@ Revision: 837
   - Файлы: release-manifest.json, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: STARTUP-WAL, DOCS-4
-- [TODO] INSTALL-4: Установить готовый выпуск 0.5.23 — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовый выпуск 0.5.23
+- [DONE] INSTALL-4: Установить готовый выпуск 0.5.23 — Завершено
+  - Git Commit: [DONE] feat: Установить готовый выпуск 0.5.23
   - Reference: orchestrator-panel-startup / INSTALL-4 / implementation
   - Файлы: docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
