@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 762,
+  "plan_revision": 763,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -232,7 +232,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: READY_FOR_ACCEPTANCE
 Scope: restore-stable-release
 Current Task: нет
-Revision: 762
+Revision: 763
 
 ## Цель
 

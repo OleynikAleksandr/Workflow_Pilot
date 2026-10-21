@@ -244,6 +244,38 @@
       "required": false,
       "timeout_ms": 300000,
       "evidence": "Изолированный полный 2E/DOCS/cleanup/complete с ранними brief, очередью одного хода и прекращением ожидания. Без настоящих моделей."
+    },
+    {
+      "id": "startup-recovery",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/progress.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/desktop-boundaries.test.mjs"
+      ],
+      "timeout_ms": 300000,
+      "evidence": "Адресные fixtures подготовки, отмены, вложений, retry и sidebar без рабочих профилей и моделей."
+    },
+    {
+      "id": "force-stop",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/backend-shutdown.test.mjs",
+        "tests/desktop-client.test.mjs"
+      ],
+      "timeout_ms": 180000,
+      "evidence": "Штатная и принудительная остановка, подтверждение и адресность собственного процесса."
     }
   ],
   "budget": {
