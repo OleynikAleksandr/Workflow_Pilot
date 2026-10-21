@@ -18,7 +18,7 @@ const label=service=>service.phase==='draining'?'Остановка: ждём б
 // offers the same status and stop.
 // onOpenHttp: the HTTP client beside the native window (its test window); absent where
 // the ordinary open already is the HTTP client.
-export function createStatusMenu({Tray,Menu,nativeImage,onOpen,onStop,onCancelStop,onApprove=()=>{},onOpenHttp=null}) {
+export function createStatusMenu({Tray,Menu,nativeImage,onOpen,onStop,onCancelStop,onForceStop=null,onApprove=()=>{},onOpenHttp=null}) {
   let tray;
   try{tray=new Tray(templateIcon(nativeImage));}catch{return null;}
   tray.setToolTip('Workflow Pilot');
@@ -32,7 +32,8 @@ export function createStatusMenu({Tray,Menu,nativeImage,onOpen,onStop,onCancelSt
       {label:'Открыть Workflow Pilot',click:onOpen},
       ...(onOpenHttp?[{label:'Окно через HTTP (тест)',click:onOpenHttp}]:[]),
       service.phase==='draining'?{label:'Отменить остановку',click:onCancelStop}
-        :{label:'Остановить фоновую службу…',enabled:service.phase==='running',click:onStop}];
+        :{label:'Остановить фоновую службу…',enabled:service.phase==='running',click:onStop},
+      ...(onForceStop?[{label:'Принудительно остановить службу…',click:onForceStop}]:[])];
     tray.setToolTip('Workflow Pilot — '+label(service).toLowerCase());
     tray.setContextMenu(Menu.buildFromTemplate(items));
     return items;

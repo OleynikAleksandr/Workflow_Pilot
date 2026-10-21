@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {requestConfirmedForceStop} from '../client/service-stop.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -430,12 +431,19 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     if (!connection) return;
     const answer = await dialog.showMessageBox(window, { type: 'question', buttons: ['Остановить', 'Отмена'], defaultId: 1, cancelId: 1,
       message: 'Остановить фоновую службу Workflow Pilot?',
-      detail: 'Новые отправки и назначения не начнутся. Текущий ответ ChatGPT, инструменты и команды Kit завершатся; затем службы остановятся. Принудительного завершения нет.' });
+      detail: 'Новые отправки и назначения не начнутся. Текущий ответ ChatGPT, инструменты и команды Kit завершатся; затем службы остановятся.' });
     logClient('stop-dialog', { response: answer.response });
     if (answer.response !== 0) return;
     // Stopping needs control; an older service is stopped the same safe way.
     if (!control) { try { await connection.acquire(); control = true; } catch (error) { logClient('stop-failed', { code: error.code ?? null }); return dialog.showErrorBox('Workflow Pilot', error.message); } }
     await connection.run('service.stop').then(() => logClient('stop-requested'), error => { logClient('stop-failed', { code: error.code ?? null }); dialog.showErrorBox('Workflow Pilot', error.message); });
+  }
+  async function requestForceStop() {
+    try {
+      await requestConfirmedForceStop({confirm:options=>dialog.showMessageBox(window,options),force:embedded?.forceStop,connection});
+    } catch(error) {
+      logClient('force-stop-failed',{code:error.code??null});dialog.showErrorBox('Workflow Pilot',error.message);
+    }
   }
   function installMenu() {
     const draining = service.phase === 'draining';
@@ -446,6 +454,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
         ...((!connection || stale) && !embedded ? [{ label: 'Запустить фоновую службу', click: () => void reconnect({ start: true }) }] : []),
         draining ? { label: 'Отменить остановку фоновой службы', click: () => void connection?.run('service.cancel-stop').catch(() => {}) }
           : { label: 'Остановить фоновую службу…', enabled: service.phase === 'running' && !!connection, click: () => void requestStop() },
+        {label:'Принудительно остановить службу…',enabled:!!embedded?.forceStop||!!connection,click:()=>void requestForceStop()},
         { type: 'separator' },
         ...(embedded ? [{ label: 'Окно через HTTP (тест)', click: () => embedded.openHttpClient?.() }, { type: 'separator' }] : []),
         // In the backend process Cmd+Q closes the window only: quitting there would stop the service.

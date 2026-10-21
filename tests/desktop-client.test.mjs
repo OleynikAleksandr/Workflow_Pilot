@@ -9,6 +9,16 @@ import readline from 'node:readline';
 import {fileURLToPath} from 'node:url';
 import {WorkspaceSessions} from '../src/control/sessions/workspace-session.mjs';
 import {processAlive} from '../src/backend/identity.mjs';
+import {requestConfirmedForceStop} from '../src/frontend/client/service-stop.mjs';
+
+test('force stop confirmation cancels without effect; native bypasses the API and HTTP submits once',async()=>{
+  let effects=0;const confirm=async options=>{assert.equal(options.defaultId,1);assert.match(options.detail,/прерваны/);return {response:1};};
+  assert.equal(await requestConfirmedForceStop({confirm,force:()=>effects++}),false);assert.equal(effects,0);
+  assert.equal(await requestConfirmedForceStop({confirm:async()=>({response:0}),force:()=>effects++,connection:{acquire:()=>assert.fail('native must bypass queue')}}),true);
+  assert.equal(effects,1);const calls=[];
+  await requestConfirmedForceStop({confirm:async()=>({response:0}),connection:{acquire:async()=>calls.push('lease'),submit:async(op,args)=>calls.push([op,args])}});
+  assert.deepEqual(calls,['lease',['service.force-stop',{confirmed:true}]]);
+});
 
 const project=fileURLToPath(new URL('../',import.meta.url));
 const settle=(ms=50)=>new Promise(resolve=>setTimeout(resolve,ms));

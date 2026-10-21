@@ -150,6 +150,7 @@ function desktopCatalog(services,base) {
     'service.status':args=>{exact(args,[]);return services.service.view();},
     'service.stop':args=>{exact(args,[]);return services.service.request();},
     'service.cancel-stop':args=>{exact(args,[]);return services.service.cancel();},
+    'service.force-stop':args=>{exact(args,['confirmed']);if(args.confirmed!==true)throw invalid();return services.service.force();},
     // The former IPC allowlist; the model validates each input as before.
     'ui.invoke':async args=>{exact(args,['surface','channel','input']);
       if(!['local','archive','colors'].includes(args.surface)||!DESKTOP_CHANNELS[args.surface].includes(args.channel))throw invalid();
@@ -224,7 +225,7 @@ const publicError=error=>{
 // Operations listed in `concurrent` keep their own ordering (Desktop actions:
 // a newer navigation supersedes an older one); the rest run one at a time.
 export function createBackendOperations({bootGeneration,journal,catalog,onOperation=()=>{},onLease=()=>{},
-  limit=BACKEND_LIMITS.pendingCommands,concurrent=new Set(['ui.invoke']),leaseTtlMs,now}) {
+  limit=BACKEND_LIMITS.pendingCommands,concurrent=new Set(['ui.invoke','service.force-stop']),leaseTtlMs,now}) {
   let pending=0,tail=Promise.resolve();
   const lease=createControlLease({bootGeneration,...leaseTtlMs?{ttlMs:leaseTtlMs}:{},...now?{now}:{},onChange:view=>onLease(view)});
   const inflight=new Set();
@@ -289,7 +290,7 @@ export function createBackendOperations({bootGeneration,journal,catalog,onOperat
       return {requestId:request.requestId,status:'completed',value:lease.release({clientId:request.args.clientId,leaseGeneration:request.leaseGeneration})};
     }
     if(!Object.hasOwn(catalog,request.operation))throw protocolError('BACKEND_OPERATION_NOT_AVAILABLE');
-    if(pending>=limit)throw protocolError('BACKEND_QUEUE_LIMIT','Backend занят. Повторите позже с тем же requestId.');
+    if(pending>=limit&&request.operation!=='service.force-stop')throw protocolError('BACKEND_QUEUE_LIMIT','Backend занят. Повторите позже с тем же requestId.');
     const decision=await registerBackendCommand(request,{bootGeneration,lookup:journal.lookup,acceptIfAbsent:journal.acceptIfAbsent});
     if(decision.status==='unknown')return {requestId:request.requestId,status:'unknown',operationId:decision.operationId};
     if(decision.status==='accepted')run(journal.operation(decision.operationId),request.operation,request.args);

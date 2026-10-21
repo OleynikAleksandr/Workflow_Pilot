@@ -21,6 +21,10 @@ export const BACKEND_LIMITS = Object.freeze({
   transferChunkBytes: 256 * 1024,
 });
 
+export const FORCE_STOP_DIALOG = Object.freeze({type:'warning',buttons:['Остановить принудительно','Отмена'],defaultId:1,cancelId:1,
+  message:'Принудительно остановить службу Workflow Pilot?',
+  detail:'Текущие ответы, загрузки и команды будут прерваны. Несохранённые данные могут быть потеряны. Будет закрыто и окно приложения. Сохранённые проекты останутся на диске.'});
+
 export const BACKEND_OPERATIONS = Object.freeze({
   'projects.list': 'read', 'projects.create': 'mutate', 'projects.open': 'mutate',
   'projects.rename': 'mutate', 'projects.delete': 'mutate',
@@ -36,7 +40,7 @@ export const BACKEND_OPERATIONS = Object.freeze({
   // The Desktop client: the same allowlisted channels as the former local IPC.
   'ui.state': 'read', 'ui.invoke': 'mutate',
   // Explicit stop of the background service (draining, never a kill).
-  'service.status': 'read', 'service.stop': 'mutate', 'service.cancel-stop': 'mutate',
+  'service.status': 'read', 'service.stop': 'mutate', 'service.cancel-stop': 'mutate', 'service.force-stop': 'mutate',
   // Showing the backend's native window on this computer: presentation, not work.
   'window.open': 'window',
 });

@@ -6,6 +6,8 @@ import {createDesktopModel} from './desktop-model.mjs';
 import {createRemoteSurface} from './remote-surface.mjs';
 import {startBackendPort,installFixtureChat} from './lifecycle.mjs';
 import {createStopController} from './shutdown.mjs';
+import {createForceStop,forceExitOwnTree} from './force-stop.mjs';
+import {FORCE_STOP_DIALOG} from '../contracts/backend.mjs';
 import {createStatusMenu} from './status-menu.mjs';
 import {createBackendJournal,launchServicesType} from './diagnostics.mjs';
 import {createRemoteDevices} from './remote-devices.mjs';
@@ -59,6 +61,13 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       .finally(()=>{disposeAccess();stopper?.dispose();statusMenu?.destroy();app.releaseSingleInstanceLock();app.exit(0);});
     return stopping;
   };
+  const forceStop=createForceStop({stop:shutdown,onRequest:()=>{journal.record('force-stop-requested');desktop?.pause(true);},
+    forceExit:()=>{journal.record('force-stop-deadline');forceExitOwnTree({exit:code=>app.exit(code)});}});
+  const confirmForceStop=async()=>{
+    const answer=await guardedDialog.showMessageBox(FORCE_STOP_DIALOG);
+    journal.record('force-stop-dialog',{response:answer.response});
+    if(answer.response===0)forceStop();
+  };
   // Quit from the Dock tile of the open native window closes the window only, like
   // quitting the separate client; the service stops from its own menu or a signal.
   app.on('before-quit',event=>{
@@ -98,7 +107,8 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       if(!await desktop.start())throw Object.assign(new Error('Desktop model did not start.'),{code:'BACKEND_STARTUP_FAILED'});
       const base=desktop.services;
       const service=Object.freeze({view:()=>stopper?.view()??{phase:'running',reasons:[],since:null,error:null},
-        request:()=>stopper.request(),cancel:()=>stopper.cancel()});
+        request:()=>stopper.request(),cancel:()=>stopper.cancel(),force:()=>{
+          setTimeout(()=>forceStop(),50);return {phase:'force-stopping'};}});
       // window.open from a launch of the app: the native window, where this backend has one.
       const nativeService=Object.freeze({open:()=>{
         if(!nativeControl?.available())throw Object.assign(new Error('Встроенное окно недоступно.'),{code:'NATIVE_WINDOW_UNAVAILABLE'});
@@ -146,6 +156,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
         if(native&&!native.closed){native.focus();front();return native;}
         if(!hidden&&process.platform==='darwin'){try{app.setActivationPolicy('regular');}catch{ /* not ready yet */ }}
         const opened=nativeWindow({port:port.port,token:claim.token,pages:nativePages,logDir:path.join(identity.dataDir,'diagnostics'),hidden,
+          forceStop,
           openHttpClient:()=>openClient('native-menu',{http:true}),
           onClosed:()=>{if(native===opened)native=null;journal.record('native-window-closed',{});keepAccessory('native-closed');}});
         native=opened;front();
@@ -181,6 +192,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       }
       if(!fixtureRoot) {
         statusMenu=createStatusMenu({Tray:electron.Tray,Menu:electron.Menu,nativeImage:electron.nativeImage,onOpen:()=>openClient('status-menu'),
+          onForceStop:confirmForceStop,
           onOpenHttp:nativeAvailable()?()=>openClient('status-menu-http',{http:true}):null,
           onApprove:pairingId=>{try{devices.approve(pairingId);}catch{ /* an expired request disappears from the menu */ }},
           onCancelStop:()=>{journal.record('stop-cancel-menu');stopper.cancel();},
