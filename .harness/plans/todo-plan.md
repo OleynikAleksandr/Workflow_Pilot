@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 769,
+  "plan_revision": 775,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "restore-stable-release",
@@ -76,17 +76,17 @@
         "revision": "acc0e778b2b0aa79de7c911be82df5a38f2d37ff"
       },
       {
-        "path": "docs/modules/release.md",
-        "required": true,
-        "revision": "WORKTREE"
-      },
-      {
         "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/planning/startup-recovery.md",
+        "required": true,
+        "revision": "ba8a87ccbf5e7ac00eaf7ed24d19e1bf62505703"
+      },
+      {
+        "path": "docs/modules/release.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -355,6 +355,45 @@
       ]
     },
     {
+      "id": "VERSION-2",
+      "title": "Согласовать версию приложения и панели 0.5.18",
+      "why": "Согласовать версию приложения и панели 0.5.18",
+      "dependencies": [
+        "FORCE-STOP"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/release.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/startup-recovery.md"
+      ],
+      "verification_ids": [
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Согласовать версию приложения и панели 0.5.18"
+      ],
+      "expected_commit_message": "feat: Согласовать версию приложения и панели 0.5.18",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
+      "commit_ref": {
+        "scope_id": "restore-stable-release",
+        "task_id": "VERSION-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs"
+      ]
+    },
+    {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
       "implementation_status": "TODO",
@@ -368,17 +407,21 @@
       "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
       "dependencies": [
         "FIX-STARTUP",
-        "FORCE-STOP"
+        "FORCE-STOP",
+        "VERSION-2"
       ],
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/startup-recovery.md"
+        "docs/planning/startup-recovery.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
-      "verification_ids": [],
+      "verification_ids": [
+        "chatgpt-plugin"
+      ],
       "expected_commit_message": "docs: актуализировать документацию проекта",
       "parallel_safe": false
     },
@@ -466,7 +509,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: restore-stable-release
 Current Task: нет
-Revision: 769
+Revision: 775
 
 ## Цель
 
@@ -518,12 +561,18 @@ Revision: 769
   - Файлы: src/backend/shutdown.mjs, src/backend/status-menu.mjs, src/backend/main.mjs, src/backend/host.mjs, src/frontend/desktop/client.mjs, tests/backend-shutdown.test.mjs, tests/desktop-client.test.mjs, src/backend/operations.mjs, src/contracts/backend.mjs, src/backend/force-stop.mjs, src/frontend/client/service-stop.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP
+- [DONE] VERSION-2: Согласовать версию приложения и панели 0.5.18 — Завершено
+  - Git Commit: [DONE] feat: Согласовать версию приложения и панели 0.5.18
+  - Reference: restore-stable-release / VERSION-2 / implementation
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, docs/modules/release.md, docs/architecture/OVERVIEW.md, docs/planning/startup-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FORCE-STOP
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: restore-stable-release / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-recovery.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-recovery.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
-  - Зависимости: FIX-STARTUP, FORCE-STOP
+  - Зависимости: FIX-STARTUP, FORCE-STOP, VERSION-2
 - [TODO] BUILD-2: Собрать проверенный выпуск 0.5.18 для трёх ОС — Ожидает
   - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.18 для трёх ОС
   - Reference: restore-stable-release / BUILD-2 / implementation
@@ -540,8 +589,8 @@ Revision: 769
 ## Context Pack For This Cycle
 
 - docs/planning/restore-stable-release.md
-- docs/modules/release.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/startup-recovery.md
+- docs/modules/release.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
