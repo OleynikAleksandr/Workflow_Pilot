@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 877,
+  "plan_revision": 879,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Два раздела: I — устранить дефекты startup S и отображения результатов живого теста; II — подготовить изолированные регрессии и безопасный сценарий прерываний O/E без выполнения живых сбоев.",
   "acceptance_criteria": [
     "Раздел I: штатный Claude Review не прерывается на 30/100 ходах, 15 минутах и четырёх раундах; настоящие ошибки и ручное прекращение остаются диагностируемыми без повторных эффектов.",
@@ -729,14 +729,15 @@
         "Собственный OleynikAleksandr/Workflow_Pilot: fast-forward main, тег v0.5.24 на sourceCommit, draft → семь assets → сверка имён/размеров/digest → публикация; prerelease=false"
       ],
       "expected_commit_message": "feat: Опубликовать проверенный GitHub Release 0.5.24",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "PUBLISH",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -758,10 +759,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 877
+Revision: 879
 
 ## Цель
 
@@ -853,8 +854,8 @@ Revision: 877
   - Файлы: release-manifest.json, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-2
-- [TODO] PUBLISH: Опубликовать проверенный GitHub Release 0.5.24 — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать проверенный GitHub Release 0.5.24
+- [DONE] PUBLISH: Опубликовать проверенный GitHub Release 0.5.24 — Завершено
+  - Git Commit: [DONE] feat: Опубликовать проверенный GitHub Release 0.5.24
   - Reference: recovery-status-interruptions / PUBLISH / implementation
   - Файлы: release-manifest.json, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
