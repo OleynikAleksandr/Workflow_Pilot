@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 896,
+  "plan_revision": 898,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -455,8 +455,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "RELEASE",
@@ -481,7 +481,8 @@
         "Перед каждой production-сборкой проверены и удалены только Python-кэши tools/codex-app-server-mcp без перехода по симлинкам; строгая проверка extra-resource сохранена."
       ],
       "expected_commit_message": "release: Собрать выпуск 0.5.25 для трёх ОС",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -566,7 +567,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 896
+Revision: 898
 
 ## Цель
 
@@ -622,8 +623,8 @@ Revision: 896
   - Файлы: docs/planning/work-progress-ui.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/dialogue-timing.md, docs/modules/orchestrator-startup.md, docs/modules/release.md, packages/workflow-kit/README.md, tests/fixtures/released-kit/README.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/project-compatibility.md, docs/modules/plugin-communication-handoff.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005
-- [TODO] RELEASE: Собрать выпуск 0.5.25 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.5.25 для трёх ОС
+- [DONE] RELEASE: Собрать выпуск 0.5.25 для трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.5.25 для трёх ОС
   - Reference: work-progress-ui / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
