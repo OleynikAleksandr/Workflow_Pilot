@@ -66,6 +66,24 @@ test('explicit preparation retry retains drafts and cannot replay a sent or unkn
     assert.equal(await f.controller.resumePreparation(),false);assert.equal(f.sends(),0);
   }
 });
+
+test('Kit recovery hold exposes a terminal startup error and resumes the same unsent session after release',async()=>{
+  const f=controllerFixture({chatUrl:null});let held=true;
+  f.runtime.prepareBootstrap=async()=>{
+    if(held)throw Object.assign(Error('Транзакция Kit незавершена. Проверьте status и завершите repair.'),{code:'PROJECT_RECOVERY_REQUIRED'});
+    return {context_transport:'panel',enrollment_ticket:'a'.repeat(64),expires_at:now+60000};
+  };
+  await f.controller.tick();
+  assert.equal(f.controller.state.phase,'error');
+  assert.equal(f.controller.state.error.code,'PROJECT_RECOVERY_REQUIRED');
+  assert.match(f.controller.state.error.message,/repair/);
+  assert.equal(f.sends(),0);assert.equal(f.saved.attempt,null,'the denied attempt never became a Send');
+  held=false;
+  assert.equal(await f.controller.resumePreparation(),true);
+  assert.equal(f.sends(),1);
+  assert.equal(f.saved.attempt.state,'sent');
+  await f.controller.tick();assert.equal(f.sends(),1,'no automatic second bootstrap');
+});
 test('cancel preparation invalidates pending send, persists pause and only explicit retry resumes',async()=>{
   const f=controllerFixture();let release,options;const deliver=f.composer.deliver;
   f.composer.deliver=async input=>{options=input;input.onUploadProgress({ready:1,total:2});await new Promise(resolve=>{release=resolve;});return {state:'cancelled'};};

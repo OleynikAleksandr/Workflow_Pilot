@@ -25,8 +25,41 @@ let liveSessions;
 // A pending Kit transaction holds only its project. The service and archive stay
 // available; neither startup nor deletion repairs or changes the Kit journal.
 const startupRecovery=new Map();
-const recoveryError=()=>Object.assign(new Error('Для выполнения проекта нужно восстановление Kit. Проект можно архивировать и удалить без завершения плана.'),{code:'PROJECT_RECOVERY_REQUIRED'});
+const recoveryWatchers=new Map(),recoveryChecks=new Map();
+const recoveryError=()=>Object.assign(new Error('Незавершённая транзакция Workflow Kit удерживает проект. Проверьте ./scripts/workflow status, завершите сохранённую транзакцию штатным commit или repair. После её подтверждённого завершения блокировка снимется автоматически; затем повторите подготовку контекста. План не возобновляется автоматически.'),{code:'PROJECT_RECOVERY_REQUIRED'});
 const held=project=>startupRecovery.has(project?.parentWorkspace??project?.workspace);
+// Only a fresh, successful readiness proof releases the original hold. A
+// missing/unknown Kit result is never interpreted as a completed transaction.
+function recheckRecovery(root){
+  if(!startupRecovery.has(root))return Promise.resolve(false);
+  if(recoveryChecks.has(root))return recoveryChecks.get(root);
+  const check=(async()=>{
+    for(const workspace of startupRecovery.get(root)??[]){
+      workspaceSetup.invalidateReadiness(workspace);
+      try{if((await workspaceSetup.ready(workspace)).ready!==true)return false;}
+      catch{return false;}
+    }
+    if(!startupRecovery.has(root))return false;
+    startupRecovery.delete(root);recoveryWatchers.get(root)?.close();recoveryWatchers.delete(root);
+    publish();
+    const controller=getController();
+    if(contextAvailable()&&controller?.active&&(controller.active.workspace===root||store.project(controller.active.workspace)?.parentWorkspace===root)){
+      if(controller.state?.error?.code==='PROJECT_RECOVERY_REQUIRED')void controller.resumePreparation().catch(report);
+      else controller.signal();
+    }
+    // Recovery only re-enables new bootstrap. Sequential and orchestrated
+    // permissions remain OFF/paused until an explicit user action.
+    return true;
+  })().finally(()=>recoveryChecks.delete(root));
+  recoveryChecks.set(root,check);return check;
+}
+function watchRecovery(root){
+  if(recoveryWatchers.has(root))return;
+  const watcher=new ProjectInputWatch({workspace:root,onSignal:()=>void recheckRecovery(root).catch(report),
+    onError:error=>{if(error)report(error);}});
+  recoveryWatchers.set(root,watcher);
+  watcher.update(['.git/workflow-kit/transaction.json','.git/workflow-kit/operation.lock']);
+}
 let reviewCheckpoint=null,automationCheckpoint=null,parallelExecutionBook={};
 const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&liveSessions?.find(project),
   route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>executionControl.view(workspace,scope),
@@ -73,6 +106,8 @@ const planMonitor = new PlanMonitor({ selected: () => store.selected(),
     if (change?.semanticChanged && contextAvailable()) void getController()?.tick();
   }, onInputsChanged: () => {
     planReview.refresh();
+    const selected=store.selected(),root=selected?.parentWorkspace??selected?.workspace;
+    if(root&&startupRecovery.has(root))void recheckRecovery(root).catch(report);
     if (contextAvailable()) getController()?.projectChanged();
   }, onError: () => publish() });
 const automationSend = new AutomationSendState({save:async checkpoint=>{
@@ -260,11 +295,7 @@ async function setPlanExecution(running) {
   if(!workspace||selected?.external)throw Object.assign(new Error('Выберите проект с планом.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
   if(running!==undefined&&typeof running!=='boolean')throw Object.assign(new Error('Неверная команда кнопки плана.'),{code:'PLAN_EXECUTION_INVALID'});
   if(startupRecovery.has(workspace)) {
-    for(const pending of startupRecovery.get(workspace)) {
-      workspaceSetup.invalidateReadiness(pending);
-      if(!(await workspaceSetup.ready(pending).catch(()=>({ready:false}))).ready)throw recoveryError();
-    }
-    startupRecovery.delete(workspace);
+    if(!await recheckRecovery(workspace))throw recoveryError();
   }
   const info=await store.inspect(workspace);
   if(!info.scopeId||!['ACTIVE','BLOCKED'].includes(info.scopeStatus))
@@ -397,15 +428,20 @@ return Object.freeze({
     }
     for(const root of startupRecovery.keys()) {
       await execution.suspend(root);
-      const legacy=projectPlanContinuation.book[root];if(legacy)legacy.enabled=false;
+      const legacy=projectPlanContinuation.book[root];if(legacy?.enabled){legacy.enabled=false;legacy.offReason='recovery';}
       const state=executionControl.book[root];
-      if(state&&['running','pausing','paused'].includes(state.state))
+      if(state&&['running','pausing','paused'].includes(state.state)&&state.reason!=='manual')
         executionControl.write(root,state.scopeId,'paused','unknown',recoveryError().message,state.route,false);
+      watchRecovery(root);
     }
     if(startupRecovery.size)await saveSettings();
   },
   retireCommunication:identities=>getPlugin()?.communication.removeProjects(identities),
-  prepareBootstrap:project=>{if(held(project))throw recoveryError();return dialogue.prepareBootstrap(project);},
+  prepareBootstrap:project=>{if(held(project)){
+    void recheckRecovery(project.parentWorkspace??project.workspace).catch(report);
+    throw recoveryError();
+  }return dialogue.prepareBootstrap(project);},
+  recoveryStatus:workspace=>startupRecovery.has(workspace)?{held:true,code:'PROJECT_RECOVERY_REQUIRED',message:recoveryError().message}:null,
   stageStartup:(project,attempt)=>dialogue.stageStartup(project,attempt),
   startupProgress:(sessionId,requestId)=>getPlugin()?.communication.startup.progress(sessionId,requestId),
   observeParticipant:target=>dialogue.observe(target),admitParticipant:(target,message)=>dialogue.admit(target,message),
@@ -469,7 +505,7 @@ return Object.freeze({
 
   },
   cleanup(identities) {
-  for(const identity of identities)startupRecovery.delete(identity.workspace);
+  for(const identity of identities){startupRecovery.delete(identity.workspace);recoveryWatchers.get(identity.workspace)?.close();recoveryWatchers.delete(identity.workspace);}
   const cleaned=removeProjectSettings({projectPlanContinuation:projectPlanContinuation.snapshot(),parallelExecutionBook,reviewCheckpoint,automationCheckpoint},identities);
   projectPlanContinuation.book=cleaned.projectPlanContinuation;parallelExecutionBook=cleaned.parallelExecutionBook;execution.book=parallelExecutionBook;
   reviewCheckpoint=cleaned.reviewCheckpoint;automationCheckpoint=cleaned.automationCheckpoint;
@@ -500,5 +536,6 @@ return Object.freeze({
     }
 
   },
+  closeRecovery(){for(const watcher of recoveryWatchers.values())watcher.close();recoveryWatchers.clear();},
 });
 }

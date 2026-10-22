@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 855,
+  "plan_revision": 857,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -319,14 +319,23 @@
         "Менять только пути внутри approved_scope; рабочий backend, пользовательские профили, реальные сессии и WAL не затрагивать. Без новых scheduler, дублирования доставки или автоматического запуска плана; все три назначенные проверки PASS."
       ],
       "expected_commit_message": "fix: снимать удержание startup после завершения транзакции Kit",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "FIX-RECOVERY-HOLD",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -503,7 +512,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 855
+Revision: 857
 
 ## Цель
 
@@ -541,8 +550,8 @@ Revision: 855
   - Файлы: src/control/plugin/startup-context.mjs, src/control/context/context-session.mjs, src/contracts/startup-view.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/progress.mjs, src/control/plugin/service.mjs, src/frontend/plugin/panel.mjs, tests/startup-context.test.mjs, tests/context-session.test.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/progress.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP
-- [TODO] FIX-RECOVERY-HOLD: I · Автоматически снять удержание Kit recovery после закрытия транзакции — Ожидает
-  - Git Commit: [PENDING] fix: снимать удержание startup после завершения транзакции Kit
+- [DONE] FIX-RECOVERY-HOLD: I · Автоматически снять удержание Kit recovery после закрытия транзакции — Завершено
+  - Git Commit: [DONE] fix: снимать удержание startup после завершения транзакции Kit
   - Reference: recovery-status-interruptions / FIX-RECOVERY-HOLD / implementation
   - Файлы: src/control/workflow/coordination.mjs, src/control/context/context-session.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/backend-desktop-model.test.mjs, tests/context-session.test.mjs, tests/sidebar.test.mjs, tests/automatic-agent-dialogue.test.mjs, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение

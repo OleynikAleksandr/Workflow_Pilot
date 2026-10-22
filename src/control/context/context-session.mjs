@@ -199,7 +199,7 @@ export class ContextSession {
     const project=this.active&&this.store.project(this.active.workspace),attempt=project?.attempt;
     if(!project||project.manualStart||this.pending||this.state.phase!=='error'||attempt?.sendStartedAtMs
       ||['sending','sent','acknowledged','unknown'].includes(attempt?.state)
-      ||!['CONTEXT_INPUTS_UNAVAILABLE','CONTEXT_CHANGED','PROJECT_READ_FAILED'].includes(this.state.error?.code))return false;
+      ||!['CONTEXT_INPUTS_UNAVAILABLE','CONTEXT_CHANGED','PROJECT_READ_FAILED','PROJECT_RECOVERY_REQUIRED'].includes(this.state.error?.code))return false;
     this.emit({phase:'selected',error:null});await this.tick();return true;
   }
 

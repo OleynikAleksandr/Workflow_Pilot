@@ -507,8 +507,9 @@ function render(state) {
   $('plan-run-toggle').hidden = !run || run.state === 'complete' || run.complete;
   $('plan-run-toggle').textContent = runLabels[run?.state] ?? '';
   $('plan-run-toggle').dataset.state = run?.state ?? '';
-  $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue;
+  $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue || !!run?.recoveryHeld;
   const runReason = run?.issue ? 'Оркестратор плана не определён. Назначьте его в меню сессии.'
+    : run?.reason === 'recovery' ? 'Автопродолжение отключено после восстановления Kit (не ручная пауза). '+(run.message??'')
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
       : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '')
         : orchestrated&&run?.state==='complete'?'Выполнение завершено — ожидается ваша приёмка.'
@@ -627,7 +628,7 @@ function render(state) {
   for (const button of document.querySelectorAll('button')) {
     if (button.closest('#startup-panel') || button.id==='open-startup') continue;
     button.disabled = actionPending
-      || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue))
+      || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue || !!state.planRun?.recoveryHeld))
       || (state.storageError && ['create-workspace', 'add-workspace', 'retry-context'].includes(button.id));
   }
   const recovery = state.conversationRecovery;

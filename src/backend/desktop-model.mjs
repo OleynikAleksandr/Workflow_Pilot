@@ -277,7 +277,11 @@ function planRunView(saved) {
   // A plan of the former model: the button shows whether its continuation engine runs.
   const running=workflow.projectPlanContinuation.enabled(workspace,project.scopeId);
   const started=workflow.executionControl.view(workspace,project.scopeId).state!=='not-started';
-  return {workspace,scopeId:project.scopeId,state:running?'running':started?'paused':'not-started',reason:null,message:null,issue:null,complete};
+  const choice=workflow.projectPlanContinuation.snapshot()[workspace],recovery=workflow.recoveryStatus(workspace);
+  const reason=recovery?'recovery':!running&&choice?.scopeId===project.scopeId?choice.offReason??null:null;
+  return {workspace,scopeId:project.scopeId,state:running?'running':started||recovery?'paused':'not-started',reason,
+    message:recovery?.message??(reason==='recovery'?'Транзакция Kit завершена; для возобновления выполнения нажмите «Продолжить».':null),
+    recoveryHeld:!!recovery,issue:null,complete};
 }
 function snapshot() {
   const saved = store.selected();
@@ -312,6 +316,8 @@ function snapshot() {
     orchestratorPlan: orchestratorPlanView(saved),
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
+      : saved&&workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)&&!['sent','unknown','acknowledged'].includes(saved.attempt?.state)
+        ? {phase:'error',messageSent:false,error:workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)}
       : saved?.attempt?.contextTransport==='panel'&&saved.attempt.state==='sent'
         ? startupContextState(controller?.state,workflow.startupProgress(saved.sessionId,saved.attempt.requestId))
         : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
@@ -1315,7 +1321,7 @@ function dispose() {
   if (closed) return;
   closed = true;
   ++navigationId; desktopIpc.dispose(); startupClipboard?.dispose(); startupClipboard = null; startupFlow?.dispose(); startupFlow = null;
-  planContinuation.dispose(); execution.dispose(); conversationRecovery?.reset(); controller?.cancel(); planMonitor.close();
+  planContinuation.dispose(); execution.dispose(); workflow.closeRecovery(); conversationRecovery?.reset(); controller?.cancel(); planMonitor.close();
   reviewContinuation.dispose(); planReview.dispose();
   if (eventRuntimeCheckerTimer !== null) clearInterval(eventRuntimeCheckerTimer);
   eventRuntimeCheckerTimer = null; liveSessions.dispose(); contextCache.clear(); workspaceSetup.invalidateReadiness();

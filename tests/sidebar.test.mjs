@@ -25,6 +25,23 @@ test('startup panel context stays visible until all parts are confirmed',async t
   assert.equal($('new-context-session').hidden,false);
 });
 
+test('Kit recovery hold reports next action instead of an empty chat, and distinguishes technical OFF from manual pause',async t=>{
+  const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
+  const info='Незавершённая транзакция Kit. Выполните status, затем commit или repair.';
+  const selected={...base.selected,scopeId:'scope',planExecution:{execution_strategy:'sequential'}};
+  f.emit({...base,selected,planRun:{state:'paused',reason:'recovery',message:info,recoveryHeld:true},
+    context:{phase:'error',messageSent:false,error:{code:'PROJECT_RECOVERY_REQUIRED',message:info}}});
+  assert.equal($('session-notice').hidden,false);assert.match($('session-notice-detail').textContent,/status.*repair/);
+  assert.equal($('plan-run-toggle').disabled,true,'held project does not authorize Start');
+  assert.match($('plan-run-message').textContent,/не ручная пауза/);
+  f.emit({...base,selected,planRun:{state:'paused',reason:'recovery',message:'Kit завершён, нажмите Продолжить',recoveryHeld:false},
+    context:{phase:'selected',messageSent:false}});
+  assert.equal($('plan-run-toggle').disabled,false,'confirmed release permits explicit restart');
+  assert.match($('plan-run-message').textContent,/Автопродолжение отключено/);
+  f.emit({...base,selected,planRun:{state:'paused',reason:'manual',message:null,recoveryHeld:false}});
+  assert.doesNotMatch($('plan-run-message').textContent,/после восстановления Kit/);
+});
+
 test('three integrations keep the observed final stage and Pause until durable complete, then explain acceptance',async t=>{
   const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
   const plan={scopeId:'scope',objective:'Опыт',current:true,tasks:['T001','T002','DOCS'].map(id=>
