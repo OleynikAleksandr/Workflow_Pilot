@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 863,
+  "plan_revision": 865,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Два раздела: I — устранить дефекты startup S и отображения результатов живого теста; II — подготовить изолированные регрессии и безопасный сценарий прерываний O/E без выполнения живых сбоев.",
   "acceptance_criteria": [
     "Раздел I: штатный Claude Review не прерывается на 30/100 ходах, 15 минутах и четырёх раундах; настоящие ошибки и ручное прекращение остаются диагностируемыми без повторных эффектов.",
@@ -464,8 +464,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "DOCS",
@@ -503,7 +503,15 @@
       ],
       "expected_commit_message": "docs: зафиксировать исправленный startup и подготовленные испытания",
       "task_brief": "Последняя задача, относится к разделу II. После FIX и TEST сверяй реальные коммиты и изменяй только устаревшие README, OVERVIEW и затронутые docs/modules. Не выдумывай живой PASS и не запускай release/build/install. Спецификация docs/planning/recovery-and-interruption-2026-10.md + канонический план достаточны для нового чата. Закрой DOCS штатным Kit commit и остановись на READY_FOR_ACCEPTANCE до приёмки пользователя.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "packages/workflow-kit/README.md"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -525,10 +533,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 863
+Revision: 865
 
 ## Цель
 
@@ -590,8 +598,8 @@ Revision: 863
   - Файлы: docs/acceptance/interruption-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: TEST-REGRESSION
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: зафиксировать исправленный startup и подготовленные испытания
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: зафиксировать исправленный startup и подготовленные испытания
   - Reference: recovery-status-interruptions / DOCS / implementation
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, packages/workflow-kit/README.md, docs/acceptance/interruption-recovery.md, tests/fixtures/released-kit/README.md, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
