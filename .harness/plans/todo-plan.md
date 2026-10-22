@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 873,
+  "plan_revision": 875,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -665,14 +665,17 @@
         "DOCS до сборки; один sourceCommit для macOS/Windows/Linux; перед production-сборкой удалён Python cache в tools/codex-app-server-mcp"
       ],
       "expected_commit_message": "feat: Собрать проверенный выпуск 0.5.24 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "RELEASE",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL",
@@ -757,7 +760,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 873
+Revision: 875
 
 ## Цель
 
@@ -837,8 +840,8 @@ Revision: 873
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/recovery-and-interruption-2026-10.md, README.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, docs/modules/release.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/modules/plugin-communication-handoff.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-REVIEW-FOLLOWUP
-- [TODO] RELEASE: Собрать проверенный выпуск 0.5.24 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.24 для трёх ОС
+- [DONE] RELEASE: Собрать проверенный выпуск 0.5.24 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать проверенный выпуск 0.5.24 для трёх ОС
   - Reference: recovery-status-interruptions / RELEASE / implementation
   - Файлы: release-manifest.json, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
