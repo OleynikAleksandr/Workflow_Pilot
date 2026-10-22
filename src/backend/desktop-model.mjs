@@ -332,9 +332,11 @@ function planRunView(saved) {
 }
 // One project-level progress projection (sidebar, HTTP client, plugin panel). Facts only:
 // stage labels keep the wording of the stage functions; times are observed by this backend.
-function workProgressView(workspace) {
-  const project=workspace&&store.project(workspace);
-  if(!project||project.parentWorkspace)return null;
+function workProgressView(workspace,fresh=null) {
+  const stored=workspace&&store.project(workspace);
+  if(!stored||stored.parentWorkspace)return null;
+  // The plan monitor's fresh reading of the selected project wins over the stored projection, as in the card itself.
+  const project=fresh?.workspace===workspace?{...stored,...fresh}:stored;
   const sessions=(store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions??[]).filter(s=>!s.archivedAt&&!s.external);
   const run=planRunView({workspace}),view=execution.view(workspace),scope=run?.scopeId??null;
   const orchestrated=project.planExecution?.execution_strategy==='orchestrated';
@@ -351,7 +353,9 @@ function workProgressView(workspace) {
       now.push({actor,text:'не получил стартовый контекст',kind:'warn',elapsedMs:0});continue;
     }
     const text=progress?.read?'читает стартовый контекст · часть '+progress.parts_read+' из '+progress.total_parts:'получает стартовый контекст';
-    now.push({actor,text,kind:'act',elapsedMs:observeActivity(JSON.stringify([project.projectId,session.sessionId,'startup']),{phase:'startup',label:'',reason:''}).elapsedMs});
+    const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'startup']),{phase:'startup',label:'',reason:''}).elapsedMs;
+    // A start left unread for long is an abandoned chat, not a running action.
+    if(elapsedMs<=WORK_SILENCE_MS)now.push({actor,text,kind:'act',elapsedMs});
   }
   const executors=scope?executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope):[];
   const assignments=view.scopeId===scope?view.assignments??[]:[];
@@ -456,7 +460,7 @@ function snapshot() {
       enabled:!saved?.external&&projectPlanContinuation.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
     planRun: planRunView(saved),
     orchestratorPlan: orchestratorPlanView(saved),
-    workProgress: workProgressView(saved?.parentWorkspace??saved?.workspace),
+    workProgress: workProgressView(saved?.parentWorkspace??saved?.workspace,info),
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
       : saved&&workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)&&!['sent','unknown','acknowledged'].includes(saved.attempt?.state)

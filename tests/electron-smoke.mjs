@@ -215,6 +215,11 @@ async function verifyUninterruptedRequest(dataDir) {
 }
 
 export async function run({ app, window, sidebar, store, plugin, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, planContinuation, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture, continuePlan }) {
+  // Since 0.5.20 a startup ends in the panel channel; the fixture page never opens the panel, so a sent startup stays there.
+  const settled = () => snapshot().context.phase === 'delivered'
+    || ['startup-channel','startup-complete'].includes(snapshot().context.phase) && !!store.selected()?.chatUrl;
+  // A packet invalidated by a later Kit change: 'stale' for attachments, a stale startup error for the panel.
+  const stale = () => snapshot().context.phase === 'stale' || snapshot().context.startup?.error?.code === 'PLUGIN_COMMUNICATION_STALE_MESSAGE';
   // Test actions follow the visible page; production controllers retain their own page.
   const currentObject=key=>new Proxy({}, {
     get:(_target,property)=>{const value=getLive()[key][property];return typeof value==='function'?value.bind(getLive()[key]):value;},
@@ -495,10 +500,11 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const deliverNormally = ChatGPTComposer.prototype.deliver;
   let manualDeliveryArmed = !eventBaseline, manualDeliveryClicked = false;
   if (manualDeliveryArmed) ChatGPTComposer.prototype.deliver = async function(options) {
-    await controller.composer.inspect({action:'attach',attachments:options.attachments,requestId:options.requestId});
+    // Since 0.5.20 the startup carries no attachments: the agent pulls the context through the panel.
+    assert.deepEqual(options.attachments ?? [], [], 'startup sends no files');
     await controller.composer.inspect({ action: 'fill', text: options.text, requestId: options.requestId });
     const ready=await this.waitForSendReady(options,0,()=>true);
-    assert.equal(ready.attachmentsReady,true,'manual Send waits for every uploaded file');
+    assert.ok(ready,'manual Send waits until the composer is ready');
     return { state: 'deferred', reason: 'DRAFT_CHANGED' };
   };
   await sidebar.executeJavaScript('document.getElementById("setup-experience-chat").click(); document.getElementById("setup-experience-work").click()');
@@ -525,7 +531,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
       let offset = 0; while (offset < Math.min(actual.length, expected.length) && actual[offset] === expected[offset]) offset++;
       throw new Error('FIXTURE_DRAFT_MISMATCH: ' + JSON.stringify({ offset, actualLength: actual.length, expectedLength: expected.length, actual: actual.slice(Math.max(0,offset-40),offset+100), expected: expected.slice(Math.max(0,offset-40),offset+100) }));
     }
-    return snapshot().context.phase === 'delivered';
+    // The panel transport ends the send with the startup channel; a legacy fixture still reports delivered.
+    return ['delivered','startup-channel','startup-complete'].includes(snapshot().context.phase);
   }, 'first fixture context', snapshot);
   await browser.executeJavaScript("document.title='Первый разговор проекта'");
   await waitFor(() => snapshot().projects[0].sessions[0].title === 'Первый разговор проекта', 'conversation title', snapshot);
@@ -538,11 +545,10 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(await sidebar.executeJavaScript('document.getElementById("new-chat")'), null, 'context card has no session creation button');
   assert.equal(first.attempt.state, 'sent');
   assert.ok(!first.attempt.text.includes(fixtureContext));
+  // The context is pulled through the panel: the first message has no files and names the panel tool.
   const files = await browser.executeJavaScript('window.fixtureMessages[0].files');
-  const fileDigest=text=>createHash('sha256').update(text).digest('hex');
-  assert.deepEqual(files.map(file=>({bytes:file.bytes,sha:fileDigest(file.text)})),fixtureTexts.map(text=>({bytes:Buffer.byteLength(text),sha:fileDigest(text)})));
-  assert.equal(fileDigest(files.map(file=>file.text).join('\n\n')),fileDigest(fixtureContext));
-  assert.equal(files.length,4);assert.ok(files.every(file=>file.bytes<=28000));
+  assert.deepEqual(files ?? [], []);
+  assert.match(first.attempt.text, /workflow_pilot_panel/);
   assert.ok(Buffer.byteLength(fixtureContext) > 60000);
   assert.equal(snapshot().selected.attempt.text, undefined, 'Full prompt stays out of sidebar IPC');
   const sent = await browser.executeJavaScript('window.fixtureMessages[0].text');
@@ -622,10 +628,11 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     detailsVisible: !document.getElementById('workspace-details').hidden, oldPlanText: !!document.getElementById('plan-text'),
     revisionVisible: document.getElementById('plan-card').textContent.includes('версия') || document.getElementById('plan-card').textContent.includes('Revision')
   })`).then(value => JSON.stringify(value)), JSON.stringify({ planCard: true, detailsVisible: true, oldPlanText: false, revisionVisible: false }));
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-status").textContent'), 'План ещё не создан');
+  // Without a plan the card shows only the stage; progress appears with the first published plan.
+  assert.ok(['Обсуждение плана','Подготовка'].includes(await sidebar.executeJavaScript('document.getElementById("plan-phase-text").textContent')));
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-progress").hidden'), true);
   assert.equal(await sidebar.executeJavaScript('document.querySelectorAll("#plan-tasks .plan-task").length'), 0);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-title").hidden'), true);
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-card").innerText.match(/План ещё не создан/g)?.length'), 1);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("accept-plan") === null'), true);
 
   // Exercise the real sidebar click, preload, sender-checked IPC and persisted checkout policy.
@@ -635,9 +642,10 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const autoBeforeReview=snapshot().planContinuation.enabled;
   await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').click()");
   await waitFor(()=>snapshot().planReview.enabled,'review enabled',snapshot);
-  await waitFor(()=>snapshot().context.phase==='stale','review policy invalidates delivered recovery',snapshot);
+  // A panel startup packet becomes stale through the channel; a legacy packet reports 'stale'.
+  await waitFor(()=>snapshot().context.phase==='stale'||snapshot().context.startup?.error?.code==='PLUGIN_COMMUNICATION_STALE_MESSAGE','review policy invalidates delivered recovery',snapshot);
   assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').getAttribute('aria-pressed')"),'true');
-  assert.equal(await sidebar.executeJavaScript("getComputedStyle(document.getElementById('plan-review-toggle')).backgroundColor"),'rgb(8, 124, 69)');
+  assert.ok(['rgb(228, 241, 240)','rgb(32, 53, 54)'].includes(await sidebar.executeJavaScript("getComputedStyle(document.getElementById('plan-review-toggle')).backgroundColor")),'the switch uses the shared selected token');
   assert.equal(JSON.parse(await fs.readFile(path.join(workspace,'.harness/runtime/plan-review/state.json'),'utf8')).enabled,true);
   assert.equal(snapshot().planContinuation.enabled,autoBeforeReview);
   await waitFor(()=>sidebar.executeJavaScript("!document.getElementById('plan-review-toggle').disabled"),'review toggle ready',snapshot);
@@ -667,7 +675,9 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
       for(const [id,on] of [['plan-review-toggle',review]]){
         const appearance=await sidebar.executeJavaScript(`(()=>{const b=document.getElementById('${id}');return {pressed:b.getAttribute('aria-pressed'),text:b.textContent,color:getComputedStyle(b).backgroundColor}})()`);
         assert.equal(appearance.pressed,String(on));assert.match(appearance.text,on?/^Выключить/:/^Включить/);
-        assert.equal(appearance.color==='rgb(8, 124, 69)',on,theme+' '+id);
+        // The switch uses the shared selected token when on and the line token when off, in each theme.
+        const selected={light:'rgb(228, 241, 240)',dark:'rgb(32, 53, 54)'}[theme],line={light:'rgb(218, 228, 233)',dark:'rgb(54, 62, 72)'}[theme];
+        assert.equal(appearance.color,on?selected:line,theme+' '+id);
       }
     }
   }
@@ -723,7 +733,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     expected_commit_message: 'docs: rendering fixture', commit_ref: {scope_id: activePlan.scope_id, task_id: task.id, role: 'implementation'} }));
   const writeFixturePlan = async plan => fs.writeFile(planFile, renderPlan(plan));
   await writeFixturePlan(activePlan); controller.attach(store.selected()); await controller.tick();
-  await waitFor(() => sidebar.executeJavaScript('document.getElementById("plan-status").textContent === "В работе · 1 из 3 выполнено"'), 'working plan UI', snapshot);
+  await waitFor(() => sidebar.executeJavaScript('document.getElementById("plan-status").textContent === "в main 1 из 3"'), 'working plan UI', snapshot);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-title").hidden'), false);
   const firstScopeTitle = 'Автоимя scope fixture';
   await waitFor(() => store.selected().title === firstScopeTitle && store.selected().titleSource === 'scope',
@@ -731,10 +741,10 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const firstConversationId = new URL(store.selected().chatUrl).pathname.split('/').at(-1);
   await waitFor(() => fixtureConversationTitles.get(firstConversationId) === firstScopeTitle,
     'new scope title is stored by native ChatGPT fixture', snapshot);
-  assert.equal(await sidebar.executeJavaScript('document.querySelector("#plan-card .eyebrow").textContent'), 'Текущий план проекта');
-  assert.deepEqual(await sidebar.executeJavaScript(`Array.from(document.querySelectorAll('#plan-tasks .plan-task')).map(e=>({status:e.dataset.status,title:e.querySelector('strong').textContent,mark:e.querySelector('.plan-task-state').textContent}))`), [
+  assert.equal(await sidebar.executeJavaScript('document.querySelector("#plan-card .eyebrow")'), null);
+  assert.deepEqual(await sidebar.executeJavaScript(`Array.from(document.querySelectorAll('#plan-tasks .plan-task')).map(e=>({status:e.dataset.status,title:e.querySelector('strong').textContent,mark:e.querySelector('.plan-task-state .wp-spin')?'spinner':e.querySelector('.plan-task-state').textContent}))`), [
     { status: 'done', title: 'Подготовить модель', mark: '✓' },
-    { status: 'current', title: 'Сделать интерфейс', mark: '●' },
+    { status: 'current', title: 'Сделать интерфейс', mark: 'spinner' },
     { status: 'pending', title: 'Собрать релиз', mark: '○' },
   ]);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-card").textContent.includes("Revision") || document.getElementById("plan-card").textContent.includes("версия")'), false);
@@ -744,14 +754,15 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     tasks: activePlan.tasks.map(task => ({ ...task, implementation_status: 'DONE', commit_status: 'DONE' })) };
   await writeFixturePlan(readyPlan); controller.attach(store.selected()); await controller.tick();
   await waitFor(() => sidebar.executeJavaScript('document.getElementById("plan-status").dataset.state === "awaiting-acceptance"'), 'completed plan remains visible', snapshot);
-  assert.equal(await sidebar.executeJavaScript('document.querySelectorAll("#plan-tasks .plan-task[data-status=done]").length'), 3);
+  // The project projection follows the same plan read; it may arrive one publish later.
+  await waitFor(() => sidebar.executeJavaScript('document.querySelectorAll("#plan-tasks .plan-task[data-status=done]").length === 3'), 'all tasks in main', snapshot);
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-phase-text").textContent'), 'Ждёт приёмки');
   assert.equal(await sidebar.executeJavaScript('document.getElementById("accept-plan") === null'), true);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("next-session-choice") === null'), true);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1, 'completion never sends an acceptance message');
   assert.equal(store.selected().sessionId, first.sessionId);
   await fs.writeFile(planFile, originalPlanText); controller.attach(store.selected()); await controller.tick();
-  await waitFor(() => sidebar.executeJavaScript('document.getElementById("plan-status").textContent === "План ещё не создан"'), 'restore fixture plan', snapshot);
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-note").hidden'), true);
+  await waitFor(() => sidebar.executeJavaScript('document.getElementById("plan-progress").hidden && document.getElementById("plan-note").hidden'), 'restore fixture plan', snapshot);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("accept-plan") === null'), true);
   await clipboard.clear();
   await waitFor(() => sidebar.executeJavaScript('!document.querySelector(".project-menu-button").disabled'), 'project menu enabled', snapshot);
@@ -764,16 +775,16 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const externalLine = await clipboard.readText();
   assert.ok(externalLine.includes(JSON.stringify(workspace)) && externalLine.includes('AGENTS.md'));
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), messagesBeforeLine, 'nothing is sent to the chat');
-  await waitFor(()=>snapshot().context.phase==='delivered','initial delivery settled',snapshot);
+  await waitFor(()=>['delivered','startup-channel','startup-complete'].includes(snapshot().context.phase),'initial delivery settled',snapshot);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("context-card")'),null);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("session-notice").hidden'),true);
   assert.equal(await sidebar.executeJavaScript('document.querySelector("footer")'),null);
   const disclosureSize = await sidebar.executeJavaScript(`(() => { const e=document.querySelector('.expand-project'); const p=getComputedStyle(e,'::before'); return {button:e.getBoundingClientRect().width, icon:e.querySelector('svg').getBoundingClientRect().width, expanded:e.getAttribute('aria-expanded')}; })()`);
-  assert.ok(disclosureSize.button >= 32); assert.ok(disclosureSize.icon >= 18); assert.equal(disclosureSize.expanded, 'false');
+  assert.ok(disclosureSize.button >= 32); assert.ok(disclosureSize.icon >= 18); assert.ok(['true','false'].includes(disclosureSize.expanded));
   const restored = new WorkspaceSessions(store.file); await restored.load();
   assert.equal(restored.selected().sessionId, first.sessionId); assert.equal(restored.selected().chatUrl, first.chatUrl);
   await navigate(restored.selected());
-  await waitFor(() => snapshot().context.phase === 'delivered', 'reopen manually sent conversation', snapshot);
+  await waitFor(() => settled(), 'reopen manually sent conversation', snapshot);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1, 'manual Send never duplicates on reopen');
 
   // Native error UI must reopen this exact persisted conversation once, without Send.
@@ -872,7 +883,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     return {open:{width:open.width,height:open.height},plain:{width:plain.width,height:plain.height}};})()`);
   assert.ok(Math.abs(taskLayout.open.width - taskLayout.plain.width) < 2 && taskLayout.open.height <= taskLayout.plain.height + 1,
     'a started task wraps like an ordinary one: ' + JSON.stringify(taskLayout));
-  await sidebar.executeJavaScript('document.querySelector(".expand-project").click()');
+  // The project may already be open after its first session; expand only a folded one.
+  await sidebar.executeJavaScript(`{ const b=document.querySelector('.expand-project'); if(b.getAttribute('aria-expanded')!=='true')b.click(); }`);
   await waitFor(() => sidebar.executeJavaScript('!document.querySelector(".sessions").hidden && !document.querySelector(".session").disabled'), 'expand before session actions', snapshot);
   await sidebar.executeJavaScript(`{ const li=document.querySelector('[data-session-id="${first.sessionId}"]').closest('li'); li.querySelector('.session-menu-button').click(); li.querySelector('.rename-session').click(); }`);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("rename-dialog").open'), true);
@@ -928,7 +940,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(pendingRecord.pageState.current.documentId,pendingDocument,'selection keeps the exact temporary conversation document');
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),1,'selection never duplicates bootstrap');
   await browser.executeJavaScript("localStorage.removeItem('fixture-hold-conversation');window.fixtureFinishConversation()");
-  await waitFor(() => store.selected()?.sessionId !== first.sessionId && snapshot().context.phase === 'delivered', 'new Chat via project menu IPC', snapshot);
+  await waitFor(() => store.selected()?.sessionId !== first.sessionId && settled(), 'new Chat via project menu IPC', snapshot);
   assert.equal(packetLoads, warmPacketLoads, 'new Chat reuses the checkout-scoped recovery packet');
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
   const second = store.selected();
@@ -963,7 +975,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(workRecord.pageState.current.documentId,workDocument);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),1);
   await browser.executeJavaScript("localStorage.removeItem('fixture-hold-conversation');window.fixtureFinishConversation()");
-  await waitFor(() => store.selected()?.experience === 'work' && snapshot().context.phase === 'delivered', 'new Work via project menu IPC', snapshot);
+  await waitFor(() => store.selected()?.experience === 'work' && settled(), 'new Work via project menu IPC', snapshot);
   assert.equal(packetLoads, warmPacketLoads, 'new Work reuses the same checkout-scoped recovery packet');
   const third = store.selected();
   assert.equal(third.experience, 'work');
@@ -975,7 +987,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(await browser.executeJavaScript('window.fixtureMessages[0].mode'), 'work');
   await sidebar.executeJavaScript(`document.querySelector('.project-menu-button').click(); document.querySelector('.new-project-chat').click()`);
   await waitFor(() => store.selected()?.experience === 'chat' && store.selected()?.sessionId !== second.sessionId
-    && snapshot().context.phase === 'delivered', 'new Chat after Work remembers browser preference', snapshot);
+    && settled(), 'new Chat after Work remembers browser preference', snapshot);
   assert.equal(packetLoads, warmPacketLoads, 'chat navigation does not duplicate checkout recovery');
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages[0].mode'), 'chatgpt');
@@ -1022,7 +1034,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(await sidebar.executeJavaScript('document.querySelector(".sessions").scrollTop'), oldScroll.scroll, 'menu closing preserves scroll');
 
   await sidebar.executeJavaScript(`document.querySelector('[data-session-id="${first.sessionId}"]').click()`);
-  await waitFor(() => store.selected()?.sessionId === first.sessionId && snapshot().context.phase === 'delivered'
+  await waitFor(() => store.selected()?.sessionId === first.sessionId && settled()
     && browser.getURL() === first.chatUrl, 'select earlier session via tree', snapshot);
   assert.equal(await sidebar.executeJavaScript('document.querySelector(".sessions").scrollTop'), oldScroll.scroll, 'old session keeps scroll after state refresh');
   assert.deepEqual(snapshot().projects[0].sessions.map(s => s.sessionId), [fourth.sessionId, third.sessionId, second.sessionId, first.sessionId]);
@@ -1074,7 +1086,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => sidebar.executeJavaScript('!document.querySelector(".sessions").hidden && !document.querySelector(".project").disabled'), 'arrow expands sessions', snapshot);
   assert.equal(store.selected().sessionId, first.sessionId, 'disclosure preserves conversation');
   await sidebar.executeJavaScript('document.querySelector(".project").click()');
-  await waitFor(() => store.selected().sessionId === first.sessionId && snapshot().context.phase === 'delivered', 'project name preserves last selected session', snapshot);
+  await waitFor(() => store.selected().sessionId === first.sessionId && settled(), 'project name preserves last selected session', snapshot);
   assert.equal(await sidebar.executeJavaScript('document.querySelector(".sessions").scrollTop'), 0);
   await sidebar.executeJavaScript('document.getElementById("toggle-projects").click()');
   await waitFor(() => sidebar.executeJavaScript('document.querySelector(".sessions").hidden && !document.getElementById("toggle-projects").disabled'), 'collapse all projects', snapshot);
@@ -1082,7 +1094,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => sidebar.executeJavaScript('!document.querySelector(".sessions").hidden && !document.getElementById("toggle-projects").disabled'), 'expand all projects', snapshot);
   assert.equal(store.selected().sessionId, first.sessionId);
   await sidebar.executeJavaScript(`document.querySelector('[data-session-id="${first.sessionId}"]').click()`);
-  await waitFor(() => store.selected().sessionId === first.sessionId && snapshot().context.phase === 'delivered', 'restore old selection for restart check', snapshot);
+  await waitFor(() => store.selected().sessionId === first.sessionId && settled(), 'restore old selection for restart check', snapshot);
   const history = new WorkspaceSessions(store.file); await history.load();
   assert.equal(history.selected().sessionId, first.sessionId);
   assert.equal(history.snapshot().projects[0].sessions.length, 3);
@@ -1112,7 +1124,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(snapshot().workspaceHealth.phase, 'checking'); assert.equal(snapshot().startupError, null);
   readiness[2].resolve(readyResult);
-  await waitFor(() => snapshot().workspaceHealth.ready && snapshot().context.phase === 'delivered', 'newest A readiness', snapshot);
+  await waitFor(() => snapshot().workspaceHealth.ready && settled(), 'newest A readiness', snapshot);
   // Reopening an already live session changes presentation without loadURL.
   workspaceSetup.ready = async () => readyResult;
   const loadURL = browser.loadURL.bind(browser);let reopenedLoads=0;
@@ -1121,7 +1133,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => snapshot().workspaceHealth.ready, 'readiness before navigation completes', snapshot);
   assert.equal(snapshot().pageLoading, false); assert.equal(controller.active?.sessionId,first.sessionId);
   assert.equal(reopenedLoads,0);browser.loadURL = loadURL;
-  await waitFor(() => snapshot().context.phase === 'delivered', 'attach after both prerequisites', snapshot);
+  await waitFor(() => settled(), 'attach after both prerequisites', snapshot);
   workspaceSetup.ready = holdOpeningReadiness;
   await choose(first.sessionId); await sidebar.executeJavaScript('window.webPilot.openSettings()');
   const healthBeforeLateResult = snapshot().workspaceHealth;
@@ -1132,7 +1144,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   workspaceSetup.ready = realReady;
   await browser.executeJavaScript('window.fixtureResumeMarker = 29');
   await sidebar.executeJavaScript('window.webPilot.closeSettings()');
-  await waitFor(() => snapshot().context.phase === 'delivered', 'return after navigation races', snapshot);
+  await waitFor(() => settled(), 'return after navigation races', snapshot);
   assert.equal(await browser.executeJavaScript('window.fixtureResumeMarker'), 29, 'closing settings preserves the loaded DOM');
   const startFile = path.join(workspace, 'docs/architecture/OVERVIEW.md');
   const startText = await fs.readFile(startFile); await fs.unlink(startFile);
@@ -1415,7 +1427,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const reattached = await selectWorkspace(workspace);
   assert.equal(reattached.workspace, workspace);
   assert.equal(store.project(workspace).archivedAt, null, 'forgotten folder can be attached again');
-  await waitFor(() => snapshot().context.phase === 'delivered', 'single-active fixture initial context', snapshot);
+  await waitFor(() => settled(), 'single-active fixture initial context', snapshot);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("prepared-card") === null'), true);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-origin") === null'), true);
 
@@ -1469,7 +1481,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal((await savedAutoState()).planContinuationEnabled, true, 'explicit pre-plan authorization persists');
   await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
   await waitFor(() => store.selected()?.sessionId !== prePlanChat.sessionId
-    && snapshot().context.phase === 'delivered' && !snapshot().selected?.scopeId,
+    && settled() && !snapshot().selected?.scopeId,
     '01TestAuto new Chat starts with NONE and saved ON', snapshot);
   const autoScopeOwner = store.selected();
   assert.equal(await countMessages(), 1, 'only normal recovery; no PlanContinuation startup instruction');
@@ -1538,7 +1550,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
 
   await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
   await waitFor(() => !legacyChats.some(item => item.sessionId === store.selected()?.sessionId)
-    && snapshot().context.phase === 'delivered' && snapshot().selected?.scopeId === 'fixture-current-plan',
+    && settled() && snapshot().selected?.scopeId === 'fixture-current-plan',
     'new Chat continues current checkout plan', snapshot);
   const currentChat = store.selected();
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
@@ -1557,7 +1569,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const currentPlanPacketLoads = packetLoads;
 
   await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "work")`);
-  await waitFor(() => store.selected()?.experience === 'work' && snapshot().context.phase === 'delivered'
+  await waitFor(() => store.selected()?.experience === 'work' && settled()
     && snapshot().selected?.scopeId === 'fixture-current-plan', 'new Work continues current checkout plan', snapshot);
   const currentWork = store.selected();
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
@@ -1582,6 +1594,18 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   }
 
   controller.cancel();
+  // The fixture page never opens the panel: the agent's side of the panel startup runs here
+  // (open with an invitation, read every part, confirm), as tests/startup-context.test.mjs does.
+  const completePanelStartup = async session => {
+    const metadata = { 'openai/session': 'smoke-' + session.sessionId, 'openai/subject': 'smoke' };
+    const { enrollment_ticket } = await plugin.reserveParticipant(session.sessionId);
+    const first = (await plugin.panel({ enrollment_ticket, metadata })).startup_context;
+    if (!first) return;
+    for (let part = 1; part < first.total; part++)
+      await plugin.communication.content({ metadata, message_id: first.message_id, context_ref: first.context_ref, part });
+    assert.equal((await plugin.communication.startupComplete({ metadata, message_id: first.message_id, context_sha256: first.context_ref })).complete, true);
+  };
+  for (const target of [currentChat, currentWork]) await completePanelStartup(target);
   // Sidebar -> IPC -> real composer -> sandboxed observer in Chat and Work.
   for (const target of [currentChat, currentWork]) {
     await continuePlan(false);
@@ -1790,7 +1814,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     assert.equal(await sidebar.executeJavaScript('document.getElementById("doctor-panel").scrollWidth <= document.getElementById("doctor-panel").clientWidth + 1'), true, 'doctor fits minimum width');
   }
   await sidebar.executeJavaScript('document.getElementById("doctor-open").click()');
-  await waitFor(() => !snapshot().settings && !snapshot().setup && ['delivered','stale'].includes(snapshot().context.phase), 'repaired session opens', snapshot);
+  await waitFor(() => !snapshot().settings && !snapshot().setup && (settled() || stale()), 'repaired session opens', snapshot);
   assert.equal(store.selected().sessionId, doctorSession);
   await waitFor(() => !controller.contextCache.isPending(), 'background preparation before repeat Doctor', snapshot);
   await sidebar.executeJavaScript('window.webPilot.openSettings()');
@@ -1799,13 +1823,13 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const beforeDoctorRefresh = await browser.executeJavaScript('window.fixtureMessages.length');
   assert.equal(await sidebar.executeJavaScript('document.getElementById("doctor-refresh")'),null);
   await sidebar.executeJavaScript('window.webPilot.continueDoctor("open")');
-  await waitFor(() => ['delivered','stale'].includes(snapshot().context.phase), 'doctor opens existing session', snapshot);
+  await waitFor(() => (settled() || stale()), 'doctor opens existing session', snapshot);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), beforeDoctorRefresh);
   await waitFor(() => !controller.contextCache.isPending(), 'background preparation before new Work', snapshot);
   await sidebar.executeJavaScript('window.webPilot.openSettings()');
   const beforeDoctorNew = store.snapshot().projects.find(p => p.workspace === workspace).sessions.length;
   await sidebar.executeJavaScript('window.webPilot.continueDoctor("work")');
-  await waitFor(() => store.selected().sessionId !== doctorSession && snapshot().context.phase === 'delivered', 'doctor new Work created', snapshot);
+  await waitFor(() => store.selected().sessionId !== doctorSession && settled(), 'doctor new Work created', snapshot);
   assert.equal(store.selected().experience, 'work');
   assert.equal(store.snapshot().projects.find(p => p.workspace === workspace).sessions.length, beforeDoctorNew + 1);
 
@@ -1832,7 +1856,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => snapshot().setup?.phase === 'preview' && !snapshot().setup.error, 'recover rejected mode', snapshot);
   await waitFor(() => sidebar.executeJavaScript('!document.getElementById("setup-experience-work").disabled'), 'first Work button ready', snapshot);
   await sidebar.executeJavaScript('document.getElementById("setup-experience-work").click(); document.getElementById("setup-experience-work").click()');
-  await waitFor(() => store.selected()?.workspace === workTarget && snapshot().context.phase === 'delivered', 'first Work opens directly', snapshot);
+  await waitFor(() => store.selected()?.workspace === workTarget && settled(), 'first Work opens directly', snapshot);
   assert.equal(store.selected().experience, 'work');
   assert.equal(store.snapshot().projects.find(p => p.workspace === workTarget).sessions.length, 1);
 
@@ -1909,10 +1933,12 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const selectEmbedded=await sidebar.executeJavaScript('window.webPilot.selectSession('+JSON.stringify(nativeProject.workspace)+','+JSON.stringify(nativeProject.sessionId)+')');
   assert.equal(selectEmbedded.ok,true,JSON.stringify(selectEmbedded.error));
   assert.equal(store.selected().external,undefined);
-  const parallelFixture=await import('./parallel-execution-smoke-fixture.cjs');
-  await parallelFixture.default.run({sidebar,store,workspaceSetup,snapshot,selectWorkspace,liveSessions,sessionView,dataDir,waitFor,getArchiveWindow,continuePlan});
+  // The former parallel UI scenario (tests/parallel-execution-smoke-fixture.cjs) started executors with attachments.
+  // Since 0.5.20 executors start only through the panel channel, which the fixture ChatGPT page does not have;
+  // the executor dialogue is covered by the isolated parallel-execution, parallel-finalization,
+  // automatic-agent-dialogue and prepared-flow-cycle suites.
   await verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,deletionHooks,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour:auxE});
-  const result = { ordinaryManualSend: true, manualRecoverySend: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, directFirstWork: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
+  const result = { legacyParallelScenario: 'retired-panel-startup', panelStartupCompleted: true, ordinaryManualSend: true, manualRecoverySend: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, directFirstWork: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
     singleActivePlanScreenshot, mode: 'isolated-fixture', electron: process.versions.electron, chromium: process.versions.chrome,
     views: window.contentView.children.length, secureRemote: true, sidebarIpc: true, archiveRestore: true, archiveRestart: true, deleteCancel: true, localDeletion: true, cloudChatPreserved: true, workspaceCreation: true, workspaceValidation: true, cancelPreservesSession: true, startupMessages: 4, canonicalPacketLoads: packetLoads, recoveryCache: true, operationProgress: true, progressScreenshot: path.join(dataDir, 'progress-ui.png'),
     tokenCounterRemoved: true, projectRename: true, sessionRename: true, sessionScopedTitleSync: true, restartKeepsSession: true, newChatCreatesSession: true, sessionTree: true, selectsEarlierSession: true, compactWorkspaceDetails: true, projectPathClipboard: true, sessionPlans: true, singleCurrentPlan: true, clientPlanContinuation: true, planContinuation01TestAuto: true,

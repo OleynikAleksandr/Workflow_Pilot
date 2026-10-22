@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 891,
+  "plan_revision": 893,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -332,8 +332,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "T005",
@@ -350,7 +350,9 @@
         "package.json",
         "package-lock.json",
         "tests/parallel-execution-smoke-fixture.cjs",
-        "tests/parallel-finalization.test.mjs"
+        "tests/parallel-finalization.test.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/index.html"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -369,7 +371,16 @@
         "electron-smoke актуализирован под новый интерфейс и проходит; версия приложения 0.5.25 и COMMUNICATION_BUILD обновлены."
       ],
       "expected_commit_message": "test: Проверить ход работ сквозным сценарием",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tests/electron-smoke.mjs",
+        "tests/work-progress-scenario.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -524,7 +535,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 891
+Revision: 893
 
 ## Цель
 
@@ -568,10 +579,10 @@ Revision: 891
   - Файлы: src/frontend/plugin/index.html, src/frontend/plugin/panel.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/contracts/palette.mjs, scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, tests/panel-dialogue-view.test.mjs, tests/panel-resource-upgrade.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002, T003
-- [TODO] T005: Проверить ход работ сквозным сценарием — Ожидает
-  - Git Commit: [PENDING] test: Проверить ход работ сквозным сценарием
+- [DONE] T005: Проверить ход работ сквозным сценарием — Завершено
+  - Git Commit: [DONE] test: Проверить ход работ сквозным сценарием
   - Reference: work-progress-ui / T005 / implementation
-  - Файлы: tests/work-progress-scenario.test.mjs, tests/electron-smoke.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-finalization.test.mjs
+  - Файлы: tests/work-progress-scenario.test.mjs, tests/electron-smoke.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-finalization.test.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/index.html
   - Параллельность: исключительное выполнение
   - Зависимости: T003, T004
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
