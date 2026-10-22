@@ -41,8 +41,15 @@ export function validateStaged(root) {
 export function preCommit(root) {
   const t = validateStaged(root);
   const before = snapshot(root, t.selected);
-  const results = [];
-  for (const test of t.checks) {
+  const results = [], runStartedAt = Date.now();
+  // Machine-readable progress for observers of long commit checks; cleared on success and failure.
+  const progress = (test, index) => {
+    t.verification_progress = test ? { version: 1, task_id: t.task_id ?? null, check_id: test.id, index, total: t.checks.length,
+      check_started_at_ms: Date.now(), run_started_at_ms: runStartedAt } : null;
+    saveJournal(root, t);
+  };
+  for (const [position, test] of t.checks.entries()) {
+    progress(test, position + 1);
     const start = Date.now();
     const cwd = !test.cwd || test.cwd === '.' ? root : safePath(root, test.cwd);
     const result = run(test.executable, test.args, cwd, { allowFailure: true, timeout: test.timeout_ms });
@@ -50,8 +57,10 @@ export function preCommit(root) {
       elapsed_ms: Date.now() - start, output: String(result.stderr || result.stdout || result.error?.message || '').slice(-1200) };
     results.push(record);
     atomic(localPath(root, 'last-verification.json'), json({ transaction_id: t.id, candidate_tree: t.candidate_tree, verification_scope: 'worktree', excluded_changes: t.excluded_changes ?? [], commit: null, checks: results }));
+    if (record.status !== 'PASSED') progress(null);
     check(record.status === 'PASSED', 'CHECK_FAILED', 'Не пройдена проверка ' + test.id, { result: record });
   }
+  t.verification_progress = null;
   const after = snapshot(root, t.selected);
   check(after.fingerprint === before.fingerprint, 'CHECK_MODIFIED_CANDIDATE', 'Проверка изменила файлы или index. Подготовьте новый кандидат повтором commit.');
   validateStaged(root);
