@@ -70,3 +70,17 @@ test('working UI separates report, acceptance and integration and renders addres
   assert.doesNotMatch(ui.$('roster').textContent,/SDK:.*не подтверждён/);
   ui.unbound();assert.equal(ui.$('roster').textContent,'');assert.equal(ui.$('roster-section').hidden,true);
 });
+
+test('panel displays a completed startup receipt instead of the historical pending delivery',async t=>{
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));
+  t.after(()=>dom.window.close());const ui=mountPanel({document:dom.window.document});ui.mode('workflow');
+  const startup={message_id:'startup-m',kind:'startup-context',sender_role:'backend',recipient_id:'session',
+    delivery:'pending',read:true,parts_read:[0,1,2],total_parts:3,startup_complete:true};
+  ui.snapshot({mode:'workflow',role:'S',participant_id:'session',permission:{phase:'not-started'},stopped:true,
+    startup:{delivery:'pending',complete:true,read:true,parts_read:3,total_parts:3},messages:[startup]});
+  assert.match(ui.$('permission').textContent,/Контекст восстановлен/);
+  assert.match(ui.$('last').textContent,/Контекст подтверждён/);
+  assert.doesNotMatch(ui.$('last').textContent,/в очереди/);
+  assert.match(ui.$('messages').textContent,/Контекст подтверждён/);
+  assert.match(ui.$('queue').textContent,/0 непрочитанных · 0 ожидают/);
+});

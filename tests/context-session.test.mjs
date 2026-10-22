@@ -280,15 +280,25 @@ test('a foreign chat opened before or during preparation is never used for Send'
 });
 
 test('changed plan after delivery cannot trigger another recovery through retry',async()=>{
-  const f=controllerFixture();await f.controller.tick();f.info.planRevision=8;await f.controller.tick();
+  const f=controllerFixture();f.runtime.startupProgress=()=>({complete:false});await f.controller.tick();f.info.planRevision=8;await f.controller.tick();
   assert.equal(f.controller.state.phase,'stale');assert.equal(f.sends(),1);
   f.runtime.loadContext=async()=>{const p=packet();p.facts.plan_revision=8;return p;};
   await f.controller.retry();await f.controller.tick();assert.equal(f.controller.state.phase,'stale');assert.equal(f.sends(),1);
 });
 
+test('confirmed panel startup stays complete after another task changes the plan without a second Send',async()=>{
+  const f=controllerFixture();await f.controller.tick();assert.equal(f.sends(),1);
+  f.info.planRevision=8;await f.controller.tick();
+  assert.equal(f.controller.state.phase,'delivered');assert.equal(f.controller.state.startup.complete,true);
+  assert.equal(f.controller.state.startup.snapshot_stale,true);
+  assert.equal(f.sends(),1);
+  await f.controller.retry();await f.controller.tick();
+  assert.equal(f.controller.state.phase,'delivered');assert.equal(f.sends(),1);
+});
+
 test('retry during a background read cannot rearm a delivered session',async()=>{
   for (const cancelled of [false,true]) {
-    const f=controllerFixture();await f.controller.tick();f.info.planRevision=8;
+    const f=controllerFixture();f.runtime.startupProgress=()=>({complete:false});await f.controller.tick();f.info.planRevision=8;
     const inspect=f.store.inspect;let release;
     f.store.inspect=()=>new Promise(resolve=>{release=()=>{f.store.inspect=inspect;resolve(inspect());};});
     const reading=f.controller.tick();await new Promise(resolve=>setImmediate(resolve));
@@ -478,7 +488,7 @@ test('a readiness result for an earlier A generation cannot send after A-B-A', a
 });
 
 test('a signal arriving during an active controller pass is rerun once without parallel inspection', async () => {
-  const f = controllerFixture();
+  const f = controllerFixture();f.runtime.startupProgress=()=>({complete:false});
   await f.controller.tick();
   let release, calls = 0, active = 0, maxActive = 0;
   const originalInspect = f.store.inspect;
@@ -779,7 +789,7 @@ test('warm failure is visible and bounded; explicit retry restarts it, cancellat
 });
 
 test('known input change marks delivered recovery stale without another Send or warm', async () => {
-  const f = controllerFixture(); await f.controller.tick(); await f.controller.tick();
+  const f = controllerFixture(); f.runtime.startupProgress=()=>({complete:false});await f.controller.tick(); await f.controller.tick();
   let fingerprints = 0;
   f.controller.contextCache = { isCurrent: async () => { fingerprints++; return false; }, warm: () => assert.fail('delivered chat must not warm') };
   f.controller.projectChanged(); await settleEvents();

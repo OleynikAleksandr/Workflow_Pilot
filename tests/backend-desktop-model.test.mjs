@@ -6,6 +6,23 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {BackendConnection} from '../src/frontend/client/connection.mjs';
 import {WorkspaceSessions} from '../src/control/sessions/workspace-session.mjs';
+import {startupContextState} from '../src/contracts/startup-view.mjs';
+
+test('Desktop/HTTP startup projection uses durable completion over pending and exposes terminal errors',()=>{
+  const done=startupContextState({phase:'stale',error:{code:'CONTEXT_CHANGED'}},
+    {delivery_mode:'model-pull',delivery:'pending',complete:true,read:true,parts_read:3,total_parts:3});
+  assert.equal(done.phase,'startup-complete');assert.equal(done.startup.complete,true);
+  assert.equal(done.startup.snapshot_stale,true);assert.equal(done.error,null);
+  const stale=startupContextState({phase:'stale'},
+    {delivery_mode:'model-pull',delivery:'pending',read:false,parts_read:0,total_parts:3});
+  assert.equal(stale.phase,'startup-failed');assert.equal(stale.startup.error.code,'PLUGIN_COMMUNICATION_STALE_MESSAGE');
+  const interrupted=startupContextState({phase:'error',error:{code:'STORE_BLOCKED',message:'Запись невозможна'}},
+    {delivery_mode:'model-pull',delivery:'pending',read:true,parts_read:1,total_parts:3});
+  assert.equal(interrupted.phase,'startup-failed');assert.equal(interrupted.error.code,'STORE_BLOCKED');
+  const old=startupContextState({phase:'startup-channel'},
+    {delivery_mode:'sdk-notification',delivery:'unknown',complete:false});
+  assert.equal(old.phase,'startup-channel');assert.equal(old.startup.delivery,'unknown');
+});
 
 const settle=(ms=25)=>new Promise(resolve=>setTimeout(resolve,ms));
 async function until(predicate,label,timeoutMs=15000) {

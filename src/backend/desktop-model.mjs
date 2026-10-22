@@ -7,6 +7,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
+import {startupContextState} from '../contracts/startup-view.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -312,7 +313,7 @@ function snapshot() {
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
       : saved?.attempt?.contextTransport==='panel'&&saved.attempt.state==='sent'
-        ? {...controller?.state,startup:workflow.startupProgress(saved.sessionId,saved.attempt.requestId),phase:'startup-channel'}
+        ? startupContextState(controller?.state,workflow.startupProgress(saved.sessionId,saved.attempt.requestId))
         : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
     contextPreparation: { busy: selected ? contextCache.isBuilding(selected.workspace) : false },
     runtimeFolder, platform: process.platform,

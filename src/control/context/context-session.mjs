@@ -366,16 +366,27 @@ export class ContextSession {
           this.emit({ phase: 'send-unknown', projectInfo: info, messageSent: false, error: null }); return;
         }
         if(attempt.contextTransport==='panel'){
+          const startup=this.runtime.startupProgress?.(project.sessionId,attempt.requestId)??null;
+          const snapshotStale=this.inputStale||!packetMatchesProject(attempt.packet,project);
+          if(startup?.complete){
+            if(this.inputsChanged&&this.contextCache){
+              this.inputsChanged=false;this.inputStale=!await this.packetIsCurrent(attempt.packet,project);
+              if(!this.current(generation))return;
+            }
+            this.emit({phase:'delivered',projectInfo:info,messageSent:true,error:null,
+              startup:{...startup,snapshot_stale:snapshotStale||this.inputStale}});return;
+          }
           if(this.inputsChanged&&this.contextCache){
             this.inputsChanged=false;
             this.inputStale=!await this.packetIsCurrent(attempt.packet,project);
             if(!this.current(generation))return;
           }
-          if(this.inputStale||!packetMatchesProject(attempt.packet,project)){
+          const issuedDiscussion=startup?.delivery_mode==='model-pull'&&startup.read&&startup.parts_read>0
+            &&project.role!=='executor'&&(project.role!=='orchestrator'||project.planExecution?.execution_origin_session_id!==project.sessionId);
+          if((this.inputStale||!packetMatchesProject(attempt.packet,project))&&!issuedDiscussion){
             this.emit({phase:'stale',projectInfo:info,messageSent:true,error:null});return;
           }
-          const startup=this.runtime.startupProgress?.(project.sessionId,attempt.requestId)??null;
-          this.emit({phase:startup?.complete?'delivered':'startup-channel',projectInfo:info,messageSent:true,error:null,startup});return;
+          this.emit({phase:'startup-channel',projectInfo:info,messageSent:true,error:null,startup});return;
         }
         if (startedThroughMcp(attempt)) {
           // Nothing is sent into a bound chat on its own; «Обновить контекст» delivers the full packet.

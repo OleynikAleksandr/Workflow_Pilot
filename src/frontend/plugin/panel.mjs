@@ -6,6 +6,8 @@ const label=message=>[sender(message)+' → '+(message.sender_role==='E'?'Орк
   message.task_id,message.attempt?'попытка '+message.attempt:null].filter(Boolean).join(' · ');
 const handled=message=>message.dialogue_version===1?' · '+(message.yielded?'обработано':'обработка не подтверждена')+
   ' · '+(message.reply_observed?'ход завершён':'завершение хода не подтверждено'):'';
+const deliveryLabel=message=>message.kind==='startup-context'&&message.startup_complete?'Контекст подтверждён'
+  :message.superseded?'Устарело':delivery[message.delivery]??'Неизвестная стадия';
 // Rendering only; participant authorization and durable state belong to Control.
 export function mountPanel({document}) {
   const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
@@ -74,12 +76,12 @@ export function mountPanel({document}) {
         $('stop').hidden=!value.permission?.scope_id;
       }else $('stop').hidden=false;
       const incoming=value.messages.filter(m=>m.recipient_id===value.participant_id&&!m.superseded);
-      text('queue',`${incoming.filter(m=>!m.read).length} непрочитанных · ${incoming.filter(m=>m.delivery==='pending'&&!m.read).length} ожидают уведомления`);
+      text('queue',`${incoming.filter(m=>!m.read&&!m.startup_complete).length} непрочитанных · ${incoming.filter(m=>m.delivery==='pending'&&!m.read&&!m.startup_complete).length} ожидают уведомления`);
       const lastMessage=value.messages.at(-1);
-      text('last',lastMessage?`${workflow?label(lastMessage)+'\n':''}${lastMessage.kind} · ${lastMessage.superseded?'Устарело':delivery[lastMessage.delivery]} · ${lastMessage.read?'прочитано':'чтение не подтверждено'}${handled(lastMessage)}\n${lastMessage.preview??lastMessage.body}`:'Сообщений пока нет.');
+      text('last',lastMessage?`${workflow?label(lastMessage)+'\n':''}${lastMessage.kind} · ${deliveryLabel(lastMessage)} · ${lastMessage.read?'прочитано':'чтение не подтверждено'}${handled(lastMessage)}\n${lastMessage.preview??lastMessage.body}`:'Сообщений пока нет.');
       $('messages').replaceChildren();
       for(const message of value.messages.slice(-30)){
-        const li=document.createElement('li');li.textContent=`${workflow?label(message)+' · ':''}${message.kind} · ${message.superseded?'Устарело':delivery[message.delivery]} · ${message.read?'прочитано':'не прочитано'}${handled(message)} · ${message.message_id}`;
+        const li=document.createElement('li');li.textContent=`${workflow?label(message)+' · ':''}${message.kind} · ${deliveryLabel(message)} · ${message.read?'прочитано':'не прочитано'}${handled(message)} · ${message.message_id}`;
         if(message.preview){const body=document.createElement('p');body.textContent=message.preview;li.append(body);}
         if(message.in_reply_to){const correlation=document.createElement('span');correlation.textContent='В ответ на '+message.in_reply_to;li.append(correlation);}
         $('messages').append(li);

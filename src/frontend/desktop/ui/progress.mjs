@@ -23,9 +23,9 @@ const phaseLabels = {
 };
 const phaseLabel = context => phaseLabels[context?.phase];
 export function operationLabel(state = {}, action = null) {
-  if(state.context?.phase==='startup-channel'){
+  if(state.context?.startup||['startup-channel','startup-complete','startup-failed'].includes(state.context?.phase)){
     const view=startupView(state.context.startup);
-    return ['startup-ready','startup-stale','startup-uncertain'].includes(view.phase)?null:view.title;
+    return ['startup-ready','startup-stale','startup-failed','startup-uncertain'].includes(view.phase)?null:view.title;
   }
   if(state.execution?.phase==='preparing')return 'Подготавливаем worktree и чат исполнителя';
   if(state.execution?.phase==='merging')return 'Проверяем и сливаем результат в main';

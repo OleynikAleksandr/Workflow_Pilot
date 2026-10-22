@@ -7,7 +7,7 @@ import {randomUUID} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
-import {startupView} from '../src/contracts/startup-view.mjs';
+import {startupView,startupContextState} from '../src/contracts/startup-view.mjs';
 import {PluginProjects} from '../src/control/plugin/service.mjs';
 import {localParticipantTarget} from '../src/control/plugin/enrollment.mjs';
 const metadata={'openai/session':'startup-fixture','openai/subject':'local-test'};
@@ -171,6 +171,19 @@ test('UI separates bootstrap, reading, confirmation and uncertain delivery',()=>
   assert.match(startupView({read:true,parts_read:1,total_parts:3}).detail,/1 из 3/);
   assert.equal(startupView({complete:true}).phase,'startup-ready');
   assert.equal(startupView({delivery:'unknown'}).phase,'startup-uncertain');
+  assert.equal(startupView({delivery:'rejected'}).phase,'startup-failed');
+  assert.equal(startupView({superseded:true}).phase,'startup-stale');
+  assert.equal(startupView({read:true,parts_read:3,total_parts:3,delivery:'pending',complete:true}).phase,'startup-ready');
+  assert.match(startupView({complete:true,snapshot_stale:true}).detail,/актуальный контекст/);
+  const restored=startupContextState({phase:'stale',error:{code:'old'}},{delivery:'pending',read:true,parts_read:3,total_parts:3,complete:true});
+  assert.equal(restored.phase,'startup-complete');assert.equal(restored.error,null);
+  assert.equal(restored.startup.snapshot_stale,true);
+  assert.equal(startupView(restored.startup).phase,'startup-ready');
+  const stale=startupContextState({phase:'stale'},{delivery:'pending',read:false,complete:false});
+  assert.equal(stale.phase,'startup-failed');assert.equal(startupView(stale.startup).phase,'startup-stale');
+  const crashed=startupContextState({phase:'error',error:{code:'STORE_BLOCKED',message:'WAL недоступен'}},{delivery:'pending'});
+  assert.equal(crashed.phase,'startup-failed');assert.match(startupView(crashed.startup).detail,/WAL недоступен/);
+  assert.equal(startupView(startupContextState({phase:'selected'},null).startup).phase,'startup-stale');
 });
 
 test('model-pull startup is durable, idempotent and never schedules SDK even before the first read',async t=>{

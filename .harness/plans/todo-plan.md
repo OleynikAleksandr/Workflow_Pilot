@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 852,
+  "plan_revision": 854,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -225,8 +225,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "FIX-STARTUP-UI",
@@ -268,7 +268,21 @@
       ],
       "expected_commit_message": "fix: согласовать завершение startup и ошибки в UI",
       "task_brief": "Раздел I. После FIX-STARTUP устрани ложный pending для complete=true; reading X/N/complete/stale/error. Сверь desktop-model.mjs (принудительный startup-channel), progress.mjs и plugin/service.mjs (повторный startupOpen), desktop/sidebar/panel, не запускай повторный Send. Только указанные пути и отдельные fixtures, включая panel-dialogue-view, backend-desktop-model, progress. Запусти все checks, включая unit-all, затем commit Kit.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/frontend/desktop/ui/progress.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/progress.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/startup-context.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -442,7 +456,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 852
+Revision: 854
 
 ## Цель
 
@@ -474,8 +488,8 @@ Revision: 852
   - Файлы: src/control/plugin/startup-context.mjs, src/control/workflow/dialogue-delivery.mjs, tests/startup-context.test.mjs, tests/plugin-communication-store.test.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-execution.test.mjs, tests/settings-parallel-execution.test.mjs, tests/session-opening-performance.test.mjs, tests/fixtures/executor-background-startup.mjs, tests/executor-background-startup.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-REVIEW
-- [TODO] FIX-STARTUP-UI: I · Startup UI — терминальные состояния и отсутствие вечного pending — Ожидает
-  - Git Commit: [PENDING] fix: согласовать завершение startup и ошибки в UI
+- [DONE] FIX-STARTUP-UI: I · Startup UI — терминальные состояния и отсутствие вечного pending — Завершено
+  - Git Commit: [DONE] fix: согласовать завершение startup и ошибки в UI
   - Reference: recovery-status-interruptions / FIX-STARTUP-UI / implementation
   - Файлы: src/control/plugin/startup-context.mjs, src/control/context/context-session.mjs, src/contracts/startup-view.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/progress.mjs, src/control/plugin/service.mjs, src/frontend/plugin/panel.mjs, tests/startup-context.test.mjs, tests/context-session.test.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/progress.test.mjs
   - Параллельность: исключительное выполнение

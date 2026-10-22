@@ -588,7 +588,7 @@ function render(state) {
       item.append(mark, body); return item;
     }));
   } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; }
-  const startup=context.phase==='startup-channel'?startupView(context.startup):null;
+  const startup=context.startup||['startup-channel','startup-complete','startup-failed'].includes(context.phase)?startupView(context.startup):null;
   const [title, detail] = startup?[startup.title,startup.detail]:context.phase==='external-session' ? ['Открыто в ChatGPT','Продолжайте разговор в приложении ChatGPT. Эта сессия подключена через плагин Workflow Pilot.'] : phases[context.phase] ?? phases.selected;
   const preparing=['preparing','loading-context','preparing-message','waiting-attachments','waiting-composer','waiting-experience','waiting-login','waiting-draft'].includes(context.phase);
   const attention=!!startup||preparing||['preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);
@@ -596,11 +596,12 @@ function render(state) {
   $('session-notice').hidden=!selected||!attention||!!state.setup||!!state.settings;
   $('session-notice-title').textContent=(selected?.title||'Текущая сессия')+' · '+title;
   $('session-notice-detail').textContent=context.phase==='waiting-attachments' && context.uploadProgress
-    ? `Готово ${context.uploadProgress.ready} из ${context.uploadProgress.total} частей. Можно отменить ожидание; черновик сохранится.` : context.error?.message??detail;
+    ? `Готово ${context.uploadProgress.ready} из ${context.uploadProgress.total} частей. Можно отменить ожидание; черновик сохранится.` : startup?.detail??context.error?.message??detail;
   $('retry-context').hidden=started||!['error','prepared-stale','preparation-paused'].includes(context.phase);
   $('cancel-context').hidden=started||!preparing;
   $('observe-context').hidden=context.phase!=='send-unknown';
-  $('new-context-session').hidden=context.phase==='external-session'||!started&&!['send-unknown','error','preparation-paused'].includes(context.phase);
+  $('new-context-session').hidden=context.phase==='external-session'||!started&&!['send-unknown','error','preparation-paused'].includes(context.phase)
+    &&!['startup-stale','startup-failed'].includes(startup?.phase);
   $('return-chat').hidden = context.phase !== 'chat-changed';
   $('connection-detail').textContent = state.localRuntime ? `${state.localRuntime.label} · встроенный MCP` : state.runtimeFolder;
   const delivery = context.delivery;

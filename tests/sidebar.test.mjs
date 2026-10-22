@@ -12,6 +12,17 @@ test('startup panel context stays visible until all parts are confirmed',async t
   assert.match($('session-notice-detail').textContent,/1 из 3/);
   f.emit({...f.state,context:{phase:'startup-channel',messageSent:true,startup:{complete:true}}});
   assert.match($('session-notice-title').textContent,/Контекст восстановлен/);
+  f.emit({...f.state,context:{phase:'startup-complete',messageSent:true,startup:{complete:true,delivery:'pending',read:true}}});
+  assert.match($('session-notice-title').textContent,/Контекст восстановлен/);
+  assert.doesNotMatch($('session-notice-detail').textContent,/ожидаем|ожидание/i);
+  f.emit({...f.state,context:{phase:'startup-failed',messageSent:true,error:{code:'STORE_BLOCKED',message:'WAL недоступен'},
+    startup:{delivery:'pending',error:{code:'STORE_BLOCKED',message:'WAL недоступен'}}}});
+  assert.match($('session-notice-detail').textContent,/новую сессию/);
+  assert.equal($('new-context-session').hidden,false);
+  f.emit({...f.state,context:{phase:'startup-failed',messageSent:true,
+    startup:{delivery:'pending',error:{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'}}}});
+  assert.match($('session-notice-title').textContent,/устарел/);
+  assert.equal($('new-context-session').hidden,false);
 });
 
 test('three integrations keep the observed final stage and Pause until durable complete, then explain acceptance',async t=>{

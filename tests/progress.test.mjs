@@ -56,6 +56,23 @@ test('Send completion and old unknown attempts hide the progress bar and stop it
   }
 });
 
+test('durable startup completion and terminal failures clear the running spinner regardless of pending transport',()=>{
+  const dom=new JSDOM('<div id="progress"></div>'),element=dom.window.document.getElementById('progress');
+  const ui=createProgress(element,{delay:0});
+  ui.show(operationLabel({context:{phase:'startup-channel',startup:{delivery:'pending',read:true,parts_read:1,total_parts:3}}}));
+  assert.equal(element.hidden,false);
+  for(const context of [
+    {phase:'startup-complete',startup:{delivery:'pending',complete:true,parts_read:3,total_parts:3}},
+    {phase:'startup-failed',startup:{delivery:'pending',error:{code:'STORE_BLOCKED',message:'WAL недоступен'}}},
+    {phase:'startup-channel',startup:{delivery:'unknown'}},
+    {phase:'startup-failed',startup:{superseded:true}}
+  ]){
+    ui.show(operationLabel({context,contextPreparation:{busy:true}}));
+    assert.equal(element.hidden,true);
+  }
+  ui.destroy();dom.window.close();
+});
+
 test('A short operation never shows a notice; a long one appears after the delay and keeps its clock',()=>{
   const dom=new JSDOM('<div id="progress"></div>');
   const element=dom.window.document.getElementById('progress');
