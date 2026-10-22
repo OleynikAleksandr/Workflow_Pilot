@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 861,
+  "plan_revision": 863,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -433,8 +433,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "TEST-PLAYBOOK",
@@ -458,7 +458,10 @@
       ],
       "expected_commit_message": "docs: сценарий живого испытания прерываний O и E",
       "task_brief": "Раздел II. Создай единственный docs/acceptance/interruption-recovery.md как практический протокол по матрице спецификации. Включи Stop/Продолжай для O/E, offline только второго клиента/UTM, отдельный тестовый backend для restart, проверку Kit/WAL/Git без секретов, критерии без дублей, FAIL/PASS/NOT_RUN. Живые операции не выполняй и не утверждай, что проверил их. Вписывай документацию в лимит 28000 байт, штатный docs commit/Kit.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/acceptance/interruption-recovery.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -525,7 +528,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 861
+Revision: 863
 
 ## Цель
 
@@ -581,8 +584,8 @@ Revision: 861
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/plugin-communication-store.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP, FIX-STARTUP-UI, FIX-PROGRESS
-- [TODO] TEST-PLAYBOOK: II · Пошаговый протокол живых испытаний Stop, сеть, restart — Ожидает
-  - Git Commit: [PENDING] docs: сценарий живого испытания прерываний O и E
+- [DONE] TEST-PLAYBOOK: II · Пошаговый протокол живых испытаний Stop, сеть, restart — Завершено
+  - Git Commit: [DONE] docs: сценарий живого испытания прерываний O и E
   - Reference: recovery-status-interruptions / TEST-PLAYBOOK / implementation
   - Файлы: docs/acceptance/interruption-recovery.md
   - Параллельность: исключительное выполнение
