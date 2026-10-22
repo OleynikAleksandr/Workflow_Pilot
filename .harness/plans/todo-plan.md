@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 887,
+  "plan_revision": 889,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -229,8 +229,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "T003",
@@ -271,7 +271,17 @@
         "Токены палитры — явные значения раздела 5 спецификации в модуле src/contracts/palette.mjs; sidebar вставляет <style> из модуля без расширения CSP, фон окна до показа (application.mjs, client.mjs, web/index.html) совпадает; native и HTTP-клиент одинаковы в светлой и тёмной темах."
       ],
       "expected_commit_message": "feat: Перестроить левый sidebar под ход работ",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/contracts/palette.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/web/index.html",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -507,7 +517,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 887
+Revision: 889
 
 ## Цель
 
@@ -539,8 +549,8 @@ Revision: 887
   - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/command-activity.mjs, src/control/workflow/execution-projection.mjs, src/control/plugin/service.mjs, src/backend/desktop-model.mjs, tests/work-progress.test.mjs, tests/command-activity.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-communication.test.mjs, src/control/plugin/communication.mjs, src/control/facade.mjs, src/control/workflow/parallel-kit.mjs, tests/parallel-execution.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/workflow/parallel-execution.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Перестроить левый sidebar под ход работ — Ожидает
-  - Git Commit: [PENDING] feat: Перестроить левый sidebar под ход работ
+- [DONE] T003: Перестроить левый sidebar под ход работ — Завершено
+  - Git Commit: [DONE] feat: Перестроить левый sidebar под ход работ
   - Reference: work-progress-ui / T003 / implementation
   - Файлы: src/contracts/palette.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/progress.mjs, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/parallel-execution-ui.test.mjs, tests/desktop-client.test.mjs, tests/backend-native-pages.test.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/client.mjs, src/frontend/web/index.html
   - Параллельность: исключительное выполнение

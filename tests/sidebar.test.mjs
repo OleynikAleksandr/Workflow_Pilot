@@ -4,25 +4,25 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 import {startupView} from '../src/contracts/startup-view.mjs';
+import {paletteCss,spinnerCss,PALETTE,shellBackground} from '../src/contracts/palette.mjs';
 
-test('startup panel context stays visible until all parts are confirmed',async t=>{
+test('normal panel startup is not written under the session; only a startup problem is, with the project menu',async t=>{
   const f=await fixture(t),$=id=>f.document.getElementById(id);
-  f.emit({...f.state,context:{phase:'startup-channel',messageSent:true,startup:{read:true,parts_read:1,total_parts:3}}});
-  assert.equal($('session-notice').hidden,false);assert.match($('session-notice-title').textContent,/читает контекст/);
-  assert.match($('session-notice-detail').textContent,/1 из 3/);
-  f.emit({...f.state,context:{phase:'startup-channel',messageSent:true,startup:{complete:true}}});
-  assert.match($('session-notice-title').textContent,/Контекст восстановлен/);
+  for(const startup of [{read:true,parts_read:1,total_parts:3},{complete:true},{delivery:'accepted'}]){
+    f.emit({...f.state,context:{phase:'startup-channel',messageSent:true,startup}});
+    assert.equal($('session-notice').hidden,true,'the panel shows the startup progress');
+  }
   f.emit({...f.state,context:{phase:'startup-complete',messageSent:true,startup:{complete:true,delivery:'pending',read:true}}});
-  assert.match($('session-notice-title').textContent,/Контекст восстановлен/);
-  assert.doesNotMatch($('session-notice-detail').textContent,/ожидаем|ожидание/i);
+  assert.equal($('session-notice').hidden,true);
   f.emit({...f.state,context:{phase:'startup-failed',messageSent:true,error:{code:'STORE_BLOCKED',message:'WAL недоступен'},
     startup:{delivery:'pending',error:{code:'STORE_BLOCKED',message:'WAL недоступен'}}}});
-  assert.match($('session-notice-detail').textContent,/новую сессию/);
-  assert.equal($('new-context-session').hidden,false);
+  assert.equal($('session-notice').hidden,false);
+  assert.match($('session-notice-detail').textContent,/WAL недоступен.*меню проекта/s);
+  assert.equal($('new-context-session'),null);
   f.emit({...f.state,context:{phase:'startup-failed',messageSent:true,
     startup:{delivery:'pending',error:{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'}}}});
   assert.match($('session-notice-title').textContent,/устарел/);
-  assert.equal($('new-context-session').hidden,false);
+  assert.match($('session-notice-detail').textContent,/Новый Chat \/ Новый Work/);
 });
 
 test('Kit recovery hold reports next action instead of an empty chat, and distinguishes technical OFF from manual pause',async t=>{
@@ -52,19 +52,19 @@ test('three integrations keep the observed final stage and Pause until durable c
     planRun:{state:'running',complete:false,activity:{phase:'cleanup',label:'План завершается',
       actor:'Workflow Kit',reason:'Ожидаем квитанции и очистку.',elapsedMs:65000}}};
   f.emit(state);
-  assert.equal($('plan-status').textContent,'Интегрировано: 3/3');
+  assert.equal($('plan-status').textContent,'в main 3 из 3');
   assert.equal($('plan-status').dataset.state,'working');
   assert.equal($('plan-run-toggle').hidden,false);
-  assert.equal($('execution-actions').hidden,false);
-  assert.equal($('execution-message').textContent,'План завершается');
-  assert.match($('execution-next-action').textContent,/квитанции/);
-  assert.match(f.document.querySelector('[data-stage-time=plan]').textContent,/01:05/);
+  assert.equal($('plan-phase-text').textContent,'Выполнение');
+  f.emit({...state,workProgress:{version:1,title:'Опыт',phase:'Завершение',busy:true,done:3,total:3,tasks:plan.tasks,
+    now:[{actor:'KIT',text:'План завершается',kind:'act',elapsedMs:65000}],history:[],attention:null}});
+  assert.equal($('plan-phase-text').textContent,'Завершение');assert.equal($('plan-phase-spinner').hidden,false);
   assert.equal($('plan-note').hidden,true);
   assert.doesNotMatch($('plan-card').textContent,/Все 3 задачи выполнены/);
   f.emit({...state,planRun:{state:'complete',complete:true,activity:{phase:'complete',
     label:'Выполнение завершено — ожидается ваша приёмка',actor:'План',elapsedMs:0}}});
   assert.equal($('plan-run-toggle').hidden,true);
-  assert.match($('plan-run-message').textContent,/ожидается ваша приёмка/);
+  assert.equal($('plan-run-message').hidden,true,'the acceptance hint alone tells what to do');
   assert.match($('plan-note').textContent,/Принимаю результат, закрой план/);
   assert.equal($('plan-status').dataset.state,'awaiting-acceptance');
   f.emit({...state,orchestratorPlan:{...plan,current:false},planRun:null});
@@ -80,18 +80,19 @@ test('orchestrated result receipts and Kit integrations progress independently t
       evidence:{received:2,total:4,integrated:1,totalTasks:4}},
     planRun:{state:'running',complete:false}};
   tasks[0].status='done';f.emit(state);
-  assert.match($('plan-status').textContent,/Результаты исполнителей: 2\/4 · Интегрировано: 1\/4/);
+  assert.equal($('plan-status').textContent,'в main 1 из 4');
   assert.equal($('plan-status').dataset.state,'working');
   tasks[1].status='done';f.emit({...state,orchestratorPlan:{...state.orchestratorPlan,
     evidence:{received:2,total:4,integrated:2,totalTasks:4}}});
-  assert.match($('plan-status').textContent,/2\/4 · Интегрировано: 2\/4/);
+  assert.equal($('plan-status').textContent,'в main 2 из 4');
   for(const task of tasks)task.status='done';tasks[3].docsChecksHint='DOCS checks:[] в Kit — проверки приложения не запускаются этим коммитом.';
   f.emit({...state,orchestratorPlan:{...state.orchestratorPlan,deliveryStatus:'READY_FOR_ACCEPTANCE',
     evidence:{received:4,total:4,integrated:4,totalTasks:4}},planRun:{state:'running',complete:false}});
-  assert.match($('plan-status').textContent,/4\/4 · Интегрировано: 4\/4/);
+  assert.equal($('plan-status').textContent,'в main 4 из 4');
   assert.equal($('plan-status').dataset.state,'awaiting-acceptance');
   assert.match($('plan-note').textContent,/ожидается ваша приёмка/);
-  assert.match(f.document.querySelector('[data-status=done] .plan-task-check-note')?.textContent??'',/проверки приложения не запускаются/);
+  assert.equal(f.document.querySelector('.plan-task-check-note'),null,'no technical DOCS note');
+  assert.doesNotMatch($('plan-card').textContent,/checks:\[\]/);
   for(const task of tasks)task.status='pending';
   f.emit({...state,planRun:{state:'not-started'},orchestratorPlan:{...state.orchestratorPlan,
     evidence:{received:0,total:4,integrated:0,totalTasks:4}}});
@@ -109,7 +110,7 @@ test('external conversation stays visibly external; there is no PlanContinuation
   assert.equal(button.hidden,true,'an external session has no plan button');
   assert.equal(f.document.getElementById('session-notice').hidden,false);
   assert.match(f.document.getElementById('session-notice-title').textContent,/Открыто в ChatGPT/);
-  assert.equal(f.document.getElementById('new-context-session').hidden,true);
+  assert.equal(f.document.getElementById('new-context-session'),null);
   // A plan of the former model has the same one button.
   f.emit({...base,planRun:{state:'not-started',reason:null,issue:null,complete:false}});
   assert.equal(button.hidden,false);assert.equal(button.textContent,'Начать выполнение плана');
@@ -121,7 +122,7 @@ test('external conversation stays visibly external; there is no PlanContinuation
   f.emit({...base,planRun:{state:'running',complete:false},
     execution:{phase:'finalizing',finalizationReason:'Ожидаем последние квитанции.'}});
   assert.equal(button.hidden,false,'stop remains available while finalizing');
-  assert.match(f.document.getElementById('plan-run-message').textContent,/Завершение.*квитанции/);
+  assert.equal(f.document.getElementById('plan-run-message').hidden,true,'the plan stage, not a message, reports finalization');
   f.emit({...base,planRun:{state:'complete',complete:true},execution:{phase:'complete'}});
   assert.equal(button.hidden,true);assert.equal(f.document.getElementById('plan-run-message').hidden,true);
   assert.doesNotMatch(f.document.body.textContent,/втовыполнени/,'no text speaks of PlanContinuation');
@@ -183,8 +184,7 @@ test('plan rows separate identity, planned mode and current status, including fi
   assert.equal(f.document.querySelector('.plan-task-id').textContent,'T003');
   assert.equal(f.document.querySelector('.plan-task strong').textContent,'Результат');
   assert.match(f.document.querySelector('.plan-task-mode').textContent,/После T001/);
-  assert.equal(f.document.querySelector('.plan-task-status').textContent,'Готово к интеграции');
-  assert.match(f.document.getElementById('execution-message').textContent,/итоговый ответ/);
+  assert.match(f.document.querySelector('.plan-task-stage').textContent,/^Готово к интеграции · После T001/);
 });
 
 
@@ -196,7 +196,7 @@ test('upload wait offers cancellation and errors allow a fresh session without a
   $('cancel-context').click();await new Promise(resolve=>setImmediate(resolve));
   assert.ok(f.calls.some(call=>call[0]==='cancelContext'));assert.equal($('open-settings').disabled,false);
   f.emit({...base,context:{phase:'preparation-paused'}});
-  assert.equal($('retry-context').hidden,false);assert.equal($('new-context-session').hidden,false);
+  assert.equal($('retry-context').hidden,false);assert.equal($('new-context-session'),null);
 });
 
 async function fixture(t) {
@@ -205,7 +205,7 @@ async function fixture(t) {
   const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true, url: 'https://fixture.invalid/' });
   t.after(async () => { await new Promise(resolve => setTimeout(resolve, 0)); dom.window.close(); });
   const { window } = dom, document = window.document, calls = [];
-  window.startupView=startupView;
+  window.startupView=startupView;window.paletteCss=paletteCss;window.spinnerCss=spinnerCss;
   // JSDOM has no top layer. Electron smoke verifies native popover geometry.
   const query = document.querySelectorAll.bind(document);
   document.querySelectorAll = selector => query(selector.replaceAll(':popover-open', '[data-test-open]'));
@@ -330,15 +330,12 @@ test('one project plan stays visible for the selected chat and legacy ownership 
     unassignedPlans:[{plan_id:'legacy'}],
     planView:{state:'awaiting-acceptance',completed:1,total:1,tasks:[{id:'T1',title:'Сохранённый результат',status:'done'}]}};
   f.emit(state);
-  assert.equal(f.document.querySelector('#plan-card .eyebrow').textContent,'Текущий план проекта');
+  assert.equal(f.document.querySelector('#plan-card .eyebrow'),null);
   assert.equal(f.document.getElementById('plan-title').textContent,'Текущий план проекта');
   assert.equal(f.document.querySelector('#plan-tasks strong').textContent,'Сохранённый результат');
-  assert.equal(f.document.getElementById('plan-status').textContent,'Задача выполнена · ожидается приёмка');
-  assert.equal(f.document.querySelector('#plan-tasks .plan-task-state').getAttribute('aria-label'),'выполнена');
-  for(const [total,text] of [[2,'Все 2 задачи выполнены'],[5,'Все 5 задач выполнены'],[21,'Все 21 задача выполнена'],[11,'Все 11 задач выполнены']]){
-    state.selected={...state.selected,planView:{...state.selected.planView,completed:total,total}};f.emit(state);
-    assert.equal(f.document.getElementById('plan-status').textContent,text+' · ожидается приёмка');
-  }
+  assert.equal(f.document.getElementById('plan-status').textContent,'в main 1 из 1');
+  assert.equal(f.document.getElementById('plan-phase-text').textContent,'Ждёт приёмки');
+  assert.equal(f.document.querySelector('#plan-tasks .plan-task-state').getAttribute('aria-label'),'влита в main');
   assert.equal(f.document.getElementById('prepared-card'),null);
   assert.equal(f.document.getElementById('plan-origin'),null);
   // A sequential plan waits for the user's acceptance just like an orchestrated one.
@@ -407,31 +404,61 @@ test('context has no permanent card; only pre-send recovery can retry and unknow
   assert.match(node('session-notice-detail').textContent,/Ошибка вложения/);
   f.emit({...f.state,selected:{workspace:'/demo',sessionId:'s4',attempt:{state:'unknown'}},context:{phase:'send-unknown'}});
   assert.equal(node('retry-context').hidden,true);assert.equal(node('observe-context').hidden,false);
-  assert.equal(node('new-context-session').hidden,false);
+  assert.equal(node('new-context-session'),null,'fresh sessions come only from the project menu');
   assert.match(node('session-notice-detail').textContent,/Повторной отправки нет/);
 });
 
-test('plan card shows current and total agent time in minutes and seconds without live announcements', async t => {
-  const f = await fixture(t), state = f.state, timer = f.document.getElementById('agent-time');
-  assert.equal(timer.getAttribute('role'), 'timer', 'role=timer is not announced every second');
-  assert.equal(timer.closest('.plan-head').querySelector('.eyebrow').textContent, 'Текущий план проекта');
-  assert.equal(timer.hidden, false);
-  assert.equal(timer.textContent, '00:00 · Σ 00:00');
-  state.selected = { ...state.selected, agentTime: { totalMs: 3_725_000, lastMs: 65_900 } }; f.emit(state);
-  assert.equal(timer.textContent, '01:05 · Σ 62:05');
-  assert.equal(timer.dataset.running, 'false');
-  assert.match(timer.getAttribute('aria-label'), /последнее задание 1 мин 5 с, всего за сессию 62 мин 5 с/);
-  const now = f.window.Date.now();
-  state.selected = { ...state.selected, agentTime: { totalMs: 60_000, lastMs: 60_000 }, agentRun: { startedAt: now - 3_400, lastBusyAt: now, paused: false } }; f.emit(state);
-  assert.equal(timer.dataset.running, 'true');
-  assert.equal(timer.textContent, '00:03 · Σ 01:03');
-  await new Promise(resolve => setTimeout(resolve, 1100));
-  assert.equal(timer.textContent, '00:04 · Σ 01:04', 'running value advances every second');
-  state.selected = { ...state.selected, agentRun: { startedAt: now - 90_000, lastBusyAt: now - 20_000, paused: true } }; f.emit(state);
-  assert.equal(timer.dataset.running, 'false', 'a pause freezes the value at the last busy moment');
-  assert.equal(timer.textContent, '01:10 · Σ 02:10');
-  state.selected = null; f.emit(state);
-  assert.equal(timer.hidden, true);
+test('plan card: pinned top and foot around the only scrolling list; stage time ticks; busy session gets a spinner',async t=>{
+  const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
+  assert.equal($('agent-time'),null,'session time without a caption is gone');
+  assert.equal($('execution-stages'),null);assert.equal($('execution-next-action'),null);
+  const card=$('plan-card'),list=$('plan-tasks');
+  assert.deepEqual([...card.children].map(node=>node.id||node.className),['plan-top','plan-tasks','plan-foot']);
+  assert.ok(card.querySelector('.plan-top #plan-phase'));
+  for(const id of ['plan-run-toggle','plan-attention','plan-note','plan-review-toggle'])assert.ok($('plan-foot').contains($(id)),id+' stays pinned');
+  const tasks=Array.from({length:12},(_,i)=>({id:'T0'+String(i+1).padStart(2,'0'),title:'Задача '+(i+1),status:i<3?'done':i===3?'current':'pending',
+    label:i<3?'Интеграция проверена':i===3?'Kit проверяет коммит · unit-all · 2 из 3':'Не начата',mode:'Параллельно',elapsedMs:i===3?61000:null,target:null}));
+  f.emit({...base,selected:{...base.selected,role:'orchestrator',scopeId:'scope'},planRun:{state:'running',complete:false},
+    workProgress:{version:1,title:'Большой план',phase:'Выполнение',busy:true,done:3,total:12,tasks,
+      now:[{actor:'O',text:'ждёт результатов',kind:'wait'},{actor:'T004',text:'Kit проверяет коммит',kind:'act'}],history:[],attention:null}});
+  assert.equal($('plan-title').textContent,'Большой план');
+  assert.equal($('plan-phase-text').textContent,'Выполнение');assert.equal($('plan-phase-spinner').hidden,false);
+  assert.equal($('plan-status').textContent,'в main 3 из 12');assert.equal($('plan-bar-fill').style.width,'25%');
+  assert.equal(list.children.length,12);
+  const running=list.children[3];
+  assert.equal(running.querySelector('.plan-task-state .wp-spin')!==null,true);
+  assert.match(running.querySelector('.plan-task-stage').textContent,/^Kit проверяет коммит · unit-all · 2 из 3 · Параллельно$/);
+  assert.equal(running.querySelector('.plan-task-time').textContent,'1:01');
+  await new Promise(resolve=>setTimeout(resolve,1100));
+  assert.equal(running.querySelector('.plan-task-time').textContent,'1:02','the stage time ticks');
+  assert.equal(list.children[0].querySelector('.plan-task-mode'),null,'a done task does not repeat its mode');
+  assert.equal($('plan-attention').hidden,true,'no problem, no alarm');
+  // The orchestrator row is busy only while it acts.
+  const orchestratorRow=()=>f.document.querySelector('.session[data-session-id="s4"]');
+  orchestratorRow().dataset.role='orchestrator';
+  f.emit({...f.state,workProgress:{...f.state.workProgress,now:[{actor:'O',text:'проверяет результат',kind:'act'}]}});
+  assert.ok(orchestratorRow().querySelector('.wp-spin'));
+  f.emit({...f.state,workProgress:{...f.state.workProgress,now:[{actor:'O',text:'ждёт',kind:'wait'}]}});
+  assert.equal(orchestratorRow().querySelector('.wp-spin'),null);
+});
+
+test('problem block names the cause and one action; the acceptance hint and Review stay in the pinned foot',async t=>{
+  const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
+  const work={version:1,title:'План',phase:'Нужно внимание',busy:false,done:2,total:4,
+    tasks:[{id:'T003',title:'Совместный пример',status:'attention',label:'Активность сейчас не наблюдается',mode:'Последовательно',elapsedMs:720000,
+      target:{workspace:'/demo-T003',sessionId:'e3'}}],now:[],history:[],
+    attention:{title:'T003 молчит',text:'Активность сейчас не наблюдается',action:{kind:'open-session',workspace:'/demo-T003',sessionId:'e3',label:'Открыть чат T003'}}};
+  f.emit({...base,selected:{...base.selected,scopeId:'scope'},planRun:{state:'running',complete:false},planReview:{enabled:true,supported:true,message:''},workProgress:work});
+  assert.equal($('plan-attention').hidden,false);
+  assert.equal($('plan-attention-title').textContent,'T003 молчит');
+  assert.equal($('plan-attention-action').textContent,'Открыть чат T003');
+  assert.equal(f.document.querySelector('.plan-task[data-status=attention] .plan-task-state').textContent,'!');
+  $('plan-attention-action').click();await f.settle();
+  assert.deepEqual(f.calls.at(-1),['selectSession','/demo-T003','e3']);
+  assert.equal($('plan-review-toggle').getAttribute('aria-pressed'),'true');
+  f.emit({...f.state,workProgress:{...work,phase:'Ждёт приёмки',attention:null,tasks:[]},planRun:{state:'complete',complete:true}});
+  assert.equal($('plan-attention').hidden,true);
+  assert.equal($('plan-note').hidden,false);assert.match($('plan-note').textContent,/Принимаю результат, закрой план/);
 });
 test('startup deletion recovery error remains visible until settings are closed',async t=>{
   const f=await fixture(t),banner=f.document.getElementById('error-banner');
@@ -479,7 +506,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.equal(rows.length,4);assert.equal(f.document.querySelectorAll('.plan-task-open').length,1,'only a started task opens a session');
   rows[0].click();await f.settle();
   assert.ok(!f.calls.some(call=>call[0]==='selectSession'),'a done task keeps the orchestrator in the right pane');
-  assert.deepEqual(rows.map(row=>row.querySelector('.plan-task-state').textContent),['✓','●','○','○']);
+  assert.deepEqual(rows.map(row=>row.querySelector('.plan-task-state .wp-spin')?'spinner':row.querySelector('.plan-task-state').textContent),['✓','spinner','○','○']);
   rows[1].querySelector('.plan-task-open').click();await f.settle();
   assert.deepEqual(f.calls.at(-1),['selectSession','/tree/b','worker-b']);
   const button=f.document.getElementById('plan-run-toggle');
@@ -505,7 +532,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   assert.equal(f.document.querySelector('.plan-task[data-current=true] .plan-task-id').textContent,'T002');
   assert.equal(f.document.getElementById('plan-card').hidden,false,'the to-do plan stays in the sidebar');
   assert.equal(f.document.getElementById('assignment-card').hidden,true,'no separate executor card');
-  assert.equal(f.document.getElementById('execution-actions').hidden,false,'orchestrated stages stay visible');
+  assert.equal(f.document.getElementById('execution-actions'),null,'stages live in the stage line and the panel');
   assert.equal(f.document.getElementById('plan-continuation-message').hidden,true,'no PlanContinuation text in the new scheme');
   assert.equal(f.document.querySelector('.project').dataset.workspace,'/demo','the tree keeps the parent project');
   // The backend checks first; only a confirmed unfinished run asks to stop.
@@ -534,4 +561,26 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   // And to the started task of the same plan; the done one stays a plain row.
   f.document.querySelector('.plan-task-open').click();await f.settle();
   assert.deepEqual(f.calls.at(-1),['selectSession','/tree/b','worker-b']);
+});
+
+test('one palette: the sidebar style, both themes, the window background and the HTTP client use the agreed tokens',async t=>{
+  const f=await fixture(t),style=f.document.getElementById('wp-palette');
+  assert.ok(style,'the sidebar inserts the shared palette as an inline style');
+  assert.equal(style.parentNode,f.document.head);
+  assert.equal(f.document.head.lastElementChild,style,'it follows and overrides the former tokens');
+  for(const [theme,tokens] of Object.entries(PALETTE)){
+    const rule=theme==='light'?style.textContent.split(':root[data-theme=dark]')[0]:style.textContent.split(':root[data-theme=dark]')[1];
+    for(const [name,value] of [['accent',tokens.accent],['line',tokens.line],['warn',tokens.warn]])assert.match(rule,new RegExp('--wp-'+name+':'+value));
+    assert.match(rule,new RegExp('--teal:'+tokens.accent+';--muted:'+tokens.muted+';--line:'+tokens.line));
+  }
+  assert.match(style.textContent,/prefers-reduced-motion:reduce/);
+  assert.deepEqual(shellBackground,{light:'#f4f6f8',dark:'#1b1d22'});
+  const web=await fs.readFile(new URL('../src/frontend/web/index.html',import.meta.url),'utf8');
+  for(const tokens of Object.values(PALETTE))for(const value of [tokens.page,tokens.line,tokens.accent,tokens.fg,tokens.muted])assert.ok(web.includes(value),'HTTP client token '+value);
+  for(const file of ['../src/frontend/desktop/application.mjs','../src/frontend/desktop/client.mjs']){
+    const text=await fs.readFile(new URL(file,import.meta.url),'utf8');
+    assert.match(text,/import \{ shellBackground \} from '\.\.\/\.\.\/contracts\/palette\.mjs';/);
+    assert.doesNotMatch(text,/#1b1d22|#f4f6f8/,'no second copy of the window background');
+  }
+  assert.match(paletteCss({mode:'media'}),/@media \(prefers-color-scheme:dark\)/);
 });

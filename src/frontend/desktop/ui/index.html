@@ -116,6 +116,44 @@
     :root[data-theme=dark] .execution-next-action[data-attention=true]{border-color:#dfac74}
     .plan-task-open{grid-column:1/-1;display:grid;grid-template-columns:24px minmax(0,1fr);gap:inherit;align-items:inherit;width:100%;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:6px}.plan-task-open:hover{background:rgba(127,127,127,.12)}.plan-task[data-current=true]{outline:2px solid #2f80ed;outline-offset:2px;border-radius:6px}.session-role{display:block;font-size:10px;color:var(--muted)}.session-role[data-state=attention]{color:#b3261e}.plan-run-toggle{margin:6px 0 2px}
 </style>
+  <style>
+    /* Plan card: pinned top and foot, only the task list scrolls (work-progress-ui, 3.2). */
+    #workspace-details:not([hidden]){display:flex;flex-direction:column;min-height:0;flex:0 1 auto;gap:18px}
+    #plan-card{display:flex;flex-direction:column;gap:8px;min-height:0;flex:0 1 auto;padding:12px}
+    #plan-card>*{flex:0 0 auto}
+    .plan-top{display:grid;gap:5px}
+    .own-plan-title{margin:0;font-size:12px;line-height:1.4;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .plan-phase{display:flex;align-items:center;gap:7px;margin:0;font-size:13px;font-weight:650;color:var(--wp-fg)}
+    .plan-progress{display:grid;gap:4px}
+    .plan-bar{height:4px;border-radius:2px;background:var(--wp-line);overflow:hidden}
+    .plan-bar i{display:block;height:100%;width:0;background:var(--wp-accent);transition:width .3s}
+    .plan-status{margin:0;font-size:11px;font-weight:500;line-height:1.4;color:var(--wp-muted)}
+    #plan-card>.plan-tasks{flex:0 1 auto;min-height:64px;overflow-y:auto;margin:0 -4px 0 0;padding:0 4px 0 0;gap:2px;scrollbar-width:thin}
+    .plan-task{grid-template-columns:16px minmax(0,1fr);gap:7px;padding:5px 6px;border:1px solid transparent}
+    .plan-task-open{grid-template-columns:16px minmax(0,1fr)}
+    .plan-task[data-status=current],:root[data-theme=dark] .plan-task[data-status=current]{background:none}
+    .plan-task[data-current=true]{outline:none;border-color:var(--wp-selected-line);background:var(--wp-selected)}
+    .plan-task-state{width:16px;height:16px;font-size:11px;color:var(--wp-dim)}
+    .plan-task[data-status=done] .plan-task-state{color:var(--wp-ok)}
+    .plan-task[data-status=attention] .plan-task-state,.plan-task[data-status=attention] .plan-task-stage{color:var(--wp-warn)}
+    .plan-task-title{display:flex;gap:6px;align-items:baseline;min-width:0}
+    .plan-task-title strong{margin:0;font-size:11.5px;font-weight:600;color:var(--wp-fg);overflow-wrap:anywhere}
+    .plan-task[data-status=pending] .plan-task-title strong{color:var(--wp-muted)}
+    .plan-task-line{display:flex;justify-content:space-between;gap:6px;margin-top:1px;font-size:10.5px;line-height:1.4;color:var(--wp-muted)}
+    .plan-task-mode{color:var(--wp-dim)}
+    .plan-task-time{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--wp-dim)}
+    .plan-foot{display:grid;gap:7px;border-top:1px solid var(--wp-line);padding-top:8px}
+    .plan-attention{display:grid;gap:5px;padding:7px 9px;border:1px solid var(--wp-warn-line);border-radius:8px;background:var(--wp-warn-soft);font-size:11.5px;line-height:1.45}
+    .plan-attention strong{color:var(--wp-warn)}
+    .plan-attention .secondary{justify-self:start}
+    .plan-note{margin:0}
+    .plan-review-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--wp-muted)}
+    .wp-switch{position:relative;flex:0 0 auto;width:30px;height:17px;padding:0;border:0;border-radius:9px;background:var(--wp-line);font-size:0;color:transparent}
+    .wp-switch::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--wp-muted);transition:left .15s}
+    .wp-switch[aria-pressed=true]{background:var(--wp-selected)}
+    .wp-switch[aria-pressed=true]::after{left:15px;background:var(--wp-accent)}
+    .session .wp-spin{width:9px;height:9px;border-width:1.5px;margin-left:5px;vertical-align:middle}
+  </style>
 </head>
 <body>
 <!-- Icons: Lucide. ISC License
@@ -203,7 +241,6 @@ SOFTWARE.
           <button id="retry-context" class="secondary" hidden>Повторить подготовку</button>
           <button id="cancel-context" class="secondary" hidden>Отменить подготовку</button>
           <button id="observe-context" class="secondary" hidden>Проверить статус</button>
-          <button id="new-context-session" class="secondary" hidden>Новая сессия</button>
           <button id="return-chat" class="secondary" hidden>Вернуться к чату проекта</button>
         </div>
       </section>
@@ -423,26 +460,32 @@ SOFTWARE.
           <h3 id="assignment-title"></h3>
           <p id="assignment-status" class="description" role="status"></p>
         </section>
-        <section id="plan-card" class="card plan-card" aria-live="polite">
-          <div class="plan-head"><p class="eyebrow">Текущий план проекта</p><span id="agent-time" class="agent-time" role="timer" hidden></span></div>
-          <h3 id="plan-title" class="own-plan-title"></h3>
-          <button id="plan-run-toggle" class="primary plan-run-toggle" type="button" hidden></button>
-          <p id="plan-run-message" class="description" role="status" hidden></p>
-          <p id="plan-status" class="plan-status"></p>
-          <p id="plan-note" class="plan-note" hidden></p>
-          <p id="plan-reason" class="plan-reason" hidden></p>
-          <ul id="plan-tasks" class="plan-tasks" aria-label="Микрозадачи плана"></ul>
-          <div id="execution-actions" class="actions" hidden>
-            <p id="execution-message" class="description" role="status"></p>
-            <ol id="execution-stages" class="execution-stages" aria-label="Проверяемые этапы завершения"></ol>
-            <p id="execution-next-action" class="execution-next-action" role="status"></p>
-            <div id="command-issues"></div>
-          </div>
-          <div class="actions">
-            <div class="plan-toggles">
-              <button id="plan-review-toggle" class="secondary" type="button" aria-pressed="false" title="Ревью нового плана через Claude CLI: включение разрешает передать рецензенту документы задачи. Независимо от выполнения плана.">Review</button>
+        <section id="plan-card" class="card plan-card" aria-label="План проекта">
+          <div class="plan-top">
+            <h3 id="plan-title" class="own-plan-title"></h3>
+            <p id="plan-phase" class="plan-phase" role="status" aria-live="polite"><span id="plan-phase-spinner" class="wp-spin" aria-hidden="true" hidden></span><span id="plan-phase-text"></span></p>
+            <div id="plan-progress" class="plan-progress" hidden>
+              <div class="plan-bar" aria-hidden="true"><i id="plan-bar-fill"></i></div>
+              <p id="plan-status" class="plan-status"></p>
             </div>
+          </div>
+          <ul id="plan-tasks" class="plan-tasks" aria-label="Задачи плана"></ul>
+          <div id="plan-foot" class="plan-foot">
+            <button id="plan-run-toggle" class="primary plan-run-toggle" type="button" hidden></button>
+            <p id="plan-run-message" class="description" role="status" hidden></p>
+            <div id="plan-attention" class="plan-attention" role="alert" hidden>
+              <strong id="plan-attention-title"></strong>
+              <span id="plan-attention-text"></span>
+              <p id="plan-reason" class="plan-reason" hidden></p>
+              <div id="command-issues"></div>
+              <button id="plan-attention-action" class="secondary" type="button" hidden></button>
+            </div>
+            <p id="plan-note" class="plan-note" hidden></p>
             <p id="plan-continuation-message" class="description" role="status" hidden></p>
+            <div class="plan-review-row">
+              <span>Review плана через Claude</span>
+              <button id="plan-review-toggle" class="wp-switch" type="button" aria-pressed="false" title="Ревью нового плана через Claude CLI: включение разрешает передать рецензенту документы задачи. Независимо от выполнения плана.">Review</button>
+            </div>
             <p id="plan-review-message" class="description" role="status" hidden><span id="plan-review-indicator" aria-hidden="true" hidden></span><span id="plan-review-text"></span></p>
           </div>
         </section>

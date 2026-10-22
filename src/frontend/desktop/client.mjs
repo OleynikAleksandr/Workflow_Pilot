@@ -8,8 +8,8 @@ import { BackendConnection } from '../client/connection.mjs';
 import { BrowserView } from '../client/browser-view.mjs';
 import { DesktopIpc } from './ipc.mjs';
 import { ChatColorsWindow } from './chat-colors-window.mjs';
+import { shellBackground } from '../../contracts/palette.mjs';
 
-const shellBackground = { light: '#f4f6f8', dark: '#1b1d22' };
 const settle = ms => new Promise(resolve => setTimeout(resolve, ms));
 const MAX_UPLOAD = 32 * 1024 * 1024;
 const RENEW_MS = 10000;

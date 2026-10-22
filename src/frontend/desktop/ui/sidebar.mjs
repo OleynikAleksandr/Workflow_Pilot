@@ -1,13 +1,16 @@
 import { createProgress, operationLabel } from './progress.mjs';
 import { settingsPanelView } from './settings-panel.mjs';
 import { workspaceSetupView } from './workspace-setup.mjs';
-import { executionFinalStages } from '../../../contracts/workflow-view.mjs';
 import {startupView} from '../../../contracts/startup-view.mjs';
+import {paletteCss,spinnerCss} from '../../../contracts/palette.mjs';
 const $ = id => document.getElementById(id);
+// The shared palette of the sidebar and the panel; an inline style is within the page CSP.
+const paletteStyle=document.createElement('style');paletteStyle.id='wp-palette';
+paletteStyle.textContent=paletteCss()+spinnerCss;document.head.append(paletteStyle);
 const api = window.webPilot;
 let lastProjects = '';
 let currentState;
-let actionPending = false, pendingAction = null, actionGeneration = 0;
+let actionPending = false, pendingAction = null, actionGeneration = 0, planFocusKey = '';
 const navigationActions = new Set(['selectWorkspace', 'selectSession', 'reload', 'returnToChat']);
 const progress = createProgress($('operation-progress'));
 window.addEventListener('pagehide', () => progress.destroy());
@@ -233,55 +236,37 @@ async function action(method, ...args) {
   }
 }
 
-// Agent time: current (or last) request and the session total, in minutes and seconds.
-let agentTicker = null;
-let executorTicker = null;
-let stageTicker = null;
-const agentClock = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0'); };
-const agentSpoken = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return Math.floor(seconds / 60) + ' мин ' + seconds % 60 + ' с'; };
-function renderAgentTime(selected) {
-  const node = $('agent-time'), run = selected?.agentRun ?? null;
-  const saved = selected?.agentTime ?? { totalMs: 0, lastMs: 0 };
-  clearInterval(agentTicker); agentTicker = null;
-  node.hidden = !selected;
-  if (!selected) return;
-  const running = !!run && !run.paused;
-  const paint = () => {
-    const current = run ? Math.max(0, (running ? Date.now() : run.lastBusyAt) - run.startedAt) : saved.lastMs;
-    const total = saved.totalMs + (run ? current : 0);
-    node.textContent = agentClock(current) + ' · Σ ' + agentClock(total);
-    node.setAttribute('aria-label', 'Время работы агента: ' + (run ? 'текущее' : 'последнее') + ' задание ' + agentSpoken(current) + ', всего за сессию ' + agentSpoken(total));
-  };
-  node.dataset.running = String(running);
-  node.title = 'Время, которое агент работает над заданием (идёт, пока ChatGPT отвечает). Σ — сумма за эту сессию.';
-  paint();
-  if (running) agentTicker = setInterval(paint, 1000);
-}
+// Elapsed time on the current stage of a task, measured by the backend and ticking here.
+let elapsedTicker = null;
+const agentClock = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0'); };
 function kitUpgradeNeeded(health) {
   return health?.phase === 'error' && health.action === 'upgrade' && !health.error && !health.issues?.length;
 }
 
+// Executors of a legacy parallel plan keep their accumulated work and wait time in the tree.
+let executorTicker = null;
+const pairClock = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0'); };
+const spokenClock = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return Math.floor(seconds / 60) + ' мин ' + seconds % 60 + ' с'; };
 function renderExecutorTimes() {
   clearInterval(executorTicker);executorTicker=null;
   const nodes=[...document.querySelectorAll('[data-executor-time]')];
   const paint=()=>{for(const node of nodes) {
     const time=node.executorTime??{},delta=Math.max(0,Date.now()-(time.asOf??Date.now()));
     const active=(time.activeMs??0)+(time.phase==='working'?delta:0),waiting=(time.waitingMs??0)+(time.phase==='waiting'?delta:0);
-    node.textContent='Работа '+agentClock(active)+' · ожидание '+agentClock(waiting);
-    node.setAttribute('aria-label','Наблюдаемая работа '+agentSpoken(active)+', ожидание '+agentSpoken(waiting));
+    node.textContent='Работа '+pairClock(active)+' · ожидание '+pairClock(waiting);
+    node.setAttribute('aria-label','Наблюдаемая работа '+spokenClock(active)+', ожидание '+spokenClock(waiting));
   }};
   paint();if(nodes.some(node=>['working','waiting'].includes(node.executorTime?.phase)))executorTicker=setInterval(paint,1000);
 }
 
-function renderStageTimes() {
-  clearInterval(stageTicker);stageTicker=null;
-  const nodes=[...document.querySelectorAll('[data-stage-time]')],received=performance.now();
+function renderElapsedTimes() {
+  clearInterval(elapsedTicker);elapsedTicker=null;
+  const nodes=[...document.querySelectorAll('[data-elapsed]')],received=performance.now();
   const paint=()=>{for(const node of nodes){
-    const elapsed=(node.stageTime?.elapsedMs??0)+(node.stageActive?Math.max(0,performance.now()-received):0);
-    node.textContent='На этой стадии '+agentClock(elapsed);
-    node.title='Время с начала наблюдения этой стадии службой; не время размышления модели. После перезапуска отсчёт начинается заново.';
+    node.textContent=agentClock(Number(node.dataset.elapsed)+performance.now()-received);
+    node.title='Время на текущей стадии по наблюдению службы; после перезапуска отсчёт начинается заново.';
   }};
-  paint();if(nodes.some(node=>node.stageActive))stageTicker=setInterval(paint,1000);
+  paint();if(nodes.length)elapsedTicker=setInterval(paint,1000);
 }
 
 function render(state) {
@@ -365,7 +350,7 @@ function render(state) {
         const choice = document.createElement('button');
         const active = activeProject && selected?.sessionId === session.sessionId;
         choice.className = 'session' + (active ? ' active' : '');
-        choice.dataset.sessionId = session.sessionId;
+        choice.dataset.sessionId = session.sessionId; choice.dataset.workspace = project.workspace; choice.dataset.role = session.role ?? '';
         if (active) choice.setAttribute('aria-current', 'page');
         const copy = document.createElement('span'); copy.className = 'session-copy';
         const title = document.createElement('strong'); title.textContent = session.title || 'Новая сессия';
@@ -450,6 +435,8 @@ function render(state) {
   $('assignment-title').textContent = assigned?.title ?? selected?.taskId ?? '';
   $('assignment-status').textContent = assigned?.label ?? 'Состояние назначения ещё не подтверждено.';
   const execution=state.execution??{};
+  const work=state.workProgress??null;
+  // Unknown command outcomes keep their acknowledgement; they live in the problem block.
   const commandIssues=$('command-issues');
   commandIssues.replaceChildren();
   for(const command of execution.commands??[])if(command.state==='unknown'||command.state==='acknowledged_unknown') {
@@ -463,45 +450,6 @@ function render(state) {
   }
   const parallel=selected?.planExecution?.execution_strategy==='parallel'||(!!selected?.assignmentId&&!planExecutor);
   const orchestrated=state.orchestratorPlan;
-  const activity=state.planRun?.activity;
-  $('execution-actions').hidden=!parallel&&!orchestrated;
-  const stages=executionFinalStages(execution);
-  const stageList=$('execution-stages');
-  stageList.setAttribute('aria-label',orchestrated?'Наблюдаемая стадия выполнения':'Проверяемые этапы завершения');
-  stageList.replaceChildren();
-  for(const [key,label] of (orchestrated?[]:[['source','Источник'],['main','Общий main'],['diagnostic','Диагностика'],
-    ['final','Финальное поручение'],['reply','Итоговый ответ']])) {
-    const line=document.createElement('li');line.dataset.stage=key;line.dataset.status=stages[key].status;
-    const heading=document.createElement('strong');heading.textContent=label;
-    const description=document.createElement('span');description.textContent=stages[key].text;
-    line.append(heading,description);stageList.append(line);
-  }
-  $('execution-next-action').textContent=stages.action;
-  $('execution-next-action').dataset.attention=String(['unknown','blocked'].includes(stages.main.status)
-    ||['unknown'].includes(stages.diagnostic.status)||['unknown'].includes(stages.final.status));
-  $('execution-message').textContent=execution.error?.message??({sending:'Поручение исправления отправляется…',sent:'Поручение исправления отправлено. Ждём основной чат.',unknown:'Исход отправки исправления неизвестен. Повтор не отправляется.'}[execution.correctionStatus])??({preparing:'Подготавливаем исполнителей…',merging:'Проверяем слияние в main…',
-    finalizing:'Завершение: '+(execution.finalizationReason??'проверяем квитанции и очистку.'),
-    delivering:'Завершение: ожидаем поставку и итоговую проверку оркестратора.',
-    complete:'Все результаты интегрированы. Ожидается приёмка.',integration:'Интеграция удерживает main. Другие слияния ждут.',
-    paused:'Выполнение плана на паузе. Новые задачи и сообщения не запускаются.',waiting:'Состояния исполнителей показаны в дереве. Пауза не означает вопрос пользователя.'}[execution.phase]??'Нажмите «Начать выполнение плана» для запуска готовых задач.');
-  if(execution.finalizationStatus&&!execution.error)$('execution-message').textContent=({
-    pending:'Итоговое поручение ожидает готовности основного чата.',
-    sending:'Передаём завершение основному чату…',sent:'Ждём итоговый ответ основного чата.',
-    unknown:'Исход итоговой отправки неизвестен. Повтор не отправляется.',
-    'reply-observed':'Итоговый ответ завершён. Ожидается приёмка.',
-  })[execution.finalizationStatus]??$('execution-message').textContent;
-  if(orchestrated){
-    $('execution-message').textContent=activity?.label??'Ожидаем сведения о текущей стадии.';
-    $('execution-next-action').textContent=activity?.reason??'';
-    $('execution-next-action').dataset.attention=String(activity?.phase==='attention');
-    if(activity){
-      const line=document.createElement('li'),heading=document.createElement('strong'),time=document.createElement('span');
-      line.dataset.stage=activity.phase;heading.textContent=activity.actor;
-      time.dataset.stageTime='plan';time.stageTime=activity;
-      time.stageActive=!['complete','paused','ready'].includes(activity.phase);
-      line.append(heading,time);stageList.append(line);
-    }
-  }
   const run = state.planRun;
   const runLabels = { 'not-started': 'Начать выполнение плана', running: 'Пауза', pausing: 'Пауза…', paused: 'Продолжить' };
   $('plan-run-toggle').hidden = !run || run.state === 'complete' || run.complete;
@@ -509,13 +457,11 @@ function render(state) {
   $('plan-run-toggle').dataset.state = run?.state ?? '';
   // A held project keeps the button: pressing it runs the standard Kit recheck.
   $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue;
+  // Why the plan is held; the stage, the problem block and the acceptance hint say the rest.
   const runReason = run?.issue ? 'Оркестратор плана не определён. Назначьте его в меню сессии.'
     : run?.reason === 'recovery' ? 'Автопродолжение отключено после восстановления Kit (не ручная пауза). '+(run.message??'')
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
-      : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '')
-        : orchestrated&&run?.state==='complete'?'Выполнение завершено — ожидается ваша приёмка.'
-        : run?.state!=='complete'&&['finalizing','delivering'].includes(execution.phase)
-          ? 'Завершение. '+(execution.finalizationReason??'Ожидаем итоговую проверку и очистку.') : '';
+      : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '') : '';
   $('plan-run-message').hidden = !runReason; $('plan-run-message').textContent = runReason.trim();
   const auto = state.planContinuation ?? { phase: 'off', active: false, message: '' };
   const review=state.planReview??{enabled:false,supported:false,message:''};
@@ -529,68 +475,73 @@ function render(state) {
   $('plan-review-indicator').dataset.state=reviewIndicator;
   $('plan-review-indicator').textContent=({success:'✓',attention:'!',waiting:'·'})[reviewIndicator]??'';
   // One plan button and no PlanContinuation switch: a running plan of the former model only reports its progress here.
-  const formerRun = !!run && !state.orchestratorPlan && !parallel && run.state === 'running';
+  const formerRun = !!run && !orchestrated && !parallel && run.state === 'running';
   const autoMessage = formerRun ? auto.message : '';
   const autoSent = formerRun && auto.continuations > 0 ? `Автоматически отправлено «Продолжай» №${auto.continuations}.` : '';
   $('plan-continuation-message').hidden = !autoMessage && !autoSent;
   $('plan-continuation-message').textContent = [autoSent, autoMessage].filter(Boolean).join(' ');
   $('plan-continuation-message').dataset.reason = auto.reason ?? '';
-
-  renderAgentTime(selected);
-  const kitAcceptance=orchestrated?.deliveryStatus==='READY_FOR_ACCEPTANCE'&&orchestrated?.tasks?.length>0
-    &&orchestrated.tasks.every(task=>task.status==='done');
-  const plan = orchestrated ? { state: orchestrated.current===false?'closed':kitAcceptance||run?.state==='complete'?'awaiting-acceptance'
-      :run?.state==='not-started'?'ready':run?.state==='paused'||run?.state==='pausing'?'paused':'working',
-      completed: orchestrated.tasks.filter(t => t.status === 'done').length, total: orchestrated.tasks.length, tasks: orchestrated.tasks, blockedReason: orchestrated.error }
-    : (selected?.planExecution?.execution_strategy==='parallel' ? execution.planView
-    : selected?.planView) ?? { state: 'not-created', completed: 0, total: 0, tasks: [], blockedReason: null };
+  // A legacy parallel executor keeps its own plan of the main checkout.
+  // Before the first projection arrives the card draws the plan views it already has.
+  const sourceTasks=orchestrated?orchestrated.tasks:(selected?.planExecution?.execution_strategy==='parallel'?execution.planView:selected?.planView)?.tasks??[];
+  const tasks=work?.tasks??sourceTasks.map(task=>({...task,mode:task.executionLabel??null,elapsedMs:task.stageTime?.elapsedMs??null,
+    label:task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]}));
+  const kitAcceptance=orchestrated?.deliveryStatus==='READY_FOR_ACCEPTANCE'&&orchestrated?.tasks?.length>0&&orchestrated.tasks.every(task=>task.status==='done');
+  const planState=orchestrated?(orchestrated.current===false?'closed':kitAcceptance||run?.state==='complete'?'awaiting-acceptance'
+    :run?.state==='not-started'?'ready':['paused','pausing'].includes(run?.state)?'paused':'working')
+    :selected?.planView?.state??'not-created';
+  const stateLabels={working:'Выполнение',ready:'План готов',paused:'Пауза','awaiting-acceptance':'Ждёт приёмки',closed:'План закрыт',
+    blocked:'Нужно внимание','not-created':'План ещё не создан'};
   if (selected) {
-    const plural = count => count % 10 === 1 && count % 100 !== 11 ? 'задача'
-      : count % 10 >= 2 && count % 10 <= 4 && !(count % 100 >= 12 && count % 100 <= 14) ? 'задачи' : 'задач';
-    const completedText = count => count === 1 ? 'Задача выполнена'
-      : plural(count) === 'задача' ? `Все ${count} задача выполнена` : `Все ${count} ${plural(count)} выполнены`;
-    const evidence=orchestrated?.evidence;
-    const statusText = orchestrated&&plan.state!=='closed'&&evidence
-      ?`Результаты исполнителей: ${evidence.received??'—'}/${evidence.total} · Интегрировано: ${evidence.integrated}/${evidence.totalTasks}`
-      :orchestrated&&plan.state!=='closed'?`Интегрировано: ${plan.completed}/${plan.total}`
-      : plan.state === 'awaiting-acceptance' ? completedText(plan.total) + ' · ожидается приёмка'
-      : plan.state === 'blocked' ? `План заблокирован · ${plan.completed} из ${plan.total} выполнено`
-        : plan.state === 'closed' ? 'Scope завершён и архивирован'
-          : plan.state === 'not-created' ? 'План ещё не создан'
-            : plan.state === 'ready' ? 'План готов к запуску'
-            : plan.state === 'paused' ? `План на паузе · ${plan.completed} из ${plan.total} интегрировано`
-            : `В работе · ${plan.completed} из ${plan.total} выполнено`;
-    $('plan-title').hidden = !selected.scopeId && !orchestrated;
-    $('plan-title').textContent = orchestrated ? orchestrated.objective || 'План оркестратора'
-      : selected.assignmentId ? execution.objective??'Общий план проекта' : selected.scopeId ? selected.objective : '';
-    $('plan-status').textContent = statusText; $('plan-status').dataset.state = plan.state;
-    const needsAcceptance=plan.state==='awaiting-acceptance';
-    $('plan-note').hidden = plan.state !== 'closed'&&!needsAcceptance;
-    $('plan-note').textContent = plan.state === 'closed' ? 'Проект готов к следующему новому плану.'
-      :needsAcceptance?'Все задачи зафиксированы Kit; ожидается ваша приёмка. Сообщите '+(orchestrated?'оркестратору':'агенту плана')+': «Принимаю результат, закрой план». Архив проекта не заменяет приёмку плана.':'';
-    const planReason = selected.planReadError?.message ?? plan.blockedReason ?? '';
+    const objective=orchestrated?orchestrated.objective:selected.assignmentId?execution.objective:selected.scopeId?selected.objective:'';
+    $('plan-title').textContent=work?.title||objective||(orchestrated?'План оркестратора':'');
+    $('plan-title').title=objective||'';
+    $('plan-title').hidden=!$('plan-title').textContent;
+    $('plan-phase-text').textContent=work?.phase??stateLabels[planState]??stateLabels['not-created'];
+    $('plan-phase-spinner').hidden=!work?.busy;
+    const total=work?.total??tasks.length,done=work?.done??tasks.filter(t=>t.status==='done').length;
+    $('plan-progress').hidden=!total;
+    $('plan-bar-fill').style.width=(total?Math.round(done/total*100):0)+'%';
+    $('plan-status').textContent=`в main ${done} из ${total}`;
+    $('plan-status').dataset.state=planState;
+    const acceptance=work?.phase==='Ждёт приёмки'||planState==='awaiting-acceptance';
+    $('plan-note').hidden=planState!=='closed'&&!acceptance;
+    $('plan-note').textContent=planState==='closed'?'Проект готов к следующему новому плану.'
+      :acceptance?'Все задачи зафиксированы Kit; ожидается ваша приёмка. Сообщите '+(orchestrated?'оркестратору':'агенту плана')+': «Принимаю результат, закрой план». Архив проекта не заменяет приёмку.':'';
+    // The problem block: only when the user must act or work really stopped.
+    const planReason = selected.planReadError?.message ?? selected.planView?.blockedReason ?? orchestrated?.error ?? '';
     $('plan-reason').hidden = !planReason; $('plan-reason').textContent = planReason;
-    $('plan-tasks').replaceChildren(...plan.tasks.map(task => {
+    const attention=work?.attention;
+    $('plan-attention-title').textContent=attention?.title??(planReason?'План недоступен':commandIssues.childElementCount?'Исход команды неизвестен':'');
+    $('plan-attention-text').textContent=attention?.text??'';
+    const issue=attention?.action;
+    $('plan-attention-action').hidden=!issue||!['open-session'].includes(issue.kind);
+    $('plan-attention-action').textContent=issue?.label??'Открыть чат';
+    $('plan-attention-action').onclick=issue?.kind==='open-session'?()=>action('selectSession',issue.workspace,issue.sessionId):null;
+    $('plan-attention').hidden=!attention&&!planReason&&!commandIssues.childElementCount;
+    const list=$('plan-tasks'),scrollTop=list.scrollTop;
+    list.replaceChildren(...tasks.map(task => {
       const item = document.createElement('li'); item.className = 'plan-task'; item.dataset.status = task.status;
       const mark = document.createElement('span'); mark.className = 'plan-task-state'; mark.setAttribute('role', 'img');
       // The mark alone means nothing to a screen reader: its status is spoken as text.
-      mark.setAttribute('aria-label', task.status === 'done' ? orchestrated?'интеграция проверена':'выполнена' : task.status === 'current' ? 'текущая' : 'не начата');
-      mark.textContent = task.status === 'done' ? '✓' : task.status === 'current' ? '●' : '○';
-      const body = document.createElement('div'), title = document.createElement('strong');
+      mark.setAttribute('aria-label', ({done:'влита в main',current:'выполняется',attention:'нужно внимание'})[task.status]??'не начата');
+      if(task.status==='current'){const spin=document.createElement('span');spin.className='wp-spin';mark.append(spin);}
+      else mark.textContent = ({done:'✓',attention:'!'})[task.status]??'○';
+      const body = document.createElement('div'), head=document.createElement('span'), title = document.createElement('strong');
+      head.className='plan-task-title';
       const id=document.createElement('span');id.className='plan-task-id';id.textContent=task.id;
-      title.textContent = task.title;
-      const mode=document.createElement('small');mode.className='plan-task-mode';mode.textContent=task.executionLabel??'Последовательно';
-      const status=document.createElement('small');status.className='plan-task-status';
-      status.textContent=task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
-      body.append(id,title,mode,status);
-      if(task.docsChecksHint){const hint=document.createElement('small');hint.className='plan-task-check-note';hint.textContent=task.docsChecksHint;body.append(hint);}
-      if(task.stageTime){const time=document.createElement('small');time.dataset.stageTime=task.id;
-        time.stageTime=task.stageTime;time.stageActive=!['done','paused'].includes(task.stageTime.phase);body.append(time);}
-      if (task.time) { const time = document.createElement('span'); time.dataset.executorTime = task.target?.sessionId ?? task.id; time.executorTime = task.time; body.append(time); }
+      title.textContent = task.title;head.append(id,title);
+      const line=document.createElement('small');line.className='plan-task-line';
+      const status=document.createElement('span');status.className='plan-task-stage';status.textContent=task.label??'Состояние не подтверждено';
+      if(task.status!=='done'&&task.mode){const mode=document.createElement('span');mode.className='plan-task-mode';mode.textContent=' · '+task.mode;status.append(mode);}
+      line.append(status);
+      if(task.elapsedMs!=null){const time=document.createElement('span');time.className='plan-task-time';
+        time.dataset.elapsed=String(task.elapsedMs);line.append(time);}
+      body.append(head,line);
       // A started task opens its executor's session; an unstarted or done one only shows its row.
-      if (orchestrated && task.target && task.status !== 'done') {
+      if (task.target && task.status !== 'done') {
         const open = document.createElement('button'); open.type = 'button'; open.className = 'plan-task-open';
-        open.title = 'Открыть сессию исполнителя ' + task.id;
+        open.title = 'Открыть чат исполнителя ' + task.id;
         if (task.target.sessionId === selected.sessionId) { item.dataset.current = 'true'; open.setAttribute('aria-current', 'page'); }
         open.append(mark, body);
         open.addEventListener('click', () => action('selectSession', task.target.workspace, task.target.sessionId));
@@ -598,21 +549,39 @@ function render(state) {
       }
       item.append(mark, body); return item;
     }));
-  } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; }
+    // Keep the user's scroll; a new problem or a newly running task is brought into view once.
+    list.scrollTop=scrollTop;
+    const focus=tasks.find(t=>t.status==='attention')??tasks.find(t=>t.status==='current');
+    const focusKey=(work?.title??'')+'|'+(focus?focus.id+':'+focus.status:'');
+    if(focusKey!==planFocusKey){planFocusKey=focusKey;
+      const row=focus&&[...list.children].find(item=>item.querySelector('.plan-task-id')?.textContent===focus.id);
+      if(row&&(row.offsetTop<list.scrollTop||row.offsetTop+row.offsetHeight>list.scrollTop+list.clientHeight))list.scrollTop=Math.max(0,row.offsetTop-8);
+    }
+  } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; $('plan-attention').hidden = true; }
+  // Busy participants of the selected project get a spinner in their tree row; text stays in the panel.
+  const busyActors=new Set((work?.now??[]).filter(item=>item.kind==='act').map(item=>item.actor));
+  for(const row of $('projects').querySelectorAll('.session[data-session-id]')){
+    const actor=row.dataset.role==='orchestrator'?'O':row.dataset.role==='discussion'?'S':null;
+    const busy=!!actor&&row.dataset.workspace===(selected?.parentWorkspace??selected?.workspace)&&busyActors.has(actor);
+    const spin=row.querySelector('.session-copy strong .wp-spin');
+    if(busy&&!spin){const node=document.createElement('span');node.className='wp-spin';node.setAttribute('aria-label','занят');row.querySelector('.session-copy strong')?.append(node);}
+    else if(!busy&&spin)spin.remove();
+  }
   const startup=context.startup||['startup-channel','startup-complete','startup-failed'].includes(context.phase)?startupView(context.startup):null;
   const [title, detail] = startup?[startup.title,startup.detail]:context.phase==='external-session' ? ['Открыто в ChatGPT','Продолжайте разговор в приложении ChatGPT. Эта сессия подключена через плагин Workflow Pilot.'] : phases[context.phase] ?? phases.selected;
   const preparing=['preparing','loading-context','preparing-message','waiting-attachments','waiting-composer','waiting-experience','waiting-login','waiting-draft'].includes(context.phase);
-  const attention=!!startup||preparing||['preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);
+  const startupProblem=['startup-stale','startup-failed','startup-uncertain'].includes(startup?.phase);
+  const attention=startupProblem||preparing||['preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);
   const started=selected?.manualStart||context.messageSent||['sending','unknown','sent','acknowledged'].includes(selected?.attempt?.state);
   $('session-notice').hidden=!selected||!attention||!!state.setup||!!state.settings;
   $('session-notice-title').textContent=(selected?.title||'Текущая сессия')+' · '+title;
   $('session-notice-detail').textContent=context.phase==='waiting-attachments' && context.uploadProgress
-    ? `Готово ${context.uploadProgress.ready} из ${context.uploadProgress.total} частей. Можно отменить ожидание; черновик сохранится.` : startup?.detail??context.error?.message??detail;
+    ? `Готово ${context.uploadProgress.ready} из ${context.uploadProgress.total} частей. Можно отменить ожидание; черновик сохранится.` : startup?.detail??context.error?.message??detail
+  // Without the former button the way to a fresh session is the project menu.
+  if(startupProblem)$('session-notice-detail').textContent+=' Новую сессию создайте через меню проекта (⋯ → Новый Chat / Новый Work).';
   $('retry-context').hidden=started||!['error','prepared-stale','preparation-paused'].includes(context.phase);
   $('cancel-context').hidden=started||!preparing;
   $('observe-context').hidden=context.phase!=='send-unknown';
-  $('new-context-session').hidden=context.phase==='external-session'||!started&&!['send-unknown','error','preparation-paused'].includes(context.phase)
-    &&!['startup-stale','startup-failed'].includes(startup?.phase);
   $('return-chat').hidden = context.phase !== 'chat-changed';
   $('connection-detail').textContent = state.localRuntime ? `${state.localRuntime.label} · встроенный MCP` : state.runtimeFolder;
   const delivery = context.delivery;
@@ -661,7 +630,7 @@ function render(state) {
     }
   }
   renderExecutorTimes();
-  renderStageTimes();
+  renderElapsedTimes();
 }
 
 $('add-workspace').addEventListener('click', () => action('chooseWorkspace'));
@@ -675,10 +644,6 @@ $('reconnect-chat').addEventListener('click', () => action('reconnect'));
 $('retry-context').addEventListener('click', () => action('retry'));
 $('cancel-context').addEventListener('click', () => action('cancelContext'));
 $('observe-context').addEventListener('click', () => action('retry'));
-$('new-context-session').addEventListener('click', () => {
-  const selected=currentState?.selected;
-  if(selected&&!selected.assignmentId)action('newSession',selected.workspace,selected.experience??'chat');
-});
 $('return-chat').addEventListener('click', () => action('returnToChat'));
 const releaseState = api.onState(render);
 window.addEventListener('pagehide', () => releaseState?.(), { once: true });

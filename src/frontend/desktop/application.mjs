@@ -5,8 +5,8 @@ import { offerMacInstallation } from './mac-installation.mjs';
 import { DesktopBrowserHost } from './browser-host.mjs';
 import { DesktopIpc } from './ipc.mjs';
 import { DESKTOP_CHANNELS } from '../../contracts/desktop.mjs';
+import { shellBackground } from '../../contracts/palette.mjs';
 
-const shellBackground = { light: '#f4f6f8', dark: '#1b1d22' };
 
 // In-process Desktop: the window, sidebar, archive and colour windows over the
 // Desktop model, with ChatGPT pages shown as native views.

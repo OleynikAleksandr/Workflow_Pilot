@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { executorStatus,projectExecutors,projectExecutionPlan,integrationProblem,executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
+import {paletteCss,spinnerCss} from '../src/contracts/palette.mjs';
 
 test('F20: worker source and HTTP preview never equal verified main or a final reply',()=>{
   const assignment={id:'a',status:'READY_FOR_INTEGRATION',source_commit:'sha',worktree:'/worktree',commandActive:true,
@@ -68,6 +69,7 @@ test('real sidebar renders executor group, worktree/status/time, protected actio
   const action=name=>async(...args)=>{calls.push([name,...args]);return {state};};
   window.webPilot={getState:async()=>state,onState:fn=>{listener=fn;},
     selectSession:action('selectSession')};
+  window.paletteCss=paletteCss;window.spinnerCss=spinnerCss;
   window.eval('const createProgress=()=>({show(){},destroy(){}});const operationLabel=()=>"";const settingsPanelView=()=>({render(){}});const workspaceSetupView=()=>({render(){}});'
     +'const executionFinalStages='+executionFinalStages.toString()+';\n'+source.replace(/^import .*;\n/gm,''));
   const settle=()=>new Promise(resolve=>setTimeout(resolve,0));await settle();
@@ -78,10 +80,8 @@ test('real sidebar renders executor group, worktree/status/time, protected actio
   document.querySelector('.executor-row').click();await settle();assert.deepEqual(calls.pop(),['selectSession','/tree','child']);
   assert.equal(document.getElementById('plan-continuation-message').hidden,true,'no PlanContinuation status for a parallel plan');
   assert.equal(document.getElementById('execute-tasks'),null);assert.equal(document.getElementById('reconcile-execution'),null);
-  assert.equal(document.querySelectorAll('#execution-stages li').length,5);
-  assert.equal(document.getElementById('execution-stages').getAttribute('aria-label'),'Проверяемые этапы завершения');
-  assert.equal(document.getElementById('execution-next-action').getAttribute('role'),'status');
-  assert.equal(document.querySelector('#execution-stages [data-stage=reply]').dataset.status,'waiting');
+  // Completion stages left the sidebar: the stage line and the panel report them.
+  assert.equal(document.getElementById('execution-stages'),null);assert.equal(document.getElementById('execution-next-action'),null);
   state={...state,selected:{...state.selected,workspace:'/tree',parentWorkspace:'/main',assignmentId:'a',sessionId:'child',
     planView:{state:'awaiting-acceptance',completed:1,total:1,tasks:[{id:'T1',title:'Task',status:'done'}]}},
     execution:{...state.execution,phase:'integration',integration:{status:'CONFLICT'}}};
@@ -97,20 +97,10 @@ test('real sidebar renders executor group, worktree/status/time, protected actio
   assert.equal(document.getElementById('assignment-card').hidden,true);
   assert.equal(document.getElementById('plan-card').hidden,false);
   assert.equal(document.querySelector('.plan-task').dataset.status,'current','main uses assignment projection, not stale main TODO');
-  state={...state,execution:{...state.execution,phase:'blocked',assignments:[{id:'a',parent_task_id:'T1',
-    status:'READY_FOR_INTEGRATION',source_commit:'sha',worktree:'/tree',commandActive:true,
-    commands:[{id:'op-9',blocksIntegration:true}]}],diagnosticStatus:'sent',finalizationStatus:'pending'}};
-  listener(state);
-  assert.equal(document.querySelector('[data-stage=source]').dataset.status,'ready');
-  assert.equal(document.querySelector('[data-stage=main]').dataset.status,'blocked');
-  assert.equal(document.querySelector('[data-stage=diagnostic]').dataset.status,'sent');
-  assert.match(document.getElementById('execution-next-action').textContent,/op-9/);
   state={...state,execution:{...state.execution,planView:{state:'awaiting-acceptance',completed:1,total:1,tasks:[{id:'T1',title:'Task',status:'done'}]},assignments:[{id:'a',parent_task_id:'T1',status:'INTEGRATED'}],
     phase:'complete',finalizationStatus:'reply-observed',diagnosticStatus:'reply-observed'}};
   listener(state);
-  assert.equal(document.querySelector('[data-stage=main]').dataset.status,'done');
-  assert.equal(document.querySelector('[data-stage=reply]').dataset.status,'done');
-  assert.match(document.getElementById('execution-next-action').textContent,/приёмка пользователя/);
+  assert.equal(document.getElementById('plan-status').textContent,'в main 1 из 1');
 });
 
 test('parent projection distinguishes assigned, ready and integrated results; launch failure is not a code conflict',()=>{
