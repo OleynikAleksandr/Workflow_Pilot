@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.24, Kit 1.9.4, протокол панели `4`, build `0.5.24-communication-4`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.25, Kit 1.9.5, протокол панели `4`, build `0.5.25-communication-4`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
@@ -77,9 +77,9 @@ SDK: ext-apps 1.7.5, mcp-extensions 0.2.0, MCP 1.32.1. Настоящий `App.c
 
 Имена communication_* имеют префикс `workflow_`. Binding: run_id, participant_id, panel_instance_id, protocol_version, build_id и permission_generation для доставки; посторонние поля отклоняются. Read-only: status/journal/export/recover/participants/read_context. Регистрация, read-квитанция и остальные мутации имеют readOnlyHint=false. Ответы communication содержат panel_resource_uri текущего immutable MCP snapshot; это диагностика каталога, не новое UI-вложение или доказательство старого iframe. Recover также сообщает assignment_dialogue_version и role_protocol_version.
 
-Legacy-only join/send_message/probe/enable сохраняют отдельный [ручной эксперимент P0/P1](plugin-communication-handoff.md): два разных разговора O/E, Enable на 30 минут, body до 4096 UTF-8 байт. Backend отвергает применение этих операций к рабочему плану. Старые журналы и экспорт доступны без автоматического разрешения.
+Legacy-only join/send_message/probe/enable — отдельный [ручной эксперимент P0/P1](plugin-communication-handoff.md) (Enable на 30 минут, body до 4096 байт); к рабочему плану backend их не применяет.
 
-Свежая metadata подтверждает наблюдаемый момент, но verify и SDK target:active не атомарны. Хост может не сообщить навигацию. Собственный observer встроенной страницы не является предполагаемым API busy/черновика ChatGPT. Host confirmations не обходятся; необходимость посетить/подключить каждый новый чат означает FAIL автоматизации A–D.
+Свежая metadata подтверждает наблюдаемый момент, но verify и SDK target:active не атомарны; хост может не сообщить навигацию. Host confirmations не обходятся; необходимость подключать каждый новый чат вручную — FAIL автоматизации A–D.
 
 ## Хранение, UI и диагностика
 
@@ -87,15 +87,17 @@ Control PluginCommunication сериализует мутации и подтв�
 
 WAL в собственном `plugin-communication`: legacy schema 1, workflow registry/WAL 2; состояние и последовательные события с SHA-цепочкой, без второго snapshot. Неизвестный формат отклоняется до записи, старый журнал не мигрирует молча. Контекст — неизменяемый файл по hash с fsync/O_NOFOLLOW и проверкой SHA при чтении. Повреждение, неполный хвост, внешний размер или symlink блокируют запись и сохраняют исходник/доступный префикс. На POSIX синхронизируется также каталог. Лимиты: 100 runs, 256 приглашений, 2048 workflow-сообщений (256 legacy), 20000 событий/run, WAL до 512 MiB. Превышение — явный отказ.
 
-Новый panel_instance_id создаётся при mount. Handshake → recover → bind → sync; поздний SDK восстанавливается ограниченно без модельных ходов. Исторический tool-result не управляет актуальным допуском. UI скрывает ручные поля/Enable, показывает роль/назначение и причину неготовности. Sync при ожидании разрешения — раз в две секунды; рабочий wait продлевает живую lease сам. Backoff ошибок 250–5000 мс; binding/version/storage прекращает доставку, ошибка не повторяет Send. UI refresh объединён с задержкой 500 мс, не блокирует доставку и не читает полный Kit roster. Светлая/тёмная тема и узкая раскладка сохранены.
+Новый panel_instance_id создаётся при mount. Handshake → recover → bind → sync; поздний SDK восстанавливается ограниченно без модельных ходов. Исторический tool-result не управляет актуальным допуском. Sync при ожидании разрешения — раз в две секунды; рабочий wait продлевает живую lease сам. Backoff ошибок 250–5000 мс; binding/version/storage прекращает доставку, ошибка не повторяет Send. Refresh объединён (500 мс) и не блокирует доставку.
 
-Sidebar читает регистрацию, живой SDK, task/attempt/grant/result/acceptance и этап интеграции. Панель O показывает всех E и входящие/исходящие с авторами, адресатами и корреляцией; E — свой диалог. Read-only preview не отмечает read. После удаления сохранённый запрет сессий отзывает допуск, intent становится retired; поздние вызовы получают PROJECT_REMOVED. [Наблюдаемость](assignment-dialogue-reliability.md#наблюдаемость).
+### Ход работ в панели
 
-Лента показывает последние 200 событий; экспорт фиксирует through_seq и полноту. Пакетная телеметрия отправляется отдельно от доставки; буфер 64, пакет до 16. Разделены client_time/server_received_at и монотонные длительности операций, отмечены frontend.gap/diagnostic.gap. Измеряются очередь/handler/Kit/observer, RPC/SDK и причины отложенного claim. Диагностика не будит функциональную очередь; функциональные события адресны. Последние события уничтоженной панели могут отсутствовать. Intent ≠ invocation, accepted ≠ read; скрытое мышление модели неизвестно. Секреты/raw metadata/аргументы инструментов не входят в spans. [Тайминги и экспорт](dialogue-timing.md).
+С 0.5.25 основной вид панели одинаков у O, E и S — ход всего плана проекта: шапка (план, этап, «в main N из M», открытый чат); «Сейчас» — строка на каждое текущее действие любого участника (проблемы, действия со спиннером, ожидания) с тикающим временем, свои строки выделены; свёрнутая «История» — закончившиеся события, свежие сверху, без ожиданий и служебной механики. `workProgress` с краткими превью без секретов приходит в `status` (view `panel`), `sync` и результате `wait`; видимость сырых сообщений, назначений и журнала для E и S не меняется. Wait просыпается при смене проекции; завершённый план обновляется редким status. Свёрнутая «Диагностика» сохраняет всё прежнее: привязку и legacy bind/enable, остановку отправки, SDK, roster с ID, outbox, сообщения с UUID и квитанциями, журнал с фильтрами, экспорт/JSONL, build и таймеры работы/ожидания исполнителей. Палитра — общие токены sidebar; `data-theme` хоста приоритетнее системной темы. Read-only preview не отмечает read; после удаления проекта допуск отозван, поздние вызовы — PROJECT_REMOVED. [Наблюдаемость](assignment-dialogue-reliability.md#наблюдаемость), [sidebar](desktop.md#ход-работ).
+
+Журнал «Диагностики» — последние 200 событий; экспорт фиксирует through_seq и полноту. Телеметрия идёт пакетами (буфер 64, пакет до 16) отдельно от доставки, с client_time/server_received_at, монотонными длительностями и frontend.gap/diagnostic.gap; она не будит функциональную очередь. Intent ≠ invocation, accepted ≠ read; секреты, raw metadata и аргументы инструментов в spans не входят. [Тайминги и экспорт](dialogue-timing.md).
 
 Ошибки имеют isError/structuredContent.error и префикс PLUGIN_COMMUNICATION_: IDENTITY_REQUIRED, BINDING, VERSION, UNSUPPORTED, STOPPED, ASSIGNMENT_CHANGED, PROJECT_REMOVED, ENROLLMENT/ENROLLMENT_EXPIRED, MODE, CLAIM_DENIED, READ_DENIED, STALE_MESSAGE, CONTEXT, CONFLICT, STORE_*, LIMIT и ошибки входа/курсора. Не маскировать их повторным join/Enable или DOM Send.
 
-Код ошибки сохраняется также при отклонении SDK Promise. Свежий status/sync с complete прекращает wait/sync текущей привязки без Stop. При ошибке ожидания запрашивается status: pause сохраняет Continue; недоступный status не считается complete. Поздний ответ проверяется по binding/epoch. Recover позволяет явно получить новую привязку; старый допуск не возобновляется.
+Код ошибки сохраняется и при отклонении SDK Promise. Свежий status/sync с complete прекращает wait текущей привязки без Stop; при ошибке ожидания запрашивается status (pause сохраняет Continue, недоступный status — не complete). Поздний ответ проверяется по binding/epoch; recover даёт новую привязку, старый допуск не возобновляется.
 
 ## Прямое подключение и поставка
 

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 893,
+  "plan_revision": 896,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -88,7 +88,13 @@
       "docs/modules/orchestrator-startup.md",
       "docs/modules/release.md",
       "packages/workflow-kit/README.md",
-      "tests/fixtures/released-kit/README.md"
+      "tests/fixtures/released-kit/README.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/assignment-dialogue-reliability.md",
+      "docs/modules/automatic-agent-dialogue-acceptance.md",
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/modules/project-compatibility.md",
+      "docs/modules/plugin-communication-handoff.md"
     ]
   },
   "baseline_commit": "fa9ee6c4c0ea37166e982c2ac0c7b495def8e2db",
@@ -103,7 +109,7 @@
       {
         "path": "docs/planning/work-progress-ui.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "418b8c0ddb3cae6706ecdf3f5cf24ae6154a1616"
       }
     ],
     "include_last_completed_task": false,
@@ -383,8 +389,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "DOCS",
@@ -410,7 +416,13 @@
         "docs/modules/orchestrator-startup.md",
         "docs/modules/release.md",
         "packages/workflow-kit/README.md",
-        "tests/fixtures/released-kit/README.md"
+        "tests/fixtures/released-kit/README.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/plugin-communication-handoff.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -421,7 +433,26 @@
         "Ограничения и ожидающая живая приёмка отмечены; документы не более 28000 байт UTF-8."
       ],
       "expected_commit_message": "docs: Актуализация всех документов проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/work-progress-ui.md",
+        "packages/workflow-kit/README.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -535,7 +566,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 893
+Revision: 896
 
 ## Цель
 
@@ -585,10 +616,10 @@ Revision: 893
   - Файлы: tests/work-progress-scenario.test.mjs, tests/electron-smoke.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/parallel-execution-smoke-fixture.cjs, tests/parallel-finalization.test.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/index.html
   - Параллельность: исключительное выполнение
   - Зависимости: T003, T004
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: Актуализация всех документов проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: Актуализация всех документов проекта
   - Reference: work-progress-ui / DOCS / implementation
-  - Файлы: docs/planning/work-progress-ui.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/dialogue-timing.md, docs/modules/orchestrator-startup.md, docs/modules/release.md, packages/workflow-kit/README.md, tests/fixtures/released-kit/README.md
+  - Файлы: docs/planning/work-progress-ui.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/dialogue-timing.md, docs/modules/orchestrator-startup.md, docs/modules/release.md, packages/workflow-kit/README.md, tests/fixtures/released-kit/README.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/project-compatibility.md, docs/modules/plugin-communication-handoff.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005
 - [TODO] RELEASE: Собрать выпуск 0.5.25 для трёх ОС — Ожидает
