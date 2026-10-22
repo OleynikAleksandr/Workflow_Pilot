@@ -100,6 +100,7 @@ test('Electron backend runs the Desktop model; the client uses the former channe
   const state=await until(()=>ui.get('state')?.projects?.length===1&&ui.get('state'),'Desktop state');
   assert.equal(state.projects[0].workspace,project.workspace);assert.equal(state.selected.sessionId,project.sessionId);
   assert.equal(state.fixture,false,'the backend model is not the in-process smoke fixture');
+  assert.ok(state.workProgress===null||state.workProgress.version===1,'the project progress reaches the client');
   const read=await client.read('ui.state');
   assert.equal(read.state.projects[0].workspace,project.workspace);assert.ok(Array.isArray(read.archive.archives));
   await assert.rejects(client.invoke('local','pilot:rename-project',{workspace:project.workspace,name:'Альфа'}),{code:'BACKEND_LEASE_REQUIRED'});

@@ -464,3 +464,21 @@ test('orchestrated signals: the project watcher wakes on the journal in the main
   }
   await woke;
 });
+
+test('Kit commit progress of main is published for sequential and orchestrated views; journals stay watched',async t=>{
+  const progress={taskId:'T001',checkId:'unit-all',index:1,total:2,checkStartedAt:20,runStartedAt:10};
+  const state={workspace:'/main',watchInputs:['.git/workflow-kit/transaction.json','.git/worktrees/a/workflow-kit/transaction.json'],kitProgress:progress,
+    plan:{scope_id:'scope',execution_scope_status:'ACTIVE',plan_revision:1,execution_strategy:'sequential',tasks:[task('T001')]}};
+  const updates=[];
+  const runtime=new ParallelExecution({kit:{read:async()=>structuredClone(state)},origin:()=>null,save:async()=>{},
+    watch:()=>Object.assign(()=>{},{update:paths=>updates.push(paths)})});
+  t.after(()=>runtime.dispose());
+  runtime.observe('/main');await runtime.signal('/main');
+  assert.equal(runtime.view('/main').phase,'sequential');
+  assert.deepEqual(runtime.view('/main').kitProgress,progress);
+  assert.deepEqual(updates.at(-1),state.watchInputs,'a sequential plan watches its commit journal too');
+  state.kitProgress=null;await runtime.signal('/main');
+  assert.equal(runtime.view('/main').kitProgress,null,'finished checks leave no stale progress');
+  const f=fixture(t);f.state.kitProgress=progress;await f.grant();
+  assert.deepEqual(f.runtime.view('/main').kitProgress,progress);
+});

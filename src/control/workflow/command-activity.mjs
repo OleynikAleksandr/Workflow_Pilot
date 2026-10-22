@@ -7,6 +7,17 @@ const hash=text=>createHash('sha256').update(text).digest('hex');
 const issue=(code,message)=>Object.assign(new Error(message),{code});
 import { currentBootIdentity, isProcessDead as dead } from '../../execution/facade.mjs';
 export { currentBootIdentity } from '../../execution/facade.mjs';
+import { commitProgress } from '../../contracts/work-progress.mjs';
+// Kit 1.9.5 keeps the running commit check in the transaction journal of the
+// checkout that commits; an older Kit or an idle checkout has none.
+export async function readCommitProgress(gitDir) {
+  const file=path.join(gitDir,'workflow-kit','transaction.json');
+  try {
+    const stat=await fs.lstat(file);
+    if(!stat.isFile()||stat.isSymbolicLink()||stat.size>4*1024*1024)return null;
+    return commitProgress(JSON.parse(await fs.readFile(file,'utf8')).verification_progress);
+  }catch{return null;}
+}
 export async function readCommandActivity(workspace,{isDead=dead,bootId=currentBootIdentity()}={}) {
   const directory=activeDirectory(workspace),commands=[];
   for(const name of (await fs.readdir(directory).catch(e=>{if(e.code==='ENOENT')return [];throw e;})).sort()) {

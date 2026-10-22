@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 885,
+  "plan_revision": 887,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -73,7 +73,8 @@
       "src/frontend/web/index.html",
       "tests/parallel-execution-smoke-fixture.cjs",
       "tests/parallel-finalization.test.mjs",
-      "packages/workflow-kit/src/lib/installer.mjs"
+      "packages/workflow-kit/src/lib/installer.mjs",
+      "src/control/workflow/parallel-execution.mjs"
     ],
     "documentation_paths": [
       "docs/planning/work-progress-ui.md",
@@ -165,8 +166,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "T002",
@@ -190,7 +191,8 @@
         "src/control/facade.mjs",
         "src/control/workflow/parallel-kit.mjs",
         "tests/parallel-execution.test.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "src/control/workflow/parallel-execution.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -210,7 +212,21 @@
         "Данные панели несут накопленные таймеры работы и ожидания исполнителей для «Диагностики»."
       ],
       "expected_commit_message": "feat: Построить единую проекцию хода работ",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/work-progress.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/workflow/command-activity.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/command-activity.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tests/work-progress.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -491,7 +507,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 885
+Revision: 887
 
 ## Цель
 
@@ -517,10 +533,10 @@ Revision: 885
   - Файлы: packages/workflow-kit/src/lib/git-hooks.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, packages/workflow-kit/src/lib/transaction.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, packages/workflow-kit/package.json, package-lock.json, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.4.tar.gz, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Построить единую проекцию хода работ — Ожидает
-  - Git Commit: [PENDING] feat: Построить единую проекцию хода работ
+- [DONE] T002: Построить единую проекцию хода работ — Завершено
+  - Git Commit: [DONE] feat: Построить единую проекцию хода работ
   - Reference: work-progress-ui / T002 / implementation
-  - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/command-activity.mjs, src/control/workflow/execution-projection.mjs, src/control/plugin/service.mjs, src/backend/desktop-model.mjs, tests/work-progress.test.mjs, tests/command-activity.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-communication.test.mjs, src/control/plugin/communication.mjs, src/control/facade.mjs, src/control/workflow/parallel-kit.mjs, tests/parallel-execution.test.mjs, tests/chatgpt-plugin.test.mjs
+  - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/command-activity.mjs, src/control/workflow/execution-projection.mjs, src/control/plugin/service.mjs, src/backend/desktop-model.mjs, tests/work-progress.test.mjs, tests/command-activity.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-communication.test.mjs, src/control/plugin/communication.mjs, src/control/facade.mjs, src/control/workflow/parallel-kit.mjs, tests/parallel-execution.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/workflow/parallel-execution.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] T003: Перестроить левый sidebar под ход работ — Ожидает

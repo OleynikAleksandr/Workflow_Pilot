@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {readCommandActivity,acknowledgeUnknownCommand,currentBootIdentity} from '../src/control/workflow/command-activity.mjs';
+import {readCommandActivity,acknowledgeUnknownCommand,currentBootIdentity,readCommitProgress} from '../src/control/workflow/command-activity.mjs';
 
 async function fixture(t) {
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'command-witness-'));
@@ -84,4 +84,17 @@ test('boot identity probe is fail-closed when unavailable, and normalizes verifi
  for(const value of ['random','yesterday',''])assert.equal(currentBootIdentity({platform:'darwin',run:()=>value}),null);
  assert.equal(currentBootIdentity({platform:'win32'}),null,'no unverified wall-clock approximation');
  assert.equal(currentBootIdentity({platform:'darwin',run:()=>{throw Error('absent');}}),null);
+});
+test('commit progress is read from the journal of the committing checkout; absence is normal',async t=>{
+ const f=await fixture(t),gitDir=path.join(f.root,'.git');
+ assert.equal(await readCommitProgress(gitDir),null,'no Kit directory');
+ await fs.mkdir(path.join(gitDir,'workflow-kit'),{recursive:true});
+ const journal=path.join(gitDir,'workflow-kit','transaction.json');
+ await fs.writeFile(journal,JSON.stringify({id:'tx',phase:'PREPARED'}));
+ assert.equal(await readCommitProgress(gitDir),null,'Kit before 1.9.5');
+ await fs.writeFile(journal,JSON.stringify({id:'tx',verification_progress:{version:1,task_id:'T002',check_id:'unit-all',index:1,total:2,
+  check_started_at_ms:20,run_started_at_ms:10}}));
+ assert.deepEqual(await readCommitProgress(gitDir),{taskId:'T002',checkId:'unit-all',index:1,total:2,checkStartedAt:20,runStartedAt:10});
+ await fs.writeFile(journal,'{broken');
+ assert.equal(await readCommitProgress(gitDir),null);
 });

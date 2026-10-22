@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { parsePlan } from '@webpilot/workflow-kit/lib/plan';
 import { readReview } from '@webpilot/workflow-kit/lib/plan-review';
 import { reviewBlocksExecution } from './plan-continuation-state.mjs';
-import {readCommandActivity} from './command-activity.mjs';
+import {readCommandActivity,readCommitProgress} from './command-activity.mjs';
 
 const planFile='.harness/plans/todo-plan.md';
 export function projectVerifiedPlan(plan,resolved) {
@@ -60,7 +60,7 @@ export class ParallelKit {
     const gitDir=await this.git(workspace,['rev-parse','--absolute-git-dir']);
     const integration=await this.plans.call(workspace,'integration:status');
     const proof=await this.plans.call(workspace,'validate');
-    const assignments=[];
+    const assignments=[],childInputs=[];
     const directory=path.join(gitDir,'workflow-kit','assignments');
     for(const file of await fs.readdir(directory).catch(e=>{if(e.code==='ENOENT')return [];throw e;})) {
       if(!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}\.json$/.test(file))continue;
@@ -78,7 +78,8 @@ export class ParallelKit {
         childGit=await this.git(record.worktree,['rev-parse','--absolute-git-dir']);
         const status=await this.plans.call(workspace,'assignment:status',['--id',record.id]);
         const activity=await readCommandActivity(record.worktree);
-        assignments.push({...record,...status,...activity,commandActive:activity.commandActive||await exists(path.join(childGit,'workflow-kit','operation.lock')),
+        childInputs.push(path.relative(workspace,path.join(childGit,'workflow-kit','transaction.json')));
+        assignments.push({...record,...status,...activity,kitProgress:await readCommitProgress(childGit),commandActive:activity.commandActive||await exists(path.join(childGit,'workflow-kit','operation.lock')),
           dirty:!!await this.git(record.worktree,['status','--porcelain'])});
       }catch(error){
         // A concurrent child's commit also replaces its plan. A failed read is
@@ -117,8 +118,9 @@ export class ParallelKit {
     const signals=signalText.split('\n').filter(Boolean).map(line=>{try{return JSON.parse(line);}catch{return null;}})
       .filter(signal=>signal&&typeof signal.id==='string'&&signal.scope_id===plan.scope_id);
     return {workspace,plan:projectVerifiedPlan(plan,proof.resolved),head,assignments,integration,confirmationError,...activity,signals,
+      kitProgress:await readCommitProgress(gitDir),
       handoff:handoff&&handoff.phase!=='DONE'?handoff:null,
-      watchInputs:['operation.lock','transaction.json','task-handoff.json','integration.json','assignments/','signals.jsonl'].map(name=>path.relative(workspace,path.join(gitDir,'workflow-kit',name))+(name.endsWith('/')?'/':'')),
+      watchInputs:['operation.lock','transaction.json','task-handoff.json','integration.json','assignments/','signals.jsonl'].map(name=>path.relative(workspace,path.join(gitDir,'workflow-kit',name))+(name.endsWith('/')?'/':'')).concat(childInputs),
       mainClean:!await this.git(workspace,['status','--porcelain']),
       commandActive:activity.commandActive||await exists(path.join(gitDir,'workflow-kit','operation.lock')),
       confirmed:!confirmationError};

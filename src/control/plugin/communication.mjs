@@ -33,8 +33,8 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{}}={}) {
-    Object.assign(this,{now,makeId,waitMs,store,onChange});
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{},workProgress=null}={}) {
+    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
     this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];this.timingDrops=0;
@@ -232,7 +232,24 @@ export class PluginCommunication {
   assignmentYield(input){return this.assignment.yield(input);}
   assignmentMigrate(input){return this.assignment.migrate(input);}
   _assignmentMigrated(input){return this.assignment.migrated(input);}
-  _sync(input){return this.workflow.sync(input);}
+  _sync(input){
+    const value=this.workflow.sync(input),{run,member}=this.member(input);
+    return run.mode==='workflow'&&value&&typeof value==='object'?{...value,work_progress:this.progressOf(member)}:value;
+  }
+  // The project-wide progress projection, the same for O, E and S; raw messages keep their own visibility.
+  progressOf(member){try{return this.workProgress?.(member.target)??null;}catch{return null;}}
+  // Wakes panel waits of a project whose progress projection changed.
+  workProgressChanged(projectId){
+    for(const waiter of this.waiters.values())if(this.runs.get(waiter.runId)?.project_id===projectId)waiter.wake('event');
+  }
+  // Dialogue messages of one plan for the progress history; bodies stay in the chats.
+  planMessages(projectId,scopeId){
+    const result=[];
+    for(const run of this.runs.values())if(run.mode==='workflow'&&run.project_id===projectId)
+      for(const m of run.messages)if(m.scope_id===scopeId)result.push({message_id:m.message_id,kind:m.kind,sender_role:m.sender_role,
+        task_id:m.task_id??null,created_at:m.created_at,superseded:!!m.superseded,source_commit:m.source_commit??null});
+    return result;
+  }
   _turnTimeout(input){return this.workflow.timeout(input);}
   async _observed(input){const run=this.run(input);for(const member of Object.values(run.members))
     if((!input.session_id||member.target.local_session_id===input.session_id)
@@ -499,7 +516,7 @@ export class PluginCommunication {
     const {run,member}=this.member(input),pending=run.mode==='workflow'?this.workflow.pending(run,member):run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
     const end=Math.min(input.after_seq+100,run.events.length),events=this.visibleEvents(run,member,run.events.slice(input.after_seq,end));
     return {message_id:pending?.message_id??null,events,seq:end,expires_at:this.panels.get(input.panel_instance_id)?.expiresAt??0,
-      stopped:(run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped)||member.generation!==input.permission_generation,critical_error:this.critical};
+      ...(run.mode==='workflow'?{work_progress:this.progressOf(member)}:{}),stopped:(run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped)||member.generation!==input.permission_generation,critical_error:this.critical};
   }
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
@@ -614,6 +631,7 @@ export class PluginCommunication {
   async status(input){
     await this.ready;await this.tail;await this.enrollment.validateInput(input);
     const value=structuredClone(this._status(input)),{run,member}=this.member(input);
+    if(run.mode==='workflow'&&input.view==='panel')value.work_progress=this.progressOf(member);
     if(run.mode==='workflow'&&member.target.dialogue_version===1){
       if(input.view!=='panel')value.assignments=await this.assignment.roster(run,member);
       else value.assignments=this.assignment.targets(run).filter(t=>t.role==='E'&&(member.role==='O'||t.local_session_id===member.target.local_session_id))

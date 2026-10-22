@@ -8,6 +8,7 @@ import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntime
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
 import {startupContextState} from '../contracts/startup-view.mjs';
+import {buildWorkProgress,commitProgressLabel,messageEvent,planPhase,stageKind,WORK_SILENCE_MS} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -329,6 +330,101 @@ function planRunView(saved) {
     message:recovery?.message??(reason==='recovery'?'Транзакция Kit завершена; для возобновления выполнения нажмите «Продолжить».':null),
     recoveryHeld:!!recovery,issue:null,complete};
 }
+// One project-level progress projection (sidebar, HTTP client, plugin panel). Facts only:
+// stage labels keep the wording of the stage functions; times are observed by this backend.
+function workProgressView(workspace) {
+  const project=workspace&&store.project(workspace);
+  if(!project||project.parentWorkspace)return null;
+  const sessions=(store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions??[]).filter(s=>!s.archivedAt&&!s.external);
+  const run=planRunView({workspace}),view=execution.view(workspace),scope=run?.scopeId??null;
+  const orchestrated=project.planExecution?.execution_strategy==='orchestrated';
+  const now=[],history=[];let attention=null;
+  const warn=(title,text,action=null)=>{attention??={title,text,action};};
+  // Startup of orchestrator and discussion chats is shown here, not under the session card.
+  for(const session of sessions){
+    const actor=session.role==='orchestrator'?'O':'S';
+    if(session.attempt?.contextTransport!=='panel'||session.attempt.state!=='sent')continue;
+    const progress=workflow.startupProgress(session.sessionId,session.attempt.requestId);
+    if(progress?.complete)continue;
+    if(progress===null||progress?.error||['rejected','unknown'].includes(progress?.delivery)){
+      warn('Сессия не получила стартовый контекст','Создайте новую сессию через меню проекта.',{kind:'project-menu',workspace});
+      now.push({actor,text:'не получил стартовый контекст',kind:'warn',elapsedMs:0});continue;
+    }
+    const text=progress?.read?'читает стартовый контекст · часть '+progress.parts_read+' из '+progress.total_parts:'получает стартовый контекст';
+    now.push({actor,text,kind:'act',elapsedMs:observeActivity(JSON.stringify([project.projectId,session.sessionId,'startup']),{phase:'startup',label:'',reason:''}).elapsedMs});
+  }
+  const executors=scope?executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope):[];
+  const assignments=view.scopeId===scope?view.assignments??[]:[];
+  const kitLabel=(taskId)=>{
+    const progress=assignments.find(a=>a.parent_task_id===taskId&&a.kitProgress)?.kitProgress
+      ??(view.kitProgress?.taskId===taskId?view.kitProgress:null);
+    return progress?{label:commitProgressLabel(progress),elapsedMs:Date.now()-progress.checkStartedAt}:null;
+  };
+  const source=orchestrated?orchestratorPlanView({workspace})?.tasks??[]:project.planView?.tasks??[];
+  const tasks=scope?source.map(task=>{
+    const kit=task.status==='done'?null:kitLabel(task.id),own=executors.find(e=>e.taskId===task.id);
+    const silent=own&&task.status!=='done'&&stageKind(own.phase)==='wait'&&(own.stageTime?.elapsedMs??0)>WORK_SILENCE_MS;
+    const status=task.status==='done'?'done':task.status==='pending'?'pending':own&&(own.phase==='attention'||silent)?'attention':'current';
+    const label=kit?.label??task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
+    return {id:task.id,title:task.title,status,label,mode:task.executionLabel??null,target:task.target??null,timers:own?.time??null,
+      elapsedMs:status==='current'||status==='attention'?kit?.elapsedMs??task.stageTime?.elapsedMs??null:null};
+  }):[];
+  // Current actions: the orchestrator or plan activity, then every running executor.
+  if(run?.activity&&!['ready'].includes(run.activity.phase)){
+    const activity=run.activity,actor=activity.actor==='Workflow Kit'?'KIT':'O';
+    now.push({actor,text:activity.label,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs});
+  }
+  for(const task of tasks.filter(t=>['current','attention'].includes(t.status))){
+    const own=executors.find(e=>e.taskId===task.id),kit=kitLabel(task.id);
+    if(kit)now.push({actor:task.id,text:kit.label,kind:'act',elapsedMs:kit.elapsedMs});
+    else if(own){
+      const silent=task.status==='attention'&&own.phase!=='attention';
+      now.push({actor:task.id,text:silent?'нет новых событий '+Math.round((own.stageTime?.elapsedMs??0)/60000)+' мин · '+own.label:own.label,
+        kind:task.status==='attention'?'warn':stageKind(own.phase,{busy:own.phase==='working'}),elapsedMs:own.stageTime?.elapsedMs??0});
+      if(task.status==='attention')warn(task.id+(silent?' молчит':' требует внимания'),own.label,own.workspace&&own.sessionId?{kind:'open-session',workspace:own.workspace,sessionId:own.sessionId,label:'Открыть чат '+task.id}:null);
+    }else if(!orchestrated&&task.status==='current')now.push({actor:task.id,text:task.label,kind:run?.state==='running'?'act':'wait',elapsedMs:0});
+  }
+  if(!orchestrated&&view.kitProgress&&!tasks.some(t=>t.id===view.kitProgress.taskId))
+    now.push({actor:'KIT',text:commitProgressLabel(view.kitProgress),kind:'act',elapsedMs:Date.now()-view.kitProgress.checkStartedAt});
+  if(project.orchestrationIssue)warn('Нужно внимание',project.orchestrationIssue.message??'Оркестратор плана не определён.');
+  if(view.scopeId===scope&&view.error)warn('Нужно внимание',view.error.message);
+  if(run?.reason==='escalation'||run?.reason==='unknown')warn(run.reason==='unknown'?'Исход операции неизвестен':'Оркестратор передал проблему',run.message??'');
+  const unknown=(view.commands??[]).filter(c=>c.state==='unknown');
+  if(unknown.length)warn('Исход команды неизвестен',unknown[0].reason??'Завершение команды не подтверждено.',{kind:'command-issues'});
+  // History: finished dialogue messages of the plan from the durable communication journal.
+  if(scope){
+    const titles=Object.fromEntries(source.map(t=>[t.id,t.title]));
+    for(const message of plugin?.communication.planMessages(project.projectId,scope)??[]){
+      const event=messageEvent(message,{titles});if(event)history.push(event);
+    }
+  }
+  const done=tasks.filter(t=>t.status==='done').length,allDone=tasks.length>0&&done===tasks.length;
+  const started=tasks.some(t=>t.status!=='pending');
+  const [phase,busy]=planPhase({scope,acting:now.some(i=>i.kind==='act'),attention:!!attention,allDone,started,
+    complete:!!scope&&(run.complete||project.planView?.state==='awaiting-acceptance'),
+    paused:orchestrated&&['paused','pausing'].includes(run?.state),notStarted:run?.state==='not-started',
+    preparing:orchestrated&&view.phase==='preparing',running:run?.state==='running'});
+  return buildWorkProgress({title:scope?project.scopeTitle||project.objective||scope:'',phase,busy,done,total:tasks.length,
+    strategy:project.planExecution?.execution_strategy??(scope?'sequential':null),tasks,now,history,attention});
+}
+// The plugin panel of any plan participant receives the progress of its project.
+function workProgressFor(target) {
+  const project=store.snapshot().projects.find(p=>p.projectId===target?.project_id&&!p.parentWorkspace&&!p.archivedAt);
+  const value=project&&workProgressView(project.workspace);
+  return value&&{...value,self:target.role==='E'?target.task_id??null:target.role??null};
+}
+// Panel waits wake when the meaning of a project's progress changes, not on every clock tick.
+const progressSignatures=new Map();
+function notifyWorkProgress() {
+  if(!plugin)return;
+  for(const project of store.snapshot().projects.filter(p=>!p.parentWorkspace&&!p.archivedAt)){
+    const value=workProgressView(project.workspace);
+    const signature=JSON.stringify(value&&[value.phase,value.done,value.tasks.map(t=>[t.id,t.status,t.label]),
+      value.now.map(i=>[i.actor,i.text,i.kind]),value.history.length,value.attention?.title]);
+    if(progressSignatures.get(project.projectId)===signature)continue;
+    progressSignatures.set(project.projectId,signature);plugin.communication.workProgressChanged(project.projectId);
+  }
+}
 function snapshot() {
   const saved = store.selected();
   const projects=store.snapshot().projects;
@@ -360,6 +456,7 @@ function snapshot() {
       enabled:!saved?.external&&projectPlanContinuation.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
     planRun: planRunView(saved),
     orchestratorPlan: orchestratorPlanView(saved),
+    workProgress: workProgressView(saved?.parentWorkspace??saved?.workspace),
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
       : saved&&workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)&&!['sent','unknown','acknowledged'].includes(saved.attempt?.state)
@@ -397,6 +494,7 @@ function publish() {
   rememberSessionTitle();
   rememberScopeTitle();
   const state = snapshot();
+  try { notifyWorkProgress(); } catch { /* progress notification never stops the model */ }
   try { publishListener(); } catch { /* a remote surface never stops the model */ }
   surface.publishColors?.(colorsState());
   chromiumDiagnostics?.observeStartup(state.startup);
@@ -1471,7 +1569,7 @@ async function start() {
       load:()=>({runs:[],issues:[{error_code:error.code?.startsWith('PLUGIN_COMMUNICATION_')?error.code:'PLUGIN_COMMUNICATION_STORE_OPEN'}]}),
       append:async()=>{throw error;},
     }));
-    plugin=control.createPlugin({onChange:()=>publish(),communicationStore,
+    plugin=control.createPlugin({onChange:()=>publish(),communicationStore,workProgress:workProgressFor,
       observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;

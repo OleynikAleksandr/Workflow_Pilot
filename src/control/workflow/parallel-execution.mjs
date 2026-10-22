@@ -239,7 +239,9 @@ export class ParallelExecution {
   }
   async reconcile(workspace,recovery=false) {
     const state=await this.kit.read(workspace),{plan}=state;
-    if(!['parallel','orchestrated'].includes(plan.execution_strategy)) {this.publish(workspace,{phase:'sequential',assignments:[],error:null});return;}
+    // Commit checks of a sequential plan run in main; its journal is watched too.
+    if(!['parallel','orchestrated'].includes(plan.execution_strategy)) {this.unwatch.get(workspace)?.update?.(state.watchInputs);
+      this.publish(workspace,{phase:'sequential',assignments:[],error:null,kitProgress:state.kitProgress??null});return;}
     const enabled=()=>!this.suspended.has(workspace)&&(this.isEnabled?this.isEnabled(workspace,plan.scope_id):this.enabled);
     // Pausing an orchestrated plan stops only new tasks; running executors and integrations continue.
     const issuing=()=>enabled()&&(this.isIssuing?this.isIssuing(workspace,plan.scope_id):true);
@@ -279,7 +281,7 @@ export class ParallelExecution {
       if(unknown)this.onPause(workspace,plan.scope_id,'unknown',unknown);
     }
     this.publish(workspace,{phase:'waiting',scopeId:plan.scope_id,strategy:plan.execution_strategy,originSessionId:origin.sessionId,
-      objective:plan.objective,planView:projectExecutionPlan(plan,assignments,state.integration),
+      objective:plan.objective,planView:projectExecutionPlan(plan,assignments,state.integration),kitProgress:state.kitProgress??null,
       assignments,integration:state.integration,correctionStatus:ledger.corrections[state.integration.operation_id]??null,
       commands:[...(state.commands??[]),...assignments.flatMap(a=>a.commands??[])],
       canCorrect:!state.commandActive&&this.mainState(origin).stopped&&this.mainState(origin).canSend,

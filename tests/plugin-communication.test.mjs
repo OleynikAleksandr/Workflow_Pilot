@@ -194,3 +194,36 @@ test('a failed message append is not acknowledged or visible after restart',asyn
   const next=new PluginCommunication({store:await openCommunicationStore(directory)});t.after(()=>next.dispose());
   assert.deepEqual((await next.status(E)).messages,[]);
 });
+
+test('every plan participant gets the project progress; a progress change wakes panel waits',async t=>{
+  const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-progress-')));
+  const targets=new Map(),calls=[];
+  const comm=new PluginCommunication({store:await openCommunicationStore(directory),waitMs:5000,resolveTarget:id=>targets.get(id)??null,
+    workProgress:target=>{calls.push(target.local_session_id);return {version:1,phase:'Выполнение',self:target.role==='E'?target.task_id:target.role};}});
+  t.after(async()=>{comm.dispose();await comm.tail;await fs.rm(directory,{recursive:true,force:true});});
+  const people={};
+  for(const [id,role] of [['orchestrator','O'],['worker','E']]){
+    targets.set(id,{project_id:'project',local_session_id:id,origin_session_id:'orchestrator',role,scope_id:'scope',
+      assignment_id:role==='E'?'assignment-1':null,task_id:role==='E'?'T001':null});
+    const metadata={'openai/session':'private-'+id,'openai/subject':'private-user'};
+    const joined=await comm.enroll((await comm.reserve(targets.get(id))).enrollment_ticket,metadata);
+    people[role]={...joined,metadata,panel_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
+  }
+  for(const role of ['O','E']){
+    const value=await comm.status({...people[role],view:'panel'});
+    assert.equal(value.work_progress.phase,'Выполнение');
+    assert.equal(value.work_progress.self,role==='E'?'T001':'O');
+    assert.equal((await comm.status(people[role])).work_progress,undefined,'only the panel view carries progress');
+  }
+  assert.deepEqual(calls,['orchestrator','worker']);
+  // Raw message visibility is unchanged by the shared projection.
+  assert.deepEqual(comm.planMessages('project','scope'),[]);
+  assert.deepEqual(comm.planMessages('other','scope'),[]);
+  const woken=[];
+  comm.waiters.set('panel-e',{runId:people.E.run_id,memberId:people.E.participant_id,wake:reason=>woken.push(reason)});
+  comm.workProgressChanged('other');assert.deepEqual(woken,[],'another project does not wake');
+  comm.workProgressChanged('project');assert.deepEqual(woken,['event']);
+  comm.waiters.delete('panel-e');
+  const result=comm.waitResult({...people.E,after_seq:0,permission_generation:0});
+  assert.equal(result.work_progress.self,'T001');
+});
