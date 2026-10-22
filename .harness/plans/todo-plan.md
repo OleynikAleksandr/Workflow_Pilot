@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 847,
+  "plan_revision": 852,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -61,7 +61,12 @@
       "src/control/sessions/workspace-session.mjs",
       "tests/plugin-communication.test.mjs",
       "tests/automatic-agent-dialogue.test.mjs",
-      "tests/fixtures/automatic-agent-dialogue.mjs"
+      "tests/fixtures/automatic-agent-dialogue.mjs",
+      "tests/parallel-execution.test.mjs",
+      "tests/settings-parallel-execution.test.mjs",
+      "tests/session-opening-performance.test.mjs",
+      "tests/fixtures/executor-background-startup.mjs",
+      "tests/executor-background-startup.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/recovery-and-interruption-2026-10.md",
@@ -170,8 +175,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "FIX-STARTUP",
@@ -185,7 +190,12 @@
         "src/control/workflow/dialogue-delivery.mjs",
         "tests/startup-context.test.mjs",
         "tests/plugin-communication-store.test.mjs",
-        "tests/dialogue-delivery.test.mjs"
+        "tests/dialogue-delivery.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/settings-parallel-execution.test.mjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/executor-background-startup.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -203,7 +213,16 @@
       ],
       "expected_commit_message": "fix: подтверждать завершённое чтение startup S при изменении плана",
       "task_brief": "Раздел I. Исправь сохранённый startup model-pull S: после аутентифицированной первой выдачи допускай дочитывание и complete замороженного снимка независимо от ревизии соседнего плана. Не ослабляй проверку перед выдачей и защиту identity/request/digest/complete/read/superseded/remove, не меняй O/E, старый SDK и идемпотентность. Прочти полную спецификацию docs/planning/recovery-and-interruption-2026-10.md, секции 0/I.1, и реальные модули. Проверь on-disk WAL fixtures, stale до/после выдачи, отсутствие grant/повтора. Только перечисленные пути; task:start/Kit checked commit.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/workflow/dialogue-delivery.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/settings-parallel-execution.test.mjs",
+        "tests/startup-context.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -423,7 +442,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 847
+Revision: 852
 
 ## Цель
 
@@ -449,10 +468,10 @@ Revision: 847
   - Файлы: packages/workflow-kit/src/cli.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.3.tar.gz, src/control/workflow/plan-review.mjs, tests/plan-review.test.mjs, packages/workflow-kit/README.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] FIX-STARTUP: I · Startup S — подтвердить дочитанный снимок при изменении плана — Ожидает
-  - Git Commit: [PENDING] fix: подтверждать завершённое чтение startup S при изменении плана
+- [DONE] FIX-STARTUP: I · Startup S — подтвердить дочитанный снимок при изменении плана — Завершено
+  - Git Commit: [DONE] fix: подтверждать завершённое чтение startup S при изменении плана
   - Reference: recovery-status-interruptions / FIX-STARTUP / implementation
-  - Файлы: src/control/plugin/startup-context.mjs, src/control/workflow/dialogue-delivery.mjs, tests/startup-context.test.mjs, tests/plugin-communication-store.test.mjs, tests/dialogue-delivery.test.mjs
+  - Файлы: src/control/plugin/startup-context.mjs, src/control/workflow/dialogue-delivery.mjs, tests/startup-context.test.mjs, tests/plugin-communication-store.test.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-execution.test.mjs, tests/settings-parallel-execution.test.mjs, tests/session-opening-performance.test.mjs, tests/fixtures/executor-background-startup.mjs, tests/executor-background-startup.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-REVIEW
 - [TODO] FIX-STARTUP-UI: I · Startup UI — терминальные состояния и отсутствие вечного pending — Ожидает

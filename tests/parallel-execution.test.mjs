@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ParallelExecution,executionOrigin,availableTasks } from '../src/control/workflow/parallel-execution.mjs';
-import { startupMessage } from '../src/control/context/context-session.mjs';
+import { startupMessage,orchestratorStartupContext } from '../src/control/context/context-session.mjs';
 import { executorPageState } from '../src/control/workflow/executor-session.mjs';
 
 const task=(id,dependencies=[])=>({id,title:id,dependencies,parallel_safe:true,implementation_status:'TODO',commit_status:'PENDING',
@@ -144,12 +144,16 @@ test('explicit correction waits for the running reconciliation instead of racing
   assert.equal((await correction).state,'sent');assert.equal(f.calls.corrections.length,1);
 });
 
-test('assigned startup starts exactly its task, names worktree/main and does not ask for a second user instruction',()=>{
-  const text=startupMessage({name:'Project',workspace:'/trees/a',sessionId:'worker',assignmentId:'a',taskId:'T002',
-    parentWorkspace:'/main',executionSnapshot:{parallel_allowed:true,max_workers:2}},'request',{parts:[{}]});
-  assert.match(text,/task:start T002/);assert.match(text,/commit --task T002/);assert.match(text,/"\/trees\/a"/);
-  assert.match(text,/Основной checkout: "\/main"/);assert.match(text,/После коммита не бери следующую задачу/);
-  assert.doesNotMatch(text,/Файлы проекта не меняй|Дальнейшую работу начнём/);
+test('assigned startup provides an MCP invitation and recovery but never starts the task during bootstrap',()=>{
+  const project={name:'Project',workspace:'/trees/a',sessionId:'worker',assignmentId:'a',taskId:'T002',
+    parentWorkspace:'/main',executionSnapshot:{parallel_allowed:true,max_workers:2}};
+  const text=startupMessage(project,'request',{parts:[{}]},[],{context_transport:'panel',enrollment_ticket:'a'.repeat(64)});
+  assert.match(text,/workflow_pilot_panel/);assert.match(text,/workflow_startup_complete/);
+  assert.doesNotMatch(text,/task:start T002|commit --task T002/);
+  const recovery=orchestratorStartupContext(project,{context:'Kit recovery'});
+  assert.match(recovery,/"\/trees\/a"/);assert.match(recovery,/основной checkout: "\/main"/i);
+  assert.match(recovery,/задача: T002/);assert.match(recovery,/Не выполняй task:start/);
+  assert.match(recovery,/жди отдельное рабочее поручение/);
 });
 
 test('source needs an observed final assistant pause in the exact chat, with no outstanding delivery',()=>{

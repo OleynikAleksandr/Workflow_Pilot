@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { settingsPanelView } from '../src/frontend/desktop/ui/settings-panel.mjs';
 import { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from '../src/control/workflow/parallel-settings.mjs';
-import { startupMessage } from '../src/control/context/context-session.mjs';
+import { orchestratorStartupContext } from '../src/control/context/context-session.mjs';
 
 test('execution settings reject malformed limits and return an independent snapshot', () => {
   assert.deepEqual(validateParallelSettings(), { parallel_allowed:false, max_workers:2 });
@@ -81,20 +81,20 @@ test('recovery settings expose exact executor action, keep cloud-chat warning an
 test('startup recovery metadata uses the session snapshot and never PlanContinuation or current Settings', () => {
   const project={name:'Fixture',workspace:'/fixture',sessionId:'fixture-session',scopeStatus:'NONE',
     executionSnapshot:{parallel_allowed:true,max_workers:3}};
-  const packet={parts:[{text:'Unchanged Kit recovery'}]};
-  const text=startupMessage(project,'request',packet);
+  const packet={context:'Unchanged Kit recovery'};
+  const text=orchestratorStartupContext(project,packet);
   assert.ok(text.includes(JSON.stringify(project.executionSnapshot)));
   assert.match(text,/при планировании оцени зависимости/);
   assert.doesNotMatch(text,/PlanContinuation/);
-  assert.equal(startupMessage({...project,planContinuationEnabled:true,parallelExecution:{parallel_allowed:false,max_workers:1}},'request',packet),text);
-  assert.deepEqual(packet,{parts:[{text:'Unchanged Kit recovery'}]},'shared recovery is not rewritten for a session');
+  assert.equal(orchestratorStartupContext({...project,planContinuationEnabled:true,parallelExecution:{parallel_allowed:false,max_workers:1}},packet),text);
+  assert.deepEqual(packet,{context:'Unchanged Kit recovery'},'shared recovery is not rewritten for a session');
   for(const scopeStatus of ['ACTIVE','BLOCKED']) {
-    const active=startupMessage({...project,scopeStatus,planExecution:{parallel_allowed:true,max_workers:2,execution_strategy:'parallel',execution_reason:'Independent'}},'request',packet);
+    const active=orchestratorStartupContext({...project,scopeStatus,planExecution:{parallel_allowed:true,max_workers:2,execution_strategy:'parallel',execution_reason:'Independent'}},packet);
     assert.match(active,/не создавай второй план/);
     assert.match(active,/"max_workers":2/);
     assert.match(active,/"max_workers":3/);
   }
-  const legacy=startupMessage({...project,executionSnapshot:undefined},'request',packet);
+  const legacy=orchestratorStartupContext({...project,executionSnapshot:undefined},packet);
   assert.match(legacy,/Legacy-сессия.*выключено/);
 });
 

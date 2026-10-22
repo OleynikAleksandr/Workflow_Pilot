@@ -50,7 +50,9 @@ try{
       inspect:async workspace=>{const {attempt,chatUrl,...p}=projects.get(workspace);return p;},
       updateSession:async(w,_id,patch)=>Object.assign(projects.get(w),patch),
       bindChat:async(w,_id,url)=>Object.assign(projects.get(w),{chatUrl:url}),recordAgentTime:async()=>{}};
-    const runtime={ensure:async()=>{},prepareBootstrap:async()=>({enrollment_ticket:'fixture-ticket',expires_at:Date.now()+60000}),
+    const staged=[];
+    const runtime={ensure:async()=>{},prepareBootstrap:async()=>({context_transport:'panel',enrollment_ticket:'a'.repeat(64),expires_at:Date.now()+60000}),
+      stageStartup:async(project,attempt)=>{staged.push({sessionId:project.sessionId,text:attempt.startupText});return {message_id:project.sessionId};},
       loadContext:async workspace=>{
         const p=projects.get(workspace),text='MANDATORY RULES ONLY';
         return {delivery_protocol:'inline-context-v1',ack_required:false,status:'ready',completeness:'COMPLETE',workspace,
@@ -75,8 +77,10 @@ try{
       const raw=await host.view(r.key).webContents.executeJavaScript('({starts,files,readyAt,visible:document.visibilityState})');
       pages.push({starts:raw.starts.length,ready:!!raw.readyAt,observedEditor:r.pageState.current?.state.editorAvailable,
         actualEditor:(await r.composer.inspect()).editorAvailable,phase:r.controller.state.phase});
-      if(!baseline){assert.equal(raw.starts.length,1);assert.deepEqual(raw.files,['MANDATORY RULES ONLY']);
-        assert.match(raw.starts[0],/workflow_pilot_panel/);assert.ok(r.project().chatUrl);}
+      if(!baseline){assert.equal(raw.starts.length,1);assert.deepEqual(raw.files,[],'model-pull does not send attachments');
+        assert.match(raw.starts[0],/workflow_pilot_panel/);assert.doesNotMatch(raw.starts[0],/MANDATORY RULES ONLY/);
+        assert.ok(staged.some(s=>s.sessionId===r.project().sessionId&&s.text.includes('MANDATORY RULES ONLY')));
+        assert.ok(r.project().chatUrl);}
     }
     assert.equal(errors.length,0);assert.equal(sessions.visible,null);
     results.push({count,pages});sessions.dispose();

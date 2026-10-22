@@ -65,7 +65,11 @@ test('production readiness and canonical recovery block insertion after real inp
         if (options.canContinue()) sends++;
         return { state: 'cancelled' };
       } };
-    const controller = new ContextSession({ store, runtime: { ensure: async () => ({}) }, composer, contextCache: cache });
+    const controller = new ContextSession({ store, runtime: {
+      ensure: async () => ({}),
+      prepareBootstrap: async () => ({context_transport:'panel',enrollment_ticket:'a'.repeat(64)}),
+      stageStartup: async () => ({message_id:'fixture-startup'})
+    }, composer, contextCache: cache });
     controller.attach(saved); await controller.tick();
     assert.equal(loads, 1); assert.equal(fills, 0); assert.equal(sends, 0);
     assert.equal(controller.state.phase, 'prepared-stale');

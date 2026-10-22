@@ -83,6 +83,37 @@ test('participant validation retries transient integration reads but never retai
   }finally{plugin.communication.dispose();await plugin.communication.tail;}
 });
 
+test('only issued S model-pull snapshots skip revision freshness; replacement and cancellation still deny',async()=>{
+  const s={role:'S',local_session_id:'s'};
+  const project={workspace:'/fixture',sessionId:'s',attempt:{requestId:'request-5',contextTransport:'panel',packet:{revision:5}}};
+  let revision=5,checks=0;
+  const delivery=new DialogueDelivery({store:{inspect:async()=>({revision})},record:()=>({controller:{
+    packetIsCurrent:async packet=>{checks++;return packet.revision===revision;}
+  }})});
+  delivery.project=()=>project;
+  const message={kind:'startup-context',request_id:'request-5',delivery_mode:'model-pull',read:false,parts_read:[]};
+  assert.equal(await delivery.currentMessage(s,message),true);
+  revision=6;
+  assert.equal(await delivery.currentMessage(s,message),false,'before first part freshness is mandatory');
+  message.read=true;
+  assert.equal(await delivery.currentMessage(s,message),false,'read marker alone is not a returned part');
+  message.parts_read=[0];
+  const before=checks;
+  assert.equal(await delivery.currentMessage(s,message),true);
+  assert.equal(checks,before,'issued S snapshot does not query a changing plan revision');
+  assert.equal(await delivery.currentMessage({...s,role:'E'},message),false);
+  assert.equal(await delivery.currentMessage({...s,role:'O'},message),false);
+  assert.equal(await delivery.currentMessage(s,{...message,delivery_mode:'sdk-notification'}),false);
+  project.preparationPaused=true;
+  assert.equal(await delivery.currentMessage(s,message),false,'cancelled preparation cannot complete');
+  project.preparationPaused=false;project.attempt.requestId='replacement';
+  assert.equal(await delivery.currentMessage(s,message),false,'different request cannot inherit the receipt');
+  project.attempt.requestId='request-5';project.attempt.contextTransport='attachments';
+  assert.equal(await delivery.currentMessage(s,message),false,'legacy transport cannot inherit model-pull receipt');
+  delivery.project=()=>null;
+  assert.equal(await delivery.currentMessage(s,message),false,'removed project cannot complete');
+});
+
 test('read retries a Git replacement window but rejects persistent plan corruption',async()=>{
   const kit=new ParallelKit({});let reads=0;
   for(const code of ['ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT','PLAN_COMMIT_MISMATCH']){

@@ -211,6 +211,17 @@ test('failed model-pull content read cannot persist a receipt; legacy intent can
   await assert.rejects(old.c.startupOpen(old.input),{code:'PLUGIN_COMMUNICATION_MODE'});
 });
 
+test('an unissued model-pull packet is superseded by a replacement request without delivering either twice',async t=>{
+  const f=await fixture(t,{delivery_mode:'model-pull'}),{c,input}=f;
+  const replacement=await c.startup.stage(target,{request_id:'request-2',text:'Fresh snapshot',delivery_mode:'model-pull'});
+  assert.equal(c.startup.progress('o','request-1').superseded,true);
+  await assert.rejects(c.startupOpen({metadata,message_id:input.message_id}),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
+  const fresh=await c.startupOpen({metadata,message_id:replacement.message_id});
+  assert.equal(fresh.text,'Fresh snapshot');
+  assert.equal((await c.startupComplete({metadata,message_id:fresh.message_id,context_sha256:fresh.context_ref})).complete,true);
+  assert.equal(c.runs.get(input.run_id).events.filter(e=>e.event_type==='send.intent').length,0);
+});
+
 test('model-pull rejects an enrolled executor and a removed project',async t=>{
   const f=await fixture(t,{delivery_mode:'model-pull'}),{c,input}=f;
   const executor={...target,local_session_id:'e',role:'E',assignment_id:'assignment',task_id:'T001'};
@@ -221,4 +232,65 @@ test('model-pull rejects an enrolled executor and a removed project',async t=>{
   await c.startupOpen(input);
   await c.removeProjects([{sessionIds:['o']}]);
   await assert.rejects(c.startupOpen(input),{code:'PLUGIN_COMMUNICATION_PROJECT_REMOVED'});
+});
+
+test('issued S snapshot survives a concurrent plan revision on durable WAL without a second delivery',async t=>{
+  const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-s-revision-')));
+  const s={...target,role:'S',local_session_id:'s',origin_session_id:'s',scope_id:'scope'};
+  const project={workspace:'/fixture',sessionId:'s',planRevision:5,
+    attempt:{requestId:'snapshot-rev5',contextTransport:'panel',packet:{planRevision:5}}};
+  let registered=s;
+  const projects={snapshot:()=>({projects:[{workspace:'/fixture',sessions:[{sessionId:'s'}]}]}),
+    project:()=>project,inspect:async()=>({planRevision:project.planRevision})};
+  const delivery=new DialogueDelivery({store:projects,record:()=>({controller:{packetIsCurrent:async packet=>packet.planRevision===project.planRevision}})});
+  const instances=[];
+  const create=async()=>{
+    const c=new PluginCommunication({store:await openCommunicationStore(directory),
+      resolveTarget:id=>id==='s'?registered:null,currentMessage:(to,m)=>delivery.currentMessage(to,m)});
+    instances.push(c);await c.ready;return c;
+  };
+  t.after(async()=>{for(const c of instances){c.dispose();await c.tail;}await fs.rm(directory,{recursive:true,force:true});});
+  const c=await create(),invitation=await c.reserve(s);
+  const packet=await c.startup.stage(s,{request_id:'snapshot-rev5',text:'Snapshot rev5 🗂️\n'.repeat(4000),delivery_mode:'model-pull'});
+  const registration=await c.enroll(invitation.enrollment_ticket,metadata);
+  const input={metadata,message_id:packet.message_id};
+  project.planRevision=6; // An unrelated integration happened BEFORE the first issue: deny stale.
+  await assert.rejects(c.startupOpen(input),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
+  assert.equal(c.startup.progress('s','snapshot-rev5').parts_read,0);
+  project.planRevision=5;
+  const first=await c.startupOpen(input);
+  assert.equal(first.part,0);assert.ok(first.total>2);
+  assert.equal(c.startup.progress('s','snapshot-rev5').parts_read,1);
+  project.planRevision=6; // Unrelated Kit revision changes only the freshness, not the issued snapshot.
+  await assert.rejects(c.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_INCOMPLETE'});
+  await assert.rejects(c.content({...input,context_ref:first.context_ref,part:1,
+    metadata:{'openai/session':'other'}}),{code:'PLUGIN_COMMUNICATION_BINDING'});
+  await assert.rejects(c.content({...input,context_ref:'0'.repeat(64),part:1}),{code:'PLUGIN_COMMUNICATION_READ_DENIED'});
+  const second=await c.content({...input,context_ref:first.context_ref,part:1});
+  c.dispose();await c.tail;
+  const restored=await create();
+  assert.equal(restored.critical,null);
+  assert.equal(restored.startup.progress('s','snapshot-rev5').parts_read,2);
+  assert.deepEqual(await restored.startupOpen(input),first,'retry after restart returns exactly the issued first part');
+  const rest=await Promise.all(Array.from({length:first.total-2},(_,i)=>restored.content({...input,context_ref:first.context_ref,part:i+2})));
+  assert.equal([first.text,second.text,...rest.map(p=>p.text)].join(''),'Snapshot rev5 🗂️\n'.repeat(4000));
+  await assert.rejects(restored.startupComplete({...input,context_sha256:'0'.repeat(64)}),{code:'PLUGIN_COMMUNICATION_CONTEXT'});
+  const ack=await restored.startupComplete({...input,context_sha256:first.context_ref});
+  assert.equal(ack.complete,true);
+  assert.deepEqual(await restored.startupComplete({...input,context_sha256:first.context_ref}),ack);
+  const run=restored.runs.get(registration.run_id);
+  assert.equal(run.events.filter(e=>e.event_type==='startup.complete').length,1);
+  assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,0);
+  assert.equal(run.grant,undefined);
+  project.preparationPaused=true;
+  await assert.rejects(restored.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
+  project.preparationPaused=false;
+  project.attempt.requestId='different-request';
+  await assert.rejects(restored.content({...input,context_ref:first.context_ref,part:1}),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
+  project.attempt.requestId='snapshot-rev5';
+  registered={...s,local_session_id:'replaced'};
+  await assert.rejects(restored.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'});
+  registered=s;
+  await restored.removeProjects([{sessionIds:['s']}]);
+  await assert.rejects(restored.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_PROJECT_REMOVED'});
 });

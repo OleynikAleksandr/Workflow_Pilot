@@ -12,6 +12,11 @@ export class DialogueDelivery {
     if(message.kind==='startup-context'){
       const project=this.project(target.local_session_id),attempt=project?.attempt;
       if(!project||project.preparationPaused||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel')return false;
+      // A discussion chat has already received an immutable, authenticated
+      // model-pull snapshot. Its remaining reads acknowledge that snapshot,
+      // not the latest plan revision. All pre-open, SDK and O/E checks stay strict.
+      if(target.role==='S'&&message.delivery_mode==='model-pull'&&message.read
+        &&message.parts_read?.includes(0))return true;
       const info=await this.store.inspect(project.workspace,project.sessionId);
       return await this.record(project)?.controller.packetIsCurrent(attempt.packet,{...project,...info})===true;
     }
