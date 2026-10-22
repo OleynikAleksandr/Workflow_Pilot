@@ -84,3 +84,21 @@ test('panel displays a completed startup receipt instead of the historical pendi
   assert.match(ui.$('messages').textContent,/Контекст подтверждён/);
   assert.match(ui.$('queue').textContent,/0 непрочитанных · 0 ожидают/);
 });
+
+test('panel keeps Kit prepared and authorized separate from SDK accepted and executor start',async t=>{
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));
+  t.after(()=>dom.window.close());const ui=mountPanel({document:dom.window.document});ui.mode('workflow');
+  const assignment={assignment_id:'a',task_id:'T001',phase:'READY',channel:{sdk:true,initial:{delivery:'pending',read:false}}};
+  const message={message_id:'m',recipient_id:'e',sender_role:'O',kind:'task',delivery:'pending',read:false};
+  const snapshot=(phase,delivery)=>ui.snapshot({mode:'workflow',role:'E',participant_id:'e',permission:{phase:'running'},
+    assignments:[assignment],pending_intents:[{assignment_id:'a',phase}],messages:[{...message,delivery}]});
+  snapshot('prepared','pending');
+  assert.match(ui.$('outbox').textContent,/Поручение подготовлено/);
+  assert.match(ui.$('last').textContent,/не доставлено/);
+  snapshot('authorized','accepted');
+  assert.match(ui.$('outbox').textContent,/Разрешено Kit · ожидает канал/);
+  assert.match(ui.$('last').textContent,/Принято хостом \(SDK accepted\) · чтение не подтверждено/);
+  assignment.phase='RUNNING';assignment.channel.initial.read=true;
+  snapshot('published','accepted');
+  assert.match(ui.$('roster').textContent,/Задача начата по Kit/);
+});

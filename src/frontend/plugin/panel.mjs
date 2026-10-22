@@ -1,13 +1,19 @@
 import {assignmentStage} from '../../contracts/dialogue-view.mjs';
 import {startupView} from '../../contracts/startup-view.mjs';
-const delivery={pending:'Сохранено · в очереди',claimed:'Попытка начата',accepted:'Принято хостом',rejected:'Отклонено',unknown:'Исход неизвестен',superseded:'Устарело'};
+const delivery={pending:'Подготовлено в Kit · ожидает SDK (не доставлено)',claimed:'SDK отправляет · подтверждения ещё нет',accepted:'Принято хостом (SDK accepted) · чтение не подтверждено',rejected:'Отклонено',unknown:'Исход неизвестен',superseded:'Устарело'};
 const sender=message=>message.sender_role==='O'?'Оркестратор':message.sender_role==='E'?'Исполнитель':'Приложение';
 const label=message=>[sender(message)+' → '+(message.sender_role==='E'?'Оркестратор':message.task_id?'Исполнитель':'Оркестратор'),
   message.task_id,message.attempt?'попытка '+message.attempt:null].filter(Boolean).join(' · ');
 const handled=message=>message.dialogue_version===1?' · '+(message.yielded?'обработано':'обработка не подтверждена')+
   ' · '+(message.reply_observed?'ход завершён':'завершение хода не подтверждено'):'';
 const deliveryLabel=message=>message.kind==='startup-context'&&message.startup_complete?'Контекст подтверждён'
-  :message.superseded?'Устарело':delivery[message.delivery]??'Неизвестная стадия';
+  :message.superseded?'Устарело':message.read&&message.delivery==='accepted'?'Принято хостом (SDK accepted) · прочитано адресатом'
+  :message.read?'Прочитано адресатом'
+  :delivery[message.delivery]??'Неизвестная стадия';
+const intentLabel=phase=>({draft:'Черновик подготовлен',prepared:'Поручение подготовлено · разрешение Kit ожидается',
+  authorized:'Разрешено Kit · ожидает канал',needs_confirmation:'Нужна повторная авторизация',
+  deferred:'Отложено · ждём подтверждение',published:'Сохранено в Kit · ожидает SDK',
+  failed:'Не выполнено',retired:'Отозвано'})[phase]??'Состояние не подтверждено';
 // Rendering only; participant authorization and durable state belong to Control.
 export function mountPanel({document}) {
   const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
@@ -62,9 +68,11 @@ export function mountPanel({document}) {
           li.textContent=assignment.task_id+' · попытка '+(assignment.attempt??1)+' · '+(assignment.error?.message??assignmentStage(assignment).label);
           detail.textContent=assignment.terminal?'Работа интегрирована; worktree очищен.':['Назначение '+assignment.assignment_id,'SDK: '+(assignment.channel?.sdk?'подключён':'не подтверждён'),
             'поколение '+(assignment.channel?.generation??'—'),assignment.physical?.busy?'ход выполняется':assignment.physical?.stopped?'физическая остановка подтверждена':'состояние хода неизвестно',
-            assignment.dialogue?.result?.source_commit?'коммит '+assignment.dialogue.result.source_commit:null].filter(Boolean).join(' · ');
+            assignment.dialogue?.result?.source_commit?'результат Kit · коммит '+assignment.dialogue.result.source_commit:null,
+            assignment.channel?.initial?.read?'Задание прочитано исполнителем':assignment.channel?.initial?.delivery==='accepted'?'SDK принял задание · чтение не подтверждено':null,
+            assignment.phase==='RUNNING'?'Задача начата по Kit':null].filter(Boolean).join(' · ');
           li.append(detail);$('roster').append(li);}
-        text('outbox',(value.pending_intents??[]).map(i=>`${i.assignment_id}: ${i.phase}${i.error?' · '+i.error.message:''}`).join('\n'));}
+      text('outbox',(value.pending_intents??[]).map(i=>`${i.assignment_id}: ${intentLabel(i.phase)}${i.error?' · '+i.error.message:''}`).join('\n'));}
       text('identity',value.mode==='workflow'?(value.role==='O'?'Оркестратор плана':value.role==='S'?'Чат проекта':`Исполнитель · ${value.task_id}\nНазначение ${value.assignment_id}`):`Роль ${value.role} · участник ${value.participant_id}`);
       text('binding',`Привязка подтверждена · ${value.conversation_key}`);
       text('permission',value.mode==='workflow'?(value.permission?.phase==='complete'

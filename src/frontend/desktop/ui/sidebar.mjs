@@ -536,7 +536,10 @@ function render(state) {
   $('plan-continuation-message').dataset.reason = auto.reason ?? '';
 
   renderAgentTime(selected);
-  const plan = orchestrated ? { state: orchestrated.current===false?'closed':run?.state==='complete'?'awaiting-acceptance':'working',
+  const kitAcceptance=orchestrated?.deliveryStatus==='READY_FOR_ACCEPTANCE'&&orchestrated?.tasks?.length>0
+    &&orchestrated.tasks.every(task=>task.status==='done');
+  const plan = orchestrated ? { state: orchestrated.current===false?'closed':kitAcceptance||run?.state==='complete'?'awaiting-acceptance'
+      :run?.state==='not-started'?'ready':run?.state==='paused'||run?.state==='pausing'?'paused':'working',
       completed: orchestrated.tasks.filter(t => t.status === 'done').length, total: orchestrated.tasks.length, tasks: orchestrated.tasks, blockedReason: orchestrated.error }
     : (selected?.planExecution?.execution_strategy==='parallel' ? execution.planView
     : selected?.planView) ?? { state: 'not-created', completed: 0, total: 0, tasks: [], blockedReason: null };
@@ -545,11 +548,16 @@ function render(state) {
       : count % 10 >= 2 && count % 10 <= 4 && !(count % 100 >= 12 && count % 100 <= 14) ? 'задачи' : 'задач';
     const completedText = count => count === 1 ? 'Задача выполнена'
       : plural(count) === 'задача' ? `Все ${count} задача выполнена` : `Все ${count} ${plural(count)} выполнены`;
-    const statusText = orchestrated&&plan.state!=='closed'?`Задачи интегрированы: ${plan.completed}/${plan.total}`
+    const evidence=orchestrated?.evidence;
+    const statusText = orchestrated&&plan.state!=='closed'&&evidence
+      ?`Результаты исполнителей: ${evidence.received??'—'}/${evidence.total} · Интегрировано: ${evidence.integrated}/${evidence.totalTasks}`
+      :orchestrated&&plan.state!=='closed'?`Интегрировано: ${plan.completed}/${plan.total}`
       : plan.state === 'awaiting-acceptance' ? completedText(plan.total)
       : plan.state === 'blocked' ? `План заблокирован · ${plan.completed} из ${plan.total} выполнено`
         : plan.state === 'closed' ? 'Scope завершён и архивирован'
           : plan.state === 'not-created' ? 'План ещё не создан'
+            : plan.state === 'ready' ? 'План готов к запуску'
+            : plan.state === 'paused' ? `План на паузе · ${plan.completed} из ${plan.total} интегрировано`
             : `В работе · ${plan.completed} из ${plan.total} выполнено`;
     $('plan-title').hidden = !selected.scopeId && !orchestrated;
     $('plan-title').textContent = orchestrated ? orchestrated.objective || 'План оркестратора'
@@ -558,7 +566,7 @@ function render(state) {
     const needsAcceptance=!!orchestrated&&plan.state==='awaiting-acceptance';
     $('plan-note').hidden = plan.state !== 'closed'&&!needsAcceptance;
     $('plan-note').textContent = plan.state === 'closed' ? 'Проект готов к следующему новому плану.'
-      :needsAcceptance?'Сообщите оркестратору: «Принимаю результат, закрой план». Архив проекта не заменяет приёмку плана.':'';
+      :needsAcceptance?'Все задачи зафиксированы Kit; ожидается ваша приёмка. Сообщите оркестратору: «Принимаю результат, закрой план». Архив проекта не заменяет приёмку плана.':'';
     const planReason = selected.planReadError?.message ?? plan.blockedReason ?? '';
     $('plan-reason').hidden = !planReason; $('plan-reason').textContent = planReason;
     $('plan-tasks').replaceChildren(...plan.tasks.map(task => {
@@ -574,6 +582,7 @@ function render(state) {
       const status=document.createElement('small');status.className='plan-task-status';
       status.textContent=task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
       body.append(id,title,mode,status);
+      if(task.docsChecksHint){const hint=document.createElement('small');hint.className='plan-task-check-note';hint.textContent=task.docsChecksHint;body.append(hint);}
       if(task.stageTime){const time=document.createElement('small');time.dataset.stageTime=task.id;
         time.stageTime=task.stageTime;time.stageActive=!['done','paused'].includes(task.stageTime.phase);body.append(time);}
       if (task.time) { const time = document.createElement('span'); time.dataset.executorTime = task.target?.sessionId ?? task.id; time.executorTime = task.time; body.append(time); }

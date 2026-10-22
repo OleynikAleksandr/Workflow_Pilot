@@ -6,6 +6,40 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {BackendConnection} from '../src/frontend/client/connection.mjs';
 import {WorkspaceSessions} from '../src/control/sessions/workspace-session.mjs';
+import {taskEvidence,executorDispatchStage} from '../src/backend/desktop-model.mjs';
+
+test('orchestrated evidence separates checked child commits from Kit main integration without assuming a send',()=>{
+  const tasks=['T001','T002','T003','DOCS'].map(id=>({id,status:'pending'}));
+  const sha=n=>String(n).repeat(40);
+  const assignments=[{parent_task_id:'T001',status:'INTEGRATED',source_commit:sha('a')},
+    {parent_task_id:'T002',status:'READY_FOR_INTEGRATION',source_commit:sha('b')},
+    {parent_task_id:'T003',status:'RUNNING',source_commit:sha('c')},
+    {parent_task_id:'DOCS',status:'UNKNOWN',source_commit:sha('d')}];
+  tasks[0].status='done';
+  assert.deepEqual(taskEvidence(tasks,assignments),{received:2,total:4,integrated:1,totalTasks:4});
+  tasks[1].status='done';assignments[1].status='INTEGRATED';
+  assert.deepEqual(taskEvidence(tasks,assignments),{received:2,total:4,integrated:2,totalTasks:4});
+  tasks[2].status='done';tasks[3].status='done';
+  assert.deepEqual(taskEvidence(tasks,assignments),{received:4,total:4,integrated:4,totalTasks:4});
+  const unverified=[{parent_task_id:'T001',status:'READY_FOR_INTEGRATION',source_commit:'truncated'},
+    {parent_task_id:'T002',status:'UNKNOWN',source_commit:sha('b')}];
+  assert.equal(taskEvidence(tasks.map(t=>({...t,status:'pending'})),unverified).received,0,
+    'neither UNKNOWN nor an unverified hash is a result');
+  assert.deepEqual(taskEvidence([{id:'delivery',status:'done',delivery:true}],[]),
+    {received:0,total:0,integrated:1,totalTasks:1},'orchestrator-only delivery is not an E result');
+});
+
+test('worker stages distinguish authorized, SDK pending/accepted and Kit RUNNING without inferring starts',()=>{
+  const a={status:'READY',dialogue_version:1};
+  assert.match(executorDispatchStage(a,{draft:{phase:'prepared'}}).label,/Поручение подготовлено/);
+  assert.match(executorDispatchStage(a,{draft:{phase:'authorized'}}).label,/Kit разрешил/);
+  assert.match(executorDispatchStage(a,{initial:{delivery:'pending',read:false}}).label,/не доставлено/);
+  assert.match(executorDispatchStage(a,{initial:{delivery:'accepted',read:false}}).label,/SDK принял/);
+  assert.match(executorDispatchStage(a,{initial:{delivery:'accepted',read:true}}).label,/запуск не подтверждён/);
+  assert.match(executorDispatchStage({...a,status:'RUNNING'},{initial:{delivery:'accepted',read:true}}).label,/Kit RUNNING/);
+  assert.equal(executorDispatchStage({...a,status:'UNKNOWN'},{initial:{delivery:'accepted'}}),null);
+  assert.equal(executorDispatchStage(a,{}),null,'missing receipt never invents a stage');
+});
 import {startupContextState} from '../src/contracts/startup-view.mjs';
 
 test('Desktop/HTTP startup projection uses durable completion over pending and exposes terminal errors',()=>{

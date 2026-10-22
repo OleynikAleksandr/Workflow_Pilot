@@ -11,6 +11,29 @@ import {startupContextState} from '../contracts/startup-view.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
+// Kit proof, independent of current chat UI. A READY_FOR_INTEGRATION child
+// source is a checked commit; main DONE persists after worktree cleanup.
+export function taskEvidence(tasks=[],assignments=[]) {
+  const sha=value=>typeof value==='string'&&/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value);
+  const workerTasks=tasks.filter(t=>!t.delivery);
+  const received=workerTasks.filter(task=>task.status==='done'||assignments.some(a=>a.parent_task_id===task.id
+    &&a.status==='READY_FOR_INTEGRATION'&&sha(a.source_commit))).length;
+  return {received,total:workerTasks.length,integrated:tasks.filter(t=>t.status==='done').length,totalTasks:tasks.length};
+}
+// Only describe the delivery stage that a Kit or SDK receipt actually proves.
+export function executorDispatchStage(assignment,channel) {
+  if(!assignment||['UNKNOWN','READY_FOR_INTEGRATION','INTEGRATED'].includes(assignment.status))return null;
+  const initial=channel?.initial;
+  if(initial?.read&&assignment.status==='RUNNING')return {phase:'started',label:'Исполнитель начал задачу · Kit RUNNING'};
+  if(initial?.read)return {phase:'received',label:'Задание прочитано исполнителем · запуск не подтверждён'};
+  if(initial?.delivery==='accepted')return {phase:'dispatch',label:'SDK принял задание · чтение не подтверждено'};
+  if(initial?.delivery==='claimed')return {phase:'dispatch',label:'SDK отправляет задание · подтверждения нет'};
+  if(initial?.delivery==='pending')return {phase:'dispatch',label:'Задание сохранено в Kit · ожидает SDK (не доставлено)'};
+  if(channel?.draft?.phase==='authorized')return {phase:'waiting-channel',label:'Kit разрешил поручение · ожидает SDK'};
+  if(['draft','prepared'].includes(channel?.draft?.phase))return {phase:'waiting-task',label:'Поручение подготовлено · авторизация ожидается'};
+  return null;
+}
+
 // The Desktop product model: projects, sessions, settings, archive, Doctor,
 // onboarding and workflow. It owns no window; a surface presents its state
 // (in-process legacy window or a remote client) and supplies the page host.
@@ -216,10 +239,17 @@ function closedPlan(workspace,commit) {
 }
 const orchestratorLabels={'not-started':'Готов к запуску',running:'Выполняется',pausing:'Пауза…',paused:'Пауза',complete:'Выполнено'};
 function executorViews(projects,workspace) {
-  return projectExecutors(projects,workspace,execution.view(workspace),liveRecord,
-    target=>plugin?.communication.workflow.progress(target.sessionId)).map(item=>({...item,
-      stageTime:observeActivity(JSON.stringify([store.project(workspace)?.projectId,item.parentScopeId,item.assignmentId,item.attempt]),
-        {phase:item.phase,label:item.label})}));
+  const state=execution.view(workspace);
+  return projectExecutors(projects,workspace,state,liveRecord,
+    target=>plugin?.communication.workflow.progress(target.sessionId)).map(item=>{
+      const assignment=state.assignments?.find(a=>a.id===item.assignmentId);
+      const channel=plugin?.communication.workflow.progress(item.sessionId);
+      const stage=state.scopeId===item.parentScopeId&&assignment?.dialogue_version===1
+        ?executorDispatchStage(assignment,channel):null;
+      const value={...item,...(stage??{})};
+      return {...value,stageTime:observeActivity(JSON.stringify([store.project(workspace)?.projectId,
+        item.parentScopeId,item.assignmentId,item.attempt]),{phase:value.phase,label:value.label})};
+    });
 }
 function orchestratorState(workspace,session) {
   if(session.role!=='orchestrator')return null;
@@ -251,13 +281,19 @@ function orchestratorPlanView(saved) {
   if(!source)return {scopeId:scope,objective:'',tasks:[],loading:true};
   const executors=executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope);
   const planned=new Map((project.planView?.tasks??[]).map(task=>[task.id,task]));
+  const tasks=source.tasks.map(task=>({...task,delivery:task.delivery??planned.get(task.id)?.delivery??false}));
+  const currentExecution=execution.view(workspace),hasExecution=currentExecution.scopeId===scope;
+  const assignments=hasExecution?currentExecution.assignments??[]:[];
   return {scopeId:scope,objective:source.objective,current,error:source.error??null,
+    ...(current?{evidence:{...taskEvidence(tasks,assignments),...(hasExecution?{}:{received:null})},deliveryStatus:project.deliveryStatus}:{}),
     tasks:source.tasks.map(task=>{
       const own=executors.filter(e=>e.taskId===task.id).sort((a,b)=>(b.createdAt??0)-(a.createdAt??0))[0];
       const delivery=task.delivery??planned.get(task.id)?.delivery??/main/.test(task.executionLabel??'');
       const target=['pending','done'].includes(task.status)?null:delivery?orchestrator&&{workspace,sessionId:orchestrator.sessionId}
         :own&&{workspace:own.workspace,sessionId:own.sessionId};
-      return {...task,label:own&&task.status!=='done'?own.label:task.label,time:own?.time??null,
+      const docs=task.id==='DOCS'||/^DOCS-\d+$/.test(task.id);
+      return {...task,...(docs?{docsChecksHint:'DOCS checks:[] в Kit — проверки приложения не запускаются этим коммитом.'}:{}),
+        label:own&&task.status!=='done'?own.label:task.label,time:own?.time??null,
         stageTime:task.status!=='done'?own?.stageTime??null:null,target:target??null};
     })};
 }
@@ -269,8 +305,18 @@ function planRunView(saved) {
   if(project.planExecution?.execution_strategy==='orchestrated'){
     const run=workflow.executionControl.view(workspace,project.scopeId),view=execution.view(workspace);
     const origin=project.planExecution.execution_origin_session_id,record=origin&&liveRecord({workspace,sessionId:origin});
+    const channel=origin&&plugin?.communication.workflow.progress(origin);
     const activity=planActivity({run:{...run,issue:project.orchestrationIssue},execution:view.scopeId===project.scopeId?view:{},
-      channel:origin&&plugin?.communication.workflow.progress(origin),physical:record?.pageState.current?.state});
+      channel,physical:record?.pageState.current?.state});
+    const incoming=channel?.incoming;
+    if(activity.phase==='delivery'&&incoming&&!incoming.read){
+      const suffix=incoming.task_id?' · '+incoming.task_id:'';
+      if(incoming.delivery==='pending'){activity.label='Сообщение сохранено · ожидает SDK'+suffix;
+        activity.reason='Это ещё не доставка. Получатель не подтвердил отправку или чтение.';}
+      else if(incoming.delivery==='claimed')activity.label='SDK отправляет сообщение'+suffix;
+      else if(incoming.delivery==='accepted'){activity.label='SDK принял сообщение'+suffix;
+        activity.reason='Принято хостом, но чтение исполнителем ещё не подтверждено.';}
+    }
     return {workspace,scopeId:project.scopeId,...run,issue:project.orchestrationIssue??null,complete:run.state==='complete',
       activity:observeActivity(JSON.stringify([project.projectId,project.scopeId,'plan']),activity)};
   }

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 857,
+  "plan_revision": 859,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -338,8 +338,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "FIX-PROGRESS",
@@ -383,7 +383,15 @@
       ],
       "expected_commit_message": "feat: показывать проверенные этапы прогресса и доставки",
       "task_brief": "Раздел I, секция I.3 спецификации. Kit DONE=интеграция, отдельный счётчик подтверждённых результатов E из checked receipts. Добавь в workflow-channel.mjs/assignment-dialogue.mjs правдивые стадии авторизации/ожидания/SDK/начала E, чтобы O не говорил «доставлено» при delivery:pending. Не меняй role-protocol без отдельной версии Kit. Контракт ожидаемой приёмки проверяй в backend-desktop-model, parallel-execution-ui, workspace-session tests; проекцию src/control/sessions/workspace-session.mjs меняй только при необходимости. DOCS checks:[] — отсутствие Kit application tests; READY_FOR_ACCEPTANCE=ожидание приёмки. Существующий SSE/UI, без model polling. Запусти все проверки, включая unit-all, затем Kit commit.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -512,7 +520,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 857
+Revision: 859
 
 ## Цель
 
@@ -556,8 +564,8 @@ Revision: 857
   - Файлы: src/control/workflow/coordination.mjs, src/control/context/context-session.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/backend-desktop-model.test.mjs, tests/context-session.test.mjs, tests/sidebar.test.mjs, tests/automatic-agent-dialogue.test.mjs, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP-UI
-- [TODO] FIX-PROGRESS: I · Прогресс — результаты исполнителей, интеграция, доставка и финал — Ожидает
-  - Git Commit: [PENDING] feat: показывать проверенные этапы прогресса и доставки
+- [DONE] FIX-PROGRESS: I · Прогресс — результаты исполнителей, интеграция, доставка и финал — Завершено
+  - Git Commit: [DONE] feat: показывать проверенные этапы прогресса и доставки
   - Reference: recovery-status-interruptions / FIX-PROGRESS / implementation
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, src/backend/desktop-model.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, tests/sidebar.test.mjs, tests/backend-desktop-model.test.mjs, tests/parallel-execution-ui.test.mjs, tests/workspace-session.test.mjs, src/control/sessions/workspace-session.mjs, tests/panel-dialogue-view.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/plugin-communication.test.mjs
   - Параллельность: исключительное выполнение

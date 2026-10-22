@@ -50,7 +50,7 @@ test('three integrations keep the observed final stage and Pause until durable c
     planRun:{state:'running',complete:false,activity:{phase:'cleanup',label:'План завершается',
       actor:'Workflow Kit',reason:'Ожидаем квитанции и очистку.',elapsedMs:65000}}};
   f.emit(state);
-  assert.equal($('plan-status').textContent,'Задачи интегрированы: 3/3');
+  assert.equal($('plan-status').textContent,'Интегрировано: 3/3');
   assert.equal($('plan-status').dataset.state,'working');
   assert.equal($('plan-run-toggle').hidden,false);
   assert.equal($('execution-actions').hidden,false);
@@ -68,6 +68,33 @@ test('three integrations keep the observed final stage and Pause until durable c
   f.emit({...state,orchestratorPlan:{...plan,current:false},planRun:null});
   assert.equal($('plan-status').dataset.state,'closed');
   assert.match($('plan-note').textContent,/следующему новому плану/);
+});
+
+test('orchestrated result receipts and Kit integrations progress independently through 2/1, 2/2, 4/4',async t=>{
+  const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
+  const tasks=['T001','T002','T003','DOCS'].map(id=>({id,title:id,status:'pending',executionLabel:'Параллельно'}));
+  const state={...base,selected:{...base.selected,scopeId:'scope',planExecution:{execution_strategy:'orchestrated'}},
+    orchestratorPlan:{scopeId:'scope',objective:'Проект',current:true,deliveryStatus:'IN_PROGRESS',tasks,
+      evidence:{received:2,total:4,integrated:1,totalTasks:4}},
+    planRun:{state:'running',complete:false}};
+  tasks[0].status='done';f.emit(state);
+  assert.match($('plan-status').textContent,/Результаты исполнителей: 2\/4 · Интегрировано: 1\/4/);
+  assert.equal($('plan-status').dataset.state,'working');
+  tasks[1].status='done';f.emit({...state,orchestratorPlan:{...state.orchestratorPlan,
+    evidence:{received:2,total:4,integrated:2,totalTasks:4}}});
+  assert.match($('plan-status').textContent,/2\/4 · Интегрировано: 2\/4/);
+  for(const task of tasks)task.status='done';tasks[3].docsChecksHint='DOCS checks:[] в Kit — проверки приложения не запускаются этим коммитом.';
+  f.emit({...state,orchestratorPlan:{...state.orchestratorPlan,deliveryStatus:'READY_FOR_ACCEPTANCE',
+    evidence:{received:4,total:4,integrated:4,totalTasks:4}},planRun:{state:'running',complete:false}});
+  assert.match($('plan-status').textContent,/4\/4 · Интегрировано: 4\/4/);
+  assert.equal($('plan-status').dataset.state,'awaiting-acceptance');
+  assert.match($('plan-note').textContent,/ожидается ваша приёмка/);
+  assert.match(f.document.querySelector('[data-status=done] .plan-task-check-note')?.textContent??'',/проверки приложения не запускаются/);
+  for(const task of tasks)task.status='pending';
+  f.emit({...state,planRun:{state:'not-started'},orchestratorPlan:{...state.orchestratorPlan,
+    evidence:{received:0,total:4,integrated:0,totalTasks:4}}});
+  assert.equal($('plan-status').dataset.state,'ready','ACTIVE is not observed work');
+  assert.doesNotMatch($('plan-note').textContent,/ожидается ваша приёмка/);
 });
 
 test('external conversation stays visibly external; there is no PlanContinuation switch, only the plan button',async t=>{
