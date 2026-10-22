@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 898,
+  "plan_revision": 900,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -485,8 +485,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "INSTALL",
@@ -512,7 +512,10 @@
         "Приложение и служба агентом не закрываются и не запускаются; установленный Kit 1.9.5 обновлён в этом checkout штатным installer."
       ],
       "expected_commit_message": "release: Установить выпуск 0.5.25",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -567,7 +570,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 898
+Revision: 900
 
 ## Цель
 
@@ -629,8 +632,8 @@ Revision: 898
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить выпуск 0.5.25 — Ожидает
-  - Git Commit: [PENDING] release: Установить выпуск 0.5.25
+- [DONE] INSTALL: Установить выпуск 0.5.25 — Завершено
+  - Git Commit: [DONE] release: Установить выпуск 0.5.25
   - Reference: work-progress-ui / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
