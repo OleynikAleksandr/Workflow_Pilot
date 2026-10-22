@@ -1,5 +1,7 @@
 import test from 'node:test';
-import {automaticDialogue} from './fixtures/automatic-agent-dialogue.mjs';
+import {automaticDialogue,interruptionRegression} from './fixtures/automatic-agent-dialogue.mjs';
+test('O1/O2 acceptance-before-merge, E1 checked-before-result and E2 block recovery use one Kit ledger',
+  {timeout:180000},async t=>{await interruptionRegression(t);});
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';

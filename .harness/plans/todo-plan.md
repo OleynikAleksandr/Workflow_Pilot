@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 859,
+  "plan_revision": 861,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -394,8 +394,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "TEST-REGRESSION",
@@ -425,7 +425,12 @@
       ],
       "expected_commit_message": "test: сценарии идемпотентного восстановления O и E",
       "task_brief": "Раздел II, секции II.1 и II.3 спецификации. Целевые tests в существующей fixture automatic-agent-dialogue и plugin WAL tests; O1/O2/E1/E2/UNKNOWN. Без production fault-injection API и реального network disable/kill. Проверить без дублей acceptance, integration, task, без изменений соседей. Если обнаружен реальный production-дефект, не ослаблять assertions: task:block, отдельное исправление через plan:extend; не править чужой продуктовый код в рамках этой задачи. Запусти unit-all и штатный Kit commit.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/plugin-communication-store.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -520,7 +525,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 859
+Revision: 861
 
 ## Цель
 
@@ -570,8 +575,8 @@ Revision: 859
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, src/backend/desktop-model.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, tests/sidebar.test.mjs, tests/backend-desktop-model.test.mjs, tests/parallel-execution-ui.test.mjs, tests/workspace-session.test.mjs, src/control/sessions/workspace-session.mjs, tests/panel-dialogue-view.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/plugin-communication.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP-UI, FIX-RECOVERY-HOLD
-- [TODO] TEST-REGRESSION: II · Автоматические фикстуры прерывания O/E — Ожидает
-  - Git Commit: [PENDING] test: сценарии идемпотентного восстановления O и E
+- [DONE] TEST-REGRESSION: II · Автоматические фикстуры прерывания O/E — Завершено
+  - Git Commit: [DONE] test: сценарии идемпотентного восстановления O и E
   - Reference: recovery-status-interruptions / TEST-REGRESSION / implementation
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/plugin-communication-store.test.mjs
   - Параллельность: исключительное выполнение

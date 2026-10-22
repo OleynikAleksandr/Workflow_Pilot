@@ -14,6 +14,125 @@ import {createWorkflowCoordination} from '../../src/control/workflow/coordinatio
 import {openCommunicationStore} from '../../src/execution/plugin/communication-store.mjs';
 import {bridge,communicationHtml} from './plugin-host.mjs';
 import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
+import {createScope,startTask} from '../../packages/workflow-kit/src/lib/actions.mjs';
+import {createAssignment,setupAssignment,assignmentStatus} from '../../packages/workflow-kit/src/lib/task-assignment.mjs';
+import {setPlanPermission} from '../../packages/workflow-kit/src/lib/plan-permission.mjs';
+import {applyAssignmentDialogue,assignmentDialogueStatus} from '../../packages/workflow-kit/src/lib/assignment-dialogue.mjs';
+import {commitTask} from '../../packages/workflow-kit/src/lib/transaction.mjs';
+import {startIntegration,integrationStatus} from '../../packages/workflow-kit/src/lib/task-integration.mjs';
+import {validate} from '../../packages/workflow-kit/src/lib/validate.mjs';
+import {readAssignment} from '../../packages/workflow-kit/src/lib/assignment-contract.mjs';
+
+// Deliberately separate from the happy-path browser fixture. Exercises the
+// real Kit/Git ledger at precise interruption boundaries, using only tmp Git
+// worktrees and local files. The real backend and user profile are untouched.
+export async function interruptionRegression(t){
+  const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-interruption-ledger-')));
+  t.after(()=>fs.rm(directory,{recursive:true,force:true,maxRetries:3}));
+  const root=createFixture(directory),git=(workspace,...args)=>execFileSync('git',args,{cwd:workspace,encoding:'utf8'}).trim();
+  const task=(id,file)=>({id,title:'Check '+file,why:'Isolated interruption regression',dependencies:[],
+    parallel_safe:true,functional_paths:[],documentation_paths:[file],verification_ids:['dependency'],
+    acceptance_criteria:['Checked commit is preserved after interruption'],expected_commit_message:'docs: verify '+id});
+  createScope(root,{scope_id:'interruptions',objective:'Exercise Kit interruption boundaries',
+    approval_note:'User requested isolated O1/O2/E1/E2 regression checks.',
+    acceptance_criteria:['No duplicate assignment, message, acceptance or integration'],
+    approved_scope:{functional_paths:[],documentation_paths:['README.md','SECOND.md']},
+    parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',
+    execution_reason:'Two separate child worktrees',execution_origin_session_id:'fixture-orchestrator',release:false,
+    tasks:[task('T001','README.md'),task('T002','SECOND.md')]},readPlan(root).plan_revision);
+  setPlanPermission(root,{scope_id:'interruptions',backend_id:'isolated-backend',backend_pid:process.pid,active:true});
+  const base=git(root,'rev-parse','HEAD');
+  const children={};
+  for(const [id,taskId,file] of [['worker-a','T001','README.md'],['worker-b','T002','SECOND.md']]){
+    const worktree=path.join(directory,id);
+    const assigned=createAssignment(root,{id,task_id:taskId,base_commit:base,worktree},readPlan(root).plan_revision);
+    assert.equal(assigned.status,'NEEDS_SETUP');
+    assert.equal(setupAssignment(root,id,{npmCi:true}).status,'READY');
+    const taskMessage='task-'+id;
+    const grant=applyAssignmentDialogue(root,{operation_id:taskMessage,message_id:taskMessage,
+      assignment_id:id,kind:'task',attempt:1});
+    assert.equal(grant.kind,'task');
+    startTask(worktree,taskId);
+    children[id]={taskId,file,worktree};
+  }
+  const one=children['worker-a'],two=children['worker-b'];
+  // E2: a question creates a durable block; the wrong/stale block_id
+  // cannot resume it, and an unrelated checked commit does not clear it.
+  const question=applyAssignmentDialogue(two.worktree,{operation_id:'ask-b',message_id:'ask-b',
+    assignment_id:'worker-b',kind:'question',attempt:1,blocking:true,problem_id:'missing-rule',content_digest:'fixture'});
+  assert.ok(question.block_id);assert.equal(assignmentDialogueStatus(root,'worker-b').block.block_id,question.block_id);
+  assert.throws(()=>applyAssignmentDialogue(root,{operation_id:'wrong-decision',message_id:'wrong-decision',
+    assignment_id:'worker-b',kind:'decision',attempt:1,resume:true,block_id:'other-block'}),{code:'BLOCK_STALE'});
+  await fs.writeFile(path.join(one.worktree,one.file),'# checked worker-a\n');
+  const first=commitTask(one.worktree,one.taskId);
+  assert.equal(first.ok,true);
+  const shaA=assignmentStatus(root,'worker-a').source_commit;
+  assert.equal(first.sha,shaA);
+  assert.equal(assignmentDialogueStatus(root,'worker-b').block.block_id,question.block_id,'E1 DONE cannot resolve E2 block');
+  // E1: the executor stops after its checked commit but before sending a
+  // result. Reopen by the original identity; never create another commit.
+  const childBefore=git(one.worktree,'rev-list','--count',base+'..HEAD');
+  assert.throws(()=>startTask(one.worktree,'T001'),{code:'TASK_ALREADY_ACTIVE'});
+  const recovered=createAssignment(root,{id:'worker-a',task_id:'T001',base_commit:base,worktree:one.worktree},readPlan(root).plan_revision);
+  assert.equal(recovered.source_commit,shaA);assert.equal(recovered.status,'READY_FOR_INTEGRATION');
+  assert.equal(git(one.worktree,'rev-list','--count',base+'..HEAD'),childBefore);
+  assert.equal(assignmentDialogueStatus(root,'worker-a').dialogue.result,null);
+  const resultA={operation_id:'result-a',message_id:'result-a',assignment_id:'worker-a',kind:'result',attempt:1,source_commit:shaA};
+  const receivedA=applyAssignmentDialogue(one.worktree,resultA);
+  assert.equal(receivedA.result.source_commit,shaA);
+  assert.equal(applyAssignmentDialogue(one.worktree,resultA).duplicate,true);
+  assert.throws(()=>applyAssignmentDialogue(one.worktree,{...resultA,operation_id:'result-again',message_id:'result-again'}),{code:'ASSIGNMENT_RESULT_EXISTS'});
+  const decision={operation_id:'decision-b',message_id:'decision-b',assignment_id:'worker-b',
+    kind:'decision',attempt:1,resume:true,block_id:question.block_id,content_digest:'fixture'};
+  const resumed=applyAssignmentDialogue(root,decision);
+  assert.equal(resumed.block_id,question.block_id);
+  assert.equal(assignmentDialogueStatus(root,'worker-b').block,null);
+  assert.equal(applyAssignmentDialogue(root,decision).duplicate,true);
+  await fs.writeFile(path.join(two.worktree,two.file),'# checked worker-b\n');
+  const second=commitTask(two.worktree,two.taskId);assert.equal(second.ok,true);
+  const shaB=assignmentStatus(root,'worker-b').source_commit;
+  const resultB={operation_id:'result-b',message_id:'result-b',assignment_id:'worker-b',kind:'result',attempt:1,source_commit:shaB};
+  applyAssignmentDialogue(two.worktree,resultB);
+  assert.equal(assignmentDialogueStatus(root,'worker-a').dialogue.result.source_commit,shaA);
+  // O1/O2: the exact SHA is accepted before merge. Use two distinct real
+  // Kit failpoints: before and after creating the integration commit.
+  const integrationProofs=[];
+  for(const [id,source,resultId,failpoint] of [['worker-a',shaA,'result-a','integration-prepared'],
+    ['worker-b',shaB,'result-b','integration-committed']]){
+    const acceptance={operation_id:'accept-'+id,message_id:'accept-'+id,
+      assignment_id:id,kind:'acceptance',attempt:1,result_id:resultId,source_commit:source};
+    const accepted=applyAssignmentDialogue(root,acceptance);
+    assert.equal(accepted.acceptance.source_commit,source);
+    assert.equal(applyAssignmentDialogue(root,acceptance).duplicate,true);
+    const before=git(root,'rev-list','--count','--merges',base+'..HEAD');
+    const previous=process.env.WORKFLOW_TEST_FAILPOINT;
+    try{
+      process.env.WORKFLOW_TEST_FAILPOINT=failpoint;
+      assert.throws(()=>startIntegration(root,{id,source_commit:source}),{code:'TEST_INTERRUPTION'});
+    }finally{
+      if(previous===undefined)delete process.env.WORKFLOW_TEST_FAILPOINT;
+      else process.env.WORKFLOW_TEST_FAILPOINT=previous;
+    }
+    assert.notEqual(integrationStatus(root).status,'IDLE','an interrupted merge retains its journal');
+    assert.equal(assignmentDialogueStatus(root,id).dialogue.acceptance.message_id,acceptance.message_id);
+    const integrated=startIntegration(root,{id,source_commit:source});
+    assert.equal(integrated.status,'INTEGRATED');
+    assert.equal(integrationStatus(root).status,'IDLE');
+    assert.equal(startIntegration(root,{id,source_commit:source}).already_integrated,true);
+    assert.equal(git(root,'rev-list','--count','--merges',base+'..HEAD'),String(Number(before)+1),
+      'a retry must not create a second merge');
+    assert.equal(assignmentDialogueStatus(root,id).dialogue.acceptance.message_id,acceptance.message_id);
+    integrationProofs.push(integrated.integration_commit);
+  }
+  assert.equal(new Set(integrationProofs).size,2);
+  assert.equal(Object.keys(validate(root).resolved).length,2);
+  assert.equal(readPlan(root).tasks.filter(task=>task.commit_status==='DONE').length,2);
+  assert.equal(git(root,'status','--porcelain'),'');
+  assert.equal(await fs.stat(path.join(root,'.git/workflow-kit/transaction.json')).then(()=>true,e=>e.code!=='ENOENT'),false);
+  assert.equal(await fs.stat(path.join(root,'.git/workflow-kit/integration.json')).then(()=>true,e=>e.code!=='ENOENT'),false);
+  assert.equal(readAssignment(one.worktree).id,'worker-a');
+  return {O1:true,O2:true,E1:true,E2:true,mainCommits:integrationProofs};
+}
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.

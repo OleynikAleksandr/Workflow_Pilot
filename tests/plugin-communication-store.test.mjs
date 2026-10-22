@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
+import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const state={id:'store-test',members:{},messages:[],probes:{},clientEvents:{},clientSequences:{}};
@@ -97,4 +98,51 @@ test('workflow WAL persists O, E and S while rejecting unknown roles before chan
   assert.equal(await fs.readFile(file(dir),'utf8'),before);
   await next.append(workflow,[event(2)]);
   assert.equal((await openCommunicationStore(dir)).load().runs[0].events.length,2);
+});
+
+test('NET/UNKNOWN: lost SDK outcome survives durable restart, never reclaims or duplicates Send intent',async t=>{
+  const dir=await directory(t),instances=[];
+  const create=async()=>{
+    const c=new PluginCommunication({store:await openCommunicationStore(dir),waitMs:20});
+    instances.push(c);await c.ready;return c;
+  };
+  t.after(async()=>{for(const c of instances){c.dispose();await c.tail;}});
+  const c=await create(),participants={};
+  for(const role of ['O','E']){
+    const metadata={'openai/session':'isolated-net-'+role};
+    const joined=await c.join({run_id:'net-interruption',role,metadata});
+    participants[role]={...joined,metadata,panel_instance_id:randomUUID(),
+      protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
+    await c.bind(participants[role]);
+  }
+  const {O,E}=participants;
+  E.permission_generation=(await c.enable({...E,message_supported:true})).permission_generation;
+  const args={...O,recipient_id:E.participant_id,kind:'question',body:'Isolated network boundary',idempotency_key:'net-1'};
+  const message=await c.send(args);
+  assert.equal((await c.status(E)).messages.find(m=>m.message_id===message.message_id).delivery,'pending',
+    'persisted intent is not SDK acceptance');
+  const claim=await c.claim({...E,message_id:message.message_id});
+  await c.verify({...E,...claim});
+  // Deliberately omit report(accepted/rejected): simulate a disconnect after
+  // SDK invocation but before its receipt reaches Control. No network change.
+  c.dispose();await c.tail;
+  const recovered=await create();
+  const state=await recovered.status(E),uncertain=state.messages.find(m=>m.message_id===message.message_id);
+  assert.equal(uncertain.delivery,'unknown');
+  assert.equal(uncertain.read,false);
+  assert.equal((await recovered.journal(E)).events.filter(e=>e.event_type==='send.intent').length,1);
+  await assert.rejects(recovered.claim({...E,message_id:message.message_id}),
+    {code:'PLUGIN_COMMUNICATION_BINDING'},'a restored backend has no remembered physical SDK panel');
+  await recovered.bind(E);
+  E.permission_generation=(await recovered.enable({...E,message_supported:true})).permission_generation;
+  await assert.rejects(recovered.claim({...E,message_id:message.message_id}),
+    {code:'PLUGIN_COMMUNICATION_CLAIM_DENIED'});
+  await assert.rejects(recovered.verify({...E,...claim}),
+    {code:'PLUGIN_COMMUNICATION_CLAIM_DENIED'});
+  const repeat=await recovered.send(args);
+  assert.equal(repeat.message_id,message.message_id,'retry with same idempotency key reuses saved message');
+  assert.equal((await recovered.status(E)).messages.filter(m=>m.message_id===message.message_id).length,1);
+  const events=(await recovered.journal(E)).events;
+  assert.equal(events.filter(e=>e.event_type==='send.intent').length,1,'a lost receipt cannot cause another SDK Send');
+  assert.equal(recovered.critical,null);
 });
