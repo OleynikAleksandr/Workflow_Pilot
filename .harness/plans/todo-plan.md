@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 866,
+  "plan_revision": 869,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -69,7 +69,8 @@
       "tests/executor-background-startup.test.mjs",
       "src/contracts/backend.mjs",
       "package.json",
-      "release-manifest.json"
+      "release-manifest.json",
+      "tests/workflow-channel.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/recovery-and-interruption-2026-10.md",
@@ -534,7 +535,8 @@
         "tests/automatic-agent-dialogue.test.mjs",
         "tests/sidebar.test.mjs",
         "tests/backend-desktop-model.test.mjs",
-        "tests/startup-context.test.mjs"
+        "tests/startup-context.test.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/recovery-and-interruption-2026-10.md"
@@ -555,14 +557,27 @@
         "Версия приложения 0.5.24 в package.json, package-lock.json и COMMUNICATION_APP_VERSION/BUILD; протокол панели 4 не меняется."
       ],
       "expected_commit_message": "fix: устранить замечания проверки и поднять версию 0.5.24",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "FIX-REVIEW-FOLLOWUP",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -704,7 +719,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 866
+Revision: 869
 
 ## Цель
 
@@ -772,10 +787,10 @@ Revision: 866
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, packages/workflow-kit/README.md, docs/acceptance/interruption-recovery.md, tests/fixtures/released-kit/README.md, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-REVIEW, FIX-STARTUP, FIX-STARTUP-UI, FIX-RECOVERY-HOLD, FIX-PROGRESS, TEST-REGRESSION, TEST-PLAYBOOK
-- [TODO] FIX-REVIEW-FOLLOWUP: Устранить замечания проверки и поднять версию 0.5.24 — Ожидает
-  - Git Commit: [PENDING] fix: устранить замечания проверки и поднять версию 0.5.24
+- [DONE] FIX-REVIEW-FOLLOWUP: Устранить замечания проверки и поднять версию 0.5.24 — Завершено
+  - Git Commit: [DONE] fix: устранить замечания проверки и поднять версию 0.5.24
   - Reference: recovery-status-interruptions / FIX-REVIEW-FOLLOWUP / implementation
-  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/desktop-model.mjs, src/contracts/startup-view.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/plugin-communication.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/sidebar.test.mjs, tests/backend-desktop-model.test.mjs, tests/startup-context.test.mjs, docs/planning/recovery-and-interruption-2026-10.md
+  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/desktop-model.mjs, src/contracts/startup-view.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/plugin-communication.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/sidebar.test.mjs, tests/backend-desktop-model.test.mjs, tests/startup-context.test.mjs, tests/workflow-channel.test.mjs, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает

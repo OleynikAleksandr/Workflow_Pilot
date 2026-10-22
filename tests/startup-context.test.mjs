@@ -184,6 +184,10 @@ test('UI separates bootstrap, reading, confirmation and uncertain delivery',()=>
   const crashed=startupContextState({phase:'error',error:{code:'STORE_BLOCKED',message:'WAL недоступен'}},{delivery:'pending'});
   assert.equal(crashed.phase,'startup-failed');assert.match(startupView(crashed.startup).detail,/WAL недоступен/);
   assert.equal(startupView(startupContextState({phase:'selected'},null).startup).phase,'startup-stale');
+  // No answer from a channel that is not ready yet is progress, not a terminal failure.
+  const unanswered=startupContextState({phase:'startup-channel'},undefined);
+  assert.equal(unanswered.phase,'startup-channel');assert.equal(unanswered.error,null);
+  assert.equal(startupView(unanswered.startup).phase,'startup-channel');
 });
 
 test('model-pull startup is durable, idempotent and never schedules SDK even before the first read',async t=>{

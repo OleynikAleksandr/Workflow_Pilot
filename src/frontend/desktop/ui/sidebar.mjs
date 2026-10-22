@@ -507,7 +507,8 @@ function render(state) {
   $('plan-run-toggle').hidden = !run || run.state === 'complete' || run.complete;
   $('plan-run-toggle').textContent = runLabels[run?.state] ?? '';
   $('plan-run-toggle').dataset.state = run?.state ?? '';
-  $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue || !!run?.recoveryHeld;
+  // A held project keeps the button: pressing it runs the standard Kit recheck.
+  $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue;
   const runReason = run?.issue ? 'Оркестратор плана не определён. Назначьте его в меню сессии.'
     : run?.reason === 'recovery' ? 'Автопродолжение отключено после восстановления Kit (не ручная пауза). '+(run.message??'')
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
@@ -552,7 +553,7 @@ function render(state) {
     const statusText = orchestrated&&plan.state!=='closed'&&evidence
       ?`Результаты исполнителей: ${evidence.received??'—'}/${evidence.total} · Интегрировано: ${evidence.integrated}/${evidence.totalTasks}`
       :orchestrated&&plan.state!=='closed'?`Интегрировано: ${plan.completed}/${plan.total}`
-      : plan.state === 'awaiting-acceptance' ? completedText(plan.total)
+      : plan.state === 'awaiting-acceptance' ? completedText(plan.total) + ' · ожидается приёмка'
       : plan.state === 'blocked' ? `План заблокирован · ${plan.completed} из ${plan.total} выполнено`
         : plan.state === 'closed' ? 'Scope завершён и архивирован'
           : plan.state === 'not-created' ? 'План ещё не создан'
@@ -563,10 +564,10 @@ function render(state) {
     $('plan-title').textContent = orchestrated ? orchestrated.objective || 'План оркестратора'
       : selected.assignmentId ? execution.objective??'Общий план проекта' : selected.scopeId ? selected.objective : '';
     $('plan-status').textContent = statusText; $('plan-status').dataset.state = plan.state;
-    const needsAcceptance=!!orchestrated&&plan.state==='awaiting-acceptance';
+    const needsAcceptance=plan.state==='awaiting-acceptance';
     $('plan-note').hidden = plan.state !== 'closed'&&!needsAcceptance;
     $('plan-note').textContent = plan.state === 'closed' ? 'Проект готов к следующему новому плану.'
-      :needsAcceptance?'Все задачи зафиксированы Kit; ожидается ваша приёмка. Сообщите оркестратору: «Принимаю результат, закрой план». Архив проекта не заменяет приёмку плана.':'';
+      :needsAcceptance?'Все задачи зафиксированы Kit; ожидается ваша приёмка. Сообщите '+(orchestrated?'оркестратору':'агенту плана')+': «Принимаю результат, закрой план». Архив проекта не заменяет приёмку плана.':'';
     const planReason = selected.planReadError?.message ?? plan.blockedReason ?? '';
     $('plan-reason').hidden = !planReason; $('plan-reason').textContent = planReason;
     $('plan-tasks').replaceChildren(...plan.tasks.map(task => {
@@ -637,7 +638,7 @@ function render(state) {
   for (const button of document.querySelectorAll('button')) {
     if (button.closest('#startup-panel') || button.id==='open-startup') continue;
     button.disabled = actionPending
-      || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue || !!state.planRun?.recoveryHeld))
+      || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue))
       || (state.storageError && ['create-workspace', 'add-workspace', 'retry-context'].includes(button.id));
   }
   const recovery = state.conversationRecovery;

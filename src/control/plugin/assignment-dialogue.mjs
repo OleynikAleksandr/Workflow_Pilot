@@ -4,6 +4,10 @@ import {ASSIGNMENT_DIALOGUE_VERSION,assignmentPayload,assignmentCheck as check} 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const allowed={O:new Set(['task','context','question','clarification','decision','acceptance','revision_request']),
   E:new Set(['context_request','context','question','clarification','result'])};
+// An unpublished intent has reached no recipient; its answer says so explicitly.
+const unpublishedStage=phase=>({delivery_stage:phase==='authorized'?'authorized_waiting_channel':phase,delivered:false,
+  delivery_note:phase==='authorized'?'Отправка разрешена и сохранена; ждём готовности канала исполнителя. Поручение ещё не доставлено.'
+    :'Поручение ещё не опубликовано и не доставлено.'});
 const reference=(run,target)=>'assignment:'+hash(JSON.stringify([run.id,target.scope_id,target.assignment_id,target.local_session_id]));
 
 // Text and delivery belong to the existing WAL. Kit alone applies task grants,
@@ -231,7 +235,7 @@ export class AssignmentDialogue {
     if(intent.phase==='published')return c.workflow.receipt(run.messages.find(m=>m.message_id===input.message_id));
     if(intent.phase==='authorized'&&!this.authorized(run,intent))this.invalidateAuthorizations(run);
     if(intent.phase!=='authorized')return {message_id:intent.message_id,draft_id:intent.message_id,
-      persisted:true,published:false,phase:intent.phase};
+      persisted:true,published:false,phase:intent.phase,...unpublishedStage(intent.phase)};
     try{
       await c.enrollment.validate(intent.source);await c.enrollment.validate(intent.target);
       const state=await this.state(intent.source,intent.effect.assignment_id);
@@ -251,7 +255,7 @@ export class AssignmentDialogue {
         c.event(run,'task.dispatch_waiting',{message_id:intent.message_id,assignment_id:intent.effect.assignment_id,code,retry});
       }
       return {message_id:intent.message_id,draft_id:intent.message_id,persisted:true,published:false,phase:intent.phase,
-        ...(retry?{waiting:intent.error}:{error:intent.error})};
+        ...unpublishedStage(intent.phase),...(retry?{waiting:intent.error}:{error:intent.error})};
     }
   }
   deferred(input){

@@ -14,10 +14,12 @@ export function startupView(progress){
 
 // One projection for Desktop/HTTP: a durable startup.complete receipt wins
 // over an old transport=pending and a stale controller observation.
+// progress===null: the channel answered that the packet is gone (terminal);
+// undefined: the channel has not answered yet, e.g. right after backend start.
 export function startupContextState(state,progress){
   const failed=state?.phase==='stale'?{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE',message:'Стартовый пакет устарел.'}
     :state?.phase==='error'?state.error??{code:'STARTUP_ERROR',message:'Восстановление завершилось ошибкой.'}
-    :!progress?{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE',message:'Стартовый пакет отсутствует или сессия удалена.'}:null;
+    :progress===null?{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE',message:'Стартовый пакет отсутствует или сессия удалена.'}:null;
   const complete=progress?.complete===true;
   const startup=complete?{...progress,snapshot_stale:state?.phase==='stale'||state?.startup?.snapshot_stale===true||progress.snapshot_stale===true}
     :{...progress,...(failed?{error:failed}:{})};

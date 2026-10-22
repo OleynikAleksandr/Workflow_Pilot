@@ -6,6 +6,16 @@ const fail=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUN
 const check=(value,code,message)=>{if(!value)throw fail(code,message);};
 const LEASE_MS=60000;
 const kinds=new Set(['assignment-start','continue','question','decision','result','integration','finalization','diagnostic','ready','recovery']);
+// Only a receipt proves a stage. A persisted message (delivery:pending) is not
+// delivered: the agent must not report it as handed over to the recipient.
+const stageNotes={saved:'Сохранено в очереди; SDK ещё не доставил получателю. Не сообщай, что сообщение передано.',
+  sending:'SDK начал отправку; подтверждения хоста ещё нет.',accepted:'Принято хостом; чтение получателем не подтверждено.',
+  read:'Прочитано получателем.',unknown:'Исход отправки неизвестен; не повторяй отправку.',rejected:'Отправка отклонена.',superseded:'Сообщение устарело.'};
+export function deliveryStage(message){
+  const stage=message.read?'read':message.superseded?'superseded':message.delivery==='pending'?'saved':message.delivery==='claimed'?'sending'
+    :['accepted','unknown','rejected'].includes(message.delivery)?message.delivery:'unknown';
+  return {delivery_stage:stage,delivered:stage==='read',delivery_note:stageNotes[stage]};
+}
 
 // Plan permission is durable. A short panel lease only proves a live SDK; it
 // never asks the user to renew that permission or authorizes another scope.
@@ -152,7 +162,7 @@ export class WorkflowChannel {
     ...(message.dialogue_version===1?{operation_id:message.kit_receipt?.operation_id,assignment_id:message.assignment_id,attempt:message.attempt,
       handled:!!message.yielded,result:message.kit_receipt?.result??null,acceptance:message.kit_receipt?.acceptance??null,
       block_id:message.block_id??null,problem_id:message.problem_id??null,repair_attempt:message.repair_attempt??null,
-      escalation_required:message.escalation_required===true}:{})};}
+      escalation_required:message.escalation_required===true,...deliveryStage(message)}:{})};}
   pending(run,member) {
     if(!this.transportPermitted(run,member)||member.deliveryGate||!this.observe(member.target).canSend)return null;
     const first=this.first(run,member);

@@ -227,13 +227,19 @@ test('pause and restart revoke unconsumed authorization; Continue alone never gr
     await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);await f.c.reserve(e);
     const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
     const draft=await f.c.assignmentPrepare({metadata:meta('o'),recipient,attempt:1,body:'Selected',idempotency_key:'auto',dispatch_when_ready:true});
+    // Authorized before the executor channel is ready: O is told it is not delivered.
+    assert.equal(draft.published,false);assert.equal(draft.delivered,false);
+    assert.equal(draft.delivery_stage,'authorized_waiting_channel');assert.match(draft.delivery_note,/ещё не доставлено/);
     const c=restart?await f.create():f.c;
     if(!restart)await c.workflow.grant(f.o,'paused');
     await c.workflow.grant(f.o);await f.bind(c,e);
     await c.assignment.reconcile('p','s');assert.equal(kit.calls,0);
     assert.equal((await c.assignmentStatus({metadata:meta('o')})).pending_intents[0].phase,'needs_confirmation');
-    await c.assignmentDispatch({metadata:meta('o'),draft_id:draft.draft_id,when_ready:true});
+    const sent=await c.assignmentDispatch({metadata:meta('o'),draft_id:draft.draft_id,when_ready:true});
     assert.equal(kit.calls,1);
+    // Published is not read: the receipt names its proven stage instead of a bare pending.
+    assert.equal(sent.delivered,false);assert.ok(['saved','sending','accepted'].includes(sent.delivery_stage),sent.delivery_stage);
+    assert.ok(sent.delivery_note);
   }
 });
 test('changed contract or attempt invalidates authorized draft before any effect',async t=>{

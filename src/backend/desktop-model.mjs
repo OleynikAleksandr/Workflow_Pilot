@@ -325,7 +325,7 @@ function planRunView(saved) {
   const started=workflow.executionControl.view(workspace,project.scopeId).state!=='not-started';
   const choice=workflow.projectPlanContinuation.snapshot()[workspace],recovery=workflow.recoveryStatus(workspace);
   const reason=recovery?'recovery':!running&&choice?.scopeId===project.scopeId?choice.offReason??null:null;
-  return {workspace,scopeId:project.scopeId,state:running?'running':started||recovery?'paused':'not-started',reason,
+  return {workspace,scopeId:project.scopeId,state:running?'running':started||recovery||reason==='recovery'?'paused':'not-started',reason,
     message:recovery?.message??(reason==='recovery'?'Транзакция Kit завершена; для возобновления выполнения нажмите «Продолжить».':null),
     recoveryHeld:!!recovery,issue:null,complete};
 }

@@ -32,7 +32,9 @@ test('Kit recovery hold reports next action instead of an empty chat, and distin
   f.emit({...base,selected,planRun:{state:'paused',reason:'recovery',message:info,recoveryHeld:true},
     context:{phase:'error',messageSent:false,error:{code:'PROJECT_RECOVERY_REQUIRED',message:info}}});
   assert.equal($('session-notice').hidden,false);assert.match($('session-notice-detail').textContent,/status.*repair/);
-  assert.equal($('plan-run-toggle').disabled,true,'held project does not authorize Start');
+  // The button stays the explicit recheck: setPlanExecution refuses while the
+  // transaction is still open (execution-control.test.mjs).
+  assert.equal($('plan-run-toggle').disabled,false,'held project keeps the explicit Kit recheck');
   assert.match($('plan-run-message').textContent,/не ручная пауза/);
   f.emit({...base,selected,planRun:{state:'paused',reason:'recovery',message:'Kit завершён, нажмите Продолжить',recoveryHeld:false},
     context:{phase:'selected',messageSent:false}});
@@ -331,15 +333,17 @@ test('one project plan stays visible for the selected chat and legacy ownership 
   assert.equal(f.document.querySelector('#plan-card .eyebrow').textContent,'Текущий план проекта');
   assert.equal(f.document.getElementById('plan-title').textContent,'Текущий план проекта');
   assert.equal(f.document.querySelector('#plan-tasks strong').textContent,'Сохранённый результат');
-  assert.equal(f.document.getElementById('plan-status').textContent,'Задача выполнена');
+  assert.equal(f.document.getElementById('plan-status').textContent,'Задача выполнена · ожидается приёмка');
   assert.equal(f.document.querySelector('#plan-tasks .plan-task-state').getAttribute('aria-label'),'выполнена');
   for(const [total,text] of [[2,'Все 2 задачи выполнены'],[5,'Все 5 задач выполнены'],[21,'Все 21 задача выполнена'],[11,'Все 11 задач выполнены']]){
     state.selected={...state.selected,planView:{...state.selected.planView,completed:total,total}};f.emit(state);
-    assert.equal(f.document.getElementById('plan-status').textContent,text);
+    assert.equal(f.document.getElementById('plan-status').textContent,text+' · ожидается приёмка');
   }
   assert.equal(f.document.getElementById('prepared-card'),null);
   assert.equal(f.document.getElementById('plan-origin'),null);
-  assert.equal(f.document.getElementById('plan-note').hidden,true);
+  // A sequential plan waits for the user's acceptance just like an orchestrated one.
+  assert.equal(f.document.getElementById('plan-note').hidden,false);
+  assert.match(f.document.getElementById('plan-note').textContent,/ожидается ваша приёмка.*агенту плана/);
 });
 
 test('rapid A-B-A navigation reaches IPC immediately and ignores obsolete responses', async t => {
