@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 869,
+  "plan_revision": 870,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -82,7 +82,13 @@
       "docs/modules/orchestrator-startup.md",
       "docs/modules/assignment-dialogue.md",
       "docs/modules/orchestrated-execution.md",
-      "tests/fixtures/released-kit/README.md"
+      "tests/fixtures/released-kit/README.md",
+      "docs/modules/chatgpt-plugin.md",
+      "docs/modules/release.md",
+      "docs/modules/dialogue-timing.md",
+      "docs/modules/assignment-dialogue-reliability.md",
+      "docs/modules/automatic-agent-dialogue-acceptance.md",
+      "docs/modules/chatgpt-plugin-acceptance.md"
     ]
   },
   "baseline_commit": "d5e5f608133c75aba527e3aae15836765169ac41",
@@ -597,7 +603,17 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/recovery-and-interruption-2026-10.md"
+        "docs/planning/recovery-and-interruption-2026-10.md",
+        "README.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/release.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -719,7 +735,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 869
+Revision: 870
 
 ## Цель
 
@@ -796,7 +812,7 @@ Revision: 869
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: recovery-status-interruptions / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/recovery-and-interruption-2026-10.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/recovery-and-interruption-2026-10.md, README.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, docs/modules/release.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-REVIEW-FOLLOWUP
 - [TODO] RELEASE: Собрать проверенный выпуск 0.5.24 для трёх ОС — Ожидает
