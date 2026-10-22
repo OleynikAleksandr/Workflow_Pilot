@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 883,
+  "plan_revision": 885,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -72,7 +72,8 @@
       "src/frontend/desktop/client.mjs",
       "src/frontend/web/index.html",
       "tests/parallel-execution-smoke-fixture.cjs",
-      "tests/parallel-finalization.test.mjs"
+      "tests/parallel-finalization.test.mjs",
+      "packages/workflow-kit/src/lib/installer.mjs"
     ],
     "documentation_paths": [
       "docs/planning/work-progress-ui.md",
@@ -109,8 +110,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "T001",
@@ -128,7 +129,8 @@
         "tests/workflow-kit-upgrade.test.mjs",
         "tests/fixtures/released-kit/manifest.json",
         "tests/fixtures/released-kit/kit-1.9.4.tar.gz",
-        "packages/workflow-kit/src/lib/common.mjs"
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs"
       ],
       "documentation_paths": [
         "tests/fixtures/released-kit/README.md"
@@ -147,7 +149,20 @@
         "Версия Kit 1.9.5 в package.json и src/lib/common.mjs; upgrade с 1.9.4 проверен на фиксированном архиве из sourceCommit 0.5.24, README архивов обновлён; полный Kit (kit-check и kit-assignments) проходит."
       ],
       "expected_commit_message": "feat: Записывать прогресс проверок коммита в Kit",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-runtime-fixture.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/git-hooks.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/transaction.mjs",
+        "tests/fixtures/released-kit/README.md",
+        "tests/fixtures/released-kit/kit-1.9.4.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -476,7 +491,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 883
+Revision: 885
 
 ## Цель
 
@@ -496,10 +511,10 @@ Revision: 883
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: AGENTS.md предписывает работать самостоятельно; план выполняет этот агент последовательно при закрытом приложении. Задачи связаны общей проекцией хода работ и словарём: Kit-прогресс нужен проекции, проекция — sidebar и панели, сквозная регрессия — всем трём.
 
-- [TODO] T001: Записывать прогресс проверок коммита в Kit — Ожидает
-  - Git Commit: [PENDING] feat: Записывать прогресс проверок коммита в Kit
+- [DONE] T001: Записывать прогресс проверок коммита в Kit — Завершено
+  - Git Commit: [DONE] feat: Записывать прогресс проверок коммита в Kit
   - Reference: work-progress-ui / T001 / implementation
-  - Файлы: packages/workflow-kit/src/lib/git-hooks.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, packages/workflow-kit/src/lib/transaction.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, packages/workflow-kit/package.json, package-lock.json, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.4.tar.gz, packages/workflow-kit/src/lib/common.mjs, tests/fixtures/released-kit/README.md
+  - Файлы: packages/workflow-kit/src/lib/git-hooks.mjs, packages/workflow-kit/src/lib/transaction-state.mjs, packages/workflow-kit/src/lib/transaction.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, packages/workflow-kit/package.json, package-lock.json, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.9.4.tar.gz, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T002: Построить единую проекцию хода работ — Ожидает

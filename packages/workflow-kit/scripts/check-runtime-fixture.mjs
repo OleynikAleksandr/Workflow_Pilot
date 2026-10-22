@@ -228,7 +228,10 @@ try {
       objective: 'Verify documentation before delivery tail',
       stack: 'Node.js',
       checks: [
-        { id: 'code', executable: process.execPath, args: ['-e', 'process.exit(0)'], kind: 'test' },
+        // The check records the commit progress it observes while it runs.
+        { id: 'code', executable: process.execPath, kind: 'test', args: ['-e', "const fs=require('fs');"
+          + "const t=JSON.parse(fs.readFileSync('.git/workflow-kit/transaction.json','utf8'));"
+          + "fs.appendFileSync('.git/observed-progress.jsonl',JSON.stringify(t.verification_progress)+'\\n')"] },
         { id: 'artifact', executable: process.execPath, args: ['-e', 'process.exit(0)'], kind: 'package',
           evidence: 'fixture package; zero-exit command represents artifact verification' }
       ],
@@ -261,6 +264,15 @@ try {
     workflow(deliveryRoot, 'task:start', 'T001');
     await fs.appendFile(path.join(deliveryRoot, 'README.md'), 'implementation\n');
     workflow(deliveryRoot, 'commit', '--task', 'T001');
+    // 1.9.5: observers see which commit check runs; the record leaves with the journal.
+    const observed = (await fs.readFile(path.join(deliveryRoot, '.git/observed-progress.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+    assert.equal(observed.length, 1);
+    const [progress] = observed;
+    assert.deepEqual({ ...progress, check_started_at_ms: 0, run_started_at_ms: 0 },
+      { version: 1, task_id: 'T001', check_id: 'code', index: 1, total: 1, check_started_at_ms: 0, run_started_at_ms: 0 });
+    assert.ok(progress.check_started_at_ms >= progress.run_started_at_ms && progress.run_started_at_ms > 0);
+    await assert.rejects(fs.access(path.join(deliveryRoot, '.git/workflow-kit/transaction.json')));
+    assert.equal(workflow(deliveryRoot, 'status').transaction, null);
     workflow(deliveryRoot, 'task:start', 'T003');
     await fs.appendFile(path.join(deliveryRoot, 'README.md'), 'correction\n');
     workflow(deliveryRoot, 'commit', '--task', 'T003');

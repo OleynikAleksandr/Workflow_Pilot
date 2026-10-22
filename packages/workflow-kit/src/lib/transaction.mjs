@@ -69,7 +69,7 @@ export function commitCandidate(root, { plan, role, task = null, selected, messa
   if (process.env.WORKFLOW_TEST_FAILPOINT === 'prepared') check(false, 'TEST_INTERRUPTION', 'Тестовое прерывание после подготовки кандидата.');
   const result = git(root, ['commit', '-m', messageFor(t)], { allowFailure: true, timeout: commitTimeout(t.checks) });
   if (result.status !== 0) {
-    t = journal(root) ?? t; t.phase = 'CHECKS_FAILED'; t.error = String(result.stderr || result.stdout).slice(-5000); saveJournal(root, t);
+    t = journal(root) ?? t; t.phase = 'CHECKS_FAILED'; t.verification_progress = null; t.error = String(result.stderr || result.stdout).slice(-5000); saveJournal(root, t);
     // A normal failed check is not a crash. Restore only our own plan/index;
     // leave all source edits intact, and retain the journal if another writer intervened.
     const backup=localPath(root,'index-before');
