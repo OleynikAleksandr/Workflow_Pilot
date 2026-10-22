@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 854,
+  "plan_revision": 855,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -86,17 +86,17 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/recovery-and-interruption-2026-10.md",
-        "required": true,
-        "revision": "WORKTREE"
-      },
-      {
         "path": "docs/planning/recovery-and-interruption-todo-draft.md",
         "required": true,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/recovery-and-interruption-2026-10.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -285,6 +285,50 @@
       ]
     },
     {
+      "id": "FIX-RECOVERY-HOLD",
+      "title": "I · Автоматически снять удержание Kit recovery после закрытия транзакции",
+      "why": "После backend restart с открытой Kit-транзакцией startupRecovery продолжает блокировать новые сессии даже после успешного завершения transaction; sequential-автопродолжение остаётся OFF без видимой технической причины.",
+      "dependencies": [
+        "FIX-STARTUP-UI"
+      ],
+      "functional_paths": [
+        "src/control/workflow/coordination.mjs",
+        "src/control/context/context-session.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/automatic-agent-dialogue.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/recovery-and-interruption-2026-10.md"
+      ],
+      "verification_ids": [
+        "startup-recovery",
+        "orchestrator-startup",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "При restart backend с открытым journal/transaction Kit сохраняет удержание только затронутого проекта: prepareBootstrap не начинает отправку, повторный Send/Kit-эффект запрещён; соседние проекты не блокируются.",
+        "После подтверждённого исчезновения незавершённой транзакции Kit удержание снимается автоматически существующим механизмом изменения состояния/проверки готовности, без нажатия Start/Continue/плана и без ручного сброса. Ошибки чтения, UNKNOWN и незакрытый journal не считаются подтверждением.",
+        "Новая сессия при действующем удержании показывает терминальную диагностируемую причину PROJECT_RECOVERY_REQUIRED и следующий безопасный шаг (проверить/завершить транзакцию Kit и повторить подготовку через актуальный контекст), а не пустой чат или бесконечный spinner; недоставленный пакет не считается отправленным.",
+        "Освобождение удержания разрешает новый startup, но НЕ включает sequential автопродолжение и НЕ снимает паузу orchestrated-плана. Отключение из-за восстановления отличается от явной ручной паузы в backend-состоянии и UI; ранее установленный ручной OFF не переименовывается в технический.",
+        "Изолированная регрессия на временном fixture/WAL/Kit: рестарт при открытой транзакции → блокировка startup → штатное закрытие транзакции → автоматическое снятие удержания → новая сессия получает и подтверждает startup-пакет без повторных отправок. Отдельно: транзакция ещё открыта/чтение Kit ошибочно → удержание и запрет сохраняются.",
+        "Менять только пути внутри approved_scope; рабочий backend, пользовательские профили, реальные сессии и WAL не затрагивать. Без новых scheduler, дублирования доставки или автоматического запуска плана; все три назначенные проверки PASS."
+      ],
+      "expected_commit_message": "fix: снимать удержание startup после завершения транзакции Kit",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "recovery-status-interruptions",
+        "task_id": "FIX-RECOVERY-HOLD",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -293,7 +337,8 @@
         "role": "implementation"
       },
       "dependencies": [
-        "FIX-STARTUP-UI"
+        "FIX-STARTUP-UI",
+        "FIX-RECOVERY-HOLD"
       ],
       "functional_paths": [
         "src/frontend/desktop/ui/sidebar.mjs",
@@ -405,6 +450,7 @@
         "FIX-REVIEW",
         "FIX-STARTUP",
         "FIX-STARTUP-UI",
+        "FIX-RECOVERY-HOLD",
         "FIX-PROGRESS",
         "TEST-REGRESSION",
         "TEST-PLAYBOOK"
@@ -418,7 +464,8 @@
         "docs/modules/orchestrated-execution.md",
         "packages/workflow-kit/README.md",
         "docs/acceptance/interruption-recovery.md",
-        "tests/fixtures/released-kit/README.md"
+        "tests/fixtures/released-kit/README.md",
+        "docs/planning/recovery-and-interruption-2026-10.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -456,7 +503,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 854
+Revision: 855
 
 ## Цель
 
@@ -494,12 +541,18 @@ Revision: 854
   - Файлы: src/control/plugin/startup-context.mjs, src/control/context/context-session.mjs, src/contracts/startup-view.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/progress.mjs, src/control/plugin/service.mjs, src/frontend/plugin/panel.mjs, tests/startup-context.test.mjs, tests/context-session.test.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/progress.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-STARTUP
+- [TODO] FIX-RECOVERY-HOLD: I · Автоматически снять удержание Kit recovery после закрытия транзакции — Ожидает
+  - Git Commit: [PENDING] fix: снимать удержание startup после завершения транзакции Kit
+  - Reference: recovery-status-interruptions / FIX-RECOVERY-HOLD / implementation
+  - Файлы: src/control/workflow/coordination.mjs, src/control/context/context-session.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/backend-desktop-model.test.mjs, tests/context-session.test.mjs, tests/sidebar.test.mjs, tests/automatic-agent-dialogue.test.mjs, docs/planning/recovery-and-interruption-2026-10.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FIX-STARTUP-UI
 - [TODO] FIX-PROGRESS: I · Прогресс — результаты исполнителей, интеграция, доставка и финал — Ожидает
   - Git Commit: [PENDING] feat: показывать проверенные этапы прогресса и доставки
   - Reference: recovery-status-interruptions / FIX-PROGRESS / implementation
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, src/backend/desktop-model.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, tests/sidebar.test.mjs, tests/backend-desktop-model.test.mjs, tests/parallel-execution-ui.test.mjs, tests/workspace-session.test.mjs, src/control/sessions/workspace-session.mjs, tests/panel-dialogue-view.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/plugin-communication.test.mjs
   - Параллельность: исключительное выполнение
-  - Зависимости: FIX-STARTUP-UI
+  - Зависимости: FIX-STARTUP-UI, FIX-RECOVERY-HOLD
 - [TODO] TEST-REGRESSION: II · Автоматические фикстуры прерывания O/E — Ожидает
   - Git Commit: [PENDING] test: сценарии идемпотентного восстановления O и E
   - Reference: recovery-status-interruptions / TEST-REGRESSION / implementation
@@ -515,14 +568,14 @@ Revision: 854
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: зафиксировать исправленный startup и подготовленные испытания
   - Reference: recovery-status-interruptions / DOCS / implementation
-  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, packages/workflow-kit/README.md, docs/acceptance/interruption-recovery.md, tests/fixtures/released-kit/README.md
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, packages/workflow-kit/README.md, docs/acceptance/interruption-recovery.md, tests/fixtures/released-kit/README.md, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
-  - Зависимости: FIX-REVIEW, FIX-STARTUP, FIX-STARTUP-UI, FIX-PROGRESS, TEST-REGRESSION, TEST-PLAYBOOK
+  - Зависимости: FIX-REVIEW, FIX-STARTUP, FIX-STARTUP-UI, FIX-RECOVERY-HOLD, FIX-PROGRESS, TEST-REGRESSION, TEST-PLAYBOOK
 
 ## Context Pack For This Cycle
 
-- docs/planning/recovery-and-interruption-2026-10.md
 - docs/planning/recovery-and-interruption-todo-draft.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/recovery-and-interruption-2026-10.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
