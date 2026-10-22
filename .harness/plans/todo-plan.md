@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 865,
+  "plan_revision": 866,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Два раздела: I — устранить дефекты startup S и отображения результатов живого теста; II — подготовить изолированные регрессии и безопасный сценарий прерываний O/E без выполнения живых сбоев.",
   "acceptance_criteria": [
     "Раздел I: штатный Claude Review не прерывается на 30/100 ходах, 15 минутах и четырёх раундах; настоящие ошибки и ручное прекращение остаются диагностируемыми без повторных эффектов.",
@@ -66,7 +66,10 @@
       "tests/settings-parallel-execution.test.mjs",
       "tests/session-opening-performance.test.mjs",
       "tests/fixtures/executor-background-startup.mjs",
-      "tests/executor-background-startup.test.mjs"
+      "tests/executor-background-startup.test.mjs",
+      "src/contracts/backend.mjs",
+      "package.json",
+      "release-manifest.json"
     ],
     "documentation_paths": [
       "docs/planning/recovery-and-interruption-2026-10.md",
@@ -512,6 +515,171 @@
         "docs/modules/orchestrator-startup.md",
         "packages/workflow-kit/README.md"
       ]
+    },
+    {
+      "id": "FIX-REVIEW-FOLLOWUP",
+      "title": "Устранить замечания проверки и поднять версию 0.5.24",
+      "why": "Проверка Claude после DOCS: O по-прежнему получает голый delivery:pending; sequential-план не говорит об ожидаемой приёмке; кнопка плана заблокирована при удержании и теряет ручную перепроверку; кратковременное отсутствие прогресса старта выглядит как окончательный провал.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/plugin-communication.test.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/startup-context.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/recovery-and-interruption-2026-10.md"
+      ],
+      "verification_ids": [
+        "orchestrator-startup",
+        "startup-recovery",
+        "chatgpt-plugin",
+        "prepared-flow-cycle",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Квитанции assignment-сообщений dialogue_version=1 и ответ prepare/dispatch без публикации содержат явную стадию доставки (сохранено/отправляется/принято хостом/прочитано/неизвестно) и признак delivered=false до чтения; pending не называется доставкой. Ролевой протокол Kit не меняется.",
+        "Sequential/parallel-план ACTIVE / READY_FOR_ACCEPTANCE со всеми DONE показывает в sidebar ожидание приёмки пользователя, как orchestrated.",
+        "При удержании восстановления кнопка плана доступна и выполняет штатную перепроверку; после снятия удержания у sequential-плана подпись «Продолжить» согласована с сообщением; автопродолжение само не включается.",
+        "Отсутствие ответа прогресса старта из-за ещё не готового канала (undefined) не показывается как окончательная ошибка; явное отсутствие пакета (null), stale и ошибки остаются терминальными.",
+        "Версия приложения 0.5.24 в package.json, package-lock.json и COMMUNICATION_APP_VERSION/BUILD; протокол панели 4 не меняется."
+      ],
+      "expected_commit_message": "fix: устранить замечания проверки и поднять версию 0.5.24",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "recovery-status-interruptions",
+        "task_id": "FIX-REVIEW-FOLLOWUP",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "recovery-status-interruptions",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "FIX-REVIEW-FOLLOWUP"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/recovery-and-interruption-2026-10.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE",
+      "title": "Собрать проверенный выпуск 0.5.24 для трёх ОС",
+      "why": "Собрать проверенный выпуск 0.5.24 для трёх ОС",
+      "dependencies": [
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/recovery-and-interruption-2026-10.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "DOCS до сборки; один sourceCommit для macOS/Windows/Linux; перед production-сборкой удалён Python cache в tools/codex-app-server-mcp"
+      ],
+      "expected_commit_message": "feat: Собрать проверенный выпуск 0.5.24 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "recovery-status-interruptions",
+        "task_id": "RELEASE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL",
+      "title": "Установить готовый выпуск 0.5.24",
+      "why": "Установить готовый выпуск 0.5.24",
+      "dependencies": [
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/recovery-and-interruption-2026-10.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer проверил версию, manifest, подпись и откат; служба остановлена пользователем, приложение не запускается автоматически"
+      ],
+      "expected_commit_message": "feat: Установить готовый выпуск 0.5.24",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "recovery-status-interruptions",
+        "task_id": "INSTALL",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH",
+      "title": "Опубликовать проверенный GitHub Release 0.5.24",
+      "why": "Опубликовать проверенный GitHub Release 0.5.24",
+      "dependencies": [
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/recovery-and-interruption-2026-10.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Собственный OleynikAleksandr/Workflow_Pilot: fast-forward main, тег v0.5.24 на sourceCommit, draft → семь assets → сверка имён/размеров/digest → публикация; prerelease=false"
+      ],
+      "expected_commit_message": "feat: Опубликовать проверенный GitHub Release 0.5.24",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "recovery-status-interruptions",
+        "task_id": "PUBLISH",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -533,10 +701,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 865
+Revision: 866
 
 ## Цель
 
@@ -604,6 +772,36 @@ Revision: 865
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, packages/workflow-kit/README.md, docs/acceptance/interruption-recovery.md, tests/fixtures/released-kit/README.md, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-REVIEW, FIX-STARTUP, FIX-STARTUP-UI, FIX-RECOVERY-HOLD, FIX-PROGRESS, TEST-REGRESSION, TEST-PLAYBOOK
+- [TODO] FIX-REVIEW-FOLLOWUP: Устранить замечания проверки и поднять версию 0.5.24 — Ожидает
+  - Git Commit: [PENDING] fix: устранить замечания проверки и поднять версию 0.5.24
+  - Reference: recovery-status-interruptions / FIX-REVIEW-FOLLOWUP / implementation
+  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/desktop-model.mjs, src/contracts/startup-view.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/plugin-communication.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/sidebar.test.mjs, tests/backend-desktop-model.test.mjs, tests/startup-context.test.mjs, docs/planning/recovery-and-interruption-2026-10.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: recovery-status-interruptions / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/recovery-and-interruption-2026-10.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FIX-REVIEW-FOLLOWUP
+- [TODO] RELEASE: Собрать проверенный выпуск 0.5.24 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.24 для трёх ОС
+  - Reference: recovery-status-interruptions / RELEASE / implementation
+  - Файлы: release-manifest.json, docs/planning/recovery-and-interruption-2026-10.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-2
+- [TODO] INSTALL: Установить готовый выпуск 0.5.24 — Ожидает
+  - Git Commit: [PENDING] feat: Установить готовый выпуск 0.5.24
+  - Reference: recovery-status-interruptions / INSTALL / implementation
+  - Файлы: release-manifest.json, docs/planning/recovery-and-interruption-2026-10.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-2
+- [TODO] PUBLISH: Опубликовать проверенный GitHub Release 0.5.24 — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать проверенный GitHub Release 0.5.24
+  - Reference: recovery-status-interruptions / PUBLISH / implementation
+  - Файлы: release-manifest.json, docs/planning/recovery-and-interruption-2026-10.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-2
 
 ## Context Pack For This Cycle
 
