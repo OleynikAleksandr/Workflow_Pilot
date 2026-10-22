@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 870,
+  "plan_revision": 873,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -88,7 +88,10 @@
       "docs/modules/dialogue-timing.md",
       "docs/modules/assignment-dialogue-reliability.md",
       "docs/modules/automatic-agent-dialogue-acceptance.md",
-      "docs/modules/chatgpt-plugin-acceptance.md"
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/modules/workflow-execution.md",
+      "docs/modules/project-compatibility.md",
+      "docs/modules/plugin-communication-handoff.md"
     ]
   },
   "baseline_commit": "d5e5f608133c75aba527e3aae15836765169ac41",
@@ -588,8 +591,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "DOCS-2",
@@ -613,14 +616,33 @@
         "docs/modules/dialogue-timing.md",
         "docs/modules/assignment-dialogue-reliability.md",
         "docs/modules/automatic-agent-dialogue-acceptance.md",
-        "docs/modules/chatgpt-plugin-acceptance.md"
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/workflow-execution.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/plugin-communication-handoff.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/workflow-execution.md"
+      ]
     },
     {
       "id": "RELEASE",
@@ -735,7 +757,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 870
+Revision: 873
 
 ## Цель
 
@@ -809,10 +831,10 @@ Revision: 870
   - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/frontend/desktop/ui/sidebar.mjs, src/backend/desktop-model.mjs, src/contracts/startup-view.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/plugin-communication.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/sidebar.test.mjs, tests/backend-desktop-model.test.mjs, tests/startup-context.test.mjs, tests/workflow-channel.test.mjs, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: recovery-status-interruptions / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/recovery-and-interruption-2026-10.md, README.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, docs/modules/release.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/recovery-and-interruption-2026-10.md, README.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue.md, docs/modules/orchestrated-execution.md, docs/modules/release.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/modules/plugin-communication-handoff.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-REVIEW-FOLLOWUP
 - [TODO] RELEASE: Собрать проверенный выпуск 0.5.24 для трёх ОС — Ожидает

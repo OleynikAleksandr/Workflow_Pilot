@@ -1,6 +1,6 @@
 # Оркестрованное выполнение плана
 
-Новые планы Workflow Pilot 0.5.23 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
+Новые планы Workflow Pilot 0.5.24 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
 
 ## Роли и принадлежность
 
@@ -26,7 +26,7 @@ ExecutionControl хранит not-started/running/pausing/paused/complete, пр�
 
 Закрытие окна не останавливает backend и не отзывает допуск. Restart требует одного Continue. Stop панели останавливает отправки всего плана; поздние callbacks старого поколения не восстанавливают допуск. UNKNOWN не повторяется, а уточняется фактическими квитанциями и проверкой состояния.
 
-При рестарте с незавершённой Kit-транзакцией `startupRecovery` удерживает только соответствующий проект: новые сессии получают явный `PROJECT_RECOVERY_REQUIRED`, соседние проекты остаются доступными. Штатное закрытие транзакции подтверждается существующей проверкой готовности/файловым watcher; удержание снимается автоматически, **без кнопки плана**, но не включает sequential-автопродолжение и не снимает паузу orchestrated. Техническое выключение отличается от сохранённого ручного OFF. Пока журнал открыт или исход неизвестен, повтор Send/дальнейшее выполнение запрещены.
+При рестарте с незавершённой Kit-транзакцией `startupRecovery` удерживает только соответствующий проект: новые сессии получают явный `PROJECT_RECOVERY_REQUIRED`, соседние проекты остаются доступными. Штатное закрытие транзакции подтверждается существующей проверкой готовности/файловым watcher; удержание снимается автоматически, **без кнопки плана**, но не включает sequential-автопродолжение и не снимает паузу orchestrated. Техническое выключение отличается от сохранённого ручного OFF. Кнопка плана при удержании выполняет ту же перепроверку и отказывает, пока журнал открыт. Пока журнал открыт или исход неизвестен, повтор Send/дальнейшее выполнение запрещены.
 
 Интегрированные E нового режима сохраняются до завершения сообщений и итоговой очистки. После обычных задач O поручает DOCS: её bootstrap может перекрываться с текстовым ответом O при чистом main и отсутствии команд; Kit сохраняет одного writer. После её интеграции O получает delivery-шаги и cleanup/итог. Итог может начаться до последних acceptance E, но complete требует все DONE, терминальные квитанции, cleanup DONE, чистый main и физический конец итогового O. `assignment:cleanup` проверяет INTEGRATED и transport proof; null/PENDING автоматически продолжается после квитанции/окончания команд. Пока идёт финализация, UI различает 3/3 интеграции и завершение плана, показывает причину и наблюдаемое время. После complete нет «Паузы», явно ожидается приёмка пользователя; restart сохраняет complete. [Измерения и оставшиеся ограничения](dialogue-timing.md).
 
@@ -50,7 +50,7 @@ ExecutionControl хранит not-started/running/pausing/paused/complete, пр�
 
 Реальные Kit/Git, HTTP Start, Python MCP, staged SDK и Control проходят автоматические fixtures с двумя и пятью E, без пользовательских bubbles на каждом SDK-ходе. Скрытый Electron проверяет фоновый bootstrap/observer/composer без select/show. Legacy assertions сохранены отдельными случаями. [Матрица восстановления](assignment-dialogue-reliability.md#проверки-и-граница-доказательств).
 
-Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.23 — NOT_RUN. После выпуска 0.5.23 изолированные O1/O2/E1/E2/NET регрессии на Kit/Git/WAL прошли, но все семь **живых** опытов ещё `NOT_RUN`: [протокол Stop/сеть/restart](../acceptance/interruption-recovery.md). Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.
+Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.24 — NOT_RUN. С 0.5.24 изолированные O1/O2/E1/E2/NET регрессии на Kit/Git/WAL прошли, но все семь **живых** опытов ещё `NOT_RUN`: [протокол Stop/сеть/restart](../acceptance/interruption-recovery.md). Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.
 
 
 Старт всех новых локальных сессий — [единый канал панели](orchestrator-startup.md), независимо от стратегии и состояния плана. DOM содержит только приглашение; ролевые правила E тоже читаются через MCP. Старый генератор вложений отключён. Получение пакета не назначает O и не разрешает выполнение задач.

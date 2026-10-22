@@ -1,6 +1,6 @@
 # Диалог под управлением оркестратора
 
-Контракт Workflow Pilot 0.5.23 / Kit 1.9.3: `dialogue_version: 1`, ролевой протокол 6, панель `0.5.23-communication-4`, протокол панели 4. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
+Контракт Workflow Pilot 0.5.24 / Kit 1.9.4: `dialogue_version: 1`, ролевой протокол 6, панель `0.5.24-communication-4`, протокол панели 4. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
 
 ## Роли и пользовательский процесс
 
@@ -82,7 +82,7 @@ DOCS заранее содержит стабильные требования �
 | Инструмент | Контракт |
 | --- | --- |
 | `workflow_communication_participants` | Свой реестр назначений, task/title/attempt/состояние, opaque recipient_ref; O видит своих E, E — своё назначение |
-| `workflow_assignment_prepare` | Только O: recipient, attempt, body, idempotency_key, contexts; dispatch_when_ready=true явно авторизует отправку при готовности, без флага только draft |
+| `workflow_assignment_prepare` | Только O: recipient, attempt, body, idempotency_key, contexts; dispatch_when_ready=true явно авторизует отправку при готовности, без флага только draft; ответ содержит `delivery_stage`/`delivered` |
 | `workflow_assignment_dispatch` | Только O: свой draft_id; when_ready=true авторизует отложенную отправку; свежая проверка → intent → Kit → WAL |
 | `workflow_assignment_send` | recipient, kind, attempt, body, idempotency_key; необязательные in_reply_to, contexts, block_id, problem_id, blocking, resume, source_commit, result_id |
 | `workflow_communication_read_message` | Свой message_id; сохраняет read, возвращает полный текст/ссылки и актуальные инструкции |
