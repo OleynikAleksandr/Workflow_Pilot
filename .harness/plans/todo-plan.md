@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 875,
+  "plan_revision": 877,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "recovery-status-interruptions",
@@ -698,14 +698,15 @@
         "Штатный installer проверил версию, manifest, подпись и откат; служба остановлена пользователем, приложение не запускается автоматически"
       ],
       "expected_commit_message": "feat: Установить готовый выпуск 0.5.24",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "recovery-status-interruptions",
         "task_id": "INSTALL",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH",
@@ -760,7 +761,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: recovery-status-interruptions
 Current Task: нет
-Revision: 875
+Revision: 877
 
 ## Цель
 
@@ -846,8 +847,8 @@ Revision: 875
   - Файлы: release-manifest.json, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-2
-- [TODO] INSTALL: Установить готовый выпуск 0.5.24 — Ожидает
-  - Git Commit: [PENDING] feat: Установить готовый выпуск 0.5.24
+- [DONE] INSTALL: Установить готовый выпуск 0.5.24 — Завершено
+  - Git Commit: [DONE] feat: Установить готовый выпуск 0.5.24
   - Reference: recovery-status-interruptions / INSTALL / implementation
   - Файлы: release-manifest.json, docs/planning/recovery-and-interruption-2026-10.md
   - Параллельность: исключительное выполнение
