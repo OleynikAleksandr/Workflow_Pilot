@@ -102,3 +102,48 @@ test('panel keeps Kit prepared and authorized separate from SDK accepted and exe
   snapshot('published','accepted');
   assert.match(ui.$('roster').textContent,/Задача начата по Kit/);
 });
+
+test('panel shows every current action with its time, a collapsed history and diagnostics in the shared palette',async t=>{
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'),{pretendToBeVisual:true});
+  t.after(()=>dom.window.close());const document=dom.window.document,ui=mountPanel({document});ui.mode('workflow');
+  const $=id=>document.getElementById(id);
+  // Default view: no debugging data; every former section lives in the collapsed diagnostics.
+  assert.equal($('progress-history').open,false);assert.equal($('progress-diagnostics').open,false);
+  for(const id of ['communication-status','communication-bind','communication-stop','communication-roster','communication-messages','communication-events','communication-export'])
+    assert.ok($('progress-diagnostics').contains($(id)),id+' stays available in diagnostics');
+  const style=$('wp-palette');assert.match(style.textContent,/:root\[data-theme=dark\]\{--wp-page:#1b1d22/);
+  assert.match(style.textContent,/prefers-color-scheme:dark\)\{:root:not\(\[data-theme=light\]\)/);
+  const value={version:1,title:'JavaScript-утилиты',phase:'Выполнение',busy:true,done:1,total:4,self:'T002',
+    now:[{actor:'T003',name:'T003',text:'нет новых событий 12 мин',kind:'warn',elapsedMs:720000},
+      {actor:'O',name:'Оркестратор',text:'← вопрос от T002 · отвечает',kind:'act',elapsedMs:35000},
+      {actor:'T002',name:'T002',text:'→ вопрос оркестратору · ждёт ответа',kind:'wait',elapsedMs:21000}],
+    history:[{at:Date.parse('2026-10-22T10:19:00'),actor:'O',name:'Оркестратор',text:'→ T002 решение: JSON',kind:'done'},
+      {at:Date.parse('2026-10-22T10:16:00'),actor:'T002',name:'T002',text:'→ оркестратору вопрос',kind:'done'}],
+    tasks:[{id:'T002',timers:{activeMs:101000,waitingMs:41000}}],attention:null};
+  ui.snapshot({messages:[],work_progress:value,permission:{phase:'running'},role:'E',task_id:'T002',mode:'workflow',conversation_key:'k'});
+  assert.equal($('progress-title').textContent,'JavaScript-утилиты');
+  assert.equal($('progress-phase').textContent,'Выполнение · в main 1 из 4');
+  assert.equal($('progress-open').textContent,'открыт чат T002');
+  const rows=[...$('progress-now').children];
+  assert.deepEqual(rows.map(row=>row.className),['wp-row warn','wp-row','wp-row wait me']);
+  assert.equal(rows[1].querySelector('.wp-spin')!==null,true,'an action has a spinner');
+  assert.equal(rows[2].querySelector('.wp-spin'),null,'a wait has none');
+  assert.equal(rows[1].querySelector('.wp-flow').textContent,'← вопрос от T002');
+  assert.equal(rows[0].querySelector('.wp-time').textContent,'12:00');
+  assert.equal(rows[1].querySelector('.wp-time').textContent,'0:35');
+  assert.equal($('progress-history-count').textContent,'2 события');
+  assert.deepEqual([...$('progress-events').children].map(li=>li.querySelector('.wp-at').textContent),['10:19','10:16']);
+  assert.equal($('progress-events').children[1].className,'me');
+  assert.match($('progress-timers').textContent,/T002 · работа 1:41 · ожидание 0:41/);
+  assert.doesNotMatch($('progress-now').textContent+$('progress-events').textContent,/[0-9a-f]{8}-[0-9a-f]{4}|SDK|pending|claimed/);
+  // Opening the history survives a new projection and the ticking clock.
+  $('progress-history').open=true;
+  ui.progress({...value,now:[],history:value.history.slice(0,1)});
+  assert.equal($('progress-history').open,true);
+  assert.equal($('progress-history-count').textContent,'1 событие');
+  assert.match($('progress-now').textContent,/Сейчас ничего не выполняется/);
+  await new Promise(resolve=>setTimeout(resolve,1100));
+  ui.progress(value);const before=$('progress-now').children[1].querySelector('.wp-time').textContent;
+  await new Promise(resolve=>setTimeout(resolve,1100));
+  assert.notEqual($('progress-now').children[1].querySelector('.wp-time').textContent,before,'the time ticks');
+});

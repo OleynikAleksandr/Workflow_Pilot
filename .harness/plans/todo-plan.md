@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 889,
+  "plan_revision": 891,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -284,8 +284,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "T004",
@@ -322,7 +322,14 @@
         "Панель встраивает токены из src/contracts/palette.mjs, следует теме хоста, спиннеры учитывают reduced motion; «Сейчас» обновляется живо (пробуждение wait или ограниченный опрос status); ресурс плагина подготавливается и обновляется штатно."
       ],
       "expected_commit_message": "feat: Показать ход работ в панели Workflow Pilot",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/contracts/palette.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/panel-dialogue-view.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -517,7 +524,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 889
+Revision: 891
 
 ## Цель
 
@@ -555,8 +562,8 @@ Revision: 889
   - Файлы: src/contracts/palette.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/progress.mjs, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/parallel-execution-ui.test.mjs, tests/desktop-client.test.mjs, tests/backend-native-pages.test.mjs, src/frontend/desktop/application.mjs, src/frontend/desktop/client.mjs, src/frontend/web/index.html
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T004: Показать ход работ в панели Workflow Pilot — Ожидает
-  - Git Commit: [PENDING] feat: Показать ход работ в панели Workflow Pilot
+- [DONE] T004: Показать ход работ в панели Workflow Pilot — Завершено
+  - Git Commit: [DONE] feat: Показать ход работ в панели Workflow Pilot
   - Reference: work-progress-ui / T004 / implementation
   - Файлы: src/frontend/plugin/index.html, src/frontend/plugin/panel.mjs, src/frontend/plugin/app.mjs, src/frontend/plugin/launch.mjs, src/contracts/palette.mjs, scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, tests/panel-dialogue-view.test.mjs, tests/panel-resource-upgrade.test.mjs
   - Параллельность: исключительное выполнение

@@ -15,10 +15,13 @@ const kebab=name=>name.replace(/[A-Z]/g,c=>'-'+c.toLowerCase());
 const variables=tokens=>Object.entries(tokens).map(([name,value])=>'--wp-'+kebab(name)+':'+value).join(';');
 // The sidebar keeps its former variable names (--teal, --muted, --line) bound to the same tokens.
 const legacy=tokens=>';--teal:'+tokens.accent+';--muted:'+tokens.muted+';--line:'+tokens.line;
-// CSS text for an inline <style>: an explicit theme attribute or the host color scheme selects the dark tokens.
+// CSS text for an inline <style>: the sidebar's theme attribute, the system color scheme ('media'),
+// or the panel host ('host': data-theme set by the host wins over the system scheme).
 export function paletteCss({mode='attribute',aliases=true}={}) {
   const light=variables(PALETTE.light)+(aliases?legacy(PALETTE.light):''),dark=variables(PALETTE.dark)+(aliases?legacy(PALETTE.dark):'');
   if(mode==='media')return ':root{'+light+'}@media (prefers-color-scheme:dark){:root{'+dark+'}}';
+  if(mode==='host')return ':root{'+light+'}@media (prefers-color-scheme:dark){:root:not([data-theme=light]){'+dark+'}}'
+    +':root[data-theme=dark]{'+dark+'}';
   return ':root{'+light+'}:root[data-theme=dark]{'+dark+'}';
 }
 // Shared spinner: a running action; reduced motion keeps a still ring.

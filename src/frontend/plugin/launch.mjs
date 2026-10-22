@@ -18,6 +18,9 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   let workflowTimer=null,completedScope=null,resourceUri='ещё не получен';
   function watchWorkflow(){
     clearTimeout(workflowTimer);
+    // A finished plan keeps its progress view current with a slow read-only status.
+    if(completedScope&&workflow&&binding&&!disposed&&!suspended&&connected&&!serverError){
+      workflowTimer=setTimeout(()=>{void refresh().catch(()=>{}).finally(()=>watchWorkflow());},15000);return;}
     if(!workflow||!binding||completedScope||disposed||suspended||contextBlocked||!connected||serverError||loop)return;
     workflowTimer=setTimeout(async()=>{
       if(busy||stopping){watchWorkflow();return;}
@@ -195,6 +198,8 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       if(!current())return;
       if(failures){record('connection.restored');status('Связь восстановлена. Ожидаем сообщение…','waiting');}failures=0;
       ui.feed(update.events);seq=update.seq;if(workflow&&update.expires_at)expiresAt=update.expires_at;
+      // A wait woken by a progress change already carries the new projection.
+      if(update.work_progress)ui.progress(update.work_progress);
       if(update.stopped||update.critical_error){
         if(workflow&&!update.critical_error)try{await refresh();if(!current())return;}catch{}
         localStop(update.critical_error?'Ошибка журнала. Отправка запрещена.':'Разрешение отозвано.',update.critical_error?'error':'idle');return;}

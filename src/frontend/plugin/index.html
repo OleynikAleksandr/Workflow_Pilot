@@ -4,7 +4,41 @@
 :root{color-scheme:light dark;font:15px system-ui,sans-serif;color:var(--color-text-primary,light-dark(#17352f,#e5efeb));background:var(--color-background-primary,light-dark(#f5f8f6,#17221f));--line:light-dark(#d0ddd6,#40574c);--muted:light-dark(#4a6256,#b0c6ba);--surface:light-dark(#fff,#20332b)}
 *{box-sizing:border-box}body{margin:0;padding:24px;max-width:1000px;margin-inline:auto}header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}h1{font-size:23px;margin:0}h2{font-size:17px;margin:0 0 16px}p{line-height:1.55}small,.muted{color:var(--muted)}.eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;margin:0 0 8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:16px;min-width:0}.fields{display:grid;gap:12px}label{font-size:13px;display:block;color:var(--muted)}input,textarea{display:block;width:100%;min-width:0;margin-top:6px;padding:10px;font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:7px}input[type=checkbox]{width:auto;display:inline;margin-right:7px}button{font:inherit;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:var(--surface);color:inherit}button:hover:not(:disabled){border-color:light-dark(#2c6d50,#88c2a3)}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #54a07e;outline-offset:3px}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}#communication-enable{background:light-dark(#215b42,#9ad2b0);color:light-dark(white,#133121);border-color:transparent}#communication-stop{border-color:light-dark(#a55841,#d59880)}#communication-status{padding:14px;border-left:4px solid #648c79;background:var(--surface);border-radius:4px}#communication-status[data-state=error],#communication-status[data-state=unknown]{border-color:#c38a3f}#communication-identity,#communication-binding,#communication-last,#communication-diagnostics,#communication-export-summary{overflow-wrap:anywhere;white-space:pre-wrap}#communication-binding{font:12px ui-monospace,monospace;color:var(--muted)}details{margin-top:14px}summary{cursor:pointer;font-size:14px}ol,ul{padding-left:20px;max-height:320px;overflow:auto}li{padding:7px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere;font-size:12px}li span{display:block;color:var(--muted);margin-top:4px}#communication-export-text{font:12px ui-monospace,monospace}.filters{display:flex;gap:10px;flex-wrap:wrap}.filters>label{flex:1;min-width:130px}#communication-gap{color:light-dark(#974c29,#efb38e)}[hidden]{display:none!important}@media(max-width:560px){body{padding:14px}.grid{grid-template-columns:1fr;gap:0}section{padding:16px}.actions button{flex:1}h1{font-size:21px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 select{display:block;width:100%;margin-top:6px;padding:10px;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:7px}
-</style></head><body>
+
+/* Work progress (work-progress-ui, section 4): the shared palette tokens come from contracts/palette.mjs. */
+body.wp-body{padding:12px;max-width:none;background:var(--wp-page);color:var(--wp-fg);font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+.wp{display:grid;gap:8px}
+.wp-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.wp-head b{font-size:14px}
+.wp-sub{color:var(--wp-muted);font-size:12px}.wp-open{margin-left:auto;font-size:11.5px;color:var(--wp-dim)}
+.wp-now{display:grid;gap:3px}
+.wp-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 10px;border-radius:8px;background:var(--wp-card);border:1px solid var(--wp-line)}
+.wp-row.me{border-color:var(--wp-selected-line);background:var(--wp-selected)}
+.wp-what{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wp-what b{font-weight:600}
+.wp-row.wait .wp-what{color:var(--wp-muted)}.wp-row.wait .wp-what b{color:var(--wp-fg)}
+.wp-row.warn .wp-what,.wp-mark.warn{color:var(--wp-warn)}
+.wp-flow{color:var(--wp-accent);font-weight:500}
+.wp-mark{width:12px;text-align:center;font-size:11px;color:var(--wp-dim)}.wp-mark.ok{color:var(--wp-ok)}
+.wp-time{font:11.5px/1 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;color:var(--wp-muted)}
+.wp-hist{border-radius:8px;background:var(--wp-card);border:1px solid var(--wp-line)}
+.wp-hist>summary{list-style:none;display:grid;grid-template-columns:14px minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:6px 10px;cursor:pointer;color:var(--wp-muted);font-size:13px}
+.wp-hist>summary::-webkit-details-marker{display:none}
+.wp-count{font-size:11px;border:1px solid var(--wp-line);border-radius:10px;padding:0 6px;white-space:nowrap}
+.wp-chev{color:var(--wp-dim);font-size:11px;transition:transform .15s}.wp-hist[open] .wp-chev{transform:rotate(180deg)}
+.wp-events{list-style:none;margin:0;border-top:1px solid var(--wp-line);padding:4px 10px 8px;display:grid;gap:1px;max-height:260px;overflow-y:auto}
+.wp-events li{display:grid;grid-template-columns:38px 14px minmax(0,1fr);gap:6px;align-items:center;font-size:12px;padding:2px 4px;color:var(--wp-muted);border-radius:4px}
+.wp-events li.me{background:var(--wp-selected)}.wp-events li b{color:var(--wp-fg);font-weight:500}
+.wp-events .wp-at{font:11px ui-monospace,Menlo,monospace;color:var(--wp-dim)}
+.wp-diag{border-top:1px solid var(--wp-line);padding-top:6px;color:var(--wp-muted);font-size:12px}
+.wp-diag>summary{cursor:pointer;color:var(--wp-dim)}
+.wp-diag-body{margin-top:10px;color:var(--wp-fg);font-size:14px}
+</style></head><body class="wp-body">
+<main class="wp" aria-label="Ход работ">
+<header class="wp-head"><b id="progress-title">Workflow Pilot</b><span id="progress-phase" class="wp-sub"></span><span id="progress-open" class="wp-open"></span></header>
+<div id="progress-now" class="wp-now" aria-label="Происходит сейчас"><div class="wp-row wait"><span class="wp-mark">·</span><span class="wp-what">Ждём данные плана…</span><span></span></div></div>
+<details id="progress-history" class="wp-hist"><summary><span class="wp-mark">≡</span><span>История</span><span id="progress-history-count" class="wp-count">0 событий</span><span class="wp-chev" aria-hidden="true">▾</span></summary>
+<ol id="progress-events" class="wp-events" aria-label="Прошедшие события"></ol></details>
+<details id="progress-diagnostics" class="wp-diag"><summary>Диагностика</summary><div class="wp-diag-body">
+<section aria-labelledby="timers-title"><h2 id="timers-title">Таймеры исполнителей</h2><ul id="progress-timers"><li class="muted">Нет данных.</li></ul></section>
 <header><div><p class="eyebrow">Workflow Pilot</p><h1>Связь участников</h1></div><small id="communication-build"><!-- communication-build --></small></header>
 <p class="muted">Связь оркестратора и исполнителей, состояние назначений и доставки сообщений.</p>
 <p id="communication-status" role="status" aria-live="polite">Связь выключена. Привязка ещё не подтверждена.</p>
@@ -27,5 +61,7 @@ select{display:block;width:100%;margin-top:6px;padding:10px;font:inherit;color:i
 <div class="filters"><label>Сообщение<input id="communication-filter-message" placeholder="ID сообщения" autocomplete="off"></label><label>Участник<input id="communication-filter-participant" placeholder="ID участника" autocomplete="off"></label><label><input id="communication-filter-errors" type="checkbox">Только ошибки</label></div>
 <p id="communication-gap" role="alert"></p><p id="communication-event-count" class="muted">Событий пока нет.</p><ol id="communication-events" aria-label="События связи"></ol>
 <div id="communication-export-result" hidden><p>Полный UTF-8 JSONL выбранного запуска и сводка. Сохраните оба для исследовательского агента.</p><p id="communication-export-summary"></p><label>Журнал<textarea id="communication-export-text" readonly rows="8"></textarea></label><div class="actions"><button id="communication-download" type="button">Скачать JSONL</button><button id="communication-select" type="button">Выделить журнал</button></div></div>
-</section><!-- plugin-script -->
+</section></div></details>
+</main>
+<!-- plugin-script -->
 </body></html>
