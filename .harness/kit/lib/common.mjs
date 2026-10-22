@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-export const VERSION = '1.9.3';
+export const VERSION = '1.9.4';
 export const PLAN = '.harness/plans/todo-plan.md';
 export const CONFIG = '.harness/workflow.json';
 export const MANIFEST = '.harness/kit-manifest.json';

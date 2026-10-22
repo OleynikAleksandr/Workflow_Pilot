@@ -70,8 +70,8 @@ export async function main(argv = process.argv.slice(2)) {
     if(command==='review:run') {
       const {runReview}=await import('./lib/claude-review.mjs');
       const value=await withSessionPlan(root,{sessionId:opts.session,planId:opts.plan},()=>runReview(root,{
-        maxTurns:opts['max-turns']===undefined?30:Number(opts['max-turns']),
-        timeoutMs:opts['timeout-ms']===undefined?900000:Number(opts['timeout-ms'])
+        maxTurns:opts['max-turns']===undefined?undefined:Number(opts['max-turns']),
+        timeoutMs:opts['timeout-ms']===undefined?undefined:Number(opts['timeout-ms'])
       }));
       return {value,json:true};
     }

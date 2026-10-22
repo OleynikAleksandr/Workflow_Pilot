@@ -50,16 +50,16 @@ function promptFor(root,s,dir) {
     ...reviewHistory(root,s).filter(r=>r.author_response).map(r=>'Сохранённая позиция раунда '+r.round+': '+path.join(dir,r.author_response.file))
   ].join('\n');
 }
-export async function runReview(root,{maxTurns=30,timeoutMs=900000}={}, {spawn=nodeSpawn}={}) {
-  check(Number.isSafeInteger(maxTurns) && maxTurns>=1 && maxTurns<=100,'REVIEW_LIMIT','max-turns: целое 1–100.');
-  check(Number.isSafeInteger(timeoutMs) && timeoutMs>=100 && timeoutMs<=900000,'REVIEW_LIMIT','timeout-ms: 100–900000.');
+export async function runReview(root,{maxTurns,timeoutMs}={}, {spawn=nodeSpawn}={}) {
+  if(maxTurns!==undefined)check(Number.isSafeInteger(maxTurns) && maxTurns>=1,'REVIEW_LIMIT','max-turns: положительное целое.');
+  if(timeoutMs!==undefined)check(Number.isSafeInteger(timeoutMs) && timeoutMs>=100 && timeoutMs<=2147483647,
+    'REVIEW_LIMIT','timeout-ms: целое 100–2147483647 (максимум таймера Node.js).');
   const s=locked(root,()=>{
     const old=readReview(root);
     check(old.enabled,'REVIEW_DISABLED','Review выключен; используйте обычную публикацию.');
     check(old.stage==='PREPARED','REVIEW_NOT_READY','Сначала review:status и review:prepare; работающий запуск повторять нельзя.');
     checkReviewInputs(root,old);
     const review_history=assertAuthorResponses(root,old);
-    check(old.round<old.max_rounds,'REVIEW_ROUND_LIMIT','Лимит раундов; спросите пользователя о продолжении.');
     return saveReview(root,{...old,review_history,user_decision:null,stage:'RUNNING',round:old.round+1,launch_id:id(),runner_pid:process.pid,
       requested_session_id:old.claude_session_id??old.requested_session_id??id(),started_at:new Date().toISOString(),error:null,notification_handled:false});
   });
@@ -68,7 +68,7 @@ export async function runReview(root,{maxTurns=30,timeoutMs=900000}={}, {spawn=n
   const argv=['-p','--model',REVIEW_MODEL,'--effort','high',s.round>1?'--resume':'--session-id',s.requested_session_id,
     '--output-format','json','--json-schema',JSON.stringify(verdictSchema),'--tools','Read,Glob,Grep','--allowedTools','Read,Glob,Grep',
     '--permission-mode','dontAsk','--permission-prompts','none','--strict-mcp-config','--settings','{"disableAllHooks":true}',
-    '--disable-slash-commands','--no-chrome','--max-turns',String(maxTurns)];
+    '--disable-slash-commands','--no-chrome',...(maxTurns===undefined?[]:['--max-turns',String(maxTurns)])];
   const metadata={model:REVIEW_MODEL,effort:'high',argv,launch_id:s.launch_id,started_at:s.started_at,request_sha256:hash(request),input_hashes:s.input_hashes,documents:s.documents};
   const started=Date.now();let exitCode=null, verdict=null, failure=null, result=null, out, err;
   try {
@@ -84,11 +84,12 @@ export async function runReview(root,{maxTurns=30,timeoutMs=900000}={}, {spawn=n
       child.once('close',code=>{finish();timedOut?reject(Object.assign(new Error('Claude превысил время ожидания.'),{code:'REVIEW_TIMEOUT'})):resolve(code);});
       child.stdin.on('error',()=>{});
       child.stdin.end(request);
-      timer=setTimeout(()=>{timedOut=true;child.kill('SIGTERM');killTimer=setTimeout(()=>child.kill('SIGKILL'),5000);},timeoutMs);
+      if(timeoutMs!==undefined)timer=setTimeout(()=>{timedOut=true;child.kill('SIGTERM');killTimer=setTimeout(()=>child.kill('SIGKILL'),5000);},timeoutMs);
     });
     check(exitCode===0,'REVIEW_CLI_ERROR','Claude завершился с ошибкой. Проверьте stderr раунда, сообщите пользователю и спросите о дальнейшем действии.');
     check(fs.statSync(safePath(dir,resultFile)).size<=32*1024*1024,'REVIEW_OUTPUT','Слишком большой ответ Claude.');
-    result=JSON.parse(fs.readFileSync(safePath(dir,resultFile),'utf8'));
+    try{result=JSON.parse(fs.readFileSync(safePath(dir,resultFile),'utf8'));}
+    catch{check(false,'REVIEW_FORMAT','Ответ Claude не является корректным JSON.');}
     check(result.subtype==='success' && result.is_error===false,'REVIEW_CLI_ERROR','Claude не завершил ревью успешно: '+String(result.subtype));
     check(result.session_id===s.requested_session_id,'REVIEW_SESSION','Claude вернул другой session ID.');
     check(Object.hasOwn(result.modelUsage??{},REVIEW_MODEL),'REVIEW_MODEL','Ответ не подтверждает запрошенную модель.');
@@ -101,14 +102,13 @@ export async function runReview(root,{maxTurns=30,timeoutMs=900000}={}, {spawn=n
     const latest=readReview(root);
     check(latest.launch_id===s.launch_id && latest.stage==='RUNNING','REVIEW_CHANGED','Состояние запуска изменилось; результат сохранён, не повторяйте вызов.');
     try{if(!latest.published_scope)checkReviewInputs(root,latest);}catch(e){failure={code:e.code??'REVIEW_STALE',message:e.message};}
-    const limit=!failure && verdict.verdict!=='approved' && latest.round>=latest.max_rounds;
-    const stage=latest.published_scope?'PUBLISHED':failure||limit?'NEEDS_USER':verdict.verdict==='approved'?'AGREED':'AUTHOR_PENDING';
+    const stage=latest.published_scope?'PUBLISHED':failure?'NEEDS_USER':verdict.verdict==='approved'?'AGREED':'AUTHOR_PENDING';
     atomic(safePath(dir,prefix+'-metadata.json'),json({...metadata,exit_code:exitCode,session_id:result?.session_id,models:Object.keys(result?.modelUsage??{}),duration_ms:Date.now()-started,stage,error:failure}));
     return saveReview(root,{...latest,stage,runner_pid:null,claude_session_id:result?.session_id===s.requested_session_id?s.requested_session_id:latest.claude_session_id,
       result_file:resultFile,review_file:verdict?prefix+'-review.txt':null,stderr_file:stderrFile,
       review_history:!failure && verdict?[...s.review_history,{round:s.round,verdict:verdict.verdict,review_file:prefix+'-review.txt',
         review_sha256:hash(fs.readFileSync(safePath(dir,prefix+'-review.txt'))),plan_digest:s.plan_digest,documents:s.documents,author_response:null}]:s.review_history,
-      error:failure??(limit?{code:'REVIEW_ROUND_LIMIT',message:'Существенные замечания остались после '+latest.round+' раундов. Спросите пользователя, что делать дальше.'}:null),
+      error:failure,
       verdict:verdict?.verdict??null,ended_at:new Date().toISOString(),notification_handled:false});
   });
   if(finished.stage==='PUBLISHED')locked(root,()=>cleanupReview(root,readPlan(root)));
