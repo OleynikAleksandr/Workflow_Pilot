@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 925,
+  "plan_revision": 927,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Понятный ход работ: левый sidebar показывает управление и все задачи плана со стадиями в закреплённых зонах, правая панель Workflow Pilot — все текущие действия участников и историю в единой палитре приложения; выпуск 0.5.25 для трёх ОС опубликован.",
   "acceptance_criteria": [
     "Левый sidebar: строка сессии без текстов старта, со спиннером занятости; кнопки «Новая сессия» нет; карточка плана из закреплённого верха (название, этап со спиннером, «в main N из M»), прокручиваемого списка задач со стадиями в нынешних формулировках, режимом и временем и закреплённого низа (кнопка выполнения, блок проблемы с одним действием, подсказка приёмки, Review).",
@@ -992,14 +992,15 @@
         "GitHub Release v0.5.27 опубликован с тегом на sourceCommit, семью assets и сверенными digest и размерами; scope не архивируется автоматически."
       ],
       "expected_commit_message": "release: Опубликовать выпуск 0.5.27 на GitHub",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "PUBLISH-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1021,10 +1022,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: work-progress-ui
 Current Task: нет
-Revision: 925
+Revision: 927
 
 ## Цель
 
@@ -1158,8 +1159,8 @@ Revision: 925
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-3
-- [TODO] PUBLISH-3: Опубликовать выпуск 0.5.27 на GitHub — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать выпуск 0.5.27 на GitHub
+- [DONE] PUBLISH-3: Опубликовать выпуск 0.5.27 на GitHub — Завершено
+  - Git Commit: [DONE] release: Опубликовать выпуск 0.5.27 на GitHub
   - Reference: work-progress-ui / PUBLISH-3 / implementation
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
