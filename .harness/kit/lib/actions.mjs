@@ -14,6 +14,7 @@ import { git, head, localPath, allChanges, identityReady, paths, gitPath } from 
 import { locked, commitCandidate, completedTransaction, finishTransaction } from './transaction.mjs';
 import { recover, recoverState } from './recovery.mjs';
 import { assertSingleWriter } from './session-plans.mjs';
+import { assertPlanningOwner, clearPlanningOwner } from './planning-owner.mjs';
 import { hooksDirectory } from './installation-files.mjs';
 
 const noTransaction = root => check(!journal(root), 'TRANSACTION_PENDING', 'Сначала завершите текущую транзакцию commit/repair.');
@@ -101,12 +102,16 @@ export function buildScopePlan(root, input, previous, config = readConfig(root))
 export function createScope(root, input, expectedRevision) {
   const PLAN = planPath(root);
   return locked(root, () => {
-    noTransaction(root); assertSingleWriter(root, PLAN); const { plan: previous } = validate(root); revision(previous, expectedRevision);
+    noTransaction(root); assertSingleWriter(root, PLAN); const { plan: previous, config } = validate(root); revision(previous, expectedRevision);
     check(previous.execution_scope_status === 'NONE', 'SCOPE_EXISTS', 'Текущий scope ещё не закрыт пользователем.');
     check(head(root), 'NO_BASELINE', 'Сначала завершите bootstrap-коммит установки.');
     check(typeof input.approval_note === 'string' && input.approval_note.trim().length >= 10, 'SCOPE_APPROVAL', 'Запишите согласованное пользователем содержание scope в approval_note.');
     const plan = buildScopePlan(root, input, previous);
+    // Manual review delivery never exempts the published orchestrator from the planning owner.
+    if (plan.execution_strategy === 'orchestrated') assertPlanningOwner(root, plan.execution_origin_session_id, 'execution_origin_session_id');
     const review = assertReviewPublication(root, plan);
+    // A reviewed plan must start like one from plan:create: every task passes the configured checks.
+    if (review) for (const task of plan.tasks) taskChecks(task, config);
     plan.user_decisions = [...(input.user_decisions ?? []), { id: id(), text: input.approval_note, recorded_at: new Date().toISOString() }];
     if(review?.user_decision?.action==='publish')plan.user_decisions.push({id:id(),
       text:'Публикация Review по явному решению пользователя (не означает снятия спора): '+review.user_decision.note,
@@ -209,7 +214,9 @@ export function applyConfig(root, input) {
   assertAssignmentCommand(root, 'config:apply');
   const PLAN = planPath(root);
   return locked(root, () => {
-    noTransaction(root); const candidateConfig = validateConfig(input); const { plan } = validate(root, candidateConfig);
+    // A chosen stack means development, exactly as plan:create treats it.
+    const developing = typeof input?.stack === 'string' && input.stack.trim();
+    noTransaction(root); const candidateConfig = validateConfig(developing ? { ...input, profile: 'DEVELOPMENT' } : input); const { plan } = validate(root, candidateConfig);
     const config = candidateConfig; const before = fs.readFileSync(path.join(root, CONFIG), 'utf8');
     check(paths(root, 'staged').every(p => p === CONFIG), 'FOREIGN_STAGED', 'Сначала отделите посторонние staged-изменения.');
     atomic(path.join(root, CONFIG), json(config)); plan.plan_revision++;
@@ -326,7 +333,9 @@ export function archive(root, scope, approvalNote) {
     check(allChanges(root).length === 0, 'DIRTY_WORKTREE', 'Архивирование требует чистого рабочего дерева.');
     const empty = emptyPlan(plan.project_name); empty.project_id = plan.project_id; empty.plan_revision = plan.plan_revision + 1;
     empty.archived_scope_id = scope; empty.user_decisions = [{ id: id(), text: approvalNote, recorded_at: new Date().toISOString() }];
-    return service(root, empty, 'archive', [PLAN], 'docs: закрыть scope ' + scope);
+    const result = service(root, empty, 'archive', [PLAN], 'docs: закрыть scope ' + scope);
+    clearPlanningOwner(root);
+    return result;
   });
 }
 export function commitDocumentation(root, files, message) {

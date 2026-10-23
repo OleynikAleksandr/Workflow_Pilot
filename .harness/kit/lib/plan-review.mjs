@@ -4,11 +4,12 @@ import { atomic, check, hash, id, json, safePath, textFile, contextPath, readJSO
 import { readPlan } from './plan.mjs';
 import { head } from './git.mjs';
 import { locked, journal } from './transaction-state.mjs';
-import { readConfig } from './validation-rules.mjs';
+import { readConfig, taskChecks } from './validation-rules.mjs';
+import { assertPlanningOwner } from './planning-owner.mjs';
 import { buildScopePlan, createScope } from './actions.mjs';
 
-import { readReview, reviewDirectory, saveReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, finishReviewPublication } from './review-state.mjs';
-export { REVIEW_STATE, REVIEW_DIRECTORY, readReview, reviewDirectory, saveReview, setReviewEnabled, assertSimpleReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, assertReviewPublication, finishReviewPublication, cleanupReview, reviewSummary } from './review-state.mjs';
+import { readReview, reviewDirectory, saveReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, finishReviewPublication, REVIEW_ON_PUBLICATION } from './review-state.mjs';
+export { REVIEW_STATE, REVIEW_DIRECTORY, readReview, reviewDirectory, saveReview, setReviewEnabled, assertSimpleReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, assertReviewPublication, finishReviewPublication, cleanupReview, reviewSummary, REVIEW_ON_PUBLICATION } from './review-state.mjs';
 export function respondReview(root, input) {
   return locked(root,()=>{
     const s=readReview(root);
@@ -66,8 +67,11 @@ export function prepareReview(root, input) {
       'REVIEW_INPUT', 'Нужны scope с явным scope_id и approval_note.');
     check(Array.isArray(input.documents) && input.documents.length > 0, 'REVIEW_INPUT', 'Нужен documents: список рабочих спецификаций docs/planning/*.md.');
     check(new Set(input.documents).size === input.documents.length, 'REVIEW_INPUT', 'Документы повторяются.');
-    const candidate = buildScopePlan(root, scope, previous);
-    const limit = readConfig(root).budget?.document_bytes ?? 28000;
+    const candidate = buildScopePlan(root, scope, previous), config = readConfig(root);
+    // Fail before any write: a plan that review approves must also start.
+    for (const task of candidate.tasks) taskChecks(task, config);
+    if (candidate.execution_strategy === 'orchestrated') assertPlanningOwner(root, candidate.execution_origin_session_id, 'execution_origin_session_id');
+    const limit = config.budget?.document_bytes ?? 28000;
     const texts = input.documents.map(source => {
       check(/^docs\/planning\/.+\.md$/i.test(source), 'REVIEW_INPUT', 'Спецификация должна находиться в docs/planning.');
       contextPath(root,source);
@@ -79,6 +83,8 @@ export function prepareReview(root, input) {
     const continuing = old.run_id && !['CANCELLED','PUBLISHED','IDLE'].includes(old.stage);
     check(!continuing || old.scope_id === scope.scope_id,'REVIEW_BUSY','Продолжите существующий scope или отмените его через review:cancel.');
     const recipient=reviewRecipient(input,old,continuing);
+    // Manual mode only skips the recipient comparison; publication still checks the origin.
+    if(recipient.recipient_mode!=='manual')assertPlanningOwner(root,recipient.recipient_session_id,'recipient_session_id');
     const history=continuing?assertAuthorResponses(root,old):[];
     const run_id = continuing ? old.run_id : id();
     const dir = reviewDirectory(root, run_id); fs.mkdirSync(dir, {recursive:true});
@@ -167,7 +173,7 @@ export function publishReview(root) {
       return {ok:true,already_published:true,...readReview(root)};
     });
   }
-  check(s.run_id, 'REVIEW_REQUIRED', 'Нет подготовленного плана.');
+  check(s.run_id, 'REVIEW_REQUIRED', REVIEW_ON_PUBLICATION);
   const dir=reviewDirectory(root,s.run_id);
   // createScope repeats every check under the operation lock.
   return createScope(root,readJSON(safePath(dir,s.scope_file)),s.base_revision);
