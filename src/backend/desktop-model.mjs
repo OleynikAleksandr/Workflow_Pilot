@@ -8,7 +8,7 @@ import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntime
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
 import {startupContextState} from '../contracts/startup-view.mjs';
-import {buildWorkProgress,commitProgressLabel,messageEvent,planPhase,stageKind,WORK_SILENCE_MS} from '../contracts/work-progress.mjs';
+import {buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -262,7 +262,7 @@ function orchestratorState(workspace,session) {
   const cleanup=(view.assignments??[]).filter(a=>a.status==='INTEGRATED'&&a.cleanup?.status==='PENDING').length;
   const attention=project.orchestrationIssue||view.error||run.reason==='escalation'||run.reason==='unknown';
   const label=run.state==='running'&&total>0&&done===total?'Завершается':orchestratorLabels[run.state];
-  return {state:attention?'attention':run.state,label:(attention?'Требует внимания':label)+' · '+done+'/'+total,cleanup};
+  return {state:attention?'attention':run.state,label:(attention?'Требует внимания':label)+' · '+done+'/'+total,cleanup,progress:total?done+'/'+total:null};
 }
 // The to-do plan of the selected orchestrator: rows of started tasks open the session of their executor,
 // delivery opens the orchestrator; a done row opens nothing, so the orchestrator stays in the right pane.
@@ -413,6 +413,11 @@ function workProgressView(workspace,fresh=null) {
         kind:task.status==='attention'?'warn':stageKind(own.phase,{busy:own.phase==='working'}),elapsedMs:own.stageTime?.elapsedMs??0});
       if(task.status==='attention')warn(task.id+(silent?' молчит':' требует внимания'),own.label,own.workspace&&own.sessionId?{kind:'open-session',workspace:own.workspace,sessionId:own.sessionId,label:'Открыть чат '+task.id}:null);
     }else if(!orchestrated&&task.status==='current')now.push({actor:task.id,text:task.label,kind:run?.state==='running'?'act':'wait',elapsedMs:0});
+  }
+  // A published plan waits for the user; the agent may or may not say so in its answer.
+  if(scope&&run?.state==='not-started'&&!tasks.some(t=>t.status!=='pending')){
+    const elapsedMs=observeActivity(JSON.stringify([project.projectId,scope,'ready']),{phase:'ready',label:'',reason:''}).elapsedMs;
+    now.push({actor:'PLAN',text:PLAN_READY_TEXT,kind:'wait',elapsedMs});
   }
   if(!orchestrated&&view.kitProgress&&!tasks.some(t=>t.id===view.kitProgress.taskId))
     now.push({actor:'KIT',text:commitProgressLabel(view.kitProgress),kind:'act',elapsedMs:Date.now()-view.kitProgress.checkStartedAt});

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {JSDOM} from 'jsdom';
-import {buildWorkProgress,commitProgress,commitProgressLabel,messageEvent,planPhase,eventCount} from '../src/contracts/work-progress.mjs';
+import {buildWorkProgress,commitProgress,commitProgressLabel,messageEvent,planPhase,eventCount,PLAN_READY_TEXT} from '../src/contracts/work-progress.mjs';
 import {paletteCss,spinnerCss} from '../src/contracts/palette.mjs';
 import {startupView} from '../src/contracts/startup-view.mjs';
 import {mountPanel} from '../src/frontend/plugin/panel.mjs';
@@ -35,7 +35,7 @@ const steps=[
   ['Старт сессии',{scope:null,starting:true},{},[['O','читает стартовый контекст · часть 2 из 3','act']],0],
   ['Оркестратор готовит план',{scope:null},{},[['O','работает над ответом','act']],0],
   ['Обсуждение',{scope:null},{},[['O','ждёт вашего сообщения','wait']],0],
-  ['План готов',{scope:'s',notStarted:true},{},[],0],
+  ['План готов',{scope:'s',notStarted:true},{},[['PLAN',PLAN_READY_TEXT,'wait']],0],
   ['Запуск',{scope:'s',preparing:true},{T001:['current','Загружается контекст'],T002:['current','Подготовка службы и контекста']},
     [['KIT','Подготовка исполнителей','act'],['T001','Загружается контекст','act'],['T002','Подготовка службы и контекста','act']],0],
   ['Отправка заданий',{scope:'s',running:true},{T001:['current','Задание оркестратора в доставке · чтение не подтверждено'],T002:['current','Задание оркестратора в доставке · чтение не подтверждено']},
@@ -104,6 +104,7 @@ test('the prototype scenario: sidebar and panel show the same projection at ever
     assert.deepEqual(rows.map(row=>row.querySelector('.wp-spin')?'act':row.classList.contains('warn')?'warn':'wait'),value.now.map(item=>item.kind),name);
     assert.deepEqual(rows.map(row=>row.querySelector('.wp-what').textContent),value.now.map(item=>item.name+' '+item.text),name);
     assert.equal(p('progress-history-count').textContent,eventCount(value.history.length),name);
+    if(name==='План готов')assert.match(p('progress-now').textContent,/План ждёт вашей проверки и запуска: нажмите «Начать выполнение плана»/,'a ready plan is a wait for the user, not an empty list');
     // The problem block appears only with a problem; the foot stays pinned.
     assert.equal($('plan-attention').hidden,!value.attention,name);
     assert.ok($('plan-foot').contains($('plan-review-toggle')),name);

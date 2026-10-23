@@ -487,7 +487,7 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   f.window.webPilot.togglePlanExecution=async()=>{f.calls.push(['togglePlanExecution']);return {state:f.state};};
   f.window.webPilot.assignOrchestrator=async sessionId=>{f.calls.push(['assignOrchestrator',sessionId]);return {state:f.state};};
   const project={...base.projects[0],orchestrationIssue:null,sessions:[
-    {sessionId:'s4',createdAt:4000,title:'План',experience:'chat',role:'orchestrator',orchestratorScopeId:'scope',orchestratorState:{state:'running',label:'Выполняется · 1/4'}},
+    {sessionId:'s4',createdAt:4000,title:'План',experience:'chat',role:'orchestrator',orchestratorScopeId:'scope',orchestratorState:{state:'running',label:'Выполняется · 1/4',progress:'1/4'}},
     {sessionId:'s3',createdAt:3000,title:'Вопрос',experience:'chat',role:'discussion'}],
     executors:[{workspace:'/tree/a',sessionId:'worker-a',originSessionId:'s4',parentScopeId:'scope',taskId:'T001',title:'T001',label:'Готово',phase:'done'}]};
   const orchestratorPlan={scopeId:'scope',objective:'План оркестратора',current:true,tasks:[
@@ -499,7 +499,11 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
     orchestratorPlan,planRun:run,planContinuation:{enabled:false}});
   emit({state:'not-started',reason:null,issue:null,complete:false});
   const roles=[...f.document.querySelectorAll('.session-role')].map(node=>node.textContent);
-  assert.deepEqual(roles,['Оркестратор · Выполняется · 1/4','Обсуждение']);
+  // One compact line: the plan stage is not repeated in the tree.
+  assert.deepEqual(roles,['Оркестратор · 1/4','Обсуждение']);
+  const card=f.document.querySelector('.session[data-session-id="s4"]');
+  assert.match(card.querySelector('.session-meta').textContent,/^\d{2}\.\d{2}, \d{2}:\d{2}( · новая)?Оркестратор · 1\/4$/);
+  assert.equal(card.querySelectorAll('small').length,1,'date and role share one line');
   assert.equal(f.document.querySelectorAll('.executor-group').length,0,'executors of an orchestrated plan are not grouped in the tree');
   assert.equal(f.document.getElementById('plan-title').textContent,'План оркестратора');
   const rows=[...f.document.querySelectorAll('.plan-task')];

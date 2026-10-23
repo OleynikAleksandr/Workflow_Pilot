@@ -22,7 +22,7 @@ test('stage phases map to action, waiting and attention',()=>{
   for(const phase of ['waiting','waiting-task','question','review','report','accepted','ready','paused','complete'])assert.equal(stageKind(phase),'wait');
   assert.equal(stageKind('attention'),'warn');
   assert.equal(stageKind('waiting',{busy:true}),'act','an answering chat is acting');
-  assert.deepEqual(['O','S','APP','KIT','T002'].map(participantName),['Оркестратор','Обсуждение','Приложение','Workflow Kit','T002']);
+  assert.deepEqual(['O','S','APP','KIT','PLAN','T002'].map(participantName),['Оркестратор','Обсуждение','Приложение','Workflow Kit','План','T002']);
 });
 
 test('history keeps messages in plain words and hides service mechanics',()=>{

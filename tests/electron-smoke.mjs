@@ -1007,12 +1007,17 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
         const badge=row.querySelector('.session-experience').getBoundingClientRect();
         return {height:list.clientHeight,rowHeight:row.getBoundingClientRect().height,overflow:list.scrollHeight>list.clientHeight,
           scrollbar:list.offsetWidth-list.clientWidth, gutter:style.scrollbarGutter, right,menuRight:menu.right,badgeRight:badge.right,
+          menuCenter:(menu.left+menu.right)/2,badgeCenter:(badge.left+badge.right)/2,menuBottom:menu.bottom,badgeTop:badge.top,
+          copyRight:row.querySelector('.session-copy').getBoundingClientRect().right,badgeLeft:badge.left,
           horizontal:list.scrollWidth<=list.clientWidth, bodyFits:document.documentElement.scrollWidth<=innerWidth};
       })()`);
       assert.ok(Math.abs(bounds.height - bounds.rowHeight * 3) < 2, JSON.stringify(bounds));
       assert.ok(bounds.overflow && bounds.horizontal && bounds.bodyFits, JSON.stringify(bounds));
       assert.ok(bounds.scrollbar >= 10 && bounds.gutter === 'stable', JSON.stringify(bounds));
-      assert.ok(bounds.menuRight < bounds.right - bounds.scrollbar && bounds.badgeRight < bounds.menuRight, JSON.stringify(bounds));
+      // One right column: the menu above the Chat/Work badge, centred on it; the row height does not depend on the width.
+      assert.ok(Math.max(bounds.menuRight, bounds.badgeRight) < bounds.right - bounds.scrollbar, JSON.stringify(bounds));
+      assert.ok(Math.abs(bounds.menuCenter - bounds.badgeCenter) < 1 && bounds.menuBottom <= bounds.badgeTop, JSON.stringify(bounds));
+      assert.ok(bounds.copyRight <= bounds.badgeLeft && Math.abs(bounds.rowHeight - 80) < 1, JSON.stringify(bounds));
       const imageFile=path.join(dataDir, 'projects-' + width + '-' + theme + '.png');
       await fs.writeFile(imageFile, (await sidebar.capturePage()).toPNG()); treeScreenshots.push(imageFile);
     }

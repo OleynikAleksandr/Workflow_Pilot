@@ -14,8 +14,9 @@ export function plural(count,one,few,many) {
 export const eventCount=count=>plural(count,'событие','события','событий');
 
 export function participantName(actor) {
-  return actor==='O'?'Оркестратор':actor==='S'?'Обсуждение':actor==='APP'?'Приложение':actor==='KIT'?'Workflow Kit':String(actor??'');
+  return actor==='O'?'Оркестратор':actor==='S'?'Обсуждение':actor==='APP'?'Приложение':actor==='KIT'?'Workflow Kit':actor==='PLAN'?'План':String(actor??'');
 }
+export const PLAN_READY_TEXT='ждёт вашей проверки и запуска: нажмите «Начать выполнение плана»';
 
 // Kit 1.9.5 writes this record while commit checks run; older Kit writes nothing.
 export function commitProgress(value) {

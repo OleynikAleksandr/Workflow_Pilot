@@ -292,7 +292,7 @@ function render(state) {
     if (selected && !oldProject?.sessions.some(session => session.sessionId === selected.sessionId)) sessionScroll.set(selected.workspace, 0);
     closeTreeMenus();
     const fragment = document.createDocumentFragment();
-    const dateFormat = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const dateFormat = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     for (const project of state.projects.filter(p=>p.workspace===(selected?.parentWorkspace??selected?.workspace))) {
       const item = document.createElement('li'); item.className = 'workspace-tree';
       const activeProject = project.workspace === (selected?.parentWorkspace??selected?.workspace);
@@ -354,17 +354,21 @@ function render(state) {
         if (active) choice.setAttribute('aria-current', 'page');
         const copy = document.createElement('span'); copy.className = 'session-copy';
         const title = document.createElement('strong'); title.textContent = session.title || 'Новая сессия';
-        const date = document.createElement('small');
+        // One compact line: date, role and plan progress; the plan stage lives in the plan card and the panel.
+        const meta = document.createElement('small'); meta.className = 'session-meta';
+        const date = document.createElement('span'); date.className = 'session-date';
         date.textContent = dateFormat.format(new Date(session.createdAt)) + (session.chatUrl || session.external ? '' : ' · новая');
-        copy.append(title, date);
+        meta.append(date);
         // The tree shows orchestrators and discussion chats; the tasks of a plan live in its to-do plan.
         if (session.role === 'orchestrator' || session.role === 'discussion') {
-          const role = document.createElement('small'); role.className = 'session-role'; role.dataset.role = session.role;
+          const role = document.createElement('span'); role.className = 'session-role'; role.dataset.role = session.role;
           role.dataset.state = session.orchestratorState?.state ?? '';
-          role.textContent = session.role === 'discussion' ? 'Обсуждение' : 'Оркестратор · ' + (session.orchestratorState?.label ?? 'Планирование')
-            + (session.orchestratorState?.cleanup ? ' · очистка: ' + session.orchestratorState.cleanup : '');
-          copy.append(role);
+          role.textContent = session.role === 'discussion' ? 'Обсуждение'
+            : ['Оркестратор', session.orchestratorState?.progress].filter(Boolean).join(' · ');
+          if (session.orchestratorState?.state === 'attention') role.title = session.orchestratorState.label;
+          meta.append(role);
         }
+        copy.append(title, meta);
         const experience = document.createElement('span'); experience.className = 'session-experience'; experience.dataset.experience = session.experience ?? 'chat'; experience.textContent = session.external ? 'ChatGPT ↗' : session.experience === 'work' ? 'Work' : 'Chat';
         choice.title = `${session.title || 'Новая сессия'} · ${experience.textContent}\n${new Date(session.createdAt).toLocaleString('ru-RU')}`;
         choice.append(copy, experience);
