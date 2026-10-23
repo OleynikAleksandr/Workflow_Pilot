@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 916,
+  "plan_revision": 917,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Понятный ход работ: левый sidebar показывает управление и все задачи плана со стадиями в закреплённых зонах, правая панель Workflow Pilot — все текущие действия участников и историю в единой палитре приложения; выпуск 0.5.25 для трёх ОС опубликован.",
   "acceptance_criteria": [
     "Левый sidebar: строка сессии без текстов старта, со спиннером занятости; кнопки «Новая сессия» нет; карточка плана из закреплённого верха (название, этап со спиннером, «в main N из M»), прокручиваемого списка задач со стадиями в нынешних формулировках, режимом и временем и закреплённого низа (кнопка выполнения, блок проблемы с одним действием, подсказка приёмки, Review).",
@@ -816,6 +816,155 @@
         "tests/work-progress-scenario.test.mjs",
         "tests/work-progress.test.mjs"
       ]
+    },
+    {
+      "id": "VERSION-0527",
+      "title": "Поднять версию 0.5.27",
+      "why": "Компактная карточка сессии и ожидание запуска плана выходят отдельным выпуском после живой проверки 0.5.26.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия приложения 0.5.27 в package.json, package-lock.json и COMMUNICATION_APP_VERSION/BUILD; протокол панели 4 не меняется."
+      ],
+      "expected_commit_message": "chore: Поднять версию 0.5.27",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "VERSION-0527",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "FIX-UI-0526",
+        "VERSION-0527"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/desktop.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-3",
+      "title": "Собрать выпуск 0.5.27 для трёх ОС",
+      "why": "Собрать выпуск 0.5.27 для трёх ОС",
+      "dependencies": [
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS собраны macOS arm64, Windows x64 и Linux x64 из одного sourceCommit; перед production-сборкой удалены только Python-кэши tools/codex-app-server-mcp."
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.5.27 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "RELEASE-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-3",
+      "title": "Установить выпуск 0.5.27",
+      "why": "Установить выпуск 0.5.27",
+      "dependencies": [
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer проверил версию, manifest, подпись и откат; приложение и служба агентом не закрываются и не запускаются."
+      ],
+      "expected_commit_message": "release: Установить выпуск 0.5.27",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "INSTALL-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-3",
+      "title": "Опубликовать выпуск 0.5.27 на GitHub",
+      "why": "Опубликовать выпуск 0.5.27 на GitHub",
+      "dependencies": [
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "GitHub Release v0.5.27 опубликован с тегом на sourceCommit, семью assets и сверенными digest и размерами; scope не архивируется автоматически."
+      ],
+      "expected_commit_message": "release: Опубликовать выпуск 0.5.27 на GitHub",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "PUBLISH-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -837,10 +986,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 916
+Revision: 917
 
 ## Цель
 
@@ -950,6 +1099,36 @@ Revision: 916
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, tests/sidebar.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/electron-smoke.mjs, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
+- [TODO] VERSION-0527: Поднять версию 0.5.27 — Ожидает
+  - Git Commit: [PENDING] chore: Поднять версию 0.5.27
+  - Reference: work-progress-ui / VERSION-0527 / implementation
+  - Файлы: src/contracts/backend.mjs, package.json, package-lock.json, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: work-progress-ui / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FIX-UI-0526, VERSION-0527
+- [TODO] RELEASE-3: Собрать выпуск 0.5.27 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.5.27 для трёх ОС
+  - Reference: work-progress-ui / RELEASE-3 / implementation
+  - Файлы: release-manifest.json, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-3
+- [TODO] INSTALL-3: Установить выпуск 0.5.27 — Ожидает
+  - Git Commit: [PENDING] release: Установить выпуск 0.5.27
+  - Reference: work-progress-ui / INSTALL-3 / implementation
+  - Файлы: release-manifest.json, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-3
+- [TODO] PUBLISH-3: Опубликовать выпуск 0.5.27 на GitHub — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать выпуск 0.5.27 на GitHub
+  - Reference: work-progress-ui / PUBLISH-3 / implementation
+  - Файлы: release-manifest.json, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-3
 
 ## Context Pack For This Cycle
 
