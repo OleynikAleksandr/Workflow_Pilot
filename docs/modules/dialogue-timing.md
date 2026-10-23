@@ -1,6 +1,6 @@
 # Тайминги и сокращение ожиданий диалога
 
-Контракт Workflow Pilot 0.5.26 / Kit 1.9.5. Время текущих действий в панели и стадий задач в sidebar — наблюдаемое монотонное время backend (`activityClock`, после рестарта заново); время событий «Истории» — `created_at` сообщений WAL; прогресс проверок коммита — запись Kit 1.9.5 ([workflow-execution](workflow-execution.md)). [Протокол O/E](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [живая приёмка](automatic-agent-dialogue-acceptance.md). Источник событий — существующий WAL и его экспорт; отдельного журнала истины нет.
+Контракт Workflow Pilot 0.5.27 / Kit 1.9.5. Время текущих действий в панели и стадий задач в sidebar — наблюдаемое монотонное время backend (`activityClock`, после рестарта заново); время событий «Истории» — `created_at` сообщений WAL; прогресс проверок коммита — запись Kit 1.9.5 ([workflow-execution](workflow-execution.md)). [Протокол O/E](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [живая приёмка](automatic-agent-dialogue-acceptance.md). Источник событий — существующий WAL и его экспорт; отдельного журнала истины нет.
 
 ## Независимые стадии
 
