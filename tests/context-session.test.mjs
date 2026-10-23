@@ -841,3 +841,13 @@ test('assigned initial recovery waits while project PlanContinuation is OFF and 
   allowed=true;await f.controller.tick();assert.equal(f.sends(),1);assert.equal(f.saved.attempt.state,'sent');
   allowed=false;await f.controller.tick();assert.equal(f.sends(),1,'OFF cannot replay an already delivered recovery');
 });
+
+test('the startup role follows the session table and Kit 1.9.8 leaves the mode to the user', () => {
+  const packet = { facts: {}, parts: [] };
+  const text = orchestratorStartupContext({ name: 'P', workspace: '/p', sessionId: 's1', role: 'planning', modeSupported: true, scopeStatus: 'NONE' }, packet);
+  assert.match(text, /Роль сессии: планирование/);
+  assert.match(text, /выбирает пользователь: когда спецификация готова, вызови plan:mode-request/);
+  assert.doesNotMatch(text, /объясни выбранный способ/);
+  const old = orchestratorStartupContext({ name: 'P', workspace: '/p', sessionId: 's1', role: 'orchestrator', scopeStatus: 'NONE' }, packet);
+  assert.match(old, /Роль сессии: оркестратор/);assert.match(old, /объясни выбранный способ/, 'an older Kit keeps its wording');
+});

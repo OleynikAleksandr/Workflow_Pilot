@@ -8,7 +8,7 @@ import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntime
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
 import {startupContextState} from '../contracts/startup-view.mjs';
-import {buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS} from '../contracts/work-progress.mjs';
+import {roleActor,buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -347,7 +347,7 @@ function workProgressView(workspace,fresh=null) {
   // Startup of orchestrator and discussion chats is shown here, not under the session card.
   const starting=new Set();
   for(const session of sessions){
-    const actor=session.role==='orchestrator'?'O':'S';
+    const actor=roleActor(session.role);
     // A chat of a closed plan finished its work; its startup is history, not a problem.
     if(session.closedPlanCommit||session.attempt?.contextTransport!=='panel'||session.attempt.state!=='sent')continue;
     const progress=workflow.startupProgress(session.sessionId,session.attempt.requestId);
@@ -365,13 +365,14 @@ function workProgressView(workspace,fresh=null) {
   const startingNow=now.some(i=>i.kind==='act');
   // Answers of the orchestrator before a plan and of discussion chats come from their page state.
   for(const session of sessions){
-    if(session.closedPlanCommit||starting.has(session.sessionId)||!['orchestrator','discussion'].includes(session.role))continue;
-    const orchestrator=session.role==='orchestrator';
-    if(orchestrator&&(scope||session.orchestratorScopeId))continue;
+    if(session.closedPlanCommit||starting.has(session.sessionId)||!['orchestrator','planning','self','discussion'].includes(session.role))continue;
+    // A session that may plan reports waiting; a discussion chat only its own answers.
+    const orchestrator=session.role!=='discussion';
+    if(session.role==='orchestrator'&&(scope||session.orchestratorScopeId)||session.role==='self'&&scope)continue;
     const busy=liveRecord({workspace,sessionId:session.sessionId})?.pageState.current?.state.busy;
     if(typeof busy!=='boolean'||(!busy&&!orchestrator))continue;
     const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'answer']),{phase:busy?'answer':'idle',label:'',reason:''}).elapsedMs;
-    now.push({actor:orchestrator?'O':'S',text:busy?'работает над ответом':'ждёт вашего сообщения',kind:busy?'act':'wait',elapsedMs});
+    now.push({actor:roleActor(session.role),text:busy?'работает над ответом':'ждёт вашего сообщения',kind:busy?'act':'wait',elapsedMs});
   }
   const executors=scope?executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope):[];
   const assignments=view.scopeId===scope?view.assignments??[]:[];
@@ -440,7 +441,7 @@ function workProgressView(workspace,fresh=null) {
   const [phase,busy]=planPhase({scope,starting:startingNow,acting:now.some(i=>i.kind==='act'),attention:!!attention,allDone,started,
     complete:!!scope&&(run.complete||project.planView?.state==='awaiting-acceptance'),
     paused:orchestrated&&['paused','pausing'].includes(run?.state),notStarted:run?.state==='not-started',
-    preparing:orchestrated&&view.phase==='preparing',running:run?.state==='running'});
+    preparing:orchestrated&&view.phase==='preparing',running:run?.state==='running',planning:!!project.planningOwnerSessionId});
   return buildWorkProgress({title:scope?project.scopeTitle||project.objective||scope:'',phase,busy,done,total:tasks.length,
     strategy:project.planExecution?.execution_strategy??(scope?'sequential':null),tasks,now,history,attention});
 }

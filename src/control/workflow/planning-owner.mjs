@@ -5,13 +5,14 @@ import { desktopFiles as fs } from '../../execution/facade.mjs';
 const activeScope = status => ['ACTIVE', 'BLOCKED'].includes(status);
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-// The first orchestrator candidate that receives a task from the user owns planning until the plan
-// is archived. Kit keeps the record; this service only writes it on observed facts.
+// With Kit 1.9.7 the first orchestrator candidate that receives a task from the user owns planning;
+// Kit 1.9.8 claims the owner itself when a session requests the execution mode. Kit keeps the record.
 export class PlanningOwners {
   constructor({ store, onChange = () => {}, report = () => {}, claim = claimPlanningOwner, release = releasePlanningOwner,
     supports = workspace => fs.existsSync(safePath(workspace, '.harness/kit/lib/planning-owner.mjs')),
+    requests = workspace => fs.existsSync(safePath(workspace, '.harness/kit/lib/execution-mode.mjs')),
     wait = pause, retryMs = 250, attempts = 40 }) {
-    Object.assign(this, { store, onChange, report, claim, release, supports, wait, retryMs, attempts });
+    Object.assign(this, { store, onChange, report, claim, release, supports, requests, wait, retryMs, attempts });
     this.pending = new Set();
   }
   // A trusted manual send (never an automation message) in a candidate chat whose startup was
@@ -19,7 +20,7 @@ export class PlanningOwners {
   observe(record, event) {
     if (event?.reset || !(event?.state?.manualSendRevision > 0) || record?.disposed) return;
     const identity = record?.identity;
-    if (!identity?.workspace || identity.assignmentId) return;
+    if (!identity?.workspace || identity.assignmentId || this.requests(identity.workspace)) return;
     const session = this.store.project(identity.workspace, identity.sessionId ?? record.project?.()?.sessionId);
     if (!session || session.parentWorkspace || session.external || session.archivedAt || session.sessionArchivedAt) return;
     if (activeScope(session.scopeStatus) || session.planningOwnerSessionId) return;

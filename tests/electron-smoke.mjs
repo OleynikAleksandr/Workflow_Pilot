@@ -629,7 +629,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     revisionVisible: document.getElementById('plan-card').textContent.includes('версия') || document.getElementById('plan-card').textContent.includes('Revision')
   })`).then(value => JSON.stringify(value)), JSON.stringify({ planCard: true, detailsVisible: true, oldPlanText: false, revisionVisible: false }));
   // Without a plan the card shows only the stage; progress appears with the first published plan.
-  assert.ok(['Обсуждение плана','Подготовка'].includes(await sidebar.executeJavaScript('document.getElementById("plan-phase-text").textContent')));
+  assert.ok(['Ждёт задачи','Обсуждение','Подготовка плана','Подготовка'].includes(await sidebar.executeJavaScript('document.getElementById("plan-phase-text").textContent')));
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-progress").hidden'), true);
   assert.equal(await sidebar.executeJavaScript('document.querySelectorAll("#plan-tasks .plan-task").length'), 0);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-title").hidden'), true);

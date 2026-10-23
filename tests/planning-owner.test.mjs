@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PlanningOwners } from '../src/control/workflow/planning-owner.mjs';
 
-function fixture({ session = {}, supported = true, locks = 0 } = {}) {
+function fixture({ session = {}, supported = true, locks = 0, requests = false } = {}) {
   const calls = [], reconciled = [];
   const view = { workspace: '/project', sessionId: 's1', role: 'orchestrator', scopeStatus: 'NONE', attempt: { state: 'sent' }, ...session };
   const store = { project: () => view, reconcileRoles: async workspace => { reconciled.push(workspace); } };
   let remaining = locks;
-  const owners = new PlanningOwners({ store, supports: () => supported, wait: async () => {}, attempts: 5,
+  const owners = new PlanningOwners({ store, supports: () => supported, requests: () => requests, wait: async () => {}, attempts: 5,
     claim: (workspace, input) => { calls.push(['claim', workspace, input]);
       if (remaining-- > 0) throw Object.assign(new Error('locked'), { code: 'WORKFLOW_LOCKED' });
       return { ok: true, claimed: true, session_id: input.session_id }; },
@@ -45,4 +45,12 @@ test('an archived owner releases planning; another session cannot release it', a
   await f.owners.forget('/project', 's1');assert.deepEqual(f.reconciled, ['/project']);
   await f.owners.assign('/project', 's2', { transfer: true });
   assert.deepEqual(f.calls.at(-1)[2], { session_id: 's2', transfer: true });
+});
+
+test('with Kit 1.9.8 the mode request claims planning: a first message no longer does', async () => {
+  const f = fixture({ requests: true });
+  f.owners.observe(f.record, send());await f.settle();
+  assert.equal(f.calls.length, 0);
+  await f.owners.assign('/project', 's1', { transfer: true });
+  assert.deepEqual(f.calls.at(-1)[2], { session_id: 's1', transfer: true }, 'the user can still transfer planning');
 });

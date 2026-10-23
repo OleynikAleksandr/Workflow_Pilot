@@ -55,9 +55,11 @@ test('projection orders problems, actions and waits; history is newest first and
 });
 
 test('plan stage follows the prototype order of states',()=>{
-  assert.deepEqual(planPhase(),['Обсуждение плана',false]);
+  assert.deepEqual(planPhase(),['Ждёт задачи',false],'no plan and nobody planning: the project waits for a task');
   assert.deepEqual(planPhase({starting:true,acting:true}),['Подготовка',true]);
-  assert.deepEqual(planPhase({acting:true}),['Обсуждение плана',true],'the orchestrator answers before a plan exists');
+  assert.deepEqual(planPhase({acting:true}),['Обсуждение',true],'a chat answers before anyone plans');
+  assert.deepEqual(planPhase({planning:true}),['Подготовка плана',false],'a session owns planning');
+  assert.deepEqual(planPhase({planning:true,acting:true}),['Подготовка плана',true]);
   const scope='scope';
   assert.deepEqual(planPhase({scope,notStarted:true}),['План готов',false]);
   assert.deepEqual(planPhase({scope,notStarted:true,started:true}),['Выполнение',false],'an outside agent already works on the plan');

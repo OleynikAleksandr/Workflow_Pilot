@@ -4,6 +4,8 @@ import { CONTEXT_PROTOCOL, validateContextPacket } from '../../contracts/context
 import { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from '../../execution/facade.mjs';
 import { validateParallelSettings } from '../workflow/parallel-settings.mjs';
 
+// The roles of the session table in docs/planning/user-choice-and-plan-modes.md.
+export const SESSION_ROLE_LABELS = Object.freeze({ planning: 'планирование', self: 'выполняет план сам', orchestrator: 'оркестратор', discussion: 'обсуждение', executor: 'исполнитель' });
 export function sessionExecutionMessage(project) {
   const settings = validateParallelSettings(project.executionSnapshot);
   if(project.assignmentId)return 'Исполнитель наследует снимок основной сессии: '+JSON.stringify(settings)+'. Новый пользовательский план и вложенные назначения запрещены.';
@@ -13,7 +15,10 @@ export function sessionExecutionMessage(project) {
   const current = ['ACTIVE', 'BLOCKED'].includes(project.scopeStatus)
     ? ' Текущий план продолжает свои параметры: ' + (project.planExecution ? JSON.stringify(project.planExecution) : 'legacy, последовательное выполнение')
       + '. Не перенастраивай его и не создавай второй план; снимок сессии относится только к следующему новому плану.'
-    : ' Разрешение не обязывает выбирать parallel: при планировании оцени зависимости и объясни выбранный способ.';
+    : project.modeSupported
+      // Kit 1.9.8: the user chooses the mode; the agent recommends it through plan:mode-request.
+      ? ' Режим выполнения нового плана выбирает пользователь: когда спецификация готова, вызови plan:mode-request с рекомендацией и дождись сообщения с выбором.'
+      : ' Разрешение не обязывает выбирать parallel: при планировании оцени зависимости и объясни выбранный способ.';
   return snapshot + current + ' Изменения Settings не меняют этот снимок.'
     + (project.assignmentId ? '' : ' В новом плане укажи execution_origin_session_id: '+JSON.stringify(project.sessionId)
       + ' — происхождение снимка, не владелец плана. При review:prepare это поле внутри scope; получатель Review остаётся отдельным полем.');
@@ -53,7 +58,7 @@ export function orchestratorStartupContext(project,packet,toolRules=[]){
     'Стартовый пакет сессии Workflow Pilot.',
     `Проект: ${project.name}. Workspace: ${JSON.stringify(project.workspace)}. Session ID: ${project.sessionId}.`,
     sessionExecutionMessage(project),
-    `Роль сессии: ${project.role??'обычный чат'}. Канал контекста не назначает оркестратора и не даёт права управления чужим планом.`,
+    `Роль сессии: ${SESSION_ROLE_LABELS[project.role]??project.role??'обычный чат'}. Канал контекста не назначает оркестратора и не даёт права управления чужим планом.`,
     ...(project.assignmentId?[`Назначение: ${project.assignmentId}; задача: ${project.taskId}; основной checkout: ${JSON.stringify(project.parentWorkspace)}. После подтверждения пакета заверши bootstrap и жди отдельное рабочее поручение. Не выполняй task:start, не опрашивай очередь. При dialogue_version 1 задачу и выбранный контекст присылает оркестратор; вопросы и результат отправляй ему по рабочему каналу.`]:[]),
     'При review:prepare передай recipient_session_id: '+JSON.stringify(project.sessionId)+'. Это получатель продолжения, не владелец плана.',
     'Панель уже открыта. Не открывай её повторно. Прочитай весь пакет; подтверди его через workflow_startup_complete после чтения всех частей. Затем коротко опиши назначение проекта и состояние плана. Файлы пока не меняй; дальнейшая работа — по поручению пользователя, выполнение плана — через Start.',

@@ -110,7 +110,7 @@ test('the prototype scenario: sidebar and panel show the same projection at ever
     assert.ok($('plan-foot').contains($('plan-review-toggle')),name);
   }
   // A spinner (*) only while someone acts: an answering orchestrator spins, a deferred cleanup waits.
-  assert.deepEqual(phases,['Подготовка*','Обсуждение плана*','Обсуждение плана','План готов','Запуск*','Выполнение*','Выполнение*','Выполнение*','Выполнение*',
+  assert.deepEqual(phases,['Подготовка*','Обсуждение*','Ждёт задачи','План готов','Запуск*','Выполнение*','Выполнение*','Выполнение*','Выполнение*',
     'Нужно внимание','Выполнение*','Завершение*','Завершение','Ждёт приёмки']);
   // History: plain words, no service mechanics, newest first.
   const last=projection(steps.at(-1));

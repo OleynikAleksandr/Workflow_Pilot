@@ -113,7 +113,8 @@ export function localParticipantTarget(projects,sessionId) {
   }
   if(project.parentWorkspace)return null;
   const published=project.scopeId&&['ACTIVE','BLOCKED'].includes(project.scopeStatus);
-  if(session.role!=='orchestrator'||published&&project.planExecution?.execution_origin_session_id!==sessionId)
+  // A planning session keeps the plan-owner channel through its mode choice: one run, one target role.
+  if(!['orchestrator','planning','self'].includes(session.role)||published&&project.planExecution?.execution_origin_session_id!==sessionId)
     return {project_id:project.projectId,local_session_id:sessionId,origin_session_id:sessionId,role:'S',
       scope_id:project.scopeId??null,assignment_id:null,task_id:null};
   return {project_id:project.projectId,local_session_id:sessionId,origin_session_id:sessionId,role:'O',

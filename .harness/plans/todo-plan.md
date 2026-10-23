@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 968,
+  "plan_revision": 970,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "user-choice-plan-modes",
@@ -92,7 +92,10 @@
       "tests/orchestrated-execution.test.mjs",
       "tests/prepared-task-flow.test.mjs",
       "src/contracts/desktop.mjs",
-      "src/frontend/desktop/preload.cjs"
+      "src/frontend/desktop/preload.cjs",
+      "tests/electron-smoke.mjs",
+      "tests/plugin-enrollment.test.mjs",
+      "tests/work-progress-scenario.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/user-choice-and-plan-modes.md",
@@ -303,8 +306,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "user-choice-plan-modes",
         "task_id": "T003",
@@ -333,7 +336,10 @@
         "tests/user-choices.test.mjs",
         "src/control/context/context-session.mjs",
         "tests/context-session.test.mjs",
-        "tools/codex-app-server-mcp/plugin-ui.html"
+        "tools/codex-app-server-mcp/plugin-ui.html",
+        "tests/electron-smoke.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/work-progress-scenario.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -352,7 +358,23 @@
         "Sequential-план владельца запускается той же кнопкой и продолжается в его сессии."
       ],
       "expected_commit_message": "feat: нейтральные сессии и режимы выполнения плана",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/work-progress.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/planning-owner.mjs",
+        "tests/context-session.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/planning-owner.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/work-progress-scenario.test.mjs",
+        "tests/work-progress.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -560,7 +582,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: user-choice-plan-modes
 Current Task: нет
-Revision: 968
+Revision: 970
 
 ## Цель
 
@@ -590,10 +612,10 @@ Revision: 968
   - Файлы: src/control/workflow/user-choices.mjs, src/contracts/user-choice.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/review-continuation.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/execution/plugin/communication-store.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, tests/user-choices.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/codex-app-server-mcp.test.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, tests/dialogue-delivery.test.mjs, src/execution/files/project-input-watch.mjs, tests/project-input-watch.test.mjs, tools/codex-app-server-mcp/plugin-ui.html, package-lock.json, package.json, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Нейтральные сессии и два режима в приложении — Ожидает
-  - Git Commit: [PENDING] feat: нейтральные сессии и режимы выполнения плана
+- [DONE] T003: Нейтральные сессии и два режима в приложении — Завершено
+  - Git Commit: [DONE] feat: нейтральные сессии и режимы выполнения плана
   - Reference: user-choice-plan-modes / T003 / implementation
-  - Файлы: src/control/workflow/planning-owner.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/enrollment.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/workflow/coordination.mjs, src/control/workflow/user-choices.mjs, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, src/control/plugin/service.mjs, tests/planning-owner.test.mjs, tests/session-roles.test.mjs, tests/startup-context.test.mjs, tests/work-progress.test.mjs, tests/backend-desktop-model.test.mjs, tests/user-choices.test.mjs, src/control/context/context-session.mjs, tests/context-session.test.mjs, tools/codex-app-server-mcp/plugin-ui.html
+  - Файлы: src/control/workflow/planning-owner.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/enrollment.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/workflow/coordination.mjs, src/control/workflow/user-choices.mjs, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, src/control/plugin/service.mjs, tests/planning-owner.test.mjs, tests/session-roles.test.mjs, tests/startup-context.test.mjs, tests/work-progress.test.mjs, tests/backend-desktop-model.test.mjs, tests/user-choices.test.mjs, src/control/context/context-session.mjs, tests/context-session.test.mjs, tools/codex-app-server-mcp/plugin-ui.html, tests/electron-smoke.mjs, tests/plugin-enrollment.test.mjs, tests/work-progress-scenario.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002
 - [TODO] T004: Карточка выбора в панели и окне — Ожидает

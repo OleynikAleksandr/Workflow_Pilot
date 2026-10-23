@@ -228,3 +228,23 @@ test('roles: recovery is requested with the session role and cached separately p
   assert.deepEqual(loads.slice(0, 2), ['orchestrator', 'discussion'], 'each role gets its own packet');
   assert.equal(service.cache.isBuilding(workspace), false);
 });
+test('Kit 1.9.8: sessions plan until one requests the mode; the owner role follows the user choice', () => {
+  assert.equal(newSessionRole({ scopeStatus: 'NONE', modeSupported: true }), 'planning');
+  assert.equal(newSessionRole({ scopeStatus: 'NONE', modeSupported: true, planningOwnerSessionId: 's1' }), 'discussion');
+  assert.equal(newSessionRole({ scopeStatus: 'NONE' }), 'orchestrator', 'an older Kit keeps the 0.5.29 candidate');
+  const project = (mode, owner = 's1', roles = ['planning', 'planning']) => ({ scopeStatus: 'NONE', modeSupported: true, planningOwnerSessionId: owner,
+    executionMode: mode, sessions: roles.map((role, i) => ({ sessionId: 's' + (i + 1), role })) });
+  const roles = p => { applySessionRoles(p); return p.sessions.map(s => s.role); };
+  assert.deepEqual(roles(project(null, null, ['orchestrator', 'planning'])), ['planning', 'planning'], 'no owner: a 0.5.29 candidate plans');
+  assert.deepEqual(roles(project({ session_id: 's1', strategy: null })), ['planning', 'discussion']);
+  assert.deepEqual(roles(project({ session_id: 's1', strategy: 'orchestrated' })), ['orchestrator', 'discussion']);
+  assert.deepEqual(roles(project({ session_id: 's1', strategy: 'sequential' })), ['self', 'discussion']);
+  assert.deepEqual(roles(project({ session_id: 's2', strategy: 'sequential' })), ['planning', 'discussion'], 'another session\'s choice is not the owner\'s');
+  const own = { scopeStatus: 'ACTIVE', scopeId: 'plan', modeSupported: true, planExecution: { execution_strategy: 'sequential', execution_origin_session_id: 's2' },
+    sessions: [{ sessionId: 's1', role: 'planning' }, { sessionId: 's2', role: 'planning' }] };
+  assert.deepEqual(roles(own), ['discussion', 'self'], 'the owner executes its sequential plan; others discuss');
+  assert.equal(newSessionRole(own), 'discussion');
+  const orchestrated = { scopeStatus: 'ACTIVE', scopeId: 'plan', modeSupported: true, planExecution: { execution_strategy: 'orchestrated', execution_origin_session_id: 's1' },
+    sessions: [{ sessionId: 's1', role: 'orchestrator' }, { sessionId: 's2', role: 'planning' }] };
+  assert.deepEqual(roles(orchestrated), ['orchestrator', 'discussion']);
+});

@@ -14,7 +14,8 @@ export function plural(count,one,few,many) {
 export const eventCount=count=>plural(count,'событие','события','событий');
 
 export function participantName(actor) {
-  return actor==='O'?'Оркестратор':actor==='S'?'Обсуждение':actor==='APP'?'Приложение':actor==='KIT'?'Workflow Kit':actor==='PLAN'?'План':String(actor??'');
+  return actor==='O'?'Оркестратор':actor==='S'?'Обсуждение':actor==='P'?'Планирование':actor==='SELF'?'Выполняет план':actor==='USER'?'Пользователь'
+    :actor==='APP'?'Приложение':actor==='KIT'?'Workflow Kit':actor==='PLAN'?'План':String(actor??'');
 }
 export const PLAN_READY_TEXT='ждёт вашей проверки и запуска: нажмите «Начать выполнение плана»';
 
@@ -63,10 +64,13 @@ export function messageEvent(message,{titles={}}={}) {
   return {at,actor,text,kind:'done',id:message.message_id??null};
 }
 
+// The session role as a participant of the progress: orchestrator O, planning P, own sequential plan SELF, discussion S.
+export const roleActor=role=>({orchestrator:'O',planning:'P',self:'SELF'})[role]??'S';
 // The plan stage shown at the top of the sidebar card and the panel header: [label, busy].
+// Without a plan: «Подготовка плана» once a session owns planning, otherwise «Ждёт задачи» or «Обсуждение» while a chat answers.
 export function planPhase({scope=null,starting=false,acting=false,complete=false,attention=false,paused=false,allDone=false,started=false,
-  notStarted=false,preparing=false,running=false}={}) {
-  if(!scope)return starting?['Подготовка',true]:['Обсуждение плана',!!acting];
+  notStarted=false,preparing=false,running=false,planning=false}={}) {
+  if(!scope)return starting?['Подготовка',true]:planning?['Подготовка плана',!!acting]:acting?['Обсуждение',true]:['Ждёт задачи',false];
   if(complete)return ['Ждёт приёмки',false];
   if(attention)return ['Нужно внимание',false];
   if(paused)return ['Пауза',false];

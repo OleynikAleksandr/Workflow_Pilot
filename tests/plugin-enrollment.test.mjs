@@ -99,3 +99,12 @@ test('an orchestrator registered before publication retains its identity when it
   f.targets.set('orchestrator',target('orchestrator','O'));
   assert.equal((await f.comm.status({...joined,metadata:metadata('orchestrator')})).participant_id,joined.participant_id);
 });
+test('a planning or self-executing session keeps the plan-owner channel role through its mode choice', () => {
+  for (const role of ['planning', 'self', 'orchestrator']) {
+    const project = { projectId: 'p', workspace: '/p', scopeStatus: 'NONE', sessions: [{ sessionId: 's1', role }] };
+    const target = localParticipantTarget({ snapshot: () => ({ projects: [project] }) }, 's1');
+    assert.equal(target.role, 'O', role);
+  }
+  const discussion = { projectId: 'p', workspace: '/p', scopeStatus: 'NONE', sessions: [{ sessionId: 's1', role: 'discussion' }] };
+  assert.equal(localParticipantTarget({ snapshot: () => ({ projects: [discussion] }) }, 's1').role, 'S');
+});

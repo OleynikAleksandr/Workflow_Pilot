@@ -395,8 +395,11 @@ async function continuePlan(enabled) {
     if(scope&&current?.scopeId!==scope&&enabled===true)
       throw new Error('План изменился во время запуска. Обновите состояние проекта.');
     // Completion is an automatic OFF, never misrecord it as a manual OFF.
+    // A sequential plan of a Workflow Pilot session continues in that session, whichever chat is selected.
+    const origin=info?.planExecution?.execution_strategy==='sequential'?info.planExecution.execution_origin_session_id:null;
+    const runner=origin&&store.project(workspace,origin)?.sessionId===origin?origin:project?.sessionId;
     if(!(done&&enabled===true))projectPlanContinuation.set(workspace,
-      scope&&current?.scopeId!==scope?current.scopeId:scope,enabled===true,project?.sessionId);
+      scope&&current?.scopeId!==scope?current.scopeId:scope,enabled===true,runner);
     if(workspace)execution.observe(workspace);
     await saveSettings();
 }

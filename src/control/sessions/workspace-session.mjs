@@ -114,6 +114,8 @@ export async function readWorkspace(input, sessionId = null) {
   const view = projectPlan(plan, scopeTitle);
   return { workspace, ...view, inspectedSessionId: sessionId, planId: plan.scope_id,
     planningOwnerSessionId: await readPlanningOwnerSession(workspace, plan),
+    modeSupported: await kitSupportsMode(workspace),
+    executionMode: await readExecutionModeRecord(workspace, plan),
     watchInputs: [...new Set([...(plan.context_pack?.documents ?? []),
       ...plan.tasks.flatMap(task => task.context_pack?.documents ?? [])]
       .map(document => document?.path).filter(file => typeof file === 'string'
@@ -127,6 +129,20 @@ async function readPlanningOwnerSession(workspace, plan) {
     const record = JSON.parse(await fs.readFile(path.join(workspace, '.harness/runtime/planning-owner.json'), 'utf8'));
     return record?.version === 1 && typeof record.session_id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(record.session_id)
       && (plan.archived_scope_id ?? null) === (record.archived_scope_id ?? null) ? record.session_id : null;
+  } catch { return null; }
+}
+
+// Kit 1.9.8 records the agent's mode request and the user's choice; older Kit keeps the 0.5.29 roles.
+async function kitSupportsMode(workspace) {
+  return fs.access(path.join(workspace, '.harness/kit/lib/execution-mode.mjs')).then(() => true, () => false);
+}
+// Mirrors Kit readExecutionMode: a record written before the last archive belongs to a closed plan.
+async function readExecutionModeRecord(workspace, plan) {
+  try {
+    const record = JSON.parse(await fs.readFile(path.join(workspace, '.harness/runtime/execution-mode.json'), 'utf8'));
+    if (record?.version !== 1 || typeof record.session_id !== 'string' || (plan.archived_scope_id ?? null) !== (record.archived_scope_id ?? null)) return null;
+    return { session_id: record.session_id, generation: record.generation, recommended: record.recommended,
+      strategy: ['sequential', 'orchestrated'].includes(record.choice?.strategy) ? record.choice.strategy : null };
   } catch { return null; }
 }
 
@@ -186,20 +202,50 @@ function projectPlan(plan, scopeTitle = '') {
 }
 
 const copy = value => structuredClone(value);
-const persistent = data => JSON.parse(JSON.stringify(data, (key, value) => ['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'watchInputs', 'planExecution', 'orchestrationIssue', 'worktreeRemoved', 'planningOwnerSessionId'].includes(key) ? undefined : value));
-export const SESSION_ROLES = Object.freeze(['orchestrator', 'discussion', 'executor']);
+const persistent = data => JSON.parse(JSON.stringify(data, (key, value) => ['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'watchInputs', 'planExecution', 'orchestrationIssue', 'worktreeRemoved', 'planningOwnerSessionId', 'executionMode', 'modeSupported'].includes(key) ? undefined : value));
+export const SESSION_ROLES = Object.freeze(['orchestrator', 'planning', 'self', 'discussion', 'executor']);
 const activeScope = status => ['ACTIVE', 'BLOCKED'].includes(status);
 export const orchestratedPlanActive = project => project?.planExecution?.execution_strategy === 'orchestrated' && activeScope(project.scopeStatus);
 // A new session is an orchestrator candidate without a plan, unless a session already owns planning;
 // beside an orchestrated plan it is a discussion chat. Beside a legacy plan it keeps the legacy behaviour.
-export const newSessionRole = info => !activeScope(info.scopeStatus) ? info.planningOwnerSessionId ? 'discussion' : 'orchestrator'
-  : orchestratedPlanActive(info) ? 'discussion' : undefined;
+export const newSessionRole = info => !activeScope(info.scopeStatus)
+  ? info.planningOwnerSessionId ? 'discussion' : info.modeSupported ? 'planning' : 'orchestrator'
+  : orchestratedPlanActive(info) || selfPlanActive(info) ? 'discussion' : undefined;
+// A sequential plan of a Workflow Pilot session that its owner executes itself (Kit 1.9.8).
+export const selfPlanActive = project => !!project?.modeSupported && activeScope(project.scopeStatus)
+  && project.planExecution?.execution_strategy === 'sequential' && typeof project.planExecution.execution_origin_session_id === 'string';
+const ownerRole = project => project.executionMode?.session_id !== project.planningOwnerSessionId ? 'planning'
+  : project.executionMode.strategy === 'orchestrated' ? 'orchestrator' : project.executionMode.strategy === 'sequential' ? 'self' : 'planning';
+const planningRole = session => ['planning', 'self'].includes(session.role) || session.role === 'orchestrator' && !session.orchestratorScopeId;
 const ordinarySessions = project => project.sessions.filter(s => !s.external && !s.assignmentId);
 // The published plan names its orchestrator; every other candidate and legacy session becomes a discussion chat.
 // Orchestrators of earlier plans keep their scope. Returns whether stored roles changed.
 export function applySessionRoles(project) {
   let changed = false;
   const set = (session, patch) => { for (const [key, value] of Object.entries(patch)) if (session[key] !== value) { session[key] = value; changed = true; } };
+  if (selfPlanActive(project)) {
+    // The owner executes its sequential plan; the other planning sessions discuss.
+    project.orchestrationIssue = null;
+    const origin = project.planExecution.execution_origin_session_id;
+    for (const session of ordinarySessions(project)) {
+      if (session.sessionId === origin) { if (session.role !== 'self') set(session, { role: 'self' }); }
+      else if (session.role === undefined || planningRole(session)) set(session, { role: 'discussion' });
+    }
+    return changed;
+  }
+  if (!orchestratedPlanActive(project) && project.modeSupported && !activeScope(project.scopeStatus)) {
+    // Kit 1.9.8: every session plans until one requests the mode; the owner's role follows the user's choice.
+    project.orchestrationIssue = null;
+    const owner = project.planningOwnerSessionId, sessions = ordinarySessions(project);
+    const live = owner && sessions.some(s => s.sessionId === owner && !s.archivedAt && !s.closedPlanCommit);
+    for (const session of sessions) {
+      if (session.closedPlanCommit) continue;
+      if (live && session.sessionId === owner) { const role = ownerRole(project); if (session.role !== role) set(session, { role }); }
+      else if (live && planningRole(session)) set(session, { role: 'discussion' });
+      else if (!live && (session.role === 'orchestrator' && !session.orchestratorScopeId || session.role === 'self')) set(session, { role: 'planning' });
+    }
+    return changed;
+  }
   if (!orchestratedPlanActive(project)) {
     project.orchestrationIssue = null;
     // Before publication the planning owner is the only orchestrator; the other candidates discuss.
@@ -221,7 +267,8 @@ export function applySessionRoles(project) {
       set(origin, { role: 'orchestrator', orchestratorScopeId: scope }); orchestrator = origin;
     }
   }
-  for (const session of sessions) if (session !== orchestrator && (session.role === undefined || session.role === 'orchestrator' && !session.orchestratorScopeId))
+  for (const session of sessions) if (session !== orchestrator && (session.role === undefined || session.role === 'orchestrator' && !session.orchestratorScopeId
+    || ['planning', 'self'].includes(session.role) && !session.closedPlanCommit))
     set(session, { role: 'discussion' });
   project.orchestrationIssue = orchestrator ? null : sessions.some(s => s.sessionId === project.planExecution.execution_origin_session_id)
     ? 'ORCHESTRATOR_LOST' : 'ORIGIN_MISMATCH';
@@ -544,7 +591,7 @@ export class WorkspaceSessions {
   }
 
   save(data = this.data, isCurrent = () => true) {
-    const transient = new Set(['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'planExecution', 'orchestrationIssue', 'worktreeRemoved', 'planningOwnerSessionId']);
+    const transient = new Set(['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'planExecution', 'orchestrationIssue', 'worktreeRemoved', 'planningOwnerSessionId', 'executionMode', 'modeSupported']);
     const text = JSON.stringify(data, (key, value) => transient.has(key) ? undefined : value, 2) + '\n';
     const operation = this.saveTail.catch(() => {}).then(async () => {
       await fs.mkdir(path.dirname(this.file), { recursive: true, mode: 0o700 });
