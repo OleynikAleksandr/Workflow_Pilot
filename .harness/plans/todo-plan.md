@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 913,
+  "plan_revision": 914,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Понятный ход работ: левый sidebar показывает управление и все задачи плана со стадиями в закреплённых зонах, правая панель Workflow Pilot — все текущие действия участников и историю в единой палитре приложения; выпуск 0.5.25 для трёх ОС опубликован.",
   "acceptance_criteria": [
     "Левый sidebar: строка сессии без текстов старта, со спиннером занятости; кнопки «Новая сессия» нет; карточка плана из закреплённого верха (название, этап со спиннером, «в main N из M»), прокручиваемого списка задач со стадиями в нынешних формулировках, режимом и временем и закреплённого низа (кнопка выполнения, блок проблемы с одним действием, подсказка приёмки, Review).",
@@ -768,6 +768,44 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "FIX-UI-0526",
+      "title": "Компактная карточка сессии и ожидание запуска плана",
+      "why": "Живая проверка 0.5.26: карточка сессии оркестратора раскладывает название, Chat и меню в три колонки и растёт по высоте при сужении sidebar, повторяет состояние плана; в «Сейчас» готовый план показывается как «Сейчас ничего не выполняется».",
+      "dependencies": [],
+      "functional_paths": [
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/work-progress.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/work-progress.test.mjs",
+        "tests/work-progress-scenario.test.mjs",
+        "tests/electron-smoke.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture",
+        "electron-smoke"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Карточка сессии: название слева, справа одна колонка — меню «…» сверху и Chat/Work внизу, по центру друг под другом; одна строка сведений «ДД.ММ, ЧЧ:ММ · Оркестратор · N/M» (или «Обсуждение») без повторения состояния плана; высота строки не растёт при сужении sidebar.",
+        "Готовый, ещё не запущенный план показывает в «Сейчас» ожидание: план ждёт проверки и запуска пользователем кнопкой «Начать выполнение плана», со временем ожидания."
+      ],
+      "expected_commit_message": "fix: Компактная карточка сессии и ожидание запуска плана",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "FIX-UI-0526",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -789,10 +827,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 913
+Revision: 914
 
 ## Цель
 
@@ -896,6 +934,12 @@ Revision: 913
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-2
+- [TODO] FIX-UI-0526: Компактная карточка сессии и ожидание запуска плана — Ожидает
+  - Git Commit: [PENDING] fix: Компактная карточка сессии и ожидание запуска плана
+  - Reference: work-progress-ui / FIX-UI-0526 / implementation
+  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, tests/sidebar.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/electron-smoke.mjs, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
 
 ## Context Pack For This Cycle
 
