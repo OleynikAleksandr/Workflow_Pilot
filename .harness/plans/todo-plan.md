@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 905,
+  "plan_revision": 907,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -624,8 +624,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "DOCS-2",
@@ -639,14 +639,40 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/desktop.md"
+        "docs/modules/desktop.md",
+        "README.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/release.md"
+      ]
     },
     {
       "id": "RELEASE-2",
@@ -761,7 +787,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 905
+Revision: 907
 
 ## Цель
 
@@ -841,10 +867,10 @@ Revision: 905
   - Файлы: src/control/plugin/startup-context.mjs, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/startup-context.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-plugin.test.mjs, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: work-progress-ui / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/desktop.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/desktop.md, README.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-LIVE-TEST
 - [TODO] RELEASE-2: Собрать выпуск 0.5.26 для трёх ОС — Ожидает
