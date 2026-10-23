@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 966,
+  "plan_revision": 968,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "user-choice-plan-modes",
@@ -90,7 +90,9 @@
       "tests/dialogue-migration.test.mjs",
       "tests/fixtures/execution-mode.mjs",
       "tests/orchestrated-execution.test.mjs",
-      "tests/prepared-task-flow.test.mjs"
+      "tests/prepared-task-flow.test.mjs",
+      "src/contracts/desktop.mjs",
+      "src/frontend/desktop/preload.cjs"
     ],
     "documentation_paths": [
       "docs/planning/user-choice-and-plan-modes.md",
@@ -218,8 +220,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "user-choice-plan-modes",
         "task_id": "T002",
@@ -251,7 +253,11 @@
         "tests/dialogue-delivery.test.mjs",
         "src/execution/files/project-input-watch.mjs",
         "tests/project-input-watch.test.mjs",
-        "tools/codex-app-server-mcp/plugin-ui.html"
+        "tools/codex-app-server-mcp/plugin-ui.html",
+        "package-lock.json",
+        "package.json",
+        "src/contracts/desktop.mjs",
+        "src/frontend/desktop/preload.cjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -271,7 +277,30 @@
         "Изменения execution-mode.json и planning-owner.json наблюдаются: plan:mode-request в fixture даёт offered Е5 и подпись «Планирование» без других изменений проекта."
       ],
       "expected_commit_message": "feat: выбор пользователя в службе и канале",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/desktop.mjs",
+        "src/contracts/user-choice.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/user-choices.mjs",
+        "src/execution/files/project-input-watch.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/project-input-watch.test.mjs",
+        "tests/user-choices.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -531,7 +560,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: user-choice-plan-modes
 Current Task: нет
-Revision: 966
+Revision: 968
 
 ## Цель
 
@@ -555,10 +584,10 @@ Revision: 966
   - Файлы: packages/workflow-kit/src/lib/execution-mode.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/planning-owner.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-carryover-fixture.mjs, tests/fixtures/released-kit/kit-1.9.7.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, tests/dialogue-migration.test.mjs, tests/fixtures/execution-mode.mjs, tests/orchestrated-execution.test.mjs, tests/prepared-task-flow.test.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Выбор пользователя в Control и канале — Ожидает
-  - Git Commit: [PENDING] feat: выбор пользователя в службе и канале
+- [DONE] T002: Выбор пользователя в Control и канале — Завершено
+  - Git Commit: [DONE] feat: выбор пользователя в службе и канале
   - Reference: user-choice-plan-modes / T002 / implementation
-  - Файлы: src/control/workflow/user-choices.mjs, src/contracts/user-choice.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/review-continuation.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/execution/plugin/communication-store.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, tests/user-choices.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/codex-app-server-mcp.test.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, tests/dialogue-delivery.test.mjs, src/execution/files/project-input-watch.mjs, tests/project-input-watch.test.mjs, tools/codex-app-server-mcp/plugin-ui.html
+  - Файлы: src/control/workflow/user-choices.mjs, src/contracts/user-choice.mjs, src/control/workflow/coordination.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/review-continuation.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/execution/plugin/communication-store.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, src/contracts/backend.mjs, tests/user-choices.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/codex-app-server-mcp.test.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, tests/dialogue-delivery.test.mjs, src/execution/files/project-input-watch.mjs, tests/project-input-watch.test.mjs, tools/codex-app-server-mcp/plugin-ui.html, package-lock.json, package.json, src/contracts/desktop.mjs, src/frontend/desktop/preload.cjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] T003: Нейтральные сессии и два режима в приложении — Ожидает

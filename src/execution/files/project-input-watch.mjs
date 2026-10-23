@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const projectWatchInputs = ['.harness/plans/todo-plan.md', 'scripts/workflow.mjs',
   'scripts/workflow', 'scripts/workflow.cmd', '.harness/workflow.json', '.harness/kit-manifest.json',
-  '.harness/runtime/plan-review/state.json'];
+  '.harness/runtime/plan-review/state.json', '.harness/runtime/execution-mode.json', '.harness/runtime/planning-owner.json'];
 
 // Watch only named inputs and their directory ancestry, never a recursive Git tree.
 // Directory identity matters: fs.watch can remain attached to an unlinked inode.

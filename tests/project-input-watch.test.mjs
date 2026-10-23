@@ -113,3 +113,8 @@ test('event during read reruns; selection A to B to A rejects the old result and
   assert.equal(f.monitor.info.inspectedSessionId, 'session'); assert.equal(f.monitor.info.planRevision, 7);
   f.monitor.close(); assert.equal(f.handles.size, 0); assert.equal(f.timers.size, 0);
 });
+test('the agent mode request and the planning owner are watched project inputs', () => {
+  const watch = new ProjectInputWatch({ workspace: '/project', onSignal: () => {}, onError: () => {} });
+  for (const file of ['.harness/runtime/execution-mode.json', '.harness/runtime/planning-owner.json'])
+    assert.ok(watch.paths.includes(file), file);
+});

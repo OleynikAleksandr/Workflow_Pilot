@@ -18,10 +18,17 @@ import { removeProjectSettings, belongsToProject } from '../projects/project-sta
 import { unsentExecutor } from '../sessions/workspace-session.mjs';
 import { AUTOMATIC_DIALOGUE_ENABLED } from '../../contracts/backend.mjs';
 import {DialogueDelivery} from './dialogue-delivery.mjs';
+import { UserChoices, collectChoiceFacts } from './user-choices.mjs';
+import { readExecutionMode, chooseExecutionMode } from '@webpilot/workflow-kit/lib/execution-mode';
+import { readPlanningOwner } from '@webpilot/workflow-kit/lib/planning-owner';
+import { safePath } from '@webpilot/workflow-kit/lib/common';
+import { desktopFiles } from '../../execution/facade.mjs';
 
 // The 0.6.115 coordination rules live here. Desktop supplies presentation/readiness and persistence.
 export function createWorkflowCoordination({store, setup:workspaceSetup, plans:sessionPlans,
-  getController, available, contextAvailable, onChange:publish, report, save:saveSettings,getPlugin=()=>null}) {
+  getController, available, contextAvailable, onChange:publishModel, report, save:saveSettings,getPlugin=()=>null}) {
+// Every published change may add or retire a cause of the user's choice card.
+function publish(){publishModel();scheduleChoices();}
 let liveSessions;
 // A pending Kit transaction holds only its project. The service and archive stay
 // available; neither startup nor deletion repairs or changes the Kit journal.
@@ -133,6 +140,45 @@ function configurePrimary(record) {
 const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>publish(),
   published:workspace=>['ACTIVE','BLOCKED'].includes(store.project(workspace)?.scopeStatus)});
 const planningOwners=new PlanningOwners({store,onChange:()=>publish(),report});
+// The user's choice cards: causes come from facts this coordination already tracks.
+const modeSupported=workspace=>desktopFiles.existsSync(safePath(workspace,'.harness/kit/lib/execution-mode.mjs'));
+const choiceFacts=({manual})=>collectChoiceFacts({manual,projects:store.snapshot().projects,project:workspace=>store.project(workspace),
+  execution:(workspace,scope)=>executionControl.view(workspace,scope),legacyOwner:workspace=>projectPlanContinuation.state(workspace)?.sessionId,
+  review:readReview,mode:workspace=>modeSupported(workspace)?readExecutionMode(workspace):null,owner:readPlanningOwner});
+async function withKitLock(operation){
+  for(let attempt=0;;attempt++){
+    try{return await operation();}
+    catch(error){if(error.code!=='WORKFLOW_LOCKED'||attempt>=40)throw error;await new Promise(resolve=>setTimeout(resolve,250));}
+  }
+}
+const userChoices=new UserChoices({facts:choiceFacts,report,
+  async act(record,option){
+    if(option.action==='continue')return setPlanExecution(true,record.workspace);
+    if(option.action==='transfer')return planningOwners.assign(record.workspace,record.session_id,{transfer:true});
+    if(option.action==='mode'){
+      await withKitLock(()=>chooseExecutionMode(record.workspace,{session_id:record.session_id,strategy:option.strategy,
+        generation:record.data.generation,approval_note:'Выбор пользователя в '+(record.source==='window'?'окне':'панели')+' Workflow Pilot: '+option.label}));
+      await store.reconcileRoles?.(record.workspace);
+    }
+  },
+  async deliver(record,option){
+    const project=store.project(record.workspace,record.session_id);
+    if(!project)throw Object.assign(new Error('Сессия выбора больше не существует.'),{code:'USER_CHOICE_SESSION'});
+    const role=option.strategy==='orchestrated'?'orchestrator':option.strategy==='sequential'?'self':record.role??'discussion';
+    return dialogue.send(project,'Выбор пользователя в '+(record.source==='window'?'окне':'панели')+' Workflow Pilot: «'+option.label+'». '+option.message,
+      'user-choice',{key:'choice:'+record.choice_id,role});
+  },
+  receipt:messageId=>dialogue.receipt(messageId),
+  onChange(){
+    void saveSettings().catch(report);publish();
+    for(const record of userChoices.records.values())getPlugin()?.communication.userChoiceChanged?.(record.session_id);
+  }});
+let choicesTimer=null;
+// Facts change on many events; one deferred reconciliation follows a burst of them.
+function scheduleChoices(){
+  if(choicesTimer)return;
+  choicesTimer=setTimeout(()=>{choicesTimer=null;userChoices.reconcile();},200);choicesTimer.unref?.();
+}
 const reviewContinuation=new ReviewContinuation({selected:()=>store.selected(),client:planReview,
   send:sendAutomation,onChange:()=>publish(),
   available,
@@ -294,8 +340,9 @@ function sendExecutionMessage(origin,text,canContinue,onBeforeSend,kind,meta) {
 }
 // The button command: verified against the published plan, never against a chat's guess.
 // The one plan button: start, pause and continue. running: undefined toggles, a boolean sets.
-async function setPlanExecution(running) {
-  const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
+async function setPlanExecution(running,chosen=null) {
+  // A choice card names its project; the button acts on the selected one.
+  const selected=chosen?null:store.selected(),workspace=chosen??selected?.parentWorkspace??selected?.workspace;
   if(!workspace||selected?.external)throw Object.assign(new Error('Выберите проект с планом.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
   if(running!==undefined&&typeof running!=='boolean')throw Object.assign(new Error('Неверная команда кнопки плана.'),{code:'PLAN_EXECUTION_INVALID'});
   if(startupRecovery.has(workspace)) {
@@ -363,6 +410,7 @@ function observePage(event, record = liveSessions.visible) {
   record.primaryAutomation?.observe(event);
   record.executor?.observe(event);
   planningOwners.observe(record,event);
+  userChoices.page(record.project()?.sessionId,event);
   getPlugin()?.communication.observeSession(record.project()?.sessionId);
   const safety=JSON.stringify([event.documentId,event.state?.url,event.state?.busy,event.state?.lastMessageRole,event.state?.connectionError,
     event.state?.draftPresent,event.state?.editorAvailable,event.state?.writable,event.state?.turnId,event.state?.userTurnId,
@@ -375,7 +423,8 @@ function observePage(event, record = liveSessions.visible) {
 }
 
 function snapshot() {
-  return structuredClone({projectPlanContinuation:projectPlanContinuation.snapshot(),executionControl:executionControl.snapshot(),reviewCheckpoint,automationCheckpoint,parallelExecutionBook});
+  return structuredClone({projectPlanContinuation:projectPlanContinuation.snapshot(),executionControl:executionControl.snapshot(),reviewCheckpoint,automationCheckpoint,parallelExecutionBook,
+    userChoices:userChoices.snapshot()});
 }
 function restore(settings={}) {
   projectPlanContinuation.book=new ProjectPlanContinuation({saved:settings.projectPlanContinuation}).snapshot();
@@ -386,6 +435,7 @@ function restore(settings={}) {
   execution.book=parallelExecutionBook;
   reviewCheckpoint=structuredClone(settings.reviewCheckpoint??null);
   automationCheckpoint=structuredClone(settings.automationCheckpoint??null);
+  userChoices.restore(settings.userChoices??{});scheduleChoices();
   emptyPlanContinuation.restore(false);
   automationSend.entries.clear();automationSend.cycles.clear();automationSend.restore(automationCheckpoint);
   reviewContinuation.stops.clear();reviewContinuation.restore(reviewCheckpoint);
@@ -494,6 +544,9 @@ return Object.freeze({
   executorEnabled:(workspace,scope)=>executorEnabled(workspace,scope),
   executionControl:Object.freeze({view:(...args)=>executionControl.view(...args),enabled:(...args)=>executionControl.enabled(...args),
     snapshot:()=>executionControl.snapshot()}),setPlanExecution,
+  userChoices:Object.freeze({view:sessionId=>userChoices.view(sessionId),history:workspace=>userChoices.workspaceHistory(workspace),
+    choose:input=>input?.option_id==='reopen'?userChoices.reopen(input):userChoices.choose(input),forget:sessionId=>userChoices.forget(sessionId),
+    reconcile:()=>scheduleChoices()}),
   // The user confirmed archiving a project with an active plan: execution pauses now; Kit is untouched.
   stopPlanExecution:async workspace=>{const scope=store.project(workspace)?.scopeId;if(!scope)return null;
     if(executionControl.view(workspace,scope).state==='complete')return executionControl.view(workspace,scope);

@@ -1,9 +1,9 @@
 // Wire protocol shared by an unprivileged frontend and the independent backend.
 // No Electron, filesystem, shell, store or secret crosses this boundary.
 export const BACKEND_API_VERSION = 1;
-export const COMMUNICATION_PROTOCOL = 4;
-export const COMMUNICATION_APP_VERSION = '0.5.29';
-export const COMMUNICATION_BUILD = '0.5.29-communication-4';
+export const COMMUNICATION_PROTOCOL = 5;
+export const COMMUNICATION_APP_VERSION = '0.5.30';
+export const COMMUNICATION_BUILD = '0.5.30-communication-5';
 export function communicationVersionMessage(panel, server={build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL}) {
   const build=value=>typeof value==='string'&&/^[A-Za-z0-9._-]{1,128}$/.test(value)?value:'неизвестна';
   const protocol=value=>Number.isSafeInteger(value)&&value>=0&&value<=9999?value:'неизвестен';
@@ -61,7 +61,7 @@ export const PLUGIN_ACTION_CLASS = Object.freeze({
   'communication.assignmentSend':'ui-mutation','communication.assignmentYield':'ui-mutation','communication.assignmentStatus':'read',
   'communication.assignmentMigrate':'ui-mutation',
   'communication.assignmentPrepare':'ui-mutation','communication.assignmentDispatch':'ui-mutation',
-  'communication.claimReady':'ui-mutation','communication.telemetryBatch':'ui-mutation',
+  'communication.claimReady':'ui-mutation','communication.telemetryBatch':'ui-mutation','communication.choose':'ui-mutation',
   // The separate MCP executor channel is NOT an operation of the UI API.
   'mcp.context': 'agent-independent', 'mcp.tools': 'agent-independent',
 });

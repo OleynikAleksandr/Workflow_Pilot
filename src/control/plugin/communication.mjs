@@ -26,15 +26,15 @@ const SECRET=/(?:Bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{12,}|(?:authorization|c
 const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','report.failed',
   'stop.local','stop.failed','host.handshake','host.context_changed','visibility.changed','panel.pagehide','panel.dispose','panel.mount','panel.resume',
   'wait.error','connection.restored','rpc.completed']);
-const RPC_OPERATIONS=new Set(['recover','bind','sync','wait','claim','claim_ready','verify','report','status','journal','stop','enable','export']);
+const RPC_OPERATIONS=new Set(['recover','bind','sync','wait','claim','claim_ready','verify','report','status','journal','stop','enable','export','choose']);
 const ERROR_CODES=new Set(['SDK_TIMEOUT','SDK_REJECTED','SDK_ERROR','MCP_ERROR','NETWORK_ERROR','CONTEXT_CHANGED','DISPOSED']);
 const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{},workProgress=null}={}) {
-    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress});
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null}={}) {
+    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
     this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];this.timingDrops=0;
@@ -238,6 +238,22 @@ export class PluginCommunication {
   }
   // The project-wide progress projection, the same for O, E and S; raw messages keep their own visibility.
   progressOf(member){try{return this.workProgress?.(member.target)??null;}catch{return null;}}
+  // The session's choice card and whether a chosen answer still waits for delivery.
+  choiceOf(run,member){
+    let user_choice=null;try{user_choice=this.userChoice?.(member.target.local_session_id)??null;}catch{}
+    return {user_choice,user_choice_pending:this.workflow.choicePending(run,member)};
+  }
+  userChoiceChanged(sessionId){
+    for(const waiter of this.waiters.values())if(this.runs.get(waiter.runId)?.members[waiter.memberId]?.target.local_session_id===sessionId)waiter.wake('event');
+  }
+  // A button press in the panel: binding is verified here, the choice itself belongs to Control.
+  async choose(input){
+    await this.ready;await this.tail;
+    const {member}=this.panel(input);
+    requireValue(this.chooseOption&&typeof input.choice_id==='string'&&typeof input.option_id==='string','INPUT','Некорректный выбор.');
+    return {user_choice:await this.chooseOption({session_id:member.target.local_session_id,choice_id:input.choice_id,
+      option_id:input.option_id,generation:input.generation,source:'panel'})};
+  }
   // Wakes panel waits of a project whose progress projection changed.
   workProgressChanged(projectId){
     for(const waiter of this.waiters.values())if(this.runs.get(waiter.runId)?.project_id===projectId)waiter.wake('event');
@@ -332,7 +348,7 @@ export class PluginCommunication {
   allowed(input) {
     const context=this.panel(input),{run,member,panel}=context;
     if(run.mode==='workflow')requireValue(this.workflow.transportPermitted(run,member)&&panel.messageSupported,'STOPPED','Передача приостановлена или SDK недоступен.');
-    requireValue((!member.stopped||run.mode==='workflow'&&this.startup.active(run,member)) && panel.expiresAt>this.now() && panel.generation===member.generation
+    requireValue((!member.stopped||run.mode==='workflow'&&(this.startup.active(run,member)||this.workflow.choicePending(run,member))) && panel.expiresAt>this.now() && panel.generation===member.generation
       && input.permission_generation===member.generation,'STOPPED','Связь остановлена или срок разрешения истёк.');
     return context;
   }
@@ -376,6 +392,7 @@ export class PluginCommunication {
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       permission_generation:member.generation,stopped:run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped||expiresAt<=this.now(),
       startup:run.mode==='workflow'?this.startup.view(this.startup.message(run,member.target.local_session_id)):null,
+      ...(run.mode==='workflow'?this.choiceOf(run,member):{}),
       ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:[...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.messageSupported&&p.expiresAt>this.now())}:{}),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:expiresAt,
@@ -516,7 +533,7 @@ export class PluginCommunication {
     const {run,member}=this.member(input),pending=run.mode==='workflow'?this.workflow.pending(run,member):run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
     const end=Math.min(input.after_seq+100,run.events.length),events=this.visibleEvents(run,member,run.events.slice(input.after_seq,end));
     return {message_id:pending?.message_id??null,events,seq:end,expires_at:this.panels.get(input.panel_instance_id)?.expiresAt??0,
-      ...(run.mode==='workflow'?{work_progress:this.progressOf(member)}:{}),stopped:(run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped)||member.generation!==input.permission_generation,critical_error:this.critical};
+      ...(run.mode==='workflow'?{work_progress:this.progressOf(member),...this.choiceOf(run,member)}:{}),stopped:(run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped)||member.generation!==input.permission_generation,critical_error:this.critical};
   }
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
@@ -589,7 +606,8 @@ export class PluginCommunication {
     if(run.mode==='workflow')await this.workflow.observed(run,member);
     const {idempotency_key,fingerprint,...value}=message;
     return {...structuredClone(value),...(run.mode==='workflow'?{role_protocol:ROLE_PROTOCOL_VERSION,
-      instructions:roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0)+'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
+      instructions:(message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
+        :roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0))+'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
   }
   _telemetry(input) {
     const {run}=this.panel(input),data=input.event;

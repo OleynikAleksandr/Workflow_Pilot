@@ -708,3 +708,19 @@ test('context files reject corruption and symlink substitution without changing 
   await assert.rejects(f.c.store.putContent('immutable'),{code:'PLUGIN_COMMUNICATION_CONTEXT'});
   assert.equal(await fs.readFile(outside,'utf8'),'immutable');
 });
+test('a user choice reaches a chat without plan permission and carries the role of its recipient',async t=>{
+  const f=await fixture(t),d=f.target('d','S');d.scope_id=null;
+  const b=await f.bind(f.c,d);
+  assert.equal((await f.c.status(b)).stopped,true,'no plan: nothing to deliver');
+  await assert.rejects(f.c.workflow.enqueue(d,{key:'plain',kind:'continue',text:'Обычное сообщение'}),{code:'PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'});
+  const message=await f.c.workflow.enqueue(d,{key:'choice:1',kind:'user-choice',text:'Выбор пользователя: «Оркестрация».',role:'planning'});
+  const pending=await f.c.status(b);
+  assert.equal(pending.stopped,false);assert.equal(pending.user_choice_pending,true);
+  const waited=await f.c.wait({...(await f.sync(f.c,b)),after_seq:0});
+  assert.equal(waited.message_id,message.message_id);assert.equal(waited.stopped,false);
+  const claimed=await f.c.claimReady({...(await f.sync(f.c,b)),message_id:message.message_id});
+  assert.ok(claimed.delivery_attempt_id);
+  const read=await f.c.read({...b,message_id:message.message_id});
+  assert.equal(read.kind,'user-choice');assert.equal(read.recipient_role,'planning');
+  assert.match(read.instructions,/РОЛЬ: ПЛАНИРОВАНИЕ/);
+});

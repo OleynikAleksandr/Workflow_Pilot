@@ -22,7 +22,9 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     // A finished plan keeps its progress view current with a slow read-only status.
     if(closed)return;
     if(completedScope&&workflow&&binding&&!disposed&&!suspended&&connected&&!serverError){
-      workflowTimer=setTimeout(()=>{void refresh().catch(error=>{closePlan(error);}).finally(()=>watchWorkflow());},15000);return;}
+      // A choice made after completion (acceptance) is delivered by the normal wait loop.
+      workflowTimer=setTimeout(()=>{void refresh().then(value=>{if(value?.user_choice_pending)completedScope=null;})
+        .catch(error=>{closePlan(error);}).finally(()=>watchWorkflow());},15000);return;}
     if(!workflow||!binding||completedScope||disposed||suspended||contextBlocked||!connected||serverError||loop)return;
     workflowTimer=setTimeout(async()=>{
       if(busy||stopping){watchWorkflow();return;}
@@ -31,7 +33,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         if(epoch!==generation||disposed||suspended||binding!==current)return;
         if(finishCompleted(value,current,generation))return;
         binding={...current,permission_generation:value.permission_generation};expiresAt=value.expires_at;ui.snapshot(value);
-        if(value.startup?.delivery_mode==='model-pull'&&(!value.startup.complete||!value.permission?.active)){
+        if(value.startup?.delivery_mode==='model-pull'&&(!value.startup.complete||!value.permission?.active)&&!value.user_choice_pending){
           status(value.startup.complete?'Стартовый контекст подтверждён. Можно ставить задачу.':'Агент получает контекст в текущем ходе через MCP.','waiting');
           return; // Display only: no SDK wakeup or long poll for model-pull.
         }
@@ -109,7 +111,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   function finishCompleted(value,current=binding,generation=epoch){
     if(!workflow||disposed||suspended||binding!==current||epoch!==generation
       ||value?.run_id!==current?.run_id||value?.participant_id!==current?.participant_id
-      ||value?.permission?.phase!=='complete'||!value.permission.scope_id)return false;
+      ||value?.permission?.phase!=='complete'||!value.permission.scope_id||value.user_choice_pending)return false;
     completedScope=value.permission.scope_id;expiresAt=0;ui.snapshot({...value,expires_at:0});
     localStop('Выполнение завершено. Ожидание сообщений остановлено; ожидается ваша приёмка.');return true;
   }

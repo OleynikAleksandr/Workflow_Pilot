@@ -1155,6 +1155,9 @@ function registerIpc() {
   registerAction('pilot:plan-review', input => planReview.setEnabled(input));
   // One plan button: no input toggles it; {running} sets it (tests and the remote API).
   registerAction('pilot:plan-execution', input => workflow.setPlanExecution(typeof input?.running === 'boolean' ? input.running : undefined));
+  // The same choice card in the window: the session, card and generation shown there.
+  registerAction('pilot:choose', input => workflow.userChoices.choose({session_id:input?.sessionId,choice_id:input?.choiceId,
+    option_id:input?.optionId,generation:input?.generation,source:'window'}));
   registerAction('pilot:assign-orchestrator', async sessionId => {
     const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
     if(typeof sessionId!=='string'||!sessionId||!workspace)throw new Error('Выберите сессию проекта.');
@@ -1311,6 +1314,7 @@ function registerIpc() {
     catch (error) { if (selected && current && navigationCurrent(generation)) await selectWorkspace(current.workspace, { resume: true }); throw error; }
     // An archived planning owner frees planning for the other sessions of the project.
     await planningOwners.forget(input.workspace, input.sessionId).catch(report);
+    workflow.userChoices.forget(input.sessionId);
     if (!navigationCurrent(generation)) return;
     startupError = null;
     if (selected) { const fallback = store.selected(); if (fallback) await selectWorkspace(fallback.workspace); }
@@ -1619,6 +1623,7 @@ async function start() {
       append:async()=>{throw error;},
     }));
     plugin=control.createPlugin({onChange:()=>publish(),communicationStore,workProgress:workProgressFor,
+      userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
       observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;

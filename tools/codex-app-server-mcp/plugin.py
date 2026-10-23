@@ -310,6 +310,13 @@ def register_plugin(mcp, state_root: Path):
         """App-only consume-once delivery claim. A lost claim result is never retried or returned to pending. Requires current permission and fresh matching host metadata."""
         return await communication("claim", ctx, binding=binding, message_id=message_id)
 
+    @mcp.tool(name="workflow_communication_choose", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
+    async def choose(binding: Binding, choice_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Choice card identifier shown in this panel.")],
+                     option_id: Annotated[str, Field(pattern=r"^[a-z][a-z-]{0,31}$", description="Option the user pressed, or reopen for a postponed card.")],
+                     generation: Annotated[int, Field(ge=1, description="Card generation shown in this panel; a stale card is refused.")], ctx: Context) -> CallToolResult:
+        """App-only: the user pressed an option of the Workflow Pilot choice card. Never call from a model turn. A stale or repeated press is refused and never acts twice."""
+        return await communication("choose", ctx, binding=binding, choice_id=choice_id, option_id=option_id, generation=generation)
+
     @mcp.tool(name="workflow_communication_claim_ready", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def claim_ready(binding: Binding, message_id: MessageId, ctx: Context) -> CallToolResult:
         """App-only atomic consume-once claim and final identity/permission/admission check, with durable one-shot send intent. Call SDK immediately after a valid response. Lost/unknown response must never be retried. Legacy claim and verify remain available."""

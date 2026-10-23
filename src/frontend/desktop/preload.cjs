@@ -3,6 +3,7 @@ contextBridge.exposeInMainWorld('webPilot', Object.freeze({
   togglePlanExecution: () => ipcRenderer.invoke('pilot:plan-execution'),
   setPlanExecution: running => ipcRenderer.invoke('pilot:plan-execution', { running: running === true }),
   assignOrchestrator: sessionId => ipcRenderer.invoke('pilot:assign-orchestrator', sessionId),
+  chooseOption: input => ipcRenderer.invoke('pilot:choose', input),
   setPlanReview: input => ipcRenderer.invoke('pilot:plan-review', input),
   acknowledgeCommand: input => ipcRenderer.invoke('pilot:acknowledge-command', input),
   startup: action => ipcRenderer.invoke('pilot:startup', action),

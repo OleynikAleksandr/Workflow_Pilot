@@ -5,7 +5,7 @@ const hash=value=>createHash('sha256').update(value).digest('hex');
 const fail=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 const check=(value,code,message)=>{if(!value)throw fail(code,message);};
 const LEASE_MS=60000;
-const kinds=new Set(['assignment-start','continue','question','decision','result','integration','finalization','diagnostic','ready','recovery']);
+const kinds=new Set(['assignment-start','continue','question','decision','result','integration','finalization','diagnostic','ready','recovery','user-choice']);
 // Only a receipt proves a stage. A persisted message (delivery:pending) is not
 // delivered: the agent must not report it as handed over to the recipient.
 const stageNotes={saved:'Сохранено в очереди; SDK ещё не доставил получателю. Не сообщай, что сообщение передано.',
@@ -92,9 +92,11 @@ export class WorkflowChannel {
     return ['O','E'].includes(member.role)&&run.grant?.active===true&&run.grant.boot===this.c.backendId&&!member.stopped
       &&(member.role==='O'||member.target.scope_id===run.grant.scope_id);
   }
-  transportPermitted(run,member){return this.permitted(run,member)||this.c.startup.active(run,member);}
+  // The user's choice is delivered without the plan permission: no plan, paused or complete.
+  choicePending(run,member){return run.messages.some(m=>m.kind==='user-choice'&&m.recipient_id===member.id&&!m.reply_observed&&!m.superseded);}
+  transportPermitted(run,member){return this.permitted(run,member)||this.c.startup.active(run,member)||this.choicePending(run,member);}
   first(run,member){return run.messages.find(m=>m.recipient_id===member.id&&!m.superseded&&!m.startup_complete
-    &&(m.kind==='startup-context'||m.scope_id===run.grant?.scope_id)&&!m.reply_observed);}
+    &&(m.kind==='startup-context'||m.kind==='user-choice'||m.scope_id===run.grant?.scope_id)&&!m.reply_observed);}
   attach(run,member) {
     if(run.grant){member.generation=run.grant.generation;member.stopped=!run.grant.active;}
     for(const message of run.messages)if(message.recipient_session_id===member.target.local_session_id&&!message.recipient_id)
@@ -122,19 +124,20 @@ export class WorkflowChannel {
     }
     return {...c._status(input),stop_applied:true};
   }
-  async enqueue(target,{key,kind,text,source=null,block_id=null,signal_id=null,subject=null,attempt=null}) {
-    return this.c.mutate('enqueue',{run_id:workflowRunId(target),target,key,kind,text,source,block_id,signal_id,subject,attempt});
+  async enqueue(target,{key,kind,text,source=null,block_id=null,signal_id=null,subject=null,attempt=null,role=null}) {
+    return this.c.mutate('enqueue',{run_id:workflowRunId(target),target,key,kind,text,source,block_id,signal_id,subject,attempt,role});
   }
   async _enqueue(input) {
     const c=this.c,run=c.run(input),target=input.target;
-    check(run.mode==='workflow'&&target.scope_id===run.grant?.scope_id,'ASSIGNMENT_CHANGED','Назначение относится к другому плану.');
+    const choice=input.kind==='user-choice';
+    check(run.mode==='workflow'&&(choice||target.scope_id===run.grant?.scope_id),'ASSIGNMENT_CHANGED','Назначение относится к другому плану.');
     check(typeof input.key==='string'&&input.key.length>0&&input.key.length<=240&&kinds.has(input.kind),'INPUT','Неверный конверт рабочего сообщения.');
     check(typeof input.text==='string'&&input.text.trim()&&Buffer.byteLength(input.text)<=1048576,'CONTEXT','Контекст пуст или превышает допустимый размер; он не обрезан.');
     const fingerprint=hash(JSON.stringify([target.local_session_id,target.assignment_id,input.kind,input.text,input.block_id,input.signal_id,
       ...(target.dialogue_version===1?[input.subject,input.attempt]:[])]));
     const existing=run.messages.find(m=>m.idempotency_key===input.key);
     if(existing){check(existing.fingerprint===fingerprint,'CONFLICT','Ключ события уже использован для другого поручения.');return this.receipt(existing);}
-    check(run.grant.active,'STOPPED','Выполнение плана приостановлено.');
+    check(choice||run.grant?.active,'STOPPED','Выполнение плана приостановлено.');
     check(run.messages.length<2048,'LIMIT','Достигнут лимит сообщений плана.');
     const ref=c.store?await c.store.putContent(input.text):hash(input.text);
     if(!c.store)this.contents.set(ref,input.text);
@@ -146,7 +149,7 @@ export class WorkflowChannel {
       assignment_id:target.assignment_id??input.subject?.assignment_id??input.source?.assignment_id??null,task_id:target.task_id??input.subject?.task_id??input.source?.task_id??null,
       ...(target.dialogue_version===1?{dialogue_version:1,attempt:input.attempt,service:!input.source,
         ...(input.signal_id?{blocking:input.kind==='question',resume:input.kind==='decision'}:{})}:{}),
-      kind:input.kind,block_id:input.block_id,signal_id:input.signal_id,context_ref:ref,
+      kind:input.kind,block_id:input.block_id,signal_id:input.signal_id,context_ref:ref,...(choice&&input.role?{recipient_role:input.role}:{}),
       body:input.kind+(target.task_id?' · '+target.task_id:''),idempotency_key:input.key,fingerprint,
       delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
     run.messages.push(message);c.event(run,'message.persisted',{message_id:message.message_id,participant_id:recipient?.id??null,
@@ -183,7 +186,7 @@ export class WorkflowChannel {
     const first=this.first(run,member);
     if(first?.message_id!==message.message_id)return 'previous-message';
     const physical=this.physicalBlock(member.target);if(physical)return physical;
-    if(!(message.kind==='startup-context'?this.c.startup.active(run,member):this.permitted(run,member)))return 'admission-denied';
+    if(!(message.kind==='startup-context'?this.c.startup.active(run,member):message.kind==='user-choice'||this.permitted(run,member)))return 'admission-denied';
     const admitted=await this.admission(member.target,message);
     if(admitted!==true&&admitted?.allowed!==true)return admitted?.reason==='commands-active'?'commands-active':'admission-denied';
     return this.physicalBlock(member.target);

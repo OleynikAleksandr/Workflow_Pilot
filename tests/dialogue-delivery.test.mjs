@@ -153,3 +153,16 @@ test('a child commit lock defers inconsistent proof; persistent missing proof re
   assert.equal(result.assignments[0].status,'UNKNOWN');
   assert.equal(result.assignments[0].error.code,'PLAN_COMMIT_MISMATCH');
 });
+test('a user choice is admitted without plan permission but keeps the physical checks',async()=>{
+  const workspace=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'choice-admit-')));
+  try{
+    let canSend=true;
+    const delivery=new DialogueDelivery({store:{project:()=>({workspace,sessionId:'d'})},route:()=>null,state:()=>({state:'not-started'})});
+    delivery.project=()=>({workspace,sessionId:'d'});delivery.observe=()=>({canSend});
+    const target={local_session_id:'d',role:'S',scope_id:null};
+    assert.deepEqual(await delivery.admit(target,{kind:'user-choice'}),{allowed:true});
+    assert.equal((await delivery.admit(target,{kind:'continue'})).allowed,false,'ordinary work still needs the running plan');
+    canSend=false;
+    assert.equal((await delivery.admit(target,{kind:'user-choice'})).allowed,false,'a busy or drafted chat waits');
+  }finally{await fs.rm(workspace,{recursive:true,force:true});}
+});

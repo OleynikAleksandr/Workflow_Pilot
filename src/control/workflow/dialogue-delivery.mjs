@@ -61,6 +61,11 @@ export class DialogueDelivery {
         ||!this.observe(target).canSend||!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
       return (await readCommandActivity(project.workspace)).commandActive?{allowed:false,reason:'commands-active'}:{allowed:true};
     }
+    // The user's own choice is admitted without the plan permission; physical checks stay.
+    if(message?.kind==='user-choice'){
+      if(!project||!this.observe(target).canSend)return {allowed:false,reason:'admission-denied'};
+      return (await readCommandActivity(project.workspace)).commandActive?{allowed:false,reason:'commands-active'}:{allowed:true};
+    }
     if(!this.uses(project)||!(this.owned(project)?['running']:['running','pausing']).includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)
       ||!this.observe(target).canSend)return {allowed:false,reason:'admission-denied'};
     return (await readCommandActivity(project.workspace)).commandActive
@@ -107,7 +112,7 @@ export class DialogueDelivery {
     const source=meta.sourceSessionId?await plugin.participantTarget(meta.sourceSessionId):null;
     const receipt=await plugin.communication.workflow.enqueue(target,{key:meta.key??kind+':'+hash(JSON.stringify([target.scope_id,target.local_session_id,text])),
       kind:meta.kind??kind,text,source,block_id:meta.block_id??null,signal_id:meta.signal_id??null,
-      subject:meta.subject??null,attempt:meta.attempt??null});
+      subject:meta.subject??null,attempt:meta.attempt??null,role:meta.role??null});
     return {state:'queued',message_id:receipt.message_id};
   }
   async start(project){
