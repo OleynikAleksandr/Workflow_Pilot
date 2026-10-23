@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 959,
+  "plan_revision": 961,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "review-publication-orchestrator",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "План, опубликованный через Review, всегда можно начать; отказ Kit при назначении не вешает паузу; в проекте один оркестратор с момента первой задачи до закрытия плана; выпуск 0.5.29 для трёх ОС опубликован.",
   "acceptance_criteria": [
     "Review-публикация с неполной конфигурацией отказывает до записи; опубликованный план начинается.",
@@ -386,8 +386,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "review-publication-orchestrator",
         "task_id": "PUBLISH",
@@ -412,7 +412,8 @@
         "GitHub Release v0.5.29 опубликован с тегом на sourceCommit, семью assets и сверенными digest и размерами; scope не архивируется автоматически."
       ],
       "expected_commit_message": "release: Опубликовать выпуск 0.5.29 на GitHub",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -434,10 +435,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: review-publication-orchestrator
 Current Task: нет
-Revision: 959
+Revision: 961
 
 ## Цель
 
@@ -485,8 +486,8 @@ Revision: 959
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск 0.5.29 на GitHub — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать выпуск 0.5.29 на GitHub
+- [DONE] PUBLISH: Опубликовать выпуск 0.5.29 на GitHub — Завершено
+  - Git Commit: [DONE] release: Опубликовать выпуск 0.5.29 на GitHub
   - Reference: review-publication-orchestrator / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
