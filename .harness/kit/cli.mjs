@@ -20,6 +20,7 @@ import { updateTask } from './lib/task-update.mjs';
 import { extendPlan } from './lib/extend-plan.mjs';
 import { commandHelp } from './lib/command-help.mjs';
 import { createSimplePlan } from './lib/simple-workflow.mjs';
+import { requestExecutionMode, chooseExecutionMode } from './lib/execution-mode.mjs';
 import { reviewStatus, prepareReview, respondReview, resolveReview, publishReview, cancelReview, acknowledgeReview } from './lib/plan-review.mjs';
 import { commitTask } from './lib/transaction.mjs';
 import { preCommit, commitMessage, postCommit, prePush } from './lib/git-hooks.mjs';
@@ -112,6 +113,8 @@ export async function main(argv = process.argv.slice(2)) {
       case 'plan:carryover': result = carryoverPlan(root,input(),opts['expected-revision']); break;
       case 'project:rename': result = renameProject(root, opts.name, opts['expected-revision']); break;
       case 'plan:create': result = createSimplePlan(root,input()); break;
+      case 'plan:mode-request': result = requestExecutionMode(root,{session_id:opts.session,recommended:opts.recommended,reason:opts.reason}); break;
+      case 'plan:mode-choose': result = chooseExecutionMode(root,{session_id:opts.session,strategy:opts.strategy,generation:opts.generation,approval_note:opts['approval-note']}); break;
       case 'scope:create': result = createScope(root, input(), opts['expected-revision']); break;
       case 'task:update': result = updateTask(root,opts.task,input(),opts['expected-revision']); break;
       case 'task:start': result = startTask(root, rest[0], opts['expected-revision']); break;

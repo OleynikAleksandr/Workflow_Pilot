@@ -3,6 +3,7 @@ import { assertSimpleReview } from './plan-review.mjs';
 import path from 'node:path';
 import {check,contextPath} from './common.mjs';
 import {createScope,applyConfig,buildScopePlan} from './actions.mjs';
+import {assertExecutionMode} from './execution-mode.mjs';
 import {readPlan,EXECUTION_POLICY_FIELDS,taskContextPack} from './plan.mjs';
 import {readConfig,validateConfig,taskChecks} from './validate.mjs';
 
@@ -46,7 +47,8 @@ export function createSimplePlan(root,input) {
   const policy=Object.fromEntries([...EXECUTION_POLICY_FIELDS,'execution_origin_session_id','release','dialogue_version'].filter(key=>Object.hasOwn(input,key)).map(key=>[key,input[key]]));
   const scope={...policy,scope_id:input.id,objective:input.objective,approval_note:input.approval??'Пользователь поручил выполнить описанную задачу и план.',acceptance_criteria:input.acceptance??[input.objective],approved_scope:{functional_paths:[...new Set(tasks.flatMap(t=>t.functional_paths))],documentation_paths:[...new Set(tasks.flatMap(t=>t.documentation_paths))]},context_pack:{documents:[{path:input.spec,required:true}],include_last_completed_task:false,dependency_task_ids:[]},tasks};
   // Reject invalid execution metadata before changing project configuration.
-  buildScopePlan(root,scope,readPlan(root),config);
+  const candidate=buildScopePlan(root,scope,readPlan(root),config);
+  assertExecutionMode(root,candidate);
   if(input.stack||input.checks)applyConfig(root,config);
   return createScope(root,scope);
 }

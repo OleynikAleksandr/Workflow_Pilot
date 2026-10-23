@@ -15,6 +15,7 @@ import { locked, commitCandidate, completedTransaction, finishTransaction } from
 import { recover, recoverState } from './recovery.mjs';
 import { assertSingleWriter } from './session-plans.mjs';
 import { assertPlanningOwner, clearPlanningOwner } from './planning-owner.mjs';
+import { assertExecutionMode, clearExecutionMode } from './execution-mode.mjs';
 import { hooksDirectory } from './installation-files.mjs';
 
 const noTransaction = root => check(!journal(root), 'TRANSACTION_PENDING', 'Сначала завершите текущую транзакцию commit/repair.');
@@ -109,10 +110,14 @@ export function createScope(root, input, expectedRevision) {
     const plan = buildScopePlan(root, input, previous);
     // Manual review delivery never exempts the published orchestrator from the planning owner.
     if (plan.execution_strategy === 'orchestrated') assertPlanningOwner(root, plan.execution_origin_session_id, 'execution_origin_session_id');
+    const mode = assertExecutionMode(root, plan);
+    if (mode) assertPlanningOwner(root, plan.execution_origin_session_id, 'execution_origin_session_id');
     const review = assertReviewPublication(root, plan);
     // A reviewed plan must start like one from plan:create: every task passes the configured checks.
     if (review) for (const task of plan.tasks) taskChecks(task, config);
     plan.user_decisions = [...(input.user_decisions ?? []), { id: id(), text: input.approval_note, recorded_at: new Date().toISOString() }];
+    if (mode) plan.user_decisions.push({ id: id(), text: 'Режим выполнения выбран пользователем: ' + mode.choice.strategy + '. ' + mode.choice.approval_note,
+      recorded_at: mode.choice.chosen_at });
     if(review?.user_decision?.action==='publish')plan.user_decisions.push({id:id(),
       text:'Публикация Review по явному решению пользователя (не означает снятия спора): '+review.user_decision.note,
       recorded_at:new Date().toISOString()});
@@ -334,7 +339,7 @@ export function archive(root, scope, approvalNote) {
     const empty = emptyPlan(plan.project_name); empty.project_id = plan.project_id; empty.plan_revision = plan.plan_revision + 1;
     empty.archived_scope_id = scope; empty.user_decisions = [{ id: id(), text: approvalNote, recorded_at: new Date().toISOString() }];
     const result = service(root, empty, 'archive', [PLAN], 'docs: закрыть scope ' + scope);
-    clearPlanningOwner(root);
+    clearPlanningOwner(root); clearExecutionMode(root);
     return result;
   });
 }

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { reviewSummary } from './review-state.mjs';
 import { planningOwnerSummary } from './planning-owner.mjs';
+import { executionModeSummary } from './execution-mode.mjs';
 import path from 'node:path';
 import { VERSION, planPath, CONFIG, check, contextPath, textFile, atomic, json, hash, id, errorResult } from './common.mjs';
 import { validate, documentByteLimit, resolveReferences } from './validate.mjs';
@@ -14,7 +15,7 @@ import { inspectionInputs } from './inspection-inputs.mjs';
 
 export const TRANSPORT_HARD_BYTES = 180000;
 export const TRANSPORT_MAX_PARTS = 7;
-export const RECOVERY_ROLES = Object.freeze(['orchestrator','discussion','executor']);
+export const RECOVERY_ROLES = Object.freeze(['orchestrator','planning','self','discussion','executor']);
 // Workflow Pilot assigns the role of a session; the model never chooses it.
 const LEGACY_REFERENCE_DOCUMENTS = new Set(['docs/MODULES.md', 'docs/DOCUMENTATION_INDEX.md']);
 function withoutKitSection(text,file) {
@@ -231,7 +232,7 @@ export function recoverState(root, reason = 'manual', options = {}) {
     const dialogueExecutor=!!plan.assignment&&(plan.assignment.dialogue_version===1||plan.dialogue_version===1);
     check(!dialogueExecutor||!options.role||options.role==='executor','RECOVERY_ROLE','Назначение получает только собственные инструкции исполнителя.');
     const role = dialogueExecutor?'executor':options.role ?? null;
-    check(role === null || RECOVERY_ROLES.includes(role), 'RECOVERY_ROLE', 'Роль recovery: orchestrator, discussion или executor.');
+    check(role === null || RECOVERY_ROLES.includes(role), 'RECOVERY_ROLE', 'Роль recovery: orchestrator, planning, self, discussion или executor.');
     check(role !== 'executor' || plan.assignment, 'RECOVERY_ROLE', 'Роль executor доступна только в worktree назначения.');
     const executor = role === 'executor';
     const task = transaction?.task ?? nextTask(plan);
@@ -285,6 +286,8 @@ export function recoverState(root, reason = 'manual', options = {}) {
     if(!executor) add('plan-review',reviewSummary(root));
     const owner=executor?null:planningOwnerSummary(root);
     if(owner) add('planning-owner',owner);
+    const mode=executor?null:executionModeSummary(root);
+    if(mode) add('execution-mode',mode);
     if(!dialogueExecutor)add('objective','ЦЕЛЬ\n'+(plan.objective||PROJECT_CONTINUATION_OBJECTIVE)+'\nКритерии:\n'+plan.acceptance_criteria.map(item=>'- '+item).join('\n'));
     if(hasExecutionPolicy(plan)&&!executor)add('execution-policy','ВЫПОЛНЕНИЕ\n'+JSON.stringify(Object.fromEntries(['parallel_allowed','max_workers','execution_strategy','execution_reason',...(isOrchestratedPlan(plan)?['release','execution_origin_session_id']:[])].map(key=>[key,plan[key]])))+'\nРодительское DONE требует проверенной интеграции; коммит исполнителя не закрывает общий план.');
     if(!executor) add('user-decisions','РЕШЕНИЯ ПОЛЬЗОВАТЕЛЯ\n'+plan.user_decisions.map(item=>'- '+item.text).join('\n'));
