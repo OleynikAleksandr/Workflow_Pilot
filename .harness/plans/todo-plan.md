@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 979,
+  "plan_revision": 981,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "user-choice-plan-modes",
@@ -565,8 +565,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "user-choice-plan-modes",
         "task_id": "INSTALL",
@@ -591,7 +591,8 @@
       ],
       "expected_commit_message": "release: Установить выпуск 0.5.30",
       "verification_kind": "installed",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -645,7 +646,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: user-choice-plan-modes
 Current Task: нет
-Revision: 979
+Revision: 981
 
 ## Цель
 
@@ -699,8 +700,8 @@ Revision: 979
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить выпуск 0.5.30 — Ожидает
-  - Git Commit: [PENDING] release: Установить выпуск 0.5.30
+- [DONE] INSTALL: Установить выпуск 0.5.30 — Завершено
+  - Git Commit: [DONE] release: Установить выпуск 0.5.30
   - Reference: user-choice-plan-modes / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
