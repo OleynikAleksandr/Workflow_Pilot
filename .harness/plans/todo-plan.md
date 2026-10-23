@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 931,
+  "plan_revision": 934,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -82,7 +82,8 @@
       "tests/fixtures/released-kit/kit-1.9.5.tar.gz",
       "src/control/workflow/plan-review.mjs",
       "tests/plan-review.test.mjs",
-      "packages/workflow-kit/src/lib/plan-review.mjs"
+      "packages/workflow-kit/src/lib/plan-review.mjs",
+      "src/control/workflow/coordination.mjs"
     ],
     "documentation_paths": [
       "docs/planning/work-progress-ui.md",
@@ -1070,7 +1071,8 @@
         "src/backend/desktop-model.mjs",
         "src/frontend/desktop/ui/sidebar.mjs",
         "tests/plan-review.test.mjs",
-        "tests/sidebar.test.mjs"
+        "tests/sidebar.test.mjs",
+        "src/control/workflow/coordination.mjs"
       ],
       "documentation_paths": [
         "docs/modules/desktop.md"
@@ -1078,7 +1080,8 @@
       "verification_ids": [
         "plan-review-ui",
         "unit-all",
-        "architecture"
+        "architecture",
+        "electron-smoke"
       ],
       "verification_kind": "code",
       "acceptance_criteria": [
@@ -1086,14 +1089,21 @@
         "Backend не обходит запрет: отказ Kit возвращается действию как ошибка без изменения состояния."
       ],
       "expected_commit_message": "fix: Кнопка Review неактивна после публикации плана",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "FIX-REVIEW-UI-0527",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/plan-review.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "id": "VERSION-0528",
@@ -1269,7 +1279,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 931
+Revision: 934
 
 ## Цель
 
@@ -1415,10 +1425,10 @@ Revision: 931
   - Файлы: packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/fixtures/released-kit/kit-1.9.5.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, packages/workflow-kit/src/lib/plan-review.mjs, docs/modules/desktop.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] FIX-REVIEW-UI-0527: Кнопка Review неактивна после публикации плана и во время ревью — Ожидает
-  - Git Commit: [PENDING] fix: Кнопка Review неактивна после публикации плана
+- [DONE] FIX-REVIEW-UI-0527: Кнопка Review неактивна после публикации плана и во время ревью — Завершено
+  - Git Commit: [DONE] fix: Кнопка Review неактивна после публикации плана
   - Reference: work-progress-ui / FIX-REVIEW-UI-0527 / implementation
-  - Файлы: src/control/workflow/plan-review.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/plan-review.test.mjs, tests/sidebar.test.mjs, docs/modules/desktop.md
+  - Файлы: src/control/workflow/plan-review.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/plan-review.test.mjs, tests/sidebar.test.mjs, src/control/workflow/coordination.mjs, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] VERSION-0528: Поднять версию 0.5.28 — Ожидает

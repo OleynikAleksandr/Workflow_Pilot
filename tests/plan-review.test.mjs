@@ -163,6 +163,30 @@ test('Review policy belongs to checkout, survives selection changes and rejects 
   client.setEnabled({workspace:'/project-a',enabled:false});assert.equal(client.view().message,'');
 });
 
+test('Review switch is frozen while a plan is published or a review runs; a Kit refusal resyncs the view',()=>{
+  let published=false,state={enabled:false,stage:'IDLE'};
+  const write=(_root,enabled)=>{
+    if(published)throw Object.assign(new Error('План уже опубликован.'),{code:'REVIEW_LOCKED'});
+    state={...state,enabled};
+  };
+  const client=new PlanReviewClient({selected:()=>({workspace:'/fixture'}),supports:()=>true,read:()=>state,write,
+    published:workspace=>published&&workspace==='/fixture'});
+  client.observeSelection();assert.equal(client.view().lock,null);
+  published=true;assert.match(client.view().lock,/текущий план уже опубликован/);
+  state={enabled:true,stage:'IDLE'};
+  assert.throws(()=>client.setEnabled({workspace:'/fixture',enabled:false}),{code:'REVIEW_LOCKED'});
+  assert.equal(client.view().enabled,true,'refusal re-reads the real Kit state');
+  published=false;state={enabled:true,stage:'RUNNING',runner_pid:process.pid,started_at:new Date().toISOString()};
+  client.refresh();assert.match(client.view().lock,/Идёт ревью/);
+  state={enabled:true,stage:'PUBLISHING'};client.refresh();assert.match(client.view().lock,/Идёт ревью/);
+  for(const stage of ['PREPARED','AUTHOR_PENDING','AGREED','NEEDS_USER','STALE','CANCELLED','PUBLISHED']){
+    state={enabled:true,stage};client.refresh();assert.equal(client.view().lock,null,stage);
+  }
+  client.dispose();
+  const old=new PlanReviewClient({selected:()=>({workspace:'/fixture'}),supports:()=>false,published:()=>true});
+  old.observeSelection();assert.equal(old.view().lock,null,'an unavailable Review shows its error, not a lock');
+});
+
 test('old Kit and unreadable state are visible errors, not silently disabled review',()=>{
   const selected=()=>({workspace:'/fixture'});
   const old=new PlanReviewClient({selected,supports:()=>false});old.observeSelection();

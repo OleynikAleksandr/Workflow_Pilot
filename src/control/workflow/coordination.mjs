@@ -128,7 +128,9 @@ function configurePrimary(record) {
     inspectPlan:selected=>readPlanContinuationState(selected,workspaceSetup.environment),onChange:()=>publish(),
     log:(event,fields)=>record.diagnostics?.log.record('plan-continuation',event,fields)});
 }
-const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>publish()});
+// A published plan (ACTIVE/BLOCKED) freezes the Review switch until the plan is closed.
+const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>publish(),
+  published:workspace=>['ACTIVE','BLOCKED'].includes(store.project(workspace)?.scopeStatus)});
 const reviewContinuation=new ReviewContinuation({selected:()=>store.selected(),client:planReview,
   send:sendAutomation,onChange:()=>publish(),
   available,

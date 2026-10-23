@@ -471,7 +471,10 @@ function render(state) {
   const review=state.planReview??{enabled:false,supported:false,message:''};
   $('plan-review-toggle').textContent=review.enabled?'Выключить Review':'Включить Review';
   $('plan-review-toggle').setAttribute('aria-pressed',String(review.enabled));
-  $('plan-review-toggle').disabled=actionPending || !review.supported || !!review.error;
+  $('plan-review-toggle').disabled=actionPending || !review.supported || !!review.error || !!review.lock;
+  // The lock reason replaces the default hint while the switch is frozen.
+  $('plan-review-toggle').dataset.hint??=$('plan-review-toggle').title;
+  $('plan-review-toggle').title=review.lock||$('plan-review-toggle').dataset.hint;
   $('plan-review-message').hidden=!review.message;
   $('plan-review-text').textContent=review.message;
   const reviewIndicator=review.indicator??'none';
@@ -612,6 +615,7 @@ function render(state) {
     if (button.closest('#startup-panel') || button.id==='open-startup') continue;
     button.disabled = actionPending
       || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue))
+      || (button.id==='plan-review-toggle' && (!review.supported || !!review.error || !!review.lock))
       || (state.storageError && ['create-workspace', 'add-workspace', 'retry-context'].includes(button.id));
   }
   const recovery = state.conversationRecovery;

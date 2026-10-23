@@ -456,6 +456,14 @@ test('problem block names the cause and one action; the acceptance hint and Revi
   $('plan-attention-action').click();await f.settle();
   assert.deepEqual(f.calls.at(-1),['selectSession','/demo-T003','e3']);
   assert.equal($('plan-review-toggle').getAttribute('aria-pressed'),'true');
+  const hint=$('plan-review-toggle').title;assert.match(hint,/Ревью нового плана/);
+  assert.equal($('plan-review-toggle').disabled,false);
+  const lock='Review применяется к новому плану; текущий план уже опубликован. Переключение доступно после закрытия плана.';
+  f.emit({...f.state,planReview:{enabled:true,supported:true,message:'',lock}});
+  assert.equal($('plan-review-toggle').disabled,true,'a published plan freezes Review');
+  assert.equal($('plan-review-toggle').title,lock);
+  f.emit({...f.state,planReview:{enabled:false,supported:true,message:'',lock:null}});
+  assert.equal($('plan-review-toggle').disabled,false);assert.equal($('plan-review-toggle').title,hint,'the default hint returns');
   f.emit({...f.state,workProgress:{...work,phase:'Ждёт приёмки',attention:null,tasks:[]},planRun:{state:'complete',complete:true}});
   assert.equal($('plan-attention').hidden,true);
   assert.equal($('plan-note').hidden,false);assert.match($('plan-note').textContent,/Принимаю результат, закрой план/);

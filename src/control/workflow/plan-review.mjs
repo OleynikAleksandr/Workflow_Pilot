@@ -6,13 +6,16 @@ const messages={IDLE:'',PREPARED:'Документы готовы к ревью.
   AUTHOR_PENDING:'Основной агент рассматривает замечания.',AGREED:'Документы согласованы.',
   NEEDS_USER:'Нужно решение пользователя.',STALE:'Документы изменились; требуется обновить ревью.',
   CANCELLED:'Ревью отменено.',PUBLISHING:'Публикуется согласованный план.',PUBLISHED:'Согласованный план опубликован.'};
+// Why the switch is frozen. Kit enforces the same rules; the view only explains them.
+const LOCK_PUBLISHED='Review применяется к новому плану; текущий план уже опубликован. Переключение доступно после закрытия плана.';
+const LOCK_BUSY='Идёт ревью; переключение доступно после его завершения.';
 
 // Data comes from the checkout. Never import or execute a module from that checkout in the app.
 export class PlanReviewClient {
-  constructor({selected,onChange=()=>{},read=reviewStatus,write=setReviewEnabled,
+  constructor({selected,onChange=()=>{},read=reviewStatus,write=setReviewEnabled,published=()=>false,
     schedule=setTimeout,cancel=clearTimeout,now=Date.now,
     supports=workspace=>fs.existsSync(safePath(workspace,'.harness/kit/lib/plan-review.mjs'))}) {
-    Object.assign(this,{selected,onChange,read,write,supports,schedule,cancel,now});
+    Object.assign(this,{selected,onChange,read,write,published,supports,schedule,cancel,now});
     this.workspace=null;this.state=null;this.error=null;this.supported=false;this.signature='';
     this.timer=null;this.activityError=null;this.disposed=false;
   }
@@ -51,7 +54,8 @@ export class PlanReviewClient {
       throw Object.assign(new Error('Выбранный проект изменился. Повторите переключение Review.'),{code:'REVIEW_SELECTION_CHANGED'});
     this.observeSelection();
     if(!this.supported || this.error)throw Object.assign(new Error(this.error??'Review недоступен.'),{code:'REVIEW_UNAVAILABLE'});
-    this.write(workspace,enabled);this.refresh();
+    // A refused switch (published plan, running review) still resyncs the view with Kit.
+    try{this.write(workspace,enabled);}finally{this.refresh();}
     return this.view();
   }
   view() {
@@ -59,7 +63,9 @@ export class PlanReviewClient {
     const attention=this.error || s?.cleanup_error || this.activityError || (enabled && (s?.error || ['NEEDS_USER','STALE'].includes(s?.stage)));
     const indicator=attention?'attention':!enabled?'none':['RUNNING','PUBLISHING'].includes(s?.stage)?'working'
       :['AGREED','PUBLISHED'].includes(s?.stage)?'success':['PREPARED','AUTHOR_PENDING'].includes(s?.stage)?'waiting':'none';
-    return {enabled,supported:this.supported,error:this.error,stage:s?.stage??'IDLE',round:s?.round??0,indicator,
+    const lock=!this.supported||this.error?null:this.published(this.workspace)?LOCK_PUBLISHED
+      :['RUNNING','PUBLISHING'].includes(s?.stage)?LOCK_BUSY:null;
+    return {enabled,supported:this.supported,error:this.error,stage:s?.stage??'IDLE',round:s?.round??0,indicator,lock,
       message:this.error || s?.cleanup_error || this.activityError || (enabled?[s?.round?`Раунд ${s.round}.`:'',messages[s?.stage]??'',s?.error?.message??''].filter(Boolean).join(' '):'')};
   }
   dispose(){this.disposed=true;this.cancel(this.timer);this.timer=null;}
