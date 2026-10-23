@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 981,
+  "plan_revision": 983,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "user-choice-plan-modes",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Пользователь делает важные выборы одной кнопкой в карточке панели и окна; план сессии Workflow Pilot выполняется в выбранном пользователем режиме (сам или оркестрация); новые сессии нейтральны до запроса режима; выпуск 0.5.30 для трёх ОС опубликован.",
   "acceptance_criteria": [
     "Карточка выбора появляется по событиям Е1–Е5, решение доходит до агента внутренним каналом, своё сообщение пользователя снимает карточку.",
@@ -595,8 +595,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "user-choice-plan-modes",
         "task_id": "PUBLISH",
@@ -621,7 +621,8 @@
       ],
       "expected_commit_message": "release: Опубликовать выпуск 0.5.30 на GitHub",
       "verification_kind": "package",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -643,10 +644,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: user-choice-plan-modes
 Current Task: нет
-Revision: 981
+Revision: 983
 
 ## Цель
 
@@ -706,8 +707,8 @@ Revision: 981
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск 0.5.30 на GitHub — Ожидает
-  - Git Commit: [PENDING] release: Опубликовать выпуск 0.5.30 на GitHub
+- [DONE] PUBLISH: Опубликовать выпуск 0.5.30 на GitHub — Завершено
+  - Git Commit: [DONE] release: Опубликовать выпуск 0.5.30 на GitHub
   - Reference: user-choice-plan-modes / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
