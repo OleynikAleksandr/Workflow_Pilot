@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 909,
+  "plan_revision": 911,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -728,14 +728,15 @@
         "Штатный installer проверил версию, manifest, подпись и откат; приложение и служба агентом не закрываются и не запускаются."
       ],
       "expected_commit_message": "release: Установить выпуск 0.5.26",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "INSTALL-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-2",
@@ -790,7 +791,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 909
+Revision: 911
 
 ## Цель
 
@@ -882,8 +883,8 @@ Revision: 909
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-2
-- [TODO] INSTALL-2: Установить выпуск 0.5.26 — Ожидает
-  - Git Commit: [PENDING] release: Установить выпуск 0.5.26
+- [DONE] INSTALL-2: Установить выпуск 0.5.26 — Завершено
+  - Git Commit: [DONE] release: Установить выпуск 0.5.26
   - Reference: work-progress-ui / INSTALL-2 / implementation
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
