@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 921,
+  "plan_revision": 923,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -928,14 +928,17 @@
         "После DOCS собраны macOS arm64, Windows x64 и Linux x64 из одного sourceCommit; перед production-сборкой удалены только Python-кэши tools/codex-app-server-mcp."
       ],
       "expected_commit_message": "release: Собрать выпуск 0.5.27 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "RELEASE-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-3",
@@ -1020,7 +1023,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 921
+Revision: 923
 
 ## Цель
 
@@ -1142,8 +1145,8 @@ Revision: 921
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/desktop.md, README.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIX-UI-0526, VERSION-0527
-- [TODO] RELEASE-3: Собрать выпуск 0.5.27 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.5.27 для трёх ОС
+- [DONE] RELEASE-3: Собрать выпуск 0.5.27 для трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.5.27 для трёх ОС
   - Reference: work-progress-ui / RELEASE-3 / implementation
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
