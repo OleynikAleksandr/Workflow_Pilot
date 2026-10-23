@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 938,
+  "plan_revision": 940,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -1224,14 +1224,17 @@
         "После DOCS собраны macOS arm64, Windows x64 и Linux x64 из одного sourceCommit; перед production-сборкой удалены только Python-кэши tools/codex-app-server-mcp."
       ],
       "expected_commit_message": "release: Собрать выпуск 0.5.28 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "RELEASE-4",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-4",
@@ -1316,7 +1319,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 938
+Revision: 940
 
 ## Цель
 
@@ -1480,8 +1483,8 @@ Revision: 938
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/desktop.md, tests/fixtures/released-kit/README.md, README.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/modules/workflow-execution.md, packages/workflow-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: KIT-REVIEW-0527, FIX-REVIEW-UI-0527, VERSION-0528
-- [TODO] RELEASE-4: Собрать выпуск 0.5.28 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.5.28 для трёх ОС
+- [DONE] RELEASE-4: Собрать выпуск 0.5.28 для трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.5.28 для трёх ОС
   - Reference: work-progress-ui / RELEASE-4 / implementation
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
