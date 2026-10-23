@@ -132,6 +132,20 @@ test('partial startup receipts survive reconnect and restart; UNKNOWN is never s
   assert.equal(last.runs.get(input.run_id).events.filter(e=>e.event_type==='send.intent').length,1);
 });
 
+test('a confirmed startup stays confirmed after the plan closes and the participant detaches',async t=>{
+  const f=await fixture(t),{c,input}=f;
+  await c.claimReady(input);const m=await c.readMessage(input);await readAll(c,input);
+  f.setValid(false);
+  assert.equal(c.startup.progress('o','request-1'),null,'an unconfirmed packet of a detached session is not reported');
+  f.setValid(true);
+  assert.equal((await c.startupComplete({...input,context_sha256:m.context_ref})).complete,true);
+  f.setValid(false);
+  assert.equal(c.startup.progress('o','request-1').complete,true);
+  c.dispose();await c.tail;const next=await f.create();
+  assert.equal(next.startup.progress('o','request-1').complete,true);
+  assert.equal(next.startup.progress('o','other-request'),null);
+});
+
 test('immutable packets reject replacement after intent and stale or removed recipients cannot read or ack',async t=>{
   const f=await fixture(t),{c,input}=f;
   await assert.rejects(c.startup.stage(target,{request_id:'request-1',text:'different'}),{code:'PLUGIN_COMMUNICATION_CONFLICT'});

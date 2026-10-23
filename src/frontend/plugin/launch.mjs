@@ -1,6 +1,7 @@
 import {mountPanel} from './panel.mjs';
 import {COMMUNICATION_PROTOCOL as PROTOCOL,COMMUNICATION_BUILD as BUILD,communicationVersionMessage} from '../../contracts/backend.mjs';
 const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|ASSIGNMENT_CHANGED|VERSION|STOPPED|STORE_|CLOSED|LIMIT)/.test(code??'');
+const detached=code=>/^PLUGIN_COMMUNICATION_(ASSIGNMENT_CHANGED|PROJECT_REMOVED)$/.test(code??'');
 // Hosts may reject JSON-RPC or return a tool error. Preserve structured codes;
 // never infer permission or completion from an arbitrary human message.
 function toolError(value){
@@ -15,12 +16,13 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   let clientSequence=0,telemetry=[],flushing=null,flushTimer=null,dropped=0,exported='',exportRun='',serverError=null;
   let refreshing=null,refreshTimer=null;const sampledAt=new Map();
   let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false,workflow=false,recoveryFailures=0,retryTimer=null;
-  let workflowTimer=null,completedScope=null,resourceUri='ещё не получен';
+  let workflowTimer=null,completedScope=null,closed=false,resourceUri='ещё не получен';
   function watchWorkflow(){
     clearTimeout(workflowTimer);
     // A finished plan keeps its progress view current with a slow read-only status.
+    if(closed)return;
     if(completedScope&&workflow&&binding&&!disposed&&!suspended&&connected&&!serverError){
-      workflowTimer=setTimeout(()=>{void refresh().catch(()=>{}).finally(()=>watchWorkflow());},15000);return;}
+      workflowTimer=setTimeout(()=>{void refresh().catch(error=>{closePlan(error);}).finally(()=>watchWorkflow());},15000);return;}
     if(!workflow||!binding||completedScope||disposed||suspended||contextBlocked||!connected||serverError||loop)return;
     workflowTimer=setTimeout(async()=>{
       if(busy||stopping){watchWorkflow();return;}
@@ -37,7 +39,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
           enabled=true;const token=++epoch;status(value.startup&&!value.startup.complete?'Ожидаем стартовый контекст через панель…':'План выполняется. Ожидаем рабочее сообщение…','waiting');
           loop=listen(token).finally(()=>{loop=null;ready();watchWorkflow();});
         }
-      }catch(error){status(error.message,'error');if(terminal(error.code)&&error.code!=='PLUGIN_COMMUNICATION_STOPPED')serverError=error.message;}
+      }catch(error){if(closePlan(error))return;status(error.message,'error');if(terminal(error.code)&&error.code!=='PLUGIN_COMMUNICATION_STOPPED')serverError=error.message;}
       finally{ready();if(!loop)watchWorkflow();}
     },2000);
   }
@@ -47,13 +49,13 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const reason=disposed?'Панель завершена. Откройте её заново.':suspended?'Панель приостановлена до возвращения.':
       !connected?'SDK не подключён. Переоткройте панель, если подключение не завершится.':serverError?serverError:
       contextBlocked?'Контекст изменился. Нажмите «Восстановить данные».':busy?'Восстанавливаем данные или выполняем действие…':
-      stopping?'Ждём подтверждения остановки.':completedScope?'Выполнение завершено. Рабочее ожидание остановлено; ожидается ваша приёмка.':!binding?'Привязка не подтверждена. Восстановите данные или выберите запуск.':
+      stopping?'Ждём подтверждения остановки.':closed?'План закрыт. Активных действий нет.':completedScope?'Выполнение завершено. Рабочее ожидание остановлено; ожидается ваша приёмка.':!binding?'Привязка не подтверждена. Восстановите данные или выберите запуск.':
       !getMessage()?'Хост не предоставил openai/message. Отправка недоступна.':enabled?'Связь включена.':loop?'Завершаем прежнее ожидание…':workflow?'Панель подключена. Ожидаем разрешение выполнения плана.':'Можно включить связь на 30 минут.';
     $('bind').disabled=unavailable||busy||enabled||!!binding||contextBlocked;
     $('recover').disabled=unavailable||busy||stopping||enabled;
     $('runs').disabled=unavailable||busy||enabled||!!binding;
-    $('enable').disabled=unavailable||contextBlocked||busy||stopping||!!loop||enabled||!binding||!getMessage()||!!serverError||!!completedScope;
-    $('stop').disabled=disposed||!binding||stopping||!!completedScope;
+    $('enable').disabled=unavailable||contextBlocked||busy||stopping||!!loop||enabled||!binding||!getMessage()||!!serverError||!!completedScope||closed;
+    $('stop').disabled=disposed||!binding||stopping||!!completedScope||closed;
     $('refresh').disabled=disposed||busy||enabled||!binding;
     $('export').disabled=disposed||busy||!binding;
     $('run').disabled=$('participant').disabled=!!binding||busy;
@@ -110,6 +112,11 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       ||value?.permission?.phase!=='complete'||!value.permission.scope_id)return false;
     completedScope=value.permission.scope_id;expiresAt=0;ui.snapshot({...value,expires_at:0});
     localStop('Выполнение завершено. Ожидание сообщений остановлено; ожидается ваша приёмка.');return true;
+  }
+  // Closing a finished plan detaches its participants: the panel shows the final state instead of an error.
+  function closePlan(error){
+    if(!workflow||closed||disposed||!detached(error?.code)||!ui.closed())return false;
+    closed=true;localStop('План закрыт. Ожидание сообщений остановлено.');return true;
   }
   function stop(text='Остановлено локально; ждём подтверждения службы.',finalText=null,finalState='unknown',scope='panel'){
     if(stopPromise)return stopPromise;
@@ -188,6 +195,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
           if(state?.stopped){localStop(state.startup?.complete&&!state.permission?.active?'Стартовый контекст подтверждён. Можно ставить задачу.':'Связь плана приостановлена. Ожидаем «Продолжить».');return;}
         }catch{/* Network recovery below never repeats Send. */}
         if(!current())return;
+        if(closePlan(error))return;
         if(error.code==='PLUGIN_COMMUNICATION_STOPPED'){localStop('Разрешение связи отозвано. Проверяем состояние плана.');return;}
         if(terminal(error.code)){localStop(error.message,'error');return;}
         record('wait.error',{error_code:'NETWORK_ERROR'});status('Связь со службой потеряна. Повторяем только ожидание…','error');failures++;
@@ -232,7 +240,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     recovery=(async()=>{
       await stopPromise;await loop;
       if(disposed||suspended||epoch!==generation)return;
-      if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;completedScope=null;expiresAt=0;seq=0;ui.unbound();
+      if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;completedScope=null;closed=false;expiresAt=0;seq=0;ui.unbound();
       const result=await call('recover');
       if(disposed||suspended||epoch!==generation)return;
       if(result.build_id!==BUILD||result.protocol_version!==PROTOCOL)throw Object.assign(Error(communicationVersionMessage({build_id:BUILD,protocol_version:PROTOCOL},result)),{code:'PLUGIN_COMMUNICATION_VERSION'});

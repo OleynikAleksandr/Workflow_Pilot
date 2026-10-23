@@ -343,11 +343,14 @@ function workProgressView(workspace,fresh=null) {
   const now=[],history=[];let attention=null;
   const warn=(title,text,action=null)=>{attention??={title,text,action};};
   // Startup of orchestrator and discussion chats is shown here, not under the session card.
+  const starting=new Set();
   for(const session of sessions){
     const actor=session.role==='orchestrator'?'O':'S';
-    if(session.attempt?.contextTransport!=='panel'||session.attempt.state!=='sent')continue;
+    // A chat of a closed plan finished its work; its startup is history, not a problem.
+    if(session.closedPlanCommit||session.attempt?.contextTransport!=='panel'||session.attempt.state!=='sent')continue;
     const progress=workflow.startupProgress(session.sessionId,session.attempt.requestId);
     if(progress?.complete)continue;
+    starting.add(session.sessionId);
     if(progress===null||progress?.error||['rejected','unknown'].includes(progress?.delivery)){
       warn('Сессия не получила стартовый контекст','Создайте новую сессию через меню проекта.',{kind:'project-menu',workspace});
       now.push({actor,text:'не получил стартовый контекст',kind:'warn',elapsedMs:0});continue;
@@ -356,6 +359,17 @@ function workProgressView(workspace,fresh=null) {
     const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'startup']),{phase:'startup',label:'',reason:''}).elapsedMs;
     // A start left unread for long is an abandoned chat, not a running action.
     if(elapsedMs<=WORK_SILENCE_MS)now.push({actor,text,kind:'act',elapsedMs});
+  }
+  const startingNow=now.some(i=>i.kind==='act');
+  // Answers of the orchestrator before a plan and of discussion chats come from their page state.
+  for(const session of sessions){
+    if(session.closedPlanCommit||starting.has(session.sessionId)||!['orchestrator','discussion'].includes(session.role))continue;
+    const orchestrator=session.role==='orchestrator';
+    if(orchestrator&&(scope||session.orchestratorScopeId))continue;
+    const busy=liveRecord({workspace,sessionId:session.sessionId})?.pageState.current?.state.busy;
+    if(typeof busy!=='boolean'||(!busy&&!orchestrator))continue;
+    const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'answer']),{phase:busy?'answer':'idle',label:'',reason:''}).elapsedMs;
+    now.push({actor:orchestrator?'O':'S',text:busy?'работает над ответом':'ждёт вашего сообщения',kind:busy?'act':'wait',elapsedMs});
   }
   const executors=scope?executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope):[];
   const assignments=view.scopeId===scope?view.assignments??[]:[];
@@ -374,7 +388,19 @@ function workProgressView(workspace,fresh=null) {
       elapsedMs:status==='current'||status==='attention'?kit?.elapsedMs??task.stageTime?.elapsedMs??null:null};
   }):[];
   // Current actions: the orchestrator or plan activity, then every running executor.
-  if(run?.activity&&!['ready'].includes(run.activity.phase)){
+  // Deferred cleanup waits for a receipt of its executor; it is a wait with a reason, not a running action.
+  const cleanups=run?.activity?.phase==='cleanup'?assignments.filter(a=>a.cleanup?.status==='PENDING'):[];
+  for(const assignment of cleanups){
+    const taskId=assignment.parent_task_id,own=executors.find(e=>e.taskId===taskId);
+    const reason={'terminal-receipt-pending':'очистка ждёт конца хода исполнителя','executor-command-active':'очистка ждёт завершения команды исполнителя'}[assignment.cleanup.reason]
+      ??'очистка ждёт подтверждения';
+    const elapsedMs=observeActivity(JSON.stringify([project.projectId,assignment.id,'cleanup']),{phase:'cleanup',label:reason,reason:''}).elapsedMs;
+    const stuck=elapsedMs>WORK_SILENCE_MS;
+    now.push({actor:taskId??'KIT',text:reason,kind:stuck?'warn':'wait',elapsedMs});
+    if(stuck)warn('Очистка '+(taskId??'назначения')+' не завершена','Откройте чат исполнителя: подтверждение конца его хода завершит очистку.',
+      own?.workspace&&own.sessionId?{kind:'open-session',workspace:own.workspace,sessionId:own.sessionId,label:'Открыть чат '+taskId}:null);
+  }
+  if(run?.activity&&!['ready'].includes(run.activity.phase)&&!cleanups.length){
     const activity=run.activity,actor=activity.actor==='Workflow Kit'?'KIT':'O';
     now.push({actor,text:activity.label,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs});
   }
@@ -404,7 +430,7 @@ function workProgressView(workspace,fresh=null) {
   }
   const done=tasks.filter(t=>t.status==='done').length,allDone=tasks.length>0&&done===tasks.length;
   const started=tasks.some(t=>t.status!=='pending');
-  const [phase,busy]=planPhase({scope,acting:now.some(i=>i.kind==='act'),attention:!!attention,allDone,started,
+  const [phase,busy]=planPhase({scope,starting:startingNow,acting:now.some(i=>i.kind==='act'),attention:!!attention,allDone,started,
     complete:!!scope&&(run.complete||project.planView?.state==='awaiting-acceptance'),
     paused:orchestrated&&['paused','pausing'].includes(run?.state),notStarted:run?.state==='not-started',
     preparing:orchestrated&&view.phase==='preparing',running:run?.state==='running'});

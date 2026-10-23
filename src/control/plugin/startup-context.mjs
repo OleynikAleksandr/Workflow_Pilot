@@ -48,10 +48,13 @@ export class StartupContext {
   view(m){return m?{message_id:m.message_id,request_id:m.request_id,delivery:m.delivery,read:m.read,
     delivery_mode:m.delivery_mode??'sdk-notification',complete:!!m.startup_complete,superseded:!!m.superseded,parts_read:m.parts_read.length,total_parts:m.total_parts}:null;}
   progress(sessionId,requestId){
-    const target=this.c.enrollment.resolveTarget?.(sessionId);if(!target||this.c.removedSessions.has(sessionId))return null;
-    const run=this.c.runs.get(workflowRunId(target));
-    const m=run?.messages.findLast(m=>m.kind==='startup-context'&&m.recipient_session_id===sessionId&&m.request_id===requestId);
-    return this.view(m);
+    if(this.c.removedSessions.has(sessionId))return null;
+    const match=m=>m.kind==='startup-context'&&m.recipient_session_id===sessionId&&m.request_id===requestId;
+    const target=this.c.enrollment.resolveTarget?.(sessionId);
+    if(target)return this.view(this.c.runs.get(workflowRunId(target))?.messages.findLast(match));
+    // A closed plan detaches the participant, but a confirmed startup stays confirmed.
+    for(const run of this.c.runs.values()){const m=run.messages.findLast(match);if(m?.startup_complete)return this.view(m);}
+    return null;
   }
   async own(input){
     const {run,member}=this.c.member(input),m=run.messages.find(m=>m.message_id===input.message_id);

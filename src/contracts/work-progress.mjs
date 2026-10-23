@@ -63,13 +63,13 @@ export function messageEvent(message,{titles={}}={}) {
 }
 
 // The plan stage shown at the top of the sidebar card and the panel header: [label, busy].
-export function planPhase({scope=null,acting=false,complete=false,attention=false,paused=false,allDone=false,started=false,
+export function planPhase({scope=null,starting=false,acting=false,complete=false,attention=false,paused=false,allDone=false,started=false,
   notStarted=false,preparing=false,running=false}={}) {
-  if(!scope)return acting?['Подготовка',true]:['Обсуждение плана',false];
+  if(!scope)return starting?['Подготовка',true]:['Обсуждение плана',!!acting];
   if(complete)return ['Ждёт приёмки',false];
   if(attention)return ['Нужно внимание',false];
   if(paused)return ['Пауза',false];
-  if(allDone)return ['Завершение',true];
+  if(allDone)return ['Завершение',!!acting];
   if(notStarted&&!started)return ['План готов',false];
   if(preparing)return ['Запуск',true];
   return ['Выполнение',running||acting];

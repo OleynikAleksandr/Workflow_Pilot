@@ -56,7 +56,8 @@ test('projection orders problems, actions and waits; history is newest first and
 
 test('plan stage follows the prototype order of states',()=>{
   assert.deepEqual(planPhase(),['Обсуждение плана',false]);
-  assert.deepEqual(planPhase({acting:true}),['Подготовка',true]);
+  assert.deepEqual(planPhase({starting:true,acting:true}),['Подготовка',true]);
+  assert.deepEqual(planPhase({acting:true}),['Обсуждение плана',true],'the orchestrator answers before a plan exists');
   const scope='scope';
   assert.deepEqual(planPhase({scope,notStarted:true}),['План готов',false]);
   assert.deepEqual(planPhase({scope,notStarted:true,started:true}),['Выполнение',false],'an outside agent already works on the plan');
@@ -64,6 +65,7 @@ test('plan stage follows the prototype order of states',()=>{
   assert.deepEqual(planPhase({scope,running:true}),['Выполнение',true]);
   assert.deepEqual(planPhase({scope,running:true,attention:true}),['Нужно внимание',false]);
   assert.deepEqual(planPhase({scope,paused:true}),['Пауза',false]);
-  assert.deepEqual(planPhase({scope,allDone:true}),['Завершение',true]);
+  assert.deepEqual(planPhase({scope,allDone:true,acting:true}),['Завершение',true]);
+  assert.deepEqual(planPhase({scope,allDone:true}),['Завершение',false],'a deferred cleanup waits without a spinner');
   assert.deepEqual(planPhase({scope,allDone:true,complete:true,attention:true}),['Ждёт приёмки',false]);
 });

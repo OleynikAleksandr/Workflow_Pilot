@@ -32,8 +32,9 @@ const W='Выполняет поручение оркестратора',D='Ин
 // The prototype scenario: [step, plan facts, task stages, current actions, messages so far].
 const kit=commitProgress({version:1,task_id:'T001',check_id:'unit-all',index:2,total:3,check_started_at_ms:Date.now()-60000,run_started_at_ms:Date.now()-90000});
 const steps=[
-  ['Старт сессии',{scope:null,acting:true},{},[['O','читает стартовый контекст · часть 2 из 3','act']],0],
-  ['Обсуждение',{scope:null},{},[['O','Ожидаем ответ пользователя','wait']],0],
+  ['Старт сессии',{scope:null,starting:true},{},[['O','читает стартовый контекст · часть 2 из 3','act']],0],
+  ['Оркестратор готовит план',{scope:null},{},[['O','работает над ответом','act']],0],
+  ['Обсуждение',{scope:null},{},[['O','ждёт вашего сообщения','wait']],0],
   ['План готов',{scope:'s',notStarted:true},{},[],0],
   ['Запуск',{scope:'s',preparing:true},{T001:['current','Загружается контекст'],T002:['current','Подготовка службы и контекста']},
     [['KIT','Подготовка исполнителей','act'],['T001','Загружается контекст','act'],['T002','Подготовка службы и контекста','act']],0],
@@ -48,6 +49,7 @@ const steps=[
     [['T003','нет новых событий 12 мин · Активность сейчас не наблюдается','warn'],['O','Ожидаем результаты и события','wait']],8],
   ['Документация',{scope:'s',running:true},{T001:['done',D],T002:['done',D],T003:['done',D],DOCS:['current',W]},[['DOCS',W,'act']],10],
   ['Завершение',{scope:'s',running:true,allDone:true},{T001:['done',D],T002:['done',D],T003:['done',D],DOCS:['done',D]},[['KIT','План завершается','act']],12],
+  ['Очистка ждёт',{scope:'s',running:true,allDone:true},{T001:['done',D],T002:['done',D],T003:['done',D],DOCS:['done',D]},[['T003','очистка ждёт конца хода исполнителя','wait']],12],
   ['Готово',{scope:'s',complete:true,allDone:true},{T001:['done',D],T002:['done',D],T003:['done',D],DOCS:['done',D]},[['O','Выполнение завершено — ожидается ваша приёмка','wait']],13],
 ];
 const messages=[
@@ -66,7 +68,7 @@ const messages=[
 ];
 
 function projection([,facts,stages,now,seen]){
-  const [phase,busy]=planPhase(facts);
+  const [phase,busy]=planPhase({...facts,acting:now.some(item=>item[2]==='act')});
   const tasks=facts.scope?Object.keys(titles).map(id=>({id,title:titles[id],mode:mode[id],status:stages[id]?.[0]??'pending',
     label:stages[id]?.[1]??'Не начата',elapsedMs:['current','attention'].includes(stages[id]?.[0])?45000:null,target:null})):[];
   const history=messages.slice(0,seen).map(message=>messageEvent(message,{titles})).filter(Boolean);
@@ -86,7 +88,7 @@ test('the prototype scenario: sidebar and panel show the same projection at ever
     const value=projection(step),name=step[0];
     sidebar.emit(value,{planRun:{state:step[1].complete?'complete':step[1].notStarted?'not-started':'running',complete:!!step[1].complete}});
     panel.progress({...value,self:'O'});
-    phases.push(value.phase);
+    phases.push(value.phase+(value.busy?'*':''));
     // One stage, one progress, one list of tasks in both places.
     assert.equal($('plan-phase-text').textContent,value.phase,name);
     assert.ok(p('progress-phase').textContent.startsWith(value.phase),name);
@@ -106,8 +108,9 @@ test('the prototype scenario: sidebar and panel show the same projection at ever
     assert.equal($('plan-attention').hidden,!value.attention,name);
     assert.ok($('plan-foot').contains($('plan-review-toggle')),name);
   }
-  assert.deepEqual(phases,['Подготовка','Обсуждение плана','План готов','Запуск','Выполнение','Выполнение','Выполнение','Выполнение',
-    'Нужно внимание','Выполнение','Завершение','Ждёт приёмки']);
+  // A spinner (*) only while someone acts: an answering orchestrator spins, a deferred cleanup waits.
+  assert.deepEqual(phases,['Подготовка*','Обсуждение плана*','Обсуждение плана','План готов','Запуск*','Выполнение*','Выполнение*','Выполнение*','Выполнение*',
+    'Нужно внимание','Выполнение*','Завершение*','Завершение','Ждёт приёмки']);
   // History: plain words, no service mechanics, newest first.
   const last=projection(steps.at(-1));
   assert.equal(last.history.length,12,'the ready message is mechanics, not an event');

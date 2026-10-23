@@ -434,6 +434,32 @@ for(const shape of ['structured','rpc','stripped'])test('working panel settles c
   assert.deepEqual(ui.errors,[]);
 });
 
+test('closing a finished plan detaches the waiting panel into a final state without a spinner',async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;
+  const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
+  let current=o;comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=()=>current;
+  comm.workflow.observe=()=>({canSend:true,stopped:true,busy:false,commandsIdle:true});comm.waitMs=30;
+  // The plan is done; its deferred cleanup is still shown as a wait.
+  comm.workProgress=()=>({version:1,title:'План',phase:'Завершение',busy:false,done:2,total:2,self:'O',tasks:[],history:[],attention:null,
+    now:[{actor:'T002',name:'T002',text:'очистка ждёт конца хода исполнителя',kind:'wait',elapsedMs:1000}]});
+  const invitation=await comm.reserve(o);await bridge(t,f);const c=await client(t,f);
+  await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata});
+  const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?20:ms});
+  await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
+  await comm.workflow.grant(o);
+  await eventually(()=>ui.calls.includes('workflow_communication_wait'));
+  await eventually(()=>ui.dom.window.document.getElementById('progress-now').textContent.includes('очистка ждёт'));
+  // Archiving the plan detaches the orchestrator: the next read reports a changed assignment.
+  current=null;comm.workflow.grant(o,'paused').catch(()=>{});
+  await eventually(()=>ui.dom.window.document.getElementById('progress-phase').textContent.startsWith('План закрыт'));
+  const now=ui.dom.window.document.getElementById('progress-now');
+  assert.match(now.textContent,/План закрыт, активных действий нет/);assert.equal(now.querySelector('.wp-spin'),null);
+  assert.match(ui.$('status').textContent,/План закрыт/);
+  const count=()=>ui.calls.filter(n=>['workflow_communication_wait','workflow_communication_sync','workflow_communication_status'].includes(n)).length;
+  const settled=count();await delay(150);assert.equal(count(),settled,'a closed plan stops polling');
+  assert.deepEqual(ui.errors,[]);
+});
+
 test('fresh app-only metadata gates delivery, unsupported SDK cannot enable',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const args={run_id:'changed-host',role:'O'};

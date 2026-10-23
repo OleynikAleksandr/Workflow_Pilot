@@ -33,10 +33,11 @@ export function mountPanel({document}) {
   const palette=document.createElement('style');palette.id='wp-palette';
   palette.textContent=paletteCss({mode:'host',aliases:false})+spinnerCss;document.head.append(palette);
   const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
-  const view=document.defaultView;let progressTicker=null;
+  const view=document.defaultView;let progressTicker=null,lastProgress=null;
   // Work progress of the whole plan: header, every current action with its time, the history and executor timers.
   function renderProgress(value){
     if(!value)return;
+    lastProgress=value;
     const node=id=>nodes.get(id),make=(tag,className)=>{const element=document.createElement(tag);if(className)element.className=className;return element;};
     node('progress-title').textContent=value.title||'Workflow Pilot';
     node('progress-phase').textContent=[value.phase,value.total?'в main '+value.done+' из '+value.total:null].filter(Boolean).join(' · ');
@@ -51,7 +52,7 @@ export function mountPanel({document}) {
       row.append(icon,progressText(document,item.name,item.text),time);return row;
     });
     if(!rows.length){const row=make('div','wp-row wait'),mark=make('span','wp-mark'),what=make('span','wp-what');
-      mark.textContent='·';what.textContent='Сейчас ничего не выполняется';row.append(mark,what,make('span'));rows.push(row);}
+      mark.textContent='·';what.textContent=value.closed?'План закрыт, активных действий нет':'Сейчас ничего не выполняется';row.append(mark,what,make('span'));rows.push(row);}
     node('progress-now').replaceChildren(...rows);
     const history=value.history??[];
     node('progress-history-count').textContent=eventCount(history.length);
@@ -85,7 +86,12 @@ export function mountPanel({document}) {
     text('event-count',`${events.length} событий в ленте${trimmed?' · показаны последние 200':''}. Полный журнал — в экспорте.`);
   }
   for(const id of ['filter-message','filter-participant','filter-errors'])$(id).addEventListener('input',renderEvents);
-  return {$,progress:renderProgress,status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
+  // A finished plan whose participant was detached by the closure ends without a spinner.
+  function renderClosed(){
+    if(!lastProgress?.total||lastProgress.done!==lastProgress.total)return false;
+    renderProgress({...lastProgress,phase:'План закрыт',now:[],closed:true});return true;
+  }
+  return {$,progress:renderProgress,closed:renderClosed,status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
     mode(value){workflow=value==='workflow';
       for(const id of ['legacy-fields','bind','enable'])$(id).hidden=workflow;
       if(workflow){$('run-selection').hidden=true;
