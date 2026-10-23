@@ -1,8 +1,8 @@
 # Оркестрованное выполнение плана
 
-Новые планы Workflow Pilot 0.5.29 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
+Оркестрованные планы Workflow Pilot 0.5.30 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
 
-С 0.5.29 оркестратор определяется до публикации: им становится кандидат, которому пользователь первым дал задачу (владелец планирования в Kit, [ход работ](desktop.md#ход-работ)). Публикация orchestrated-плана сверяет `execution_origin_session_id` с владельцем; другие сессии проекта — обсуждение до архива плана.
+С 0.5.30 режим плана выбирает пользователь в [карточке выбора](user-choice.md): оркестрация или выполнение самой сессией (sequential). Владелец планирования — сессия, запросившая режим (`plan:mode-request`, Kit 1.9.8); оркестратором она становится только по выбору оркестрации. С Kit 1.9.7 — прежний захват по первой задаче пользователя. Публикация orchestrated-плана сверяет `execution_origin_session_id` с владельцем; другие сессии проекта — обсуждение до архива плана.
 
 ## Роли и принадлежность
 

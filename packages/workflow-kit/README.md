@@ -1,8 +1,8 @@
 # Workflow Kit
 
-Пакет `@webpilot/workflow-kit` версии **1.9.7** внутри репозитория Workflow Pilot. Даёт один текущий план на Git checkout/worktree, проверяемые коммиты задач, подчинённые назначения parallel-плана и полный recovery. Пакет приватный, в npm не публикуется.
+Пакет `@webpilot/workflow-kit` версии **1.9.8** внутри репозитория Workflow Pilot. Даёт один текущий план на Git checkout/worktree, проверяемые коммиты задач, подчинённые назначения parallel-плана и полный recovery. Пакет приватный, в npm не публикуется.
 
-В текущем проекте исходник — **1.9.7**; установленный `.harness/kit` обновляется до него штатным installer в задаче установки выпуска 0.5.29. Изменение исходника и коммит плана не заменяют установленную копию автоматически.
+В текущем проекте исходник — **1.9.8**; установленный `.harness/kit` обновляет до него приложение Workflow Pilot штатным обновлением Kit проекта (коммит `chore: обновить Project Workflow Kit`), не installer выпуска. Изменение исходника и коммит плана не заменяют установленную копию автоматически.
 
 ## Требования
 Node.js 22+ и Git; приложение Workflow Pilot использует Node 24.21.0. На Windows установщик кладёт Node в `.harness/runtime` проекта; Git — MinGit приложения или системный.
@@ -46,7 +46,7 @@ node packages/workflow-kit/src/install.mjs --project /absolute/project/path --up
 ## Review нового плана
 Опциональное согласование spec + to-do plan через Claude CLI перед ACTIVE. По умолчанию OFF, обычным потребителям Claude не нужен. При ON: `review:prepare --help` → `review:run` → `review:respond --input <позиция.json>` → `review:publish`. Позиция обязательна на каждый успешный отзыв, включая approved. Неизменённое согласие не требует лишнего раунда; изменение пары требует нового ревью. Решения для исполнителя сохраняются в spec/критериях до окончательного согласования.
 
-С 1.9.7 публикация через Review проверяет задачи как `plan:create`, `config:apply` со стеком ставит DEVELOPMENT, владелец планирования (`planning-owner.json`) отсекает чужую публикацию кодом `PLANNING_OWNED`. С 1.9.6 действует положение переключателя в момент публикации: `REVIEW_REQUIRED` при ON означает пройти ревью, а не просить выключить его. `setReviewEnabled` отказывает `REVIEW_BUSY` во время `RUNNING`/`PUBLISHING` и `REVIEW_LOCKED`, пока план опубликован (execution_scope_status не NONE); выключение на незавершённом ревью переводит его в `CANCELLED`.
+С 1.9.8 режим плана сессии Workflow Pilot выбирает пользователь: агент вызывает `plan:mode-request --session ID --recommended sequential|orchestrated --reason "…"` (это же занимает владельца планирования), приложение записывает нажатие через `plan:mode-choose`; `plan:create`, `scope:create` и `review:prepare` при записи режима или с `execution_origin_session_id` требуют выбор этой сессии и совпадение стратегии (`EXECUTION_MODE_REQUIRED`/`EXECUTION_MODE_MISMATCH`) до любой записи; передача, освобождение владельца и `archive` удаляют запись. Ролевой протокол 8: роли planning и self, правило развилок. С 1.9.7 публикация через Review проверяет задачи как `plan:create`, `config:apply` со стеком ставит DEVELOPMENT, владелец планирования (`planning-owner.json`) отсекает чужую публикацию кодом `PLANNING_OWNED`. С 1.9.6 действует положение переключателя в момент публикации: `REVIEW_REQUIRED` при ON означает пройти ревью, а не просить выключить его. `setReviewEnabled` отказывает `REVIEW_BUSY` во время `RUNNING`/`PUBLISHING` и `REVIEW_LOCKED`, пока план опубликован (execution_scope_status не NONE); выключение на незавершённом ревью переводит его в `CANCELLED`.
 
 Для доставки продолжения Workflow Pilot передаёт явный `recipient_session_id` из стартового сообщения (либо совпадающий `scope.session_id`); вне приложения нужен `recipient_mode: manual`. План по-прежнему один на checkout. Смена адресата — только с `recipient_change_note` по поручению пользователя.
 

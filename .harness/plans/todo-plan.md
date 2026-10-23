@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 972,
+  "plan_revision": 977,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "user-choice-plan-modes",
@@ -113,7 +113,14 @@
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
       "packages/workflow-kit/docs/modules/orchestrated-plans.md",
       "tests/fixtures/released-kit/README.md",
-      "packages/workflow-kit/src/templates/PLAN.md"
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "docs/modules/assignment-dialogue-reliability.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/automatic-agent-dialogue-acceptance.md",
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/modules/dialogue-timing.md",
+      "docs/modules/plugin-communication-handoff.md",
+      "docs/modules/user-choice.md"
     ]
   },
   "baseline_commit": "10979d5d9c2868e608ea9e061161e4ee01d90449",
@@ -121,12 +128,12 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/user-choice-and-plan-modes.md",
+        "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "WORKTREE"
       },
       {
-        "path": "docs/architecture/OVERVIEW.md",
+        "path": "docs/modules/user-choice.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -455,8 +462,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "user-choice-plan-modes",
         "task_id": "DOCS",
@@ -484,7 +491,14 @@
         "packages/workflow-kit/docs/modules/workflow-kit-package.md",
         "packages/workflow-kit/docs/modules/orchestrated-plans.md",
         "tests/fixtures/released-kit/README.md",
-        "packages/workflow-kit/src/templates/PLAN.md"
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/user-choice.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -494,7 +508,30 @@
         "Документы описывают фактическое поведение 0.5.30 и Kit 1.9.8, каждый не более 28000 байт UTF-8; отработанная спецификация удалена после переноса."
       ],
       "expected_commit_message": "docs: Актуализация всех документов проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/desktop.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/user-choice-and-plan-modes.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "tests/fixtures/released-kit/README.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -605,7 +642,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: user-choice-plan-modes
 Current Task: нет
-Revision: 972
+Revision: 977
 
 ## Цель
 
@@ -647,10 +684,10 @@ Revision: 972
   - Файлы: src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/frontend/plugin/launch.mjs, src/contracts/palette.mjs, src/contracts/user-choice.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/progress.mjs, src/frontend/desktop/ui/index.html, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin-ui.html, package.json, package-lock.json, src/contracts/backend.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/chatgpt-plugin.test.mjs, tests/user-choice-view.test.mjs, src/contracts/work-progress.mjs, tests/work-progress.test.mjs, src/control/workflow/user-choices.mjs, tests/parallel-execution-ui.test.mjs, tests/user-choices.test.mjs, tests/work-progress-scenario.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002, T003
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: Актуализация всех документов проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: Актуализация всех документов проекта
   - Reference: user-choice-plan-modes / DOCS / implementation
-  - Файлы: docs/planning/user-choice-and-plan-modes.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: docs/planning/user-choice-and-plan-modes.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/dialogue-timing.md, docs/modules/plugin-communication-handoff.md, docs/modules/user-choice.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004
 - [TODO] RELEASE: Собрать выпуск 0.5.30 для трёх ОС — Ожидает
@@ -674,7 +711,7 @@ Revision: 972
 
 ## Context Pack For This Cycle
 
-- docs/planning/user-choice-and-plan-modes.md
 - docs/architecture/OVERVIEW.md
+- docs/modules/user-choice.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.

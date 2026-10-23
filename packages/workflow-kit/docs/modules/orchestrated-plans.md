@@ -17,7 +17,7 @@ Workflow Kit 1.9.3 поддерживает `execution_strategy: "orchestrated"`
 
 ## Версия рабочего диалога
 
-Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 7. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
+Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 8. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
 
 Kit хранит grant/attempt/result/acceptance и идемпотентные operation_id через assignment:dialogue. task:start требует grant текущей попытки и plan permission; integration требует acceptance точного result_id/source_commit. Revision создаёт новую попытку до интеграции, сохраняет старые proof и отзывает acceptance. После INTEGRATED нужна новая задача. [Полный контракт](../../../../docs/modules/assignment-dialogue.md).
 
@@ -67,4 +67,12 @@ Prepare с dispatch_when_ready=true хранит явную авторизаци
 
 `check-parallel-plan-fixture` — схема, DOCS, хвост, роли коммитов, context_pack во всех формах. `check-orchestrated-execution-fixture` — настоящие Git worktree: запрет main, барьер, delivery после всего, сигналы, recovery трёх ролей, удаление worktree с игнорируемым node_modules, отказ удаления заблокированного worktree и итоговая очистка, закрепление ревизии при DOCS. `check-previous-upgrade-fixture` — обновление секции `.gitignore` и остановка при её ручной правке.
 
-С 1.9.7 `review:prepare` и публикация через Review проверяют каждую задачу тем же `taskChecks`, что `plan:create`, до записи; `assignment:create` отказывает до ветки и worktree. `.harness/runtime/planning-owner.json` (пишет Workflow Pilot, `claimPlanningOwner`/`releasePlanningOwner`) называет владельца планирования: `review:prepare` с чужим `recipient_session_id` и публикация orchestrated-плана с чужим `execution_origin_session_id` получают `PLANNING_OWNED`; `recipient_mode: manual` снимает только сверку получателя. Запись, сделанная до последнего архива, недействительна; recovery O и S показывает владельца. Ролевой протокол 7.
+С 1.9.7 `review:prepare` и публикация через Review проверяют каждую задачу тем же `taskChecks`, что `plan:create`, до записи; `assignment:create` отказывает до ветки и worktree. `.harness/runtime/planning-owner.json` (пишет Workflow Pilot, `claimPlanningOwner`/`releasePlanningOwner`) называет владельца планирования: `review:prepare` с чужим `recipient_session_id` и публикация orchestrated-плана с чужим `execution_origin_session_id` получают `PLANNING_OWNED`; `recipient_mode: manual` снимает только сверку получателя. Запись, сделанная до последнего архива, недействительна; recovery O и S показывает владельца.
+
+## Режим плана
+
+С 1.9.8 режим плана сессии Workflow Pilot выбирает пользователь. `plan:mode-request --session ID --recommended sequential|orchestrated --reason "…"` (только при NONE, иначе `EXECUTION_MODE_ACTIVE_PLAN`) занимает владельца планирования тем же compare-and-set (чужая сессия — `PLANNING_OWNED` без записи) и пишет `.harness/runtime/execution-mode.json` с новым поколением и пустым выбором. `plan:mode-choose --session ID --strategy … --generation N --approval-note "…"` вызывает только приложение после нажатия пользователя (CAS поколения и владельца).
+
+При существующей записи `plan:create`, `scope:create` и `review:prepare` требуют `execution_origin_session_id` этой сессии, записанный выбор и ту же стратегию, иначе `EXECUTION_MODE_REQUIRED`/`EXECUTION_MODE_MISMATCH` до любой записи, включая `applyConfig`; план с origin всегда требует запись своей сессии (legacy parallel и CLI без origin не затронуты). Выбор попадает в решения пользователя плана. Передача и освобождение владельца, `archive` удаляют запись; recovery показывает запрос и выбор. Kit не отличает вызов приложения от вызова агентом: гарантия — ролевой текст.
+
+Ролевой протокол 8: роли planning (обсуждение, спецификация, запрос режима) и self (sequential-план выполняет сама сессия), правило развилок во всех ролях чатов с пользователем.
