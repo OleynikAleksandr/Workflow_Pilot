@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 934,
+  "plan_revision": 936,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -1127,14 +1127,19 @@
         "Версия приложения 0.5.28 в package.json, package-lock.json и COMMUNICATION_APP_VERSION/BUILD; протокол панели 4 не меняется."
       ],
       "expected_commit_message": "chore: Поднять версию 0.5.28",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "VERSION-0528",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs"
+      ]
     },
     {
       "id": "DOCS-4",
@@ -1279,7 +1284,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 934
+Revision: 936
 
 ## Цель
 
@@ -1431,8 +1436,8 @@ Revision: 934
   - Файлы: src/control/workflow/plan-review.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/plan-review.test.mjs, tests/sidebar.test.mjs, src/control/workflow/coordination.mjs, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] VERSION-0528: Поднять версию 0.5.28 — Ожидает
-  - Git Commit: [PENDING] chore: Поднять версию 0.5.28
+- [DONE] VERSION-0528: Поднять версию 0.5.28 — Завершено
+  - Git Commit: [DONE] chore: Поднять версию 0.5.28
   - Reference: work-progress-ui / VERSION-0528 / implementation
   - Файлы: src/contracts/backend.mjs, package.json, package-lock.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
