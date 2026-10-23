@@ -3,7 +3,7 @@ import path from 'node:path';
 import { PLAN, CONFIG, check, hash, json, readJSON, safePath, withLock } from './common.mjs';
 import { git, head, localPath, allChanges, isAncestor, run, ensureIdleGit } from './git.mjs';
 import { readPlan, parallelTasksCompatible, isOrchestratedPlan, isDeliveryTask } from './plan.mjs';
-import { validate, journal } from './validate.mjs';
+import { validate, journal, readConfig, taskChecks } from './validate.mjs';
 import { commitCandidate, completedTransaction, finishTransaction } from './transaction.mjs';
 import { prepareRuntime } from './platform.mjs';
 import {assertPlanPermission} from './plan-permission.mjs';
@@ -133,6 +133,8 @@ export function createAssignment(root,input,expectedRevision) {
     check(git(root,['branch','--show-current']).stdout.trim()==='main' && input.base_commit===head(root),'ASSIGNMENT_BASE','База — подтверждённый текущий SHA main.');
     const task=plan.tasks.find(t=>t.id===input.task_id);
     check(task?.implementation_status==='TODO','ASSIGNMENT_TASK','Назначается только ожидающая задача.');
+    // Refuse before any branch, worktree or record: the worktree would pin the unusable configuration.
+    taskChecks(task,readConfig(root));
     if(isOrchestratedPlan(plan)) {
       check(!isDeliveryTask(task),'ASSIGNMENT_TASK','Delivery-задачу плана оркестратора выполняет оркестратор в main, не исполнитель.');
       // Wave barrier: a sequential task waits for everything before it; later work waits for an unfinished sequential task.

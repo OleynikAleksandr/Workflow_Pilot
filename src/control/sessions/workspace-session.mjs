@@ -113,11 +113,21 @@ export async function readWorkspace(input, sessionId = null) {
   const scopeTitle = await readScopeTitle(workspace, plan);
   const view = projectPlan(plan, scopeTitle);
   return { workspace, ...view, inspectedSessionId: sessionId, planId: plan.scope_id,
+    planningOwnerSessionId: await readPlanningOwnerSession(workspace, plan),
     watchInputs: [...new Set([...(plan.context_pack?.documents ?? []),
       ...plan.tasks.flatMap(task => task.context_pack?.documents ?? [])]
       .map(document => document?.path).filter(file => typeof file === 'string'
         && /^docs\//.test(file) && !file.split(/[\\/]/).includes('..')))],
     originSessionId: null, preparedPlans: [], unassignedPlans: [] };
+}
+
+// Mirrors Kit readPlanningOwner: a record written before the last archive belongs to a closed plan.
+async function readPlanningOwnerSession(workspace, plan) {
+  try {
+    const record = JSON.parse(await fs.readFile(path.join(workspace, '.harness/runtime/planning-owner.json'), 'utf8'));
+    return record?.version === 1 && typeof record.session_id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(record.session_id)
+      && (plan.archived_scope_id ?? null) === (record.archived_scope_id ?? null) ? record.session_id : null;
+  } catch { return null; }
 }
 
 async function readScopeTitle(workspace, plan) {
@@ -176,20 +186,32 @@ function projectPlan(plan, scopeTitle = '') {
 }
 
 const copy = value => structuredClone(value);
-const persistent = data => JSON.parse(JSON.stringify(data, (key, value) => ['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'watchInputs', 'planExecution', 'orchestrationIssue', 'worktreeRemoved'].includes(key) ? undefined : value));
+const persistent = data => JSON.parse(JSON.stringify(data, (key, value) => ['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'watchInputs', 'planExecution', 'orchestrationIssue', 'worktreeRemoved', 'planningOwnerSessionId'].includes(key) ? undefined : value));
 export const SESSION_ROLES = Object.freeze(['orchestrator', 'discussion', 'executor']);
 const activeScope = status => ['ACTIVE', 'BLOCKED'].includes(status);
 export const orchestratedPlanActive = project => project?.planExecution?.execution_strategy === 'orchestrated' && activeScope(project.scopeStatus);
-// A new session is an orchestrator candidate without a plan and a discussion chat beside an orchestrated plan.
-// Beside a legacy plan it keeps the legacy behaviour and gets no role.
-export const newSessionRole = info => !activeScope(info.scopeStatus) ? 'orchestrator' : orchestratedPlanActive(info) ? 'discussion' : undefined;
+// A new session is an orchestrator candidate without a plan, unless a session already owns planning;
+// beside an orchestrated plan it is a discussion chat. Beside a legacy plan it keeps the legacy behaviour.
+export const newSessionRole = info => !activeScope(info.scopeStatus) ? info.planningOwnerSessionId ? 'discussion' : 'orchestrator'
+  : orchestratedPlanActive(info) ? 'discussion' : undefined;
 const ordinarySessions = project => project.sessions.filter(s => !s.external && !s.assignmentId);
 // The published plan names its orchestrator; every other candidate and legacy session becomes a discussion chat.
 // Orchestrators of earlier plans keep their scope. Returns whether stored roles changed.
 export function applySessionRoles(project) {
   let changed = false;
   const set = (session, patch) => { for (const [key, value] of Object.entries(patch)) if (session[key] !== value) { session[key] = value; changed = true; } };
-  if (!orchestratedPlanActive(project)) { project.orchestrationIssue = null; return false; }
+  if (!orchestratedPlanActive(project)) {
+    project.orchestrationIssue = null;
+    // Before publication the planning owner is the only orchestrator; the other candidates discuss.
+    const owner = !activeScope(project.scopeStatus) && project.planningOwnerSessionId;
+    const sessions = ordinarySessions(project);
+    if (owner && sessions.some(s => s.sessionId === owner && !s.archivedAt && !s.closedPlanCommit))
+      for (const session of sessions) {
+        if (session.sessionId === owner) { if (session.role !== 'orchestrator') set(session, { role: 'orchestrator' }); }
+        else if (session.role === 'orchestrator' && !session.orchestratorScopeId) set(session, { role: 'discussion' });
+      }
+    return changed;
+  }
   const scope = project.scopeId, sessions = ordinarySessions(project);
   const chosen = project.orchestratorChoice?.scopeId === scope ? project.orchestratorChoice.sessionId : null;
   let orchestrator = sessions.find(s => s.role === 'orchestrator' && s.orchestratorScopeId === scope && !s.archivedAt);
@@ -522,7 +544,7 @@ export class WorkspaceSessions {
   }
 
   save(data = this.data, isCurrent = () => true) {
-    const transient = new Set(['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'planExecution', 'orchestrationIssue', 'worktreeRemoved']);
+    const transient = new Set(['planView', 'preparedPlans', 'unassignedPlans', 'scopeTitle', 'planExecution', 'orchestrationIssue', 'worktreeRemoved', 'planningOwnerSessionId']);
     const text = JSON.stringify(data, (key, value) => transient.has(key) ? undefined : value, 2) + '\n';
     const operation = this.saveTail.catch(() => {}).then(async () => {
       await fs.mkdir(path.dirname(this.file), { recursive: true, mode: 0o700 });

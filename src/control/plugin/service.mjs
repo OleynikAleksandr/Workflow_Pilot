@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { validateContextPacket } from '../../contracts/context.mjs';
 import { PluginCommunication, COMMUNICATION_BUILD, COMMUNICATION_PROTOCOL } from './communication.mjs';
 import {localParticipantTarget} from './enrollment.mjs';
+import {ROLE_PROTOCOL_VERSION,roleUpdate} from '@webpilot/workflow-kit/lib/role-protocol';
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const key = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
@@ -108,7 +109,7 @@ export class PluginProjects {
   async panel({enrollment_ticket,metadata}={}) {
     await this.communication.ready;
     const registration=enrollment_ticket?await this.communication.enroll(enrollment_ticket,metadata):null;
-    let startup_resume,startup_context,binding=registration;
+    let startup_resume,startup_context,role_update,binding=registration;
     if(!binding&&metadata)try{binding=await this.communication.modelInput({metadata});
       await this.communication.enrollment.validateInput(binding);
     }catch{/* An unregistered panel still opens its normal connection view. */}
@@ -118,8 +119,12 @@ export class PluginProjects {
         startup_context=await c.startupOpen({metadata,message_id:m.message_id});
       else if(m?.intent&&!m.startup_complete&&!m.superseded)startup_resume={message_id:m.message_id,
         instructions:'Продолжите чтение того же стартового пакета через workflow_communication_read_message/read_context и подтвердите workflow_startup_complete. Повтор уведомления не требуется.'};
+      // A candidate that lost planning to the owner learns its new role here; no message enters its chat.
+      const current=c.enrollment.resolveTarget?.(member.target.local_session_id);
+      if(member.target.role==='O'&&!member.target.scope_id&&current?.role==='S'&&current.project_id===member.target.project_id)
+        role_update={role_protocol:ROLE_PROTOCOL_VERSION,instructions:roleUpdate('discussion')};
     }
-    return {...(registration?{registration}:{}),...(startup_context?{startup_context}:{}),...(startup_resume?{startup_resume}:{}),communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
+    return {...(registration?{registration}:{}),...(startup_context?{startup_context}:{}),...(startup_resume?{startup_resume}:{}),...(role_update?{role_update}:{}),communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       storage:this.communication.store?'durable':'memory',critical_error:this.communication.critical}};
   }
   list() {

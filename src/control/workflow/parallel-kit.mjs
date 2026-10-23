@@ -17,6 +17,12 @@ export function projectVerifiedPlan(plan,resolved) {
 }
 const exists=async file=>{try{await fs.access(file);return true;}catch(e){if(e.code==='ENOENT')return false;throw e;}};
 // All potentially long Kit/Git work stays outside Electron's main event loop.
+// Codes that leave an outcome open or describe a transient read are never a definite refusal.
+const OPEN_CODES=['ASSIGNMENT_UNKNOWN','INTEGRATION_UNKNOWN','TRANSACTION_PENDING','WORKFLOW_LOCKED','PLAN_CHANGED_DURING_READ','PLAN_JSON',
+  'PLAN_MARKERS','PLAN_PROJECTION','PLAN_COMMIT_MISMATCH','ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT','INVALID_JSON','PLAN_COMMAND_FAILED'];
+export const kitRefusal=error=>error?.kitRefusal===true&&!OPEN_CODES.includes(error.code);
+export const refusalText=(taskId,error)=>'Kit отказал в назначении '+taskId+': '+(error?.message??'причина не указана');
+
 export class ParallelKit {
   constructor({plans,setup,execute=plans?.run??executeFile,onTiming=()=>{}}) {Object.assign(this,{plans,setup,execute,onTiming});}
   async git(workspace,args) {
@@ -93,7 +99,8 @@ export class ParallelKit {
         // A commit replaces plan, transaction and HEAD separately. The writer
         // may have just released its lock by the time this failed read returns.
         if(retryTransient&&['PLAN_COMMIT_MISMATCH','ASSIGNMENT_CONTRACT','MISSING_FILE','ENOENT'].includes(error.code))throw error;
-        assignments.push({...record,status:'UNKNOWN',error:{code:error.code,message:error.message}});
+        // Kit answered with a definite refusal: nothing is unknown, the user fixes the cause and continues.
+        assignments.push({...record,status:kitRefusal(error)?'REFUSED':'UNKNOWN',error:{code:error.code,message:error.message}});
       }
     }
     const pending=await exists(path.join(gitDir,'workflow-kit','transaction.json'));

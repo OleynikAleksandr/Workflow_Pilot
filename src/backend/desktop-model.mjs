@@ -23,7 +23,7 @@ export function taskEvidence(tasks=[],assignments=[]) {
 }
 // Only describe the delivery stage that a Kit or SDK receipt actually proves.
 export function executorDispatchStage(assignment,channel) {
-  if(!assignment||['UNKNOWN','READY_FOR_INTEGRATION','INTEGRATED'].includes(assignment.status))return null;
+  if(!assignment||['UNKNOWN','REFUSED','READY_FOR_INTEGRATION','INTEGRATED'].includes(assignment.status))return null;
   const initial=channel?.initial;
   if(initial?.read&&assignment.status==='RUNNING')return {phase:'started',label:'Исполнитель начал задачу · Kit RUNNING'};
   if(initial?.read)return {phase:'received',label:'Задание прочитано исполнителем · запуск не подтверждён'};
@@ -125,7 +125,7 @@ const workflow = control.configureWorkflow({getController:()=>store.selected()?.
   available:()=>!store.selected()?.external&&!liveSessions?.paused&&!!controller&&!controller.composer.inFlight&&!pageLoading&&!setupState&&!settingsState
     &&workspaceHealth?.ready&&workspaceHealth.workspace===store.selected()?.workspace,
   onChange:()=>publish(),report,save:overrides=>saveSettings(overrides)});
-const {projectPlanContinuation,planContinuation,planMonitor,planReview,reviewContinuation,execution,executionKit}=workflow;
+const {projectPlanContinuation,planContinuation,planMonitor,planReview,reviewContinuation,execution,executionKit,planningOwners}=workflow;
 const configurePrimary=record=>workflow.configurePrimary(record);
 function applyObservedPage(event, record = liveSessions.visible) {
   if(!record||record.disposed)return;
@@ -260,7 +260,7 @@ function orchestratorState(workspace,session) {
   const run=workflow.executionControl.view(workspace,session.orchestratorScopeId),view=execution.view(workspace);
   const tasks=currentPlanTasks(project,view),done=tasks.filter(task=>task.status==='done').length,total=tasks.length;
   const cleanup=(view.assignments??[]).filter(a=>a.status==='INTEGRATED'&&a.cleanup?.status==='PENDING').length;
-  const attention=project.orchestrationIssue||view.error||run.reason==='escalation'||run.reason==='unknown';
+  const attention=project.orchestrationIssue||view.error||run.reason==='escalation'||run.reason==='unknown'||run.reason==='refused';
   const label=run.state==='running'&&total>0&&done===total?'Завершается':orchestratorLabels[run.state];
   return {state:attention?'attention':run.state,label:(attention?'Требует внимания':label)+' · '+done+'/'+total,cleanup,progress:total?done+'/'+total:null};
 }
@@ -298,6 +298,8 @@ function orchestratorPlanView(saved) {
         stageTime:task.status!=='done'?own?.stageTime??null:null,target:target??null};
     })};
 }
+// The derived owner is not persisted with the project list; it lives in the live project view.
+const planningOwnerOf=(workspace,scopeStatus)=>['ACTIVE','BLOCKED'].includes(scopeStatus)?null:store.project(workspace)?.planningOwnerSessionId??null;
 // The state of the one run/pause button of the selected project's orchestrated plan.
 function planRunView(saved) {
   const workspace=saved?.parentWorkspace??saved?.workspace,project=workspace&&store.project(workspace);
@@ -423,7 +425,7 @@ function workProgressView(workspace,fresh=null) {
     now.push({actor:'KIT',text:commitProgressLabel(view.kitProgress),kind:'act',elapsedMs:Date.now()-view.kitProgress.checkStartedAt});
   if(project.orchestrationIssue)warn('Нужно внимание',project.orchestrationIssue.message??'Оркестратор плана не определён.');
   if(view.scopeId===scope&&view.error)warn('Нужно внимание',view.error.message);
-  if(run?.reason==='escalation'||run?.reason==='unknown')warn(run.reason==='unknown'?'Исход операции неизвестен':'Оркестратор передал проблему',run.message??'');
+  if(['escalation','unknown','refused'].includes(run?.reason))warn(run.reason==='unknown'?'Исход операции неизвестен':run.reason==='refused'?'Kit отказал в назначении':'Оркестратор передал проблему',run.message??'');
   const unknown=(view.commands??[]).filter(c=>c.state==='unknown');
   if(unknown.length)warn('Исход команды неизвестен',unknown[0].reason??'Завершение команды не подтверждено.',{kind:'command-issues'});
   // History: finished dialogue messages of the plan from the durable communication journal.
@@ -469,15 +471,18 @@ function snapshot() {
     ...(info?.workspace === saved.workspace && info.inspectedSessionId === saved.sessionId ? info : {}),
     planReadError: planMonitor.error ?? planMonitor.watchError, agentRun: agentTimer?.view(saved) ?? null };
   return { projects: projects.filter(p => !p.archivedAt&&!p.parentWorkspace)
-    .map(({ workspace, projectId, name, displayName, selectedSessionId, expanded, sessions }) => ({
+    .map(({ workspace, projectId, name, displayName, selectedSessionId, expanded, sessions, scopeStatus }) => ({
     workspace, projectId, name: displayName || name, selectedSessionId, expanded,
+    // Before publication the user may hand planning to another session from its menu.
+    planningOwnerSessionId: planningOwnerOf(workspace, scopeStatus),
     activity:[...liveSessions.all()].some(r=>(r.identity?.workspace===workspace
       ||store.project(r.identity?.workspace)?.parentWorkspace===workspace)&&r.pageState.current?.state.busy)?'working'
       :execution.view(workspace).error||sessions.some(s=>liveRecord({workspace,sessionId:s.sessionId})?.controller.state.error)?'attention':'idle',
     executors:executorViews(projects,workspace),
     sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, chatUrl, title, createdAt, external, role, orchestratorScopeId, closedPlanCommit }) =>
       ({ sessionId, experience, chatUrl, title, createdAt, external:!!external, role:role??null, orchestratorScopeId:orchestratorScopeId??null,
-        orchestratorState:orchestratorState(workspace,{role,orchestratorScopeId,closedPlanCommit}) })),
+        orchestratorState:orchestratorState(workspace,{role,orchestratorScopeId,closedPlanCommit}),
+        planningOwner:sessionId===planningOwnerOf(workspace,scopeStatus) })),
     orchestrationIssue: store.project(workspace)?.orchestrationIssue ?? null,
   })),
     executorRecovery:projects.filter(p=>p.parentWorkspace&&!projects.some(parent=>parent.workspace===p.parentWorkspace&&parent.projectId===p.parentProjectId))
@@ -1150,9 +1155,16 @@ function registerIpc() {
   registerAction('pilot:plan-review', input => planReview.setEnabled(input));
   // One plan button: no input toggles it; {running} sets it (tests and the remote API).
   registerAction('pilot:plan-execution', input => workflow.setPlanExecution(typeof input?.running === 'boolean' ? input.running : undefined));
-  registerAction('pilot:assign-orchestrator', sessionId => {
+  registerAction('pilot:assign-orchestrator', async sessionId => {
     const selected=store.selected(),workspace=selected?.parentWorkspace??selected?.workspace;
     if(typeof sessionId!=='string'||!sessionId||!workspace)throw new Error('Выберите сессию проекта.');
+    // Before publication the user's choice transfers planning ownership through Kit.
+    if(!['ACTIVE','BLOCKED'].includes(store.project(workspace)?.scopeStatus)){
+      const session=store.project(workspace,sessionId);
+      if(!session||session.sessionArchivedAt||session.external||session.closedPlanCommit||session.parentWorkspace)throw new Error('Выберите активную сессию проекта.');
+      await planningOwners.assign(workspace,sessionId,{transfer:true});
+      return store.project(workspace,sessionId);
+    }
     return store.assignOrchestrator(workspace,sessionId);
   });
   registerAction('pilot:acknowledge-command', input=>lifecycle.acknowledgeCommand(input));
@@ -1297,6 +1309,8 @@ function registerIpc() {
     const generation = navigationId;
     try { await store.setSessionArchived(input.workspace, input.sessionId, true); }
     catch (error) { if (selected && current && navigationCurrent(generation)) await selectWorkspace(current.workspace, { resume: true }); throw error; }
+    // An archived planning owner frees planning for the other sessions of the project.
+    await planningOwners.forget(input.workspace, input.sessionId).catch(report);
     if (!navigationCurrent(generation)) return;
     startupError = null;
     if (selected) { const fallback = store.selected(); if (fallback) await selectWorkspace(fallback.workspace); }

@@ -8,6 +8,7 @@ import { emptyPlan, renderPlan, readPlan, writePlan } from '@webpilot/workflow-k
 import { sessionPlanView, selectPlan, withSessionPlan, ownedPlanPath } from '@webpilot/workflow-kit/lib/session-plans';
 import { WorkspaceSetup } from '../src/control/projects/workspace-setup.mjs';
 import { SessionPlans } from '../src/control/sessions/session-plans.mjs';
+import { kitRefusal } from '../src/control/workflow/parallel-kit.mjs';
 
 test('inspection re-reads a concurrently removed transaction but never repeats a mutation or corrupt JSON',async()=>{
   const missing={ok:false,code:'INVALID_JSON',message:'Не удалось прочитать JSON: /main/.git/workflow-kit/transaction.json',details:{reason:'ENOENT: no such file'}};
@@ -23,6 +24,22 @@ test('inspection re-reads a concurrently removed transaction but never repeats a
     await assert.rejects(plans.call('/main','assignment:status'),{code:'INVALID_JSON'});
     assert.equal(calls,reason.startsWith('ENOENT')?2:1,'bounded inspection only');
   }
+});
+
+test('a Kit answer is a definite refusal; a killed or unparsable process stays an open outcome',async()=>{
+  const refusal={ok:false,code:'STACK_NOT_CONFIGURED',message:'Укажите выбранный стек.'};
+  const plans=(run)=>new SessionPlans({setup:{node:async()=>'/node',environment:{}},run});
+  await assert.rejects(plans(async()=>{throw Object.assign(new Error('exit 1'),{code:1,stdout:JSON.stringify(refusal)});}).call('/main','assignment:status'),
+    e=>e.code==='STACK_NOT_CONFIGURED'&&e.kitRefusal===true);
+  await assert.rejects(plans(async()=>{throw Object.assign(new Error('timeout'),{code:'ETIMEDOUT',killed:true,stdout:JSON.stringify(refusal)});}).call('/main','assignment:create'),
+    e=>e.code==='STACK_NOT_CONFIGURED'&&e.kitRefusal===undefined);
+  await assert.rejects(plans(async()=>{throw Object.assign(new Error('timeout'),{code:'ETIMEDOUT',killed:true});}).call('/main','assignment:create'),
+    e=>e.code==='ETIMEDOUT'&&!e.kitRefusal);
+  await assert.rejects(plans(async()=>({stdout:'partial'})).call('/main','assignment:create'),e=>e.code==='PLAN_COMMAND_FAILED'&&!e.kitRefusal);
+  // Codes of an open outcome or a transient read never count as a refusal, even from a clean exit.
+  for(const code of ['ASSIGNMENT_UNKNOWN','INTEGRATION_UNKNOWN','TRANSACTION_PENDING','WORKFLOW_LOCKED','MISSING_FILE'])
+    assert.equal(kitRefusal({code,kitRefusal:true}),false,code);
+  assert.equal(kitRefusal({code:'STACK_NOT_CONFIGURED',kitRefusal:true}),true);
 });
 
 function fixture(t) {
@@ -57,7 +74,8 @@ test('inspection tolerates a replaced Git plan once, preserves permanent errors 
     const result=plans.call('/main','assignment:status',[],null,{onTiming:span=>spans.push(span)});
     if(recovers)assert.equal((await result).ok,true);else await assert.rejects(result,{code:'MISSING_FILE'});
     assert.equal(calls,2);assert.equal(spans.length,1);assert.equal(spans[0].ok,recovers);
-    assert.ok(spans[0].elapsed_ms>=50);assert.ok(Date.parse(spans[0].ended_at)>=Date.parse(spans[0].started_at));
+    // The 50 ms retry pause is a timer; under load it may fire a little early by the monotonic clock.
+    assert.ok(spans[0].elapsed_ms>=45);assert.ok(Date.parse(spans[0].ended_at)>=Date.parse(spans[0].started_at));
     calls=0;await assert.rejects(plans.call('/main','commit'),{code:'MISSING_FILE'});assert.equal(calls,1);
   }
 });

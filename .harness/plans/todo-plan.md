@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 950,
+  "plan_revision": 953,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "review-publication-orchestrator",
@@ -54,7 +54,15 @@
       "tests/workflow-kit-upgrade.test.mjs",
       "tests/workspace-session.test.mjs",
       "tools/codex-app-server-mcp/plugin-ui.html",
-      "packages/workflow-kit/scripts/check-carryover-fixture.mjs"
+      "packages/workflow-kit/scripts/check-carryover-fixture.mjs",
+      "packages/workflow-kit/src/lib/task-assignment.mjs",
+      "src/control/plugin/service.mjs",
+      "src/control/sessions/session-plans.mjs",
+      "src/control/workflow/execution-control.mjs",
+      "src/control/workflow/execution-projection.mjs",
+      "src/control/workflow/planning-owner.mjs",
+      "tests/planning-owner.test.mjs",
+      "tests/session-plans.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -165,8 +173,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "review-publication-orchestrator",
         "task_id": "T002",
@@ -191,14 +199,24 @@
         "tests/workspace-session.test.mjs",
         "tests/sidebar.test.mjs",
         "tools/codex-app-server-mcp/plugin-ui.html",
-        "package-lock.json"
+        "package-lock.json",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/planning-owner.mjs",
+        "tests/planning-owner.test.mjs",
+        "tests/session-plans.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
         "unit-all",
         "architecture",
         "electron-smoke",
-        "orchestrator-startup"
+        "orchestrator-startup",
+        "kit-check",
+        "kit-assignments"
       ],
       "id": "T002",
       "title": "Пауза после отказа Kit и единственный оркестратор в приложении",
@@ -210,7 +228,28 @@
         "Удаление или архив сессии-владельца снимают запись; «Назначить оркестратором» доступно и до публикации плана как явная передача; версия приложения 0.5.29, панель пересобрана (npm run stage:chatgpt-plugin) с build 0.5.29-communication-4, протокол панели 4."
       ],
       "expected_commit_message": "fix: Пауза после отказа Kit и единственный оркестратор",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/src/lib/task-assignment.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/parallel-kit.mjs",
+        "src/control/workflow/planning-owner.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/orchestrated-execution.test.mjs",
+        "tests/planning-owner.test.mjs",
+        "tests/session-plans.test.mjs",
+        "tests/session-roles.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -361,7 +400,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: review-publication-orchestrator
 Current Task: нет
-Revision: 950
+Revision: 953
 
 ## Цель
 
@@ -385,10 +424,10 @@ Revision: 950
   - Файлы: packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/planning-owner.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/fixtures/released-kit/kit-1.9.6.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, packages/workflow-kit/scripts/check-carryover-fixture.mjs, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Пауза после отказа Kit и единственный оркестратор в приложении — Ожидает
-  - Git Commit: [PENDING] fix: Пауза после отказа Kit и единственный оркестратор
+- [DONE] T002: Пауза после отказа Kit и единственный оркестратор в приложении — Завершено
+  - Git Commit: [DONE] fix: Пауза после отказа Kit и единственный оркестратор
   - Reference: review-publication-orchestrator / T002 / implementation
-  - Файлы: src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/coordination.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/communication.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, package.json, tests/parallel-execution.test.mjs, tests/orchestrated-execution.test.mjs, tests/session-roles.test.mjs, tests/workspace-session.test.mjs, tests/sidebar.test.mjs, tools/codex-app-server-mcp/plugin-ui.html, package-lock.json
+  - Файлы: src/control/workflow/parallel-kit.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/coordination.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/communication.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, package.json, tests/parallel-execution.test.mjs, tests/orchestrated-execution.test.mjs, tests/session-roles.test.mjs, tests/workspace-session.test.mjs, tests/sidebar.test.mjs, tools/codex-app-server-mcp/plugin-ui.html, package-lock.json, packages/workflow-kit/src/lib/task-assignment.mjs, src/control/plugin/service.mjs, src/control/sessions/session-plans.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/planning-owner.mjs, tests/planning-owner.test.mjs, tests/session-plans.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

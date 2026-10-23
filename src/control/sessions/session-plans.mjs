@@ -19,13 +19,13 @@ export class SessionPlans {
         await this.files.writeJson(inputFile, input, { exclusive: true });
         args = [...args, '--input', inputFile];
       }
-      let stdout;
+      let stdout,killed=false;
       try {
         this.onWorkerStart('workflow');
         ({ stdout } = await this.run(node, [path.join(workspace, 'scripts/workflow.mjs'), command, ...args],
           { cwd: workspace, env: this.setup.environment, timeout, maxBuffer: 4 * 1024 * 1024, windowsHide: true, encoding: 'utf8' }));
       }
-      catch (error) { if (!error.stdout) throw error; stdout = error.stdout; }
+      catch (error) { if (!error.stdout) throw error; stdout = error.stdout; killed = !!(error.killed || error.signal); }
       let result;
       try { result = JSON.parse(stdout); } catch { throw fail('PLAN_COMMAND_FAILED', 'Workflow Kit вернул неполный ответ.'); }
       // Kit 1.8.2 can observe the transaction marker just before its owner removes
@@ -42,7 +42,8 @@ export class SessionPlans {
           const result=await this.call(workspace, command, args, null, { timeout, readRetry:true });
           ok=true;return result;
         }
-      if (!result.ok) throw fail(result.code ?? 'PLAN_COMMAND_FAILED', result.message ?? 'Команда плана не выполнена.');
+      // A Kit process that ended on its own and answered with a code made a decision; a killed one did not.
+      if (!result.ok) throw Object.assign(fail(result.code ?? 'PLAN_COMMAND_FAILED', result.message ?? 'Команда плана не выполнена.'), killed ? {} : { kitRefusal: true });
       ok=true;
       return result;
     } finally { if (inputFile) await this.files.removeFile(inputFile).catch(() => {});

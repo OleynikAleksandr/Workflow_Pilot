@@ -29,7 +29,7 @@ export function projectExecutionPlan(plan,assignments,integration) {
       const merging=assignment&&integration?.assignment_id===assignment.id&&integration.status!=='IDLE';
       const label=status==='done'?'Интеграция проверена':merging
         ?integrationProblem(integration)?.message??(['CONFLICT','CHECKS_FAILED'].includes(integration.status)?'Интеграция требует исправления':'Интегрируется')
-        :assignment?.status==='UNKNOWN'?'Назначение требует сверки':assignment?.dialogue_version===1?assignmentStage(assignment).label
+        :assignment?.status==='UNKNOWN'?'Назначение требует сверки':assignment?.status==='REFUSED'?'Kit отказал в назначении':assignment?.dialogue_version===1?assignmentStage(assignment).label
         :assignment?.status==='READY_FOR_INTEGRATION'?'Готово к интеграции':assignment?'Назначено исполнителю':null;
       return {id:task.id,title:task.title,status,...(delivery?{delivery:true}:{}),label:label??(delivery&&status==='current'?'Выполняет оркестратор':null),
         executionLabel:plannedExecution(task,plan.execution_strategy)};
@@ -47,6 +47,7 @@ export function executorStatus(assignment,record,integration,{channel=null}={}) 
   if(assignment?.error)return {phase:'attention',label:assignment.error.message};
   if(assignment?.status==='NEEDS_SETUP')return {phase:'setup',label:'Нужна подготовка worktree'};
   if(assignment?.status==='UNKNOWN')return {phase:'unknown',label:'Состояние требует сверки'};
+  if(assignment?.status==='REFUSED')return {phase:'attention',label:'Kit отказал в назначении'};
   if(assignment?.commandActive){const command=assignment.commands?.find(c=>c.blocksIntegration);return {phase:'command',
     label:command?command.reason+' · '+command.id:'Команда ещё не подтверждена как завершённая'};}
   const bootstrap=record?.controller?.state?.phase;

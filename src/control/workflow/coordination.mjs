@@ -2,6 +2,7 @@ import { ProjectPlanContinuation } from './project-plan-continuation.mjs';
 import { configureProjectPlanContinuation } from './project-session-plan-continuation.mjs';
 import { PlanContinuation } from './plan-continuation.mjs';
 import { PlanReviewClient } from './plan-review.mjs';
+import { PlanningOwners } from './planning-owner.mjs';
 import { ReviewContinuation } from './review-continuation.mjs';
 import { AutomationSendState } from './automation-send-state.mjs';
 import { readPlanContinuationState } from './plan-continuation-state.mjs';
@@ -131,6 +132,7 @@ function configurePrimary(record) {
 // A published plan (ACTIVE/BLOCKED) freezes the Review switch until the plan is closed.
 const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>publish(),
   published:workspace=>['ACTIVE','BLOCKED'].includes(store.project(workspace)?.scopeStatus)});
+const planningOwners=new PlanningOwners({store,onChange:()=>publish(),report});
 const reviewContinuation=new ReviewContinuation({selected:()=>store.selected(),client:planReview,
   send:sendAutomation,onChange:()=>publish(),
   available,
@@ -230,7 +232,7 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
       const state=execution.view(workspace),origin=store.project(workspace,state.originSessionId);
       // No worktree path from an unconfirmed/foreign assignment is watched.
       children.update((state.assignments??[]).filter(a=>{
-        if(a.status==='INTEGRATED'||a.status==='UNKNOWN'||!a.worktree||!origin)return false;
+        if(['INTEGRATED','UNKNOWN','REFUSED'].includes(a.status)||!a.worktree||!origin)return false;
         const child=store.project(a.worktree);
         return child?.assignmentId===a.id&&child.parentWorkspace===workspace
           &&child.parentProjectId===origin.projectId&&child.parentScopeId===state.scopeId
@@ -360,6 +362,7 @@ function observePage(event, record = liveSessions.visible) {
   }
   record.primaryAutomation?.observe(event);
   record.executor?.observe(event);
+  planningOwners.observe(record,event);
   getPlugin()?.communication.observeSession(record.project()?.sessionId);
   const safety=JSON.stringify([event.documentId,event.state?.url,event.state?.busy,event.state?.lastMessageRole,event.state?.connectionError,
     event.state?.draftPresent,event.state?.editorAvailable,event.state?.writable,event.state?.turnId,event.state?.userTurnId,
@@ -479,6 +482,7 @@ return Object.freeze({
     view:(...args)=>planMonitor.view(...args),observeSelection:()=>planMonitor.observeSelection(),
     refresh:()=>planMonitor.refresh(),invalidate:()=>planMonitor.invalidate(),close:()=>planMonitor.close(),
   }),
+  planningOwners:Object.freeze({assign:(...args)=>planningOwners.assign(...args),forget:(...args)=>planningOwners.forget(...args)}),
   planReview:Object.freeze({view:()=>planReview.view(),setEnabled:input=>planReview.setEnabled(input),
     refresh:()=>planReview.refresh(),observeSelection:()=>planReview.observeSelection(),dispose:()=>planReview.dispose()}),
   reviewContinuation:Object.freeze({get persistenceError(){return reviewContinuation.persistenceError;},

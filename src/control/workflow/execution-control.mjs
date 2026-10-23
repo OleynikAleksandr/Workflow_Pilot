@@ -1,7 +1,7 @@
 // The single run/pause control of an orchestrated plan. It belongs to a project and its plan,
 // lives in the backend and survives restarts; publication alone never starts execution.
 export const EXECUTION_STATES = Object.freeze(['not-started', 'running', 'pausing', 'paused', 'complete']);
-export const PAUSE_REASONS = Object.freeze(['manual', 'escalation', 'unknown', 'restart']);
+export const PAUSE_REASONS = Object.freeze(['manual', 'escalation', 'unknown', 'restart', 'refused']);
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const absolute = workspace => typeof workspace === 'string' && (workspace.startsWith('/') || /^[A-Za-z]:[\\/]/.test(workspace));
 const validScope = scopeId => typeof scopeId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(scopeId);

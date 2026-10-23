@@ -154,3 +154,68 @@ test('orchestrated plan runs end to end: waves, pause, block and escalation, del
   assert.deepEqual(git(root, 'branch', '--format=%(refname:short)').split('\n'), ['main']);
   await signal(); assert.equal(sent.length, 3, 'a completed plan sends nothing more');
 });
+
+// Live check 0.5.28: Kit refused an assignment of a plan published with the discovery profile.
+// The plan must pause with that cause, the pause must settle, and Continue resumes after the fix.
+async function refusalFixture(t, name, { createFailure = null } = {}) {
+  const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pilot-' + name + '-')));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const root = createFixture(directory);
+  const config = readConfig(root);
+  config.checks.push({ id: 'unit', kind: 'test', executable: process.execPath, args: ['-e', '0'], required: false, timeout_ms: 30000 });
+  applyConfig(root, { ...config, profile: 'DISCOVERY', stack: null });
+  write(root, SPEC, '# Refusal fixture\n');
+  createScope(root, { scope_id: name, objective: 'Refused assignment', approval_note: 'Isolated automated fixture',
+    dialogue_version: 0, parallel_allowed: false, max_workers: 1, execution_strategy: 'orchestrated', execution_reason: 'One task',
+    execution_origin_session_id: 'orchestrator', release: false, acceptance_criteria: ['Paused with the cause'],
+    approved_scope: { functional_paths: ['app.mjs'], documentation_paths: ['README.md', SPEC] },
+    context_pack: { documents: [{ path: SPEC, required: true }], dependency_task_ids: [], include_last_completed_task: false },
+    tasks: [{ id: 'T001', title: 'Write code', why: 'Refusal fixture', dependencies: [], functional_paths: ['app.mjs'], documentation_paths: [],
+      verification_ids: ['unit'], acceptance_criteria: ['Done'], expected_commit_message: 'feat: code' }] });
+  const plan = readPlan(root);
+  const setup = { node: async () => process.execPath, environment: Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))) };
+  const kit = new ParallelKit({ plans: new SessionPlans({ setup }), setup });
+  if (createFailure) { const create = kit.create.bind(kit); let failed = false;
+    kit.create = async (...args) => { if (!failed) { failed = true; throw createFailure; } return create(...args); }; }
+  const origin = { workspace: root, sessionId: 'orchestrator', projectId: plan.project_id, chatUrl: 'https://chatgpt.com/c/orchestrator',
+    executionSnapshot: { parallel_allowed: false, max_workers: 1 } };
+  const control = new ExecutionControl({ identity: () => plan.project_id }), workers = new Map(), creates = [];
+  const counted = kit.create.bind(kit); kit.create = async (...args) => { creates.push(args[2].id); return counted(...args); };
+  const runtime = new ParallelExecution({ kit, book: {}, origin: (_w, id) => id === 'orchestrator' ? origin : null, orchestrator: () => 'orchestrator',
+    isEnabled: (w, s) => ['running', 'pausing'].includes(control.view(w, s).state), isIssuing: (w, s) => control.issuing(w, s),
+    canFinalize: (w, s) => control.issuing(w, s), onComplete: (w, s) => control.complete(w, s),
+    onSettle: (w, s, facts) => control.settle(w, s, facts), onPause: (w, s, reason, message) => control.pause(w, s, reason, message ?? null),
+    openWorker: async assignment => { workers.set(assignment.id, assignment); return { sessionId: 'session-' + assignment.id }; },
+    workerState: () => ({ stopped: false, canSend: true }), mainState: () => ({ documentId: 'doc', stopped: true, canSend: true, lastMessageRole: 'assistant' }),
+    save: async () => {}, sendCorrection: async () => ({ state: 'sent' }), sendWorker: async () => ({ state: 'sent' }), sendFinalization: async () => ({ state: 'sent' }) });
+  t.after(() => runtime.dispose());
+  runtime.observe(root);
+  return { root, control, workers, creates, signal: () => runtime.signal(root), view: () => runtime.view(root) };
+}
+
+test('a Kit refusal at assignment pauses with its cause, the pause settles and Continue resumes after the fix', { timeout: 180000 }, async t => {
+  const f = await refusalFixture(t, 'refusal');
+  f.control.toggle(f.root, 'refusal'); await f.signal(); await f.signal();
+  const run = f.control.view(f.root, 'refusal');
+  assert.equal(run.state, 'paused', 'a refused assignment without an executor page never holds the pause');
+  assert.equal(run.reason, 'refused');
+  assert.match(run.message, /^Kit отказал в назначении T001: /);
+  assert.equal(f.workers.size, 0);
+  assert.equal(git(f.root, 'worktree', 'list').split('\n').length, 1, 'Kit refuses before any branch or worktree');
+  assert.equal(f.view().assignments.length, 0, 'a refusal without effect leaves nothing unknown');
+  // The user fixes the stack; Continue creates the assignment from the fixed main.
+  applyConfig(f.root, { ...readConfig(f.root), stack: 'Node fixture' });
+  f.control.toggle(f.root, 'refusal'); await f.signal(); await f.signal();
+  assert.equal(f.control.view(f.root, 'refusal').state, 'running');
+  assert.equal(f.workers.size, 1, 'the executor opens after the fix');
+  assert.deepEqual(f.creates, ['T001', 'T001'], 'exactly one retry after the fix');
+});
+
+test('a timed-out assignment:create stays an unknown outcome and is never created again', { timeout: 180000 }, async t => {
+  const f = await refusalFixture(t, 'timeout', { createFailure: Object.assign(new Error('Command timed out'), { code: 'ETIMEDOUT', killed: true }) });
+  f.control.toggle(f.root, 'timeout'); await f.signal(); await f.signal(); await f.signal();
+  const run = f.control.view(f.root, 'timeout');
+  assert.notEqual(run.reason, 'refused');
+  assert.equal(run.reason, 'unknown');
+  assert.equal(f.creates.length, 1, 'no second assignment after an open outcome');
+});

@@ -363,7 +363,9 @@ function render(state) {
         if (session.role === 'orchestrator' || session.role === 'discussion') {
           const role = document.createElement('span'); role.className = 'session-role'; role.dataset.role = session.role;
           role.dataset.state = session.orchestratorState?.state ?? '';
-          role.textContent = session.role === 'discussion' ? 'Обсуждение'
+          // A candidate becomes the orchestrator only when the user gives it the first task.
+          const candidate = session.role === 'orchestrator' && !session.orchestratorScopeId && !session.planningOwner;
+          role.textContent = session.role === 'discussion' ? 'Обсуждение' : candidate ? 'Новая сессия'
             : ['Оркестратор', session.orchestratorState?.progress].filter(Boolean).join(' · ');
           if (session.orchestratorState?.state === 'attention') role.title = session.orchestratorState.label;
           meta.append(role);
@@ -383,7 +385,8 @@ function render(state) {
         const archive = document.createElement('button'); archive.className = 'secondary archive-session'; archive.textContent = 'Перенести в архив';
         archive.addEventListener('click', () => { closeTreeMenus(); action('archiveSession', project.workspace, session.sessionId); });
         menu.append(rename, archive);
-        if (project.orchestrationIssue && session.role !== 'orchestrator' && !session.external) {
+        const transferable = project.planningOwnerSessionId && session.sessionId !== project.planningOwnerSessionId && !session.closedPlanCommit;
+        if ((project.orchestrationIssue && session.role !== 'orchestrator' || transferable) && !session.external) {
           const assign = document.createElement('button'); assign.className = 'secondary assign-orchestrator'; assign.textContent = 'Назначить оркестратором';
           assign.addEventListener('click', () => { closeTreeMenus(); action('assignOrchestrator', session.sessionId); });
           menu.append(assign);
@@ -465,6 +468,7 @@ function render(state) {
   const runReason = run?.issue ? 'Оркестратор плана не определён. Назначьте его в меню сессии.'
     : run?.reason === 'recovery' ? 'Автопродолжение отключено после восстановления Kit (не ручная пауза). '+(run.message??'')
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
+    : run?.reason === 'refused' ? 'Выполнение на паузе. ' + (run.message ?? '') + ' Исправьте причину и нажмите «Продолжить».'
       : run?.reason === 'unknown' ? 'Выполнение на паузе: исход операции неизвестен. ' + (run.message ?? '') : '';
   $('plan-run-message').hidden = !runReason; $('plan-run-message').textContent = runReason.trim();
   const auto = state.planContinuation ?? { phase: 'off', active: false, message: '' };

@@ -3,6 +3,7 @@ import {blockAnswered,currentSignal} from '@webpilot/workflow-kit/lib/signal-sta
 import { parallelTasksCompatible, isDeliveryTask } from '@webpilot/workflow-kit/lib/plan';
 import { validateParallelSettings } from './parallel-settings.mjs';
 import { integrationProblem, projectExecutionPlan } from './execution-projection.mjs';
+import { kitRefusal, refusalText } from './parallel-kit.mjs';
 
 const fail=(code,message)=>Object.assign(new Error(message),{code});
 const UNKNOWN_CODES=['INTEGRATION_UNKNOWN','ASSIGNMENT_UNKNOWN'];
@@ -264,7 +265,7 @@ export class ParallelExecution {
           if(entry&&entry.integration!=='done'){entry.integration='done';entry.error=null;await this.persist();}
           if(plan.dialogue_version!==1||!this.restoreIntegrated(workspace,a,entry))continue;
         }
-        if(a.status==='UNKNOWN'){recoveryError??=a.error;continue;}
+        if(a.status==='UNKNOWN'||a.status==='REFUSED'){recoveryError??=a.error;continue;}
         try {
           const restored=await this.restoreWorker(a,origin,ledger.assignments[a.id],recovery&&enabled());
           if(restored) {
@@ -278,7 +279,9 @@ export class ParallelExecution {
       const unknown=state.integration.status==='UNKNOWN'?'Исход слияния неизвестен.'
         :[...(state.commands??[]),...assignments.flatMap(a=>a.commands??[])].some(c=>c.state==='unknown')?'Исход команды записи не подтверждён.'
         :assignments.find(a=>a.status==='UNKNOWN')?.error?.message??null;
+      const refused=!unknown&&assignments.find(a=>a.status==='REFUSED');
       if(unknown)this.onPause(workspace,plan.scope_id,'unknown',unknown);
+      else if(refused)this.onPause(workspace,plan.scope_id,'refused',refusalText(refused.parent_task_id,refused.error));
     }
     this.publish(workspace,{phase:'waiting',scopeId:plan.scope_id,strategy:plan.execution_strategy,originSessionId:origin.sessionId,
       objective:plan.objective,planView:projectExecutionPlan(plan,assignments,state.integration),kitProgress:state.kitProgress??null,
@@ -398,7 +401,16 @@ export class ParallelExecution {
         const session=await this.openWorker({...assignment,id,parent_root:workspace,parent_scope_id:plan.scope_id,
           parent_task_id:task.id,title:task.title},origin);
         entry.sessionId=session.sessionId;entry.phase='running';await this.persist();
-      }catch(error){entry.error=issue(error);entry.phase='attention';await this.persist();throw error;}
+      }catch(error){
+        entry.error=issue(error);entry.phase='attention';await this.persist();
+        if(!kitRefusal(error))throw error;
+        // A definite refusal pauses with its cause; the pause still settles below. Kit 1.9.7 refuses
+        // before any effect, so the identity is dropped and Continue creates the assignment anew.
+        // A record left by an older Kit is still read back from Kit and never recreated.
+        recoveryError??=entry.error;delete ledger.assignments[id];await this.persist();
+        if(plan.execution_strategy==='orchestrated')this.onPause(workspace,plan.scope_id,'refused',refusalText(task.id,entry.error));
+        break;
+      }
     }
     const latest=await this.kit.read(workspace);
     this.settle(workspace,latest.plan,latest.assignments,latest);
@@ -409,17 +421,20 @@ export class ParallelExecution {
   // A requested pause of an orchestrated plan takes effect once no executor works and main is free.
   settle(workspace,plan,assignments,state) {
     if(plan?.execution_strategy!=='orchestrated')return;
+    // An executor page that was never opened cannot work; one being opened still counts.
+    const ledger=this.ledger(workspace,plan.scope_id),unopened=a=>{const entry=ledger.assignments[a.id];
+      return !entry?.sessionId&&!['creating','opening'].includes(entry?.phase);};
     if(plan.dialogue_version===1||this.queuedRoute(workspace,plan.scope_id)){
-      const ledger=this.ledger(workspace,plan.scope_id),origin=executionOrigin(plan,id=>this.origin(workspace,id),this.orchestrator(workspace,plan.scope_id));
+      const origin=executionOrigin(plan,id=>this.origin(workspace,id),this.orchestrator(workspace,plan.scope_id));
       const busy=state.commandActive||!this.physicalMainState(origin).stopped||(assignments??[]).some(a=>
-        a.status!=='INTEGRATED'&&(a.commandActive||!this.physicalWorkerState(a,ledger.assignments[a.id]).stopped));
+        a.status!=='INTEGRATED'&&(a.commandActive||!unopened(a)&&!this.physicalWorkerState(a,ledger.assignments[a.id]).stopped));
       this.onSettle(workspace,plan.scope_id,{busy});return;
     }
     const busy=(assignments??[]).some(a=>{
-      if(a.status==='INTEGRATED')return false;
+      if(a.status==='INTEGRATED'||!a.commandActive&&unopened(a))return false;
       const signals=(state.signals??[]).filter(s=>s.assignment_id===a.id),last=signals.findLast(s=>s.kind==='task-blocked');
       const answered=last&&blockAnswered(signals,last);
-      const parked=last&&!answered&&!a.commandActive&&!a.transaction_pending&&this.workerState(a,this.ledger(workspace,plan.scope_id).assignments[a.id]).stopped;
+      const parked=last&&!answered&&!a.commandActive&&!a.transaction_pending&&this.workerState(a,ledger.assignments[a.id]).stopped;
       return !parked;
     })||(state.integration?.status??'IDLE')!=='IDLE'||state.commandActive;
     this.onSettle(workspace,plan.scope_id,{busy});

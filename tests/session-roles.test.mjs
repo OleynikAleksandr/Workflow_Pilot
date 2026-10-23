@@ -56,6 +56,34 @@ test('roles: a session without a plan is a candidate, publication picks the orig
   assert.equal(JSON.parse(await fs.readFile(store.file, 'utf8')).projects[0].orchestrationIssue, undefined);
 });
 
+test('roles: the planning owner is the only orchestrator before publication; a record of a closed plan is ignored', async t => {
+  const { folder, store, write } = await fixture(t);
+  const first = await store.select(folder), second = await store.newSession(folder, 'chat');
+  const owner = async (sessionId, archived = null) => fs.writeFile(path.join(folder, '.harness/runtime/planning-owner.json'),
+    JSON.stringify({ version: 1, session_id: sessionId, claimed_at: new Date().toISOString(), generation: 1, scope_id: null, plan_revision: 1, archived_scope_id: archived }));
+  await fs.mkdir(path.join(folder, '.harness/runtime'), { recursive: true });
+  await owner(second.sessionId);
+  assert.equal(await store.reconcileRoles(folder), true);
+  assert.equal(session(store, folder, second.sessionId).role, 'orchestrator');
+  assert.equal(session(store, folder, first.sessionId).role, 'discussion', 'the other candidate discusses');
+  assert.equal(store.project(folder).planningOwnerSessionId, second.sessionId);
+  assert.equal((await store.newSession(folder, 'chat')).role, 'discussion', 'a new session beside a planning owner discusses');
+  assert.equal(newSessionRole({ scopeStatus: 'NONE', planningOwnerSessionId: null }), 'orchestrator');
+  // The user's transfer to a discussion chat makes it the orchestrator.
+  await owner(first.sessionId);await store.reconcileRoles(folder);
+  assert.equal(session(store, folder, first.sessionId).role, 'orchestrator');
+  assert.equal(session(store, folder, second.sessionId).role, 'discussion');
+  // Publication by the owner keeps the binding; the derived owner is never persisted.
+  await write(orchestrated(first.sessionId));await store.reconcileRoles(folder);
+  assert.equal(session(store, folder, first.sessionId).orchestratorScopeId, 'orchestrated-scope');
+  assert.equal(JSON.parse(await fs.readFile(store.file, 'utf8')).projects[0].planningOwnerSessionId, undefined);
+  // After the archive an older Kit may leave the file: its record belongs to the closed plan.
+  await write({ archived_scope_id: 'orchestrated-scope', plan_revision: 3 });await owner(first.sessionId, null);
+  await store.reconcileRoles(folder);
+  assert.equal(store.project(folder).planningOwnerSessionId, null);
+  assert.equal((await store.newSession(folder, 'chat')).role, 'orchestrator', 'the next plan has free candidates again');
+});
+
 test('roles: the orchestrator of an active plan and its project cannot be archived; discussion chats can', async t => {
   const { folder, store, write } = await fixture(t);
   const orchestrator = await store.select(folder), chat = await store.newSession(folder, 'chat');
