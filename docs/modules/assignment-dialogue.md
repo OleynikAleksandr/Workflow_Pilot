@@ -1,6 +1,6 @@
 # Диалог под управлением оркестратора
 
-Контракт Workflow Pilot 0.5.28 / Kit 1.9.6: `dialogue_version: 1`, ролевой протокол 6, панель `0.5.28-communication-4`, протокол панели 4. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
+Контракт Workflow Pilot 0.5.29 / Kit 1.9.7: `dialogue_version: 1`, ролевой протокол 7, панель `0.5.29-communication-4`, протокол панели 4. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
 
 ## Роли и пользовательский процесс
 
@@ -125,7 +125,7 @@ O выполняет последовательные интеграции в ma
 
 Итог по умолчанию — несколько предложений: результат, проверки/ограничения, оставшийся этап либо приёмка. Повторный анализ WAL и таблицы времени не обязательны; явный запрос пользователя подробного отчёта имеет приоритет. После yield интерфейс показывает «Завершается итоговый ответ», пока не подтверждён физический конец. Другие барьеры завершения показываются по фактической причине.
 
-Канонический текст ролей — `packages/workflow-kit/src/lib/role-protocol.mjs` (версия 6). Recovery, startup, шаблоны PLAN/PROTOTYPE/WORKFLOW, MCP instructions/descriptions и backend validation согласованы. Обновление правил открытого чата не повторяет уже сделанные действия.
+Канонический текст ролей — `packages/workflow-kit/src/lib/role-protocol.mjs` (версия 7). Recovery, startup, шаблоны PLAN/PROTOTYPE/WORKFLOW, MCP instructions/descriptions и backend validation согласованы. Обновление правил открытого чата не повторяет уже сделанные действия.
 
 
 Старт всех новых локальных сессий — [единый канал панели](orchestrator-startup.md), независимо от стратегии и состояния плана. DOM содержит только приглашение; ролевые правила E тоже читаются через MCP. Старый генератор вложений отключён. Получение пакета не назначает O и не разрешает выполнение задач.

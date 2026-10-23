@@ -27,7 +27,7 @@
 - `task:start ID` — до любых правок задачи; зависимости DONE (`DEPENDENCY_PENDING`). Функциональные (не `.md`) файлы требуют профиль DEVELOPMENT (`STACK_NOT_CONFIGURED`) и проверку (`NOT_CONFIGURED`); delivery — проверку того же kind с `evidence` (`VERIFICATION_KIND`).
 - `commit --task ID [--files JSON]`: без списка — изменения после task:start, кроме `.harness/` и приватных путей; прежние правки, изменённые снова, → `EXISTING_EDITS_CHANGED`; явный приватный путь → `PRIVATE_CONTEXT`, `.harness/` → `MANAGED_FILE`. Невошедшее — в `excluded_changes`.
 - `plan:extend --input` (`spec`, `tasks`, `dependencies`), только ACTIVE (`SCOPE_LIFECYCLE`): DONE не меняются и не переставляются; новая задача — в конец или `before` перед ещё не начатой задачей того же вида (обычная/delivery, не DOCS), которая получает зависимость от новой; зависимость на задачу ниже → `TASK_ORDER`; ID `DOCS*` зарезервированы (`TASK_ID_CONFLICT`).
-- `task:update` добавляет files/checks/acceptance; `plan:apply` не меняет статусы и DONE (`MANAGED_FIELDS`, `COMPLETED_TASK_IMMUTABLE`); `config:apply` — полный файл конфигурации.
+- `task:update` добавляет files/checks/acceptance; `plan:apply` не меняет статусы и DONE (`MANAGED_FIELDS`, `COMPLETED_TASK_IMMUTABLE`); `config:apply` — полный файл; непустой stack ставит DEVELOPMENT (1.9.7).
 - `project:rename --name` — имя в плане, recovery и путях hooks manifest одним коммитом kit-update; без активной задачи (`TASK_ACTIVE`), ≤ 100 символов (`PROJECT_NAME`); повтор без изменений — без коммита; папку не переименовывает.
 - `repair --dry-run` → `repair_id` → `--apply` (завершить/повторить транзакцию, восстановить проекцию, отложить DOCS) или `--cancel` (отменить неподтверждённую подготовку). Журнал вручную не удалять.
 
@@ -58,7 +58,7 @@ Prepare требует явного получателя либо manual; respon
 - `docs:commit --files '[…]' --message "…"`: `.md` вне `.harness/` (`DOCUMENTATION_PATHS`) при NONE или ACTIVE без текущей задачи (`TASK_ACTIVE`); проверяются схема, состав, размер, транзакция, suite приложения не запускается. Kit-секция `AGENTS.md`/`AGENTS.override.md` в index побайтно = HEAD (`MODIFIED_INTEGRATION`); её меняет только установщик.
 
 ### Закрытие плана
-- `archive --scope ID --approval-note "…"` — только по прямому поручению пользователя, означающему приёмку (`USER_CLOSE_REQUIRED`); все задачи DONE (`SCOPE_UNFINISHED`), чистое дерево (`DIRTY_WORKTREE`). Остаётся NONE-план с `archived_scope_id`; закрытый — `git show <closing-SHA>^:.harness/plans/todo-plan.md`. Архивных копий нет.
+- `archive --scope ID --approval-note "…"` — только по прямому поручению пользователя, означающему приёмку (`USER_CLOSE_REQUIRED`); все задачи DONE (`SCOPE_UNFINISHED`), чистое дерево (`DIRTY_WORKTREE`). Остаётся NONE-план с `archived_scope_id`, запись владельца планирования удаляется (1.9.7); закрытый — `git show <closing-SHA>^:.harness/plans/todo-plan.md`.
 - `plan:carryover --input {scope, id, approval_note[, objective]}` — по отдельному поручению (`USER_CLOSE_REQUIRED`), чистое дерево, без активной задачи: незавершённые задачи (критерии, проверки, context_pack, взаимные зависимости) — новый current plan с `carryover.source_commit` прежнего; один коммит, повтор после успеха безопасен.
 
 ### Recovery

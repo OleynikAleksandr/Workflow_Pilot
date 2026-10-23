@@ -1,6 +1,8 @@
 # Оркестрованное выполнение плана
 
-Новые планы Workflow Pilot 0.5.28 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
+Новые планы Workflow Pilot 0.5.29 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
+
+С 0.5.29 оркестратор определяется до публикации: им становится кандидат, которому пользователь первым дал задачу (владелец планирования в Kit, [ход работ](desktop.md#ход-работ)). Публикация orchestrated-плана сверяет `execution_origin_session_id` с владельцем; другие сессии проекта — обсуждение до архива плана.
 
 ## Роли и принадлежность
 
@@ -16,7 +18,7 @@ ParallelExecution остаётся единственным scheduler. Он ме
 
 Страница → bootstrap → registration → живой SDK/bind → конец bootstrap предшествуют готовности доставки. Сразу после назначения O получает уведомление и сохраняет prepare с dispatch_when_ready=true одновременно с bootstrap. Это явная авторизация: backend повторно проверяет готовность и отправляет неизменяемый пакет без дополнительного ready-хода O. Без флага сохраняется только черновик; старые разрешения после смены поколения требуют подтверждения. Два-пять E не требуют select/show/focus, посещения карточек, ID или Enable. Поздний editor обрабатывается ограниченным повтором подготовки до Send. Отправленные/sending/unknown не повторяются. Исполнитель, которому действительно ничего не отправлялось, может получить новый чистый Chat draft; наличие адреса или начатого Send запрещает такое восстановление.
 
-O отправляет task/context конкретному E; Kit сохраняет grant назначения. E выполняет task:start → работа → commit --task → result O. При нехватке данных спрашивает O, при блокировке ведёт коррелированный диалог до decision; после yield заканчивает ход. Обычное ожидание не запускает модельный polling. Канонические правила — role-protocol.mjs, версия 6.
+O отправляет task/context конкретному E; Kit сохраняет grant назначения. E выполняет task:start → работа → commit --task → result O. При нехватке данных спрашивает O, при блокировке ведёт коррелированный диалог до decision; после yield заканчивает ход. Обычное ожидание не запускает модельный polling. Канонические правила — role-protocol.mjs, версия 7.
 
 O проверяет result/diff/proof и принимает точный source_commit либо открывает revision_request новой попытки. Только затем выполняет integration:start/continue. Автоматического merge по READY в версии 1 нет; main DONE требует доказательства Git. Зависимая задача выдаётся после интеграций предшественников. Конфликт/check failure сохраняет операцию для исправления O без принудительного ours/theirs.
 
@@ -50,7 +52,7 @@ ExecutionControl хранит not-started/running/pausing/paused/complete, пр�
 
 Реальные Kit/Git, HTTP Start, Python MCP, staged SDK и Control проходят автоматические fixtures с двумя и пятью E, без пользовательских bubbles на каждом SDK-ходе. Скрытый Electron проверяет фоновый bootstrap/observer/composer без select/show. Legacy assertions сохранены отдельными случаями. [Матрица восстановления](assignment-dialogue-reliability.md#проверки-и-граница-доказательств).
 
-Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.28 — NOT_RUN. С 0.5.24 изолированные O1/O2/E1/E2/NET регрессии на Kit/Git/WAL прошли, но все семь **живых** опытов ещё `NOT_RUN`: [протокол Stop/сеть/restart](../acceptance/interruption-recovery.md). Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.
+Test_02 0.5.7 — FAIL нового целевого workflow; A–D 0.5.29 — NOT_RUN. С 0.5.24 изолированные O1/O2/E1/E2/NET регрессии на Kit/Git/WAL прошли, но все семь **живых** опытов ещё `NOT_RUN`: [протокол Stop/сеть/restart](../acceptance/interruption-recovery.md). Host confirmations не обходятся. Native Windows/Linux и живые ChatGPT-панели подтверждает пользователь, автоматические fixtures их не принимают.
 
 
 Старт всех новых локальных сессий — [единый канал панели](orchestrator-startup.md), независимо от стратегии и состояния плана. DOM содержит только приглашение; ролевые правила E тоже читаются через MCP. Старый генератор вложений отключён. Получение пакета не назначает O и не разрешает выполнение задач.
