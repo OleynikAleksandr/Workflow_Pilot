@@ -35,6 +35,7 @@ body.wp-body{padding:12px;max-width:none;background:var(--wp-page);color:var(--w
 <main class="wp" aria-label="Ход работ">
 <header class="wp-head"><b id="progress-title">Workflow Pilot</b><span id="progress-phase" class="wp-sub"></span><span id="progress-open" class="wp-open"></span></header>
 <div id="progress-now" class="wp-now" aria-label="Происходит сейчас"><div class="wp-row wait"><span class="wp-mark">·</span><span class="wp-what">Ждём данные плана…</span><span></span></div></div>
+<section id="progress-choice" class="wp-choice" aria-live="polite" hidden></section>
 <details id="progress-history" class="wp-hist"><summary><span class="wp-mark">≡</span><span>История</span><span id="progress-history-count" class="wp-count">0 событий</span><span class="wp-chev" aria-hidden="true">▾</span></summary>
 <ol id="progress-events" class="wp-events" aria-label="Прошедшие события"></ol></details>
 <details id="progress-diagnostics" class="wp-diag"><summary>Диагностика</summary><div class="wp-diag-body">

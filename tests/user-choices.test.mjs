@@ -47,7 +47,7 @@ test('the user answering in the chat declines the card; a persistent cause retur
   const first = f.choices.view('o');
   f.page('o', 1, true);
   assert.equal(f.choices.view('o'), null, 'own message removes the buttons');
-  assert.match(f.choices.history.at(-1).text, /отклонён: пользователь ответил сам/);
+  assert.match(f.choices.history.at(-1).text, /ответил в чате сам; выбор снят/);assert.equal(f.choices.history.at(-1).actor, 'USER');
   f.choices.reconcile();assert.equal(f.choices.view('o'), null, 'not before the recipient finished its turn');
   f.page('o', 1, false);
   const again = f.choices.view('o');

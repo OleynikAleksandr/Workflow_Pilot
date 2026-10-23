@@ -430,6 +430,10 @@ function workProgressView(workspace,fresh=null) {
   const unknown=(view.commands??[]).filter(c=>c.state==='unknown');
   if(unknown.length)warn('Исход команды неизвестен',unknown[0].reason??'Завершение команды не подтверждено.',{kind:'command-issues'});
   // History: finished dialogue messages of the plan from the durable communication journal.
+  // The user's choices of this project: offered, chosen, declined or retired cards.
+  for(const entry of workflow.userChoices.history(workspace)){
+    const at=Date.parse(entry.at);if(Number.isFinite(at))history.push({at,actor:entry.actor??'APP',text:entry.text,kind:entry.kind==='warn'?'warn':'done'});
+  }
   if(scope){
     const titles=Object.fromEntries(source.map(t=>[t.id,t.title]));
     for(const message of plugin?.communication.planMessages(project.projectId,scope)??[]){
@@ -449,7 +453,9 @@ function workProgressView(workspace,fresh=null) {
 function workProgressFor(target) {
   const project=store.snapshot().projects.find(p=>p.projectId===target?.project_id&&!p.parentWorkspace&&!p.archivedAt);
   const value=project&&workProgressView(project.workspace);
-  return value&&{...value,self:target.role==='E'?target.task_id??null:target.role??null};
+  // The panel names its own chat by the session role, not by the channel role.
+  const session=target?.role==='E'?null:project?.sessions.find(s=>s.sessionId===target?.local_session_id);
+  return value&&{...value,self:target.role==='E'?target.task_id??null:session?roleActor(session.role):target.role??null};
 }
 // Panel waits wake when the meaning of a project's progress changes, not on every clock tick.
 const progressSignatures=new Map();
@@ -483,7 +489,9 @@ function snapshot() {
     sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, chatUrl, title, createdAt, external, role, orchestratorScopeId, closedPlanCommit }) =>
       ({ sessionId, experience, chatUrl, title, createdAt, external:!!external, role:role??null, orchestratorScopeId:orchestratorScopeId??null,
         orchestratorState:orchestratorState(workspace,{role,orchestratorScopeId,closedPlanCommit}),
-        planningOwner:sessionId===planningOwnerOf(workspace,scopeStatus) })),
+        planningOwner:sessionId===planningOwnerOf(workspace,scopeStatus),
+        // The badge «Ждёт вашего выбора»: an offered or postponed card of this session.
+        choicePending:['offered','postponed'].includes(workflow.userChoices.view(sessionId)?.state) })),
     orchestrationIssue: store.project(workspace)?.orchestrationIssue ?? null,
   })),
     executorRecovery:projects.filter(p=>p.parentWorkspace&&!projects.some(parent=>parent.workspace===p.parentWorkspace&&parent.projectId===p.parentProjectId))
@@ -498,6 +506,7 @@ function snapshot() {
     planRun: planRunView(saved),
     orchestratorPlan: orchestratorPlanView(saved),
     workProgress: workProgressView(saved?.parentWorkspace??saved?.workspace,info),
+    userChoice: saved&&!saved.external?workflow.userChoices.view(saved.sessionId):null,
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
       : saved&&workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)&&!['sent','unknown','acknowledged'].includes(saved.attempt?.state)

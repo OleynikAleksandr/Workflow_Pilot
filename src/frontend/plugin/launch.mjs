@@ -210,6 +210,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       ui.feed(update.events);seq=update.seq;if(workflow&&update.expires_at)expiresAt=update.expires_at;
       // A wait woken by a progress change already carries the new projection.
       if(update.work_progress)ui.progress(update.work_progress);
+      if('user_choice' in update)ui.choice(update.user_choice);
       if(update.stopped||update.critical_error){
         if(workflow&&!update.critical_error)try{await refresh();if(!current())return;}catch{}
         localStop(update.critical_error?'Ошибка журнала. Отправка запрещена.':'Разрешение отозвано.',update.critical_error?'error':'idle');return;}
@@ -258,6 +259,15 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     }})
       .finally(()=>{recovery=null;busy=false;ready();});return recovery;
   }
+  // A press on the choice card: the service records it once and delivers it to this chat.
+  async function pressChoice(option_id){
+    const card=ui.currentChoice();if(!card||!binding||disposed)return;
+    ui.choiceBusy(true);
+    try{const result=await call('choose',{binding,choice_id:card.choice_id,option_id,generation:card.generation});ui.choice(result.user_choice??null);}
+    catch(error){status(error.message,'error');}
+    finally{ui.choiceBusy(false);scheduleRefresh();}
+  }
+  ui.onChoice({pick:option=>void pressChoice(option),reopen:()=>void pressChoice('reopen')});
   $('recover').addEventListener('click',()=>void recover());
   $('runs').addEventListener('change',async()=>{
     const selected=candidates.find(c=>c.run_id===$('runs').value);if(!selected||busy||binding)return;

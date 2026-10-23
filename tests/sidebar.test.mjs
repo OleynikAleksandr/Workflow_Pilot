@@ -5,6 +5,8 @@ import { JSDOM } from 'jsdom';
 import { executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 import {startupView} from '../src/contracts/startup-view.mjs';
 import {paletteCss,spinnerCss,PALETTE,shellBackground} from '../src/contracts/palette.mjs';
+import {choiceCardCss,renderChoiceCard,choiceOptions} from '../src/contracts/user-choice.mjs';
+import {roleActor} from '../src/contracts/work-progress.mjs';
 
 test('normal panel startup is not written under the session; only a startup problem is, with the project menu',async t=>{
   const f=await fixture(t),$=id=>f.document.getElementById(id);
@@ -206,6 +208,7 @@ async function fixture(t) {
   t.after(async () => { await new Promise(resolve => setTimeout(resolve, 0)); dom.window.close(); });
   const { window } = dom, document = window.document, calls = [];
   window.startupView=startupView;window.paletteCss=paletteCss;window.spinnerCss=spinnerCss;
+  window.choiceCardCss=choiceCardCss;window.renderChoiceCard=renderChoiceCard;window.roleActor=roleActor;
   // JSDOM has no top layer. Electron smoke verifies native popover geometry.
   const query = document.querySelectorAll.bind(document);
   document.querySelectorAll = selector => query(selector.replaceAll(':popover-open', '[data-test-open]'));
@@ -413,7 +416,7 @@ test('plan card: pinned top and foot around the only scrolling list; stage time 
   assert.equal($('agent-time'),null,'session time without a caption is gone');
   assert.equal($('execution-stages'),null);assert.equal($('execution-next-action'),null);
   const card=$('plan-card'),list=$('plan-tasks');
-  assert.deepEqual([...card.children].map(node=>node.id||node.className),['plan-top','plan-tasks','plan-foot']);
+  assert.deepEqual([...card.children].map(node=>node.id||node.className),['plan-top','plan-choice','plan-tasks','plan-foot']);
   assert.ok(card.querySelector('.plan-top #plan-phase'));
   for(const id of ['plan-run-toggle','plan-attention','plan-note','plan-review-toggle'])assert.ok($('plan-foot').contains($(id)),id+' stays pinned');
   const tasks=Array.from({length:12},(_,i)=>({id:'T0'+String(i+1).padStart(2,'0'),title:'Задача '+(i+1),status:i<3?'done':i===3?'current':'pending',
@@ -595,4 +598,27 @@ test('one palette: the sidebar style, both themes, the window background and the
     assert.doesNotMatch(text,/#1b1d22|#f4f6f8/,'no second copy of the window background');
   }
   assert.match(paletteCss({mode:'media'}),/@media \(prefers-color-scheme:dark\)/);
+});
+
+test('the window names session roles, marks a waiting choice and offers the same card', async t => {
+  const f = await fixture(t), base = f.state, picks = [];
+  f.window.webPilot.chooseOption = async input => { picks.push(JSON.parse(JSON.stringify(input))); return null; };
+  const { question, options } = choiceOptions('mode', { recommended: 'sequential', reason: 'Небольшие связанные задачи' });
+  const userChoice = { choice_id: 'c1', generation: 2, kind: 'mode', state: 'offered', question, reason: 'Небольшие связанные задачи',
+    options: options.map((o, i) => ({ id: o.id, label: o.label, detail: o.detail, recommended: i === 0 })), chosen: null };
+  f.emit({ ...base, projects: [{ ...base.projects[0], sessions: [
+    { sessionId: 's4', createdAt: 4000, title: 'Владелец', experience: 'chat', role: 'planning', choicePending: true },
+    { sessionId: 's3', createdAt: 3000, title: 'Исполняет', experience: 'chat', role: 'self' },
+    { sessionId: 's2', createdAt: 2000, title: 'Второй', experience: 'chat', role: 'discussion' }] }], userChoice });
+  assert.deepEqual([...f.document.querySelectorAll('.session-role')].map(n => n.textContent), ['Планирование', 'Выполняет план', 'Обсуждение']);
+  const badges = [...f.document.querySelectorAll('.session-choice-wait')];
+  assert.equal(badges.length, 1);assert.equal(badges[0].textContent, 'Ждёт вашего выбора');
+  assert.ok(f.document.querySelector('.session[data-session-id="s4"]').contains(badges[0]));
+  const card = f.document.getElementById('plan-choice');
+  assert.equal(card.hidden, false);assert.match(card.textContent, /Почему рекомендует агент: Небольшие связанные задачи/);
+  const rows = [...card.querySelectorAll('.wp-choice-option')];
+  assert.match(rows[0].textContent, /Выполнить самому, последовательно \(рекомендую\)/);
+  rows[1].querySelector('button').click();await f.settle();
+  assert.deepEqual(picks, [{ sessionId: 's4', choiceId: 'c1', optionId: 'orchestrated', generation: 2 }]);
+  f.emit({ ...base, userChoice: null });assert.equal(card.hidden, true);
 });

@@ -71,3 +71,9 @@ test('plan stage follows the prototype order of states',()=>{
   assert.deepEqual(planPhase({scope,allDone:true}),['Завершение',false],'a deferred cleanup waits without a spinner');
   assert.deepEqual(planPhase({scope,allDone:true,complete:true,attention:true}),['Ждёт приёмки',false]);
 });
+test('participants: the user, planning and self-executing sessions have their own names',async()=>{
+  const {participantName,roleActor}=await import('../src/contracts/work-progress.mjs');
+  assert.equal(participantName('USER'),'Пользователь');
+  assert.deepEqual(['orchestrator','planning','self','discussion'].map(roleActor),['O','P','SELF','S']);
+  assert.deepEqual(['O','P','SELF','S'].map(participantName),['Оркестратор','Планирование','Выполняет план','Обсуждение']);
+});

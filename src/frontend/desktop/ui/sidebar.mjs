@@ -3,10 +3,12 @@ import { settingsPanelView } from './settings-panel.mjs';
 import { workspaceSetupView } from './workspace-setup.mjs';
 import {startupView} from '../../../contracts/startup-view.mjs';
 import {paletteCss,spinnerCss} from '../../../contracts/palette.mjs';
+import {choiceCardCss,renderChoiceCard} from '../../../contracts/user-choice.mjs';
+import {roleActor} from '../../../contracts/work-progress.mjs';
 const $ = id => document.getElementById(id);
 // The shared palette of the sidebar and the panel; an inline style is within the page CSP.
 const paletteStyle=document.createElement('style');paletteStyle.id='wp-palette';
-paletteStyle.textContent=paletteCss()+spinnerCss;document.head.append(paletteStyle);
+paletteStyle.textContent=paletteCss()+spinnerCss+choiceCardCss;document.head.append(paletteStyle);
 const api = window.webPilot;
 let lastProjects = '';
 let currentState;
@@ -360,15 +362,19 @@ function render(state) {
         date.textContent = dateFormat.format(new Date(session.createdAt)) + (session.chatUrl || session.external ? '' : ' · новая');
         meta.append(date);
         // The tree shows orchestrators and discussion chats; the tasks of a plan live in its to-do plan.
-        if (session.role === 'orchestrator' || session.role === 'discussion') {
+        if (['orchestrator', 'planning', 'self', 'discussion'].includes(session.role)) {
           const role = document.createElement('span'); role.className = 'session-role'; role.dataset.role = session.role;
           role.dataset.state = session.orchestratorState?.state ?? '';
-          // A candidate becomes the orchestrator only when the user gives it the first task.
+          // With an older Kit a candidate becomes the orchestrator only when the user gives it the first task.
           const candidate = session.role === 'orchestrator' && !session.orchestratorScopeId && !session.planningOwner;
-          role.textContent = session.role === 'discussion' ? 'Обсуждение' : candidate ? 'Новая сессия'
-            : ['Оркестратор', session.orchestratorState?.progress].filter(Boolean).join(' · ');
+          role.textContent = session.role === 'discussion' || candidate ? 'Обсуждение' : session.role === 'planning' ? 'Планирование'
+            : session.role === 'self' ? 'Выполняет план' : ['Оркестратор', session.orchestratorState?.progress].filter(Boolean).join(' · ');
           if (session.orchestratorState?.state === 'attention') role.title = session.orchestratorState.label;
           meta.append(role);
+        }
+        if (session.choicePending) {
+          const wait = document.createElement('span'); wait.className = 'session-choice-wait'; wait.textContent = 'Ждёт вашего выбора';
+          meta.append(wait);
         }
         copy.append(title, meta);
         const experience = document.createElement('span'); experience.className = 'session-experience'; experience.dataset.experience = session.experience ?? 'chat'; experience.textContent = session.external ? 'ChatGPT ↗' : session.experience === 'work' ? 'Work' : 'Chat';
@@ -569,10 +575,14 @@ function render(state) {
       if(row&&(row.offsetTop<list.scrollTop||row.offsetTop+row.offsetHeight>list.scrollTop+list.clientHeight))list.scrollTop=Math.max(0,row.offsetTop-8);
     }
   } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; $('plan-attention').hidden = true; }
+  // The selected session's choice card: the same contract and markup as in the panel.
+  const card=state.userChoice??null;
+  const press=optionId=>card&&selected&&action('chooseOption',{sessionId:selected.sessionId,choiceId:card.choice_id,optionId,generation:card.generation});
+  renderChoiceCard(document,$('plan-choice'),card,{busy:actionPending,pick:press,reopen:()=>press('reopen')});
   // Busy participants of the selected project get a spinner in their tree row; text stays in the panel.
   const busyActors=new Set((work?.now??[]).filter(item=>item.kind==='act').map(item=>item.actor));
   for(const row of $('projects').querySelectorAll('.session[data-session-id]')){
-    const actor=row.dataset.role==='orchestrator'?'O':row.dataset.role==='discussion'?'S':null;
+    const actor=['orchestrator','planning','self','discussion'].includes(row.dataset.role)?roleActor(row.dataset.role):null;
     const busy=!!actor&&row.dataset.workspace===(selected?.parentWorkspace??selected?.workspace)&&busyActors.has(actor);
     const spin=row.querySelector('.session-copy strong .wp-spin');
     if(busy&&!spin){const node=document.createElement('span');node.className='wp-spin';node.setAttribute('aria-label','занят');row.querySelector('.session-copy strong')?.append(node);}

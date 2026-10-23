@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 import {JSDOM} from 'jsdom';
 import {buildWorkProgress,commitProgress,commitProgressLabel,messageEvent,planPhase,eventCount,PLAN_READY_TEXT} from '../src/contracts/work-progress.mjs';
 import {paletteCss,spinnerCss} from '../src/contracts/palette.mjs';
+import {choiceCardCss,renderChoiceCard} from '../src/contracts/user-choice.mjs';
+import {roleActor} from '../src/contracts/work-progress.mjs';
 import {startupView} from '../src/contracts/startup-view.mjs';
 import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 
@@ -14,7 +16,7 @@ async function sidebarFixture(t){
   const dom=new JSDOM(html,{runScripts:'outside-only',pretendToBeVisual:true,url:'https://fixture.invalid/'});
   t.after(async()=>{await new Promise(resolve=>setTimeout(resolve,0));dom.window.close();});
   const {window}=dom,calls=[];let listener;
-  Object.assign(window,{startupView,paletteCss,spinnerCss});
+  Object.assign(window,{startupView,paletteCss,spinnerCss,choiceCardCss,renderChoiceCard,roleActor});
   const base={projects:[{workspace:'/demo',name:'Проект',expanded:true,sessions:[{sessionId:'o',createdAt:1,title:'План',role:'orchestrator',
     orchestratorScopeId:'scope',orchestratorState:{state:'running',label:'Выполняется'}},{sessionId:'s',createdAt:2,title:'Обсуждение',role:'discussion'}]}],
     selected:{workspace:'/demo',sessionId:'o',role:'orchestrator',scopeId:'scope'},context:{phase:'delivered'},planReview:{enabled:true,supported:true,message:''}};

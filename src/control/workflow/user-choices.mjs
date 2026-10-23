@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { CHOICE_PRIORITY, choiceOptions, choiceView } from '../../contracts/user-choice.mjs';
+import { participantName, roleActor } from '../../contracts/work-progress.mjs';
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const OPEN = ['offered', 'postponed'];
@@ -62,8 +63,9 @@ export class UserChoices {
     this.history = Array.isArray(saved.history) ? saved.history.slice(-HISTORY_LIMIT) : [];
     this.pages.clear();
   }
-  log(record, kind, text) {
-    this.history.push({ at: new Date(this.now()).toISOString(), workspace: record.workspace, session_id: record.session_id, kind, text });
+  // History lines read «Пользователь → Оркестратор · выбор: «…»» in the window and the panel.
+  log(record, kind, text, actor = 'APP') {
+    this.history.push({ at: new Date(this.now()).toISOString(), workspace: record.workspace, session_id: record.session_id, kind, text, actor });
     if (this.history.length > HISTORY_LIMIT) this.history.splice(0, this.history.length - HISTORY_LIMIT);
   }
   // A cause may be offered when it was never shown, was superseded, or was declined and the
@@ -91,7 +93,7 @@ export class UserChoices {
       if (fact?.key === record.key) continue;
       record.state = 'stale'; record.resolved_at = new Date(this.now()).toISOString();
       this.keys.set(record.session_id + '\n' + record.key, { state: 'stale' });
-      this.log(record, 'warn', 'Выбор неактуален: ' + record.question); changed = true;
+      this.log(record, 'warn', 'выбор неактуален: ' + record.question); changed = true;
     }
     for (const fact of best.values()) {
       const current = this.records.get(fact.session_id);
@@ -102,7 +104,7 @@ export class UserChoices {
         created_at: new Date(this.now()).toISOString() };
       this.records.set(fact.session_id, record);
       this.keys.set(fact.session_id + '\n' + fact.key, { state: 'offered' });
-      this.log(record, 'ok', 'Предложен выбор: ' + question); changed = true;
+      this.log(record, 'ok', '→ Пользователь · предложен выбор: ' + question); changed = true;
     }
     if (changed) this.onChange();
     return changed;
@@ -119,20 +121,20 @@ export class UserChoices {
     if (!option) throw fail('USER_CHOICE_OPTION', 'Неизвестный вариант выбора.');
     if (option.action === 'postpone') {
       record.state = 'postponed'; record.generation++;
-      this.log(record, 'ok', 'Выбор отложен пользователем: ' + record.question); this.onChange();
+      this.log(record, 'ok', 'отложил выбор: ' + record.question, 'USER'); this.onChange();
       return choiceView(record);
     }
     // The decision is recorded before any effect: a repeated press can never act twice.
     Object.assign(record, { state: 'chosen', chosen_option: option.id, chosen_at: new Date(this.now()).toISOString(),
       source: source === 'window' ? 'window' : 'panel', generation: record.generation + 1 });
     this.keys.set(record.session_id + '\n' + record.key, { state: 'chosen' });
-    this.log(record, 'ok', 'Выбор пользователя: ' + option.label); this.onChange();
+    this.log(record, 'ok', '→ ' + participantName(roleActor(record.role)) + ' · выбор: «' + option.label + '»', 'USER'); this.onChange();
     try {
       if (option.action && option.action !== 'dismiss') await this.act(record, option);
       if (option.message) record.message_id = (await this.deliver(record, option))?.message_id ?? null;
     } catch (error) {
       record.error = error.message;
-      this.log(record, 'warn', 'Выбор не выполнен: ' + error.message); this.report(error);
+      this.log(record, 'warn', 'выбор не выполнен: ' + error.message); this.report(error);
     }
     // An app action without a message is complete at once; a failed one frees the card for the next cause.
     if (!record.message_id || record.error) record.state = 'done';
@@ -164,7 +166,7 @@ export class UserChoices {
       if (record && OPEN.includes(record.state)) {
         record.state = 'declined'; record.resolved_at = new Date(this.now()).toISOString();
         this.keys.set(sessionId + '\n' + record.key, { state: 'declined', turnEnded: false });
-        this.log(record, 'warn', 'Выбор отклонён: пользователь ответил сам'); changed = true;
+        this.log(record, 'warn', 'ответил в чате сам; выбор снят', 'USER'); changed = true;
       }
     }
     if (previous?.busy && !busy) {

@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { executorStatus,projectExecutors,projectExecutionPlan,integrationProblem,executionFinalStages } from '../src/control/workflow/execution-projection.mjs';
 import {paletteCss,spinnerCss} from '../src/contracts/palette.mjs';
+import {choiceCardCss,renderChoiceCard} from '../src/contracts/user-choice.mjs';
+import {roleActor} from '../src/contracts/work-progress.mjs';
 
 test('F20: worker source and HTTP preview never equal verified main or a final reply',()=>{
   const assignment={id:'a',status:'READY_FOR_INTEGRATION',source_commit:'sha',worktree:'/worktree',commandActive:true,
@@ -69,7 +71,7 @@ test('real sidebar renders executor group, worktree/status/time, protected actio
   const action=name=>async(...args)=>{calls.push([name,...args]);return {state};};
   window.webPilot={getState:async()=>state,onState:fn=>{listener=fn;},
     selectSession:action('selectSession')};
-  window.paletteCss=paletteCss;window.spinnerCss=spinnerCss;
+  window.paletteCss=paletteCss;window.spinnerCss=spinnerCss;Object.assign(window,{choiceCardCss,renderChoiceCard,roleActor});
   window.eval('const createProgress=()=>({show(){},destroy(){}});const operationLabel=()=>"";const settingsPanelView=()=>({render(){}});const workspaceSetupView=()=>({render(){}});'
     +'const executionFinalStages='+executionFinalStages.toString()+';\n'+source.replace(/^import .*;\n/gm,''));
   const settle=()=>new Promise(resolve=>setTimeout(resolve,0));await settle();

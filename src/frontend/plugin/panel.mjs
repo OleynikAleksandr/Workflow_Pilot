@@ -1,9 +1,10 @@
 import {assignmentStage} from '../../contracts/dialogue-view.mjs';
 import {startupView} from '../../contracts/startup-view.mjs';
 import {paletteCss,spinnerCss} from '../../contracts/palette.mjs';
+import {choiceCardCss,renderChoiceCard} from '../../contracts/user-choice.mjs';
 import {eventCount} from '../../contracts/work-progress.mjs';
 const progressClock=ms=>{const seconds=Math.max(0,Math.floor(ms/1000));return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');};
-const openedChat=self=>self==='O'?'открыт чат оркестратора':self==='S'?'открыт чат обсуждения':self?'открыт чат '+self:'';
+const openedChat=self=>({O:'открыт чат оркестратора',S:'открыт чат обсуждения',P:'открыт чат планирования',SELF:'открыт чат, выполняющий план'})[self]??(self?'открыт чат '+self:'');
 // «Оркестратор → T002 задание …»: the participant in bold, the direction of a message highlighted.
 function progressText(document,name,text){
   const node=document.createElement('span'),who=document.createElement('b');node.className='wp-what';who.textContent=name;node.append(who,' ');
@@ -14,8 +15,8 @@ function progressText(document,name,text){
   node.title=name+' '+text;return node;
 }
 const delivery={pending:'Подготовлено в Kit · ожидает SDK (не доставлено)',claimed:'SDK отправляет · подтверждения ещё нет',accepted:'Принято хостом (SDK accepted) · чтение не подтверждено',rejected:'Отклонено',unknown:'Исход неизвестен',superseded:'Устарело'};
-const sender=message=>message.sender_role==='O'?'Оркестратор':message.sender_role==='E'?'Исполнитель':'Приложение';
-const label=message=>[sender(message)+' → '+(message.sender_role==='E'?'Оркестратор':message.task_id?'Исполнитель':'Оркестратор'),
+const sender=message=>message.sender_role==='O'?'Оркестратор':message.sender_role==='E'?'Исполнитель':message.kind==='user-choice'?'Пользователь':'Приложение';
+const label=message=>[sender(message)+' → '+(message.kind==='user-choice'?'агент · выбор':message.sender_role==='E'?'Оркестратор':message.task_id?'Исполнитель':'Оркестратор'),
   message.task_id,message.attempt?'попытка '+message.attempt:null].filter(Boolean).join(' · ');
 const handled=message=>message.dialogue_version===1?' · '+(message.yielded?'обработано':'обработка не подтверждена')+
   ' · '+(message.reply_observed?'ход завершён':'завершение хода не подтверждено'):'';
@@ -31,9 +32,13 @@ const intentLabel=phase=>({draft:'Черновик подготовлен',prepa
 export function mountPanel({document}) {
   // The panel shares the sidebar palette; the host theme attribute selects light or dark.
   const palette=document.createElement('style');palette.id='wp-palette';
-  palette.textContent=paletteCss({mode:'host',aliases:false})+spinnerCss;document.head.append(palette);
+  palette.textContent=paletteCss({mode:'host',aliases:false})+spinnerCss+choiceCardCss;document.head.append(palette);
   const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
-  const view=document.defaultView;let progressTicker=null,lastProgress=null;
+  const view=document.defaultView;let progressTicker=null,lastProgress=null,lastChoice=null,choiceHandlers={},choiceBusy=false;
+  // The user's choice card: the same contract and markup as in the window.
+  // A panel document of an older resource has no card block; the choice still reaches the agent.
+  function renderChoice(value){lastChoice=value??null;const node=nodes.get('progress-choice');
+    if(node)renderChoiceCard(document,node,lastChoice,{...choiceHandlers,busy:choiceBusy});}
   // Work progress of the whole plan: header, every current action with its time, the history and executor timers.
   function renderProgress(value){
     if(!value)return;
@@ -91,7 +96,8 @@ export function mountPanel({document}) {
     if(!lastProgress?.total||lastProgress.done!==lastProgress.total)return false;
     renderProgress({...lastProgress,phase:'План закрыт',now:[],closed:true});return true;
   }
-  return {$,progress:renderProgress,closed:renderClosed,status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
+  return {$,progress:renderProgress,closed:renderClosed,choice:renderChoice,currentChoice:()=>lastChoice,
+    onChoice(handlers){choiceHandlers=handlers;renderChoice(lastChoice);},choiceBusy(value){choiceBusy=!!value;renderChoice(lastChoice);},status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
     mode(value){workflow=value==='workflow';
       for(const id of ['legacy-fields','bind','enable'])$(id).hidden=workflow;
       if(workflow){$('run-selection').hidden=true;
@@ -123,6 +129,7 @@ export function mountPanel({document}) {
     },
     snapshot(value){
       if(value.work_progress)renderProgress(value.work_progress);
+      if('user_choice' in value)renderChoice(value.user_choice);
       if(value.assignments){$('roster-section').hidden=false;$('roster').replaceChildren();
         for(const assignment of value.assignments){const li=document.createElement('li'),detail=document.createElement('span');
           li.textContent=assignment.task_id+' · попытка '+(assignment.attempt??1)+' · '+(assignment.error?.message??assignmentStage(assignment).label);

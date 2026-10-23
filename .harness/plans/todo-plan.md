@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 970,
+  "plan_revision": 972,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "user-choice-plan-modes",
@@ -95,7 +95,8 @@
       "src/frontend/desktop/preload.cjs",
       "tests/electron-smoke.mjs",
       "tests/plugin-enrollment.test.mjs",
-      "tests/work-progress-scenario.test.mjs"
+      "tests/work-progress-scenario.test.mjs",
+      "tests/parallel-execution-ui.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/user-choice-and-plan-modes.md",
@@ -377,8 +378,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "user-choice-plan-modes",
         "task_id": "T004",
@@ -408,7 +409,11 @@
         "tests/chatgpt-plugin.test.mjs",
         "tests/user-choice-view.test.mjs",
         "src/contracts/work-progress.mjs",
-        "tests/work-progress.test.mjs"
+        "tests/work-progress.test.mjs",
+        "src/control/workflow/user-choices.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/user-choices.test.mjs",
+        "tests/work-progress-scenario.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -429,7 +434,25 @@
         "Отправитель USER для user-choice в контракте хода работ, в Истории окна и в панели: «Пользователь → <роль> · выбор»."
       ],
       "expected_commit_message": "feat: карточка выбора пользователя в панели и окне",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/palette.mjs",
+        "src/contracts/user-choice.mjs",
+        "src/control/workflow/user-choices.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/progress.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/user-choice-view.test.mjs",
+        "tests/user-choices.test.mjs",
+        "tests/work-progress-scenario.test.mjs",
+        "tests/work-progress.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -582,7 +605,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: user-choice-plan-modes
 Current Task: нет
-Revision: 970
+Revision: 972
 
 ## Цель
 
@@ -618,10 +641,10 @@ Revision: 970
   - Файлы: src/control/workflow/planning-owner.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/enrollment.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/workflow/coordination.mjs, src/control/workflow/user-choices.mjs, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, src/control/plugin/service.mjs, tests/planning-owner.test.mjs, tests/session-roles.test.mjs, tests/startup-context.test.mjs, tests/work-progress.test.mjs, tests/backend-desktop-model.test.mjs, tests/user-choices.test.mjs, src/control/context/context-session.mjs, tests/context-session.test.mjs, tools/codex-app-server-mcp/plugin-ui.html, tests/electron-smoke.mjs, tests/plugin-enrollment.test.mjs, tests/work-progress-scenario.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002
-- [TODO] T004: Карточка выбора в панели и окне — Ожидает
-  - Git Commit: [PENDING] feat: карточка выбора пользователя в панели и окне
+- [DONE] T004: Карточка выбора в панели и окне — Завершено
+  - Git Commit: [DONE] feat: карточка выбора пользователя в панели и окне
   - Reference: user-choice-plan-modes / T004 / implementation
-  - Файлы: src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/frontend/plugin/launch.mjs, src/contracts/palette.mjs, src/contracts/user-choice.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/progress.mjs, src/frontend/desktop/ui/index.html, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin-ui.html, package.json, package-lock.json, src/contracts/backend.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/chatgpt-plugin.test.mjs, tests/user-choice-view.test.mjs, src/contracts/work-progress.mjs, tests/work-progress.test.mjs
+  - Файлы: src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/frontend/plugin/launch.mjs, src/contracts/palette.mjs, src/contracts/user-choice.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/progress.mjs, src/frontend/desktop/ui/index.html, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin-ui.html, package.json, package-lock.json, src/contracts/backend.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/chatgpt-plugin.test.mjs, tests/user-choice-view.test.mjs, src/contracts/work-progress.mjs, tests/work-progress.test.mjs, src/control/workflow/user-choices.mjs, tests/parallel-execution-ui.test.mjs, tests/user-choices.test.mjs, tests/work-progress-scenario.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002, T003
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

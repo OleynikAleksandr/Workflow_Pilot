@@ -1,7 +1,7 @@
 import {startupView} from '../../../contracts/startup-view.mjs';
 const actionLabels = {
   runDoctor: 'Проверяем и восстанавливаем проект', continueDoctor: 'Возвращаемся к работе', reviewDoctorProject: 'Проверяем папку',
-  newSession: 'Создаём сессию',
+  newSession: 'Создаём сессию', chooseOption: 'Передаём ваш выбор',
   reload: 'Обновляем ChatGPT', retry: 'Обновляем контекст', returnToChat: 'Возвращаемся к чату',
   previewNew: 'Проверяем новый проект',
   applySetup: 'Подготавливаем проект', refreshSetup: 'Проверяем папку',
