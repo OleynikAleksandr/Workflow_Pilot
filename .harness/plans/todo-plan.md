@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 977,
+  "plan_revision": 979,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "user-choice-plan-modes",
@@ -534,8 +534,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "user-choice-plan-modes",
         "task_id": "RELEASE",
@@ -559,7 +559,10 @@
       ],
       "expected_commit_message": "release: Собрать выпуск 0.5.30 для трёх ОС",
       "verification_kind": "package",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -642,7 +645,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: user-choice-plan-modes
 Current Task: нет
-Revision: 977
+Revision: 979
 
 ## Цель
 
@@ -690,8 +693,8 @@ Revision: 977
   - Файлы: docs/planning/user-choice-and-plan-modes.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/dialogue-timing.md, docs/modules/plugin-communication-handoff.md, docs/modules/user-choice.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004
-- [TODO] RELEASE: Собрать выпуск 0.5.30 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.5.30 для трёх ОС
+- [DONE] RELEASE: Собрать выпуск 0.5.30 для трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.5.30 для трёх ОС
   - Reference: user-choice-plan-modes / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
