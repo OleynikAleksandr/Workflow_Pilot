@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 917,
+  "plan_revision": 919,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -839,14 +839,19 @@
         "Версия приложения 0.5.27 в package.json, package-lock.json и COMMUNICATION_APP_VERSION/BUILD; протокол панели 4 не меняется."
       ],
       "expected_commit_message": "chore: Поднять версию 0.5.27",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "VERSION-0527",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs"
+      ]
     },
     {
       "id": "DOCS-3",
@@ -989,7 +994,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 917
+Revision: 919
 
 ## Цель
 
@@ -1099,8 +1104,8 @@ Revision: 917
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, tests/sidebar.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/electron-smoke.mjs, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] VERSION-0527: Поднять версию 0.5.27 — Ожидает
-  - Git Commit: [PENDING] chore: Поднять версию 0.5.27
+- [DONE] VERSION-0527: Поднять версию 0.5.27 — Завершено
+  - Git Commit: [DONE] chore: Поднять версию 0.5.27
   - Reference: work-progress-ui / VERSION-0527 / implementation
   - Файлы: src/contracts/backend.mjs, package.json, package-lock.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
