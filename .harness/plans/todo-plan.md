@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 927,
+  "plan_revision": 928,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Понятный ход работ: левый sidebar показывает управление и все задачи плана со стадиями в закреплённых зонах, правая панель Workflow Pilot — все текущие действия участников и историю в единой палитре приложения; выпуск 0.5.25 для трёх ОС опубликован.",
   "acceptance_criteria": [
     "Левый sidebar: строка сессии без текстов старта, со спиннером занятости; кнопки «Новая сессия» нет; карточка плана из закреплённого верха (название, этап со спиннером, «в main N из M»), прокручиваемого списка задач со стадиями в нынешних формулировках, режимом и временем и закреплённого низа (кнопка выполнения, блок проблемы с одним действием, подсказка приёмки, Review).",
@@ -76,7 +76,12 @@
       "packages/workflow-kit/src/lib/installer.mjs",
       "src/control/workflow/parallel-execution.mjs",
       "src/control/plugin/startup-context.mjs",
-      "tests/startup-context.test.mjs"
+      "tests/startup-context.test.mjs",
+      "packages/workflow-kit/src/lib/review-state.mjs",
+      "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+      "tests/fixtures/released-kit/kit-1.9.5.tar.gz",
+      "src/control/workflow/plan-review.mjs",
+      "tests/plan-review.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/work-progress-ui.md",
@@ -1001,6 +1006,235 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "KIT-REVIEW-0527",
+      "title": "Kit 1.9.6: Review по решению пользователя и блокировка после публикации",
+      "why": "Живая проверка 0.5.27: пользователь включил Review во время обсуждения, публикация вернула REVIEW_REQUIRED, а оркестратор попросил выключить Review вместо прохождения ревью; переключатель меняется и после публикации плана.",
+      "dependencies": [],
+      "functional_paths": [
+        "packages/workflow-kit/src/lib/review-state.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/package.json",
+        "package-lock.json",
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+        "packages/workflow-kit/scripts/check-runtime-fixture.mjs",
+        "tests/fixtures/released-kit/kit-1.9.5.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md",
+        "tests/fixtures/released-kit/README.md"
+      ],
+      "verification_ids": [
+        "kit-check",
+        "kit-assignments",
+        "kit-upgrade",
+        "unit-all"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "REVIEW_REQUIRED и сводка Review в recovery говорят: положение переключателя в момент публикации — решение пользователя; при ON пройти review:prepare/run/respond/publish, не прося выключить Review.",
+        "setReviewEnabled отказывает с REVIEW_LOCKED, пока план опубликован (execution_scope_status не NONE), и с REVIEW_BUSY во время RUNNING/PUBLISHING; выключение на PREPARED/AUTHOR_PENDING/AGREED/NEEDS_USER/STALE отменяет ревью (CANCELLED), после чего план публикуется обычным способом.",
+        "Kit 1.9.6; обновление с выпущенного 1.9.5 проверено неизменяемым архивом."
+      ],
+      "expected_commit_message": "feat: Review по решению пользователя и блокировка после публикации",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "KIT-REVIEW-0527",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "FIX-REVIEW-UI-0527",
+      "title": "Кнопка Review неактивна после публикации плана и во время ревью",
+      "why": "Переключатель Review в sidebar доступен всегда, хотя после публикации он уже ни на что не влияет, а во время ревью его выключение ломает запуск.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/workflow/plan-review.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/sidebar.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "plan-review-ui",
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "При опубликованном плане (ACTIVE/BLOCKED) кнопка Review неактивна с подсказкой «Review применяется к новому плану; текущий план уже опубликован»; во время RUNNING/PUBLISHING — неактивна с подсказкой «Идёт ревью»; после закрытия плана снова доступна.",
+        "Backend не обходит запрет: отказ Kit возвращается действию как ошибка без изменения состояния."
+      ],
+      "expected_commit_message": "fix: Кнопка Review неактивна после публикации плана",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "FIX-REVIEW-UI-0527",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "VERSION-0528",
+      "title": "Поднять версию 0.5.28",
+      "why": "Сценарии Review выходят отдельным выпуском после живой проверки 0.5.27.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия приложения 0.5.28 в package.json, package-lock.json и COMMUNICATION_APP_VERSION/BUILD; протокол панели 4 не меняется."
+      ],
+      "expected_commit_message": "chore: Поднять версию 0.5.28",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "VERSION-0528",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-4",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "DOCS-4",
+        "role": "implementation",
+        "iteration": 4
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "KIT-REVIEW-0527",
+        "FIX-REVIEW-UI-0527",
+        "VERSION-0528"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/desktop.md",
+        "tests/fixtures/released-kit/README.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-4",
+      "title": "Собрать выпуск 0.5.28 для трёх ОС",
+      "why": "Собрать выпуск 0.5.28 для трёх ОС",
+      "dependencies": [
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "После DOCS собраны macOS arm64, Windows x64 и Linux x64 из одного sourceCommit; перед production-сборкой удалены только Python-кэши tools/codex-app-server-mcp."
+      ],
+      "expected_commit_message": "release: Собрать выпуск 0.5.28 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "RELEASE-4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-4",
+      "title": "Установить выпуск 0.5.28",
+      "why": "Установить выпуск 0.5.28",
+      "dependencies": [
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer проверил версию, manifest, подпись и откат; приложение и служба агентом не закрываются и не запускаются."
+      ],
+      "expected_commit_message": "release: Установить выпуск 0.5.28",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "INSTALL-4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-4",
+      "title": "Опубликовать выпуск 0.5.28 на GitHub",
+      "why": "Опубликовать выпуск 0.5.28 на GitHub",
+      "dependencies": [
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/desktop.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "GitHub Release v0.5.28 опубликован с тегом на sourceCommit, семью assets и сверенными digest и размерами; scope не архивируется автоматически."
+      ],
+      "expected_commit_message": "release: Опубликовать выпуск 0.5.28 на GitHub",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "work-progress-ui",
+        "task_id": "PUBLISH-4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1022,10 +1256,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 927
+Revision: 928
 
 ## Цель
 
@@ -1165,6 +1399,48 @@ Revision: 927
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-3
+- [TODO] KIT-REVIEW-0527: Kit 1.9.6: Review по решению пользователя и блокировка после публикации — Ожидает
+  - Git Commit: [PENDING] feat: Review по решению пользователя и блокировка после публикации
+  - Reference: work-progress-ui / KIT-REVIEW-0527 / implementation
+  - Файлы: packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/fixtures/released-kit/kit-1.9.5.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, docs/modules/desktop.md, tests/fixtures/released-kit/README.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] FIX-REVIEW-UI-0527: Кнопка Review неактивна после публикации плана и во время ревью — Ожидает
+  - Git Commit: [PENDING] fix: Кнопка Review неактивна после публикации плана
+  - Reference: work-progress-ui / FIX-REVIEW-UI-0527 / implementation
+  - Файлы: src/control/workflow/plan-review.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/plan-review.test.mjs, tests/sidebar.test.mjs, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] VERSION-0528: Поднять версию 0.5.28 — Ожидает
+  - Git Commit: [PENDING] chore: Поднять версию 0.5.28
+  - Reference: work-progress-ui / VERSION-0528 / implementation
+  - Файлы: src/contracts/backend.mjs, package.json, package-lock.json, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: work-progress-ui / DOCS-4 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/desktop.md, tests/fixtures/released-kit/README.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: KIT-REVIEW-0527, FIX-REVIEW-UI-0527, VERSION-0528
+- [TODO] RELEASE-4: Собрать выпуск 0.5.28 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] release: Собрать выпуск 0.5.28 для трёх ОС
+  - Reference: work-progress-ui / RELEASE-4 / implementation
+  - Файлы: release-manifest.json, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-4
+- [TODO] INSTALL-4: Установить выпуск 0.5.28 — Ожидает
+  - Git Commit: [PENDING] release: Установить выпуск 0.5.28
+  - Reference: work-progress-ui / INSTALL-4 / implementation
+  - Файлы: release-manifest.json, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-4
+- [TODO] PUBLISH-4: Опубликовать выпуск 0.5.28 на GitHub — Ожидает
+  - Git Commit: [PENDING] release: Опубликовать выпуск 0.5.28 на GitHub
+  - Reference: work-progress-ui / PUBLISH-4 / implementation
+  - Файлы: release-manifest.json, docs/modules/desktop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS-4
 
 ## Context Pack For This Cycle
 
