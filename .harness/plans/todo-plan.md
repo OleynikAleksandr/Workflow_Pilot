@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 957,
+  "plan_revision": 959,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "review-publication-orchestrator",
@@ -356,8 +356,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "review-publication-orchestrator",
         "task_id": "INSTALL",
@@ -382,7 +382,8 @@
         "Штатный installer проверил версию, manifest, подпись и откат; приложение и служба агентом не закрываются и не запускаются."
       ],
       "expected_commit_message": "release: Установить выпуск 0.5.29",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -436,7 +437,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: review-publication-orchestrator
 Current Task: нет
-Revision: 957
+Revision: 959
 
 ## Цель
 
@@ -478,8 +479,8 @@ Revision: 957
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить выпуск 0.5.29 — Ожидает
-  - Git Commit: [PENDING] release: Установить выпуск 0.5.29
+- [DONE] INSTALL: Установить выпуск 0.5.29 — Завершено
+  - Git Commit: [DONE] release: Установить выпуск 0.5.29
   - Reference: review-publication-orchestrator / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
