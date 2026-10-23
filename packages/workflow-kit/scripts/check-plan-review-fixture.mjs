@@ -133,8 +133,23 @@ try {
   {
     const {root,scope,input}=fixture();setReviewEnabled(root,true);prepareReview(root,input);state(root,{stage:'NEEDS_USER'});
     setReviewEnabled(root,false);
+    assert.equal(readReview(root).stage,'CANCELLED','OFF cancels the unfinished review');
     assert.equal(createScope(root,scope).ok,true,'OFF frees even a disputed plan');
     assert.equal(readReview(root).stage,'PUBLISHED');
+  }
+  {
+    // The switch is the user's decision at publication time and is frozen while a plan is published.
+    const {root,scope,input}=fixture();
+    assert.match(reviewSummary(root),/положение в момент публикации/);
+    assert.match(reviewSummary(root),/не прося выключить Review/);
+    setReviewEnabled(root,true);
+    assert.throws(()=>createScope(root,scope),e=>e.code==='REVIEW_REQUIRED' && /Не просите выключить Review/.test(e.message));
+    prepareReview(root,input);setReviewEnabled(root,false);
+    assert.equal(readReview(root).stage,'CANCELLED');assert.equal(readReview(root).user_decision.action,'cancel');
+    createScope(root,scope);
+    expect('REVIEW_LOCKED',()=>setReviewEnabled(root,true));
+    assert.equal(readReview(root).enabled,false,'a published plan keeps its Review decision');
+    assert.equal(setReviewEnabled(root,false).enabled,false,'the unchanged value is not a toggle');
   }
   {
     const {root,input}=fixture();setReviewEnabled(root,true);prepareReview(root,input);await agree(root);
@@ -245,18 +260,19 @@ try {
     assert.equal(recovered.claude_session_id,'saved-claude-session');
   }
   {
-    const {root,scope,input}=fixture();setReviewEnabled(root,true);const prepared=prepareReview(root,input);
+    const {root,input}=fixture();setReviewEnabled(root,true);const prepared=prepareReview(root,input);
     const dir=path.join(root,'.harness/runtime/plan-review',prepared.run_id);
     const result=await runReview(root,{}, {spawn:(_command,args,options)=>{
       const child=new EventEmitter();child.stdin=new EventEmitter();child.stdin.end=()=>queueMicrotask(()=>{
-        setReviewEnabled(root,false);createScope(root,scope);startTask(root,'T001');
-        assert.ok(fs.existsSync(dir),'OFF publication must not delete a running process output');
+        expect('REVIEW_BUSY',()=>setReviewEnabled(root,false));
+        assert.equal(readReview(root).enabled,true,'a running review cannot be switched off');
+        assert.ok(fs.existsSync(dir),'the running process output stays');
         fs.writeSync(options.stdio[1],JSON.stringify({subtype:'success',is_error:false,session_id:args[args.indexOf('--session-id')+1],modelUsage:{[REVIEW_MODEL]:{}},structured_output:{verdict:'approved',summary:'OK',findings:[]}}));
         child.emit('close',0);
       });return child;
     }});
-    assert.equal(result.stage,'PUBLISHED');assert.equal(fs.existsSync(dir),false);
-    assert.equal(readReview(root).cleanup_status,'done');
+    assert.notEqual(result.stage,'CANCELLED');assert.equal(readReview(root).enabled,true);
+    assert.equal(readPlan(root).execution_scope_status,'NONE');
   }
   {
     const {root,scope,input}=fixture();setReviewEnabled(root,true);prepareReview(root,input);

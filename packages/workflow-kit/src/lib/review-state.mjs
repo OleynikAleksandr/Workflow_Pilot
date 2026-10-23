@@ -26,15 +26,25 @@ export function saveReview(root, state) {
   atomic(safePath(root, REVIEW_STATE), json(next));
   return next;
 }
+// Shown whenever a plan is published while the user has Review on but no review run exists yet.
+export const REVIEW_ON_PUBLICATION = 'Review включён пользователем: положение переключателя в момент публикации — его действующее решение, даже если recovery показывал OFF. Не просите выключить Review: подготовьте полную форму scope через review:prepare --help, затем review:run, review:respond и review:publish. Конфигурация проверок не изменена.';
 export function setReviewEnabled(root, enabled) {
   check(typeof enabled === 'boolean', 'REVIEW_POLICY', 'enabled должен быть boolean.');
   return locked(root, () => {
     const s = readReview(root);
-    return s.enabled === enabled ? s : saveReview(root, {...s, enabled});
+    if (s.enabled === enabled) return s;
+    // Review gates only the publication of a new plan; a published plan keeps the decision it was published with.
+    check(readPlan(root).execution_scope_status === 'NONE', 'REVIEW_LOCKED',
+      'Review применяется к новому плану; текущий план уже опубликован. Переключение доступно после закрытия плана.');
+    check(!['RUNNING','PUBLISHING'].includes(s.stage), 'REVIEW_BUSY', 'Идёт ревью или публикация плана; переключите Review после их завершения.');
+    // Switching Review off cancels an unfinished review; the agent then publishes the plan normally.
+    const open = !enabled && s.run_id && ['PREPARED','AUTHOR_PENDING','AGREED','NEEDS_USER','STALE'].includes(s.stage);
+    return saveReview(root, open ? {...s, enabled, stage:'CANCELLED', error:null,
+      user_decision:{action:'cancel',note:'Пользователь выключил Review до публикации плана.'}} : {...s, enabled});
   });
 }
 export function assertSimpleReview(root) {
-  check(!readReview(root).enabled, 'REVIEW_REQUIRED', 'Review включён: подготовьте полную форму scope через review:prepare, затем review:run и review:publish. Конфигурация проверок не изменена.');
+  check(!readReview(root).enabled, 'REVIEW_REQUIRED', REVIEW_ON_PUBLICATION);
 }
 export function reviewPlanDigest(plan) {
   // Publication appends an approval decision; task statuses/commit records are otherwise identical.
@@ -83,6 +93,7 @@ export function assertAuthorResponses(root, s) {
 export function assertReviewPublication(root, candidate) {
   const s = readReview(root);
   if (!s.enabled) return null;
+  check(s.run_id && !['IDLE','CANCELLED','PUBLISHED'].includes(s.stage), 'REVIEW_REQUIRED', REVIEW_ON_PUBLICATION);
   check(s.stage === 'AGREED', 'REVIEW_REQUIRED', 'Нужно согласование последней пары; выполните review:status.');
   checkReviewInputs(root,s);
   check(reviewPlanDigest(candidate) === s.plan_digest, 'REVIEW_STALE', 'Публикуемый план отличается от согласованного.');
@@ -132,7 +143,7 @@ export function reviewSummary(root) {
   const next = s.stage==='PREPARED'?'review:run':s.stage==='AGREED'?'review:respond на approved; затем review:publish без лишнего раунда':s.stage==='NEEDS_USER'?'Если есть успешный отзыв — review:respond; сообщить проблему, спросить пользователя; затем review:resolve':s.stage==='AUTHOR_PENDING'?'Прочитать ревью; review:respond, затем исправления и review:prepare':'review:status';
   return 'Review: '+(s.enabled?'ON (пользователь разрешил рецензента Claude)':'OFF (обычная публикация без согласия Claude)')
     +'; стадия '+s.stage+'; раунд '+(s.round??0)+'. '+(s.enabled?next:'')
-    +'\nДля нового плана при ON: review:prepare --help. Не меняйте enabled от имени агента. Память разрешена; свежие решения пользователя имеют приоритет.'
+    +'\nДля нового плана при ON: review:prepare --help. Переключатель принадлежит пользователю и до публикации может измениться: действует его положение в момент публикации. REVIEW_REQUIRED — пройдите ревью, не прося выключить Review; REVIEW_DISABLED — публикуйте обычным способом. После публикации Review не переключается до закрытия плана. Не меняйте enabled от имени агента. Память разрешена; свежие решения пользователя имеют приоритет.'
     +'\nПосле каждого успешного отзыва, включая approved: review:respond --help. Сохраните позицию через Kit; существенные решения перенесите в spec/критерии до окончательного ревью. Изменение пары требует нового согласия; ошибка без успешного отзыва не требует позиции.'
     +'\nПолучатель Review — recipient_session_id из стартового сообщения (или совпадающий scope.session_id), только для доставки. Вне Web Pilot: recipient_mode: manual. Смена адресата — лишь с recipient_change_note по поручению пользователя.'
     +(s.run_id && !['PUBLISHED','CANCELLED'].includes(s.stage)?'\nТекущий получатель: '+(s.recipient_session_id??(s.recipient_mode==='manual'?'ручной режим, без отправки':'не задан; автоматическая доставка невозможна')):'')

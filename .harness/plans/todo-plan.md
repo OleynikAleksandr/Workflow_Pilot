@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 928,
+  "plan_revision": 931,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "work-progress-ui",
@@ -81,7 +81,8 @@
       "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
       "tests/fixtures/released-kit/kit-1.9.5.tar.gz",
       "src/control/workflow/plan-review.mjs",
-      "tests/plan-review.test.mjs"
+      "tests/plan-review.test.mjs",
+      "packages/workflow-kit/src/lib/plan-review.mjs"
     ],
     "documentation_paths": [
       "docs/planning/work-progress-ui.md",
@@ -112,11 +113,6 @@
         "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "WORKTREE"
-      },
-      {
-        "path": "docs/planning/work-progress-ui.md",
-        "required": true,
-        "revision": "418b8c0ddb3cae6706ecdf3f5cf24ae6154a1616"
       },
       {
         "path": "docs/modules/desktop.md",
@@ -1022,7 +1018,8 @@
         "packages/workflow-kit/scripts/check-runtime-fixture.mjs",
         "tests/fixtures/released-kit/kit-1.9.5.tar.gz",
         "tests/fixtures/released-kit/manifest.json",
-        "tests/workflow-kit-upgrade.test.mjs"
+        "tests/workflow-kit-upgrade.test.mjs",
+        "packages/workflow-kit/src/lib/plan-review.mjs"
       ],
       "documentation_paths": [
         "docs/modules/desktop.md",
@@ -1041,14 +1038,27 @@
         "Kit 1.9.6; обновление с выпущенного 1.9.5 проверено неизменяемым архивом."
       ],
       "expected_commit_message": "feat: Review по решению пользователя и блокировка после публикации",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "work-progress-ui",
         "task_id": "KIT-REVIEW-0527",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/plan-review.mjs",
+        "packages/workflow-kit/src/lib/review-state.mjs",
+        "tests/fixtures/released-kit/README.md",
+        "tests/fixtures/released-kit/kit-1.9.5.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "id": "FIX-REVIEW-UI-0527",
@@ -1259,7 +1269,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: work-progress-ui
 Current Task: нет
-Revision: 928
+Revision: 931
 
 ## Цель
 
@@ -1399,10 +1409,10 @@ Revision: 928
   - Файлы: release-manifest.json, docs/modules/desktop.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS-3
-- [TODO] KIT-REVIEW-0527: Kit 1.9.6: Review по решению пользователя и блокировка после публикации — Ожидает
-  - Git Commit: [PENDING] feat: Review по решению пользователя и блокировка после публикации
+- [DONE] KIT-REVIEW-0527: Kit 1.9.6: Review по решению пользователя и блокировка после публикации — Завершено
+  - Git Commit: [DONE] feat: Review по решению пользователя и блокировка после публикации
   - Reference: work-progress-ui / KIT-REVIEW-0527 / implementation
-  - Файлы: packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/fixtures/released-kit/kit-1.9.5.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, docs/modules/desktop.md, tests/fixtures/released-kit/README.md
+  - Файлы: packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/fixtures/released-kit/kit-1.9.5.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, packages/workflow-kit/src/lib/plan-review.mjs, docs/modules/desktop.md, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] FIX-REVIEW-UI-0527: Кнопка Review неактивна после публикации плана и во время ревью — Ожидает
@@ -1445,7 +1455,6 @@ Revision: 928
 ## Context Pack For This Cycle
 
 - docs/architecture/OVERVIEW.md
-- docs/planning/work-progress-ui.md
 - docs/modules/desktop.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.

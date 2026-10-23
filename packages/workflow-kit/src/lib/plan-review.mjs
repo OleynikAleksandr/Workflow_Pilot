@@ -7,8 +7,8 @@ import { locked, journal } from './transaction-state.mjs';
 import { readConfig } from './validation-rules.mjs';
 import { buildScopePlan, createScope } from './actions.mjs';
 
-import { readReview, reviewDirectory, saveReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, finishReviewPublication } from './review-state.mjs';
-export { REVIEW_STATE, REVIEW_DIRECTORY, readReview, reviewDirectory, saveReview, setReviewEnabled, assertSimpleReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, assertReviewPublication, finishReviewPublication, cleanupReview, reviewSummary } from './review-state.mjs';
+import { readReview, reviewDirectory, saveReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, finishReviewPublication, REVIEW_ON_PUBLICATION } from './review-state.mjs';
+export { REVIEW_STATE, REVIEW_DIRECTORY, readReview, reviewDirectory, saveReview, setReviewEnabled, assertSimpleReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, assertReviewPublication, finishReviewPublication, cleanupReview, reviewSummary, REVIEW_ON_PUBLICATION } from './review-state.mjs';
 export function respondReview(root, input) {
   return locked(root,()=>{
     const s=readReview(root);
@@ -167,7 +167,7 @@ export function publishReview(root) {
       return {ok:true,already_published:true,...readReview(root)};
     });
   }
-  check(s.run_id, 'REVIEW_REQUIRED', 'Нет подготовленного плана.');
+  check(s.run_id, 'REVIEW_REQUIRED', REVIEW_ON_PUBLICATION);
   const dir=reviewDirectory(root,s.run_id);
   // createScope repeats every check under the operation lock.
   return createScope(root,readJSON(safePath(dir,s.scope_file)),s.base_revision);
