@@ -15,6 +15,7 @@ import {recover} from '../packages/workflow-kit/src/lib/recovery.mjs';
 import {startTask} from '../packages/workflow-kit/src/lib/actions.mjs';
 import {commitTask} from '../packages/workflow-kit/src/lib/transaction.mjs';
 import {startIntegration} from '../packages/workflow-kit/src/lib/task-integration.mjs';
+import {userChoseMode} from './fixtures/execution-mode.mjs';
 
 test('planning briefs survive simple DOCS normalization, review digest and verified integration without becoming E bootstrap',t=>{
   const directory=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'prepared-plan-')));
@@ -22,6 +23,7 @@ test('planning briefs survive simple DOCS normalization, review digest and verif
   const root=createFixture(directory),spec='docs/planning/prepared.md';
   fs.mkdirSync(path.dirname(path.join(root,spec)),{recursive:true});fs.writeFileSync(path.join(root,spec),'# Selected scope\n');
   const brief='PRIVATE_PLANNING_BRIEF: update only README and return exact proof.';
+  userChoseMode(root,'fixture-o');
   createSimplePlan(root,{id:'brief-plan',spec,objective:'Prepared assignments',parallel_allowed:false,max_workers:1,
     execution_strategy:'orchestrated',execution_reason:'Isolated fixture',execution_origin_session_id:'fixture-o',release:false,
     tasks:[{id:'T001',title:'Update README',files:['README.md'],task_brief:brief},

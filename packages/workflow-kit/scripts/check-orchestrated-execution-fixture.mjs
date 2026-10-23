@@ -16,6 +16,10 @@ import {recover,contextPacket} from '../src/lib/recovery.mjs';
 import {applyAssignmentDialogue,assignmentDialogueStatus} from '../src/lib/assignment-dialogue.mjs';
 import {roleText} from '../src/lib/role-protocol.mjs';
 import {setPlanPermission} from '../src/lib/plan-permission.mjs';
+import { requestExecutionMode, chooseExecutionMode } from '../src/lib/execution-mode.mjs';
+// Kit 1.9.8: a Workflow Pilot plan follows the user's recorded mode choice.
+const chooseMode=(root,session_id,strategy='orchestrated')=>{const request=requestExecutionMode(root,{session_id,recommended:strategy,reason:'Fixture: the user chooses this mode'});
+  return chooseExecutionMode(root,{session_id,strategy,generation:request.generation,approval_note:'Fixture: the user chose this mode'});};
 
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const write=(root,file,text)=>{fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),text);};
@@ -33,6 +37,7 @@ try {
   config.delivery_tail=[{verification_ids:['pkg'],verification_kind:'package'}];
   applyConfig(root,config);
   write(root,SPEC,'# Orchestration fixture\n');
+  chooseMode(root,'orchestrator-fixture');
   createScope(root,{scope_id:'orchestrated-fixture',objective:'Waves, delivery in main and worktree cleanup',approval_note:'Isolated automated fixture',
     dialogue_version:0,parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Sequential foundation, two parallel tasks, sequential finish',
     execution_origin_session_id:'orchestrator-fixture',release:true,acceptance_criteria:['Only main remains'],
@@ -168,6 +173,7 @@ try {
   fs.appendFileSync(path.join(root,'AGENTS.md'),'\nMANDATORY_ASSIGNMENT_CONSTRAINT\n');
   commitDocumentation(root,['AGENTS.md'],'docs: mandatory fixture restriction');
   write(root,SPEC,'# Addressed dialogue\nUNSELECTED_PARENT_CONTEXT\n');
+  chooseMode(root,'orchestrator-fixture');
   createScope(root,{scope_id:'dialogue-fixture',objective:'Orchestrator accepts a specific executor result',approval_note:'Isolated dialogue fixture',
     dialogue_version:1,parallel_allowed:false,max_workers:1,execution_strategy:'orchestrated',execution_reason:'One checked assignment',
     execution_origin_session_id:'orchestrator-fixture',release:false,acceptance_criteria:['Accepted source only'],

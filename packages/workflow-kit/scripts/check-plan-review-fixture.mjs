@@ -9,6 +9,7 @@ import { readReview, setReviewEnabled, prepareReview, respondReview, saveReview,
 import { createScope, repair, startTask, applyConfig } from '../src/lib/actions.mjs';
 import { readConfig } from '../src/lib/validate.mjs';
 import { claimPlanningOwner, releasePlanningOwner, readPlanningOwner, PLANNING_OWNER } from '../src/lib/planning-owner.mjs';
+import { requestExecutionMode, chooseExecutionMode, readExecutionMode, EXECUTION_MODE } from '../src/lib/execution-mode.mjs';
 import { recover } from '../src/lib/recovery.mjs';
 import { createSimplePlan } from '../src/lib/simple-workflow.mjs';
 import { readPlan } from '../src/lib/plan.mjs';
@@ -164,13 +165,22 @@ try {
     const orchestrated={...scope,session_id:undefined,execution_strategy:'orchestrated',parallel_allowed:false,max_workers:1,
       execution_reason:'Fixture orchestrated plan',execution_origin_session_id:'second-chat',release:false};
     expect('PLANNING_OWNED',()=>prepareReview(root,{scope:orchestrated,documents:input.documents,recipient_mode:'manual'}));
+    expect('EXECUTION_MODE_REQUIRED',()=>prepareReview(root,{scope:{...orchestrated,execution_origin_session_id:'owner-chat'},documents:input.documents,recipient_mode:'manual'}));
+    const asked=requestExecutionMode(root,{session_id:'owner-chat',recommended:'orchestrated',reason:'Large independent fixture tasks'});
+    chooseExecutionMode(root,{session_id:'owner-chat',strategy:'orchestrated',generation:asked.generation,approval_note:'User chose orchestration in the panel'});
     assert.equal(prepareReview(root,{scope:{...orchestrated,execution_origin_session_id:'owner-chat'},documents:input.documents,recipient_mode:'manual'}).stage,'PREPARED',
       'manual skips only the recipient comparison');
     cancelReview(root,'User cancels the fixture review');setReviewEnabled(root,false);
     expect('PLANNING_OWNED',()=>createScope(root,{...orchestrated,approval_note:'User requests the fixture orchestrated plan'}));
     assert.equal(releasePlanningOwner(root,{session_id:'second-chat'}).released,false,'only the owner session releases');
     assert.equal(claimPlanningOwner(root,{session_id:'second-chat',transfer:true}).transferred_from,'owner-chat');
+    assert.equal(fs.existsSync(path.join(root,EXECUTION_MODE)),false,'a transfer drops the previous mode choice');
+    expect('EXECUTION_MODE_REQUIRED',()=>createScope(root,{...orchestrated,approval_note:'User requests the fixture orchestrated plan'}));
+    const again=requestExecutionMode(root,{session_id:'second-chat',recommended:'orchestrated',reason:'Large independent fixture tasks'});
+    chooseExecutionMode(root,{session_id:'second-chat',strategy:'orchestrated',generation:again.generation,approval_note:'User chose orchestration in the panel'});
     createScope(root,{...orchestrated,approval_note:'User requests the fixture orchestrated plan'});
+    assert.ok(readPlan(root).user_decisions.some(d=>/Режим выполнения выбран пользователем: orchestrated/.test(d.text)));
+    expect('EXECUTION_MODE_ACTIVE_PLAN',()=>requestExecutionMode(root,{session_id:'second-chat',recommended:'sequential',reason:'A request after publication'}));
     assert.equal(readPlanningOwner(root).session_id,'second-chat','the owner stays until the plan is archived');
     assert.equal(readPlan(root).execution_origin_session_id,'second-chat');
     // An older Kit may archive without removing the file: the record of a closed plan is ignored.
@@ -179,6 +189,40 @@ try {
     assert.equal(readPlanningOwner(root),null,'a record from before an archive is stale');
     assert.equal(releasePlanningOwner(root,{session_id:'second-chat'}).released,true);
     assert.equal(fs.existsSync(path.join(root,PLANNING_OWNER)),false);
+    assert.equal(fs.existsSync(path.join(root,EXECUTION_MODE)),false,'releasing the owner drops its mode record');
+  }
+  {
+    // The user chooses the execution mode; plan creation must match it before any write.
+    const {root}=fixture();
+    write(root,'docs/planning/mode.md','# Mode fixture\n');write(root,'src/app.mjs','export const value=1;\n');
+    const plan=(fields={})=>({id:'mode-fixture',spec:'docs/planning/mode.md',objective:'Fixture result',stack:'Node.js',
+      checks:[{id:'unit',executable:'node',args:['--version'],kind:'test'}],
+      tasks:[{id:'T001',title:'Implement',files:['src/app.mjs'],checks:['unit'],acceptance:['Done']}],
+      parallel_allowed:false,max_workers:1,execution_strategy:'sequential',execution_reason:'Small sequential fixture',execution_origin_session_id:'mode-chat',...fields});
+    expect('EXECUTION_MODE_REQUIRED',()=>createSimplePlan(root,plan()));
+    assert.equal(readConfig(root).profile,'DISCOVERY','an origin without a request is refused before applyConfig');
+    const asked=requestExecutionMode(root,{session_id:'mode-chat',recommended:'sequential',reason:'Small connected fixture tasks'});
+    assert.equal(readPlanningOwner(root).session_id,'mode-chat','the request claims planning');
+    expect('PLANNING_OWNED',()=>requestExecutionMode(root,{session_id:'other-chat',recommended:'orchestrated',reason:'Another session asks too'}));
+    assert.equal(readExecutionMode(root).generation,asked.generation,'a refused request writes nothing');
+    assert.match(recover(root).parts.flatMap(p=>p.sources).find(x=>x.source==='execution-mode').content,/не выбрал режим/);
+    expect('EXECUTION_MODE_REQUIRED',()=>createSimplePlan(root,plan()));
+    const noOrigin={...plan()};delete noOrigin.execution_origin_session_id;
+    expect('EXECUTION_MODE_REQUIRED',()=>createSimplePlan(root,noOrigin));
+    assert.equal(readConfig(root).profile,'DISCOVERY','no choice is refused before applyConfig');
+    expect('EXECUTION_MODE_CHANGED',()=>chooseExecutionMode(root,{session_id:'mode-chat',strategy:'sequential',generation:asked.generation+1,approval_note:'User chose in the panel'}));
+    expect('EXECUTION_MODE_CHANGED',()=>chooseExecutionMode(root,{session_id:'other-chat',strategy:'sequential',generation:asked.generation,approval_note:'User chose in the panel'}));
+    chooseExecutionMode(root,{session_id:'mode-chat',strategy:'sequential',generation:asked.generation,approval_note:'User chose self-execution in the panel'});
+    expect('EXECUTION_MODE_REQUIRED',()=>createSimplePlan(root,noOrigin));
+    expect('EXECUTION_MODE_REQUIRED',()=>createSimplePlan(root,plan({execution_origin_session_id:'other-chat'})));
+    expect('EXECUTION_MODE_MISMATCH',()=>createSimplePlan(root,plan({execution_strategy:'orchestrated',release:false})));
+    assert.equal(readConfig(root).profile,'DISCOVERY','every refusal precedes applyConfig');
+    const repeated=requestExecutionMode(root,{session_id:'mode-chat',recommended:'sequential',reason:'The spec changed after review'});
+    assert.equal(readExecutionMode(root).choice,null,'a new request resets the previous choice');
+    chooseExecutionMode(root,{session_id:'mode-chat',strategy:'sequential',generation:repeated.generation,approval_note:'User chose self-execution again'});
+    assert.equal(createSimplePlan(root,plan()).ok,true);
+    assert.equal(readPlan(root).execution_strategy,'sequential');
+    assert.ok(readPlan(root).user_decisions.some(d=>/Режим выполнения выбран пользователем: sequential/.test(d.text)));
   }
   {
     // The switch is the user's decision at publication time and is frozen while a plan is published.

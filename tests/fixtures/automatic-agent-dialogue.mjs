@@ -23,6 +23,7 @@ import {startIntegration,integrationStatus} from '../../packages/workflow-kit/sr
 import {validate} from '../../packages/workflow-kit/src/lib/validate.mjs';
 import {readAssignment} from '../../packages/workflow-kit/src/lib/assignment-contract.mjs';
 import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
+import {userChoseMode} from './execution-mode.mjs';
 
 // Deliberately separate from the happy-path browser fixture. Exercises the
 // real Kit/Git ledger at precise interruption boundaries, using only tmp Git
@@ -34,6 +35,7 @@ export async function interruptionRegression(t){
   const task=(id,file)=>({id,title:'Check '+file,why:'Isolated interruption regression',dependencies:[],
     parallel_safe:true,functional_paths:[],documentation_paths:[file],verification_ids:['dependency'],
     acceptance_criteria:['Checked commit is preserved after interruption'],expected_commit_message:'docs: verify '+id});
+  userChoseMode(root,'fixture-orchestrator');
   createScope(root,{scope_id:'interruptions',objective:'Exercise Kit interruption boundaries',
     approval_note:'User requested isolated O1/O2/E1/E2 regression checks.',
     acceptance_criteria:['No duplicate assignment, message, acceptance or integration'],
@@ -505,6 +507,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   const task=(id,file,dependencies=[])=>({id,title:'Write '+file,why:'Actual automatic dialogue fixture',dependencies,parallel_safe:true,
     files:[file],checks:['dependency'],acceptance:['Checked output committed'],commit:'docs: '+file,
     ...(fast?{task_brief:'Implement only '+id+' and return the checked commit.'}:{})});
+  userChoseMode(root,origin.sessionId);
   await plans.call(root,'plan:create',[],{id:'dialogue-fixture',spec:'docs/planning/dialogue.md',stack:'Node fixture',objective:'Two independent assignments, a question and a dependent result',approval:'Isolated fixture authorized',
     parallel_allowed:true,max_workers:workers,execution_strategy:'orchestrated',execution_reason:'Independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,...(owned?{}:{dialogue_version:0}),
     acceptance:['One Start; complete work without manual panel action'],checks:[{id:'dependency',executable:'npm',args:['test'],required:false,timeout_ms:30000}],

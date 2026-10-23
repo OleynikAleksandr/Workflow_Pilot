@@ -16,6 +16,7 @@ import { ParallelExecution } from '../src/control/workflow/parallel-execution.mj
 import { ParallelKit } from '../src/control/workflow/parallel-kit.mjs';
 import { ExecutionControl } from '../src/control/workflow/execution-control.mjs';
 import { SessionPlans } from '../src/control/sessions/session-plans.mjs';
+import {userChoseMode} from './fixtures/execution-mode.mjs';
 
 const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const write = (root, file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
@@ -27,6 +28,7 @@ test('a concurrent checked integration cannot turn an older proof snapshot into 
   const directory=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'pilot-proof-snapshot-')));
   t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
   const root=createFixture(directory);write(root,SPEC,'# Snapshot fixture\n');
+  userChoseMode(root,'origin');
   createScope(root,{scope_id:'snapshot',objective:'Coherent integration proof',approval_note:'Isolated fixture',
     dialogue_version:0,parallel_allowed:false,max_workers:1,execution_strategy:'orchestrated',execution_reason:'One writer',
     execution_origin_session_id:'origin',release:false,acceptance_criteria:['No false UNKNOWN'],
@@ -59,6 +61,7 @@ test('orchestrated plan runs end to end: waves, pause, block and escalation, del
   config.delivery_tail = [{ verification_ids: ['pkg'], verification_kind: 'package' }];
   applyConfig(root, config);
   write(root, SPEC, '# Orchestration end to end\n');
+  userChoseMode(root, 'orchestrator');
   createScope(root, { scope_id: 'e2e', objective: 'End to end orchestration', approval_note: 'Isolated automated fixture',
     dialogue_version:0,parallel_allowed: true, max_workers: 2, execution_strategy: 'orchestrated', execution_reason: 'Sequential base, parallel pair, delivery',
     execution_origin_session_id: 'orchestrator', release: true, acceptance_criteria: ['Only main remains'],
@@ -165,6 +168,7 @@ async function refusalFixture(t, name, { createFailure = null } = {}) {
   config.checks.push({ id: 'unit', kind: 'test', executable: process.execPath, args: ['-e', '0'], required: false, timeout_ms: 30000 });
   applyConfig(root, { ...config, profile: 'DISCOVERY', stack: null });
   write(root, SPEC, '# Refusal fixture\n');
+  userChoseMode(root, 'orchestrator');
   createScope(root, { scope_id: name, objective: 'Refused assignment', approval_note: 'Isolated automated fixture',
     dialogue_version: 0, parallel_allowed: false, max_workers: 1, execution_strategy: 'orchestrated', execution_reason: 'One task',
     execution_origin_session_id: 'orchestrator', release: false, acceptance_criteria: ['Paused with the cause'],

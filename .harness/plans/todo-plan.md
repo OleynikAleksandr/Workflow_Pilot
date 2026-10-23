@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 963,
+  "plan_revision": 966,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "user-choice-plan-modes",
@@ -35,7 +35,6 @@
       "packages/workflow-kit/src/lib/recovery.mjs",
       "packages/workflow-kit/src/lib/role-protocol.mjs",
       "packages/workflow-kit/src/lib/simple-workflow.mjs",
-      "packages/workflow-kit/src/templates/PLAN.md",
       "release-manifest.json",
       "src/backend/desktop-model.mjs",
       "src/contracts/backend.mjs",
@@ -85,7 +84,13 @@
       "tests/workflow-channel.test.mjs",
       "tests/workflow-kit-upgrade.test.mjs",
       "tools/codex-app-server-mcp/plugin-ui.html",
-      "tools/codex-app-server-mcp/plugin.py"
+      "tools/codex-app-server-mcp/plugin.py",
+      "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+      "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+      "tests/dialogue-migration.test.mjs",
+      "tests/fixtures/execution-mode.mjs",
+      "tests/orchestrated-execution.test.mjs",
+      "tests/prepared-task-flow.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/user-choice-and-plan-modes.md",
@@ -101,7 +106,8 @@
       "packages/workflow-kit/README.md",
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
       "packages/workflow-kit/docs/modules/orchestrated-plans.md",
-      "tests/fixtures/released-kit/README.md"
+      "tests/fixtures/released-kit/README.md",
+      "packages/workflow-kit/src/templates/PLAN.md"
     ]
   },
   "baseline_commit": "10979d5d9c2868e608ea9e061161e4ee01d90449",
@@ -124,8 +130,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "user-choice-plan-modes",
         "task_id": "T001",
@@ -154,9 +160,16 @@
         "tests/chatgpt-plugin.test.mjs",
         "tests/fixtures/automatic-agent-dialogue.mjs",
         "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "tests/dialogue-migration.test.mjs",
+        "tests/fixtures/execution-mode.mjs",
+        "tests/orchestrated-execution.test.mjs",
+        "tests/prepared-task-flow.test.mjs"
+      ],
+      "documentation_paths": [
         "packages/workflow-kit/src/templates/PLAN.md"
       ],
-      "documentation_paths": [],
       "verification_ids": [
         "kit-check",
         "kit-assignments",
@@ -174,7 +187,35 @@
         "ROLE_PROTOCOL_VERSION 8: роли «Планирование» и «Выполняет план сам», правило развилок во всех ролях чатов; Kit 1.9.8 с fixture выпуска 1.9.7 и обновлением 1.9.7 → 1.9.8."
       ],
       "expected_commit_message": "feat: Kit 1.9.8 — выбор режима плана пользователем",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-carryover-fixture.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+        "packages/workflow-kit/src/cli.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/execution-mode.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/plan-review.mjs",
+        "packages/workflow-kit/src/lib/planning-owner.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "tests/dialogue-migration.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/execution-mode.mjs",
+        "tests/fixtures/released-kit/kit-1.9.7.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/orchestrated-execution.test.mjs",
+        "tests/prepared-task-flow.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -368,7 +409,8 @@
         "packages/workflow-kit/README.md",
         "packages/workflow-kit/docs/modules/workflow-kit-package.md",
         "packages/workflow-kit/docs/modules/orchestrated-plans.md",
-        "tests/fixtures/released-kit/README.md"
+        "tests/fixtures/released-kit/README.md",
+        "packages/workflow-kit/src/templates/PLAN.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -489,7 +531,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: user-choice-plan-modes
 Current Task: нет
-Revision: 963
+Revision: 966
 
 ## Цель
 
@@ -507,10 +549,10 @@ Revision: 963
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: AGENTS.md предписывает работать самостоятельно; план выполняет этот агент последовательно. T002–T004 опираются на команды Kit из T001 и модель выбора из T002.
 
-- [TODO] T001: Kit 1.9.8: запрос и выбор режима, владелец при запросе, роли 8 — Ожидает
-  - Git Commit: [PENDING] feat: Kit 1.9.8 — выбор режима плана пользователем
+- [DONE] T001: Kit 1.9.8: запрос и выбор режима, владелец при запросе, роли 8 — Завершено
+  - Git Commit: [DONE] feat: Kit 1.9.8 — выбор режима плана пользователем
   - Reference: user-choice-plan-modes / T001 / implementation
-  - Файлы: packages/workflow-kit/src/lib/execution-mode.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/planning-owner.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-carryover-fixture.mjs, tests/fixtures/released-kit/kit-1.9.7.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: packages/workflow-kit/src/lib/execution-mode.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/planning-owner.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/cli.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-carryover-fixture.mjs, tests/fixtures/released-kit/kit-1.9.7.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, tests/dialogue-migration.test.mjs, tests/fixtures/execution-mode.mjs, tests/orchestrated-execution.test.mjs, tests/prepared-task-flow.test.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T002: Выбор пользователя в Control и канале — Ожидает
@@ -534,7 +576,7 @@ Revision: 963
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: Актуализация всех документов проекта
   - Reference: user-choice-plan-modes / DOCS / implementation
-  - Файлы: docs/planning/user-choice-and-plan-modes.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, tests/fixtures/released-kit/README.md
+  - Файлы: docs/planning/user-choice-and-plan-modes.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004
 - [TODO] RELEASE: Собрать выпуск 0.5.30 для трёх ОС — Ожидает

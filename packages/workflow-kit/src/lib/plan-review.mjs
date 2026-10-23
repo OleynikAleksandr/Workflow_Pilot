@@ -6,6 +6,7 @@ import { head } from './git.mjs';
 import { locked, journal } from './transaction-state.mjs';
 import { readConfig, taskChecks } from './validation-rules.mjs';
 import { assertPlanningOwner } from './planning-owner.mjs';
+import { assertExecutionMode } from './execution-mode.mjs';
 import { buildScopePlan, createScope } from './actions.mjs';
 
 import { readReview, reviewDirectory, saveReview, reviewPlanDigest, fingerprint, checkReviewInputs, reviewHistory, sameReviewPair, assertAuthorResponses, finishReviewPublication, REVIEW_ON_PUBLICATION } from './review-state.mjs';
@@ -71,6 +72,8 @@ export function prepareReview(root, input) {
     // Fail before any write: a plan that review approves must also start.
     for (const task of candidate.tasks) taskChecks(task, config);
     if (candidate.execution_strategy === 'orchestrated') assertPlanningOwner(root, candidate.execution_origin_session_id, 'execution_origin_session_id');
+    // A Workflow Pilot plan is reviewed only in the mode the user chose.
+    if (assertExecutionMode(root, candidate)) assertPlanningOwner(root, candidate.execution_origin_session_id, 'execution_origin_session_id');
     const limit = config.budget?.document_bytes ?? 28000;
     const texts = input.documents.map(source => {
       check(/^docs\/planning\/.+\.md$/i.test(source), 'REVIEW_INPUT', 'Спецификация должна находиться в docs/planning.');

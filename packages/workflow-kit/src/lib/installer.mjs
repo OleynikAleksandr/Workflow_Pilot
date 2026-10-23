@@ -24,6 +24,7 @@ upgradeFrom.add('1.9.3');
 upgradeFrom.add('1.9.4');
 upgradeFrom.add('1.9.5');
 upgradeFrom.add('1.9.6');
+upgradeFrom.add('1.9.7');
 function migrateNonePlanForContinuity(root) {
   const file = path.join(root, PLAN);
   if (!fs.existsSync(file)) return false;

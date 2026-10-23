@@ -15,6 +15,7 @@ import {readPlan} from '../packages/workflow-kit/src/lib/plan.mjs';
 import {recover} from '../packages/workflow-kit/src/lib/recovery.mjs';
 import {validate} from '../packages/workflow-kit/src/lib/validate.mjs';
 import {WorkspaceSetup} from '../src/control/projects/workspace-setup.mjs';
+import {userChoseMode} from './fixtures/execution-mode.mjs';
 
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 test('released 0.5.7 assignments migrate in a safe pause, preserve existing results and support checked revision',async t=>{
@@ -33,6 +34,7 @@ test('released 0.5.7 assignments migrate in a safe pause, preserve existing resu
   const config=JSON.parse(fs.readFileSync(path.join(root,'.harness/workflow.json')));config.checks=[];actions.applyConfig(root,config);
   const task=(id,file)=>({id,title:'Write '+file,why:'Released upgrade fixture',dependencies:[],parallel_safe:true,
     functional_paths:[],documentation_paths:[file],verification_ids:[],acceptance_criteria:['Checked commit'],expected_commit_message:'docs: '+file});
+  userChoseMode(root,'origin');
   actions.createScope(root,{scope_id:'migration',objective:'Preserve released assignments',approval_note:'Isolated fixture',
     execution_strategy:'orchestrated',parallel_allowed:true,max_workers:3,execution_reason:'Independent files',execution_origin_session_id:'origin',release:false,
     acceptance_criteria:['Existing commits survive'],approved_scope:{functional_paths:[],documentation_paths:['README.md','FIRST.md','SECOND.md','THIRD.md']},

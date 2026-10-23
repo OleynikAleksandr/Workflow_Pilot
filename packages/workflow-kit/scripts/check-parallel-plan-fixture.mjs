@@ -15,6 +15,10 @@ import { recover } from '../src/lib/recovery.mjs';
 import { commitTask } from '../src/lib/transaction.mjs';
 import { setReviewEnabled, prepareReview, readReview, respondReview, publishReview, reviewPlanDigest } from '../src/lib/plan-review.mjs';
 import { runReview, REVIEW_MODEL } from '../src/lib/claude-review.mjs';
+import { requestExecutionMode, chooseExecutionMode } from '../src/lib/execution-mode.mjs';
+// Kit 1.9.8: a Workflow Pilot plan follows the user's recorded mode choice.
+const chooseMode=(root,session_id,strategy='orchestrated')=>{const request=requestExecutionMode(root,{session_id,recommended:strategy,reason:'Fixture: the user chooses this mode'});
+  return chooseExecutionMode(root,{session_id,strategy,generation:request.generation,approval_note:'Fixture: the user chose this mode'});};
 
 const roots = [];
 const git = (root, ...args) => execFileSync('git', args, {cwd:root, encoding:'utf8', stdio:['ignore','pipe','pipe']}).trim();
@@ -249,6 +253,7 @@ try {
     const context = {documents:[{path:'GUIDE.md',required:true}]};
     expect('PLAN_SCHEMA',()=>createSimplePlan(root,{id:'bad-context',spec:'docs/planning/parallel.md',objective:'Bad',
       tasks:[{id:'T001',title:'One',files:['README.md'],context_pack:[]}]}));
+    chooseMode(root,'orchestrator-1');
     createSimplePlan(root,{id:'simple-orchestrated',spec:'docs/planning/parallel.md',objective:'Orchestrated plan',
       parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Fixture',
       execution_origin_session_id:'orchestrator-1',release:false,

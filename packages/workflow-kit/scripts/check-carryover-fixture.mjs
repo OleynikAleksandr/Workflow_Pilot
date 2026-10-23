@@ -6,6 +6,7 @@ import {execFileSync, spawnSync} from 'node:child_process';
 import {installer, plan as planApi} from '@webpilot/workflow-kit';
 import {validateDocumentationCommit} from '@webpilot/workflow-kit/lib/validate';
 import {claimPlanningOwner,PLANNING_OWNER} from '@webpilot/workflow-kit/lib/planning-owner';
+import {EXECUTION_MODE} from '@webpilot/workflow-kit/lib/execution-mode';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(),'workflow-carryover-'));
 const git = (...args) => execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
@@ -125,8 +126,10 @@ try {
   const closedHead=git('rev-parse','HEAD');
   // Archiving the plan ends its planning owner.
   claimPlanningOwner(root,{session_id:'owner-chat'});
+  fs.writeFileSync(path.join(root,EXECUTION_MODE),JSON.stringify({version:1,session_id:'owner-chat',generation:1,recommended:'sequential',reason:'Fixture request',archived_scope_id:null,choice:null}));
   cli(['archive','--scope','last','--approval-note','Explicit user close request']);
   assert.equal(fs.existsSync(path.join(root,PLANNING_OWNER)),false,'archive removes the planning owner');
+  assert.equal(fs.existsSync(path.join(root,EXECUTION_MODE)),false,'archive removes the execution mode record');
   assert.equal(planApi.readPlan(root).execution_scope_status,'NONE');
   assert.equal(fs.existsSync(path.join(root,'.harness/plans/archive/last.md')),false);
   assert.equal(planApi.parsePlan(git('show',closedHead+':.harness/plans/todo-plan.md')+'\n').scope_id,'last');
