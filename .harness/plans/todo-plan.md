@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 955,
+  "plan_revision": 957,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "review-publication-orchestrator",
@@ -325,8 +325,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "review-publication-orchestrator",
         "task_id": "RELEASE",
@@ -350,7 +350,10 @@
         "После DOCS собраны macOS arm64, Windows x64 и Linux x64 из одного sourceCommit; перед production-сборкой удалены только Python-кэши tools/codex-app-server-mcp."
       ],
       "expected_commit_message": "release: Собрать выпуск 0.5.29 для трёх ОС",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -433,7 +436,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: review-publication-orchestrator
 Current Task: нет
-Revision: 955
+Revision: 957
 
 ## Цель
 
@@ -469,8 +472,8 @@ Revision: 955
   - Файлы: docs/planning/review-publication-and-orchestrator.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/desktop.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/release.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/dialogue-timing.md, docs/modules/plugin-communication-handoff.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002
-- [TODO] RELEASE: Собрать выпуск 0.5.29 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] release: Собрать выпуск 0.5.29 для трёх ОС
+- [DONE] RELEASE: Собрать выпуск 0.5.29 для трёх ОС — Завершено
+  - Git Commit: [DONE] release: Собрать выпуск 0.5.29 для трёх ОС
   - Reference: review-publication-orchestrator / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
