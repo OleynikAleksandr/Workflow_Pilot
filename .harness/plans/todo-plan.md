@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 948,
+  "plan_revision": 950,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "review-publication-orchestrator",
@@ -53,7 +53,8 @@
       "tests/workflow-channel.test.mjs",
       "tests/workflow-kit-upgrade.test.mjs",
       "tests/workspace-session.test.mjs",
-      "tools/codex-app-server-mcp/plugin-ui.html"
+      "tools/codex-app-server-mcp/plugin-ui.html",
+      "packages/workflow-kit/scripts/check-carryover-fixture.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -92,8 +93,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "review-publication-orchestrator",
         "task_id": "T001",
@@ -119,7 +120,8 @@
         "tests/workflow-kit-upgrade.test.mjs",
         "tests/workflow-channel.test.mjs",
         "tests/chatgpt-plugin.test.mjs",
-        "tests/fixtures/automatic-agent-dialogue.mjs"
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "packages/workflow-kit/scripts/check-carryover-fixture.mjs"
       ],
       "documentation_paths": [
         "tests/fixtures/released-kit/README.md"
@@ -140,7 +142,27 @@
         "Recovery O и S показывает владельца; текст роли обсуждения охватывает подготовку плана; ROLE_PROTOCOL_VERSION 7 со сверкой startup, шаблонов и MCP-описаний; Kit 1.9.7, обновление с выпущенного 1.9.6 проверено неизменяемым архивом. Проверки tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs и tests/fixtures/automatic-agent-dialogue.mjs сравнивают с импортированным ROLE_PROTOCOL_VERSION, а не с литералом."
       ],
       "expected_commit_message": "feat: Kit проверяет конфигурацию при Review и знает владельца планирования",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-carryover-fixture.mjs",
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/plan-review.mjs",
+        "packages/workflow-kit/src/lib/planning-owner.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/released-kit/README.md",
+        "tests/fixtures/released-kit/kit-1.9.6.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-channel.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -339,7 +361,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: review-publication-orchestrator
 Current Task: нет
-Revision: 948
+Revision: 950
 
 ## Цель
 
@@ -357,10 +379,10 @@ Revision: 948
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: AGENTS.md предписывает работать самостоятельно; план выполняет этот агент последовательно. T002 использует запись владельца и проверки Kit из T001.
 
-- [TODO] T001: Kit 1.9.7: проверка конфигурации при Review и владелец планирования — Ожидает
-  - Git Commit: [PENDING] feat: Kit проверяет конфигурацию при Review и знает владельца планирования
+- [DONE] T001: Kit 1.9.7: проверка конфигурации при Review и владелец планирования — Завершено
+  - Git Commit: [DONE] feat: Kit проверяет конфигурацию при Review и знает владельца планирования
   - Reference: review-publication-orchestrator / T001 / implementation
-  - Файлы: packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/planning-owner.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/fixtures/released-kit/kit-1.9.6.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/released-kit/README.md
+  - Файлы: packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/planning-owner.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package-lock.json, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/fixtures/released-kit/kit-1.9.6.tar.gz, tests/fixtures/released-kit/manifest.json, tests/workflow-kit-upgrade.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, packages/workflow-kit/scripts/check-carryover-fixture.mjs, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T002: Пауза после отказа Kit и единственный оркестратор в приложении — Ожидает

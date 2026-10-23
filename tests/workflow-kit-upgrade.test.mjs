@@ -81,7 +81,7 @@ test('released 1.6.3 review survives upgrade and adopts author positions without
   assert.equal(fs.existsSync(path.join(project,spec)),true);
 });
 
-for(const [version,revision] of [['1.5.6','ab6d3d99e5da577d45bfc3b78575f201817948b0'],['1.6.4','db9945ac81a530d14d84e92e60b2c850f9ef8ff6'],['1.7.2','workflow-pilot-kit-1.7.2-baseline'],['1.8.1','workflow-pilot-v0.5.4'],['1.8.2','v0.5.7'],['1.9.0','v0.5.9'],['1.9.1','v0.5.10'],['1.9.2','v0.5.11'],['1.9.3','7279f9277cd03aa87c1bfad7a3ef00b9fb7ea97a'],['1.9.4','00a0a64d81efe24ad8da76d249f494ecd3f99757'],['1.9.5','305d6c8acf8f739f0aa670a8c15f90e72bbe3853']])
+for(const [version,revision] of [['1.5.6','ab6d3d99e5da577d45bfc3b78575f201817948b0'],['1.6.4','db9945ac81a530d14d84e92e60b2c850f9ef8ff6'],['1.7.2','workflow-pilot-kit-1.7.2-baseline'],['1.8.1','workflow-pilot-v0.5.4'],['1.8.2','v0.5.7'],['1.9.0','v0.5.9'],['1.9.1','v0.5.10'],['1.9.2','v0.5.11'],['1.9.3','7279f9277cd03aa87c1bfad7a3ef00b9fb7ea97a'],['1.9.4','00a0a64d81efe24ad8da76d249f494ecd3f99757'],['1.9.5','305d6c8acf8f739f0aa670a8c15f90e72bbe3853'],['1.9.6','6c5f996d1c60b16f81b1c569307fd8d4765a8a05']])
 test('real '+version+' task start survives kit-update and new-runtime task commit', t => {
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'kit-156-transition-'));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
@@ -91,7 +91,7 @@ test('real '+version+' task start survives kit-update and new-runtime task commi
   for(const key of ['GIT_DIR','GIT_INDEX_FILE','GIT_WORK_TREE','GIT_COMMON_DIR'])delete env[key];
   // Immutable released runtime, independent of the checkout's future installed Kit.
   const archive=releasedKitArchive(revision);
-  const extract=['1.8.2','1.9.0','1.9.1','1.9.2','1.9.3','1.9.4','1.9.5'].includes(version)?path.join(old,'.harness/kit'):old;fs.mkdirSync(extract,{recursive:true});
+  const extract=['1.8.2','1.9.0','1.9.1','1.9.2','1.9.3','1.9.4','1.9.5','1.9.6'].includes(version)?path.join(old,'.harness/kit'):old;fs.mkdirSync(extract,{recursive:true});
   execFileSync('tar',['-x','-C',extract],{input:archive});
   const run=(exe,args)=>execFileSync(exe,args,{cwd:project,env,encoding:'utf8',maxBuffer:4*1024*1024});
   run('git',['init','-q','-b','main']);
@@ -110,12 +110,12 @@ test('real '+version+' task start survives kit-update and new-runtime task commi
   assert(upgradeFrom.has(version));
   let signalsBefore;
   const signalsFile=path.join(project,'.git/workflow-kit/signals.jsonl');
-  if(['1.8.1','1.8.2','1.9.0','1.9.1','1.9.2','1.9.3','1.9.4','1.9.5'].includes(version)){
+  if(['1.8.1','1.8.2','1.9.0','1.9.1','1.9.2','1.9.3','1.9.4','1.9.5','1.9.6'].includes(version)){
     cli('task:block','--task','T006','--reason','Legacy blocker preserved through the upgrade');
     signalsBefore=fs.readFileSync(signalsFile,'utf8');
     assert.equal(JSON.parse(signalsBefore).schema_version,version==='1.8.1'?undefined:2,'actual released signal format');
   }
-  if(['1.6.4','1.8.1','1.8.2','1.9.0','1.9.1','1.9.2','1.9.3','1.9.4','1.9.5'].includes(version)) {
+  if(['1.6.4','1.8.1','1.8.2','1.9.0','1.9.1','1.9.2','1.9.3','1.9.4','1.9.5','1.9.6'].includes(version)) {
     const manifest=path.join(project,'.harness/kit-manifest.json'),runtime=path.join(project,'.harness/kit/lib/common.mjs');
     const before=[fs.readFileSync(manifest,'utf8'),fs.readFileSync(runtime,'utf8'),run('git',['rev-parse','HEAD'])];
     for(const marker of ['assignment.json','integration.json','assignments/unfinished.json']) {

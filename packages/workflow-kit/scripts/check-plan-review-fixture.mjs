@@ -6,7 +6,10 @@ import { execFileSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { install } from '../src/lib/installer.mjs';
 import { readReview, setReviewEnabled, prepareReview, respondReview, saveReview, publishReview, resolveReview, cancelReview, reviewSummary, reviewStatus } from '../src/lib/plan-review.mjs';
-import { createScope, repair, startTask } from '../src/lib/actions.mjs';
+import { createScope, repair, startTask, applyConfig } from '../src/lib/actions.mjs';
+import { readConfig } from '../src/lib/validate.mjs';
+import { claimPlanningOwner, releasePlanningOwner, readPlanningOwner, PLANNING_OWNER } from '../src/lib/planning-owner.mjs';
+import { recover } from '../src/lib/recovery.mjs';
 import { createSimplePlan } from '../src/lib/simple-workflow.mjs';
 import { readPlan } from '../src/lib/plan.mjs';
 import { locked } from '../src/lib/transaction.mjs';
@@ -136,6 +139,46 @@ try {
     assert.equal(readReview(root).stage,'CANCELLED','OFF cancels the unfinished review');
     assert.equal(createScope(root,scope).ok,true,'OFF frees even a disputed plan');
     assert.equal(readReview(root).stage,'PUBLISHED');
+  }
+  {
+    // A reviewed plan must start: functional tasks need the development profile and configured checks.
+    const {root,scope,input}=fixture();setReviewEnabled(root,true);
+    write(root,'src/app.mjs','export const value=1;\n');
+    const code={...scope,approved_scope:{functional_paths:['src/app.mjs'],documentation_paths:['docs/planning/review.md','README.md']},
+      tasks:[{...scope.tasks[0],functional_paths:['src/app.mjs'],verification_ids:['unit']}]};
+    expect('NOT_CONFIGURED',()=>prepareReview(root,{...input,scope:code}));
+    const unit={id:'unit',executable:'node',args:['--version'],required:false,timeout_ms:30000};
+    applyConfig(root,{...readConfig(root),checks:[unit]});assert.equal(readConfig(root).profile,'DISCOVERY','no stack keeps discovery');
+    expect('STACK_NOT_CONFIGURED',()=>prepareReview(root,{...input,scope:code}));
+    assert.equal(readReview(root).stage,'IDLE','refused before any write');
+    applyConfig(root,{...readConfig(root),stack:'Node.js'});assert.equal(readConfig(root).profile,'DEVELOPMENT','a stack means development');
+    assert.equal(prepareReview(root,{...input,scope:code}).stage,'PREPARED');
+  }
+  {
+    // One planning owner: the first claim wins, other Session IDs are refused, manual skips only the recipient.
+    const {root,scope,input}=fixture();setReviewEnabled(root,true);
+    assert.equal(claimPlanningOwner(root,{session_id:'owner-chat'}).claimed,true);
+    assert.equal(claimPlanningOwner(root,{session_id:'second-chat'}).session_id,'owner-chat','compare-and-set keeps the first owner');
+    assert.match(recover(root).parts.flatMap(p=>p.sources).find(x=>x.source==='planning-owner').content,/owner-chat/);
+    assert.throws(()=>prepareReview(root,input),e=>e.code==='PLANNING_OWNED'&&e.details.owner_session_id==='owner-chat');
+    const orchestrated={...scope,session_id:undefined,execution_strategy:'orchestrated',parallel_allowed:false,max_workers:1,
+      execution_reason:'Fixture orchestrated plan',execution_origin_session_id:'second-chat',release:false};
+    expect('PLANNING_OWNED',()=>prepareReview(root,{scope:orchestrated,documents:input.documents,recipient_mode:'manual'}));
+    assert.equal(prepareReview(root,{scope:{...orchestrated,execution_origin_session_id:'owner-chat'},documents:input.documents,recipient_mode:'manual'}).stage,'PREPARED',
+      'manual skips only the recipient comparison');
+    cancelReview(root,'User cancels the fixture review');setReviewEnabled(root,false);
+    expect('PLANNING_OWNED',()=>createScope(root,{...orchestrated,approval_note:'User requests the fixture orchestrated plan'}));
+    assert.equal(releasePlanningOwner(root,{session_id:'second-chat'}).released,false,'only the owner session releases');
+    assert.equal(claimPlanningOwner(root,{session_id:'second-chat',transfer:true}).transferred_from,'owner-chat');
+    createScope(root,{...orchestrated,approval_note:'User requests the fixture orchestrated plan'});
+    assert.equal(readPlanningOwner(root).session_id,'second-chat','the owner stays until the plan is archived');
+    assert.equal(readPlan(root).execution_origin_session_id,'second-chat');
+    // An older Kit may archive without removing the file: the record of a closed plan is ignored.
+    const stale=JSON.parse(fs.readFileSync(path.join(root,PLANNING_OWNER),'utf8'));
+    fs.writeFileSync(path.join(root,PLANNING_OWNER),JSON.stringify({...stale,archived_scope_id:'older-scope'}));
+    assert.equal(readPlanningOwner(root),null,'a record from before an archive is stale');
+    assert.equal(releasePlanningOwner(root,{session_id:'second-chat'}).released,true);
+    assert.equal(fs.existsSync(path.join(root,PLANNING_OWNER)),false);
   }
   {
     // The switch is the user's decision at publication time and is frozen while a plan is published.

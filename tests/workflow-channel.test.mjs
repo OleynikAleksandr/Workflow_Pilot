@@ -6,6 +6,7 @@ import path from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
+import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
 const meta=id=>({'openai/session':id});
 async function fixture(t,currentMessage,dialogueKit=null){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'workflow-channel-')));
@@ -295,7 +296,7 @@ test('working API derives author, addresses distinct assignments and sends immut
     body:'Реализуй только модуль e',contexts:[{source:'contract-e.md',commit:'a'.repeat(40),text}],idempotency_key:'task-e'};
   const sent=await f.c.assignmentSend(input),read=await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
   assert.equal(read.sender_role,'O');assert.equal(read.assignment_id,'a-e');assert.equal(kit.calls,1);
-  assert.equal(read.role_protocol,6);assert.match(read.instructions,/ДИАЛОГ 1/);
+  assert.equal(read.role_protocol,ROLE_PROTOCOL_VERSION);assert.match(read.instructions,/ДИАЛОГ 1/);
   assert.match(read.instructions,/обязательно отправь orchestrator result/);
   assert.doesNotMatch(read.instructions,/Полный context_pack — в recovery/);
   let content='';for(let part=0,total=1;part<total;part++){
@@ -655,7 +656,7 @@ test('large UTF-8 context is complete, immutable, identity scoped and persists w
   assert.equal((await queue(f.c,e,'large',text)).message_id,m.message_id);
   await assert.rejects(queue(f.c,e,'large',text+'!'),{code:'PLUGIN_COMMUNICATION_CONFLICT'});
   const value=await f.c.readMessage({message_id:m.message_id,metadata:meta('e')});let complete='';
-  assert.equal(value.role_protocol,6);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
+  assert.equal(value.role_protocol,ROLE_PROTOCOL_VERSION);assert.match(value.instructions,/РОЛЬ: ИСПОЛНИТЕЛЬ/);
   assert.match(value.instructions,/не повторяют recovery и не запускают задачу заново/);
   for(let part=0,total=1;part<total;part++){
     const page=await f.c.content({message_id:m.message_id,context_ref:value.context_ref,part,metadata:meta('e')});

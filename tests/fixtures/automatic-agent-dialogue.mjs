@@ -22,6 +22,7 @@ import {commitTask} from '../../packages/workflow-kit/src/lib/transaction.mjs';
 import {startIntegration,integrationStatus} from '../../packages/workflow-kit/src/lib/task-integration.mjs';
 import {validate} from '../../packages/workflow-kit/src/lib/validate.mjs';
 import {readAssignment} from '../../packages/workflow-kit/src/lib/assignment-contract.mjs';
+import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
 
 // Deliberately separate from the happy-path browser fixture. Exercises the
 // real Kit/Git ledger at precise interruption boundaries, using only tmp Git
@@ -196,7 +197,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
       const result=await c.callTool({name:'workflow_startup_complete',arguments:{message_id:message.message_id,context_sha256:message.context_ref},_meta:metadata});
       assert.equal(result.isError,false);record.startupComplete=true;return;
     }
-    assert.equal(message.role_protocol,6);
+    assert.equal(message.role_protocol,ROLE_PROTOCOL_VERSION);
     let text=fast&&message.inline_context?.complete?message.inline_context.text:'';
     for(let part=0,total=text?0:1;part<total;part++){
       const value=await call('read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
