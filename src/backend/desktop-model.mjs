@@ -39,7 +39,8 @@ export function executorDispatchStage(assignment,channel) {
 // onboarding and workflow. It owns no window; a surface presents its state
 // (in-process legacy window or a remote client) and supplies the page host.
 export function createDesktopModel({electron,sourceDir,dataDir,partition,smoke,eventBaseline,eventRuntimeChecker,executionServices,createControl,dependencies,
-  browserHost,surface,remotePages=false,fixture=null,offline=false,pluginDirectory=null,recoverCrashedPages=false,remoteAccess=null}) {
+  browserHost,surface,remotePages=false,fixture=null,offline=false,pluginDirectory=null,recoverCrashedPages=false,remoteAccess=null,
+  prepareBrowserNavigation=null}) {
 const {app,session,ipcMain,dialog,clipboard,shell}=electron;
 const {LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode}=dependencies;
 const {ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel}=dependencies;
@@ -143,7 +144,7 @@ function sessionRuntimeError(record,error) {
   record.error=publicError(error);
   if(record===liveSessions.visible&&!settingsState&&!setupState)report(error);else publish();
 }
-executionServices.attachBrowser({host:browserHost,ipc:ipcMain,recoverCrashed:recoverCrashedPages});
+executionServices.attachBrowser({host:browserHost,ipc:ipcMain,recoverCrashed:recoverCrashedPages,prepareNavigation:prepareBrowserNavigation});
 const sessionView = record => browserHost.view(record.key);
 const liveSessions = control.attachSessions({
   presentation:{show:id=>surface.showPage(id),hide:()=>surface.hidePage()},

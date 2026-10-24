@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1030,
+  "plan_revision": 1032,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -1137,14 +1137,21 @@
         "Persistent session получает расширение до первой страницы; после ожидания сохраняется адресность/cancel/release, q не отправляется раньше готовности."
       ],
       "expected_commit_message": "feat: Подключать расширение перед навигацией ChatGPT в браузерной сессии",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "EXT02",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/backend/main.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/execution/facade.mjs",
+        "tests/session-runtime.test.mjs"
+      ]
     },
     {
       "id": "EXT03",
@@ -1366,7 +1373,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1030
+Revision: 1032
 
 ## Цель
 
@@ -1456,8 +1463,8 @@ Revision: 1030
   - Файлы: src/execution/browser/chatgpt-search-extension.mjs, src/execution/browser/search-extension-pin.mjs, tests/chatgpt-search-extension.test.mjs, package.json, package-lock.json, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] EXT02: Подключать расширение перед навигацией ChatGPT в браузерной сессии — Ожидает
-  - Git Commit: [PENDING] feat: Подключать расширение перед навигацией ChatGPT в браузерной сессии
+- [DONE] EXT02: Подключать расширение перед навигацией ChatGPT в браузерной сессии — Завершено
+  - Git Commit: [DONE] feat: Подключать расширение перед навигацией ChatGPT в браузерной сессии
   - Reference: chat-only-url-bootstrap / EXT02 / implementation
   - Файлы: src/backend/main.mjs, src/backend/desktop-model.mjs, src/execution/browser/session-runtime.mjs, src/execution/facade.mjs, tests/session-runtime.test.mjs, tests/backend-browser-lifecycle.test.mjs, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение

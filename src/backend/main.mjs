@@ -13,7 +13,7 @@ import {createBackendJournal,launchServicesType} from './diagnostics.mjs';
 import {createRemoteDevices} from './remote-devices.mjs';
 import {createRemoteAccess} from './remote-access.mjs';
 import {spawn} from 'node:child_process';
-import {BackendBrowserHost,desktopDependencies,TailscaleCli} from '../execution/facade.mjs';
+import {BackendBrowserHost,desktopDependencies,TailscaleCli,ChatGPTSearchExtension} from '../execution/facade.mjs';
 
 // Every release (macOS, Windows, Linux with its required X11 session) keeps pages as
 // views the native window can show. Offscreen pages are the mode of a backend without
@@ -84,6 +84,11 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       const sourceDir=fileURLToPath(new URL('../',import.meta.url));
       const preload=app.isPackaged?path.join(process.resourcesPath,'resources/chatgpt-page-observer-preload.cjs')
         :path.join(sourceDir,'../resources/chatgpt-page-observer-preload.cjs');
+      const browserSession=electron.session.fromPartition(identity.partition);
+      // Fixtures use their own local host. Production always prepares the official
+      // extension in this persistent partition before the first ChatGPT document.
+      const searchExtension=fixtureRoot?null:new ChatGPTSearchExtension({session:browserSession,
+        directory:path.join(identity.dataDir,'browser-extensions','chatgpt-search')});
       if(fixtureRoot)await installFixtureChat(electron.session.fromPartition(identity.partition));
       const host=new BackendBrowserHost({BrowserWindow:electron.BrowserWindow,BaseWindow:electron.BaseWindow,WebContentsView:electron.WebContentsView,nativeImage:electron.nativeImage,
         pageMode:pageMode??defaultPageMode(),screen:electron.screen,partition:identity.partition,preload,
@@ -103,7 +108,8 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
         revokeClient:clientId=>void port?.revokeClient(clientId)});
       desktop=createDesktopModel({electron:{...electron,dialog:guardedDialog},recoverCrashedPages:true,remoteAccess,sourceDir,dataDir:identity.dataDir,partition:identity.partition,smoke:false,
         eventBaseline:false,eventRuntimeChecker:false,executionServices:execution,createControl,dependencies:desktopDependencies,
-        browserHost:host,surface,offline:!!fixtureRoot,pluginDirectory:fixtureRoot?path.join(fixtureRoot,'plugin'):null});
+        browserHost:host,surface,offline:!!fixtureRoot,pluginDirectory:fixtureRoot?path.join(fixtureRoot,'plugin'):null,
+        prepareBrowserNavigation:searchExtension?url=>searchExtension.prepareNavigation(url):null});
       if(!await desktop.start())throw Object.assign(new Error('Desktop model did not start.'),{code:'BACKEND_STARTUP_FAILED'});
       const base=desktop.services;
       const service=Object.freeze({view:()=>stopper?.view()??{phase:'running',reasons:[],since:null,error:null},

@@ -18,6 +18,51 @@ function navigationFixture(t,options={}) {
   return {manager,port,contents};
 }
 
+test('navigation waits for the extension before the first document and before dispatching q',async t=>{
+  let ready;const waiting=new Promise(resolve=>{ready=resolve;}),prepared=[];
+  const {port,contents}=navigationFixture(t,{prepareNavigation:async url=>{prepared.push(url);await waiting;}});
+  contents.url='about:blank';const load=port.navigate('https://chatgpt.com/');
+  assert.equal(contents.loads.length,0);ready();await load;assert.deepEqual(contents.loads,['https://chatgpt.com/']);
+  await port.composer.startChat({url:'https://chatgpt.com/?q=one',navigationToken:'prepared'});
+  assert.deepEqual(prepared,['https://chatgpt.com/','https://chatgpt.com/?q=one']);assert.equal(contents.loads.length,2);
+});
+
+test('extension error leaves bootstrap token unused and a later successful preparation can dispatch it once',async t=>{
+  let failure=true;const error=Object.assign(new Error('Extension unavailable'),{code:'CHATGPT_SEARCH_EXTENSION_DOWNLOAD'});
+  const {port,contents}=navigationFixture(t,{prepareNavigation:async()=>{if(failure)throw error;}});
+  const args={url:'https://chatgpt.com/?q=one',navigationToken:'retry-preparation'};
+  await assert.rejects(port.composer.startChat(args),{code:error.code});assert.equal(contents.loads.length,0);
+  assert.equal(port.snapshot().epoch,0);assert.equal(port.snapshot().navigationOwner,null);
+  failure=false;await port.composer.startChat(args);assert.deepEqual(contents.loads,[args.url]);
+  await assert.rejects(port.composer.startChat(args),{code:'BOOTSTRAP_ALREADY_DISPATCHED'});
+});
+
+test('cancel, release, user interaction and main-frame navigation while preparing never dispatch the saved URL',async t=>{
+  for(const reason of ['cancel','release','key','mouse','navigation']){
+    let resolve;const ready=new Promise(done=>{resolve=done;});let current=true;
+    const {port,contents}=navigationFixture(t,{prepareNavigation:()=>ready});
+    const sending=port.composer.startChat({url:'https://chatgpt.com/?q=one',navigationToken:'pending',canContinue:()=>current});
+    if(reason==='cancel')current=false;
+    if(reason==='release')port.release();
+    if(reason==='key')contents.emit('before-input-event',{}, {type:'keyDown',key:'x'});
+    if(reason==='mouse')contents.emit('before-mouse-event',{}, {type:'mouseDown'});
+    if(reason==='navigation')contents.emit('did-navigate-in-page',{},'https://chatgpt.com/c/manual-chat',true);
+    resolve();assert.equal(await sending,null,reason);assert.equal(contents.loads.length,0,reason);
+  }
+});
+
+test('a newer navigation wins during preparation, while iframe navigation cannot cancel it',async t=>{
+  let first;let calls=0;
+  const {port,contents}=navigationFixture(t,{prepareNavigation:()=>++calls===1?new Promise(resolve=>{first=resolve;}):Promise.resolve()});
+  const old=port.navigate('https://chatgpt.com/c/old-chat');
+  await port.navigate('https://chatgpt.com/c/new-chat');first();assert.equal(await old,null);
+  assert.deepEqual(contents.loads,['https://chatgpt.com/c/new-chat']);
+  let finish;const other=navigationFixture(t,{prepareNavigation:()=>new Promise(resolve=>{finish=resolve;})});
+  const q=other.port.composer.startChat({url:'https://chatgpt.com/?q=one',navigationToken:'iframe-safe'});
+  other.contents.emit('did-navigate-in-page',{},'https://example.com/iframe',false);finish();await q;
+  assert.equal(other.contents.loads.length,1);
+});
+
 test('navigation port preserves transient redirect URLs, frame identity and one sequence for all subscribers',async t=>{
   const {port,contents}=navigationFixture(t),events=[],other=[];
   port.subscribe(event=>{events.push(structuredClone(event));event.url='changed';});port.subscribe(event=>other.push(event));

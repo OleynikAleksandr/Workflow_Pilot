@@ -16,15 +16,16 @@ export class BrowserSessions {
   // Send stays UNKNOWN and nothing is typed or sent again.
   constructor({ host, ipc, connect = connectPageState,
     createComposer = (contents, options) => new ChatGPTComposer(contents, options),
+    prepareNavigation = null,
     recoverCrashed = false, recoveryDelayMs = 1000, recoveryLimit = 3, recoveryWindowMs = 10 * 60 * 1000, now = Date.now }) {
-    Object.assign(this, { host, ipc, connect, createComposer, recoverCrashed, recoveryDelayMs, recoveryLimit, recoveryWindowMs, now });
+    Object.assign(this, { host, ipc, connect, createComposer, prepareNavigation, recoverCrashed, recoveryDelayMs, recoveryLimit, recoveryWindowMs, now });
   }
   open(id) {
     if (typeof id !== 'string' || !id) throw new TypeError('BROWSER_SESSION_ID_REQUIRED');
     if (this.#records.has(id)) return this.#records.get(id).port;
     const contents = this.host.create(id), source = new PageStateSource();
     const record = { id, incarnation: randomUUID(), contents, source, loading: false, epoch: 0, disposed: false, crashed: false,
-      navigationSequence: 0, navigationOwner: null, bootstrapTokens: new Set(), queryDispatched: false,
+      navigationSequence: 0, navigationRequest: 0, preparationVersion: 0, navigationOwner: null, bootstrapTokens: new Set(), queryDispatched: false,
       listeners: new Set(), cleanups: [] };
     let composer;
     try { composer = this.createComposer(contents, { pageState: source }); }
@@ -43,12 +44,14 @@ export class BrowserSessions {
     };
     const navigation = (type, url, isMainFrame, navigationKind) => {
       if(record.disposed)return;
+      if(isMainFrame)record.preparationVersion++;
       record.navigationSequence++;
       emit(type,{url:typeof url==='string'?url:'',isMainFrame:isMainFrame===true,navigationKind,
         navigationSequence:record.navigationSequence,navigationOwner:record.navigationOwner});
     };
     record.navigation=navigation;
     const interrupt = reason => {
+      record.preparationVersion++;
       if(!record.navigationOwner)return;
       record.navigationOwner=null;
       navigation('navigation-interrupted',contents.getURL(),true,reason);
@@ -101,6 +104,13 @@ export class BrowserSessions {
       navigate: async (url, { reload = false, startup = false, bootstrapToken = null, isCurrent = () => true } = {}) => {
         assertOpen();
         if(!isCurrent())return null;
+        const request=++record.navigationRequest,previousEpoch=record.epoch,preparationVersion=record.preparationVersion;
+        if(bootstrapToken!==null&&(reload||typeof bootstrapToken!=='string'||!bootstrapToken||!hasChatGPTQuery(url)))
+          throw Object.assign(new Error('Некорректная первоначальная навигация.'),{code:'BOOTSTRAP_NAVIGATION_INVALID'});
+        if(this.prepareNavigation) {
+          await this.prepareNavigation(url);
+          if(record.disposed||record.navigationRequest!==request||record.epoch!==previousEpoch||record.preparationVersion!==preparationVersion||!isCurrent())return null;
+        }
         if(bootstrapToken!==null) {
           if(reload||typeof bootstrapToken!=='string'||!bootstrapToken||!hasChatGPTQuery(url))
             throw Object.assign(new Error('Некорректная первоначальная навигация.'),{code:'BOOTSTRAP_NAVIGATION_INVALID'});

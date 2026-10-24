@@ -10,6 +10,7 @@ export { desktopFiles, exists } from './files/adapter.mjs';
 export { ProjectInputWatch, ChildCommandWatches } from './files/project-input-watch.mjs';
 export { currentBootIdentity, isProcessDead } from './commands/activity-probe.mjs';
 export { chatGPTEntrypoint, CHATGPT_CHAT_ENTRYPOINT } from './browser/chatgpt-experience.mjs';
+export { ChatGPTSearchExtension } from './browser/chatgpt-search-extension.mjs';
 export { BackendBrowserHost, decorateBackendPage } from './browser/backend-host.mjs';
 export { ChromiumDiagnostics } from './browser/diagnostics.mjs';
 export { createPresentationRoutes } from './browser/presentation/transport.mjs';
