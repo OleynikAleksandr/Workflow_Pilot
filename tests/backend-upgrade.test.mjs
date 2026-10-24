@@ -96,11 +96,14 @@ async function profile0_1_6(root) {
       execution_scope_status:'ACTIVE',delivery_status:'IN_PROGRESS',tasks:[],current_task_id:null})+'\n```\n<!-- workflow-state:end -->');
   execFileSync('git',['init','-q',workspace]);
   await new WorkspaceSessions(path.join(root,'workspaces.json')).select(workspace);
+  const old=JSON.parse(await fsp.readFile(path.join(root,'workspaces.json'),'utf8'));old.schemaVersion=6;
+  for(const p of old.projects)for(const s of p.sessions)delete s.availability;
+  await fsp.writeFile(path.join(root,'workspaces.json'),JSON.stringify(old));
   await fsp.writeFile(path.join(root,'settings.json'),JSON.stringify({chatgptChannel:'secure-tunnel',shellTheme:'dark',hideToolCalls:false,
     sidebarWidth:400,chatColors:{},projectsParent:null},null,2));
 }
 
-test('a 0.1.6 profile is used in place with the same schema for rollback; a foreign lock is reported',{skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:120000},async t=>{
+test('a legacy profile migrates in place with an exact rollback backup; a foreign lock is reported',{skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:120000},async t=>{
   const root=await fsp.mkdtemp(path.join(os.tmpdir(),'wp-upgrade-profile-'));
   t.after(()=>fsp.rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
   await profile0_1_6(root);
@@ -119,11 +122,14 @@ test('a 0.1.6 profile is used in place with the same schema for rollback; a fore
   assert.equal((await client.read('settings.get')).theme,'dark');
   client.close();
   backend.stdin.end('stop\n');await new Promise(resolve=>backend.once('exit',resolve));
-  // 0.1.6 reads the same schema: only the ordinary open timestamps move.
+  // Mode admission is additive; rollback uses the exact pre-migration v6 copy.
   const withoutOpenTimes=value=>JSON.parse(JSON.stringify(value,(key,item)=>key==='lastOpenedAt'?undefined:item));
   const stores=name=>JSON.parse(name in before?before[name].toString():'{}');
   const after=JSON.parse(fs.readFileSync(path.join(root,'workspaces.json'),'utf8'));
-  assert.equal(after.schemaVersion,6);assert.deepEqual(withoutOpenTimes(after),withoutOpenTimes(stores('workspaces.json')));
+  const expected=stores('workspaces.json');expected.schemaVersion=7;
+  for(const p of expected.projects)for(const s of p.sessions)s.availability=s.experience==='work'?'legacy-work':'active';
+  assert.equal(after.schemaVersion,7);assert.deepEqual(withoutOpenTimes(after),withoutOpenTimes(expected));
+  assert.deepEqual(fs.readFileSync(path.join(root,'workspaces.json.v6-backup')),before['workspaces.json']);
   assert.deepEqual(fs.readFileSync(path.join(root,'settings.json')),before['settings.json'],'settings are not rewritten');
   // An earlier release holding the profile lock: the client explains it and starts nothing else.
   const holderScript=path.join(root,'hold-lock.mjs');

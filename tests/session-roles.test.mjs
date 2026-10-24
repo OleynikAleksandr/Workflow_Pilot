@@ -48,7 +48,7 @@ test('roles: a session without a plan is a candidate, publication picks the orig
   for (const id of [first.sessionId, legacy.sessionId]) assert.equal(session(store, folder, id).role, 'discussion');
   assert.equal(store.project(folder).orchestrationIssue, null);
   assert.equal(await store.reconcileRoles(folder), false, 'repeat changes nothing');
-  const third = await store.newSession(folder, 'work');
+  const third = await store.newSession(folder, 'chat');
   assert.equal(third.role, 'discussion', 'a new session beside the active plan is a discussion chat');
   // Roles survive a restart; derived state is not persisted.
   const restarted = new WorkspaceSessions(store.file);await restarted.load();

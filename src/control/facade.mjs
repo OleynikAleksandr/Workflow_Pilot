@@ -16,7 +16,7 @@ export { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './workflow/
 export { readCommandActivity, acknowledgeUnknownCommand } from './workflow/command-activity.mjs';
 export { projectExecutors, plannedExecution } from './workflow/execution-projection.mjs';
 
-export { normalizeChatUrl, activeSessionsNewestFirst, orchestratedPlanActive } from './sessions/workspace-session.mjs';
+export { normalizeChatUrl, activeSessionsNewestFirst, orchestratedPlanActive, sessionModeAllowed, assertSessionMode } from './sessions/workspace-session.mjs';
 export { sessionRuntimeKey } from './sessions/service.mjs';
 export { externalClientLine } from './context/context-session.mjs';
 export { removeProjectSettings, pruneOrphanProjectSettings, belongsToProject, queueProjectStatePurge } from './projects/project-state-cleanup.mjs';

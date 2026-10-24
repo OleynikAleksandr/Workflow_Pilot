@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 988,
+  "plan_revision": 993,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -106,7 +106,9 @@
       "package-lock.json",
       "release-manifest.json",
       "scripts/release-all.mjs",
-      "scripts/release-package.mjs"
+      "scripts/release-package.mjs",
+      "tests/backend-upgrade.test.mjs",
+      "tests/chatgpt-plugin.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/chat-only-url-start.md",
@@ -167,7 +169,7 @@
       },
       {
         "path": "docs/modules/release.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       }
     ],
@@ -176,8 +178,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "T001",
@@ -211,7 +213,9 @@
         "tests/parallel-execution.test.mjs",
         "tests/parallel-execution-ui.test.mjs",
         "tests/context-session.test.mjs",
-        "tests/fixtures/automatic-agent-dialogue.mjs"
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -224,7 +228,9 @@
       "acceptance_criteria": [
         "Новые сессии только chat; явный work отклонён во всех backend-входах без побочных действий.",
         "Миграция атомарна и идемпотентна: legacy-work/mode-unverified сохранены как история, не получают runtime/контекст/сообщения.",
-        "Зависимый проект удержан до восстановления; назначения/worktrees/results не потеряны, чужие проекты и ручной OFF сохранены."
+        "Зависимый проект удержан до восстановления; назначения/worktrees/results не потеряны, чужие проекты и ручной OFF сохранены.",
+        "Изолированный backend upgrade v6→v7 сохраняет точный v6-backup для отката, исходные identity и настройки; чужой lock по-прежнему блокирует второй backend.",
+        "Интеграционный тест реальной проекции origin использует Chat и сохраняет проверку владения до и после публикации плана."
       ],
       "expected_commit_message": "feat: Упразднить активные Work-сессии и мигрировать историю",
       "parallel_safe": false,
@@ -245,7 +251,7 @@
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/browser.md",
@@ -258,7 +264,28 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "src/backend/bootstrap.mjs",
+        "src/backend/operations.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/project-session-plan-continuation.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/migration-compatibility.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/workspace-session.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -317,7 +344,7 @@
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/browser.md",
@@ -392,7 +419,7 @@
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/browser.md",
@@ -476,7 +503,7 @@
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/browser.md",
@@ -556,7 +583,7 @@
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/browser.md",
@@ -639,7 +666,7 @@
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/browser.md",
@@ -836,7 +863,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 988
+Revision: 993
 
 ## Цель
 
@@ -854,10 +881,10 @@ Revision: 988
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Внешний CLI-план без Workflow Pilot session origin. Шаги последовательно меняют общий session store, admission, runtime и ContextSession; последовательная интеграция снижает риск конфликтующих контрактов. Публикация не запускает работу.
 
-- [TODO] T001: Упразднить активные Work-сессии и мигрировать историю — Ожидает
-  - Git Commit: [PENDING] feat: Упразднить активные Work-сессии и мигрировать историю
+- [DONE] T001: Упразднить активные Work-сессии и мигрировать историю — Завершено
+  - Git Commit: [DONE] feat: Упразднить активные Work-сессии и мигрировать историю
   - Reference: chat-only-url-bootstrap / T001 / implementation
-  - Файлы: src/control/sessions/workspace-session.mjs, src/control/sessions/service.mjs, src/control/projects/workspace-setup.mjs, src/control/facade.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/contracts/browser.mjs, tests/workspace-session.test.mjs, tests/session-roles.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-enrollment.test.mjs, tests/automatic-agent-dialogue.test.mjs, src/backend/operations.mjs, src/backend/bootstrap.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, tests/backend-api.test.mjs, tests/control-facade.test.mjs, tests/migration-compatibility.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-ui.test.mjs, tests/context-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs
+  - Файлы: src/control/sessions/workspace-session.mjs, src/control/sessions/service.mjs, src/control/projects/workspace-setup.mjs, src/control/facade.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/contracts/browser.mjs, tests/workspace-session.test.mjs, tests/session-roles.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-enrollment.test.mjs, tests/automatic-agent-dialogue.test.mjs, src/backend/operations.mjs, src/backend/bootstrap.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, tests/backend-api.test.mjs, tests/control-facade.test.mjs, tests/migration-compatibility.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-ui.test.mjs, tests/context-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/backend-upgrade.test.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] T002: Расширить навигационный порт и защитить обновление от повторного q — Ожидает

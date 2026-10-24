@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import {ControlFacade} from '../control/facade.mjs';
+import {ControlFacade,sessionModeAllowed,assertSessionMode} from '../control/facade.mjs';
 import {ExecutionFacade,nodeExecutableCandidates,chatGPTEntrypoint,decorateBackendPage,ChromiumDiagnostics} from '../execution/facade.mjs';
 import {journal} from '@webpilot/workflow-kit/lib/validate';
 
@@ -109,7 +109,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
     restore:async()=>{
       workflow.restoreBackground();
       const selected=control.projects.selected();
-      if(selected&&!selected.external&&!selected.archivedAt&&!selected.sessionArchivedAt)await pages.select(selected);
+      if(sessionModeAllowed(selected)&&!selected.external&&!selected.archivedAt&&!selected.sessionArchivedAt)await pages.select(selected);
     },
     dispose:async()=>{
       workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
@@ -130,6 +130,7 @@ export function createBackendPages({sessions,setup,store,host,onReady=()=>{}}) {
     async select(project) {
       if(!project||project.external)throw Object.assign(new Error('Сессия недоступна backend.'),{code:'EXTERNAL_SESSION'});
       const current=store.project(project.workspace,project.sessionId)??project;
+      assertSessionMode(current);
       const page=sessions.ensure(current);sessions.show(page);
       const epoch=++page.readinessEpoch;
       // Readiness is project-specific; it never depends on a window or viewer.

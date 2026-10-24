@@ -211,7 +211,9 @@ test('the real project projection reserves the published origin even though pers
   const f=await fixture(t),workspace=path.join(f.directory,'Первый'),file=path.join(workspace,'.harness/plans/todo-plan.md');
   const write=async state=>fs.writeFile(file,'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify({schema_version:1,project_id:'Первый',project_name:'Первый',
     plan_revision:2,scope_id:null,execution_scope_status:'NONE',delivery_status:'IN_PROGRESS',current_task_id:null,tasks:[],...state})+'\n```\n<!-- workflow-state:end -->');
-  await write({});const origin=await f.store.newSession(workspace,'work');
+  await write({});
+  await assert.rejects(f.store.newSession(workspace,'work'),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
+  const origin=await f.store.newSession(workspace,'chat');
   const initial=await f.plugin.reserveParticipant(origin.sessionId);
   await write({scope_id:'automatic',execution_scope_status:'ACTIVE',execution_strategy:'orchestrated',parallel_allowed:true,max_workers:2,
     execution_reason:'fixture',execution_origin_session_id:origin.sessionId,release:false,

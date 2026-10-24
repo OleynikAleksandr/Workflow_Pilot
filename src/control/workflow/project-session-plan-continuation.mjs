@@ -1,6 +1,7 @@
 import { PlanContinuation } from './plan-continuation.mjs';
 import { AutomationSendState } from './automation-send-state.mjs';
 import { PlanMonitor } from './plan-monitor.mjs';
+import { sessionModeAllowed } from '../sessions/workspace-session.mjs';
 
 // The same controller runs for visible and hidden main chats. Its sender,
 // watcher, checkpoint and current plan always address its own saved identity.
@@ -13,7 +14,7 @@ export function configureProjectPlanContinuation(record,{store,authorization,ins
     // A different chat's stale monitor cannot supersede project-level scope.
     return {...project,...info,scopeId:authority?.scopeId??info?.scopeId??null};
   };
-  const permitted=p=>authorization.enabled(p.workspace,p.scopeId)&&authorization.state(p.workspace)?.sessionId===p.sessionId;
+  const permitted=p=>sessionModeAllowed(p)&&authorization.enabled(p.workspace,p.scopeId)&&authorization.state(p.workspace)?.sessionId===p.sessionId;
   const save=patch=>{const project=selected();authorization.saveCheckpoint(project.workspace,project.scopeId,project.sessionId,patch);};
   const automation=new AutomationSendState({save:checkpoint=>save({automationCheckpoint:checkpoint})});
   const complete=()=>{const project=selected();authorization.sync(project.workspace,project.scopeId,

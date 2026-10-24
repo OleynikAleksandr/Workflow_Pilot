@@ -15,7 +15,7 @@ import { reviewBlocksExecution } from './plan-continuation-state.mjs';
 import { configureExecutor, executorPageState } from './executor-session.mjs';
 import { ProjectInputWatch, ChildCommandWatches, chatGPTEntrypoint } from '../../execution/facade.mjs';
 import { removeProjectSettings, belongsToProject } from '../projects/project-state-cleanup.mjs';
-import { unsentExecutor } from '../sessions/workspace-session.mjs';
+import { unsentExecutor, assertSessionMode, projectModeBlocked } from '../sessions/workspace-session.mjs';
 import { AUTOMATIC_DIALOGUE_ENABLED } from '../../contracts/backend.mjs';
 import {DialogueDelivery} from './dialogue-delivery.mjs';
 import { UserChoices, collectChoiceFacts } from './user-choices.mjs';
@@ -35,7 +35,13 @@ let liveSessions;
 const startupRecovery=new Map();
 const recoveryWatchers=new Map(),recoveryChecks=new Map();
 const recoveryError=()=>Object.assign(new Error('Незавершённая транзакция Workflow Kit удерживает проект. Проверьте ./scripts/workflow status, завершите сохранённую транзакцию штатным commit или repair. После её подтверждённого завершения блокировка снимется автоматически; затем повторите подготовку контекста. План не возобновляется автоматически.'),{code:'PROJECT_RECOVERY_REQUIRED'});
-const held=project=>startupRecovery.has(project?.parentWorkspace??project?.workspace);
+const modeHeld=workspace=>{
+  const view=store.project(workspace);
+  return projectModeBlocked(store.snapshot().projects.map(p=>p.workspace===workspace
+    ?{...p,planExecution:view?.planExecution,planView:view?.planView}:p),workspace,projectPlanContinuation.book[workspace]?.sessionId);
+};
+const modeError=()=>Object.assign(new Error('План связан с неподдерживаемой исторической сессией. Назначения и результаты сохранены; создайте новый Chat и выполните штатное восстановление.'),{code:'SESSION_MODE_UNSUPPORTED'});
+const held=project=>startupRecovery.has(project?.parentWorkspace??project?.workspace)||modeHeld(project?.parentWorkspace??project?.workspace);
 // Only a fresh, successful readiness proof releases the original hold. A
 // missing/unknown Kit result is never interpreted as a completed transaction.
 function recheckRecovery(root){
@@ -75,7 +81,7 @@ const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&li
   kitPermission:(workspace,input)=>sessionPlans.call(workspace,'plan:permission',[],input)});
 let permissionTail=Promise.resolve();
 function syncPermission(workspace){
-  if(startupRecovery.has(workspace))return Promise.resolve();
+  if(startupRecovery.has(workspace)||modeHeld(workspace))return Promise.resolve();
   const entry=executionControl.book[workspace];if(!entry||entry.route!=='plugin-v1')return Promise.resolve();
   const {scopeId,state}=entry;
   const next=permissionTail.then(()=>dialogue.permission(workspace,scopeId,state));
@@ -204,13 +210,15 @@ const orchestratedPlan=workspace=>store.project(workspace)?.planExecution?.execu
 // A started button marks the plan as orchestrated even before the cached project view refreshes;
 // a plan of the former model keeps its continuation engine as the source of truth.
 const executorEnabled=(workspace,scope)=>{
-  if(startupRecovery.has(workspace)||execution.retired.has(workspace)||store.project(workspace)?.archivedAt)return false;
+  if(startupRecovery.has(workspace)||modeHeld(workspace)||execution.retired.has(workspace)||store.project(workspace)?.archivedAt)return false;
   const {state}=executionControl.view(workspace,scope),strategy=store.project(workspace)?.planExecution?.execution_strategy;
   return strategy==='orchestrated'||(!strategy&&state!=='not-started')?['running','pausing'].includes(state):projectPlanContinuation.enabled(workspace,scope);
 };
 const storedOrchestrator=(workspace,scope)=>store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions
   .find(s=>s.role==='orchestrator'&&s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId??null;
 async function restoreExecutionPage(project,assignment=null) {
+  assertSessionMode(project);
+  if(modeHeld(project.parentWorkspace??project.workspace))throw modeError();
   if(held(project))throw recoveryError();
   if(liveRecord(project)?.ready&&(!assignment||liveRecord(project).executor)){
     if(assignment&&executorEnabled(project.parentWorkspace,project.parentScopeId))await dialogue.start(project);
@@ -242,7 +250,7 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   // A draining backend opens no new assignment and queues no new send.
   isEnabled:(workspace,scope)=>!liveSessions?.paused&&executorEnabled(workspace,scope),
   // New tasks, the final handoff and delivery steps of an orchestrated plan wait while it is not running.
-  isIssuing:(workspace,scope)=>!orchestratedPlan(workspace)||executionControl.issuing(workspace,scope),
+  isIssuing:(workspace,scope)=>!modeHeld(workspace)&&(!orchestratedPlan(workspace)||executionControl.issuing(workspace,scope)),
   canFinalize:(workspace,scope)=>orchestratedPlan(workspace)?executionControl.issuing(workspace,scope):projectPlanContinuation.finalizationAllowed(workspace,scope),
   onComplete:async(workspace,scope)=>{if(orchestratedPlan(workspace)){
     await dialogue.permission(workspace,scope,'complete');return executionControl.complete(workspace,scope);
@@ -344,6 +352,8 @@ async function setPlanExecution(running,chosen=null) {
   // A choice card names its project; the button acts on the selected one.
   const selected=chosen?null:store.selected(),workspace=chosen??selected?.parentWorkspace??selected?.workspace;
   if(!workspace||selected?.external)throw Object.assign(new Error('Выберите проект с планом.'),{code:'PLAN_EXECUTION_UNAVAILABLE'});
+  if(selected)assertSessionMode(selected);
+  if(modeHeld(workspace))throw modeError();
   if(running!==undefined&&typeof running!=='boolean')throw Object.assign(new Error('Неверная команда кнопки плана.'),{code:'PLAN_EXECUTION_INVALID'});
   if(startupRecovery.has(workspace)) {
     if(!await recheckRecovery(workspace))throw recoveryError();
@@ -447,10 +457,10 @@ const executionPort=Object.freeze({
   view: workspace=>structuredClone(execution.view(workspace)),
   allStates: ()=>structuredClone([...execution.states].map(([workspace,state])=>({...state,workspace}))),
   ledgers: ()=>structuredClone(Object.values(parallelExecutionBook)),
-  observe: workspace=>{if(!startupRecovery.has(workspace))execution.observe(workspace);},
-  signal: workspace=>startupRecovery.has(workspace)?Promise.resolve():execution.signal(workspace),
-  recheck: workspace=>{if(startupRecovery.has(workspace))throw recoveryError();return execution.recheck(workspace);},
-  correct: (...args)=>{if(startupRecovery.has(args[0]))throw recoveryError();return execution.correct(...args);},
+  observe: workspace=>{if(!modeHeld(workspace)&&!startupRecovery.has(workspace))execution.observe(workspace);},
+  signal: workspace=>modeHeld(workspace)||startupRecovery.has(workspace)?Promise.resolve():execution.signal(workspace),
+  recheck: workspace=>{if(modeHeld(workspace))throw modeError();if(startupRecovery.has(workspace))throw recoveryError();return execution.recheck(workspace);},
+  correct: (...args)=>{if(modeHeld(args[0]))throw modeError();if(startupRecovery.has(args[0]))throw recoveryError();return execution.correct(...args);},
   suspend: workspace=>execution.suspend(workspace),forget: workspaces=>execution.forget(workspaces),
   retire: workspace=>execution.retire(workspace),allow: workspace=>execution.allow(workspace),
   publish: (...args)=>execution.publish(...args),dispose: ()=>execution.dispose(),
@@ -495,11 +505,12 @@ return Object.freeze({
     if(startupRecovery.size)await saveSettings();
   },
   retireCommunication:identities=>getPlugin()?.communication.removeProjects(identities),
-  prepareBootstrap:project=>{if(held(project)){
+  prepareBootstrap:project=>{assertSessionMode(project);if(modeHeld(project.parentWorkspace??project.workspace))throw modeError();if(held(project)){
     void recheckRecovery(project.parentWorkspace??project.workspace).catch(report);
     throw recoveryError();
   }return dialogue.prepareBootstrap(project);},
-  recoveryStatus:workspace=>startupRecovery.has(workspace)?{held:true,code:'PROJECT_RECOVERY_REQUIRED',message:recoveryError().message}:null,
+  recoveryStatus:workspace=>modeHeld(workspace)?{held:true,code:'SESSION_MODE_UNSUPPORTED',message:modeError().message}
+    :startupRecovery.has(workspace)?{held:true,code:'PROJECT_RECOVERY_REQUIRED',message:recoveryError().message}:null,
   stageStartup:(project,attempt)=>dialogue.stageStartup(project,attempt),
   startupProgress:(sessionId,requestId)=>getPlugin()?.communication.startup.progress(sessionId,requestId),
   observeParticipant:target=>dialogue.observe(target),admitParticipant:(target,message)=>dialogue.admit(target,message),
@@ -585,14 +596,14 @@ return Object.freeze({
   },
   restoreBackground() {
     // A plan that was running or pausing continues after a backend restart, without a repeated Send.
-    for(const [workspace,state] of Object.entries(executionControl.book))if(!startupRecovery.has(workspace)&&['running','pausing'].includes(state.state)) {
+    for(const [workspace,state] of Object.entries(executionControl.book))if(!modeHeld(workspace)&&!startupRecovery.has(workspace)&&['running','pausing'].includes(state.state)) {
       execution.observe(workspace);void execution.signal(workspace);
     }
-    for(const [workspace,state] of Object.entries(projectPlanContinuation.book))if(!startupRecovery.has(workspace)&&state.enabled) {
+    for(const [workspace,state] of Object.entries(projectPlanContinuation.book))if(!modeHeld(workspace)&&!startupRecovery.has(workspace)&&state.enabled) {
       const project=store.project(workspace,state.sessionId);
       if(project?.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt)void restoreExecutionPage(project).catch(report);
     }
-    for(const project of store.snapshot().projects)if(!startupRecovery.has(project.workspace)&&!project.parentWorkspace&&!project.archivedAt
+    for(const project of store.snapshot().projects)if(!modeHeld(project.workspace)&&!startupRecovery.has(project.workspace)&&!project.parentWorkspace&&!project.archivedAt
       &&(project.sessions.some(s=>s.executionSnapshot?.parallel_allowed)||Object.values(parallelExecutionBook).some(b=>b?.workspace===project.workspace))) {
       execution.observe(project.workspace);void execution.signal(project.workspace);
     }

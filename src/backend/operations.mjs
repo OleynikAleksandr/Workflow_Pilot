@@ -132,7 +132,7 @@ function desktopCatalog(services,base) {
     'sessions.select':async args=>{exact(args,['workspace','sessionId']);if(!absolute(args.workspace)||!sessionId(args.sessionId))throw invalid();
       await local('pilot:select-session',args);return {selected:{workspace:args.workspace,sessionId:args.sessionId}};},
     'sessions.create':async args=>{exact(args,['workspace','experience']);
-      if(!absolute(args.workspace)||!['chat','work'].includes(args.experience))throw invalid();
+      if(!absolute(args.workspace)||args.experience!==undefined&&!['chat','work'].includes(args.experience))throw invalid();
       await local('pilot:new-session',args);const selected=services.control.projects.selected();
       return {selected:selected?{workspace:selected.workspace,sessionId:selected.sessionId}:null};},
     'sessions.rename':async args=>{exact(args,['workspace','sessionId','name']);
@@ -190,7 +190,7 @@ function baseCatalog(services) {
     'sessions.select':async args=>{exact(args,['workspace','sessionId']);if(!absolute(args.workspace)||!sessionId(args.sessionId))throw invalid();
       registered(args.workspace);return open(await store.selectSession(args.workspace,args.sessionId));},
     'sessions.create':async args=>{exact(args,['workspace','experience']);
-      if(!absolute(args.workspace)||!['chat','work'].includes(args.experience))throw invalid();
+      if(!absolute(args.workspace)||args.experience!==undefined&&!['chat','work'].includes(args.experience))throw invalid();
       registered(args.workspace);return open(await store.newSession(args.workspace,args.experience));},
     'sessions.rename':async args=>{exact(args,['workspace','sessionId','name']);
       if(!absolute(args.workspace)||!sessionId(args.sessionId)||!name(args.name))throw invalid();

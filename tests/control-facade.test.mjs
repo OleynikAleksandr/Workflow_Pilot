@@ -6,6 +6,7 @@ import os from 'node:os';
 import { ControlFacade } from '../src/control/facade.mjs';
 import { ContextSession } from '../src/control/context/context-session.mjs';
 import { sessionStore } from '../src/control/sessions/service.mjs';
+import { localParticipantTarget } from '../src/control/plugin/enrollment.mjs';
 
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(),'workflow-pilot-control-'));
@@ -27,14 +28,15 @@ async function fixture(t) {
   return {root,file,create,project};
 }
 
-test('Control facade restores exact Chat/Work ownership and detached snapshots',async t=>{
+test('Control facade restores exact Chat ownership and detached snapshots',async t=>{
   const f=await fixture(t), control=f.create(), store=control.projects;
   await store.load();
   const first=await store.select(await f.project('First'));
   const planFile=path.join(first.workspace,'.harness/plans/todo-plan.md'), before=await fs.readFile(planFile,'utf8');
   await store.bindChat(first.workspace,first.sessionId,'https://chatgpt.com/c/aaaaaaaa',{manual:true});
-  const work=await store.newSession(first.workspace,'work');
-  assert.equal(work.experience,'work');
+  await assert.rejects(store.newSession(first.workspace,'work'),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
+  const work=await store.newSession(first.workspace,'chat');
+  assert.equal(work.experience,'chat');
   const neighbour=await store.select(await f.project('Neighbour'));
   const scoped=sessionStore(store,first);
   await scoped.updateSession(first.workspace,first.sessionId,{attempt:{state:'unknown',requestId:'request-one'}});
@@ -47,7 +49,7 @@ test('Control facade restores exact Chat/Work ownership and detached snapshots',
   const restored=await restarted.selectSession(first.workspace,first.sessionId);
   assert.equal(restored.chatUrl,'https://chatgpt.com/c/aaaaaaaa');
   assert.equal(restored.attempt.state,'unknown');
-  assert.equal(restarted.project(first.workspace,work.sessionId).experience,'work');
+  assert.equal(restarted.project(first.workspace,work.sessionId).experience,'chat');
   assert.equal(await fs.readFile(planFile,'utf8'),before,'Kit plan is never copied or changed by logical sessions');
   await assert.rejects(restarted.bindChat(first.workspace,first.sessionId,'https://chatgpt.com/c/bbbbbbbb'),{code:'CHAT_CHANGED'});
   let deliveries=0;
@@ -64,7 +66,7 @@ test('failed Control save rolls back ownership and restart retains the last dura
   const first=await store.select(await f.project('First'));
   const rename=fs.rename;
   fs.rename=async(from,to)=>{if(to===f.file)throw Object.assign(new Error('fixture write failure'),{code:'EIO'});return rename(from,to);};
-  try { await assert.rejects(store.newSession(first.workspace,'work'),{code:'EIO'}); }
+  try { await assert.rejects(store.newSession(first.workspace,'chat'),{code:'EIO'}); }
   finally { fs.rename=rename; }
   assert.equal(store.selected().sessionId,first.sessionId);
   assert.equal(store.snapshot().projects[0].sessions.length,1);
@@ -72,6 +74,35 @@ test('failed Control save rolls back ownership and restart retains the last dura
   assert.equal(restarted.selected().sessionId,first.sessionId);
   assert.equal(restarted.snapshot().projects[0].sessions.length,1);
   assert.deepEqual(await fs.readdir(path.dirname(f.file)),['sessions.json']);
+});
+
+test('historical mode holds only its project before runtime, registration and continuation',async t=>{
+  const f=await fixture(t),initial=f.create().projects;
+  const first=await initial.select(await f.project('Historical'));
+  const neighbour=await initial.select(await f.project('Active'));
+  const raw=initial.snapshot();raw.schemaVersion=6;
+  raw.projects.find(p=>p.workspace===first.workspace).sessions[0].experience='work';
+  await fs.writeFile(f.file,JSON.stringify(raw));
+  const control=f.create(),store=control.projects;await store.load();control.configureProjects({});
+  const historical=store.project(first.workspace,first.sessionId);
+  assert.equal(historical.availability,'legacy-work');
+  assert.equal(localParticipantTarget(store,first.sessionId),null);
+  assert.ok(localParticipantTarget(store,neighbour.sessionId));
+  const workflow=control.configureWorkflow({getController:()=>null,available:()=>false,contextAvailable:()=>false,
+    onChange:()=>{},report:error=>{throw error;},save:async()=>{}});
+  workflow.attachSessions({all:()=>[],find:()=>null,visible:null,paused:false});
+  t.after(()=>{workflow.closeRecovery();workflow.planContinuation.dispose();workflow.execution.dispose();
+    workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();});
+  workflow.restore({projectPlanContinuation:{[first.workspace]:{projectId:first.projectId,scopeId:'scope',enabled:true,
+    sessionId:first.sessionId,sessions:{}},[neighbour.workspace]:{projectId:neighbour.projectId,scopeId:'scope',enabled:false,
+    sessionId:neighbour.sessionId,sessions:{}}}});
+  assert.equal(workflow.recoveryStatus(first.workspace).code,'SESSION_MODE_UNSUPPORTED');
+  assert.equal(workflow.recoveryStatus(neighbour.workspace),null);
+  workflow.restoreBackground();
+  assert.throws(()=>workflow.prepareBootstrap(historical),{code:'SESSION_MODE_UNSUPPORTED'});
+  await assert.rejects(workflow.setPlanExecution(true,first.workspace),{code:'SESSION_MODE_UNSUPPORTED'});
+  assert.equal(workflow.projectPlanContinuation.enabled(neighbour.workspace,'scope'),false,'manual OFF preserved');
+  assert.equal(store.project(first.workspace).experience,'work');
 });
 
 test('workflow facade restores delivery ledgers and purges only the addressed project',async t=>{

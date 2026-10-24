@@ -143,10 +143,10 @@ test('requestId deduplicates, accepted operations finish after disconnect and ar
   const project=await store.select(workspace);
   const backend=await startBackend(t,root),client=clientOf(backend);
   await client.connect();await client.acquire();
-  const first=await client.submit('sessions.create',{workspace:project.workspace,experience:'work'},{requestId:'create-once'});
-  const repeat=await client.submit('sessions.create',{workspace:project.workspace,experience:'work'},{requestId:'create-once'});
+  const first=await client.submit('sessions.create',{workspace:project.workspace,experience:'chat'},{requestId:'create-once'});
+  const repeat=await client.submit('sessions.create',{workspace:project.workspace,experience:'chat'},{requestId:'create-once'});
   assert.equal(first.status,'accepted');assert.equal(repeat.operationId,first.operationId);
-  await assert.rejects(client.submit('sessions.create',{workspace:project.workspace,experience:'chat'},{requestId:'create-once'}),
+  await assert.rejects(client.submit('sessions.create',{workspace:project.workspace,experience:'work'},{requestId:'create-once'}),
     error=>error.code==='BACKEND_REQUEST_CONFLICT');
   client.close();
   // A new client, without the old connection, sees the same server-side operation.
@@ -154,7 +154,8 @@ test('requestId deduplicates, accepted operations finish after disconnect and ar
   const done=await later.wait(first.operationId);
   assert.equal(done.status,'completed');
   const sessions=backend.services.control.projects.snapshot().projects[0].sessions;
-  assert.equal(sessions.filter(session=>session.experience==='work').length,1,'one effect for one requestId');
+  assert.equal(sessions.length,2,'one effect for one requestId');
+  assert.ok(sessions.every(session=>session.experience==='chat'));
   const journal=fs.readFileSync(path.join(backend.identity.ownerDir,'operations.jsonl'),'utf8').trim().split('\n').map(JSON.parse)
     .filter(record=>record.operationId===first.operationId).map(record=>record.status);
   assert.deepEqual(journal,['accepted','running','completed']);

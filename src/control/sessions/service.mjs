@@ -1,6 +1,7 @@
 import { ContextSession } from '../context/context-session.mjs';
 import { AgentTimer } from './agent-timer.mjs';
 import { ConversationRecovery } from './conversation-recovery.mjs';
+import { assertSessionMode, sessionModeAllowed, projectModeBlocked } from './workspace-session.mjs';
 import { normalizeChatUrl } from '../../contracts/browser.mjs';
 import { sessionRuntimeKey } from '../../contracts/control.mjs';
 export { sessionRuntimeKey } from '../../contracts/control.mjs';
@@ -33,6 +34,10 @@ export class SessionRuntimes {
     this.paused=false;
   }
   ensure(project=null) {
+    if(project)assertSessionMode(project);
+    if(project&&this.store.snapshot&&projectModeBlocked(this.store.snapshot().projects.map(p=>({...p,
+      planExecution:this.store.project(p.workspace)?.planExecution,planView:this.store.project(p.workspace)?.planView})),project.parentWorkspace??project.workspace))
+      throw Object.assign(new Error('Проект удержан: назначение связано с исторической сессией. Данные сохранены.'),{code:'SESSION_MODE_UNSUPPORTED'});
     if(project?.external)throw Object.assign(new Error('Эта сессия открыта в ChatGPT. Продолжайте разговор там.'),{code:'EXTERNAL_SESSION'});
     const key=sessionRuntimeKey(project), existing=this.#records.get(key);
     if(existing)return existing;
@@ -102,7 +107,7 @@ export class SessionRuntimes {
   }
   tick(record,{freshDraft=false}={}) {
     const project=record.project();
-    if(record.disposed||this.paused||!record.ready||record.loading||!project||project.archivedAt||project.sessionArchivedAt)return;
+    if(record.disposed||this.paused||!record.ready||record.loading||!sessionModeAllowed(project)||project.archivedAt||project.sessionArchivedAt)return;
     if(record.addressLost&&!normalizeChatUrl(record.composer.getURL())) {
       record.controller.emit({phase:'send-unknown',error:{code:'SESSION_CHAT_ADDRESS_UNKNOWN',
         message:'Страница разговора утрачена до сохранения адреса. Первоначальная отправка не повторяется; восстановите исходный разговор.'}});
