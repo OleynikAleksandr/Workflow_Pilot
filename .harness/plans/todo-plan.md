@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1005,
+  "plan_revision": 1006,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -112,7 +112,9 @@
       "src/control/projects/service.mjs",
       "src/execution/files/adapter.mjs",
       "tests/files-adapter.test.mjs",
-      "tests/session-opening-performance.test.mjs"
+      "tests/session-opening-performance.test.mjs",
+      "src/contracts/startup-view.mjs",
+      "src/frontend/desktop/ui/project-doctor.mjs"
     ],
     "documentation_paths": [
       "docs/planning/chat-only-url-start.md",
@@ -618,7 +620,14 @@
         "tests/backend-desktop-model.test.mjs",
         "src/frontend/desktop/preload.cjs",
         "src/contracts/desktop.mjs",
-        "tests/project-doctor-ui.test.mjs"
+        "tests/project-doctor-ui.test.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/desktop/ui/project-doctor.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "src/control/context/context-session.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -975,7 +984,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1005
+Revision: 1006
 
 ## Цель
 
@@ -1020,7 +1029,7 @@ Revision: 1005
 - [TODO] T005: Убрать Work из интерфейса и показать независимые этапы старта — Ожидает
   - Git Commit: [PENDING] feat: Убрать Work из интерфейса и показать независимые этапы старта
   - Reference: chat-only-url-bootstrap / T005 / implementation
-  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/client.mjs, src/backend/desktop-model.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, tools/codex-app-server-mcp/plugin.py, tests/sidebar.test.mjs, tests/startup-ui.test.mjs, tests/progress.test.mjs, tests/desktop-client.test.mjs, tests/backend-desktop-model.test.mjs, src/frontend/desktop/preload.cjs, src/contracts/desktop.mjs, tests/project-doctor-ui.test.mjs
+  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/client.mjs, src/backend/desktop-model.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, tools/codex-app-server-mcp/plugin.py, tests/sidebar.test.mjs, tests/startup-ui.test.mjs, tests/progress.test.mjs, tests/desktop-client.test.mjs, tests/backend-desktop-model.test.mjs, src/frontend/desktop/preload.cjs, src/contracts/desktop.mjs, tests/project-doctor-ui.test.mjs, src/contracts/startup-view.mjs, src/backend/bootstrap.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/frontend/desktop/ui/project-doctor.mjs, tests/backend-browser-lifecycle.test.mjs, src/control/context/context-session.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T004
 - [TODO] T006: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke — Ожидает
