@@ -1,6 +1,6 @@
 # Диалог под управлением оркестратора
 
-Контракт Workflow Pilot 0.5.30 / Kit 1.9.8: `dialogue_version: 1`, ролевой протокол 8, панель `0.5.30-communication-5`, протокол панели 5. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
+Контракт Workflow Pilot 0.5.33 / Kit 1.9.9: `dialogue_version: 1`, ролевой протокол 8, панель `0.5.33-communication-5`, протокол панели 5. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
 
 ## Роли и пользовательский процесс
 

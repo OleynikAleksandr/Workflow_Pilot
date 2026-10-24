@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1060,
+  "plan_revision": 1062,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
@@ -161,7 +161,7 @@
       {
         "path": "docs/planning/chat-session-without-modes.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "9ed9749d821efb5200b2ec370b6b914ecb5331e0"
       },
       {
         "path": "docs/modules/chat-only-startup.md",
@@ -509,8 +509,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
         "task_id": "DOCS",
@@ -581,7 +581,33 @@
         "Спецификация перенесена в модули и удалена, ограничения live/native сохранены."
       ],
       "expected_commit_message": "docs: обновить контракты единственного Chat",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/chat-only-startup.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/chatgpt-search-extension.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/first-run-onboarding.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/release.md",
+        "docs/planning/chat-session-without-modes.md",
+        "packages/workflow-kit/README.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -698,7 +724,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-session-without-modes
 Current Task: нет
-Revision: 1060
+Revision: 1062
 
 ## Цель
 
@@ -740,8 +766,8 @@ Revision: 1060
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installation-files.mjs, scripts/stage-workflow-kit.mjs, tests/workflow-kit-upgrade.test.mjs, packages/workflow-kit/src/lib/installer.mjs, scripts/probe-chatgpt-file-paste.mjs, tests/fixtures/released-kit/kit-1.9.8.tar.gz, tests/fixtures/released-kit/manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: TRAY
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: обновить контракты единственного Chat
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: обновить контракты единственного Chat
   - Reference: chat-session-without-modes / DOCS / implementation
   - Файлы: README.md, docs/acceptance/backend-independence.md, docs/acceptance/chat-only-startup.md, docs/acceptance/interruption-recovery.md, docs/acceptance/migration-0.1.0.md, docs/acceptance/orchestrated-execution.md, docs/acceptance/remote-access.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/backend-shutdown.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/chatgpt-search-extension.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/dialogue-timing.md, docs/modules/execution.md, docs/modules/first-run-onboarding.md, docs/modules/linux.md, docs/modules/native-window.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/project-compatibility.md, docs/modules/project-lifecycle.md, docs/modules/release.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/workflow-execution.md, docs/planning/backend-independence-followup.md, docs/planning/chat-session-without-modes.md, docs/planning/executor-readiness-recovery.md, docs/planning/native-startup-followup.md, docs/planning/phased-plans-recovery-followup.md, docs/planning/plan-start-recovery.md, docs/planning/recovery-and-interruption-2026-10.md, docs/planning/recovery-and-interruption-todo-draft.md, docs/planning/review-instructions-followup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md
   - Параллельность: исключительное выполнение
