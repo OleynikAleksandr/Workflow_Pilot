@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1062,
+  "plan_revision": 1064,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
@@ -610,8 +610,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
         "task_id": "RELEASE",
@@ -639,7 +639,10 @@
       ],
       "expected_commit_message": "build: собрать и проверить три платформы",
       "parallel_safe": false,
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -724,7 +727,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-session-without-modes
 Current Task: нет
-Revision: 1062
+Revision: 1064
 
 ## Цель
 
@@ -772,8 +775,8 @@ Revision: 1062
   - Файлы: README.md, docs/acceptance/backend-independence.md, docs/acceptance/chat-only-startup.md, docs/acceptance/interruption-recovery.md, docs/acceptance/migration-0.1.0.md, docs/acceptance/orchestrated-execution.md, docs/acceptance/remote-access.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/backend-shutdown.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/chatgpt-search-extension.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/dialogue-timing.md, docs/modules/execution.md, docs/modules/first-run-onboarding.md, docs/modules/linux.md, docs/modules/native-window.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/project-compatibility.md, docs/modules/project-lifecycle.md, docs/modules/release.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/workflow-execution.md, docs/planning/backend-independence-followup.md, docs/planning/chat-session-without-modes.md, docs/planning/executor-readiness-recovery.md, docs/planning/native-startup-followup.md, docs/planning/phased-plans-recovery-followup.md, docs/planning/plan-start-recovery.md, docs/planning/recovery-and-interruption-2026-10.md, docs/planning/recovery-and-interruption-todo-draft.md, docs/planning/review-instructions-followup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md
   - Параллельность: исключительное выполнение
   - Зависимости: CORE, PROOF, TRAY, VERSION
-- [TODO] RELEASE: build: собрать и проверить три платформы — Ожидает
-  - Git Commit: [PENDING] build: собрать и проверить три платформы
+- [DONE] RELEASE: build: собрать и проверить три платформы — Завершено
+  - Git Commit: [DONE] build: собрать и проверить три платформы
   - Reference: chat-session-without-modes / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
