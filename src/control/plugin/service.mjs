@@ -86,6 +86,9 @@ export class PluginProjects {
     }
   }
   async participantSnapshot(sessionId) {
+    // Session cancellation/mode intent is committed before MCP admission, even
+    // when a navigation event and an incoming tool call arrive together.
+    await this.projects.whenIdle?.();
     const target=localParticipantTarget(this.projects,sessionId);if(!target)return null;
     const parent=this.projects.snapshot().projects.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt);
     if(!parent)return null;
@@ -101,10 +104,10 @@ export class PluginProjects {
     }
     return fresh;
   }
-  async reserveParticipant(sessionId) {
+  async reserveParticipant(sessionId,correlation) {
     const target=await this.participantTarget(sessionId);
     if(!target)throw fail('PLUGIN_PARTICIPANT_UNAVAILABLE','Нет действующего назначения или оркестратора для этой сессии.');
-    return this.communication.reserve(target);
+    return this.communication.reserve(target,correlation);
   }
   async panel({enrollment_ticket,metadata}={}) {
     await this.communication.ready;

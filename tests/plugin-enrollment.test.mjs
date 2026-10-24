@@ -20,6 +20,69 @@ async function fixture(t) {
   return {comm,directory,targets,create,advance:ms=>{now+=ms;}};
 }
 
+const correlatedOwner=(scope,correlation)=>({project_id:scope.project_id,local_session_id:scope.local_session_id,...correlation});
+test('correlated invitation revocation survives restart, rejects the same identity and cannot resume stage',async t=>{
+  const f=await fixture(t),scope=target('cancelled');f.targets.set('cancelled',scope);
+  const correlation={request_id:'request-cancelled',attempt_generation:'generation-one'},owner=correlatedOwner(scope,correlation);
+  const invite=await f.comm.reserve(scope,correlation),ref={run_id:invite.run_id,ticket_hash:invite.ticket_hash};
+  assert.match(invite.ticket_hash,/^[a-f0-9]{64}$/);
+  await assert.rejects(f.comm.reserve(scope,correlation),{code:'PLUGIN_COMMUNICATION_ENROLLMENT_EXISTS'});
+  await f.comm.startup.stage(scope,{...correlation,text:'Immutable context'});
+  await assert.rejects(f.comm.cancelStartup({...owner,local_session_id:'foreign'},ref),{code:'PLUGIN_COMMUNICATION_ENROLLMENT_OWNER'});
+  assert.equal((await f.comm.cancelStartup(owner,ref)).status,'revoked');
+  assert.equal((await f.comm.cancelStartup(owner,ref)).status,'revoked','idempotent lost-response recovery');
+  await assert.rejects(f.comm.enroll(invite.enrollment_ticket,metadata('cancelled')),{code:'PLUGIN_COMMUNICATION_ENROLLMENT_REVOKED'});
+  await assert.rejects(f.comm.startup.stage(scope,{...correlation,text:'Immutable context'}),{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
+  f.targets.delete('cancelled');
+  assert.equal((await f.comm.cancelStartup(owner,ref)).status,'revoked','revocation works after the target was retired');
+  f.comm.dispose();await f.comm.tail;
+  const recovered=await f.create();t.after(()=>recovered.dispose());await recovered.ready;
+  await assert.rejects(recovered.enroll(invite.enrollment_ticket,metadata('cancelled')),{code:'PLUGIN_COMMUNICATION_ENROLLMENT_REVOKED'});
+  assert.equal(Object.keys(recovered.runs.get(invite.run_id).members).length,0);
+});
+
+test('enrollment winning cancellation retains binding, stops context and prevents a new URL ticket for that session',async t=>{
+  const f=await fixture(t),scope=target('registered');f.targets.set('registered',scope);
+  const correlation={request_id:'request-registered',attempt_generation:'generation-one'},owner=correlatedOwner(scope,correlation);
+  const invite=await f.comm.reserve(scope,correlation),ref={run_id:invite.run_id,ticket_hash:invite.ticket_hash};
+  await f.comm.startup.stage(scope,{...correlation,text:'Context'});
+  const joined=await f.comm.enroll(invite.enrollment_ticket,metadata('registered'));
+  assert.equal((await f.comm.enrollmentEvidence(ref,owner)).participant_id,joined.participant_id);
+  const result=await f.comm.cancelStartup(owner,ref);
+  assert.equal(result.status,'registered-stopped');assert.equal(result.participant_id,joined.participant_id);
+  const message=f.comm.runs.get(invite.run_id).messages.find(m=>m.request_id===correlation.request_id);
+  await assert.rejects(f.comm.startupOpen({metadata:metadata('registered'),message_id:message.message_id}),{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
+  assert.equal(f.comm.runs.get(invite.run_id).members[joined.participant_id].target.local_session_id,scope.local_session_id);
+  await assert.rejects(f.comm.reserve(scope,{request_id:'new-request',attempt_generation:'generation-two'}),{code:'PLUGIN_COMMUNICATION_BINDING'});
+  const legacy=await f.comm.reserve(scope);
+  await assert.rejects(f.comm.enroll(legacy.enrollment_ticket,metadata('foreign-conversation')),{code:'PLUGIN_COMMUNICATION_BINDING'});
+  await assert.rejects(f.comm.enrollmentEvidence(ref,{...owner,request_id:'other-request'}),{code:'PLUGIN_COMMUNICATION_ENROLLMENT_OWNER'});
+});
+
+test('registration evidence waits for WAL persistence rather than exposing an in-flight member',async t=>{
+  const f=await fixture(t),scope=target('durable');f.targets.set('durable',scope);
+  const correlation={request_id:'durable-request',attempt_generation:'generation-one'},owner=correlatedOwner(scope,correlation);
+  const invite=await f.comm.reserve(scope,correlation),store=f.comm.store;let entered,release,settled=false;
+  const writing=new Promise(resolve=>{entered=resolve;});
+  f.comm.store={...store,append:async(...args)=>{entered();await new Promise(resolve=>{release=resolve;});return store.append(...args);}};
+  const joining=f.comm.enroll(invite.enrollment_ticket,metadata('durable'));await writing;
+  const proof=f.comm.enrollmentEvidence({run_id:invite.run_id,ticket_hash:invite.ticket_hash},owner).then(value=>{settled=true;return value;});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);
+  release();const joined=await joining;assert.equal((await proof).participant_id,joined.participant_id);
+});
+
+test('failed revocation preserves the old registry, denies success and blocks the damaged writer',async t=>{
+  const f=await fixture(t),scope=target('write-failure');f.targets.set('write-failure',scope);
+  const correlation={request_id:'failed-cancel',attempt_generation:'generation-one'},owner=correlatedOwner(scope,correlation);
+  const invite=await f.comm.reserve(scope,correlation);await f.comm.startup.stage(scope,{...correlation,text:'Keep read history'});
+  const store=f.comm.store;f.comm.store={...store,append:async()=>{throw Error('fixture disk failure');}};
+  await assert.rejects(f.comm.cancelStartup(owner,{run_id:invite.run_id,ticket_hash:invite.ticket_hash}),{code:'PLUGIN_COMMUNICATION_STORE_WRITE'});
+  assert.equal(f.comm.runs.get(invite.run_id).enrollments[invite.ticket_hash].status,'active');
+  assert.equal(f.comm.runs.get(invite.run_id).messages[0].cancelled,undefined);
+  await assert.rejects(f.comm.enroll(invite.enrollment_ticket,metadata('write-failure')),{code:'PLUGIN_COMMUNICATION_STORE_BLOCKED'});
+  await assert.rejects(f.comm.cancelStartup({...owner,request_id:'no-record'}),{code:'PLUGIN_COMMUNICATION_STORE_BLOCKED'});
+});
+
 test('one orchestrator and five executors register independently and survive durable restart',async t=>{
   const f=await fixture(t),registrations=[],tickets=[];
   for(const [id,role] of [['orchestrator','O'],...Array.from({length:5},(_,i)=>['executor-'+i,'E'])]){

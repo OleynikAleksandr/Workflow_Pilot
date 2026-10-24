@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 997,
+  "plan_revision": 1000,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -138,7 +138,7 @@
       },
       {
         "path": "docs/planning/chat-only-url-acceptance.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
@@ -178,7 +178,7 @@
       },
       {
         "path": "docs/planning/chat-only-url-start.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       }
     ],
@@ -376,8 +376,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "T003",
@@ -421,7 +421,7 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
@@ -429,11 +429,11 @@
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": false
+            "required": true
           },
           {
             "path": "docs/modules/browser.md",
@@ -448,7 +448,17 @@
         "dependency_task_ids": [
           "T002"
         ]
-      }
+      },
+      "actual_files": [
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/startup-context.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -505,7 +515,7 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
@@ -513,11 +523,11 @@
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": false
+            "required": true
           },
           {
             "path": "docs/modules/browser.md",
@@ -585,7 +595,7 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
@@ -593,11 +603,11 @@
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": false
+            "required": true
           },
           {
             "path": "docs/modules/browser.md",
@@ -668,7 +678,7 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
@@ -676,11 +686,11 @@
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
-            "required": false
+            "required": true
           },
           {
             "path": "docs/modules/browser.md",
@@ -779,7 +789,7 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
@@ -787,7 +797,7 @@
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": true,
@@ -920,7 +930,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 997
+Revision: 1000
 
 ## Цель
 
@@ -950,8 +960,8 @@ Revision: 997
   - Файлы: src/execution/browser/session-runtime.mjs, src/execution/browser/browser-startup.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/diagnostics.mjs, src/execution/facade.mjs, src/contracts/browser.mjs, tests/session-runtime.test.mjs, tests/browser-startup.test.mjs, tests/chromium-diagnostics.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/chatgpt-experience.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T001
-- [TODO] T003: Добавить долговечный отзыв приглашения и отмену startup — Ожидает
-  - Git Commit: [PENDING] feat: Добавить долговечный отзыв приглашения и отмену startup
+- [DONE] T003: Добавить долговечный отзыв приглашения и отмену startup — Завершено
+  - Git Commit: [DONE] feat: Добавить долговечный отзыв приглашения и отмену startup
   - Reference: chat-only-url-bootstrap / T003 / implementation
   - Файлы: src/control/plugin/enrollment.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/execution/plugin/communication-store.mjs, src/contracts/plugin-communication.mjs, tests/plugin-enrollment.test.mjs, tests/plugin-communication-store.test.mjs, tests/startup-context.test.mjs, tests/dialogue-delivery.test.mjs
   - Параллельность: исключительное выполнение

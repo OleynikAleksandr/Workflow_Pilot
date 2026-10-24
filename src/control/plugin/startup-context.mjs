@@ -15,7 +15,20 @@ export function contextParts(text,limit=12000){
 export class StartupContext {
   constructor(communication){this.c=communication;}
   message(run,session){return run?.messages.findLast(m=>m.kind==='startup-context'&&m.recipient_session_id===session&&!m.superseded);}
-  active(run,member){const m=this.message(run,member.target?.local_session_id);return ['O','E','S'].includes(member.role)&&!!m&&!m.startup_complete;}
+  active(run,member){const m=this.message(run,member.target?.local_session_id);return ['O','E','S'].includes(member.role)&&!!m&&!m.cancelled&&!m.startup_complete;}
+  ownsAttempt(m,owner){return m.kind==='startup-context'&&m.recipient_session_id===owner.local_session_id
+    &&m.request_id===owner.request_id&&(m.attempt_generation??null)===(owner.attempt_generation??null);}
+  cancelled(run,owner,reason){
+    let participant_id=null;
+    for(const m of run.messages.filter(m=>this.ownsAttempt(m,owner))){
+      participant_id??=m.recipient_id;
+      if(m.cancelled)continue;
+      m.cancelled=true;m.cancelled_at=this.c.now();m.cancel_reason=reason;m.superseded=true;
+      if(m.delivery==='pending')m.delivery='cancelled';
+      this.c.event(run,'startup.cancelled',{message_id:m.message_id,request_id:m.request_id});
+    }
+    return {participant_id};
+  }
   stage(target,input){return this.c.mutate('startupStage',{...input,target,run_id:workflowRunId(target)});}
   async staged(input){
     const c=this.c,{target,text,request_id}=input;
@@ -23,8 +36,13 @@ export class StartupContext {
     check(typeof request_id==='string'&&request_id.length<=128&&request_id.length>0,'INPUT','Нет идентификатора старта.');
     check(typeof text==='string'&&text.trim()&&Buffer.byteLength(text)<=220000,'CONTEXT','Стартовый пакет пуст или слишком велик; он не обрезан.');
     const run=c.enrollment.ensureRun(target),digest=hash(text);
+    check(!Object.values(run.enrollments).some(invitation=>invitation.target.local_session_id===target.local_session_id
+      &&invitation.request_id===request_id&&(invitation.attempt_generation??null)===(input.attempt_generation??null)
+      &&invitation.status==='revoked'),'STARTUP_CANCELLED','Приглашение этого стартового пакета отозвано.');
     const existing=run.messages.find(m=>m.kind==='startup-context'&&m.request_id===request_id&&m.recipient_session_id===target.local_session_id);
     if(existing){
+      check(!existing.cancelled,'STARTUP_CANCELLED','Этот стартовый пакет отменён. Повтор не возобновляет его.');
+      check((existing.attempt_generation??null)===(input.attempt_generation??null),'CONFLICT','Поколение стартового пакета изменилось.');
       check(existing.context_ref===digest,'CONFLICT','Нельзя заменить сохранённый стартовый пакет.');
       if(existing.superseded&&!existing.intent){existing.superseded=false;existing.delivery='pending';
         c.event(run,'startup.resumed',{message_id:existing.message_id});}
@@ -39,26 +57,29 @@ export class StartupContext {
     const member=Object.values(run.members).find(m=>m.target.local_session_id===target.local_session_id);
     const message={message_id:c.makeId(),kind:'startup-context',service:true,sender_role:'backend',sender_id:null,
       recipient_id:member?.id??null,recipient_session_id:target.local_session_id,scope_id:target.scope_id,
-      assignment_id:target.assignment_id??null,task_id:target.task_id??null,request_id,context_ref:ref,context_bytes:Buffer.byteLength(text),
+      assignment_id:target.assignment_id??null,task_id:target.task_id??null,request_id,attempt_generation:input.attempt_generation??null,
+      context_ref:ref,context_bytes:Buffer.byteLength(text),
       total_parts:contextParts(text,24000).length,parts_read:[],body:'Стартовый контекст сессии',
       delivery_mode:input.delivery_mode??'model-pull',delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
     run.messages.push(message);c.event(run,'startup.prepared',{message_id:message.message_id,participant_id:member?.id??null,
       context_bytes:message.context_bytes,total_parts:message.total_parts});return this.view(message);
   }
   view(m){return m?{message_id:m.message_id,request_id:m.request_id,delivery:m.delivery,read:m.read,
-    delivery_mode:m.delivery_mode??'sdk-notification',complete:!!m.startup_complete,superseded:!!m.superseded,parts_read:m.parts_read.length,total_parts:m.total_parts}:null;}
+    delivery_mode:m.delivery_mode??'sdk-notification',complete:!!m.startup_complete,cancelled:!!m.cancelled,
+    superseded:!!m.superseded,parts_read:m.parts_read.length,total_parts:m.total_parts}:null;}
   progress(sessionId,requestId){
     if(this.c.removedSessions.has(sessionId))return null;
     const match=m=>m.kind==='startup-context'&&m.recipient_session_id===sessionId&&m.request_id===requestId;
     const target=this.c.enrollment.resolveTarget?.(sessionId);
-    if(target)return this.view(this.c.runs.get(workflowRunId(target))?.messages.findLast(match));
+    if(target)return this.view(this.c.readableRun(workflowRunId(target))?.messages.findLast(match));
     // A closed plan detaches the participant, but a confirmed startup stays confirmed.
-    for(const run of this.c.runs.values()){const m=run.messages.findLast(match);if(m?.startup_complete)return this.view(m);}
+    for(const id of this.c.runs.keys()){const m=this.c.readableRun(id)?.messages.findLast(match);if(m?.startup_complete)return this.view(m);}
     return null;
   }
   async own(input){
     const {run,member}=this.c.member(input),m=run.messages.find(m=>m.message_id===input.message_id);
     check(['O','E','S'].includes(member.role)&&m?.kind==='startup-context'&&m.recipient_id===member.id,'READ_DENIED','Стартовый пакет недоступен этому разговору.');
+    check(!m.cancelled,'STARTUP_CANCELLED','Стартовый пакет отменён. Дальнейшее чтение и подтверждение запрещены.');
     check(!m.superseded&&await this.c.workflow.currentMessage(member.target,m),
       'STALE_MESSAGE','Стартовый пакет устарел. Не подтверждайте его; обновите контекст проекта.');
     return {run,member,m};

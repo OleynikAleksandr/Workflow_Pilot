@@ -4,6 +4,10 @@ import { sessionModeAllowed, projectModeBlocked } from '../sessions/workspace-se
 const fail = (code, message) => Object.assign(new Error(message), {code:'PLUGIN_COMMUNICATION_'+code});
 const check = (value, code, message) => {if(!value)throw fail(code,message);};
 const hash = value => createHash('sha256').update(value).digest('hex');
+const ownsAttempt = (invitation,owner) => invitation.target.project_id===owner.project_id
+  &&invitation.target.local_session_id===owner.local_session_id
+  &&(invitation.request_id??null)===(owner.request_id??null)
+  &&(invitation.attempt_generation??null)===(owner.attempt_generation??null);
 const FIELDS=['project_id','local_session_id','origin_session_id','role','assignment_id','task_id','scope_id'];
 const same = (a,b) => !!a && !!b && FIELDS.every(key=>key==='scope_id'&&a.role==='O'&&(a[key]==null||b[key]==null)
   ||(a[key]??null)===(b[key]??null));
@@ -19,9 +23,11 @@ export class ParticipantEnrollment {
     check(same(current,target),'ASSIGNMENT_CHANGED','Проект или действующее назначение не подтверждены. Отправка остановлена.');
     return current;
   }
-  async validateInput(input) {
+  async validateInput(input,operation=null) {
     const run=this.communication.runs.get(input.run_id);
     if(run?.mode!=='workflow'&&!input.target)return;
+    if(operation==='enroll')check(run.enrollments?.[input.ticket_hash]?.status!=='revoked',
+      'ENROLLMENT_REVOKED','Приглашение отозвано. Эта попытка запуска отменена.');
     const target=input.target??run.members[input.participant_id]?.target??run.enrollments?.[input.ticket_hash]?.target;
     if(target)await this.validate(target);
     if(input.recipient_id&&run?.members[input.recipient_id])await this.validate(run.members[input.recipient_id].target);
@@ -32,11 +38,52 @@ export class ParticipantEnrollment {
     check(same(current,target),'ASSIGNMENT_CHANGED','Назначение или проект изменились. Ожидайте актуальный стартовый контекст Workflow Pilot.');
     return current;
   }
-  reserve(target) {
+  reserve(target,correlation={}) {
     this.current(target);
+    const {request_id=null,attempt_generation=null}=correlation;
+    check(request_id===null&&attempt_generation===null||typeof request_id==='string'&&request_id.length>0&&request_id.length<=128
+      &&typeof attempt_generation==='string'&&attempt_generation.length>0&&attempt_generation.length<=128,'INPUT','Неверная корреляция запуска.');
     const ticket=randomBytes(32).toString('hex');
-    return this.communication.mutate('reserve',{run_id:workflowRunId(target),target,ticket_hash:hash(ticket)})
+    return this.communication.mutate('reserve',{run_id:workflowRunId(target),target,ticket_hash:hash(ticket),request_id,attempt_generation})
       .then(result=>({...result,enrollment_ticket:ticket}));
+  }
+  evidence(ref,owner) {return this.communication.mutate('enrollmentEvidence',{...ref,owner});}
+  evidenceInTransaction(input) {
+    const invitation=this.communication.run(input).enrollments?.[input.ticket_hash];
+    check(invitation&&ownsAttempt(invitation,input.owner),'ENROLLMENT_OWNER','Приглашение не принадлежит этой попытке.');
+    return {run_id:input.run_id,ticket_hash:input.ticket_hash,request_id:invitation.request_id??null,
+      attempt_generation:invitation.attempt_generation??null,status:invitation.status??'active',
+      participant_id:invitation.participant_id??null,expires_at:invitation.expires_at};
+  }
+  async cancel(owner,ref=null,reason='cancelled') {
+    const c=this.communication;await c.ready;await c.tail;
+    check(!c.disposed,'CLOSED','Служба связи закрывается.');
+    check(!c.critical,'STORE_BLOCKED','Отзыв не подтверждён: журнал заблокирован.');
+    check(typeof owner?.project_id==='string'&&typeof owner.local_session_id==='string'
+      &&typeof owner.request_id==='string'&&owner.request_id.length>0,'ENROLLMENT_OWNER','Нужен владелец отменяемой попытки.');
+    const references=ref?[ref]:[...c.runs.values()].filter(r=>r.mode==='workflow'&&r.project_id===owner.project_id).flatMap(run=>{
+      const matches=Object.entries(run.enrollments).filter(([,invitation])=>ownsAttempt(invitation,owner))
+        .map(([ticket_hash])=>({run_id:run.id,ticket_hash}));
+      return matches.length?matches:run.messages.some(m=>c.startup.ownsAttempt(m,owner))?[{run_id:run.id,ticket_hash:null}]:[];
+    });
+    let participant_id=null;
+    for(const reference of references){
+      const result=await c.mutate('revokeEnrollment',{...reference,owner,reason});
+      participant_id??=result.participant_id;
+    }
+    return {status:participant_id?'registered-stopped':'revoked',participant_id,cancelled:true};
+  }
+  revokeInTransaction(input) {
+    const c=this.communication,run=c.run(input),invitation=run.enrollments?.[input.ticket_hash];
+    check(run.mode==='workflow'&&run.project_id===input.owner.project_id,'ENROLLMENT_OWNER','Запуск принадлежит другому проекту.');
+    check(typeof input.reason==='string'&&input.reason.length<=200,'INPUT','Неверная причина отзыва.');
+    if(input.ticket_hash)check(invitation&&ownsAttempt(invitation,input.owner),'ENROLLMENT_OWNER','Приглашение не принадлежит этой попытке.');
+    if(invitation&&invitation.status!=='revoked'){
+      invitation.status='revoked';invitation.revoked_at=c.now();invitation.revoked_reason=input.reason;
+      c.event(run,'enrollment.revoked',{local_session_id:input.owner.local_session_id,request_id:input.owner.request_id??null});
+    }
+    const stopped=c.startup.cancelled(run,input.owner,input.reason);
+    return {status:'revoked',participant_id:invitation?.participant_id??stopped.participant_id??null};
   }
   ensureRun(target) {
     const c=this.communication,id=workflowRunId(target);
@@ -54,11 +101,18 @@ export class ParticipantEnrollment {
   }
   reserveInTransaction(input) {
     const c=this.communication,target=this.current(input.target),run=this.ensureRun(target);
-    for(const [key,value] of Object.entries(run.enrollments))if(value.expires_at<=c.now()&&!value.participant_id)delete run.enrollments[key];
+    for(const [key,value] of Object.entries(run.enrollments))if(value.expires_at<=c.now()&&!value.participant_id&&value.status!=='revoked')delete run.enrollments[key];
+    if(input.request_id!==null&&input.request_id!==undefined){
+      check(!Object.values(run.enrollments).some(invitation=>ownsAttempt(invitation,{...target,...input,local_session_id:target.local_session_id,project_id:target.project_id})),
+        'ENROLLMENT_EXISTS','Приглашение этой попытки уже сохранено. Сверьте и отзовите его; повторная отправка запрещена.');
+      check(!Object.values(run.members).some(member=>member.target.local_session_id===target.local_session_id),
+        'BINDING','Сессия уже зарегистрирована. Для нового разговора нужна отдельная локальная сессия.');
+    }
     check(Object.keys(run.enrollments).length<256,'LIMIT','Достигнут лимит приглашений запуска.');
-    run.enrollments[input.ticket_hash]={target:structuredClone(target),expires_at:c.now()+30*60*1000,participant_id:null};
+    run.enrollments[input.ticket_hash]={target:structuredClone(target),request_id:input.request_id??null,
+      attempt_generation:input.attempt_generation??null,status:'active',expires_at:c.now()+30*60*1000,participant_id:null};
     c.event(run,'enrollment.reserved',{local_session_id:target.local_session_id,assignment_id:target.assignment_id??null});
-    return {run_id:run.id,expires_at:run.enrollments[input.ticket_hash].expires_at};
+    return {run_id:run.id,ticket_hash:input.ticket_hash,expires_at:run.enrollments[input.ticket_hash].expires_at};
   }
   async enroll(ticket,metadata) {
     check(typeof ticket==='string'&&/^[a-f0-9]{64}$/.test(ticket),'ENROLLMENT','Неверное приглашение панели. Используйте стартовый контекст своего назначения.');
@@ -70,6 +124,7 @@ export class ParticipantEnrollment {
   enrollInTransaction(input,identity) {
     const c=this.communication,run=c.run(input),invitation=run.enrollments?.[input.ticket_hash];
     check(invitation,'ENROLLMENT','Приглашение недоступно.');
+    check(invitation.status!=='revoked','ENROLLMENT_REVOKED','Приглашение отозвано. Эта попытка запуска отменена.');
     const target=this.current(invitation.target);
     const previous=Object.values(run.members).find(member=>same(member.target,target));
     check(!previous||previous.identity===identity,'BINDING','Назначение уже связано с другим разговором.');

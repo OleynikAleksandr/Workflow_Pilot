@@ -80,9 +80,12 @@ export class PluginCommunication {
       await this.ready;
       requireValue(!this.disposed,'CLOSED','Служба связи закрывается.');
       requireValue(!this.critical,'STORE_BLOCKED','Критическая ошибка журнала. Отправка заблокирована.');
-      await this.enrollment.validateInput(input);
+      // Internal revocation verifies the saved owner in its transaction. It
+      // must remain possible after a target was retired or its role changed.
+      if(name!=='revokeEnrollment')await this.enrollment.validateInput(input,name);
       const validated=performance.now();
       const old=this.runs.get(input.run_id),panels=structuredClone(this.panels);
+      this.transactionView={id:input.run_id,before:old};
       if(old)this.runs.set(input.run_id,structuredClone(old));
       const offset=old?.events.length??0;
       try {
@@ -124,9 +127,12 @@ export class PluginCommunication {
           try{await this.persist(denied,old.events.length);this.runs.set(input.run_id,denied);this.syncTimers(denied);this.wake(denied,denied.events.slice(old.events.length));}catch{}
         }
         throw error;
-      }
+      }finally{this.transactionView=null;}
     });this.tail=work.catch(()=>{});return work;
   }
+  // Synchronous UI projections must not expose the working clone while its
+  // WAL append/fsync is pending. Handlers still use their transaction's run.
+  readableRun(id){return this.transactionView?.id===id?this.transactionView.before:this.runs.get(id);}
   recordKitTiming(target,span){
     if(!/^[a-z]+(?::[a-z-]+)?$/.test(span.operation)||!Number.isFinite(span.elapsed_ms))return;
     this.timings.push({project_id:target.project_id,scope_id:target.scope_id,assignment_id:target.assignment_id??null,
@@ -180,7 +186,11 @@ export class PluginCommunication {
     if(run.mode==='workflow')this.enrollment.current(member.target);
     return {run,member};
   }
-  reserve(target){return this.enrollment.reserve(target);}
+  reserve(target,correlation){return this.enrollment.reserve(target,correlation);}
+  enrollmentEvidence(ref,owner){return this.enrollment.evidence(ref,owner);}
+  cancelStartup(owner,ref,reason){return this.enrollment.cancel(owner,ref,reason);}
+  _enrollmentEvidence(input){return this.enrollment.evidenceInTransaction(input);}
+  _revokeEnrollment(input){return this.enrollment.revokeInTransaction(input);}
   async removeProjects(identities) {
     await this.ready;
     const sessions=[...new Set(identities.flatMap(p=>p.sessionIds??[]))];
@@ -537,6 +547,7 @@ export class PluginCommunication {
   }
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
+    requireValue(!message?.cancelled,'STARTUP_CANCELLED','Стартовый пакет отменён.');
     requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read
       && message.delivery_mode!=='model-pull','CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
     if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message))return {deferred:true,superseded:true};
@@ -566,6 +577,7 @@ export class PluginCommunication {
   }
   async _verify(input,alreadyChecked=false) {
     const {run,member,message}=this.attempt(input);
+    requireValue(!message.cancelled,'STARTUP_CANCELLED','Стартовый пакет отменён.');
     requireValue(message.delivery==='claimed' && !message.intent && message.permission_generation===member.generation,
       'CLAIM_DENIED','Намерение отправки уже было подтверждено. Повтор запрещён.');
     if(run.mode==='workflow'){
@@ -574,6 +586,8 @@ export class PluginCommunication {
         requireValue(await this.workflow.admit(member.target,message)&&this.workflow.observe(member.target).canSend,'BUSY','Адресат занят. Попытка оставлена без повтора; требуется проверка.');
       }
       else requireValue(this.workflow.observe(member.target).canSend,'BUSY','Адресат изменился перед отправкой.');
+      if(message.kind==='startup-context')requireValue(!message.cancelled&&!message.superseded
+        &&await this.workflow.currentMessage(member.target,message),'STARTUP_CANCELLED','Выдача стартового пакета остановлена.');
       this.workflow.begin(run,member,message);
     }
     message.intent=true;
@@ -593,6 +607,7 @@ export class PluginCommunication {
   async _read(input) {
     const {run,member}=this.member(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(message && message.recipient_id===member.id,'READ_DENIED','Сообщение недоступно этому участнику.');
+    requireValue(!message.cancelled,'STARTUP_CANCELLED','Стартовый пакет отменён.');
     if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message)){
       message.superseded_read=true;
       this.event(run,'message.obsolete_read',{participant_id:member.id,message_id:message.message_id});

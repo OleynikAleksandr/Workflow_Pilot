@@ -10,8 +10,11 @@ export class DialogueDelivery {
   constructor({store,getPlugin,record,route,state,signals,kitPermission=async()=>{}}){Object.assign(this,{store,getPlugin,record,route,state,signals,kitPermission});}
   async currentMessage(target,message){
     if(message.kind==='startup-context'){
+      await this.record?.(this.project(target.local_session_id))?.navigationTail;
+      await this.store.whenIdle?.();
       const project=this.project(target.local_session_id),attempt=project?.attempt;
-      if(!project||project.preparationPaused||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel')return false;
+      if(!project||project.preparationPaused||attempt?.modeViolation||attempt?.cancelState&&attempt.cancelState!=='none'
+        ||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel')return false;
       // A discussion chat has already received an immutable, authenticated
       // model-pull snapshot. Its remaining reads acknowledge that snapshot,
       // not the latest plan revision. All pre-open, SDK and O/E checks stay strict.
@@ -55,7 +58,11 @@ export class DialogueDelivery {
     finally{clearTimeout(timer);}
   }
   async admit(target,message){
+    await this.record?.(this.project(target.local_session_id))?.navigationTail;
+    await this.store.whenIdle?.();
     const project=this.project(target.local_session_id);
+    if(project?.attempt?.modeViolation||project?.attempt?.cancelState&&project.attempt.cancelState!=='none')
+      return {allowed:false,reason:'admission-denied'};
     if(message?.kind==='startup-context'){
       if(!project||project.attempt?.state!=='sent'||project.attempt.requestId!==message.request_id
         ||!this.observe(target).canSend||!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
@@ -71,9 +78,9 @@ export class DialogueDelivery {
     return (await readCommandActivity(project.workspace)).commandActive
       ?{allowed:false,reason:'commands-active'}:{allowed:true};
   }
-  async prepareBootstrap(project){
+  async prepareBootstrap(project,correlation){
     if(!AUTOMATIC_DIALOGUE_ENABLED)throw Object.assign(Error('Канал стартового контекста отключён.'),{code:'STARTUP_CHANNEL_REQUIRED'});
-    const ticket=await this.getPlugin().reserveParticipant(project.sessionId);
+    const ticket=await this.getPlugin().reserveParticipant(project.sessionId,correlation);
     if(project.role==='executor'&&this.owned(project)){
       const origin=this.project(project.executionOriginSessionId);
       if(origin)await this.send(origin,'Назначение создано; подключение исполнителя продолжается параллельно. Сейчас подготовьте task и выбранный контекст через workflow_assignment_prepare с dispatch_when_ready=true: это явное разрешение отправить сохранённое поручение при подтверждённой готовности канала. Используйте recipient_ref из read_message, attempt=1. Отдельного ready и dispatch ждать не нужно. Без dispatch_when_ready сохраняется только черновик. Данные backend: '+JSON.stringify({
@@ -85,7 +92,19 @@ export class DialogueDelivery {
   async stageStartup(project,attempt){
     const plugin=this.getPlugin(),target=await plugin.participantTarget(project.sessionId);
     if(!target)throw Object.assign(Error('Получатель стартового пакета не подтверждён.'),{code:'PLUGIN_PARTICIPANT_UNAVAILABLE'});
-    return plugin.communication.startup.stage(target,{request_id:attempt.requestId,text:attempt.startupText});
+    return plugin.communication.startup.stage(target,{request_id:attempt.requestId,
+      attempt_generation:attempt.attemptGeneration??null,text:attempt.startupText});
+  }
+  enrollmentProgress(project,attempt){
+    if(!attempt.enrollmentRef)return null;
+    return this.getPlugin().communication.enrollmentEvidence(attempt.enrollmentRef,{
+      project_id:project.parentProjectId??project.projectId,local_session_id:project.sessionId,
+      request_id:attempt.requestId,attempt_generation:attempt.attemptGeneration});
+  }
+  cancelStartup(project,attempt,reason='cancelled'){
+    return this.getPlugin().communication.cancelStartup({project_id:project.parentProjectId??project.projectId,
+      local_session_id:project.sessionId,request_id:attempt.requestId,attempt_generation:attempt.attemptGeneration},
+    attempt.enrollmentRef??null,reason);
   }
   async permission(workspace,scope,phase){
     if(this.route(workspace,scope)!=='plugin-v1')return;

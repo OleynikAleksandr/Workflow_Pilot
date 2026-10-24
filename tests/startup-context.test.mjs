@@ -60,7 +60,7 @@ test('executor startup is addressed separately and gates work until its own all-
   assert.equal((await c.startupComplete({metadata,message_id:m.message_id,context_sha256:first.context_ref})).complete,true);
   assert.equal(c.startup.active(c.runs.get(joined.run_id),member),false);assert.equal(c.runs.get(joined.run_id).grant,undefined);
 });
-async function fixture(t,{delivery_mode='sdk-notification'}={}){
+async function fixture(t,{delivery_mode='sdk-notification',correlated=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-startup-'))),instances=[];
   let valid=true,current=true,canSend=true,admitted=true;
   const create=async()=>{
@@ -68,8 +68,9 @@ async function fixture(t,{delivery_mode='sdk-notification'}={}){
       observe:()=>({canSend,stopped:canSend,busy:!canSend}),admit:async()=>admitted,currentMessage:async()=>current,waitMs:10});
     instances.push(c);await c.ready;return c;
   };
-  const c=await create(),invitation=await c.reserve(target);
-  const staged=await c.startup.stage(target,{request_id:'request-1',text:'Полный контекст 🪟\n'.repeat(4000),delivery_mode});
+  const correlation={request_id:'request-1',...(correlated?{attempt_generation:'generation-one'}:{})};
+  const c=await create(),invitation=await c.reserve(target,correlated?correlation:undefined);
+  const staged=await c.startup.stage(target,{...correlation,text:'Полный контекст 🪟\n'.repeat(4000),delivery_mode});
   const registration=await c.enroll(invitation.enrollment_ticket,metadata);
   const bind=async comm=>{
     const input={...registration,metadata,panel_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,message_supported:true};
@@ -77,8 +78,55 @@ async function fixture(t,{delivery_mode='sdk-notification'}={}){
   };
   const input={...await bind(c),message_id:staged.message_id};
   t.after(async()=>{for(const comm of instances){comm.dispose();await comm.tail;}await fs.rm(directory,{recursive:true,force:true});});
-  return {c,input,staged,create,bind,directory,setValid:v=>valid=v,setCurrent:v=>current=v,setBusy:v=>canSend=!v,setAdmitted:v=>admitted=v};
+  return {c,input,staged,create,bind,directory,invitation,owner:{project_id:target.project_id,local_session_id:target.local_session_id,...correlation},
+    setValid:v=>valid=v,setCurrent:v=>current=v,setBusy:v=>canSend=!v,setAdmitted:v=>admitted=v};
 }
+
+test('a model-pull read ordered before cancellation stays recorded; all later reads and ack are denied',async t=>{
+  const f=await fixture(t,{delivery_mode:'model-pull',correlated:true}),{c,input,owner,invitation}=f;
+  const store=c.store;let enter,release;
+  const entered=new Promise(resolve=>{enter=resolve;});
+  c.store={...store,readContent:async ref=>{enter();await new Promise(resolve=>{release=resolve;});return store.readContent(ref);}};
+  const reading=c.startupOpen(input);await entered;
+  const cancelling=c.cancelStartup(owner,{run_id:invitation.run_id,ticket_hash:invitation.ticket_hash});
+  release();const first=await reading;assert.ok(first.text);assert.equal((await cancelling).status,'registered-stopped');
+  const progress=c.startup.progress('o','request-1');assert.equal(progress.parts_read,1);assert.equal(progress.cancelled,true);
+  await assert.rejects(c.content({...input,context_ref:first.context_ref,part:1}),{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
+  await assert.rejects(c.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
+  await assert.rejects(c.readMessage(input),{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
+  const next=await f.create();
+  await assert.rejects(next.startupOpen(input),{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
+  assert.equal(next.startup.progress('o','request-1').parts_read,1,'read history survives restart');
+});
+
+test('cancellation ordered before a legacy SDK claim prevents intent, read and same-request resume',async t=>{
+  const f=await fixture(t,{correlated:true}),{c,input,owner,invitation}=f;
+  const claim=await c.claim(input);assert.ok(claim.delivery_attempt_id);
+  await c.cancelStartup(owner,{run_id:invitation.run_id,ticket_hash:invitation.ticket_hash});
+  await assert.rejects(c.verify({...input,...claim}),error=>['PLUGIN_COMMUNICATION_STOPPED','PLUGIN_COMMUNICATION_STARTUP_CANCELLED'].includes(error.code));
+  await assert.rejects(c.readMessage(input),{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
+  await assert.rejects(c.startup.stage(target,{request_id:'request-1',attempt_generation:'generation-one',text:'Полный контекст 🪟\n'.repeat(4000)}),
+    {code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
+  assert.equal(c.runs.get(input.run_id).events.some(e=>e.event_type==='send.intent'),false);
+});
+
+test('startup readiness exposes only committed receipts while fsync is pending or fails',async t=>{
+  for(const fail of [false,true]){
+    const f=await fixture(t,{delivery_mode:'model-pull'}),{c,input}=f;
+    const first=await c.startupOpen(input);
+    for(let part=1;part<first.total;part++)await c.content({...input,context_ref:first.context_ref,part});
+    const store=c.store;let enter,release;
+    const entered=new Promise(resolve=>{enter=resolve;});
+    c.store={...store,append:async(...args)=>{enter();await new Promise(resolve=>{release=resolve;});
+      if(fail)throw Error('fixture fsync failure');return store.append(...args);}};
+    const completing=c.startupComplete({...input,context_sha256:first.context_ref});await entered;
+    assert.equal(c.startup.progress('o','request-1').complete,false,'working transaction is not a receipt');
+    release();
+    if(fail){await assert.rejects(completing,{code:'PLUGIN_COMMUNICATION_STORE_WRITE'});
+      assert.equal(c.startup.progress('o','request-1').complete,false);}
+    else {assert.equal((await completing).complete,true);assert.equal(c.startup.progress('o','request-1').complete,true);}
+  }
+});
 async function readAll(c,input){
   const m=await c.readMessage(input),parts=[];
   for(let i=0,total=1;i<total;i++){
