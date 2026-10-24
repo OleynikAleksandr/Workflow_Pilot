@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1067,
+  "plan_revision": 1068,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Полностью удалить зависимость от Work и выбора поверхности: надёжный Chat bootstrap, полная выдача контекста, диагностика Tray и выпуск 0.5.33 для трёх ОС.",
   "acceptance_criteria": [
     "Только Chat во всех активных контрактах, без чтения/миграции/архива Work.",
@@ -155,7 +155,7 @@
     ]
   },
   "baseline_commit": "2abec8cab8dc8308ee8d96b4f5fdbaee0b045a12",
-  "current_task_id": "PUBLISH",
+  "current_task_id": null,
   "context_pack": {
     "documents": [
       {
@@ -676,8 +676,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "IN_PROGRESS",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
         "task_id": "PUBLISH",
@@ -703,7 +703,8 @@
       ],
       "expected_commit_message": "release: опубликовать полный GitHub комплект",
       "parallel_safe": false,
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -725,10 +726,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: chat-session-without-modes
-Current Task: PUBLISH
-Revision: 1067
+Current Task: нет
+Revision: 1068
 
 ## Цель
 
@@ -788,8 +789,8 @@ Revision: 1067
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [IN_PROGRESS] PUBLISH: release: опубликовать полный GitHub комплект — В работе
-  - Git Commit: [PENDING] release: опубликовать полный GitHub комплект
+- [DONE] PUBLISH: release: опубликовать полный GitHub комплект — Завершено
+  - Git Commit: [DONE] release: опубликовать полный GitHub комплект
   - Reference: chat-session-without-modes / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
