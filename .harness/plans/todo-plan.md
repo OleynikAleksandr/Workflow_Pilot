@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1000,
+  "plan_revision": 1001,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -108,7 +108,10 @@
       "scripts/release-all.mjs",
       "scripts/release-package.mjs",
       "tests/backend-upgrade.test.mjs",
-      "tests/chatgpt-plugin.test.mjs"
+      "tests/chatgpt-plugin.test.mjs",
+      "src/control/projects/service.mjs",
+      "src/execution/files/adapter.mjs",
+      "tests/files-adapter.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/chat-only-url-start.md",
@@ -489,7 +492,16 @@
         "tests/backend-desktop-model.test.mjs",
         "tests/chatgpt-composer.test.mjs",
         "tests/chatgpt-experience.test.mjs",
-        "tests/desktop-boundaries.test.mjs"
+        "tests/desktop-boundaries.test.mjs",
+        "src/control/projects/service.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/execution/files/adapter.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/executor-background-startup.test.mjs",
+        "tests/files-adapter.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -506,7 +518,9 @@
         "Контекст/attempt сохранены до одного dispatch. Собственная navigation-start не отменяет dispatch и не создаёт вторую попытку.",
         "sent подтверждает только текущий enrollmentRef; оба порядка URL/регистрации показываются независимо, без вечного send-unknown.",
         "Work redirect, чужая навигация, отмена/ошибка/restart не привязывают чужой URL и не повторяют q; legacy sent/unknown не конвертируются.",
-        "Контекст, O/E/S, SHA, пользовательский Start и дальнейший SDK-путь не ослаблены."
+        "Контекст, O/E/S, SHA, пользовательский Start и дальнейший SDK-путь не ослаблены.",
+        "Навигационные события и регистрация обновляют текущую попытку атомарным patch с проверкой request/generation; старое событие не затирает sent и не возрождает отмену.",
+        "Перед первой выдачей контекста подтверждены свежие Chat/signed-in после q; unknown/Work не дают контекст. Fake-host fixtures используют URL и настоящий тикет текущей попытки без модели."
       ],
       "expected_commit_message": "feat: Запускать новый Chat через q с подтверждением sent по тикету",
       "parallel_safe": false,
@@ -930,7 +944,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1000
+Revision: 1001
 
 ## Цель
 
@@ -969,7 +983,7 @@ Revision: 1000
 - [TODO] T004: Запускать новый Chat через q с подтверждением sent по тикету — Ожидает
   - Git Commit: [PENDING] feat: Запускать новый Chat через q с подтверждением sent по тикету
   - Reference: chat-only-url-bootstrap / T004 / implementation
-  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/sessions/service.mjs, src/control/sessions/conversation-recovery.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/backend/desktop-model.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-experience.test.mjs, tests/desktop-boundaries.test.mjs
+  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/sessions/service.mjs, src/control/sessions/conversation-recovery.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/backend/desktop-model.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-experience.test.mjs, tests/desktop-boundaries.test.mjs, src/control/projects/service.mjs, src/backend/bootstrap.mjs, src/execution/files/adapter.mjs, tests/workspace-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/files-adapter.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Убрать Work из интерфейса и показать независимые этапы старта — Ожидает
