@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 987,
+  "plan_revision": 988,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -101,13 +101,19 @@
       "tests/startup-context.test.mjs",
       "tests/startup-ui.test.mjs",
       "tests/workspace-session.test.mjs",
-      "tools/codex-app-server-mcp/plugin.py"
+      "tools/codex-app-server-mcp/plugin.py",
+      "package.json",
+      "package-lock.json",
+      "release-manifest.json",
+      "scripts/release-all.mjs",
+      "scripts/release-package.mjs"
     ],
     "documentation_paths": [
       "docs/planning/chat-only-url-start.md",
       "docs/planning/chat-only-url-lifecycle.md",
       "docs/planning/chat-only-url-acceptance.md",
-      "docs/architecture/OVERVIEW.md"
+      "docs/architecture/OVERVIEW.md",
+      "docs/modules/release.md"
     ]
   },
   "baseline_commit": "df015ce35abff912a444c967639adfff667abeda",
@@ -157,6 +163,11 @@
       {
         "path": "docs/modules/user-choice.md",
         "required": false,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/release.md",
+        "required": true,
         "revision": "WORKTREE"
       }
     ],
@@ -666,7 +677,8 @@
         "docs/planning/chat-only-url-start.md",
         "docs/planning/chat-only-url-lifecycle.md",
         "docs/planning/chat-only-url-acceptance.md",
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/release.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -700,6 +712,106 @@
           "T006"
         ]
       }
+    },
+    {
+      "id": "RELEASE",
+      "title": "Собрать и проверить единый выпуск Chat-only для macOS Windows Linux",
+      "why": "Пользователь прямо поручил выполнить весь план и выпустить все поддерживаемые ОС без промежуточных остановок.",
+      "dependencies": [
+        "DOCS"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "release-manifest.json",
+        "scripts/release-all.mjs",
+        "scripts/release-package.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/release.md"
+      ],
+      "verification_ids": [
+        "three-platform-release",
+        "kit-check",
+        "kit-assignments"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Версия повышена, macOS arm64 Windows x64 Linux x64 собраны из одного sourceCommit и весь комплект сверён штатным скриптом.",
+        "Живые ChatGPT и native Windows/Linux остаются честно NOT_RUN; прямое новое поручение пользователя разрешает поставку с явно указанными ограничениями, без объявления внешней приёмки PASS."
+      ],
+      "expected_commit_message": "feat: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "RELEASE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL",
+      "title": "Обновить собственную установленную копию готовым macOS bundle",
+      "why": "Обновить собственную установленную копию готовым macOS bundle",
+      "dependencies": [
+        "RELEASE",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/release.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer проверил установленную либо pending копию и rollback; backend не остановлен, приложение не перезапущено."
+      ],
+      "expected_commit_message": "feat: Обновить собственную установленную копию готовым macOS bundle",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "INSTALL",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH",
+      "title": "Опубликовать полный выпуск на GitHub",
+      "why": "Опубликовать полный выпуск на GitHub",
+      "dependencies": [
+        "INSTALL",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/release.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "main отправлен fast-forward в собственный origin, тег ссылается на sourceCommit; опубликованы семь проверенных assets с совпадающими digest.",
+        "Описание выпуска явно содержит непроведённую живую приёмку ChatGPT и native Windows/Linux."
+      ],
+      "expected_commit_message": "feat: Опубликовать полный выпуск на GitHub",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "PUBLISH",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -724,7 +836,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 987
+Revision: 988
 
 ## Цель
 
@@ -781,9 +893,27 @@ Revision: 987
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: уточнить результат Chat-only и условия приёмки URL-старта
   - Reference: chat-only-url-bootstrap / DOCS / implementation
-  - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md
+  - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006
+- [TODO] RELEASE: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux — Ожидает
+  - Git Commit: [PENDING] feat: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux
+  - Reference: chat-only-url-bootstrap / RELEASE / implementation
+  - Файлы: package.json, package-lock.json, release-manifest.json, scripts/release-all.mjs, scripts/release-package.mjs, docs/modules/release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS
+- [TODO] INSTALL: Обновить собственную установленную копию готовым macOS bundle — Ожидает
+  - Git Commit: [PENDING] feat: Обновить собственную установленную копию готовым macOS bundle
+  - Reference: chat-only-url-bootstrap / INSTALL / implementation
+  - Файлы: release-manifest.json, docs/modules/release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE, DOCS
+- [TODO] PUBLISH: Опубликовать полный выпуск на GitHub — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать полный выпуск на GitHub
+  - Reference: chat-only-url-bootstrap / PUBLISH / implementation
+  - Файлы: release-manifest.json, docs/modules/release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL, DOCS
 
 ## Context Pack For This Cycle
 
@@ -796,5 +926,6 @@ Revision: 987
 - docs/modules/chatgpt-plugin.md
 - docs/modules/project-lifecycle.md
 - docs/modules/user-choice.md
+- docs/modules/release.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
