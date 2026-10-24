@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1020,
+  "plan_revision": 1022,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -980,14 +980,17 @@
         "Живые ChatGPT и native Windows/Linux остаются честно NOT_RUN; прямое новое поручение пользователя разрешает поставку с явно указанными ограничениями, без объявления внешней приёмки PASS."
       ],
       "expected_commit_message": "feat: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "RELEASE",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL",
@@ -1076,7 +1079,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1020
+Revision: 1022
 
 ## Цель
 
@@ -1142,8 +1145,8 @@ Revision: 1020
   - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md, docs/modules/release.md, README.md, docs/modules/browser.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/project-lifecycle.md, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/control.md, docs/acceptance/chat-only-startup.md, docs/modules/chat-only-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, VERSION
-- [TODO] RELEASE: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux — Ожидает
-  - Git Commit: [PENDING] feat: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux
+- [DONE] RELEASE: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux — Завершено
+  - Git Commit: [DONE] feat: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux
   - Reference: chat-only-url-bootstrap / RELEASE / implementation
   - Файлы: package.json, package-lock.json, release-manifest.json, scripts/release-all.mjs, scripts/release-package.mjs, docs/modules/release.md
   - Параллельность: исключительное выполнение
