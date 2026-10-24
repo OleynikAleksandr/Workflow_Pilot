@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 985,
+  "plan_revision": 986,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -19,7 +19,8 @@
   ],
   "approved_scope": {
     "functional_paths": [
-      "scripts",
+      "scripts/stage-page-observer.mjs",
+      "scripts/stage-chatgpt-plugin.mjs",
       "src/backend/bootstrap.mjs",
       "src/backend/desktop-model.mjs",
       "src/backend/operations.mjs",
@@ -77,8 +78,16 @@
       "tests/electron-smoke.mjs",
       "tests/executor-background-startup.test.mjs",
       "tests/executor-startup-lifecycle.test.mjs",
-      "tests/fixtures",
       "tests/fixtures/automatic-agent-dialogue.mjs",
+      "tests/fixtures/executor-background-startup.mjs",
+      "tests/fixtures/dialogue-runtime.mjs",
+      "tests/fixtures/plugin-host.mjs",
+      "tests/fixtures/backend-browser-viewer.mjs",
+      "tests/fixtures/backend-browser-client.mjs",
+      "tests/fixtures/backend-browser-viewer.html",
+      "tests/fixtures/backend-browser-viewer-preload.cjs",
+      "tests/fixtures/backend-browser-page.html",
+      "tests/fixtures/backend-browser-probe.mjs",
       "tests/migration-compatibility.test.mjs",
       "tests/parallel-execution-ui.test.mjs",
       "tests/parallel-execution.test.mjs",
@@ -566,7 +575,16 @@
       ],
       "functional_paths": [
         "tests/electron-smoke.mjs",
-        "tests/fixtures",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/fixtures/dialogue-runtime.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/fixtures/backend-browser-viewer.mjs",
+        "tests/fixtures/backend-browser-client.mjs",
+        "tests/fixtures/backend-browser-viewer.html",
+        "tests/fixtures/backend-browser-viewer-preload.cjs",
+        "tests/fixtures/backend-browser-page.html",
+        "tests/fixtures/backend-browser-probe.mjs",
         "tests/automatic-agent-dialogue.test.mjs",
         "tests/executor-background-startup.test.mjs",
         "tests/executor-startup-lifecycle.test.mjs",
@@ -574,7 +592,8 @@
         "tests/plugin-enrollment.test.mjs",
         "tests/startup-context.test.mjs",
         "tests/backend-desktop-model.test.mjs",
-        "scripts"
+        "scripts/stage-page-observer.mjs",
+        "scripts/stage-chatgpt-plugin.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -705,7 +724,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 985
+Revision: 986
 
 ## Цель
 
@@ -756,7 +775,7 @@ Revision: 985
 - [TODO] T006: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke — Ожидает
   - Git Commit: [PENDING] feat: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke
   - Reference: chat-only-url-bootstrap / T006 / implementation
-  - Файлы: tests/electron-smoke.mjs, tests/fixtures, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts
+  - Файлы: tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/fixtures/dialogue-runtime.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts/stage-page-observer.mjs, scripts/stage-chatgpt-plugin.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T005
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
