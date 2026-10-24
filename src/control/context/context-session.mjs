@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { normalizeChatUrl, conversationUrlCompatibleWithExperience } from '../sessions/workspace-session.mjs';
+import { normalizeChatUrl, conversationUrlCompatibleWithExperience, assertSessionMode } from '../sessions/workspace-session.mjs';
 import { CONTEXT_PROTOCOL, validateContextPacket } from '../../contracts/context.mjs';
-import { chatGPTUrlMatchesExperience, isPendingChatGPTConversation } from '../../execution/facade.mjs';
+import { chatGPTUrlMatchesExperience, isPendingChatGPTConversation, CHATGPT_CHAT_ENTRYPOINT } from '../../execution/facade.mjs';
 import { validateParallelSettings } from '../workflow/parallel-settings.mjs';
 
 // The roles of the session table in docs/planning/user-choice-and-plan-modes.md.
@@ -43,14 +43,11 @@ export const contextPartName = (part, requestId) => {
 
 // toolRules: extra session rules of the local executor of this platform (runtime.startupRules).
 export function startupMessage(project, requestId, packet, toolRules = [], bootstrap = null) {
-  if(bootstrap?.context_transport!=='panel'||!bootstrap.enrollment_ticket)throw failure('STARTUP_CHANNEL_REQUIRED','Старт с вложениями отключён. Нужен канал панели для этой сессии.');
-  return [
-    'Начало сессии Workflow Pilot. Открой панель и получи стартовый контекст через MCP в этом же ходе, без вложений.',
-    `Идентификатор отправки: ${requestId}`,
-    'Один раз вызови workflow_pilot_panel с аргументами '+JSON.stringify({enrollment_ticket:bootstrap.enrollment_ticket})+'. Приглашение только для этого разговора: не публикуй и не сохраняй его.',
-    'В ответе workflow_pilot_panel получишь startup_context с первой частью текста и инструкциями. Прочитай её, остальные части получи через workflow_communication_read_context и подтверди полный пакет через workflow_startup_complete. Только после этого кратко подтверди восстановление проекта и заверши ход. Не жди отдельного уведомления, не вызывай join/probe/Enable, не создавай план и не выполняй task:start. Если startup_context отсутствует или есть ошибка, сообщи это; не выдумывай контекст и не обходи подтверждения.',
-    'Не обходи подтверждения хоста; при отказе сообщи точную причину. Не запускай других агентов, не управляй мышью, клавиатурой и окнами. Ответь по-русски.',
-  ].join('\n');
+  if(bootstrap?.context_transport!=='panel'||!/^[a-f0-9]{64}$/.test(bootstrap.enrollment_ticket??''))
+    throw failure('STARTUP_CHANNEL_REQUIRED','Нужен действительный тикет панели этой сессии.');
+  return 'Открой панель Workflow Pilot: один раз вызови workflow_pilot_panel с аргументами '
+    +JSON.stringify({enrollment_ticket:bootstrap.enrollment_ticket})
+    +'. Если вызов вернул ошибку или в ответе нет startup_context, сообщи точную причину и ничего не выдумывай; подтверждения хоста не обходи. Приглашение не публикуй и не сохраняй.';
 }
 
 export function orchestratorStartupContext(project,packet,toolRules=[]){
@@ -98,6 +95,20 @@ const metadata = packet => ({ workspace: packet.workspace, session_id: packet.se
 const isModeEntrypoint = value => /^https:\/\/chatgpt\.com\/(?:work\/?)?(?:[?#].*)?$/.test(value);
 const failure = (code, message) => Object.assign(new Error(message), { code });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+const urlAttempt = attempt => attempt?.bootstrapTransport==='url-query';
+const attemptIdentity = attempt => ({requestId:attempt.requestId,attemptGeneration:attempt.attemptGeneration});
+const urlStatus = attempt => ({requestId:attempt.requestId,state:attempt.state,addressStatus:attempt.addressStatus,
+  cancelState:attempt.cancelState,modeViolation:!!attempt.modeViolation,modeConfirmed:!!attempt.modeConfirmed,
+  sendStartedAtMs:attempt.sendStartedAtMs??null,sentAtMs:attempt.sentAtMs??null});
+const newChatRoot = value => {
+  try{const u=new URL(value);return chatGPTUrlMatchesExperience(value,'chat')&&u.pathname==='/'&&!u.searchParams.has('q');}
+  catch{return false;}
+};
+const normalChatTarget = value => {
+  try{return chatGPTUrlMatchesExperience(value,'chat')&&(new URL(value).pathname==='/'
+    ||normalizeChatUrl(value)?.startsWith('https://chatgpt.com/c/'))||isPendingChatGPTConversation(value);}
+  catch{return false;}
+};
 
 export class ContextSession {
   constructor({ store, runtime, composer, contextCache = null, onChange = () => {}, onChatBound = () => {}, now = Date.now, uuid = randomUUID,
@@ -108,6 +119,7 @@ export class ContextSession {
     this.pending = false;
     this.rerunRequested = false;
     this.servicesReady = false;
+    this.cancelledRequests=new Set();
     this.state = { phase: 'selected', servicesReady: false, messageSent: false };
   }
 
@@ -138,8 +150,18 @@ export class ContextSession {
   }
 
   async cancelPreparation() {
+    const project = this.active?this.store.project(this.active.workspace, this.active.sessionId):this.store.selected(),attempt=project?.attempt;
+    if(urlAttempt(attempt)){
+      if(this.runtime.startupProgress?.(project.sessionId,attempt.requestId)?.complete)return false;
+      this.cancelledRequests.add(attempt.requestId);this.preparationPaused=true;this.generation++;this.retryGeneration=null;
+      const saved=await this.patchUrl(project,attempt,{cancelState:'requested',cancelReason:'user',cancelRequestedAtMs:this.now()});
+      await this.store.updateSession(project.workspace,project.sessionId,{preparationPaused:true});
+      this.emit({phase:'cancel-pending',attempt:urlStatus(saved),error:null});
+      if(saved.enrollmentRef||!this.pending)await this.reconcileCancellation(project,saved);
+      else this.rerunRequested=true;
+      return true;
+    }
     if (!this.active) return false;
-    const project = this.store.project(this.active.workspace, this.active.sessionId), attempt = project?.attempt;
     if (!project || attempt?.sendStartedAtMs || ['sending','sent','acknowledged','unknown'].includes(attempt?.state)) return false;
     this.preparationPaused = true;
     this.generation++; this.retryGeneration = null; this.rerunRequested = false;
@@ -174,6 +196,10 @@ export class ContextSession {
     if (!this.active) return;
     const project = this.store.project(this.active.workspace,this.active.sessionId);
     const attempt = project?.attempt;
+    if(urlAttempt(attempt)){
+      if(this.pending){this.rerunRequested=true;return;}
+      this.emit({phase:'selected',error:null});return this.tick();
+    }
     // Retry is preparation only. A started conversation may be observed, never reset for another recovery.
     if(project?.manualStart||attempt&&(attempt.protocol!==CONTEXT_PROTOCOL||attempt.sendStartedAtMs
       ||['sending','unknown','sent','acknowledged'].includes(attempt.state))) {
@@ -254,8 +280,200 @@ export class ContextSession {
     throw failure('PROJECT_READ_FAILED', String(lastError?.message ?? lastError ?? 'Не удалось прочитать состояние проекта.'));
   }
 
+  startupAllowed(attempt){return !!attempt&&!this.cancelledRequests.has(attempt.requestId)
+    &&!attempt.modeViolation&&!attempt.loginLost&&(!attempt.cancelState||attempt.cancelState==='none');}
+  async patchUrl(project,attempt,patch){
+    if(!this.store.patchAttempt)throw failure('STARTUP_STORE_UNAVAILABLE','Хранилище попытки запуска недоступно.');
+    const saved=await this.store.patchAttempt(project.workspace,project.sessionId,attempt?attemptIdentity(attempt):null,patch);
+    if(!saved)throw failure('CONTEXT_CANCELLED','Попытка запуска уже изменилась.');
+    return saved.attempt;
+  }
+  async observeNavigation(event){
+    const project=this.store.selected(),attempt=project?.attempt,source=attempt?.navigation;
+    if(!urlAttempt(attempt)||!attempt.sendStartedAtMs||!source||event.isMainFrame!==true
+      ||event.snapshot?.id!==source.id||event.snapshot?.incarnation!==this.composer.navigationSnapshot?.().incarnation
+      ||attempt.cancelState!=='none')return;
+    let patch;
+    if(chatGPTUrlMatchesExperience(event.url,'work')){
+      this.cancelledRequests.add(attempt.requestId);
+      patch={modeViolation:true,cancelState:'requested',cancelReason:'mode-violation',cancelRequestedAtMs:this.now(),addressStatus:'conflict'};
+    }else if(event.snapshot.incarnation!==source.incarnation||event.navigationSequence<=source.afterSequence)return;
+    else if(['lost','conflict'].includes(attempt.addressStatus))return;
+    else if(event.type==='crashed'||event.navigationKind==='crashed')patch={addressStatus:'lost'};
+    else if(event.type==='navigation-interrupted'){
+      if(event.navigationKind==='user-input'&&attempt.addressCandidate===normalizeChatUrl(event.url))return;
+      patch={addressStatus:'lost'};
+    }else if(event.snapshot.epoch!==source.epoch){
+      if(project.chatUrl)return;
+      patch={addressStatus:'lost'};
+    }else if(!normalChatTarget(event.url)){
+      this.cancelledRequests.add(attempt.requestId);
+      patch={addressStatus:'conflict',cancelState:'requested',cancelReason:'foreign-navigation',cancelRequestedAtMs:this.now()};
+    }else{
+      const candidate=normalizeChatUrl(event.url);
+      if(!candidate||project.chatUrl)return;
+      if(event.navigationOwner!==source.token||attempt.addressCandidate&&attempt.addressCandidate!==candidate){
+        this.cancelledRequests.add(attempt.requestId);
+        patch={addressStatus:'conflict',cancelState:'requested',cancelReason:'foreign-navigation',cancelRequestedAtMs:this.now()};
+      }else patch={addressCandidate:candidate,addressStatus:'pending',addressSequence:event.navigationSequence};
+    }
+    await this.store.patchAttempt(project.workspace,project.sessionId,attemptIdentity(attempt),latest=>
+      latest.cancelState!=='none'?{}:patch);
+  }
+  async observePage(event,snapshot){
+    const project=this.store.selected(),attempt=project?.attempt,source=attempt?.navigation;
+    if(!urlAttempt(attempt)||!attempt.sendStartedAtMs||!source||event.reset||!event.state
+      ||snapshot?.id!==source.id||attempt.cancelState!=='none')return;
+    const page=event.state;
+    if(page.experience==='work'||page.login==='signed-out'){
+      this.cancelledRequests.add(attempt.requestId);
+      await this.store.patchAttempt(project.workspace,project.sessionId,attemptIdentity(attempt),{
+        ...(page.experience==='work'?{modeViolation:true}:{loginLost:true}),cancelState:'requested',
+        cancelRequestedAtMs:this.now(),cancelReason:page.experience==='work'?'mode-violation':'login-lost',addressStatus:'conflict'});
+    }else if(snapshot.incarnation===source.incarnation&&snapshot.epoch===source.epoch
+      &&!attempt.modeConfirmed&&page.experience==='chat'&&page.login==='signed-in'
+      &&event.documentId&&event.documentId!==attempt.preflightDocumentId&&normalChatTarget(page.url)
+      &&(snapshot.navigationOwner===source.token||attempt.addressCandidate===normalizeChatUrl(page.url))){
+      await this.store.patchAttempt(project.workspace,project.sessionId,attemptIdentity(attempt),latest=>
+        this.startupAllowed(latest)?{modeConfirmed:{documentId:event.documentId,incarnation:snapshot.incarnation,atMs:this.now()}}:{});
+    }
+  }
+  async reconcileCancellation(project,attempt){
+    this.cancelledRequests.add(attempt.requestId);
+    if(attempt.cancelState!=='requested'){
+      this.emit({phase:'startup-cancelled',messageSent:attempt.state==='sent',attempt:urlStatus(attempt)});return;
+    }
+    try{
+      if(!this.runtime.cancelStartup)throw failure('STARTUP_CHANNEL_UNAVAILABLE','Служба отзыва приглашения недоступна.');
+      const stopped=await this.runtime.cancelStartup(project,attempt,attempt.cancelReason??'cancelled');
+      attempt=await this.patchUrl(project,attempt,{cancelState:stopped.status,cancelCompletedAtMs:this.now()});
+      this.emit({phase:'startup-cancelled',messageSent:attempt.state==='sent',attempt:urlStatus(attempt),error:null});
+    }catch(error){this.emit({phase:'cancel-pending',attempt:urlStatus(attempt),error:{code:error.code??'STARTUP_CANCEL_PENDING',message:error.message}});}
+  }
+  async tickUrl(project,info,attempt,generation){
+    if(attempt?.cancelState&&attempt.cancelState!=='none')return this.reconcileCancellation(project,attempt);
+    assertSessionMode(project);
+    if(project.preparationPaused){this.emit({phase:'preparation-paused',error:null});return;}
+    if(attempt?.sendStartedAtMs){
+      if(!this.runtime.enrollmentProgress)throw failure('STARTUP_CHANNEL_UNAVAILABLE','Нет подтверждения регистрации панели.');
+      const proof=await this.runtime.enrollmentProgress(project,attempt);
+      if(!this.current(generation))return;
+      if(proof?.status==='active'&&proof.participant_id&&proof.run_id===attempt.enrollmentRef?.run_id
+        &&proof.ticket_hash===attempt.enrollmentRef.ticket_hash&&proof.request_id===attempt.requestId
+        &&proof.attempt_generation===attempt.attemptGeneration&&attempt.state!=='sent'){
+        attempt=await this.patchUrl(project,attempt,latest=>this.startupAllowed(latest)?{
+          state:'sent',sentAtMs:this.now(),sentEvidence:{participant_id:proof.participant_id,enrollmentRef:latest.enrollmentRef}}:{});
+      }
+      if(!this.startupAllowed(attempt))return this.reconcileCancellation(project,attempt);
+      const snapshot=this.composer.navigationSnapshot?.();
+      if(!project.chatUrl&&(!snapshot||snapshot.incarnation!==attempt.navigation?.incarnation||snapshot.epoch!==attempt.navigation?.epoch)
+        &&attempt.addressStatus!=='conflict')attempt=await this.patchUrl(project,attempt,{addressStatus:'lost'});
+      const mayBind=()=>this.store.project(project.workspace,project.sessionId)?.attempt?.requestId===attempt.requestId
+        &&this.store.project(project.workspace,project.sessionId)?.attempt?.attemptGeneration===attempt.attemptGeneration
+        &&this.startupAllowed(this.store.project(project.workspace,project.sessionId)?.attempt)
+        &&this.composer.navigationSnapshot?.().incarnation===attempt.navigation.incarnation
+        &&this.composer.navigationSnapshot?.().epoch===attempt.navigation.epoch
+        &&normalizeChatUrl(this.composer.getURL())===attempt.addressCandidate;
+      if(!project.chatUrl&&attempt.state==='sent'&&attempt.modeConfirmed&&attempt.addressCandidate
+        &&!['lost','conflict'].includes(attempt.addressStatus)&&mayBind()){
+        const bound=await this.store.bindChat(project.workspace,project.sessionId,attempt.addressCandidate,
+          {attemptIdentity:attemptIdentity(attempt),isCurrent:mayBind});
+        if(!bound||!this.current(generation))return;
+        project={...project,...bound};attempt=await this.patchUrl(project,attempt,{addressStatus:'confirmed'});
+        this.onChatBound({workspace:project.workspace,sessionId:project.sessionId,chatUrl:project.chatUrl});
+      }
+      const elapsed=this.now()-attempt.sendStartedAtMs;
+      if(attempt.state!=='sent'&&elapsed>=180000)attempt=await this.patchUrl(project,attempt,latest=>
+        this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{});
+      const startup=this.runtime.startupProgress?.(project.sessionId,attempt.requestId);
+      const phase=attempt.state!=='sent'?(elapsed>=180000?'send-unknown':'waiting-registration')
+        :startup?.complete?'delivered':!attempt.modeConfirmed?'waiting-experience':'startup-channel';
+      this.emit({phase,projectInfo:info,messageSent:attempt.state==='sent',startup,attempt:urlStatus(attempt),
+        addressStatus:attempt.addressStatus,addressOverdue:!project.chatUrl&&elapsed>=60000,error:null});return;
+    }
+    // A recovered/prepared attempt has no recoverable raw ticket. Reconcile it;
+    // never manufacture another invitation or replay a first command.
+    if(attempt){
+      attempt=await this.patchUrl(project,attempt,{cancelState:'requested',cancelReason:'prepared-recovery',cancelRequestedAtMs:this.now()});
+      return this.reconcileCancellation(project,attempt);
+    }
+    if(project.assignmentId&&this.canSendContext&&!this.canSendContext(project)){
+      this.emit({phase:'selected',projectInfo:info,error:null});return;
+    }
+    if(!this.composer.startChat||!this.composer.navigationSnapshot)throw failure('STARTUP_NAVIGATION_UNAVAILABLE','URL-запуск Chat недоступен.');
+    if(!newChatRoot(this.composer.getURL())){
+      this.emit({phase:'waiting-composer',projectInfo:info,error:null});
+      await this.composer.openChatEntrypoint();return;
+    }
+    let observation=await this.composer.inspect();
+    if(!this.current(generation))return;
+    const deferred=observation.accountStatus!=='signed-in'?'waiting-login'
+      :observation.experience!=='chat'?'waiting-experience'
+      :!observation.documentId||!observation.editorAvailable||!observation.writable?'waiting-composer'
+      :observation.busy?'waiting-generation':observation.draftLength!==0?'waiting-draft':null;
+    if(deferred){if(['waiting-composer','waiting-generation','waiting-draft'].includes(deferred))this.warm(project,generation);
+      this.emit({phase:deferred,projectInfo:info,error:null});return;}
+    const preflightDocumentId=observation.documentId,preflightSnapshot=this.composer.navigationSnapshot();
+    if(!preflightSnapshot.incarnation||!Number.isSafeInteger(preflightSnapshot.epoch))throw failure('STARTUP_NAVIGATION_UNAVAILABLE','Источник страницы не подтверждён.');
+    this.emit({phase:'loading-context',projectInfo:info,error:null});
+    await this.runtime.ensure();if(!this.current(generation))return;this.servicesReady=true;
+    const packet=validateContextPacket(await(this.contextCache?this.contextCache.load(project.workspace,project.role)
+      :this.runtime.loadContext(project.workspace,project.role)),project.workspace);
+    if(!this.current(generation))return;
+    info=await this.inspectProject(project.workspace,project.sessionId,generation);project={...project,...info};
+    if(!this.current(generation))return;
+    if(!await this.packetIsCurrent({...metadata(packet)},project))throw failure('CONTEXT_CHANGED','Пакет устарел до отправки.');
+    if(!this.current(generation))return;
+    attempt=await this.patchUrl(project,null,{protocol:CONTEXT_PROTOCOL,bootstrapTransport:'url-query',contextTransport:'panel',
+      requestId:'wp-request-'+this.uuid(),attemptGeneration:this.uuid(),state:'reserving',createdAtMs:this.now(),sendStartedAtMs:null,
+      packet:metadata(packet),startupText:orchestratorStartupContext(project,packet,this.runtime.startupRules??[]),
+      preflightDocumentId,cancelState:'none',addressStatus:'pending',modeViolation:false});
+    const bootstrap=await this.runtime.prepareBootstrap?.(project,{request_id:attempt.requestId,attempt_generation:attempt.attemptGeneration});
+    if(!this.current(generation)||!this.startupAllowed(this.store.project(project.workspace,project.sessionId)?.attempt)){
+      attempt=await this.patchUrl(project,attempt,{cancelState:'requested',cancelReason:'preparation-interrupted',cancelRequestedAtMs:this.now(),
+        ...(bootstrap?.ticket_hash?{enrollmentRef:{run_id:bootstrap.run_id,ticket_hash:bootstrap.ticket_hash}}:{})});
+      return this.reconcileCancellation(project,attempt);
+    }
+    const text=startupMessage(project,attempt.requestId,packet,[],bootstrap);
+    if(!/^[a-f0-9]{64}$/.test(bootstrap.ticket_hash??'')||!bootstrap.run_id||!Number.isFinite(bootstrap.expires_at))
+      throw failure('STARTUP_CHANNEL_REQUIRED','Корреляция приглашения не сохранена.');
+    attempt=await this.patchUrl(project,attempt,{state:'prepared',bootstrapExpiresAt:bootstrap.expires_at,
+      enrollmentRef:{run_id:bootstrap.run_id,ticket_hash:bootstrap.ticket_hash}});
+    const staged=await this.runtime.stageStartup(project,attempt);
+    attempt=await this.patchUrl(project,attempt,{contextRef:{message_id:staged.message_id}});
+    observation=await this.composer.inspect();
+    if(!this.current(generation))return;
+    const latestInfo=await this.inspectProject(project.workspace,project.sessionId,generation),snapshot=this.composer.navigationSnapshot();
+    if(!this.current(generation))return;
+    if(!newChatRoot(observation.url)||!newChatRoot(this.composer.getURL())||observation.documentId!==preflightDocumentId
+      ||observation.accountStatus!=='signed-in'||observation.experience!=='chat'||observation.draftLength!==0||observation.busy
+      ||!observation.editorAvailable||!observation.writable||snapshot.incarnation!==preflightSnapshot.incarnation
+      ||snapshot.epoch!==preflightSnapshot.epoch||bootstrap.expires_at<=this.now()
+      ||!await this.packetIsCurrent(attempt.packet,{...project,...latestInfo})||!this.current(generation)){
+      this.cancelledRequests.add(attempt.requestId);
+      attempt=await this.patchUrl(project,attempt,{cancelState:'requested',cancelReason:'preflight-changed',cancelRequestedAtMs:this.now()});
+      return this.reconcileCancellation(project,attempt);
+    }
+    attempt=await this.patchUrl(project,attempt,latest=>this.startupAllowed(latest)?{state:'sending',sendStartedAtMs:this.now(),
+      navigation:{id:snapshot.id,incarnation:snapshot.incarnation,epoch:snapshot.epoch+1,
+        afterSequence:snapshot.navigationSequence,token:latest.requestId}}:{});
+    if(!this.startupAllowed(attempt))return this.reconcileCancellation(project,attempt);
+    const mayDispatch=()=>{const current=this.store.project(project.workspace,project.sessionId),navigation=this.composer.navigationSnapshot();
+      return current?.attempt?.requestId===attempt.requestId&&current.attempt.attemptGeneration===attempt.attemptGeneration
+        &&this.startupAllowed(current.attempt)&&!current.preparationPaused&&!['lost','conflict'].includes(current.attempt.addressStatus)
+        &&navigation.incarnation===attempt.navigation.incarnation&&(navigation.epoch===preflightSnapshot.epoch&&newChatRoot(this.composer.getURL())
+          ||navigation.epoch===attempt.navigation.epoch&&navigation.navigationOwner===attempt.requestId);};
+    this.emit({phase:'sending',projectInfo:info,messageSent:false,attempt:urlStatus(attempt),error:null});
+    try{await this.composer.startChat({url:CHATGPT_CHAT_ENTRYPOINT+'?q='+encodeURIComponent(text),
+      navigationToken:attempt.requestId,canContinue:mayDispatch});}
+    catch(error){await this.patchUrl(project,attempt,latest=>this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{});throw error;}
+    this.rerunRequested=true;
+  }
+
   async tick() {
-    if (!this.active || this.preparationPaused || this.state.phase === 'error') return;
+    if (!this.active) return;
+    const cancelling=urlAttempt(this.store.selected()?.attempt)&&this.store.selected().attempt.cancelState!=='none';
+    if((this.preparationPaused||this.state.phase==='error')&&!cancelling)return;
     if (this.pending) { this.rerunRequested = true; return; }
     const generation = this.generation;
     this.pending = true;
@@ -263,12 +481,19 @@ export class ContextSession {
     try {
       project = this.store.project(this.active.workspace);
       if (!project || !this.current(generation)) return;
-      if (project.preparationPaused) { this.emit({ phase: 'preparation-paused', error: null }); return; }
+      if (project.preparationPaused&&!urlAttempt(project.attempt)) { this.emit({ phase: 'preparation-paused', error: null }); return; }
       let info = await this.inspectProject(project.workspace, project.sessionId, generation);
       if (!this.current(generation)) return;
       if (info.projectId !== project.projectId) throw failure('PROJECT_REPLACED', 'В этой папке теперь другой проект. Старый чат сохранён.');
       project = { ...project, ...info };
       let attempt = project.attempt;
+      if(urlAttempt(attempt)||!attempt&&!project.chatUrl&&!project.manualStart){
+        await this.tickUrl(project,info,attempt,generation);return;
+      }
+      assertSessionMode(project);
+      if(!attempt&&project.chatUrl){this.emit({phase:'manual-session',projectInfo:info,messageSent:false,error:null});return;}
+      if(attempt&&!attempt.sendStartedAtMs&&!['sending','unknown','sent','acknowledged'].includes(attempt.state))
+        throw failure('LEGACY_CONTEXT_DISABLED','Прежний неотправленный старт сохранён. Создайте новый Chat для URL-запуска.');
       const sendAttempted = attempt?.protocol === CONTEXT_PROTOCOL
         && (attempt.state === 'sent' || !!attempt.sendStartedAtMs);
       // Once Send was attempted, only page/navigation state is relevant.
@@ -505,6 +730,15 @@ export class ContextSession {
     } catch (error) {
       if (!this.current(generation)) return;
       const persisted = project && this.store.project(project.workspace);
+      if(urlAttempt(persisted?.attempt)){
+        const currentAttempt=persisted.attempt;
+        if(currentAttempt.sendStartedAtMs)await this.patchUrl(persisted,currentAttempt,latest=>
+          this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{}).catch(()=>{});
+        const latest=this.store.project(project.workspace)?.attempt??currentAttempt;
+        this.emit({phase:latest.cancelState!=='none'?'cancel-pending':latest.sendStartedAtMs?'send-unknown':'error',
+          messageSent:latest.state==='sent',attempt:urlStatus(latest),error:{code:error.code??'STARTUP_ERROR',message:error.message}});
+        return;
+      }
       if (error.code === 'RUNTIME_LIFECYCLE_BUSY' && !persisted?.attempt?.sendStartedAtMs
         && !['sending','sent','acknowledged','unknown'].includes(persisted?.attempt?.state) && this.serviceRetries++ < 2) {
         this.emit({ phase: 'preparing', error: null });

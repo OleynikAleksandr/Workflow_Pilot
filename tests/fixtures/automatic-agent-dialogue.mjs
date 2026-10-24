@@ -405,21 +405,30 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
       disposed:false,loading:false,paused:false,cleanups:[],bootstrapCount:0,domWorkSends:0,
       project:()=>store.project(project.workspace,project.sessionId),metadata:{'openai/session':project.sessionId,'openai/subject':'fixture-owner'},
       pageState:{current:{documentId:'doc-'+project.sessionId,seq:1,state:{url:project.experience==='work'?'https://chatgpt.com/work/':'https://chatgpt.com/',
-        busy:false,editorAvailable:true,writable:true,draftPresent:false,login:'signed-in',lastMessageRole:'assistant',
+        experience:'chat',busy:false,editorAvailable:true,writable:true,draftPresent:false,login:'signed-in',lastMessageRole:'assistant',
         userMessagesRevision:0,assistantRevision:0,turnId:'a0',userTurnId:'u0'}}}};
     const page=record.pageState.current.state;
+    const navigation={id:project.sessionId,incarnation:'fixture-'+project.sessionId,epoch:1,navigationSequence:0,navigationOwner:null};
     const composer=record.composer={inFlight:false,getURL:()=>page.url,clearNewSessionDraft:async()=>({action:'draft-cleared'}),
+      navigationSnapshot:()=>({...navigation}),
       observeSnapshot:async()=>{record.pageState.current.seq++;return true;},
-      inspect:async({action}={})=>({...page,login:false,draftLength:0,messageSeen:record.bootstrapCount>0,
+      inspect:async({action}={})=>({...page,documentId:record.pageState.current.documentId,accountStatus:'signed-in',login:false,draftLength:0,messageSeen:record.bootstrapCount>0,
         ...(action==='select-experience'?{action:'experience-confirmed'}:{})}),
       sendUserMessage:async()=>{record.domWorkSends++;throw Error('Working message attempted DOM fallback');},
-      deliver:async input=>{
+      deliver:async()=>{throw Error('Bootstrap attempted DOM Send');},
+      startChat:async input=>{
         assert.equal(record.bootstrapCount,0,'initial context is not replayed');
-        assert.deepEqual(input.attachments,[]);
-        await input.onBeforeFill();await input.onBeforeSend();composer.inFlight=true;page.busy=true;
+        assert.equal(input.canContinue(),true);const text=new URL(input.url).searchParams.get('q');
+        navigation.epoch++;navigation.navigationSequence++;navigation.navigationOwner=input.navigationToken;
+        page.url='https://chatgpt.com/c/'+project.sessionId;
+        record.pageState.current.documentId='postflight-'+project.sessionId;
+        await record.controller.observeNavigation({type:'navigated',url:page.url,isMainFrame:true,navigationKind:'in-page',
+          navigationSequence:navigation.navigationSequence,navigationOwner:navigation.navigationOwner,snapshot:{...navigation}});
+        await record.controller.observePage({documentId:record.pageState.current.documentId,state:page},{...navigation});
+        composer.inFlight=true;page.busy=true;
         const bootstrap=async()=>{
           if(owned&&project.assignmentId)await wait(()=>drafts.has(project.assignmentId),'O prepares while E bootstrap is unfinished');
-          const invitation=JSON.parse(input.text.match(/workflow_pilot_panel с аргументами (\{"enrollment_ticket":"[a-f0-9]+"\})/)[1]);
+          const invitation=JSON.parse(text.match(/workflow_pilot_panel с аргументами (\{"enrollment_ticket":"[a-f0-9]+"\})/)[1]);
           const registered=await c.callTool({name:'workflow_pilot_panel',arguments:invitation,_meta:record.metadata});
           assert.equal(registered.isError,false,JSON.stringify(registered.structuredContent));
           const startup=registered.structuredContent.startup_context;
@@ -459,8 +468,9 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
         }finally{composer.inFlight=false;}
       }};
     record.controller=new ContextSession({store:sessionStore(store,record.identity),composer,
-      runtime:{ensure:()=>runtime.ensure(),loadContext:(workspace,role)=>plans.loadContext(workspace,role),prepareBootstrap:p=>workflow.prepareBootstrap(p),
-        stageStartup:(...args)=>workflow.stageStartup(...args),startupProgress:(...args)=>workflow.startupProgress(...args)},
+      runtime:{ensure:()=>runtime.ensure(),loadContext:(workspace,role)=>plans.loadContext(workspace,role),prepareBootstrap:(...args)=>workflow.prepareBootstrap(...args),
+        stageStartup:(...args)=>workflow.stageStartup(...args),startupProgress:(...args)=>workflow.startupProgress(...args),
+        enrollmentProgress:(...args)=>workflow.enrollmentProgress(...args),cancelStartup:(...args)=>workflow.cancelStartup(...args)},
       onChange:()=>{if(record.controller?.state.phase==='error')error(new Error(JSON.stringify(record.controller.state.error)));}});
     records.set(project.sessionId,record);return record;
   }

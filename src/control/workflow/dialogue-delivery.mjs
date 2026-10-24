@@ -15,6 +15,8 @@ export class DialogueDelivery {
       const project=this.project(target.local_session_id),attempt=project?.attempt;
       if(!project||project.preparationPaused||attempt?.modeViolation||attempt?.cancelState&&attempt.cancelState!=='none'
         ||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel')return false;
+      if(attempt.bootstrapTransport==='url-query'&&(!attempt.modeConfirmed||attempt.loginLost
+        ||this.record?.(project)?.controller?.startupAllowed?.(attempt)===false))return false;
       // A discussion chat has already received an immutable, authenticated
       // model-pull snapshot. Its remaining reads acknowledge that snapshot,
       // not the latest plan revision. All pre-open, SDK and O/E checks stay strict.

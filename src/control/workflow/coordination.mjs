@@ -505,14 +505,16 @@ return Object.freeze({
     if(startupRecovery.size)await saveSettings();
   },
   retireCommunication:identities=>getPlugin()?.communication.removeProjects(identities),
-  prepareBootstrap:project=>{assertSessionMode(project);if(modeHeld(project.parentWorkspace??project.workspace))throw modeError();if(held(project)){
+  prepareBootstrap:(project,correlation)=>{assertSessionMode(project);if(modeHeld(project.parentWorkspace??project.workspace))throw modeError();if(held(project)){
     void recheckRecovery(project.parentWorkspace??project.workspace).catch(report);
     throw recoveryError();
-  }return dialogue.prepareBootstrap(project);},
+  }return dialogue.prepareBootstrap(project,correlation);},
   recoveryStatus:workspace=>modeHeld(workspace)?{held:true,code:'SESSION_MODE_UNSUPPORTED',message:modeError().message}
     :startupRecovery.has(workspace)?{held:true,code:'PROJECT_RECOVERY_REQUIRED',message:recoveryError().message}:null,
   stageStartup:(project,attempt)=>dialogue.stageStartup(project,attempt),
   startupProgress:(sessionId,requestId)=>getPlugin()?.communication.startup.progress(sessionId,requestId),
+  enrollmentProgress:(project,attempt)=>dialogue.enrollmentProgress(project,attempt),
+  cancelStartup:(project,attempt,reason)=>dialogue.cancelStartup(project,attempt,reason),
   observeParticipant:target=>dialogue.observe(target),admitParticipant:(target,message)=>dialogue.admit(target,message),
   reconcileParticipant:target=>dialogue.reconcile(target),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),

@@ -57,7 +57,10 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
   const setup=control.configureProjects({executeNode:execution.executeFile,files:execution.files,
     resourceDir:resourcesDir??path.join(sourceDir,'../resources'),nodeCandidates:nodeExecutableCandidates(),
   });
-  control.configureContext({getRuntime:()=>execution.runtime,onChange:()=>{}});
+  control.configureContext({getRuntime:()=>execution.runtime,onChange:()=>{},
+    prepareBootstrap:(...args)=>workflow.prepareBootstrap(...args),stageStartup:(...args)=>workflow.stageStartup(...args),
+    startupProgress:(...args)=>workflow.startupProgress(...args),enrollmentProgress:(...args)=>workflow.enrollmentProgress(...args),
+    cancelStartup:(...args)=>workflow.cancelStartup(...args)});
   // The selected session is the primary page for workflow. It is chosen by
   // Control, never by a window, a viewer or a client connection.
   const visible=()=>sessions?.visible;

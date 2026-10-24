@@ -110,9 +110,11 @@ const workspaceSetup = control.configureProjects({
   onWorkerStart: () => { if (eventBaseline) runtimeMetrics.workerNodeStarts++; },
 });
 const {runtime:sessionContextRuntime, cache:contextCache} = control.configureContext({getRuntime:()=>runtime,
-  prepareBootstrap:project=>workflow.prepareBootstrap(project),
+  prepareBootstrap:(project,correlation)=>workflow.prepareBootstrap(project,correlation),
   stageStartup:(project,attempt)=>workflow.stageStartup(project,attempt),
   startupProgress:(id,request)=>workflow.startupProgress(id,request),
+  enrollmentProgress:(project,attempt)=>workflow.enrollmentProgress(project,attempt),
+  cancelStartup:(project,attempt,reason)=>workflow.cancelStartup(project,attempt,reason),
   loadFixture:smoke ? workspace=>runtime.loadContext(workspace) : null, onChange:()=>publish()});
 // Agent time: wall clock while ChatGPT shows its Stop control; each finished request is added to its own session.
 let agentTimer, pageState, conversationRecovery;

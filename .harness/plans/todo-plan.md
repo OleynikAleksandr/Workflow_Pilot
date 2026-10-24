@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1001,
+  "plan_revision": 1005,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -111,7 +111,8 @@
       "tests/chatgpt-plugin.test.mjs",
       "src/control/projects/service.mjs",
       "src/execution/files/adapter.mjs",
-      "tests/files-adapter.test.mjs"
+      "tests/files-adapter.test.mjs",
+      "tests/session-opening-performance.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/chat-only-url-start.md",
@@ -464,8 +465,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "T004",
@@ -501,7 +502,15 @@
         "tests/fixtures/executor-background-startup.mjs",
         "tests/automatic-agent-dialogue.test.mjs",
         "tests/executor-background-startup.test.mjs",
-        "tests/files-adapter.test.mjs"
+        "tests/files-adapter.test.mjs",
+        "src/execution/facade.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "tests/startup-context.test.mjs",
+        "src/control/workflow/coordination.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/parallel-execution.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -556,7 +565,29 @@
         "dependency_task_ids": [
           "T003"
         ]
-      }
+      },
+      "actual_files": [
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/context/service.mjs",
+        "src/control/projects/service.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/files/adapter.mjs",
+        "tests/context-session.test.mjs",
+        "tests/files-adapter.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/workspace-session.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -944,7 +975,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1001
+Revision: 1005
 
 ## Цель
 
@@ -980,10 +1011,10 @@ Revision: 1001
   - Файлы: src/control/plugin/enrollment.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/execution/plugin/communication-store.mjs, src/contracts/plugin-communication.mjs, tests/plugin-enrollment.test.mjs, tests/plugin-communication-store.test.mjs, tests/startup-context.test.mjs, tests/dialogue-delivery.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T002
-- [TODO] T004: Запускать новый Chat через q с подтверждением sent по тикету — Ожидает
-  - Git Commit: [PENDING] feat: Запускать новый Chat через q с подтверждением sent по тикету
+- [DONE] T004: Запускать новый Chat через q с подтверждением sent по тикету — Завершено
+  - Git Commit: [DONE] feat: Запускать новый Chat через q с подтверждением sent по тикету
   - Reference: chat-only-url-bootstrap / T004 / implementation
-  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/sessions/service.mjs, src/control/sessions/conversation-recovery.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/backend/desktop-model.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-experience.test.mjs, tests/desktop-boundaries.test.mjs, src/control/projects/service.mjs, src/backend/bootstrap.mjs, src/execution/files/adapter.mjs, tests/workspace-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/files-adapter.test.mjs
+  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/sessions/service.mjs, src/control/sessions/conversation-recovery.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/backend/desktop-model.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-experience.test.mjs, tests/desktop-boundaries.test.mjs, src/control/projects/service.mjs, src/backend/bootstrap.mjs, src/execution/files/adapter.mjs, tests/workspace-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/files-adapter.test.mjs, src/execution/facade.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, tests/startup-context.test.mjs, src/control/workflow/coordination.mjs, tests/session-runtime.test.mjs, tests/session-opening-performance.test.mjs, tests/parallel-execution.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
 - [TODO] T005: Убрать Work из интерфейса и показать независимые этапы старта — Ожидает

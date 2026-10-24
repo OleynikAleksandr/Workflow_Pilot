@@ -25,6 +25,11 @@ export class FileAdapter {
   writeFile(file, data, options) { return fs.writeFile(absolute(file), data, options); }
   appendFile(file, data, options) { return fs.appendFile(absolute(file), data, options); }
   rename(from, to) { return fs.rename(absolute(from), absolute(to)); }
+  async syncDirectory(file) {
+    absolute(file);
+    if(process.platform==='win32')return;
+    const handle=await fs.open(file,'r');try{await handle.sync();}finally{await handle.close();}
+  }
   realpath(file) { return fs.realpath(absolute(file)); }
   lstat(file, options) { return fs.lstat(absolute(file), options); }
   stat(file, options) { return fs.stat(absolute(file), options); }

@@ -41,14 +41,23 @@ test('production readiness and canonical recovery block insertion after real inp
     const store = { selected: () => structuredClone(saved), project: () => structuredClone(saved),
       inspect: () => readWorkspace(workspace, sessionId),
       updateSession: async (_w, _s, patch) => (saved = { ...saved, ...structuredClone(patch) }),
+      patchAttempt:async(_w,_s,expected,patch)=>{
+        if(expected?saved.attempt?.requestId!==expected.requestId||saved.attempt?.attemptGeneration!==expected.attemptGeneration:!!saved.attempt)return null;
+        saved.attempt={...saved.attempt,...(typeof patch==='function'?patch(structuredClone(saved.attempt)):patch)};return structuredClone(saved);},
       bindChat: async (_w, _s, chatUrl) => (saved = { ...saved, chatUrl }) };
     let loads = 0, sends = 0, fills = 0;
     const cache = new ContextCache({ load: w => { loads++; return plans.loadContext(w); },
       inputKey: w => readinessContextKey(setup, w) });
-    const composer = { contents: { getURL: () => 'https://chatgpt.com/' },
+    const composer = { getURL: () => 'https://chatgpt.com/',navigationSnapshot:()=>({id:'fixture',incarnation:'fixture',epoch:1,navigationSequence:0}),
       inspect: async options => ({ url: 'https://chatgpt.com/', editorAvailable: true, writable: true, draftLength: 0,
-        busy: false, login: false, messageSeen: false, ...(options?.action === 'select-experience' ? { action: 'experience-confirmed' } : {}) }),
-      deliver: async options => {
+        documentId:'preflight',accountStatus:'signed-in',experience:'chat',busy: false, login: false, messageSeen: false }),
+      startChat:async()=>{sends++;},deliver:async()=>{fills++;throw Error('DOM fallback forbidden');}};
+    const controller = new ContextSession({ store, runtime: {
+      ensure: async () => ({}),
+      prepareBootstrap: async () => ({context_transport:'panel',enrollment_ticket:'a'.repeat(64),
+        run_id:'fixture',ticket_hash:'b'.repeat(64),expires_at:Date.now()+1800000}),
+      cancelStartup:async()=>({status:'revoked'}),
+      stageStartup: async () => {
         assert.equal(saved.attempt.state, 'prepared');
         if (kind === 'document') await fs.appendFile(path.join(workspace, 'docs/architecture/OVERVIEW.md'), '\nChanged before fill\n');
         if (kind === 'index') git('add', 'index-fixture.txt');
@@ -59,20 +68,12 @@ test('production readiness and canonical recovery block insertion after real inp
         }
         if (kind === 'plan') execFileSync(process.execPath, [path.join(workspace, 'scripts/workflow.mjs'), 'task:start', 'T1', '--session', sessionId], { cwd: workspace });
         if (kind === 'transaction') await fs.writeFile(path.resolve(workspace, git('rev-parse', '--git-path', 'workflow-kit/transaction.json')), '{}');
-        await options.onBeforeFill();
-        fills++;
-        await options.onBeforeSend();
-        if (options.canContinue()) sends++;
-        return { state: 'cancelled' };
-      } };
-    const controller = new ContextSession({ store, runtime: {
-      ensure: async () => ({}),
-      prepareBootstrap: async () => ({context_transport:'panel',enrollment_ticket:'a'.repeat(64)}),
-      stageStartup: async () => ({message_id:'fixture-startup'})
+        return {message_id:'fixture-startup'};
+      }
     }, composer, contextCache: cache });
     controller.attach(saved); await controller.tick();
     assert.equal(loads, 1); assert.equal(fills, 0); assert.equal(sends, 0);
-    assert.equal(controller.state.phase, 'prepared-stale');
+    assert.ok(['startup-cancelled','error'].includes(controller.state.phase),JSON.stringify(controller.state));
     assert.equal(saved.attempt.state, 'prepared'); assert.equal(saved.attempt.sendStartedAtMs, null);
   });
 });

@@ -17,6 +17,7 @@ export function sessionStore(store, identity) {
     inspect:(workspace,sessionId)=>{owns(workspace,sessionId);return store.inspect(workspace,sessionId);},
     bindChat:(workspace,sessionId,url,options)=>{owns(workspace,sessionId);return store.bindChat(workspace,sessionId,url,{...options,background:true});},
     updateSession:(workspace,sessionId,patch)=>{owns(workspace,sessionId);return store.updateSession(workspace,sessionId,patch,{background:true});},
+    patchAttempt:(workspace,sessionId,expected,patch)=>{owns(workspace,sessionId);return store.patchAttempt(workspace,sessionId,expected,patch,{background:true});},
   };
 }
 
@@ -48,6 +49,15 @@ export class SessionRuntimes {
     const record={key,identity,browser,pageState:browser.pageState,ready:false,get paused(){return runtimes.paused;},
       get loading(){return browser.snapshot().loading;},get epoch(){return browser.snapshot().epoch;},
       readinessEpoch:0,disposed:false,manualDocumentOwner:null,lastStopObservation:null,error:null,cleanups:[]};
+    record.navigationTail=Promise.resolve();
+    const observeNavigation=work=>{
+      record.navigationTail=record.navigationTail.then(()=>record.disposed?undefined:work()).catch(error=>{
+        const attempt=record.project()?.attempt;
+        if(attempt?.bootstrapTransport==='url-query')record.controller.cancelledRequests.add(attempt.requestId);
+        record.error={code:error.code??'STARTUP_OBSERVATION_FAILED',message:error.message};this.onError(record,error);
+      });
+      void record.navigationTail.then(()=>{if(!record.disposed){this.tick(record);this.onChange(record);}});
+    };
     record.addressLost = !!project && !project.chatUrl && (!!project.attempt?.sendStartedAtMs
       || ['sending','sent','unknown','acknowledged'].includes(project.attempt?.state));
     this.#records.set(key,record);
@@ -75,6 +85,8 @@ export class SessionRuntimes {
       if(record.disposed)return;
       if(event.reset){record.manualDocumentOwner=null;record.lastStopObservation=null;record.timer.finish();}
       else {
+        const snapshot=record.browser.snapshot();
+        observeNavigation(()=>record.controller.observePage(event,snapshot));
         const project=record.project(), documentId=event.documentId??record.pageState.current?.documentId;
         const revision=event.state.manualStopRevision??0;
         if(revision>(record.lastStopObservation?.documentId===documentId?record.lastStopObservation.revision:0))record.recovery.manualStop(event.state);
@@ -88,10 +100,13 @@ export class SessionRuntimes {
     record.cleanups.push(browser.subscribe(event=>{
       if(record.disposed)return;
       if(event.type==='navigation-start')record.controller.cancel();
+      if(['navigation-start','navigated','navigation-interrupted','crashed'].includes(event.type))
+        observeNavigation(()=>record.controller.observeNavigation(event.type==='crashed'?{...event,isMainFrame:true,
+          url:event.snapshot?.url,navigationSequence:event.snapshot?.navigationSequence}:event));
       // A page reloaded after its renderer died keeps the readiness it had; the
       // interrupted Send stays UNKNOWN in the composer and is never repeated.
       if(event.type==='loaded'&&record.readyBeforeCrash&&!event.snapshot?.crashed){record.ready=true;record.readyBeforeCrash=false;}
-      if(event.type==='loaded'||event.type==='navigated'){this.tick(record);this.onChange(record);}
+      if(event.type==='loaded')void record.navigationTail.then(()=>{this.tick(record);this.onChange(record);});
       if(event.type==='crashed'){
         record.readyBeforeCrash=event.recovering===true&&record.ready;record.ready=false;
         const saved=record.project();
@@ -107,8 +122,10 @@ export class SessionRuntimes {
   }
   tick(record,{freshDraft=false}={}) {
     const project=record.project();
-    if(record.disposed||this.paused||!record.ready||record.loading||!sessionModeAllowed(project)||project.archivedAt||project.sessionArchivedAt)return;
-    if(record.addressLost&&!normalizeChatUrl(record.composer.getURL())) {
+    const urlStartup=project?.attempt?.bootstrapTransport==='url-query',cancelling=urlStartup&&project.attempt.cancelState==='requested';
+    if(record.disposed||!project||project.archivedAt||project.sessionArchivedAt)return;
+    if(!cancelling&&(this.paused||!record.ready||record.loading||!sessionModeAllowed(project)))return;
+    if(!urlStartup&&record.addressLost&&!normalizeChatUrl(record.composer.getURL())) {
       record.controller.emit({phase:'send-unknown',error:{code:'SESSION_CHAT_ADDRESS_UNKNOWN',
         message:'Страница разговора утрачена до сохранения адреса. Первоначальная отправка не повторяется; восстановите исходный разговор.'}});
       return;

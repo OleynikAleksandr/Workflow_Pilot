@@ -14,10 +14,11 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const hash=text=>createHash('sha256').update(text).digest('hex');
 const html=`<!doctype html><style>#prompt-textarea{display:none}</style>
 <button data-testid="profile-button">Account</button>
-<button data-tpp-toggle-value="work" data-state="on">Work</button><button data-tpp-toggle-value="chat" data-state="off">Chat</button>
+<button data-tpp-toggle-value="chat" data-state="on">Chat</button>
 <form><textarea id="prompt-textarea"></textarea><button data-testid="send-button">Send</button></form><main></main>
 <script>
 window.starts=[];window.files=[];window.readyAt=0;
+const command=new URL(location.href).searchParams.get('q');
 // CSSOM layout change: no DOM MutationObserver event, even though the editor is now usable.
 setTimeout(()=>{document.styleSheets[0].deleteRule(0);window.readyAt=Date.now()},1200);
 for(const b of document.querySelectorAll('[data-tpp-toggle-value]'))b.onclick=()=>{
@@ -33,6 +34,7 @@ document.querySelector('form').onsubmit=event=>{event.preventDefault();const edi
  const user=document.createElement('article');user.dataset.messageAuthorRole='user';user.textContent=editor.value;document.querySelector('main').append(user);editor.value='';
  history.replaceState(null,'','/c/'+crypto.randomUUID());const assistant=document.createElement('article');assistant.dataset.messageAuthorRole='assistant';assistant.textContent='Bootstrap complete';document.querySelector('main').append(assistant);
 };
+if(command){document.querySelector('textarea').value=command;document.querySelector('form').requestSubmit();}
 </script>`;
 
 async function run(){
@@ -49,9 +51,16 @@ try{
     const store={project:(workspace,id)=>{const p=projects.get(workspace);return !id||p?.sessionId===id?p:null;},
       inspect:async workspace=>{const {attempt,chatUrl,...p}=projects.get(workspace);return p;},
       updateSession:async(w,_id,patch)=>Object.assign(projects.get(w),patch),
+      patchAttempt:async(w,_id,expected,patch)=>{const p=projects.get(w),a=p.attempt;
+        if(expected?a?.requestId!==expected.requestId||a?.attemptGeneration!==expected.attemptGeneration:!!a)return null;
+        p.attempt={...a,...(typeof patch==='function'?patch(structuredClone(a)):patch)};return p;},
       bindChat:async(w,_id,url)=>Object.assign(projects.get(w),{chatUrl:url}),recordAgentTime:async()=>{}};
     const staged=[];
-    const runtime={ensure:async()=>{},prepareBootstrap:async()=>({context_transport:'panel',enrollment_ticket:'a'.repeat(64),expires_at:Date.now()+60000}),
+    const runtime={ensure:async()=>{},prepareBootstrap:async()=>({context_transport:'panel',enrollment_ticket:'a'.repeat(64),
+      run_id:'fixture',ticket_hash:'b'.repeat(64),expires_at:Date.now()+60000}),
+      enrollmentProgress:async(p,a)=>{const raw=await host.view(sessions.find(p).key).webContents.executeJavaScript('starts.length');
+        return raw?{status:'active',participant_id:p.sessionId,run_id:a.enrollmentRef.run_id,ticket_hash:a.enrollmentRef.ticket_hash,
+          request_id:a.requestId,attempt_generation:a.attemptGeneration}:null;},cancelStartup:async()=>({status:'revoked'}),
       stageStartup:async(project,attempt)=>{staged.push({sessionId:project.sessionId,text:attempt.startupText});return {message_id:project.sessionId};},
       loadContext:async workspace=>{
         const p=projects.get(workspace),text='MANDATORY RULES ONLY';

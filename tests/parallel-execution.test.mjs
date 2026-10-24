@@ -148,9 +148,10 @@ test('assigned startup provides an MCP invitation and recovery but never starts 
   const project={name:'Project',workspace:'/trees/a',sessionId:'worker',assignmentId:'a',taskId:'T002',
     parentWorkspace:'/main',executionSnapshot:{parallel_allowed:true,max_workers:2}};
   const text=startupMessage(project,'request',{parts:[{}]},[],{context_transport:'panel',enrollment_ticket:'a'.repeat(64)});
-  assert.match(text,/workflow_pilot_panel/);assert.match(text,/workflow_startup_complete/);
+  assert.match(text,/workflow_pilot_panel/);assert.doesNotMatch(text,/workflow_startup_complete|Kit recovery|T002/);
   assert.doesNotMatch(text,/task:start T002|commit --task T002/);
   const recovery=orchestratorStartupContext(project,{context:'Kit recovery'});
+  assert.match(recovery,/workflow_startup_complete/);assert.match(recovery,/Kit recovery/);
   assert.match(recovery,/"\/trees\/a"/);assert.match(recovery,/основной checkout: "\/main"/i);
   assert.match(recovery,/задача: T002/);assert.match(recovery,/Не выполняй task:start/);
   assert.match(recovery,/жди отдельное рабочее поручение/);

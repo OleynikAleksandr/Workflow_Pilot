@@ -17,6 +17,25 @@ test('new workspace reveals selected session and retains preparation cancellatio
   const restored=new WorkspaceSessions(store.file);await restored.load();assert.equal(restored.project(selected.workspace).preparationPaused,true);
 });
 
+test('attempt CAS merges navigation with sent, preserves cancellation and ignores stale owners',async t=>{
+  const {project,store}=await fixture(t),p=await store.select(await project('CAS'));
+  const identity={requestId:'request-one',attemptGeneration:'generation-one'};
+  await store.patchAttempt(p.workspace,p.sessionId,null,{...identity,bootstrapTransport:'url-query',state:'sending',cancelState:'none'});
+  assert.equal(await store.patchAttempt(p.workspace,p.sessionId,null,{requestId:'another',attemptGeneration:'another'}),null);
+  await Promise.all([store.patchAttempt(p.workspace,p.sessionId,identity,{state:'sent',sentAtMs:1}),
+    store.patchAttempt(p.workspace,p.sessionId,identity,{addressCandidate:'https://chatgpt.com/c/own-chat',addressStatus:'pending',modeConfirmed:true})]);
+  assert.equal(store.project(p.workspace).attempt.state,'sent');
+  await store.patchAttempt(p.workspace,p.sessionId,identity,{cancelState:'requested'});
+  await store.patchAttempt(p.workspace,p.sessionId,identity,latest=>latest.cancelState==='none'?{state:'unknown'}:{});
+  assert.equal(store.project(p.workspace).attempt.state,'sent');
+  assert.equal(await store.patchAttempt(p.workspace,p.sessionId,{...identity,attemptGeneration:'old'},()=>{throw Error('stale callback must not run');}),null);
+  assert.equal(await store.bindChat(p.workspace,p.sessionId,'https://chatgpt.com/c/own-chat',{attemptIdentity:identity}),null);
+  assert.equal(store.project(p.workspace).chatUrl,null);
+  const restored=new WorkspaceSessions(store.file);await restored.load();
+  assert.equal(restored.project(p.workspace).attempt.cancelState,'requested');
+  assert.equal(restored.project(p.workspace).attempt.state,'sent');
+});
+
 test('integration projection retains the Git-proven parent identity while the worktree contains the child plan',async t=>{
   const {project}=await fixture(t),root=await project('Merging');
   const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8'}).trim();

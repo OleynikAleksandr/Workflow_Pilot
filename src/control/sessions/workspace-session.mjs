@@ -68,7 +68,7 @@ function sessionExperience(value) {
   return value;
 }
 
-export const sessionModeAllowed = session => !!session && session.experience !== 'work'
+export const sessionModeAllowed = session => !!session && session.experience !== 'work' && !session.attempt?.modeViolation
   && (!session.availability || session.availability === 'active');
 export function assertSessionMode(session) {
   if (!sessionModeAllowed(session)) throw new WorkspaceError(session?.availability === 'mode-unverified'
@@ -627,9 +627,10 @@ export class WorkspaceSessions {
       const temporary = this.file + '.tmp-' + this.uuid();
       let renamed = false;
       try {
-        await fs.writeFile(temporary, text, { mode: 0o600 });
+        await fs.writeFile(temporary, text, { mode: 0o600, flush: true });
         if (!isCurrent()) return false;
         await fs.rename(temporary, this.file);
+        await fs.syncDirectory(path.dirname(this.file));
         renamed = true;
         return true;
       } finally {
@@ -722,11 +723,15 @@ export class WorkspaceSessions {
     }, current);
   }
 
-  bindChat(workspace, sessionId, input, { manual = false, background = false } = {}) {
+  bindChat(workspace, sessionId, input, { manual = false, background = false, attemptIdentity = null, isCurrent = () => true } = {}) {
     return this.mutate(data => {
       const url = normalizeChatUrl(input);
       if (!url) throw new WorkspaceError('CHAT_URL_INVALID', 'Откройте конкретный чат ChatGPT.');
       const { session } = this.activeRecord(workspace, sessionId, data, { background });
+      if(attemptIdentity&&(session.attempt?.requestId!==attemptIdentity.requestId
+        ||session.attempt?.attemptGeneration!==attemptIdentity.attemptGeneration
+        ||session.attempt.addressCandidate!==url||['lost','conflict'].includes(session.attempt.addressStatus)
+        ||session.attempt.cancelState!=='none'||!session.attempt.modeConfirmed))return null;
       assertSessionMode(session);
       if (!conversationUrlCompatibleWithExperience(url, session.experience)) {
         throw new WorkspaceError('CHAT_EXPERIENCE_MISMATCH', session.experience === 'work'
@@ -737,7 +742,7 @@ export class WorkspaceSessions {
       session.chatUrl = url;
       if (manual && !['sent', 'acknowledged'].includes(session.attempt?.state)) session.manualStart = true;
       return currentView(data.projects.find(p => p.workspace === workspace), sessionId);
-    });
+    },isCurrent);
   }
 
   newSession(workspace, experience = 'chat', { executionSnapshot } = {}) {
@@ -766,6 +771,31 @@ export class WorkspaceSessions {
   }
 
   newChat(workspace) { return this.newSession(workspace, 'chat'); }
+
+  // Navigation and registration merge into the latest attempt in this queue.
+  // A delayed event cannot overwrite sent/cancellation or claim a newer request.
+  patchAttempt(workspace,sessionId,expected,patch,{background=false}={}) {
+    return this.mutate(data=>{
+      const {project,session}=this.activeRecord(workspace,sessionId,data,{background}),current=session.attempt;
+      if(expected!==null&&(!expected?.requestId||!expected.attemptGeneration||current?.requestId!==expected.requestId
+        ||current.attemptGeneration!==expected.attemptGeneration))return null;
+      const delta=typeof patch==='function'?patch(copy(current)):patch;
+      if(!delta||typeof delta!=='object'||Array.isArray(delta)||typeof delta.then==='function')
+        throw new WorkspaceError('STARTUP_ATTEMPT_INVALID','Нужна синхронная поправка состояния попытки.');
+      if(expected===null){
+        if(current)return null;
+        assertSessionMode(session);
+        if(typeof delta.requestId!=='string'||typeof delta.attemptGeneration!=='string')
+          throw new WorkspaceError('STARTUP_ATTEMPT_INVALID','Нужна идентичность попытки.');
+      }else{
+        if(delta.requestId!==undefined&&delta.requestId!==current.requestId
+          ||delta.attemptGeneration!==undefined&&delta.attemptGeneration!==current.attemptGeneration)
+          throw new WorkspaceError('STARTUP_ATTEMPT_INVALID','Нельзя заменить идентичность попытки.');
+      }
+      session.attempt={...current,...copy(delta)};
+      return currentView(project,sessionId);
+    });
+  }
 
   // Called when the plan of a project changes: assigns roles after publication and remembers the closing commit.
   reconcileRoles(workspace) {

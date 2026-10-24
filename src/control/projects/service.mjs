@@ -32,6 +32,7 @@ export class ProjectsService {
   applyScopeTitle(...args) { return this.#store.applyScopeTitle(...args); }
   recordAgentTime(...args) { return this.#store.recordAgentTime(...args); }
   updateSession(...args) { return this.#store.updateSession(...args); }
+  patchAttempt(...args) { return this.#store.patchAttempt(...args); }
   setSessionArchived(...args) { return this.#store.setSessionArchived(...args); }
   forgetArchivedSessions(...args) { return this.#store.forgetArchivedSessions(...args); }
   setArchived(...args) { return this.#store.setArchived(...args); }

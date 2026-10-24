@@ -8,6 +8,7 @@ import { sessionModeAllowed, assertSessionMode } from '../sessions/workspace-ses
 export function executorPageState(record) {
   const project=record?.project(),page=record?.pageState.current?.state;
   const observed=sessionModeAllowed(project)&&!!project.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt&&!record.disposed&&!record.loading&&record.ready
+    &&(!project.attempt?.cancelState||project.attempt.cancelState==='none')&&page?.experience!=='work'
     &&page?.url===project.chatUrl&&!page.busy&&!page.connectionError&&page.lastMessageRole==='assistant'
     &&page.login!=='signed-out';
   const stopped=observed&&!record.controller.pending&&!record.composer.inFlight;

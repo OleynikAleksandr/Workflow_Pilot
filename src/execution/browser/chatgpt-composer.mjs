@@ -26,7 +26,8 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
   const modeButtons = dom.modeButtons();
   const modeOf = dom.modeOf;
   const experience = dom.experience();
-  const result = { connectionError, url: location.href, editorAvailable: !!editor, writable, login, busy,
+  const result = { connectionError, url: location.href, editorAvailable: !!editor, writable, login,
+    accountStatus: dom.account().login, busy,
     draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount: messages.length, experience };
   // Only visible composer cards count. Message history cannot prove draft uploads.
   const attachmentKey = Symbol.for('web-pilot-file-paste');
@@ -335,7 +336,7 @@ export class ChatGPTComposer {
     }
     if (observation.reason === 'PASTE_UNHANDLED')
       throw new ComposerError('PASTE_UNHANDLED', 'Редактор не принял вставку Paste. Контекст не отправлен.');
-    return observation;
+    return {...observation,documentId:this.documentKey()===documentKey?this.pageState?.current?.documentId??null:null};
   }
 
   getURL() { return this.contents.getURL(); }
