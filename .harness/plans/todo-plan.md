@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1038,
+  "plan_revision": 1039,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -141,7 +141,9 @@
       "docs/modules/control.md",
       "docs/acceptance/chat-only-startup.md",
       "docs/modules/chat-only-startup.md",
-      "docs/planning/chatgpt-search-extension.md"
+      "docs/planning/chatgpt-search-extension.md",
+      "docs/modules/chatgpt-search-extension.md",
+      "resources/THIRD-PARTY.md"
     ]
   },
   "baseline_commit": "df015ce35abff912a444c967639adfff667abeda",
@@ -1260,7 +1262,9 @@
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
         "docs/planning/chatgpt-search-extension.md",
-        "docs/modules/release.md"
+        "docs/modules/release.md",
+        "docs/modules/chatgpt-search-extension.md",
+        "resources/THIRD-PARTY.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -1390,7 +1394,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1038
+Revision: 1039
 
 ## Цель
 
@@ -1501,7 +1505,7 @@ Revision: 1038
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: chat-only-url-bootstrap / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/chatgpt-search-extension.md, docs/modules/release.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/chatgpt-search-extension.md, docs/modules/release.md, docs/modules/chatgpt-search-extension.md, resources/THIRD-PARTY.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXT01, EXT02, EXT03, VERSION-2
 - [TODO] RELEASE-2: Собрать проверенный выпуск 0.5.32 для трёх ОС — Ожидает
