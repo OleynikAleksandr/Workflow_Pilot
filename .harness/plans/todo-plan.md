@@ -4,24 +4,149 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 984,
+  "plan_revision": 985,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
-  "scope_id": null,
-  "execution_scope_status": "NONE",
+  "scope_id": "chat-only-url-bootstrap",
+  "execution_scope_status": "ACTIVE",
   "delivery_status": "IN_PROGRESS",
-  "objective": "Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.",
-  "acceptance_criteria": [],
+  "objective": "Оставить только Chat-сессии и заменить DOM-ввод первого сообщения одним URL-bootstrap с тикетом, сохранив идентичность, отмену и получение контекста.",
+  "acceptance_criteria": [
+    "Work упразднён; история сохранена без исполнения и потери назначений.",
+    "Один q-bootstrap после preflight; sent только по текущему тикету; адрес и startup ack независимы.",
+    "Долговечный revoke/cancel и runtime no-q-reload выдерживают гонки/рестарты без подмены identity.",
+    "Изолированные suites и Electron smoke пройдены; реальные ChatGPT проверки отражены честно, pending блокирует будущий выпуск."
+  ],
   "approved_scope": {
-    "functional_paths": [],
-    "documentation_paths": []
+    "functional_paths": [
+      "scripts",
+      "src/backend/bootstrap.mjs",
+      "src/backend/desktop-model.mjs",
+      "src/backend/operations.mjs",
+      "src/contracts/browser.mjs",
+      "src/contracts/context.mjs",
+      "src/contracts/desktop.mjs",
+      "src/contracts/plugin-communication.mjs",
+      "src/control/context/context-session.mjs",
+      "src/control/context/service.mjs",
+      "src/control/facade.mjs",
+      "src/control/plugin/communication.mjs",
+      "src/control/plugin/enrollment.mjs",
+      "src/control/plugin/service.mjs",
+      "src/control/plugin/startup-context.mjs",
+      "src/control/plugin/workflow-channel.mjs",
+      "src/control/projects/workspace-setup.mjs",
+      "src/control/sessions/conversation-recovery.mjs",
+      "src/control/sessions/service.mjs",
+      "src/control/sessions/workspace-session.mjs",
+      "src/control/workflow/coordination.mjs",
+      "src/control/workflow/dialogue-delivery.mjs",
+      "src/control/workflow/execution-control.mjs",
+      "src/control/workflow/executor-session.mjs",
+      "src/control/workflow/parallel-execution.mjs",
+      "src/control/workflow/project-session-plan-continuation.mjs",
+      "src/execution/browser/browser-startup.mjs",
+      "src/execution/browser/chatgpt-composer.mjs",
+      "src/execution/browser/chatgpt-experience.mjs",
+      "src/execution/browser/diagnostics.mjs",
+      "src/execution/browser/session-runtime.mjs",
+      "src/execution/facade.mjs",
+      "src/execution/plugin/communication-store.mjs",
+      "src/frontend/desktop/client.mjs",
+      "src/frontend/desktop/preload.cjs",
+      "src/frontend/desktop/ui/archive.html",
+      "src/frontend/desktop/ui/archive.mjs",
+      "src/frontend/desktop/ui/index.html",
+      "src/frontend/desktop/ui/sidebar.mjs",
+      "src/frontend/desktop/ui/workspace-setup.mjs",
+      "src/frontend/plugin/launch.mjs",
+      "src/frontend/plugin/panel.mjs",
+      "tests/automatic-agent-dialogue.test.mjs",
+      "tests/backend-api.test.mjs",
+      "tests/backend-browser-lifecycle.test.mjs",
+      "tests/backend-desktop-model.test.mjs",
+      "tests/browser-startup.test.mjs",
+      "tests/chatgpt-composer.test.mjs",
+      "tests/chatgpt-experience.test.mjs",
+      "tests/chromium-diagnostics.test.mjs",
+      "tests/context-session.test.mjs",
+      "tests/control-facade.test.mjs",
+      "tests/desktop-boundaries.test.mjs",
+      "tests/desktop-client.test.mjs",
+      "tests/dialogue-delivery.test.mjs",
+      "tests/electron-smoke.mjs",
+      "tests/executor-background-startup.test.mjs",
+      "tests/executor-startup-lifecycle.test.mjs",
+      "tests/fixtures",
+      "tests/fixtures/automatic-agent-dialogue.mjs",
+      "tests/migration-compatibility.test.mjs",
+      "tests/parallel-execution-ui.test.mjs",
+      "tests/parallel-execution.test.mjs",
+      "tests/plugin-communication-store.test.mjs",
+      "tests/plugin-enrollment.test.mjs",
+      "tests/progress.test.mjs",
+      "tests/project-doctor-ui.test.mjs",
+      "tests/session-roles.test.mjs",
+      "tests/session-runtime.test.mjs",
+      "tests/sidebar.test.mjs",
+      "tests/startup-context.test.mjs",
+      "tests/startup-ui.test.mjs",
+      "tests/workspace-session.test.mjs",
+      "tools/codex-app-server-mcp/plugin.py"
+    ],
+    "documentation_paths": [
+      "docs/planning/chat-only-url-start.md",
+      "docs/planning/chat-only-url-lifecycle.md",
+      "docs/planning/chat-only-url-acceptance.md",
+      "docs/architecture/OVERVIEW.md"
+    ]
   },
-  "baseline_commit": null,
+  "baseline_commit": "df015ce35abff912a444c967639adfff667abeda",
   "current_task_id": null,
   "context_pack": {
     "documents": [
       {
+        "path": "docs/planning/chat-only-url-start.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/chat-only-url-lifecycle.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/chat-only-url-acceptance.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/browser.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/orchestrator-startup.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/chatgpt-plugin.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/project-lifecycle.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/user-choice.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -29,40 +154,628 @@
     "include_last_completed_task": false,
     "dependency_task_ids": []
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "T001",
+        "role": "implementation"
+      },
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/projects/workspace-setup.mjs",
+        "src/control/facade.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/project-session-plan-continuation.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/browser.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "src/backend/operations.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/migration-compatibility.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T001",
+      "title": "Упразднить активные Work-сессии и мигрировать историю",
+      "why": "Единый допуск Chat-only должен действовать до запуска страниц и MCP.",
+      "acceptance_criteria": [
+        "Новые сессии только chat; явный work отклонён во всех backend-входах без побочных действий.",
+        "Миграция атомарна и идемпотентна: legacy-work/mode-unverified сохранены как история, не получают runtime/контекст/сообщения.",
+        "Зависимый проект удержан до восстановления; назначения/worktrees/results не потеряны, чужие проекты и ручной OFF сохранены."
+      ],
+      "expected_commit_message": "feat: Упразднить активные Work-сессии и мигрировать историю",
+      "parallel_safe": false,
+      "task_brief": "Выполнить Chat-only и миграцию по основной spec. Проверить реальные входы первой/новой/внешней сессии, reopen/restore и startup admission. Не стирать Work и не переименовывать его в Chat; не менять режимы исполнения Kit. Добавить fixtures миграции старых схем и restart. UI обрабатывается T005; существующие проверки адаптировать к новым отказам. Backend operations/bootstrap и workflow coordination/execution вызывают единый admission до открытия runtime, grant, dispatch и интеграции. Адаптировать все перечисленные Work-тесты к историческому чтению/отказу; не отключать assertions. Текущая схема v6, новая v7; проверить старый v3, уже мигрированный chat v4–v6 и null chatUrl.",
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/chat-only-url-start.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-lifecycle.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-acceptance.md",
+            "required": true
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/browser.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/orchestrator-startup.md",
+            "required": true
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": []
+      }
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "T002",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T001"
+      ],
+      "functional_paths": [
+        "src/execution/browser/session-runtime.mjs",
+        "src/execution/browser/browser-startup.mjs",
+        "src/execution/browser/chatgpt-experience.mjs",
+        "src/execution/browser/diagnostics.mjs",
+        "src/execution/facade.mjs",
+        "src/contracts/browser.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/browser-startup.test.mjs",
+        "tests/chromium-diagnostics.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/chatgpt-experience.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "startup-recovery",
+        "architecture",
+        "unit-all"
+      ],
+      "id": "T002",
+      "title": "Расширить навигационный порт и защитить обновление от повторного q",
+      "why": "Control нужны фактические переходы, а безопасный reload не должен знать attempt.",
+      "acceptance_criteria": [
+        "Один порт сообщает url/isMainFrame/kind/sequence для in-page, полной навигации и redirect; iframe/late/release не подтверждают адрес.",
+        "Crash и ручное refresh/reload с q открывают чистый entrypoint независимо от control-state; первоначальный dispatch не блокируется этой защитой.",
+        "Секреты q отсутствуют в диагностике и ошибках; Execution не импортирует control/store."
+      ],
+      "expected_commit_message": "feat: Расширить навигационный порт и защитить обновление от повторного q",
+      "parallel_safe": false,
+      "task_brief": "Расширить существующий порт, не второй механизм binding. Сверить сигнатуры Electron; сохранить epoch/dispose. Проверять current и refresh target URL, включая пустое q. Fixtures проверяют промежуточный redirect, sequence, crash до удаления q, отсутствие повторной команды и редактирование safeUrl.",
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/chat-only-url-start.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-lifecycle.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-acceptance.md",
+            "required": true
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/browser.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/orchestrator-startup.md",
+            "required": true
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": [
+          "T001"
+        ]
+      }
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "T003",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T002"
+      ],
+      "functional_paths": [
+        "src/control/plugin/enrollment.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/execution/plugin/communication-store.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/plugin-communication-store.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/dialogue-delivery.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "orchestrator-startup",
+        "unit-all"
+      ],
+      "id": "T003",
+      "title": "Добавить долговечный отзыв приглашения и отмену startup",
+      "why": "Отмена без отзыва допускает позднюю регистрацию и блокировку следующей попытки.",
+      "acceptance_criteria": [
+        "Корреляция request/attempt/ticket_hash сохранена; revoke идемпотентен в WAL и проверяется до возврата existing participant.",
+        "Оба порядка enroll/revoke и read/cancel дают определённый результат; revoked не оживает через stage/resume или restart.",
+        "После выигрыша enroll участник не удалён; отменённый контекст недоступен, BINDING не обходится. Ошибка WAL не выдаёт успешную отмену.",
+        "Старые model-pull/SDK пакеты сохраняют контракт; raw ticket не добавлен в WAL."
+      ],
+      "expected_commit_message": "feat: Добавить долговечный отзыв приглашения и отмену startup",
+      "parallel_safe": false,
+      "task_brief": "Реализовать narrow backend revoke без удаления сессии, корреляцию reserve и атомарные guards. Проверить cancellation admission всех read/ack/claim путей, race и crash между stores. Доотменные чтения не скрывать. Не открывать модели инструмент произвольного отзыва чужого тикета.",
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/chat-only-url-start.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-lifecycle.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-acceptance.md",
+            "required": true
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/browser.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/orchestrator-startup.md",
+            "required": true
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": [
+          "T002"
+        ]
+      }
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "T004",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T003"
+      ],
+      "functional_paths": [
+        "src/control/context/context-session.mjs",
+        "src/control/context/service.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/conversation-recovery.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/context.mjs",
+        "tests/context-session.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/executor-startup-lifecycle.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/chatgpt-experience.test.mjs",
+        "tests/desktop-boundaries.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "startup-recovery",
+        "orchestrator-startup",
+        "architecture",
+        "unit-all"
+      ],
+      "id": "T004",
+      "title": "Запускать новый Chat через q с подтверждением sent по тикету",
+      "why": "Заменить DOM-ввод без потери подтверждений, корреляции и защиты от повторов.",
+      "acceptance_criteria": [
+        "Preflight на корне без q проверяет свежий documentId, signed-in и пустой draft; state старого разговора не используется.",
+        "Контекст/attempt сохранены до одного dispatch. Собственная navigation-start не отменяет dispatch и не создаёт вторую попытку.",
+        "sent подтверждает только текущий enrollmentRef; оба порядка URL/регистрации показываются независимо, без вечного send-unknown.",
+        "Work redirect, чужая навигация, отмена/ошибка/restart не привязывают чужой URL и не повторяют q; legacy sent/unknown не конвертируются.",
+        "Контекст, O/E/S, SHA, пользовательский Start и дальнейший SDK-путь не ослаблены."
+      ],
+      "expected_commit_message": "feat: Запускать новый Chat через q с подтверждением sent по тикету",
+      "parallel_safe": false,
+      "task_brief": "Интегрировать runtime T002 и revoke T003 через существующий ContextSession, не параллельный scheduler. Полный bootstrap только в panel/MCP; q содержит точный короткий текст spec. Не удалять общие DOM наблюдатели или composer API. Адрес потерян/неоднозначен — явный pending/conflict, а не догадка.",
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/chat-only-url-start.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-lifecycle.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-acceptance.md",
+            "required": true
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/browser.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/orchestrator-startup.md",
+            "required": true
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": [
+          "T003"
+        ]
+      }
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "T005",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T004"
+      ],
+      "functional_paths": [
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/workspace-setup.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/archive.mjs",
+        "src/frontend/desktop/ui/archive.html",
+        "src/frontend/desktop/client.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tests/sidebar.test.mjs",
+        "tests/startup-ui.test.mjs",
+        "tests/progress.test.mjs",
+        "tests/desktop-client.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/contracts/desktop.mjs",
+        "tests/project-doctor-ui.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "startup-recovery",
+        "unit-all"
+      ],
+      "id": "T005",
+      "title": "Убрать Work из интерфейса и показать независимые этапы старта",
+      "why": "Пользователь должен видеть только поддерживаемый Chat и точное состояние запуска.",
+      "acceptance_criteria": [
+        "Первый проект, меню, doctor, archive и ошибки не предлагают новый Work; история обозначает неподдерживаемый режим без запуска.",
+        "URL pending, sent по регистрации, context reading/complete, cancellation pending и конфликт адреса различимы в Desktop/HTTP/панели.",
+        "Нет ручного копирования ID/Enable, скрытого fallback или кнопки автоматического запуска плана."
+      ],
+      "expected_commit_message": "feat: Убрать Work из интерфейса и показать независимые этапы старта",
+      "parallel_safe": false,
+      "task_brief": "Сохранить общий backend контракт и доступность/тему UI. Удалить активные элементы Work, не следы исторических данных. Проверить реальные action handlers, а не только строковые снимки. MCP descriptions обновлять только если они обещают удалённый сценарий. IPC/preload allowlist сверить явно: совместимые каналы допустимо сохранить, но они не обходят отказ work на backend; UI больше не предлагает Work.",
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/chat-only-url-start.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-lifecycle.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-acceptance.md",
+            "required": true
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/browser.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/orchestrator-startup.md",
+            "required": true
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": [
+          "T004"
+        ]
+      }
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "T006",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T005"
+      ],
+      "functional_paths": [
+        "tests/electron-smoke.mjs",
+        "tests/fixtures",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/executor-background-startup.test.mjs",
+        "tests/executor-startup-lifecycle.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "scripts"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "electron-smoke",
+        "unit-all",
+        "architecture"
+      ],
+      "id": "T006",
+      "title": "Проверить Chat-only bootstrap сквозными fixtures и обновить smoke",
+      "why": "Нужна проверка пользовательского входа и настоящей навигации Electron.",
+      "acceptance_criteria": [
+        "Изолированный Electron smoke проходит first-project/newChat, один dispatch и все этапы регистрации/адреса/контекста без настоящей модели.",
+        "Проверены 2 сессии, restart, revoke/enroll в обоих порядках, foreign navigation, Work redirect, draft/login и q reload.",
+        "Устаревшие assertions вложений/Work заменены контрактными тестами без снижения гарантий. Live ChatGPT остаётся NOT_RUN до свидетельства пользователя."
+      ],
+      "expected_commit_message": "feat: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke",
+      "parallel_safe": false,
+      "task_brief": "Обновить существующий smoke для model-pull/URL. Только временные fixtures и локальный fake-host, без рабочих профилей и команд модели. Не исправлять посторонние проблемы скрыто; относящиеся регрессии исправлять в пределах scope через штатное уточнение задачи. Сохранить различие fake-host и реального q.",
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/chat-only-url-start.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-lifecycle.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-acceptance.md",
+            "required": true
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/browser.md",
+            "required": true
+          },
+          {
+            "path": "docs/modules/orchestrator-startup.md",
+            "required": true
+          }
+        ],
+        "include_last_completed_task": false,
+        "dependency_task_ids": [
+          "T005"
+        ]
+      }
+    },
+    {
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "DOCS",
+        "role": "implementation"
+      },
+      "dependencies": [
+        "T001",
+        "T002",
+        "T003",
+        "T004",
+        "T005",
+        "T006"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/planning/chat-only-url-start.md",
+        "docs/planning/chat-only-url-lifecycle.md",
+        "docs/planning/chat-only-url-acceptance.md",
+        "docs/architecture/OVERVIEW.md"
+      ],
+      "verification_ids": [],
+      "id": "DOCS",
+      "title": "Актуализация всех документов проекта",
+      "why": "Зафиксировать фактический невыпущенный результат и условия внешней приёмки.",
+      "acceptance_criteria": [
+        "Спецификации отражают точные реализованные контракты и проверенные результаты; каждый живой случай имеет PASS/FAIL/NOT_RUN с основанием.",
+        "Документы выпуска не заявляют несуществующий релиз; критические pending явно блокируют будущую поставку.",
+        "Нет build/install/release или запуска задач в ходе планирования; required документы доступны и не превышают 28000 байт."
+      ],
+      "expected_commit_message": "docs: уточнить результат Chat-only и условия приёмки URL-старта",
+      "parallel_safe": false,
+      "task_brief": "Сверить фактические коммиты и проверки T001–T006 с тремя спецификациями. Указать pending реального ChatGPT и причины, не подменять их fixtures. Текущие README/module contracts описывают 0.5.30 до отдельного выпуска; не переносить туда невыпущенные обещания. Не выпускать приложение.",
+      "context_pack": {
+        "documents": [
+          {
+            "path": "docs/planning/chat-only-url-start.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-lifecycle.md",
+            "required": true
+          },
+          {
+            "path": "docs/planning/chat-only-url-acceptance.md",
+            "required": true
+          }
+        ],
+        "include_last_completed_task": true,
+        "dependency_task_ids": [
+          "T006"
+        ]
+      }
+    }
+  ],
   "blocked_reason": null,
   "user_decisions": [
     {
-      "id": "240f2d20-822b-4ab9-b0ab-f032b7d51641",
-      "text": "Пользователь 24.10.2026 принял завершённый текущий план и поручил его закрыть; следующий scope будет обсуждаться в новой сессии.",
-      "recorded_at": "2026-10-24T13:34:43.442Z"
+      "id": "0c766f16-9532-47c6-af3c-995fb357fcd0",
+      "text": "Пользователь 24.10.2026 поручил подготовить спецификацию и to-do план по согласованному документу, провести все раунды Claude Review и опубликовать план. Выполнение задач и выпуск приложения сейчас не поручены.",
+      "recorded_at": "2026-10-24T14:05:42.485Z"
     }
   ],
-  "archived_scope_id": "user-choice-plan-modes"
+  "parallel_allowed": false,
+  "max_workers": 1,
+  "execution_strategy": "sequential",
+  "execution_reason": "Внешний CLI-план без Workflow Pilot session origin. Шаги последовательно меняют общий session store, admission, runtime и ContextSession; последовательная интеграция снижает риск конфликтующих контрактов. Публикация не запускает работу."
 }
 ```
 <!-- workflow-state:end -->
 
 ## Состояние
 
-Execution Scope Status: NONE
+Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
-Scope: не создан
+Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 984
+Revision: 985
 
 ## Цель
 
-Продолжите обсуждение или исследование проекта; план реализации создаётся, когда определён её объём.
+Оставить только Chat-сессии и заменить DOM-ввод первого сообщения одним URL-bootstrap с тикетом, сохранив идентичность, отмену и получение контекста.
 
 ## Критерии приёмки
 
+- Work упразднён; история сохранена без исполнения и потери назначений.
+- Один q-bootstrap после preflight; sent только по текущему тикету; адрес и startup ack независимы.
+- Долговечный revoke/cancel и runtime no-q-reload выдерживают гонки/рестарты без подмены identity.
+- Изолированные suites и Electron smoke пройдены; реальные ChatGPT проверки отражены честно, pending блокирует будущий выпуск.
 
 ## Микрозадачи
 
+Выполнение: sequential; разрешено: false; лимит: 1
+Причина: Внешний CLI-план без Workflow Pilot session origin. Шаги последовательно меняют общий session store, admission, runtime и ContextSession; последовательная интеграция снижает риск конфликтующих контрактов. Публикация не запускает работу.
+
+- [TODO] T001: Упразднить активные Work-сессии и мигрировать историю — Ожидает
+  - Git Commit: [PENDING] feat: Упразднить активные Work-сессии и мигрировать историю
+  - Reference: chat-only-url-bootstrap / T001 / implementation
+  - Файлы: src/control/sessions/workspace-session.mjs, src/control/sessions/service.mjs, src/control/projects/workspace-setup.mjs, src/control/facade.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/contracts/browser.mjs, tests/workspace-session.test.mjs, tests/session-roles.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-enrollment.test.mjs, tests/automatic-agent-dialogue.test.mjs, src/backend/operations.mjs, src/backend/bootstrap.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, tests/backend-api.test.mjs, tests/control-facade.test.mjs, tests/migration-compatibility.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-ui.test.mjs, tests/context-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] T002: Расширить навигационный порт и защитить обновление от повторного q — Ожидает
+  - Git Commit: [PENDING] feat: Расширить навигационный порт и защитить обновление от повторного q
+  - Reference: chat-only-url-bootstrap / T002 / implementation
+  - Файлы: src/execution/browser/session-runtime.mjs, src/execution/browser/browser-startup.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/diagnostics.mjs, src/execution/facade.mjs, src/contracts/browser.mjs, tests/session-runtime.test.mjs, tests/browser-startup.test.mjs, tests/chromium-diagnostics.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/chatgpt-experience.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T001
+- [TODO] T003: Добавить долговечный отзыв приглашения и отмену startup — Ожидает
+  - Git Commit: [PENDING] feat: Добавить долговечный отзыв приглашения и отмену startup
+  - Reference: chat-only-url-bootstrap / T003 / implementation
+  - Файлы: src/control/plugin/enrollment.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/execution/plugin/communication-store.mjs, src/contracts/plugin-communication.mjs, tests/plugin-enrollment.test.mjs, tests/plugin-communication-store.test.mjs, tests/startup-context.test.mjs, tests/dialogue-delivery.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T002
+- [TODO] T004: Запускать новый Chat через q с подтверждением sent по тикету — Ожидает
+  - Git Commit: [PENDING] feat: Запускать новый Chat через q с подтверждением sent по тикету
+  - Reference: chat-only-url-bootstrap / T004 / implementation
+  - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/sessions/service.mjs, src/control/sessions/conversation-recovery.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/backend/desktop-model.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-experience.test.mjs, tests/desktop-boundaries.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T003
+- [TODO] T005: Убрать Work из интерфейса и показать независимые этапы старта — Ожидает
+  - Git Commit: [PENDING] feat: Убрать Work из интерфейса и показать независимые этапы старта
+  - Reference: chat-only-url-bootstrap / T005 / implementation
+  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/client.mjs, src/backend/desktop-model.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, tools/codex-app-server-mcp/plugin.py, tests/sidebar.test.mjs, tests/startup-ui.test.mjs, tests/progress.test.mjs, tests/desktop-client.test.mjs, tests/backend-desktop-model.test.mjs, src/frontend/desktop/preload.cjs, src/contracts/desktop.mjs, tests/project-doctor-ui.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: T004
+- [TODO] T006: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke — Ожидает
+  - Git Commit: [PENDING] feat: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke
+  - Reference: chat-only-url-bootstrap / T006 / implementation
+  - Файлы: tests/electron-smoke.mjs, tests/fixtures, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts
+  - Параллельность: исключительное выполнение
+  - Зависимости: T005
+- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: уточнить результат Chat-only и условия приёмки URL-старта
+  - Reference: chat-only-url-bootstrap / DOCS / implementation
+  - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T001, T002, T003, T004, T005, T006
 
 ## Context Pack For This Cycle
 
+- docs/planning/chat-only-url-start.md
+- docs/planning/chat-only-url-lifecycle.md
+- docs/planning/chat-only-url-acceptance.md
 - docs/architecture/OVERVIEW.md
+- docs/modules/browser.md
+- docs/modules/orchestrator-startup.md
+- docs/modules/chatgpt-plugin.md
+- docs/modules/project-lifecycle.md
+- docs/modules/user-choice.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
