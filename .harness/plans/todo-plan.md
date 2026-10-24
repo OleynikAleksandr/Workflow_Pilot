@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1043,
+  "plan_revision": 1045,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -1351,14 +1351,15 @@
         "Штатная установка готового bundle либо подтверждённый pending, без пересборки/перезапуска/остановки backend."
       ],
       "expected_commit_message": "feat: Обновить собственные macOS-копии выпуском 0.5.32",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "INSTALL-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-2",
@@ -1416,7 +1417,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1043
+Revision: 1045
 
 ## Цель
 
@@ -1536,8 +1537,8 @@ Revision: 1043
   - Файлы: release-manifest.json, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
   - Зависимости: VERSION-2, DOCS-2
-- [TODO] INSTALL-2: Обновить собственные macOS-копии выпуском 0.5.32 — Ожидает
-  - Git Commit: [PENDING] feat: Обновить собственные macOS-копии выпуском 0.5.32
+- [DONE] INSTALL-2: Обновить собственные macOS-копии выпуском 0.5.32 — Завершено
+  - Git Commit: [DONE] feat: Обновить собственные macOS-копии выпуском 0.5.32
   - Reference: chat-only-url-bootstrap / INSTALL-2 / implementation
   - Файлы: release-manifest.json, docs/planning/chatgpt-search-extension.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
