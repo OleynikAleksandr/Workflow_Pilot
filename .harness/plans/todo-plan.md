@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1016,
+  "plan_revision": 1017,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -131,7 +131,8 @@
       "docs/modules/desktop.md",
       "docs/modules/first-run-onboarding.md",
       "docs/modules/control.md",
-      "docs/acceptance/chat-only-startup.md"
+      "docs/acceptance/chat-only-startup.md",
+      "docs/modules/chat-only-startup.md"
     ]
   },
   "baseline_commit": "df015ce35abff912a444c967639adfff667abeda",
@@ -868,7 +869,8 @@
         "docs/modules/desktop.md",
         "docs/modules/first-run-onboarding.md",
         "docs/modules/control.md",
-        "docs/acceptance/chat-only-startup.md"
+        "docs/acceptance/chat-only-startup.md",
+        "docs/modules/chat-only-startup.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -1027,7 +1029,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1016
+Revision: 1017
 
 ## Цель
 
@@ -1090,7 +1092,7 @@ Revision: 1016
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: уточнить результат Chat-only и условия приёмки URL-старта
   - Reference: chat-only-url-bootstrap / DOCS / implementation
-  - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md, docs/modules/release.md, README.md, docs/modules/browser.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/project-lifecycle.md, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/control.md, docs/acceptance/chat-only-startup.md
+  - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md, docs/modules/release.md, README.md, docs/modules/browser.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/project-lifecycle.md, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/control.md, docs/acceptance/chat-only-startup.md, docs/modules/chat-only-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, VERSION
 - [TODO] RELEASE: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux — Ожидает
