@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 994,
+  "plan_revision": 995,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -15,7 +15,7 @@
     "Work упразднён; история сохранена без исполнения и потери назначений.",
     "Один q-bootstrap после preflight; sent только по текущему тикету; адрес и startup ack независимы.",
     "Долговечный revoke/cancel и runtime no-q-reload выдерживают гонки/рестарты без подмены identity.",
-    "Изолированные suites и Electron smoke пройдены; реальные ChatGPT проверки отражены честно, pending блокирует будущий выпуск."
+    "Изолированные suites и Electron smoke пройдены; непроведённая живая приёмка явно отражена в документах и выпуске согласно новому поручению пользователя."
   ],
   "approved_scope": {
     "functional_paths": [
@@ -115,7 +115,16 @@
       "docs/planning/chat-only-url-lifecycle.md",
       "docs/planning/chat-only-url-acceptance.md",
       "docs/architecture/OVERVIEW.md",
-      "docs/modules/release.md"
+      "docs/modules/release.md",
+      "README.md",
+      "docs/modules/browser.md",
+      "docs/modules/orchestrator-startup.md",
+      "docs/modules/chatgpt-plugin.md",
+      "docs/modules/project-lifecycle.md",
+      "docs/modules/desktop.md",
+      "docs/modules/first-run-onboarding.md",
+      "docs/modules/control.md",
+      "docs/acceptance/chat-only-startup.md"
     ]
   },
   "baseline_commit": "df015ce35abff912a444c967639adfff667abeda",
@@ -738,20 +747,29 @@
         "docs/planning/chat-only-url-lifecycle.md",
         "docs/planning/chat-only-url-acceptance.md",
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/release.md"
+        "docs/modules/release.md",
+        "README.md",
+        "docs/modules/browser.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/desktop.md",
+        "docs/modules/first-run-onboarding.md",
+        "docs/modules/control.md",
+        "docs/acceptance/chat-only-startup.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
       "title": "Актуализация всех документов проекта",
       "why": "Зафиксировать фактический невыпущенный результат и условия внешней приёмки.",
       "acceptance_criteria": [
-        "Спецификации отражают точные реализованные контракты и проверенные результаты; каждый живой случай имеет PASS/FAIL/NOT_RUN с основанием.",
-        "Документы выпуска не заявляют несуществующий релиз; критические pending явно блокируют будущую поставку.",
-        "Нет build/install/release или запуска задач в ходе планирования; required документы доступны и не превышают 28000 байт."
+        "Действующие документы согласованы с фактической реализацией Chat-only и версией 0.5.31; устаревшие обещания Work удалены.",
+        "Живые ChatGPT/native проверки честно NOT_RUN; новое прямое поручение пользователя разрешает выпуск с явно указанными ограничениями, не означает внешнюю приёмку.",
+        "Все документы <=28000 байт UTF-8; удаленные required specs читаются по точным Git blob refs."
       ],
       "expected_commit_message": "docs: уточнить результат Chat-only и условия приёмки URL-старта",
       "parallel_safe": false,
-      "task_brief": "Сверить фактические коммиты и проверки T001–T006 с тремя спецификациями. Указать pending реального ChatGPT и причины, не подменять их fixtures. Текущие README/module contracts описывают 0.5.30 до отдельного выпуска; не переносить туда невыпущенные обещания. Не выпускать приложение.",
+      "task_brief": "Сверить реализацию и проверки всех задач, подготовить действующие README/module contracts и условия приёмки к выпуску 0.5.31. Перенести реализованные временные specs в контракты и удалить их только после переноса; невыполненную живую приёмку сохранить отдельным acceptance-документом. Публикацию и установку выполняют следующие delivery-задачи по новому поручению пользователя.",
       "context_pack": {
         "documents": [
           {
@@ -880,7 +898,8 @@
       "id": "0c766f16-9532-47c6-af3c-995fb357fcd0",
       "text": "Пользователь 24.10.2026 поручил подготовить спецификацию и to-do план по согласованному документу, провести все раунды Claude Review и опубликовать план. Выполнение задач и выпуск приложения сейчас не поручены.",
       "recorded_at": "2026-10-24T14:05:42.485Z"
-    }
+    },
+    "24.10.2026 пользователь прямо поручил выполнить весь план непрерывно, собрать все поддерживаемые ОС, штатно обновить собственную macOS-копию и опубликовать GitHub Release. Выпуск с честными NOT_RUN разрешён новым поручением; живой интерфейс проверяет пользователь."
   ],
   "parallel_allowed": false,
   "max_workers": 1,
@@ -896,7 +915,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 994
+Revision: 995
 
 ## Цель
 
@@ -907,7 +926,7 @@ Revision: 994
 - Work упразднён; история сохранена без исполнения и потери назначений.
 - Один q-bootstrap после preflight; sent только по текущему тикету; адрес и startup ack независимы.
 - Долговечный revoke/cancel и runtime no-q-reload выдерживают гонки/рестарты без подмены identity.
-- Изолированные suites и Electron smoke пройдены; реальные ChatGPT проверки отражены честно, pending блокирует будущий выпуск.
+- Изолированные suites и Electron smoke пройдены; непроведённая живая приёмка явно отражена в документах и выпуске согласно новому поручению пользователя.
 
 ## Микрозадачи
 
@@ -959,7 +978,7 @@ Revision: 994
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: уточнить результат Chat-only и условия приёмки URL-старта
   - Reference: chat-only-url-bootstrap / DOCS / implementation
-  - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md, docs/modules/release.md
+  - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md, docs/modules/release.md, README.md, docs/modules/browser.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/project-lifecycle.md, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/control.md, docs/acceptance/chat-only-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: T001, T002, T003, T004, T005, T006, VERSION
 - [TODO] RELEASE: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux — Ожидает
