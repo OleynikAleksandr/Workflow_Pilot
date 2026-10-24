@@ -49,5 +49,5 @@ test('smoke keeps all browser data under its disposable fixture', t => {
   assert.equal(path.dirname(result.dataDir), fs.realpathSync(root));
   assert.equal(result.dataDir,fs.realpathSync(result.dataDir),'SDK journal receives a canonical fixture path');
   assert.equal(paths.sessionData, path.join(result.dataDir, 'browser'));
-  assert.equal(result.partition.startsWith('persist:'), false);
+  assert.equal(result.partition,'persist:workflow-pilot-smoke');
 });

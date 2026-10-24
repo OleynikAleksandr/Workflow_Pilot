@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1032,
+  "plan_revision": 1035,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -121,7 +121,9 @@
       "tests/chatgpt-search-extension.test.mjs",
       "src/backend/main.mjs",
       "scripts/check-search-extension.mjs",
-      "tests/fixtures/search-extension-electron.cjs"
+      "tests/fixtures/search-extension-electron.cjs",
+      "src/frontend/desktop/bootstrap.mjs",
+      "tests/product-identity.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/chat-only-url-start.md",
@@ -1163,7 +1165,9 @@
       "functional_paths": [
         "scripts/check-search-extension.mjs",
         "tests/fixtures/search-extension-electron.cjs",
-        "tests/electron-smoke.mjs"
+        "tests/electron-smoke.mjs",
+        "src/frontend/desktop/bootstrap.mjs",
+        "tests/product-identity.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/chatgpt-search-extension.md"
@@ -1179,14 +1183,21 @@
         "Cold install официального расширения и offline restart проходят на local HTTPS; q обрабатывается один раз с marker. Полные suites не ослаблены; реальный ChatGPT/native Windows/Linux отмечены отдельно."
       ],
       "expected_commit_message": "feat: Проверить настоящий Electron и регрессии запуска с расширением",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "EXT03",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "scripts/check-search-extension.mjs",
+        "src/frontend/desktop/bootstrap.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/search-extension-electron.cjs",
+        "tests/product-identity.test.mjs"
+      ]
     },
     {
       "id": "VERSION-2",
@@ -1373,7 +1384,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1032
+Revision: 1035
 
 ## Цель
 
@@ -1469,10 +1480,10 @@ Revision: 1032
   - Файлы: src/backend/main.mjs, src/backend/desktop-model.mjs, src/execution/browser/session-runtime.mjs, src/execution/facade.mjs, tests/session-runtime.test.mjs, tests/backend-browser-lifecycle.test.mjs, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXT01
-- [TODO] EXT03: Проверить настоящий Electron и регрессии запуска с расширением — Ожидает
-  - Git Commit: [PENDING] feat: Проверить настоящий Electron и регрессии запуска с расширением
+- [DONE] EXT03: Проверить настоящий Electron и регрессии запуска с расширением — Завершено
+  - Git Commit: [DONE] feat: Проверить настоящий Electron и регрессии запуска с расширением
   - Reference: chat-only-url-bootstrap / EXT03 / implementation
-  - Файлы: scripts/check-search-extension.mjs, tests/fixtures/search-extension-electron.cjs, tests/electron-smoke.mjs, docs/planning/chatgpt-search-extension.md
+  - Файлы: scripts/check-search-extension.mjs, tests/fixtures/search-extension-electron.cjs, tests/electron-smoke.mjs, src/frontend/desktop/bootstrap.mjs, tests/product-identity.test.mjs, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXT02
 - [TODO] VERSION-2: Подготовить версию 0.5.32 — Ожидает

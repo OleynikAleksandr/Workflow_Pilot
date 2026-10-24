@@ -23,7 +23,7 @@ import { withSessionPlan } from '@webpilot/workflow-kit/lib/session-plans';
 import { renderPlan } from '@webpilot/workflow-kit/lib/plan';
 import { commitTask } from '@webpilot/workflow-kit/lib/transaction';
 import { measureEventRuntimeBaseline } from './event-runtime-baseline.mjs';
-import {ExecutionFacade} from '../src/execution/facade.mjs';
+import {ExecutionFacade,ChatGPTSearchExtension} from '../src/execution/facade.mjs';
 
 let packetLoads = 0;
 let smokeDataDir;
@@ -101,6 +101,7 @@ document.querySelector('form').addEventListener('submit',event=>{
 const bootstrapCommand=new URL(location.href).searchParams.get('q');
 if(bootstrapCommand){
  document.getElementById('prompt-textarea').textContent=bootstrapCommand;
+ if(document.documentElement.dataset.searchExtension!=='1')throw Error('Official search extension must run before q bootstrap');
  document.querySelector('form').requestSubmit();
  fetch('/fixture-bootstrap',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:bootstrapCommand})})
   .then(r=>r.json()).then(result=>{if(result.error)window.fixtureBootstrapError=result.error;else window.fixtureAssistant('Контекст подтверждён');});
@@ -118,8 +119,11 @@ export async function prepareStartup({ dataDir }) {
   await fs.writeFile(path.join(dataDir, 'settings.json'), JSON.stringify({ planContinuationEnabled: true }), { flag: 'wx' });
 }
 
-export async function createRuntime({ browser, session }) {
+export async function createRuntime({ browser, session, dataDir }) {
   // Explicit isolated test mode only. No request is sent to a real service.
+  // Only the public pinned extension package may be downloaded; all ChatGPT requests stay on this fixture.
+  const searchExtension=new ChatGPTSearchExtension({session,directory:path.join(dataDir,'browser-extensions','chatgpt-search')});
+  await searchExtension.ensure();
   await session.protocol.handle('https', async request => {
     const url = new URL(request.url);
     if(fixtureWorkRedirect&&url.hostname==='chatgpt.com'&&url.pathname==='/'&&url.searchParams.has('q')){
@@ -846,7 +850,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   // A large prompt and a delayed Send button are verified through the native fixture composer.
   // Use a separate isolated view so session-count and packet-cache assertions stay independent.
   const largeView = new BrowserWindow({ show: false, webPreferences: {
-    partition: 'workflow-pilot-smoke', sandbox: true, contextIsolation: true, nodeIntegration: false,
+    partition: 'persist:workflow-pilot-smoke', sandbox: true, contextIsolation: true, nodeIntegration: false,
     preload: path.join(app.getAppPath(), 'resources/chatgpt-page-observer-preload.cjs') } });
   const { PageStateSource } = await import('../src/execution/browser/page-state.mjs');
   const { connectPageState } = await import('../src/execution/browser/page-state-bridge.mjs');
@@ -1340,7 +1344,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const reopenedColors = getColorWindow().webContents;
   await waitFor(() => reopenedColors.executeJavaScript('document.getElementById("userText-hex")?.value === "#183b36"'), 'palette survives editor reopen', snapshot);
   persistedSettings = JSON.parse(await fs.readFile(path.join(dataDir, 'settings.json'), 'utf8'));
-  const restoredView = new BrowserWindow({show:false,webPreferences:{partition:'workflow-pilot-smoke',sandbox:true,contextIsolation:true,nodeIntegration:false}});
+  const restoredView = new BrowserWindow({show:false,webPreferences:{partition:'persist:workflow-pilot-smoke',sandbox:true,contextIsolation:true,nodeIntegration:false}});
   const restoredPalette = new ChatColors(restoredView.webContents, persistedSettings.chatColors);
   await restoredView.loadURL('https://chatgpt.com/c/palette-restart-fixture');
   await restoredPalette.apply();

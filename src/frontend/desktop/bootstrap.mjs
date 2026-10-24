@@ -21,7 +21,8 @@ export function configureDesktopIdentity(app, { smoke = false, temporaryRoot = o
   app.setName('Workflow Pilot');
   app.setPath('userData', dataDir);
   app.setPath('sessionData', browserDir);
-  return { dataDir, partition: smoke ? 'workflow-pilot-smoke' : 'persist:workflow-pilot-chatgpt' };
+  // Extensions require a persistent partition; the smoke userData itself is disposable and isolated.
+  return { dataDir, partition: smoke ? 'persist:workflow-pilot-smoke' : 'persist:workflow-pilot-chatgpt' };
 }
 
 // Identity is configured before importing the desktop shell or creating services.
