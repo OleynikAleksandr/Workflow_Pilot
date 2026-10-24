@@ -2,6 +2,8 @@
 
 ## Ответственность и поведение
 
+До первой страницы ChatGPT BrowserSessions ожидает [официальное расширение ChatGPT search](chatgpt-search-extension.md): автоматическая проверенная загрузка/установка и подключение к persistent session. Hook prepareNavigation действует до loadURL и расходования bootstrapToken; после ожидания перепроверяет владельца/отмену/новый переход. Ошибка подготовки не запускает страницу без расширения.
+
 `src/execution/browser/` владеет техническими страницами, навигацией, первым открытием, observer/IPC, состоянием документа, отправкой текста и вложений. Здесь же DOM-селекторы, pageScript, цвета, прокрутка, фильтр инструментов и изменение заголовка. Привязка проекта к чату, подготовка recovery, решение о повторе, таймер работы агента и выполнение плана остаются вне браузера.
 
 С 0.2.0 страницы живут в backend ([Backend](backend.md)). `BackendBrowserHost` (`src/execution/browser/backend-host.mjs`) владеет страницами и popups (режим выбирается при старте службы: во всех выпусках — WebContentsView в скрытых окнах-хостах, которые [встроенное окно](native-window.md) показывает без перезагрузки, кадры для зрителей через CDP; скрытые offscreen-окна — флаг разработки для будущей службы без экрана), partition, observer, ожиданиями и cleanup. Зрители только наблюдают страницу по ключу: подключение, отключение и ноль зрителей не меняют срок жизни страницы, не вызывают release/dispose/recovery reset/cancel и не останавливают observer или выполнение плана. Crash renderer отличается от detach и отмечается отдельно. В backend (`BrowserSessions` с `recoverCrashed`) страница, чей renderer погиб (crashed, внешний kill, OOM), через 1 с перезагружается по своему адресу, не более 3 раз за 10 минут; событие `crashed` несёт reason, exitCode и `recovering`. Перезагрузка восстанавливает только страницу: прерванный Send остаётся UNKNOWN, ничего не вводится и не отправляется повторно; готовность, подтверждённая до сбоя, возвращается после загрузки, и уведомление о сбое исчезает. После исчерпания попыток страница остаётся закрытой с прежним сообщением. Прежний `DesktopBrowserHost` (`src/frontend/desktop/browser-host.mjs`, WebContentsView в окне) используется только in-process smoke-стендом разработки.
@@ -14,7 +16,7 @@
 
 ## Контракт и порядок вызовов
 
-Backend создаёт `BackendBrowserHost` и один раз вызывает `ExecutionFacade.attachBrowser({host, ipc})` (smoke-стенд — с `DesktopBrowserHost`). `openBrowserSession(id)` возвращает тот же порт для живого ID; после release новый вызов создаёт новую страницу. ID формируется координатором из workspace/session/assignment/task, но Execution не интерпретирует эти поля и не принимает stores или планы.
+Backend создаёт `BackendBrowserHost` и один раз вызывает `ExecutionFacade.attachBrowser({host, ipc, prepareNavigation})` (smoke-стенд — с `DesktopBrowserHost`). `openBrowserSession(id)` возвращает тот же порт для живого ID; после release новый вызов создаёт новую страницу. ID формируется координатором из workspace/session/assignment/task, но Execution не интерпретирует эти поля и не принимает stores или планы.
 
 Порт предоставляет:
 

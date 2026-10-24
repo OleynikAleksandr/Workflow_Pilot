@@ -1,6 +1,6 @@
 # Приёмка Chat-only URL-start
 
-Версия 0.5.31. Контракт реализации — [Chat и идентичность](../modules/chat-only-startup.md), выдача контекста — [startup](../modules/orchestrator-startup.md). Этот документ отделяет автоматические свидетельства от непроведённой проверки настоящего ChatGPT.
+Версия 0.5.32. Контракт реализации — [Chat и идентичность](../modules/chat-only-startup.md), выдача контекста — [startup](../modules/orchestrator-startup.md). Этот документ отделяет автоматические свидетельства от непроведённой проверки настоящего ChatGPT.
 
 ## Решение о поставке
 
@@ -17,6 +17,9 @@
 | Chat-only и v7 | Запрет явного Work до создания/подключения; история Work/unverified, точный backup, restart и соседние проекты |
 | Atomic attempt | CAS request/generation, merge sent/navigation/cancel, блокировка stale patch, flush/rename и ошибка directory sync |
 | Навигационный порт | Main-frame URL из in-page/navigate/redirect, sequence/incarnation/epoch, iframe/late/release и sticky Work |
+| Расширение | Официальный CRX: SHA/размер/состав, атомарная установка, cold/concurrent/cache/offline, отказ при повреждении/симлинке/чужом redirect и retry |
+| Порядок загрузки | До первого ChatGPT документа/q ожидается loadExtension в той же persistent session; отмена/release/новый переход блокируют устаревшую навигацию |
+| Настоящий extension в Electron | Cold install и offline process, marker при document_start, одна локальная q-отправка, блокировка повреждённого кэша и восстановление; настоящий ChatGPT не вызывается |
 | Один q | Checkpoint и stage до loadURL, короткая команда без recovery/model/hints/temp; нет DOM deliver и raw ticket в attempt/UI |
 | Preflight | Свежий signed-in/Chat/пустой draft нужного документа; unknown, старый разговор, план/fingerprint/документ/TTL блокируют dispatch |
 | Подтверждения | URL не даёт sent; точный enroll даёт sent; оба порядка адреса/регистрации; mode proof до первой выдачи; потерянный адрес не угадывается |
@@ -27,6 +30,8 @@
 | Несколько сессий | Два и пять скрытых Electron-исполнителей, раздельные страницы/владельцы, выбор не меняет контекст другого чата |
 | Сквозной пользовательский путь | Изолированный HTTPS-host, первый проект/новый Chat через реальные UI handlers, тикет из реально отправленной команды, все части и ack |
 | Рабочий цикл | O/E/S, SDK, task/context/result/acceptance, точная интеграция Kit, DOCS и завершение остаются отдельными наблюдаемыми этапами |
+
+Дополнительно: search-extension-unit, search-extension-startup, search-extension-native (`node scripts/check-search-extension.mjs`). Smoke теперь загружает настоящее официальное расширение; его Chromium-профиль остаётся отдельным одноразовым fixture. Публичный Google CRX — единственная внешняя загрузка этих сценариев.
 
 Основные команды: startup-recovery, orchestrator-startup, unit-all, architecture, electron-smoke; полный Kit при выпуске — kit-check **и** kit-assignments. Реальные источники тестов: context-session, session-runtime, workspace-session, files-adapter, plugin-enrollment, startup-context, dialogue-delivery, session-opening-performance, executor-background-startup, automatic-agent-dialogue, sidebar/backend и electron-smoke.
 
@@ -39,7 +44,7 @@
 | L1 | Первый проект и новый Chat после входа | Ровно одна предусмотренная команда, панель открыта по тикету, все части/SHA, короткое подтверждение, план не стартовал | NOT_RUN |
 | L2 | Аккаунт, в котором последним был Work | До доказанного Chat ничего не отправлено; Work/общий c не выдают контекст и не привязывают адрес | NOT_RUN |
 | L3 | Сохранённый непустой root draft | Q не отправлен, текст не очищен/не добавлен к команде; отдельно проверить восстановление draft между загрузками | NOT_RUN |
-| L4 | Фактическое поведение q в Electron | Проверить автоматическую отправку, точный текст, удаление q из адреса и host confirmations; не считать проверку браузера доказательством Electron | NOT_RUN |
+| L4 | Фактическое поведение q в Electron | Проверить cold download/install/load расширения и автоматическую отправку, точный текст, удаление q из адреса и host confirmations; не считать проверку браузера доказательством Electron | NOT_RUN |
 | L5 | Адрес и регистрация в обоих порядках | Регистрация подтверждает sent без DOM, прогресс контекста виден до адреса; один URL не подтверждает отправку | NOT_RUN |
 | L6 | Два Chat, переключение карточек и чужая навигация | Нет смешивания URL/host identity/контекста; поздние события не привязывают чужой разговор | NOT_RUN |
 | L7 | Отмена до/во время enroll, потеря связи | Нет ложного «отменено», нового q, нового контекста после отмены или обхода BINDING; потерянный ответ восстанавливается | NOT_RUN |
@@ -47,6 +52,7 @@
 | L9 | Частичное чтение и перезапуск | Продолжение того же SHA/частей, отсутствие повторной отправки; unknown не сбрасывается | NOT_RUN |
 | L10 | Истёкший тикет/ошибка инструмента/нет startup_context | Агент сообщает точную известную причину без выдуманного успеха, повторного открытия или обхода подтверждений | NOT_RUN |
 | L11 | Первый Start с O/E и DOCS | Только пользователь разрешает выполнение; получение контекста и готовность SDK не считаются стартом/интеграцией/финализацией | NOT_RUN |
+| L12 | Кэш расширения, отсутствие сети и ошибка загрузки | Проверенная локальная копия подключается без Google; cold error не открывает ChatGPT и не отправляет q; после восстановления доступа загрузка повторяется | NOT_RUN |
 
 Для результата достаточно времени, версии приложения/панели/Kit, ID случая, последовательности действий, наблюдаемых стадий и итогового PASS/FAIL с причиной. Не измерять скрытое рассуждение модели и не выводить равенство публичного chat ID и openai/session.
 

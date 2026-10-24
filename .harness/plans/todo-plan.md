@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1039,
+  "plan_revision": 1041,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -208,7 +208,7 @@
       {
         "path": "docs/planning/chatgpt-search-extension.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "c98533e1e7215183ff5c74305d69edb0ed432695"
       }
     ],
     "include_last_completed_task": false,
@@ -1243,8 +1243,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "DOCS-2",
@@ -1264,14 +1264,33 @@
         "docs/planning/chatgpt-search-extension.md",
         "docs/modules/release.md",
         "docs/modules/chatgpt-search-extension.md",
-        "resources/THIRD-PARTY.md"
+        "resources/THIRD-PARTY.md",
+        "README.md",
+        "docs/acceptance/chat-only-startup.md",
+        "docs/modules/browser.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/orchestrator-startup.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/chat-only-startup.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/browser.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/chatgpt-search-extension.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/release.md",
+        "docs/planning/chatgpt-search-extension.md",
+        "resources/THIRD-PARTY.md"
+      ]
     },
     {
       "id": "RELEASE-2",
@@ -1394,7 +1413,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1039
+Revision: 1041
 
 ## Цель
 
@@ -1502,10 +1521,10 @@ Revision: 1039
   - Файлы: package.json, package-lock.json, src/backend/desktop-model.mjs, src/contracts/backend.mjs, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXT03
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: chat-only-url-bootstrap / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/chatgpt-search-extension.md, docs/modules/release.md, docs/modules/chatgpt-search-extension.md, resources/THIRD-PARTY.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/chatgpt-search-extension.md, docs/modules/release.md, docs/modules/chatgpt-search-extension.md, resources/THIRD-PARTY.md, README.md, docs/acceptance/chat-only-startup.md, docs/modules/browser.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXT01, EXT02, EXT03, VERSION-2
 - [TODO] RELEASE-2: Собрать проверенный выпуск 0.5.32 для трёх ОС — Ожидает
