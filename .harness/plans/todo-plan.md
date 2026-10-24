@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1013,
+  "plan_revision": 1014,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -114,7 +114,8 @@
       "tests/files-adapter.test.mjs",
       "tests/session-opening-performance.test.mjs",
       "src/contracts/startup-view.mjs",
-      "src/frontend/desktop/ui/project-doctor.mjs"
+      "src/frontend/desktop/ui/project-doctor.mjs",
+      "src/contracts/backend.mjs"
     ],
     "documentation_paths": [
       "docs/planning/chat-only-url-start.md",
@@ -806,7 +807,8 @@
       ],
       "functional_paths": [
         "package.json",
-        "package-lock.json"
+        "package-lock.json",
+        "src/contracts/backend.mjs"
       ],
       "documentation_paths": [
         "docs/planning/chat-only-url-start.md"
@@ -1020,7 +1022,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1013
+Revision: 1014
 
 ## Цель
 
@@ -1077,7 +1079,7 @@ Revision: 1013
 - [TODO] VERSION: Подготовить версию 0.5.31 для единого выпуска — Ожидает
   - Git Commit: [PENDING] chore: подготовить Workflow Pilot 0.5.31
   - Reference: chat-only-url-bootstrap / VERSION / implementation
-  - Файлы: package.json, package-lock.json, docs/planning/chat-only-url-start.md
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/chat-only-url-start.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
