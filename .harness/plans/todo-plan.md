@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1066,
+  "plan_revision": 1067,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
@@ -155,7 +155,7 @@
     ]
   },
   "baseline_commit": "2abec8cab8dc8308ee8d96b4f5fdbaee0b045a12",
-  "current_task_id": null,
+  "current_task_id": "PUBLISH",
   "context_pack": {
     "documents": [
       {
@@ -676,7 +676,7 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
@@ -727,8 +727,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-session-without-modes
-Current Task: нет
-Revision: 1066
+Current Task: PUBLISH
+Revision: 1067
 
 ## Цель
 
@@ -788,7 +788,7 @@ Revision: 1066
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: release: опубликовать полный GitHub комплект — Ожидает
+- [IN_PROGRESS] PUBLISH: release: опубликовать полный GitHub комплект — В работе
   - Git Commit: [PENDING] release: опубликовать полный GitHub комплект
   - Reference: chat-session-without-modes / PUBLISH / implementation
   - Файлы: release-manifest.json

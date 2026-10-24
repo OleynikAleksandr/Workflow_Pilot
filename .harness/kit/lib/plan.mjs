@@ -120,7 +120,7 @@ export function validatePlan(p) {
   for (const key of ['owner_session_id', 'prepared_in_session_id']) {
     if (p[key] !== undefined && p[key] !== null) check(typeof p[key] === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(p[key]), 'PLAN_SCHEMA', 'Некорректный ' + key);
   }
-  if (p.session_experience !== undefined && p.session_experience !== null) check(['chat', 'work'].includes(p.session_experience), 'PLAN_SCHEMA', 'Некорректный режим сессии.');
+  if (p.session_experience !== undefined && p.session_experience !== null) check(p.session_experience === 'chat', 'PLAN_SCHEMA', 'Некорректный режим сессии.');
   for (const f of ['tasks', 'acceptance_criteria', 'user_decisions']) array(p[f], f);
   for (const f of ['functional_paths', 'documentation_paths']) {
     array(p.approved_scope?.[f], f); unique(p.approved_scope[f], f); p.approved_scope[f].forEach(relativePath);
