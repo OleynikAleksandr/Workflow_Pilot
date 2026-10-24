@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1036,
+  "plan_revision": 1038,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -1224,14 +1224,19 @@
         "Версия приложения, backend и staged панели 0.5.32; Kit и протокол не изменены."
       ],
       "expected_commit_message": "feat: Подготовить версию 0.5.32",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "VERSION-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -1385,7 +1390,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1036
+Revision: 1038
 
 ## Цель
 
@@ -1487,8 +1492,8 @@ Revision: 1036
   - Файлы: scripts/check-search-extension.mjs, tests/fixtures/search-extension-electron.cjs, tests/electron-smoke.mjs, src/frontend/desktop/bootstrap.mjs, tests/product-identity.test.mjs, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXT02
-- [TODO] VERSION-2: Подготовить версию 0.5.32 — Ожидает
-  - Git Commit: [PENDING] feat: Подготовить версию 0.5.32
+- [DONE] VERSION-2: Подготовить версию 0.5.32 — Завершено
+  - Git Commit: [DONE] feat: Подготовить версию 0.5.32
   - Reference: chat-only-url-bootstrap / VERSION-2 / implementation
   - Файлы: package.json, package-lock.json, src/backend/desktop-model.mjs, src/contracts/backend.mjs, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
