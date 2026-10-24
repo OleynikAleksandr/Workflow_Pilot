@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 993,
+  "plan_revision": 994,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -123,11 +123,6 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/chat-only-url-start.md",
-        "required": true,
-        "revision": "WORKTREE"
-      },
-      {
         "path": "docs/planning/chat-only-url-lifecycle.md",
         "required": true,
         "revision": "WORKTREE"
@@ -170,6 +165,11 @@
       {
         "path": "docs/modules/release.md",
         "required": false,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/chat-only-url-start.md",
+        "required": true,
         "revision": "WORKTREE"
       }
     ],
@@ -684,6 +684,38 @@
       }
     },
     {
+      "id": "VERSION",
+      "title": "Подготовить версию 0.5.31 для единого выпуска",
+      "why": "Версия и lock должны быть закоммичены до DOCS и production build из одного sourceCommit.",
+      "dependencies": [
+        "T006"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/chat-only-url-start.md"
+      ],
+      "verification_ids": [
+        "chatgpt-plugin",
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия 0.5.31 согласована в package и lock; штатный staging панели и выпускные fixtures проходят."
+      ],
+      "expected_commit_message": "chore: подготовить Workflow Pilot 0.5.31",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "VERSION",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -697,7 +729,8 @@
         "T003",
         "T004",
         "T005",
-        "T006"
+        "T006",
+        "VERSION"
       ],
       "functional_paths": [],
       "documentation_paths": [
@@ -863,7 +896,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 993
+Revision: 994
 
 ## Цель
 
@@ -917,12 +950,18 @@ Revision: 993
   - Файлы: tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/fixtures/dialogue-runtime.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts/stage-page-observer.mjs, scripts/stage-chatgpt-plugin.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T005
+- [TODO] VERSION: Подготовить версию 0.5.31 для единого выпуска — Ожидает
+  - Git Commit: [PENDING] chore: подготовить Workflow Pilot 0.5.31
+  - Reference: chat-only-url-bootstrap / VERSION / implementation
+  - Файлы: package.json, package-lock.json, docs/planning/chat-only-url-start.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: T006
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: уточнить результат Chat-only и условия приёмки URL-старта
   - Reference: chat-only-url-bootstrap / DOCS / implementation
   - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
-  - Зависимости: T001, T002, T003, T004, T005, T006
+  - Зависимости: T001, T002, T003, T004, T005, T006, VERSION
 - [TODO] RELEASE: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux — Ожидает
   - Git Commit: [PENDING] feat: Собрать и проверить единый выпуск Chat-only для macOS Windows Linux
   - Reference: chat-only-url-bootstrap / RELEASE / implementation
@@ -944,7 +983,6 @@ Revision: 993
 
 ## Context Pack For This Cycle
 
-- docs/planning/chat-only-url-start.md
 - docs/planning/chat-only-url-lifecycle.md
 - docs/planning/chat-only-url-acceptance.md
 - docs/architecture/OVERVIEW.md
@@ -954,5 +992,6 @@ Revision: 993
 - docs/modules/project-lifecycle.md
 - docs/modules/user-choice.md
 - docs/modules/release.md
+- docs/planning/chat-only-url-start.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
