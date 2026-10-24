@@ -385,10 +385,12 @@ export class ContextSession {
       const elapsed=this.now()-attempt.sendStartedAtMs;
       if(attempt.state!=='sent'&&elapsed>=180000)attempt=await this.patchUrl(project,attempt,latest=>
         this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{});
-      const startup=this.runtime.startupProgress?.(project.sessionId,attempt.requestId);
+      const progress=this.runtime.startupProgress?.(project.sessionId,attempt.requestId);
+      const startup=progress?.complete?{...progress,snapshot_stale:!packetMatchesProject(attempt.packet,project)}:progress;
       const phase=attempt.state!=='sent'?(elapsed>=180000?'send-unknown':'waiting-registration')
         :startup?.complete?'delivered':!attempt.modeConfirmed?'waiting-experience':'startup-channel';
       this.emit({phase,projectInfo:info,messageSent:attempt.state==='sent',startup,attempt:urlStatus(attempt),
+        delivery:attempt.state==='sent'?{...attempt.packet,sentAtMs:attempt.sentAtMs}:null,
         addressStatus:attempt.addressStatus,addressOverdue:!project.chatUrl&&elapsed>=60000,error:null});return;
     }
     // A recovered/prepared attempt has no recoverable raw ticket. Reconcile it;

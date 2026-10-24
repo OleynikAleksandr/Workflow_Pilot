@@ -133,7 +133,7 @@ export function createBackendPages({sessions,setup,store,host,onReady=()=>{}}) {
     async select(project) {
       if(!project||project.external)throw Object.assign(new Error('Сессия недоступна backend.'),{code:'EXTERNAL_SESSION'});
       const current=store.project(project.workspace,project.sessionId)??project;
-      assertSessionMode(current);
+      if(!sessionModeAllowed(current)){sessions.hide();onReady();return null;}
       const page=sessions.ensure(current);sessions.show(page);
       const epoch=++page.readinessEpoch;
       // Readiness is project-specific; it never depends on a window or viewer.

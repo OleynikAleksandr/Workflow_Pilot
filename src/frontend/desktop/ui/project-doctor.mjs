@@ -3,7 +3,7 @@ export function projectDoctorView(action) {
   let current;
   $('doctor-run').addEventListener('click', () => action('runDoctor', $('doctor-workspace').value));
   $('doctor-workspace').addEventListener('change', () => action('selectDoctorProject', $('doctor-workspace').value));
-  for (const mode of ['open','chat','work']) $('doctor-' + mode).addEventListener('click', () => action('continueDoctor', mode));
+  for (const mode of ['open','chat']) $('doctor-' + mode).addEventListener('click', () => action('continueDoctor', mode));
   $('doctor-backup').addEventListener('click', () => action('showDoctorBackup'));
   $('doctor-review').addEventListener('click', () => action('reviewDoctorProject'));
   function render(state, pending) {
@@ -31,7 +31,7 @@ export function projectDoctorView(action) {
     $('doctor-backup-note').hidden = !report?.backupPath;
     $('doctor-backup-note').textContent = report?.backupPath ? 'Оригиналы сохранены. Служебные исправления остаются видимыми в истории изменений проекта.' : '';
     $('doctor-actions').hidden = !ready;
-    for(const mode of ['open','chat','work']) $('doctor-'+mode).disabled=busy || !ready;
+    for(const mode of ['open','chat']) $('doctor-'+mode).disabled=busy || !ready;
     $('doctor-review').hidden = report?.phase !== 'done' || ready; $('doctor-review').disabled = busy;
   }
   return { render };

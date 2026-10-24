@@ -316,3 +316,12 @@ test('view mode: a page moves between its hidden host and a window, one page per
   const offscreen=hostOf(electron);offscreen.create('page-c');
   assert.throws(()=>offscreen.attach('page-c',win,{x:0,y:0,width:1,height:1}),{code:'BROWSER_PAGE_MODE_INVALID'});
 });
+
+test('historical Work and unverified sessions hide the previous page without opening a runtime',async()=>{
+  for(const project of [{workspace:'/history',sessionId:'old',experience:'work',availability:'legacy-work'},
+    {workspace:'/history',sessionId:'old',availability:'mode-unverified'}]){
+    let hidden=0;const pages=createBackendPages({sessions:{hide:()=>hidden++,ensure:()=>{throw Error('history opened runtime');}},
+      store:{project:()=>project},setup:{ready:()=>{throw Error('history ran readiness');}},host:null});
+    assert.equal(await pages.select(project),null);assert.equal(hidden,1);
+  }
+});

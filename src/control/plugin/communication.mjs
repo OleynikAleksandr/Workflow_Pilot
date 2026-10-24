@@ -397,11 +397,12 @@ export class PluginCommunication {
   }
   _status(input) {
     const {run,member}=this.member(input),expiresAt=this.deadline(run,member);
+    const startup=run.mode==='workflow'?this.startup.view(this.startup.message(run,member.target.local_session_id)):null;
     return {run_id:run.id,participant_id:member.id,role:member.role,conversation_key:member.identity,
       ...(run.mode==='workflow'?this.enrollment.publicMember(run,member):{}),
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       permission_generation:member.generation,stopped:run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped||expiresAt<=this.now(),
-      startup:run.mode==='workflow'?this.startup.view(this.startup.message(run,member.target.local_session_id)):null,
+      startup:startup?{...startup,launch:this.workflow.observe(member.target)?.startupLaunch??null}:null,
       ...(run.mode==='workflow'?this.choiceOf(run,member):{}),
       ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:[...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.messageSupported&&p.expiresAt>this.now())}:{}),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),

@@ -146,7 +146,7 @@ export function mountPanel({document}) {
         ?`Выполнение завершено · ${(value.assignments??[]).filter(a=>a.phase==='INTEGRATED').length}/${(value.assignments??[]).length} · связь отключена. Ожидается ваша приёмка: сообщите оркестратору «Принимаю результат, закрой план».`
         :`План: ${value.permission?.phase??'ожидает запуска'} · ${value.stopped?'отправка приостановлена':'связь разрешена на время выполнения'}. Интеграции назначений: ${(value.assignments??[]).filter(a=>a.phase==='INTEGRATED').length}/${(value.assignments??[]).length}. Завершение всего плана ещё не подтверждено.`):
         `Поколение ${value.permission_generation} · ${value.expires_at?'до '+new Date(value.expires_at).toLocaleTimeString('ru'):'разрешение не выдано'}`);
-      if(value.startup&&!value.permission?.active){
+      if(value.startup&&(!value.permission?.active||value.startup.cancelled||value.startup.launch&&value.startup.launch.cancel!=='none')){
         const view=startupView(value.startup);text('permission',view.title+'. '+view.detail);
         $('stop').hidden=!value.permission?.scope_id;
       }else $('stop').hidden=false;

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1006,
+  "plan_revision": 1008,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -592,8 +592,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "T005",
@@ -676,7 +676,25 @@
         "dependency_task_ids": [
           "T004"
         ]
-      }
+      },
+      "actual_files": [
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/frontend/desktop/ui/archive.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/project-doctor.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/workspace-setup.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/project-doctor-ui.test.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -984,7 +1002,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1006
+Revision: 1008
 
 ## Цель
 
@@ -1026,8 +1044,8 @@ Revision: 1006
   - Файлы: src/control/context/context-session.mjs, src/control/context/service.mjs, src/control/sessions/service.mjs, src/control/sessions/conversation-recovery.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/backend/desktop-model.mjs, src/contracts/context.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-experience.test.mjs, tests/desktop-boundaries.test.mjs, src/control/projects/service.mjs, src/backend/bootstrap.mjs, src/execution/files/adapter.mjs, tests/workspace-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/files-adapter.test.mjs, src/execution/facade.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, tests/startup-context.test.mjs, src/control/workflow/coordination.mjs, tests/session-runtime.test.mjs, tests/session-opening-performance.test.mjs, tests/parallel-execution.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T003
-- [TODO] T005: Убрать Work из интерфейса и показать независимые этапы старта — Ожидает
-  - Git Commit: [PENDING] feat: Убрать Work из интерфейса и показать независимые этапы старта
+- [DONE] T005: Убрать Work из интерфейса и показать независимые этапы старта — Завершено
+  - Git Commit: [DONE] feat: Убрать Work из интерфейса и показать независимые этапы старта
   - Reference: chat-only-url-bootstrap / T005 / implementation
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/client.mjs, src/backend/desktop-model.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, tools/codex-app-server-mcp/plugin.py, tests/sidebar.test.mjs, tests/startup-ui.test.mjs, tests/progress.test.mjs, tests/desktop-client.test.mjs, tests/backend-desktop-model.test.mjs, src/frontend/desktop/preload.cjs, src/contracts/desktop.mjs, tests/project-doctor-ui.test.mjs, src/contracts/startup-view.mjs, src/backend/bootstrap.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/frontend/desktop/ui/project-doctor.mjs, tests/backend-browser-lifecycle.test.mjs, src/control/context/context-session.mjs
   - Параллельность: исключительное выполнение

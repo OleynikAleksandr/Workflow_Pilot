@@ -77,7 +77,9 @@ function render(next = state) {
     if (mode === 'projects') row.dataset.workspace = item.workspace; else { row.dataset.workspace = item.workspace; row.dataset.sessionId = item.sessionId; }
     const name = document.createElement('strong');
     if (mode === 'projects') name.textContent = item.name;
-    else { const title = document.createElement('span'); title.textContent = item.title; const tag = document.createElement('span'); tag.className = 'tag'; tag.dataset.experience = item.experience; tag.textContent = item.experience === 'work' ? 'Work' : 'Chat'; name.append(title, tag); }
+    else { const title = document.createElement('span'); title.textContent = item.title; const tag = document.createElement('span'); tag.className = 'tag'; tag.dataset.experience = item.experience;
+      const history=item.experience==='work'||item.availability&&item.availability!=='active';
+      tag.dataset.experience=history?'history':'chat';tag.textContent=history?'История':'Chat';tag.title=history?'Неподдерживаемый режим. Восстановление записи не запускает разговор.':'';name.append(title, tag); }
     const detail = document.createElement('small');
     detail.textContent = mode === 'projects'
       ? `${item.workspace} · ${new Date(item.archivedAt).toLocaleDateString('ru-RU')} · сессий: ${item.sessionCount}` + (item.deletionPending ? ' · удаление ожидает завершения' : '')

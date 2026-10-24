@@ -3,6 +3,7 @@ import {readCommandActivity} from './command-activity.mjs';
 import {executorPageState} from './executor-session.mjs';
 import {AUTOMATIC_DIALOGUE_ENABLED} from '../../contracts/backend.mjs';
 import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
+import {startupLaunch} from '../../contracts/startup-view.mjs';
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 // A narrow adapter for the existing scheduler. It owns no assignments or plan.
@@ -43,7 +44,7 @@ export class DialogueDelivery {
   project(sessionId){const p=this.store.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));return p&&this.store.project(p.workspace,sessionId);}
   observe(target){
     const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState.current;
-    return {...executorPageState(record),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
+    return {...executorPageState(record),startupLaunch:startupLaunch(project?.attempt),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
       observationSeq:page?.seq??0,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
   }

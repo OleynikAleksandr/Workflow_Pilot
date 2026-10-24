@@ -35,7 +35,7 @@ test('doctor waits for explicit action, selects exact project and reports succes
   f.$('doctor-run').click();assert.deepEqual(f.calls,[['runDoctor','/one']]);
   s.doctor={workspace:'/one',phase:'done',projectReady:true,servicesReady:true,issues:[],repairs:['Восстановлена установка'],checks:[{label:'Контекст',ok:true}],backupPath:'/backup'};
   f.view.render(s,false);assert.equal(f.$('doctor-actions').hidden,false);assert.equal(f.$('doctor-backup').hidden,false);
-  f.$('doctor-work').click();assert.deepEqual(f.calls.at(-1),['continueDoctor','work']);
+  assert.equal(f.$('doctor-work'),null);f.$('doctor-chat').click();assert.deepEqual(f.calls.at(-1),['continueDoctor','chat']);
   s.doctor={workspace:'/two',phase:'idle'};f.view.render(s,false);assert.equal(f.$('doctor-actions').hidden,true);assert.equal(f.$('doctor-workspace').value,'/two');
 });
 test('busy run cannot be repeated and unready services never appear as success',async t=>{
@@ -67,20 +67,20 @@ test('coordinator reconnects missing local commands and rejects duplicate runs',
 });
 
 
-test('healthy first-project preview offers only direct Chat and Work with one submission', async t => {
+test('healthy first-project preview offers only Chat with one submission', async t => {
   const f=await fixture(t,workspaceSetupView),s=state();
   s.setup={phase:'preview',mode:'new',workspace:'/new',token:'preview-1',action:'install',firstSessionRequired:true,checks:[]};
   f.view.render(s,false);
   assert.equal(f.$('setup-experience').hidden,false); assert.equal(f.$('setup-apply').hidden,true);
   assert.equal(f.$('setup-doctor').hidden,true); assert.equal(f.$('setup-refresh').hidden,true);
-  f.$('setup-experience-work').click(); f.$('setup-experience-chat').click();
+  assert.equal(f.$('setup-experience-work'),null);f.$('setup-experience-chat').click();f.$('setup-experience-chat').click();
   await new Promise(r=>setImmediate(r));
-  assert.deepEqual(f.calls,[['applySetup','preview-1','work']]);
+  assert.deepEqual(f.calls,[['applySetup','preview-1','chat']]);
 });
 test('first project needs no personal fields and diagnosed problems still expose recovery', async t => {
   const f=await fixture(t,workspaceSetupView),s=state();
   s.setup={phase:'preview',mode:'new',workspace:'/new',token:'preview-2',action:'install',firstSessionRequired:true};
-  f.view.render(s,false); assert.equal(f.$('setup-experience-chat').disabled,false); assert.equal(f.$('setup-experience-work').disabled,false);
+  f.view.render(s,false); assert.equal(f.$('setup-experience-chat').disabled,false); assert.equal(f.$('setup-experience-work'),null);
   assert.equal(f.$('setup-identity'),null); assert.equal(f.$('setup-git-name'),null); assert.equal(f.$('setup-git-email'),null);
   assert.equal(f.$('setup-experience-chat').disabled,false);
   s.setup.error={message:'Папка изменилась'};f.view.render(s,false);

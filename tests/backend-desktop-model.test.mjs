@@ -105,6 +105,9 @@ test('Electron backend runs the Desktop model; the client uses the former channe
   assert.equal(read.state.projects[0].workspace,project.workspace);assert.ok(Array.isArray(read.archive.archives));
   await assert.rejects(client.invoke('local','pilot:rename-project',{workspace:project.workspace,name:'Альфа'}),{code:'BACKEND_LEASE_REQUIRED'});
   await client.acquire();
+  const work=await client.invoke('local','pilot:new-session',{workspace:project.workspace,experience:'work'});
+  assert.equal(work.ok,false);assert.equal(work.error.code,'SESSION_EXPERIENCE_UNSUPPORTED');
+  assert.equal((await client.read('ui.state')).state.selected.sessionId,project.sessionId,'rejected Work cannot change selection');
   assert.equal((await client.invoke('local','pilot:rename-project',{workspace:project.workspace,name:'Альфа'})).ok,true);
   await until(()=>ui.get('state')?.projects?.[0]?.name==='Альфа','renamed state');
   const failed=await client.invoke('local','pilot:rename-project',{workspace:path.join(root,'missing'),name:'x'});
@@ -130,4 +133,16 @@ test('Electron backend runs the Desktop model; the client uses the former channe
   const code=await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(Error('backend did not stop')),10000);
     backend.once('exit',value=>{clearTimeout(timeout);resolve(value);});});
   assert.equal(code,0);
+});
+
+test('startup projection keeps registration, address, reading and durable cancellation independent',()=>{
+  const attempt={bootstrapTransport:'url-query',state:'sending',sendStartedAtMs:1,cancelState:'none',addressStatus:'pending'};
+  let state=startupContextState({phase:'waiting-registration'},{read:false},attempt);
+  assert.equal(state.launch.registration,'pending');assert.equal(state.phase,'waiting-registration');
+  state=startupContextState({phase:'startup-channel'},{read:true,parts_read:1,total_parts:3},{...attempt,state:'sent'});
+  assert.equal(state.launch.registration,'confirmed');assert.equal(state.launch.address,'pending');assert.equal(state.startup.parts_read,1);
+  state=startupContextState({phase:'delivered'},{complete:true,read:true},{...attempt,state:'sent',cancelState:'requested'});
+  assert.equal(state.phase,'cancel-pending');assert.equal(state.startup.complete,true,'historical receipt remains true');
+  state=startupContextState(state,{complete:true,cancelled:true},{...attempt,state:'sent',cancelState:'registered-stopped'});
+  assert.equal(state.phase,'startup-cancelled');assert.equal(state.launch.registration,'confirmed');
 });

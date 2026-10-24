@@ -21,7 +21,6 @@ export function workspaceSetupView(action) {
     });
   }
   $('setup-experience-chat').addEventListener('click', () => createFirst('chat'));
-  $('setup-experience-work').addEventListener('click', () => createFirst('work'));
   function render(state, actionPending) {
     last = state; pending = actionPending;
     const setup = state.setup;
@@ -84,7 +83,7 @@ export function workspaceSetupView(action) {
     const firstSession = !!setup.firstSessionRequired;
     const canApply = !!setup.action && !!setup.token && !problem;
     $('setup-experience').hidden = !firstSession || form || busy || !canApply;
-    for (const mode of ['chat', 'work']) {
+    for (const mode of ['chat']) {
       $('setup-experience-' + mode).removeAttribute('aria-pressed');
       $('setup-experience-' + mode).disabled = busy || actionPending || submitting || !canApply;
     }

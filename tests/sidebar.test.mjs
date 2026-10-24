@@ -24,7 +24,7 @@ test('normal panel startup is not written under the session; only a startup prob
   f.emit({...f.state,context:{phase:'startup-failed',messageSent:true,
     startup:{delivery:'pending',error:{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'}}}});
   assert.match($('session-notice-title').textContent,/устарел/);
-  assert.match($('session-notice-detail').textContent,/Новый Chat \/ Новый Work/);
+  assert.match($('session-notice-detail').textContent,/Новый Chat/);assert.doesNotMatch($('session-notice-detail').textContent,/Новый Work/);
 });
 
 test('Kit recovery hold reports next action instead of an empty chat, and distinguishes technical OFF from manual pause',async t=>{
@@ -621,4 +621,23 @@ test('the window names session roles, marks a waiting choice and offers the same
   rows[1].querySelector('button').click();await f.settle();
   assert.deepEqual(picks, [{ sessionId: 's4', choiceId: 'c1', optionId: 'orchestrated', generation: 2 }]);
   f.emit({ ...base, userChoice: null });assert.equal(card.hidden, true);
+});
+
+test('only Chat is offered and historical modes are labelled without promising a live conversation',async t=>{
+  const f=await fixture(t),$=id=>f.document.getElementById(id);
+  assert.equal(f.document.querySelector('.new-project-work'),null);
+  assert.ok([...f.document.querySelectorAll('.session-experience')].some(n=>n.textContent==='История'));
+  f.emit({...f.state,context:{phase:'historical-session'}});
+  assert.equal($('session-notice').hidden,false);assert.match($('session-notice-detail').textContent,/История сохранена/);
+});
+test('URL startup exposes registration, lost address, partial reading and cancellation after prior completion',async t=>{
+  const f=await fixture(t),$=id=>f.document.getElementById(id);
+  const launch={registration:'pending',address:'pending',cancel:'none'};
+  const emit=(startup,l=launch)=>f.emit({...f.state,context:{phase:'startup-channel',launch:l,startup:{...startup,launch:l}}});
+  emit({read:false});assert.match($('session-notice-title').textContent,/регистрацию/);assert.equal($('cancel-context').hidden,false);
+  emit({read:true,parts_read:1,total_parts:3},{...launch,registration:'confirmed',address:'lost'});
+  assert.match($('session-notice-detail').textContent,/1 из 3/);assert.match($('session-notice-detail').textContent,/Адрес чата утрачен/);
+  emit({complete:true},{...launch,registration:'confirmed',cancel:'registered-stopped'});
+  assert.match($('session-notice-title').textContent,/Запуск остановлен/);assert.match($('session-notice-detail').textContent,/до остановки/);
+  assert.equal($('cancel-context').hidden,true);
 });
