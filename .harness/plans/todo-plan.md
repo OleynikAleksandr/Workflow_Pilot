@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1027,
+  "plan_revision": 1028,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Оставить только Chat-сессии и заменить DOM-ввод первого сообщения одним URL-bootstrap с тикетом, сохранив идентичность, отмену и получение контекста.",
   "acceptance_criteria": [
     "Work упразднён; история сохранена без исполнения и потери назначений.",
@@ -115,7 +115,13 @@
       "tests/session-opening-performance.test.mjs",
       "src/contracts/startup-view.mjs",
       "src/frontend/desktop/ui/project-doctor.mjs",
-      "src/contracts/backend.mjs"
+      "src/contracts/backend.mjs",
+      "src/execution/browser/chatgpt-search-extension.mjs",
+      "src/execution/browser/search-extension-pin.mjs",
+      "tests/chatgpt-search-extension.test.mjs",
+      "src/backend/main.mjs",
+      "scripts/check-search-extension.mjs",
+      "tests/fixtures/search-extension-electron.cjs"
     ],
     "documentation_paths": [
       "docs/planning/chat-only-url-start.md",
@@ -132,7 +138,8 @@
       "docs/modules/first-run-onboarding.md",
       "docs/modules/control.md",
       "docs/acceptance/chat-only-startup.md",
-      "docs/modules/chat-only-startup.md"
+      "docs/modules/chat-only-startup.md",
+      "docs/planning/chatgpt-search-extension.md"
     ]
   },
   "baseline_commit": "df015ce35abff912a444c967639adfff667abeda",
@@ -191,6 +198,11 @@
       },
       {
         "path": "docs/modules/chat-only-startup.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/chatgpt-search-extension.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -1056,6 +1068,271 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "EXT01",
+      "title": "Автоматически загружать и атомарно устанавливать официальное расширение",
+      "why": "Автоматически загружать и атомарно устанавливать официальное расширение",
+      "dependencies": [],
+      "functional_paths": [
+        "src/execution/browser/chatgpt-search-extension.mjs",
+        "src/execution/browser/search-extension-pin.mjs",
+        "tests/chatgpt-search-extension.test.mjs",
+        "package.json",
+        "package-lock.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/chatgpt-search-extension.md"
+      ],
+      "verification_ids": [
+        "search-extension-unit",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Закреплённый официальный CRX проверяется до безопасной распаковки; полный кэш проверяется перед загрузкой, offline/concurrency/retry и повреждение покрыты."
+      ],
+      "expected_commit_message": "feat: Автоматически загружать и атомарно устанавливать официальное расширение",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "EXT01",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "EXT02",
+      "title": "Подключать расширение перед навигацией ChatGPT в браузерной сессии",
+      "why": "Подключать расширение перед навигацией ChatGPT в браузерной сессии",
+      "dependencies": [
+        "EXT01"
+      ],
+      "functional_paths": [
+        "src/backend/main.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/execution/facade.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/chatgpt-search-extension.md"
+      ],
+      "verification_ids": [
+        "search-extension-startup",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Persistent session получает расширение до первой страницы; после ожидания сохраняется адресность/cancel/release, q не отправляется раньше готовности."
+      ],
+      "expected_commit_message": "feat: Подключать расширение перед навигацией ChatGPT в браузерной сессии",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "EXT02",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "EXT03",
+      "title": "Проверить настоящий Electron и регрессии запуска с расширением",
+      "why": "Проверить настоящий Electron и регрессии запуска с расширением",
+      "dependencies": [
+        "EXT02"
+      ],
+      "functional_paths": [
+        "scripts/check-search-extension.mjs",
+        "tests/fixtures/search-extension-electron.cjs",
+        "tests/electron-smoke.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/chatgpt-search-extension.md"
+      ],
+      "verification_ids": [
+        "search-extension-native",
+        "unit-all",
+        "electron-smoke",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Cold install официального расширения и offline restart проходят на local HTTPS; q обрабатывается один раз с marker. Полные suites не ослаблены; реальный ChatGPT/native Windows/Linux отмечены отдельно."
+      ],
+      "expected_commit_message": "feat: Проверить настоящий Electron и регрессии запуска с расширением",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "EXT03",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "VERSION-2",
+      "title": "Подготовить версию 0.5.32",
+      "why": "Подготовить версию 0.5.32",
+      "dependencies": [
+        "EXT03"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/backend/desktop-model.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/chatgpt-search-extension.md"
+      ],
+      "verification_ids": [
+        "chatgpt-plugin",
+        "release-tooling"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Версия приложения, backend и staged панели 0.5.32; Kit и протокол не изменены."
+      ],
+      "expected_commit_message": "feat: Подготовить версию 0.5.32",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "VERSION-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "EXT01",
+        "EXT02",
+        "EXT03",
+        "VERSION-2"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/chatgpt-search-extension.md",
+        "docs/modules/release.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-2",
+      "title": "Собрать проверенный выпуск 0.5.32 для трёх ОС",
+      "why": "Собрать проверенный выпуск 0.5.32 для трёх ОС",
+      "dependencies": [
+        "VERSION-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/chatgpt-search-extension.md"
+      ],
+      "verification_ids": [
+        "kit-check",
+        "kit-assignments",
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "DOCS своего раунда завершён; три проверенных пакета одного sourceCommit, pinned downloader включён в каждый."
+      ],
+      "expected_commit_message": "feat: Собрать проверенный выпуск 0.5.32 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "RELEASE-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-2",
+      "title": "Обновить собственные macOS-копии выпуском 0.5.32",
+      "why": "Обновить собственные macOS-копии выпуском 0.5.32",
+      "dependencies": [
+        "RELEASE-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/chatgpt-search-extension.md",
+        "docs/modules/release.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатная установка готового bundle либо подтверждённый pending, без пересборки/перезапуска/остановки backend."
+      ],
+      "expected_commit_message": "feat: Обновить собственные macOS-копии выпуском 0.5.32",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "INSTALL-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-2",
+      "title": "Опубликовать выпуск 0.5.32 на GitHub",
+      "why": "Опубликовать выпуск 0.5.32 на GitHub",
+      "dependencies": [
+        "INSTALL-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/chatgpt-search-extension.md",
+        "docs/modules/release.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Семь assets GitHub совпадают по размеру и SHA, тег sourceCommit, main совпадает с HEAD, ограничения приёмки указаны."
+      ],
+      "expected_commit_message": "feat: Опубликовать выпуск 0.5.32 на GitHub",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "chat-only-url-bootstrap",
+        "task_id": "PUBLISH-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1078,10 +1355,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1027
+Revision: 1028
 
 ## Цель
 
@@ -1165,6 +1442,54 @@ Revision: 1027
   - Файлы: release-manifest.json, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
+- [TODO] EXT01: Автоматически загружать и атомарно устанавливать официальное расширение — Ожидает
+  - Git Commit: [PENDING] feat: Автоматически загружать и атомарно устанавливать официальное расширение
+  - Reference: chat-only-url-bootstrap / EXT01 / implementation
+  - Файлы: src/execution/browser/chatgpt-search-extension.mjs, src/execution/browser/search-extension-pin.mjs, tests/chatgpt-search-extension.test.mjs, package.json, package-lock.json, docs/planning/chatgpt-search-extension.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] EXT02: Подключать расширение перед навигацией ChatGPT в браузерной сессии — Ожидает
+  - Git Commit: [PENDING] feat: Подключать расширение перед навигацией ChatGPT в браузерной сессии
+  - Reference: chat-only-url-bootstrap / EXT02 / implementation
+  - Файлы: src/backend/main.mjs, src/backend/desktop-model.mjs, src/execution/browser/session-runtime.mjs, src/execution/facade.mjs, tests/session-runtime.test.mjs, tests/backend-browser-lifecycle.test.mjs, docs/planning/chatgpt-search-extension.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: EXT01
+- [TODO] EXT03: Проверить настоящий Electron и регрессии запуска с расширением — Ожидает
+  - Git Commit: [PENDING] feat: Проверить настоящий Electron и регрессии запуска с расширением
+  - Reference: chat-only-url-bootstrap / EXT03 / implementation
+  - Файлы: scripts/check-search-extension.mjs, tests/fixtures/search-extension-electron.cjs, tests/electron-smoke.mjs, docs/planning/chatgpt-search-extension.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: EXT02
+- [TODO] VERSION-2: Подготовить версию 0.5.32 — Ожидает
+  - Git Commit: [PENDING] feat: Подготовить версию 0.5.32
+  - Reference: chat-only-url-bootstrap / VERSION-2 / implementation
+  - Файлы: package.json, package-lock.json, src/backend/desktop-model.mjs, docs/planning/chatgpt-search-extension.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: EXT03
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: chat-only-url-bootstrap / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/chatgpt-search-extension.md, docs/modules/release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: EXT01, EXT02, EXT03, VERSION-2
+- [TODO] RELEASE-2: Собрать проверенный выпуск 0.5.32 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.32 для трёх ОС
+  - Reference: chat-only-url-bootstrap / RELEASE-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/chatgpt-search-extension.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: VERSION-2, DOCS-2
+- [TODO] INSTALL-2: Обновить собственные macOS-копии выпуском 0.5.32 — Ожидает
+  - Git Commit: [PENDING] feat: Обновить собственные macOS-копии выпуском 0.5.32
+  - Reference: chat-only-url-bootstrap / INSTALL-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/chatgpt-search-extension.md, docs/modules/release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-2, DOCS-2
+- [TODO] PUBLISH-2: Опубликовать выпуск 0.5.32 на GitHub — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.5.32 на GitHub
+  - Reference: chat-only-url-bootstrap / PUBLISH-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/chatgpt-search-extension.md, docs/modules/release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-2, DOCS-2
 
 ## Context Pack For This Cycle
 
@@ -1179,5 +1504,6 @@ Revision: 1027
 - docs/modules/release.md
 - docs/planning/chat-only-url-start.md
 - docs/modules/chat-only-startup.md
+- docs/planning/chatgpt-search-extension.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
