@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1014,
+  "plan_revision": 1016,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -822,14 +822,19 @@
         "Версия 0.5.31 согласована в package и lock; штатный staging панели и выпускные fixtures проходят."
       ],
       "expected_commit_message": "chore: подготовить Workflow Pilot 0.5.31",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "VERSION",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1022,7 +1027,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1014
+Revision: 1016
 
 ## Цель
 
@@ -1076,8 +1081,8 @@ Revision: 1014
   - Файлы: tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/fixtures/dialogue-runtime.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts/stage-page-observer.mjs, scripts/stage-chatgpt-plugin.mjs, tools/codex-app-server-mcp/plugin.py, src/control/context/context-session.mjs, src/contracts/startup-view.mjs, tests/context-session.test.mjs, src/control/sessions/service.mjs, src/frontend/desktop/ui/sidebar.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T005
-- [TODO] VERSION: Подготовить версию 0.5.31 для единого выпуска — Ожидает
-  - Git Commit: [PENDING] chore: подготовить Workflow Pilot 0.5.31
+- [DONE] VERSION: Подготовить версию 0.5.31 для единого выпуска — Завершено
+  - Git Commit: [DONE] chore: подготовить Workflow Pilot 0.5.31
   - Reference: chat-only-url-bootstrap / VERSION / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/chat-only-url-start.md
   - Параллельность: исключительное выполнение
