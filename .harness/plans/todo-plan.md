@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 986,
+  "plan_revision": 987,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -136,27 +136,27 @@
       },
       {
         "path": "docs/modules/browser.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/orchestrator-startup.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/chatgpt-plugin.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/project-lifecycle.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/modules/user-choice.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       }
     ],
@@ -238,11 +238,11 @@
           },
           {
             "path": "docs/modules/browser.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/orchestrator-startup.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -310,11 +310,11 @@
           },
           {
             "path": "docs/modules/browser.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/orchestrator-startup.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -385,11 +385,11 @@
           },
           {
             "path": "docs/modules/browser.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/orchestrator-startup.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -469,11 +469,11 @@
           },
           {
             "path": "docs/modules/browser.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/orchestrator-startup.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -549,11 +549,11 @@
           },
           {
             "path": "docs/modules/browser.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/orchestrator-startup.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -632,11 +632,11 @@
           },
           {
             "path": "docs/modules/browser.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/orchestrator-startup.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -724,7 +724,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 986
+Revision: 987
 
 ## Цель
 
