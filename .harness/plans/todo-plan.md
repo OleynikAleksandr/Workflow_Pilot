@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1064,
+  "plan_revision": 1066,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
@@ -645,8 +645,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
         "task_id": "INSTALL",
@@ -672,7 +672,8 @@
       ],
       "expected_commit_message": "delivery: установить проверенное приложение macOS",
       "parallel_safe": false,
-      "verification_kind": "installed"
+      "verification_kind": "installed",
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -727,7 +728,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-session-without-modes
 Current Task: нет
-Revision: 1064
+Revision: 1066
 
 ## Цель
 
@@ -781,8 +782,8 @@ Revision: 1064
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: delivery: установить проверенное приложение macOS — Ожидает
-  - Git Commit: [PENDING] delivery: установить проверенное приложение macOS
+- [DONE] INSTALL: delivery: установить проверенное приложение macOS — Завершено
+  - Git Commit: [DONE] delivery: установить проверенное приложение macOS
   - Reference: chat-session-without-modes / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
