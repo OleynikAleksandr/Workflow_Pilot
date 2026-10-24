@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 995,
+  "plan_revision": 997,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -297,8 +297,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "T002",
@@ -368,7 +368,12 @@
         "dependency_task_ids": [
           "T001"
         ]
-      }
+      },
+      "actual_files": [
+        "src/execution/browser/chatgpt-experience.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "tests/session-runtime.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -915,7 +920,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 995
+Revision: 997
 
 ## Цель
 
@@ -939,8 +944,8 @@ Revision: 995
   - Файлы: src/control/sessions/workspace-session.mjs, src/control/sessions/service.mjs, src/control/projects/workspace-setup.mjs, src/control/facade.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/plugin/enrollment.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, src/contracts/browser.mjs, tests/workspace-session.test.mjs, tests/session-roles.test.mjs, tests/backend-desktop-model.test.mjs, tests/plugin-enrollment.test.mjs, tests/automatic-agent-dialogue.test.mjs, src/backend/operations.mjs, src/backend/bootstrap.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, tests/backend-api.test.mjs, tests/control-facade.test.mjs, tests/migration-compatibility.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-ui.test.mjs, tests/context-session.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/backend-upgrade.test.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] T002: Расширить навигационный порт и защитить обновление от повторного q — Ожидает
-  - Git Commit: [PENDING] feat: Расширить навигационный порт и защитить обновление от повторного q
+- [DONE] T002: Расширить навигационный порт и защитить обновление от повторного q — Завершено
+  - Git Commit: [DONE] feat: Расширить навигационный порт и защитить обновление от повторного q
   - Reference: chat-only-url-bootstrap / T002 / implementation
   - Файлы: src/execution/browser/session-runtime.mjs, src/execution/browser/browser-startup.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/diagnostics.mjs, src/execution/facade.mjs, src/contracts/browser.mjs, tests/session-runtime.test.mjs, tests/browser-startup.test.mjs, tests/chromium-diagnostics.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/chatgpt-experience.test.mjs
   - Параллельность: исключительное выполнение

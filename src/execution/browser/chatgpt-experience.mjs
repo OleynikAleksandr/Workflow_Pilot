@@ -11,6 +11,11 @@ function parsedChatGPTUrl(input) {
   } catch { return null; }
 }
 
+export const hasChatGPTQuery = input => parsedChatGPTUrl(input)?.searchParams.has('q') === true;
+export function chatGPTRefreshTarget(current, target = current) {
+  return hasChatGPTQuery(current) || hasChatGPTQuery(target) ? CHATGPT_CHAT_ENTRYPOINT : target;
+}
+
 export function chatGPTEntrypoint(experience) {
   if (experience === 'chat') return CHATGPT_CHAT_ENTRYPOINT;
   if (experience === 'work') return CHATGPT_WORK_ENTRYPOINT;

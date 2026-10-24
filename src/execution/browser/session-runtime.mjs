@@ -3,6 +3,9 @@ import { ChatGPTComposer } from './chatgpt-composer.mjs';
 import { connectPageState } from './page-state-bridge.mjs';
 import { browserError } from '../../contracts/browser.mjs';
 import { openStartupPage } from './browser-startup.mjs';
+import { randomUUID } from 'node:crypto';
+import { CHATGPT_CHAT_ENTRYPOINT, hasChatGPTQuery, chatGPTRefreshTarget } from './chatgpt-experience.mjs';
+import { safeUrl } from './diagnostics.mjs';
 
 // No projects, stores, recovery decisions or selected cwd cross this boundary.
 export class BrowserSessions {
@@ -20,20 +23,44 @@ export class BrowserSessions {
     if (typeof id !== 'string' || !id) throw new TypeError('BROWSER_SESSION_ID_REQUIRED');
     if (this.#records.has(id)) return this.#records.get(id).port;
     const contents = this.host.create(id), source = new PageStateSource();
-    const record = { id, contents, source, loading: false, epoch: 0, disposed: false, crashed: false,
+    const record = { id, incarnation: randomUUID(), contents, source, loading: false, epoch: 0, disposed: false, crashed: false,
+      navigationSequence: 0, navigationOwner: null, bootstrapTokens: new Set(), queryDispatched: false,
       listeners: new Set(), cleanups: [] };
     let composer;
     try { composer = this.createComposer(contents, { pageState: source }); }
     catch (error) { source.dispose(); this.host.close(id); throw error; }
     record.composer = composer;
     const snapshot = () => ({ id, loading: record.loading, epoch: record.epoch, disposed: record.disposed,
-      crashed: record.crashed, url: contents.isDestroyed() ? '' : contents.getURL(), inFlight: composer.inFlight });
+      crashed: record.crashed, incarnation: record.incarnation, navigationSequence: record.navigationSequence,
+      navigationOwner: record.navigationOwner,
+      url: contents.isDestroyed() ? '' : contents.getURL(), inFlight: composer.inFlight });
     const emit = (type, fields = {}) => {
       const event = { type, ...fields, snapshot: snapshot() };
       for (const listener of [...record.listeners]) listener(structuredClone(event));
     };
     const assertOpen = () => {
       if (record.disposed) throw Object.assign(new Error('Страница закрыта.'), { code: 'SESSION_RUNTIME_RELEASED' });
+    };
+    const navigation = (type, url, isMainFrame, navigationKind) => {
+      if(record.disposed)return;
+      record.navigationSequence++;
+      emit(type,{url:typeof url==='string'?url:'',isMainFrame:isMainFrame===true,navigationKind,
+        navigationSequence:record.navigationSequence,navigationOwner:record.navigationOwner});
+    };
+    record.navigation=navigation;
+    const interrupt = reason => {
+      if(!record.navigationOwner)return;
+      record.navigationOwner=null;
+      navigation('navigation-interrupted',contents.getURL(),true,reason);
+    };
+    const loadError = (error, url) => {
+      const value=browserError(error);
+      if(record.queryDispatched||hasChatGPTQuery(url)||hasChatGPTQuery(contents.getURL())) {
+        value.code=/^[A-Z][A-Z0-9_]{0,95}$/.test(value.code)?value.code:'BROWSER_ERROR';
+        value.message='Не удалось загрузить страницу ChatGPT. Первоначальная команда не повторяется.';
+        composer.onDiagnostic?.({event:'navigation-failed',code:value.code,url:safeUrl(url)});
+      }
+      return Object.assign(new Error(value.message),{code:value.code});
     };
     const call = async (method, args = {}) => {
       assertOpen();
@@ -45,6 +72,9 @@ export class BrowserSessions {
     const composerPort = Object.freeze({
       get inFlight() { return composer.inFlight; },
       getURL: () => snapshot().url,
+      navigationSnapshot: snapshot,
+      openChatEntrypoint: () => record.port.navigate(CHATGPT_CHAT_ENTRYPOINT),
+      startChat: ({url,navigationToken,canContinue=()=>true}) => record.port.navigate(url,{bootstrapToken:navigationToken,isCurrent:canContinue}),
       hasFilled: requestId => composer.hasFilled(requestId),
       inspect: args => call('inspect', args),
       observeSnapshot: async () => {
@@ -68,11 +98,22 @@ export class BrowserSessions {
         record.listeners.add(listener); return () => record.listeners.delete(listener);
       },
       setDiagnostic: listener => { assertOpen(); composer.onDiagnostic = listener; },
-      navigate: async (url, { reload = false, startup = false, isCurrent = () => true } = {}) => {
+      navigate: async (url, { reload = false, startup = false, bootstrapToken = null, isCurrent = () => true } = {}) => {
         assertOpen();
+        if(!isCurrent())return null;
+        if(bootstrapToken!==null) {
+          if(reload||typeof bootstrapToken!=='string'||!bootstrapToken||!hasChatGPTQuery(url))
+            throw Object.assign(new Error('Некорректная первоначальная навигация.'),{code:'BOOTSTRAP_NAVIGATION_INVALID'});
+          if(record.bootstrapTokens.has(bootstrapToken))
+            throw Object.assign(new Error('Первоначальная команда уже запускалась. Повтор запрещён.'),{code:'BOOTSTRAP_ALREADY_DISPATCHED'});
+          record.bootstrapTokens.add(bootstrapToken);record.queryDispatched=true;
+        } else url=reload?chatGPTRefreshTarget(contents.getURL(),url):hasChatGPTQuery(url)?CHATGPT_CHAT_ENTRYPOINT:url;
+        clearTimeout(record.recoveryTimer);record.recoveryTimer=null;
         if (!reload && contents.getURL() === url) return snapshot();
-        const epoch = ++record.epoch; record.loading = true; emit('navigation-start');
+        record.navigationOwner=bootstrapToken;
+        const epoch = ++record.epoch; record.loading = true; navigation('navigation-start',url,true,'command');
         try {
+          if(!isCurrent()){record.loading=false;interrupt('cancelled');return null;}
           if (startup) await openStartupPage(contents, url, {
             isCurrent: () => !record.disposed && record.epoch === epoch && isCurrent(),
           });
@@ -80,10 +121,11 @@ export class BrowserSessions {
           if (record.disposed || epoch !== record.epoch) return null;
           record.loading = false; return snapshot();
         } catch (error) {
+          const safeError=loadError(error,url);
           if (!record.disposed && epoch === record.epoch) {
-            record.loading = false; emit('error', { error: browserError(error) });
+            record.loading = false;interrupt('load-failed');emit('error', { error: browserError(safeError) });
           }
-          throw error;
+          throw safeError;
         }
       },
       release: () => this.#release(record),
@@ -95,15 +137,31 @@ export class BrowserSessions {
       record.cleanups.push(this.connect(contents, this.ipc, source, { onFailure: code => emit('error', {
         error: { code, message: 'Наблюдатель ChatGPT недоступен. Повторите открытие страницы.' },
       }) }));
-      on('did-start-navigation', (event, _url, inPlace, mainFrame) => {
+      on('did-start-navigation', (event, url, inPlace, mainFrame) => {
         if ((event.isMainFrame ?? mainFrame) && !(event.isSameDocument ?? inPlace)) {
-          record.loading = true; emit('navigation-start');
+          record.loading = true; navigation('navigation-start',event.url??url,true,'start');
         }
       });
       on('did-finish-load', () => { record.loading = false; record.crashed = false; emit('loaded'); });
-      on('did-navigate-in-page', () => emit('navigated'));
+      on('did-navigate-in-page', (event={},url,mainFrame) => navigation('navigated',event.url??url,event.isMainFrame??mainFrame,'in-page'));
+      on('did-navigate', (event={},url) => navigation('navigated',event.url??url,true,'navigate'));
+      on('did-redirect-navigation', (event={},url,_inPlace,mainFrame) => navigation('navigated',event.url??url,event.isMainFrame??mainFrame,'redirect'));
+      on('before-input-event', (event,input={}) => {
+        if(!['keyDown','rawKeyDown'].includes(input.type))return;
+        interrupt('user-input');
+        const refresh=input.key==='F5'||String(input.key).toLowerCase()==='r'&&(input.control||input.meta);
+        if(refresh&&hasChatGPTQuery(contents.getURL())) {
+          event.preventDefault?.();void record.port.navigate(CHATGPT_CHAT_ENTRYPOINT,{reload:true}).catch(()=>{});
+        }
+      });
+      on('before-mouse-event', (_event,input={}) => {if(input.type==='mouseDown')interrupt('user-input');});
+      on('will-navigate',(event,url)=>{
+        try{if(new URL(event.url??url).origin!=='https://chatgpt.com')interrupt('foreign-navigation');}
+        catch{interrupt('foreign-navigation');}
+      });
       // A lost renderer is a page failure. Viewer changes never emit page events.
       on('render-process-gone', (_event, details = {}) => {
+        interrupt('crashed');
         record.loading = false; record.crashed = true; record.epoch++;
         const reason = typeof details.reason === 'string' ? details.reason : 'unknown';
         const exitCode = Number.isSafeInteger(details.exitCode) ? details.exitCode : null;
@@ -127,7 +185,16 @@ export class BrowserSessions {
       record.recoveryTimer = null;
       if (record.disposed || !record.crashed || record.contents.isDestroyed()) return;
       record.loading = true;
-      try { record.contents.reload(); } catch { record.loading = false; }
+      const current=record.contents.getURL();
+      // The runtime needs no attempt/store to prevent replay, even if the dead
+      // renderer lost its URL before control could preserve a conversation.
+      if(hasChatGPTQuery(current)||!current&&record.queryDispatched) {
+        void record.port.navigate(CHATGPT_CHAT_ENTRYPOINT,{reload:true}).catch(()=>{});
+      } else {
+        record.navigationOwner=null;record.epoch++;
+        record.navigation('navigation-start',current,true,'recovery');
+        try { record.contents.reload(); } catch { record.loading = false; }
+      }
     }, this.recoveryDelayMs);
     record.recoveryTimer.unref?.();
     return true;
@@ -135,7 +202,7 @@ export class BrowserSessions {
   #release(record) {
     if (record.disposed) return false;
     clearTimeout(record.recoveryTimer); record.recoveryTimer = null;
-    record.disposed = true; record.epoch++;
+    record.disposed = true; record.navigationOwner=null;record.epoch++;
     record.source.dispose();
     for (const cleanup of record.cleanups.splice(0).reverse()) cleanup();
     record.listeners.clear(); record.composer.onDiagnostic = null;

@@ -4,6 +4,97 @@ import { EventEmitter } from 'node:events';
 import { SessionRuntimes,sessionStore,sessionRuntimeKey } from '../src/control/sessions/service.mjs';
 import { ExecutionFacade } from '../src/execution/facade.mjs';
 import { DesktopBrowserHost } from '../src/frontend/desktop/browser-host.mjs';
+import { BrowserSessions } from '../src/execution/browser/session-runtime.mjs';
+
+function navigationFixture(t,options={}) {
+  const contents=new EventEmitter();Object.assign(contents,{url:'https://chatgpt.com/',loads:[],reloads:0,
+    getURL:()=>contents.url,isDestroyed:()=>false,
+    loadURL:async url=>{contents.loads.push(url);contents.emit('did-start-navigation',{url,isMainFrame:true,isSameDocument:false});
+      contents.url=url;contents.emit('did-navigate',{},url,200,'OK');contents.emit('did-finish-load');},
+    reload:()=>{contents.reloads++;contents.emit('did-start-navigation',{url:contents.url,isMainFrame:true,isSameDocument:false});contents.emit('did-finish-load');}});
+  const manager=new BrowserSessions({host:{create:()=>contents,close:()=>{}},ipc:{},connect:()=>()=>{},
+    createComposer:()=>({inFlight:false}),recoveryDelayMs:5,...options});
+  const port=manager.open('navigation');t.after(()=>manager.dispose());
+  return {manager,port,contents};
+}
+
+test('navigation port preserves transient redirect URLs, frame identity and one sequence for all subscribers',async t=>{
+  const {port,contents}=navigationFixture(t),events=[],other=[];
+  port.subscribe(event=>{events.push(structuredClone(event));event.url='changed';});port.subscribe(event=>other.push(event));
+  await port.composer.startChat({url:'https://chatgpt.com/?q=short',navigationToken:'request-one'});
+  contents.url='https://chatgpt.com/c/final-chat';
+  contents.emit('did-redirect-navigation',{url:'https://chatgpt.com/work/',isMainFrame:true});
+  contents.emit('did-navigate-in-page',{},'https://chatgpt.com/c/iframe-chat',false);
+  contents.emit('did-navigate-in-page',{},contents.url,true);
+  const transitions=events.filter(e=>e.type==='navigated');
+  assert.deepEqual(transitions.map(e=>[e.navigationKind,e.url,e.isMainFrame]),[
+    ['navigate','https://chatgpt.com/?q=short',true],['redirect','https://chatgpt.com/work/',true],
+    ['in-page','https://chatgpt.com/c/iframe-chat',false],['in-page','https://chatgpt.com/c/final-chat',true]]);
+  assert.deepEqual(events.map(e=>e.navigationSequence),other.map(e=>e.navigationSequence));
+  const sequenced=events.filter(e=>e.navigationSequence!==undefined);
+  assert.equal(new Set(sequenced.map(e=>e.navigationSequence)).size,sequenced.length);
+  assert.ok(transitions.every(e=>e.navigationOwner==='request-one'));
+  assert.ok(other.every(e=>e.url!=='changed'));
+  const before=events.length,incarnation=port.snapshot().incarnation;port.release();
+  contents.emit('did-navigate-in-page',{},'https://chatgpt.com/c/late-chat',true);
+  assert.equal(events.length,before);assert.notEqual(navigationFixture(t).port.snapshot().incarnation,incarnation);
+});
+
+test('only an admitted bootstrap can load q once; refresh checks current and target including empty q',async t=>{
+  for(const query of ['q=command','q=']) {
+    const {port,contents}=navigationFixture(t),url='https://chatgpt.com/?'+query;
+    await port.composer.startChat({url,navigationToken:'once'});
+    assert.deepEqual(contents.loads,[url]);
+    await assert.rejects(port.composer.startChat({url,navigationToken:'once'}),{code:'BOOTSTRAP_ALREADY_DISPATCHED'});
+    await port.navigate('https://chatgpt.com/c/saved-chat',{reload:true});
+    assert.equal(contents.loads.at(-1),'https://chatgpt.com/');
+    await port.navigate(url,{reload:true});assert.equal(contents.loads.at(-1),'https://chatgpt.com/');
+    await port.navigate(url);assert.equal(contents.loads.filter(value=>value===url).length,1);
+    assert.equal(contents.reloads,0);
+  }
+});
+
+test('crash recovery never reloads q or uses a lost query URL, independently of control attempts',async t=>{
+  for(const loseUrl of [false,true]) {
+    const {port,contents}=navigationFixture(t,{recoverCrashed:true});
+    await port.composer.startChat({url:'https://chatgpt.com/?q=command',navigationToken:'once'});
+    if(loseUrl)contents.url='';
+    contents.emit('render-process-gone',{}, {reason:'killed'});
+    await new Promise(resolve=>setTimeout(resolve,25));
+    assert.equal(contents.reloads,0);assert.equal(contents.loads.length,2);
+    assert.equal(contents.loads.at(-1),'https://chatgpt.com/');assert.equal(port.snapshot().navigationOwner,null);
+  }
+});
+
+test('native refresh shortcuts on a query page are routed through the same safe refresh',async t=>{
+  for(const input of [{key:'r',meta:true},{key:'r',control:true},{key:'F5'}]) {
+    const {port,contents}=navigationFixture(t);let prevented=false;
+    await port.composer.startChat({url:'https://chatgpt.com/?q=command',navigationToken:'once'});
+    contents.emit('before-input-event',{preventDefault:()=>{prevented=true;}},{type:'keyDown',...input});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(prevented,true);assert.equal(contents.loads.at(-1),'https://chatgpt.com/');assert.equal(contents.reloads,0);
+  }
+});
+
+test('explicit navigation wins a pending crash recovery and user input ends bootstrap ownership',async t=>{
+  const {port,contents}=navigationFixture(t,{recoverCrashed:true});
+  await port.composer.startChat({url:'https://chatgpt.com/?q=command',navigationToken:'once'});
+  contents.emit('before-mouse-event',{}, {type:'mouseMove'});assert.equal(port.snapshot().navigationOwner,'once');
+  contents.emit('before-input-event',{}, {type:'rawKeyDown'});assert.equal(port.snapshot().navigationOwner,null);
+  contents.emit('render-process-gone',{}, {reason:'killed'});
+  await port.navigate('https://chatgpt.com/c/saved-chat');await new Promise(resolve=>setTimeout(resolve,25));
+  assert.equal(contents.reloads,0);assert.equal(contents.loads.at(-1),'https://chatgpt.com/c/saved-chat');
+});
+
+test('bootstrap load errors and diagnostics never expose q or its ticket',async t=>{
+  const {port,contents}=navigationFixture(t),secret='secret-ticket-value',diagnostics=[],events=[];
+  contents.loadURL=async()=>{throw Object.assign(Error('net failed https://chatgpt.com/?q='+secret),{code:'ERR_FAILED'});};
+  port.setDiagnostic(value=>diagnostics.push(value));port.subscribe(event=>{if(event.error)events.push(event.error);});
+  let failure;try{await port.composer.startChat({url:'https://chatgpt.com/?q='+secret,navigationToken:'once'});}catch(error){failure=error;}
+  assert.equal(failure.code,'ERR_FAILED');assert.ok(!String(failure).includes(secret));
+  assert.ok(!JSON.stringify([...events,...diagnostics]).includes(secret));
+  assert.deepEqual(diagnostics[0].url.queryKeys,['q']);
+});
 
 function fixture(t) {
   let selected='a',connections=0,disconnections=0;
