@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1024,
+  "plan_revision": 1026,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Оставить только Chat-сессии и заменить DOM-ввод первого сообщения одним URL-bootstrap с тикетом, сохранив идентичность, отмену и получение контекста.",
   "acceptance_criteria": [
     "Work упразднён; история сохранена без исполнения и потери назначений.",
@@ -1047,14 +1047,15 @@
         "Описание выпуска явно содержит непроведённую живую приёмку ChatGPT и native Windows/Linux."
       ],
       "expected_commit_message": "feat: Опубликовать полный выпуск на GitHub",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "PUBLISH",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1077,10 +1078,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1024
+Revision: 1026
 
 ## Цель
 
@@ -1158,8 +1159,8 @@ Revision: 1024
   - Файлы: release-manifest.json, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать полный выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать полный выпуск на GitHub
+- [DONE] PUBLISH: Опубликовать полный выпуск на GitHub — Завершено
+  - Git Commit: [DONE] feat: Опубликовать полный выпуск на GitHub
   - Reference: chat-only-url-bootstrap / PUBLISH / implementation
   - Файлы: release-manifest.json, docs/modules/release.md
   - Параллельность: исключительное выполнение
