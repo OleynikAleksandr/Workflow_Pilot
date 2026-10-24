@@ -403,7 +403,6 @@ function migrate(data) {
       const { experience, availability, ...record } = session;
       if (record.attempt) {
         const { modeConfirmed, modeViolation, ...attempt } = record.attempt;
-        if (modeViolation) throw invalid();
         record.attempt = attempt;
       }
       return record;

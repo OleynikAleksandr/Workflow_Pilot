@@ -222,7 +222,7 @@ async function fixture(t) {
   }
   let state = {
     projects: [{ workspace: '/demo', name: 'Проект', expanded: true, sessions: [4, 3, 2, 1].map(n => ({
-      sessionId: 's' + n, createdAt: n * 1000, title: 'Сессия ' + n, experience: n % 2 ? 'chat' : 'work', chatUrl: 'https://fixture.invalid/c/' + n,
+      sessionId: 's' + n, createdAt: n * 1000, title: 'Сессия ' + n, chatUrl: 'https://fixture.invalid/c/' + n,
     })) }], selected: { workspace: '/demo', sessionId: 's4' }, context: { phase: 'delivered' },
   };
   let onState;
@@ -300,7 +300,7 @@ test('newly added session starts at top while global folding preserves current s
   const f = await fixture(t);
   f.document.querySelector('.sessions').scrollTop = 144;
   const changed = f.state;
-  changed.projects[0].sessions.unshift({ sessionId: 's5', createdAt: 5000, title: 'Новая', experience: 'work' });
+  changed.projects[0].sessions.unshift({ sessionId: 's5', createdAt: 5000, title: 'Новая', });
   changed.selected.sessionId = 's5'; f.emit(changed);
   assert.equal(f.document.querySelector('.sessions').scrollTop, 0);
   f.document.getElementById('toggle-projects').click(); await f.settle();
@@ -498,8 +498,8 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   f.window.webPilot.togglePlanExecution=async()=>{f.calls.push(['togglePlanExecution']);return {state:f.state};};
   f.window.webPilot.assignOrchestrator=async sessionId=>{f.calls.push(['assignOrchestrator',sessionId]);return {state:f.state};};
   const project={...base.projects[0],orchestrationIssue:null,sessions:[
-    {sessionId:'s4',createdAt:4000,title:'План',experience:'chat',role:'orchestrator',orchestratorScopeId:'scope',orchestratorState:{state:'running',label:'Выполняется · 1/4',progress:'1/4'}},
-    {sessionId:'s3',createdAt:3000,title:'Вопрос',experience:'chat',role:'discussion'}],
+    {sessionId:'s4',createdAt:4000,title:'План',role:'orchestrator',orchestratorScopeId:'scope',orchestratorState:{state:'running',label:'Выполняется · 1/4',progress:'1/4'}},
+    {sessionId:'s3',createdAt:3000,title:'Вопрос',role:'discussion'}],
     executors:[{workspace:'/tree/a',sessionId:'worker-a',originSessionId:'s4',parentScopeId:'scope',taskId:'T001',title:'T001',label:'Готово',phase:'done'}]};
   const orchestratorPlan={scopeId:'scope',objective:'План оркестратора',current:true,tasks:[
     {id:'T001',title:'Основа',status:'done',executionLabel:'Последовательно',target:{workspace:'/tree/a',sessionId:'worker-a'}},
@@ -607,9 +607,9 @@ test('the window names session roles, marks a waiting choice and offers the same
   const userChoice = { choice_id: 'c1', generation: 2, kind: 'mode', state: 'offered', question, reason: 'Небольшие связанные задачи',
     options: options.map((o, i) => ({ id: o.id, label: o.label, detail: o.detail, recommended: i === 0 })), chosen: null };
   f.emit({ ...base, projects: [{ ...base.projects[0], sessions: [
-    { sessionId: 's4', createdAt: 4000, title: 'Владелец', experience: 'chat', role: 'planning', choicePending: true },
-    { sessionId: 's3', createdAt: 3000, title: 'Исполняет', experience: 'chat', role: 'self' },
-    { sessionId: 's2', createdAt: 2000, title: 'Второй', experience: 'chat', role: 'discussion' }] }], userChoice });
+    { sessionId: 's4', createdAt: 4000, title: 'Владелец', role: 'planning', choicePending: true },
+    { sessionId: 's3', createdAt: 3000, title: 'Исполняет', role: 'self' },
+    { sessionId: 's2', createdAt: 2000, title: 'Второй', role: 'discussion' }] }], userChoice });
   assert.deepEqual([...f.document.querySelectorAll('.session-role')].map(n => n.textContent), ['Планирование', 'Выполняет план', 'Обсуждение']);
   const badges = [...f.document.querySelectorAll('.session-choice-wait')];
   assert.equal(badges.length, 1);assert.equal(badges[0].textContent, 'Ждёт вашего выбора');

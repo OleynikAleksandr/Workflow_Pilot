@@ -332,7 +332,7 @@ function render(state) {
         control.addEventListener('click', () => { closeTreeMenus(); handler(); });
         menu.append(control);
       };
-      menuAction('new-project-chat', 'Новый Chat', () => action('newSession', project.workspace, 'chat'));
+      menuAction('new-project-chat', 'Новый Chat', () => action('newSession', project.workspace));
       const separator = document.createElement('div'); separator.className = 'menu-separator'; separator.setAttribute('aria-hidden', 'true'); menu.append(separator);
       menuAction('rename-project', 'Переименовать', () => openRenameDialog({
         kind: 'project', workspace: project.workspace, value: project.name,

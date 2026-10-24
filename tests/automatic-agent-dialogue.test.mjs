@@ -10,14 +10,14 @@ import {execFileSync} from 'node:child_process';
 import {createWorkflowCoordination} from '../src/control/workflow/coordination.mjs';
 import {PluginCommunication} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
-for(const experience of ['chat'])test('automatic dialogue through startup and Start: '+experience+' orchestrator, Chat executors, question/decision/commit and third assignment',
-  {timeout:300000},async t=>{await automaticDialogue(t,experience);});
+test('automatic dialogue through startup and Start: Chat orchestrator, Chat executors, question/decision/commit and third assignment',
+  {timeout:300000},async t=>{await automaticDialogue(t);});
 test('orchestrator-owned dialogue: context request, multihop block, revision/result/acceptance, explicit integration and DOCS without user bubbles',
-  {timeout:300000},async t=>{await automaticDialogue(t,'chat',{owned:true,conversation:true});});
+  {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,conversation:true});});
 test('five simultaneous executors receive O-selected tasks and return checked results through real Start/MCP/SDK/Kit',
-  {timeout:300000},async t=>{await automaticDialogue(t,'chat',{owned:true,workers:5});});
+  {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,workers:5});});
 test('authorized fast cycle: inline preparation, no ready turn, two results, overlapping DOCS and finalization',
-  {timeout:300000},async t=>{await automaticDialogue(t,'chat',{owned:true,batchResults:true});});
+  {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,batchResults:true});});
 
 test('recovery hold: durable Kit journal blocks startup, file close automatically releases it without auto-continue',
   {timeout:30000},async t=>{

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1052,
+  "plan_revision": 1056,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
@@ -96,7 +96,8 @@
       "tests/chatgpt-plugin.test.mjs",
       "tests/chatgpt-title.test.mjs",
       "tests/dialogue-delivery.test.mjs",
-      "tests/session-roles.test.mjs"
+      "tests/session-roles.test.mjs",
+      "src/control/workflow/plan-continuation.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -321,8 +322,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
         "task_id": "PROOF",
@@ -337,7 +338,26 @@
         "tests/startup-context.test.mjs",
         "tests/fixtures/automatic-agent-dialogue.mjs",
         "tests/fixtures/executor-background-startup.mjs",
-        "scripts/check-search-extension.mjs"
+        "scripts/check-search-extension.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/plan-continuation.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/page-state.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/project-doctor-ui.test.mjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/sidebar.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -353,10 +373,37 @@
         "Настоящий изолированный Electron с официальным расширением проходит первый проект и новый Chat без mode controls.",
         "Первый panel возвращает полный контекст, адрес связывается при обоих порядках enroll/URL; q и первоначальное сообщение ровно один раз.",
         "Отмена, вход, draft, смена попытки, stale packet и crash/restart не обходят ограничения.",
-        "Fixtures проверяют точные причины отказа, строгий URL allowlist и refresh без q."
+        "Fixtures проверяют точные причины отказа, строгий URL allowlist и refresh без q.",
+        "Fixtures проверяют точные причины отказа, строгий URL allowlist и refresh без q. Полная Node suite пройдена в первом запуске PROOF; её финальная проверка перенесена в VERSION после всех функциональных правок и до DOCS."
       ],
       "expected_commit_message": "test: проверить полный Chat bootstrap без переключателя",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/plan-continuation.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/page-state.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/project-doctor-ui.test.mjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/startup-context.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -420,7 +467,8 @@
         "release-tooling",
         "kit-check",
         "kit-assignments",
-        "kit-upgrade"
+        "kit-upgrade",
+        "unit-all"
       ],
       "id": "VERSION",
       "title": "chore: подготовить версии приложения и Kit",
@@ -621,7 +669,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-session-without-modes
 Current Task: нет
-Revision: 1052
+Revision: 1056
 
 ## Цель
 
@@ -645,10 +693,10 @@ Revision: 1052
   - Файлы: src/backend/bootstrap.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/chatgpt-experience.mjs, src/contracts/desktop.mjs, src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/facade.mjs, src/control/plugin/enrollment.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/execution/browser/session-runtime.mjs, src/execution/desktop-dependencies.mjs, src/execution/facade.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/workspace-setup.mjs, tests/automatic-agent-dialogue.test.mjs, tests/backend-api.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/backend-upgrade.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-dom.test.mjs, tests/chatgpt-experience.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/migration-compatibility.test.mjs, tests/page-state.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plugin-enrollment.test.mjs, tests/project-doctor-ui.test.mjs, tests/session-opening-performance.test.mjs, tests/session-plans.test.mjs, tests/session-runtime.test.mjs, tests/sidebar.test.mjs, tests/workspace-session.test.mjs, src/contracts/browser.mjs, src/execution/browser/chatgpt-title.mjs, resources/chatgpt-page-observer-preload.cjs, scripts/prepare-agent-dialogue-experiment.mjs, packages/workflow-kit/src/lib/plan.mjs, tests/chatgpt-plugin.test.mjs, tests/chatgpt-title.test.mjs, tests/dialogue-delivery.test.mjs, tests/session-roles.test.mjs, tests/startup-context.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] PROOF: test: проверить полный Chat bootstrap без переключателя — Ожидает
-  - Git Commit: [PENDING] test: проверить полный Chat bootstrap без переключателя
+- [DONE] PROOF: test: проверить полный Chat bootstrap без переключателя — Завершено
+  - Git Commit: [DONE] test: проверить полный Chat bootstrap без переключателя
   - Reference: chat-session-without-modes / PROOF / implementation
-  - Файлы: tests/electron-smoke.mjs, tests/context-session.test.mjs, tests/startup-context.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, scripts/check-search-extension.mjs
+  - Файлы: tests/electron-smoke.mjs, tests/context-session.test.mjs, tests/startup-context.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, scripts/check-search-extension.mjs, src/backend/desktop-model.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/plan-continuation.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/automatic-agent-dialogue.test.mjs, tests/backend-api.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-upgrade.test.mjs, tests/chatgpt-plugin.test.mjs, tests/control-facade.test.mjs, tests/page-state.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plugin-enrollment.test.mjs, tests/project-doctor-ui.test.mjs, tests/session-opening-performance.test.mjs, tests/session-runtime.test.mjs, tests/sidebar.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CORE
 - [TODO] TRAY: fix: диагностировать и восстанавливать значок службы — Ожидает

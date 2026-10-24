@@ -79,7 +79,7 @@ test('many live pages share one IPC listener and release it after the last page'
   stops.at(-1)();assert.equal(ipc.listenerCount(PAGE_STATE_CHANNEL),0);
 });
 const observation = (seq = 1, documentId = 'document-1111', patch = {}) => ({ version: 1, seq, documentId,
-  state: { url: 'https://chatgpt.com/', experience: 'chat', login: 'unknown', visibility: 'visible',
+  state: { url: 'https://chatgpt.com/', login: 'unknown', visibility: 'visible',
     editorAvailable: true, editorRevision: 1, writable: true, busy: false, sendEnabled: true,
     draftRevision: 1, userMessageCount: 0, userMessagesRevision: 0, ...patch } });
 

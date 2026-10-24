@@ -71,22 +71,22 @@ test('healthy first-project preview offers only Chat with one submission', async
   const f=await fixture(t,workspaceSetupView),s=state();
   s.setup={phase:'preview',mode:'new',workspace:'/new',token:'preview-1',action:'install',firstSessionRequired:true,checks:[]};
   f.view.render(s,false);
-  assert.equal(f.$('setup-experience').hidden,false); assert.equal(f.$('setup-apply').hidden,true);
+  assert.equal(f.$('setup-first-chat').hidden,false); assert.equal(f.$('setup-apply').hidden,true);
   assert.equal(f.$('setup-doctor').hidden,true); assert.equal(f.$('setup-refresh').hidden,true);
-  assert.equal(f.$('setup-experience-work'),null);f.$('setup-experience-chat').click();f.$('setup-experience-chat').click();
+  f.$('setup-create-chat').click();f.$('setup-create-chat').click();
   await new Promise(r=>setImmediate(r));
-  assert.deepEqual(f.calls,[['applySetup','preview-1','chat']]);
+  assert.deepEqual(f.calls,[['applySetup','preview-1']]);
 });
 test('first project needs no personal fields and diagnosed problems still expose recovery', async t => {
   const f=await fixture(t,workspaceSetupView),s=state();
   s.setup={phase:'preview',mode:'new',workspace:'/new',token:'preview-2',action:'install',firstSessionRequired:true};
-  f.view.render(s,false); assert.equal(f.$('setup-experience-chat').disabled,false); assert.equal(f.$('setup-experience-work'),null);
+  f.view.render(s,false); assert.equal(f.$('setup-create-chat').disabled,false); 
   assert.equal(f.$('setup-identity'),null); assert.equal(f.$('setup-git-name'),null); assert.equal(f.$('setup-git-email'),null);
-  assert.equal(f.$('setup-experience-chat').disabled,false);
+  assert.equal(f.$('setup-create-chat').disabled,false);
   s.setup.error={message:'Папка изменилась'};f.view.render(s,false);
-  assert.equal(f.$('setup-experience').hidden,true);assert.equal(f.$('setup-doctor').hidden,false);assert.equal(f.$('setup-refresh').hidden,false);
+  assert.equal(f.$('setup-first-chat').hidden,true);assert.equal(f.$('setup-doctor').hidden,false);assert.equal(f.$('setup-refresh').hidden,false);
   s.setup={phase:'preview',mode:'existing',workspace:'/existing',token:'preview-3',action:'open',ready:true,firstSessionRequired:false};
-  f.view.render(s,false);assert.equal(f.$('setup-experience').hidden,true);assert.equal(f.$('setup-apply').hidden,false);
+  f.view.render(s,false);assert.equal(f.$('setup-first-chat').hidden,true);assert.equal(f.$('setup-apply').hidden,false);
   assert.equal(f.$('setup-doctor').hidden,true);assert.equal(f.$('setup-refresh').hidden,true);
 });
 

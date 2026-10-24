@@ -48,7 +48,7 @@ test('status distinguishes observed work, unknown, source readiness and verified
 
 test('saved executor belongs to its original main session, keeps totals without a live page and never copies conversation text',()=>{
   const projects=[{workspace:'/main',projectId:'parent'},{workspace:'/tree',parentWorkspace:'/main',parentProjectId:'parent',sessions:[{sessionId:'child',assignmentId:'a',taskId:'T1',
-    executionOriginSessionId:'original',title:'Task',experience:'work',executionTime:{activeMs:10,waitingMs:20},attempt:{text:'PRIVATE'}}]}];
+    executionOriginSessionId:'original',title:'Task',executionTime:{activeMs:10,waitingMs:20},attempt:{text:'PRIVATE'}}]}];
   const view=projectExecutors(projects,'/main',{assignments:[{id:'a',status:'READY_FOR_INTEGRATION'}]},()=>null);
   assert.equal(view.length,1);assert.equal(view[0].originSessionId,'original');assert.equal(view[0].phase,'unknown');
   assert.equal(view[0].time.activeMs,10);assert.equal(view[0].time.waitingMs,20);assert.equal(view[0].time.phase,'unknown');
@@ -63,8 +63,7 @@ test('real sidebar renders executor group, worktree/status/time, protected actio
   const query=document.querySelectorAll.bind(document);
   document.querySelectorAll=selector=>query(selector.replaceAll(':popover-open','[data-test-open]'));
   let listener;
-  const executor={workspace:'/tree',sessionId:'child',assignmentId:'a',originSessionId:'author',taskId:'T1',title:'T1 — Worker',experience:'work',
-    phase:'ready',label:'Готово к слиянию',time:{activeMs:2000,waitingMs:3000,phase:'unknown'}};
+  const executor={workspace:'/tree',sessionId:'child',assignmentId:'a',originSessionId:'author',taskId:'T1',title:'T1 — Worker',phase:'ready',label:'Готово к слиянию',time:{activeMs:2000,waitingMs:3000,phase:'unknown'}};
   let state={projects:[{workspace:'/main',name:'Main',expanded:true,sessions:[{sessionId:'author',title:'Планировщик',createdAt:1000}],executors:[executor]}],
     selected:{workspace:'/main',sessionId:'author',scopeId:'scope',planExecution:{execution_strategy:'parallel'},planView:{state:'working',completed:0,total:1,tasks:[{id:'T1',title:'Task',status:'current'}]}},
     execution:{phase:'waiting',scopeId:'scope',assignments:[],planView:{state:'working',completed:0,total:1,tasks:[{id:'T1',title:'Task',status:'current'}]}},context:{phase:'delivered'}};

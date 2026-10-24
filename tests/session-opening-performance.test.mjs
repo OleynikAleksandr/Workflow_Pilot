@@ -37,7 +37,7 @@ test('production readiness and canonical recovery block insertion after real inp
     await fs.utimes(unchanged, new Date(1000), new Date(1000));
     assert.equal((await setup.ready(workspace)).ready, true);
     assert.deepEqual(await fs.readFile(indexFile), indexBefore, 'readiness must not refresh index stat cache itself');
-    let saved = { ...await readWorkspace(workspace, sessionId), workspace, sessionId, planId, experience: 'chat', chatUrl: null, attempt: null };
+    let saved = { ...await readWorkspace(workspace, sessionId), workspace, sessionId, planId, chatUrl: null, attempt: null };
     const store = { selected: () => structuredClone(saved), project: () => structuredClone(saved),
       inspect: () => readWorkspace(workspace, sessionId),
       updateSession: async (_w, _s, patch) => (saved = { ...saved, ...structuredClone(patch) }),
@@ -50,7 +50,7 @@ test('production readiness and canonical recovery block insertion after real inp
       inputKey: w => readinessContextKey(setup, w) });
     const composer = { getURL: () => 'https://chatgpt.com/',navigationSnapshot:()=>({id:'fixture',incarnation:'fixture',epoch:1,navigationSequence:0}),
       inspect: async options => ({ url: 'https://chatgpt.com/', editorAvailable: true, writable: true, draftLength: 0,
-        documentId:'preflight',accountStatus:'signed-in',experience:'chat',busy: false, login: false, messageSeen: false }),
+        documentId:'preflight',accountStatus:'signed-in',busy: false, login: false, messageSeen: false }),
       startChat:async()=>{sends++;},deliver:async()=>{fills++;throw Error('DOM fallback forbidden');}};
     const controller = new ContextSession({ store, runtime: {
       ensure: async () => ({}),

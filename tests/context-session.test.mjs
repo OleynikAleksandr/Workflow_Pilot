@@ -9,8 +9,7 @@ import * as contextSessionModule from '../src/control/context/context-session.mj
 import { EXECUTOR_TOOL_RULES } from '../src/execution/runtime/service.mjs';
 
 const project={workspace:'/Projects/Мой проект',projectId:'id-1',name:'Мой проект',planRevision:7,scopeId:'scope-1',
-  scopeStatus:'ACTIVE',deliveryStatus:'IN_PROGRESS',nextTaskId:'T001',nextTaskTitle:'Read',sessionId:'session-1', experience:'chat',
-  chatUrl:'https://chatgpt.com/c/aaaaaaaa',attempt:null,receipt:null};
+  scopeStatus:'ACTIVE',deliveryStatus:'IN_PROGRESS',nextTaskId:'T001',nextTaskTitle:'Read',sessionId:'session-1', chatUrl:'https://chatgpt.com/c/aaaaaaaa',attempt:null,receipt:null};
 const facts={project_id:project.projectId,project_name:project.name,plan_revision:7,scope_id:'scope-1',
   execution_scope_status:'ACTIVE',delivery_status:'IN_PROGRESS',task_id:'T001',task_title:'Read'};
 const now=2000000;
@@ -46,8 +45,8 @@ test('the first message contains the exact complete packet and asks for a short 
 
 test('automatic bootstrap reads recovery then opens only its panel; an executor does not start work in that turn',()=>{
   const invitation={enrollment_ticket:'a'.repeat(64),expires_at:now+1000};
-  for(const experience of ['chat','work']){
-    const origin=startupMessage({...project,experience,role:'orchestrator'},'request',packet(),[],invitation);
+  {
+    const origin=startupMessage({...project,role:'orchestrator'},'request',packet(),[],invitation);
     assert.match(origin,/кроме единственного вызова workflow_pilot_panel/);
     assert.ok(origin.includes(JSON.stringify({enrollment_ticket:invitation.enrollment_ticket})));
     assert.match(origin,/После полного чтения recovery/);assert.match(origin,/публикация плана не запускают выполнение/);

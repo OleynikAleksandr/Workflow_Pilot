@@ -7,7 +7,7 @@ import { executorPageState } from '../src/control/workflow/executor-session.mjs'
 const task=(id,dependencies=[])=>({id,title:id,dependencies,parallel_safe:true,implementation_status:'TODO',commit_status:'PENDING',
   functional_paths:['src/'+id+'.mjs'],documentation_paths:[]});
 function fixture(t) {
-  const origin={workspace:'/main',sessionId:'author',experience:'chat',executionSnapshot:{parallel_allowed:true,max_workers:2}};
+  const origin={workspace:'/main',sessionId:'author',executionSnapshot:{parallel_allowed:true,max_workers:2}};
   const state={workspace:'/main',head:'base',confirmed:true,mainClean:true,commandActive:false,integration:{status:'IDLE'},assignments:[],
     plan:{scope_id:'scope',execution_scope_status:'ACTIVE',plan_revision:4,parallel_allowed:true,max_workers:2,
       execution_strategy:'parallel',execution_origin_session_id:'author',tasks:[task('A'),task('B'),task('C',['A'])]}};

@@ -14,16 +14,12 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const hash=text=>createHash('sha256').update(text).digest('hex');
 const html=`<!doctype html><style>#prompt-textarea{display:none}</style>
 <button data-testid="profile-button">Account</button>
-<button data-tpp-toggle-value="chat" data-state="on">Chat</button>
 <form><textarea id="prompt-textarea"></textarea><button data-testid="send-button">Send</button></form><main></main>
 <script>
 window.starts=[];window.files=[];window.readyAt=0;
 const command=new URL(location.href).searchParams.get('q');
 // CSSOM layout change: no DOM MutationObserver event, even though the editor is now usable.
 setTimeout(()=>{document.styleSheets[0].deleteRule(0);window.readyAt=Date.now()},1200);
-for(const b of document.querySelectorAll('[data-tpp-toggle-value]'))b.onclick=()=>{
- for(const other of document.querySelectorAll('[data-tpp-toggle-value]'))other.dataset.state=other===b?'on':'off';
-};
 document.querySelector('textarea').onpaste=event=>{
  if(!event.clipboardData.files.length)return;event.preventDefault();
  for(const f of event.clipboardData.files){const card=document.createElement('div'),label=document.createElement('span'),remove=document.createElement('button');
@@ -74,7 +70,7 @@ try{
     const records=[];
     for(let i=0;i<count;i++){
       const workspace=path.join(root,`${count}-${i}`);await fs.mkdir(workspace);
-      const p={workspace,projectId:`p-${count}-${i}`,name:'Fixture',sessionId:`s-${count}-${i}`,role:'executor',experience:'chat',
+      const p={workspace,projectId:`p-${count}-${i}`,name:'Fixture',sessionId:`s-${count}-${i}`,role:'executor',
         assignmentId:`a-${count}-${i}`,taskId:'T001',parentWorkspace:root,scopeId:'assignment-'+i,scopeStatus:'ACTIVE',deliveryStatus:'IN_PROGRESS',
         planRevision:1,nextTaskId:'T001',nextTaskTitle:'Own task',chatUrl:null,attempt:null};projects.set(workspace,p);
       const r=sessions.ensure(p);r.ready=true;records.push(r);await sessions.navigate(r,'https://chatgpt.com/',{freshDraft:true});

@@ -156,21 +156,6 @@ test('local session resolver refuses external, archived, wrong origin and unrela
   assert.equal(localParticipantTarget(projects,'worker'),null);
 });
 
-test('mode admission rejects Work and unverified sessions and holds only unfinished owned assignments',()=>{
-  const origin={sessionId:'o',experience:'chat',availability:'active',role:'orchestrator',orchestratorScopeId:'scope'};
-  const parent={workspace:'/parent',projectId:'p',scopeId:'scope',scopeStatus:'ACTIVE',sessions:[origin],
-    planExecution:{execution_origin_session_id:'o'}};
-  const worker={sessionId:'e',experience:'work',availability:'legacy-work',role:'executor',assignmentId:'a',taskId:'T001'};
-  const child={workspace:'/child',parentWorkspace:'/parent',parentProjectId:'p',sessions:[worker]};
-  const projects={snapshot:()=>({projects:[parent,child]})};
-  assert.equal(localParticipantTarget(projects,'o'),null,'unfinished unsupported assignment holds its parent');
-  parent.planView={tasks:[{id:'T001',status:'done'}]};
-  assert.equal(localParticipantTarget(projects,'o').role,'O','integrated historical assignment does not hold new work');
-  assert.equal(localParticipantTarget(projects,'e'),null);
-  origin.availability='mode-unverified';assert.equal(localParticipantTarget(projects,'o'),null);
-  origin.availability='legacy-work';origin.experience='work';assert.equal(localParticipantTarget(projects,'o'),null);
-});
-
 test('an orchestrator registered before publication retains its identity when its own plan appears',async t=>{
   const f=await fixture(t),before={...target('orchestrator','O'),scope_id:null};f.targets.set('orchestrator',before);
   const invite=await f.comm.reserve(before),joined=await f.comm.enroll(invite.enrollment_ticket,metadata('orchestrator'));

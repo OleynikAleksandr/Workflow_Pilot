@@ -139,7 +139,7 @@ export async function interruptionRegression(t){
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,experience='chat',{owned=false,conversation=false,workers=2,batchResults=false}={}){
+export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
@@ -167,7 +167,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   const control=new ControlFacade({storageFile:path.join(directory,'sessions.json'),execution:{},
     getExecutionSettings:()=>({parallel_allowed:true,max_workers:workers})});
   const store=control.projects;await store.load();await store.select(root);
-  const origin=await store.newSession(root,experience);
+  const origin=await store.newSession(root);
   const error=e=>{if(!closed)errors.push(e);};
   const reportPage=record=>{if(!closed&&!record.disposed)workflow.observePage(record.pageState.current,record);};
   const finish=record=>{
@@ -404,16 +404,15 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
     const record={identity:{workspace:project.workspace,sessionId:project.sessionId,assignmentId:project.assignmentId},ready:true,
       disposed:false,loading:false,paused:false,cleanups:[],bootstrapCount:0,domWorkSends:0,
       project:()=>store.project(project.workspace,project.sessionId),metadata:{'openai/session':project.sessionId,'openai/subject':'fixture-owner'},
-      pageState:{current:{documentId:'doc-'+project.sessionId,seq:1,state:{url:project.experience==='work'?'https://chatgpt.com/work/':'https://chatgpt.com/',
-        experience:'chat',busy:false,editorAvailable:true,writable:true,draftPresent:false,login:'signed-in',lastMessageRole:'assistant',
+      pageState:{current:{documentId:'doc-'+project.sessionId,seq:1,state:{url:'https://chatgpt.com/',
+        busy:false,editorAvailable:true,writable:true,draftPresent:false,login:'signed-in',lastMessageRole:'assistant',
         userMessagesRevision:0,assistantRevision:0,turnId:'a0',userTurnId:'u0'}}}};
     const page=record.pageState.current.state;
     const navigation={id:project.sessionId,incarnation:'fixture-'+project.sessionId,epoch:1,navigationSequence:0,navigationOwner:null};
     const composer=record.composer={inFlight:false,getURL:()=>page.url,clearNewSessionDraft:async()=>({action:'draft-cleared'}),
       navigationSnapshot:()=>({...navigation}),
       observeSnapshot:async()=>{record.pageState.current.seq++;return true;},
-      inspect:async({action}={})=>({...page,documentId:record.pageState.current.documentId,accountStatus:'signed-in',login:false,draftLength:0,messageSeen:record.bootstrapCount>0,
-        ...(action==='select-experience'?{action:'experience-confirmed'}:{})}),
+      inspect:async({action}={})=>({...page,documentId:record.pageState.current.documentId,accountStatus:'signed-in',login:false,draftLength:0,messageSeen:record.bootstrapCount>0}),
       sendUserMessage:async()=>{record.domWorkSends++;throw Error('Working message attempted DOM fallback');},
       deliver:async()=>{throw Error('Bootstrap attempted DOM Send');},
       startChat:async input=>{
@@ -547,7 +546,7 @@ export async function automaticDialogue(t,experience='chat',{owned=false,convers
   for(const record of records.values()){
     assert.equal(record.bootstrapCount,1);assert.equal(record.domWorkSends,0);
     assert.equal(record.ui.calls.includes('workflow_communication_enable'),false);assert.equal(record.ui.calls.includes('workflow_communication_join'),false);
-    assert.equal(record.project().experience,record===o?experience:'chat');
+    assert.equal(Object.hasOwn(record.project(),'experience'),false);
   }
   if(owned){
     assert.equal(drafts.size,taskCount);

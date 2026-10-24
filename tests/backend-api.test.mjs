@@ -117,7 +117,7 @@ test('client performs allowed project/session/settings/plan operations under the
   await assert.rejects(client.run('settings.update',{theme:'neon'}),error=>error.code==='BACKEND_ARGS_INVALID');
   await assert.rejects(client.run('settings.update',{theme:'dark',script:'x'}),error=>error.code==='BACKEND_ARGS_INVALID');
   assert.deepEqual(await client.run('projects.rename',{workspace:project.workspace,name:'Альфа'}),{changed:true});
-  const created=await client.run('sessions.create',{workspace:project.workspace,experience:'chat'});
+  const created=await client.run('sessions.create',{workspace:project.workspace});
   assert.notEqual(created.selected.sessionId,project.sessionId);
   assert.deepEqual(await client.run('sessions.rename',{workspace:project.workspace,sessionId:created.selected.sessionId,name:'Вторая'}),{changed:true});
   const selected=await client.run('sessions.select',{workspace:project.workspace,sessionId:project.sessionId});
@@ -143,10 +143,10 @@ test('requestId deduplicates, accepted operations finish after disconnect and ar
   const project=await store.select(workspace);
   const backend=await startBackend(t,root),client=clientOf(backend);
   await client.connect();await client.acquire();
-  const first=await client.submit('sessions.create',{workspace:project.workspace,experience:'chat'},{requestId:'create-once'});
-  const repeat=await client.submit('sessions.create',{workspace:project.workspace,experience:'chat'},{requestId:'create-once'});
+  const first=await client.submit('sessions.create',{workspace:project.workspace},{requestId:'create-once'});
+  const repeat=await client.submit('sessions.create',{workspace:project.workspace},{requestId:'create-once'});
   assert.equal(first.status,'accepted');assert.equal(repeat.operationId,first.operationId);
-  await assert.rejects(client.submit('sessions.create',{workspace:project.workspace,experience:'work'},{requestId:'create-once'}),
+  await assert.rejects(client.submit('sessions.create',{workspace:path.join(root,'different')},{requestId:'create-once'}),
     error=>error.code==='BACKEND_REQUEST_CONFLICT');
   client.close();
   // A new client, without the old connection, sees the same server-side operation.
@@ -155,7 +155,7 @@ test('requestId deduplicates, accepted operations finish after disconnect and ar
   assert.equal(done.status,'completed');
   const sessions=backend.services.control.projects.snapshot().projects[0].sessions;
   assert.equal(sessions.length,2,'one effect for one requestId');
-  assert.ok(sessions.every(session=>session.experience==='chat'));
+  assert.ok(sessions.every(session=>!Object.hasOwn(session,'experience')));
   const journal=fs.readFileSync(path.join(backend.identity.ownerDir,'operations.jsonl'),'utf8').trim().split('\n').map(JSON.parse)
     .filter(record=>record.operationId===first.operationId).map(record=>record.status);
   assert.deepEqual(journal,['accepted','running','completed']);

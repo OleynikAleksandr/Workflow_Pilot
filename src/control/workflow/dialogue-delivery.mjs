@@ -20,7 +20,8 @@ export class DialogueDelivery {
         await this.store.whenIdle?.();
         project=this.project(target.local_session_id);record=this.record?.(project);
         const attempt=project?.attempt;
-        if(!project||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel')return false;
+        if(!project||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel'
+          ||(attempt.attemptGeneration??null)!==(message.attempt_generation??null))return false;
         if(project.preparationPaused)throw startupFailure('STARTUP_PAUSED','Подготовка сессии приостановлена. Контекст не выдан.');
         if(attempt.loginLost)throw startupFailure('STARTUP_LOGIN_REQUIRED','Вход в ChatGPT утрачен. Контекст не выдан.');
         if(attempt.cancelState&&attempt.cancelState!=='none'||record?.controller?.startupAllowed?.(attempt)===false)
@@ -29,13 +30,13 @@ export class DialogueDelivery {
           const observation=record?.pageState?.current,page=observation?.state;
           if(page?.login==='signed-out')throw startupFailure('STARTUP_LOGIN_REQUIRED','Нужно войти в ChatGPT. Контекст не выдан.');
           const snapshot=record?.browser?.snapshot?.()??record?.composer?.navigationSnapshot?.();
-          const owned=project.chatUrl?normalizeChatUrl(page?.url)===project.chatUrl
+          const owned=project.chatUrl?normalizeChatUrl(snapshot?.url??page?.url)===project.chatUrl
             :snapshot&&snapshot.id===attempt.navigation?.id&&snapshot.incarnation===attempt.navigation?.incarnation
               &&snapshot.epoch===attempt.navigation?.epoch&&snapshot.navigationOwner===attempt.requestId
               &&!['lost','conflict'].includes(attempt.addressStatus);
           if(!owned)throw startupFailure('STARTUP_ADDRESS_UNCONFIRMED','Принадлежность страницы этой попытке не подтверждена. Контекст не выдан.');
           const ready=page?.login==='signed-in'&&observation.documentId
-            &&(project.chatUrl||observation.documentId!==attempt.preflightDocumentId);
+            &&(project.chatUrl?normalizeChatUrl(page.url)===project.chatUrl:observation.documentId!==attempt.preflightDocumentId);
           if(!ready){
             const remaining=deadline-Date.now();
             if(remaining<=0||!record?.pageState?.waitForChange)throw startupFailure('STARTUP_NOT_READY','Ожидается подтверждение входа и готовности страницы ChatGPT. Контекст пока не выдан.');

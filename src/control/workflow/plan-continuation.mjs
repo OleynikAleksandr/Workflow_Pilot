@@ -268,7 +268,7 @@ export class PlanContinuation {
     if (plan.scopeStatus !== 'ACTIVE' || !plan.planView?.tasks?.length)
       return this.wait('PLAN_UNAVAILABLE', 'Ждём незавершённый активный план.');
     run.completedAtStart ??= plan.planView.tasks.filter(t => t.status === 'done').map(t => t.id);
-    // A persisted busy cycle distinguishes completed replies even when Work
+    // A persisted busy cycle distinguishes completed replies even when the page
     // replaces a fixed-size DOM window with no native message IDs.
     const previousCheckpoint = this.checkpoint;
     const pauseId = this.pauseIdentity(p);

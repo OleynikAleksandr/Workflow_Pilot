@@ -82,6 +82,40 @@ async function fixture(t,{delivery_mode='sdk-notification',correlated=false}={})
     setValid:v=>valid=v,setCurrent:v=>current=v,setBusy:v=>canSend=!v,setAdmitted:v=>admitted=v};
 }
 
+test('early panel waits for the same Chat document and reports readiness separately from stale context',async t=>{
+  const f=await fixture(t,{delivery_mode:'model-pull',correlated:true});
+  const project={workspace:'/fixture',sessionId:target.local_session_id,chatUrl:null,attempt:{
+    requestId:f.owner.request_id,attemptGeneration:f.owner.attempt_generation,contextTransport:'panel',bootstrapTransport:'url-query',
+    cancelState:'none',addressStatus:'pending',preflightDocumentId:'preflight',packet:{},
+    navigation:{id:'page',incarnation:'boot',epoch:2}}};
+  const ready={documentId:'postflight',state:{login:'signed-in',url:'https://chatgpt.com/c/owned-chat'}};
+  const pageState={current:null,version:0,waitForChange:async()=>{pageState.current=ready;pageState.version++;}};
+  let fresh=true,owner=project.attempt.requestId;
+  const record={pageState,browser:{snapshot:()=>({id:'page',incarnation:'boot',epoch:2,navigationOwner:owner,
+    url:pageState.current?.state.url??'https://chatgpt.com/?q=fixture'})},controller:{startupAllowed:()=>true,packetIsCurrent:async()=>fresh}};
+  const delivery=new DialogueDelivery({store:{inspect:async()=>({})},record:()=>record});
+  delivery.project=()=>project;f.c.workflow.currentMessage=(to,m)=>delivery.currentMessage(to,m);
+  const first=await f.c.startupOpen(f.input);
+  assert.equal(first.part,0);assert.equal(first.message_id,f.staged.message_id);assert.equal(pageState.version,1);
+  assert.equal(Object.hasOwn(project.attempt,'modeConfirmed'),false);
+  assert.deepEqual(await f.c.startupOpen(f.input),first,'a lost response reuses the same first part');
+  project.preparationPaused=true;
+  await assert.rejects(f.c.startupOpen(f.input),{code:'PLUGIN_COMMUNICATION_STARTUP_PAUSED'});project.preparationPaused=false;
+  project.attempt.cancelState='requested';
+  await assert.rejects(f.c.startupOpen(f.input),{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});project.attempt.cancelState='none';
+  pageState.current={...ready,state:{...ready.state,login:'signed-out'}};
+  await assert.rejects(f.c.startupOpen(f.input),{code:'PLUGIN_COMMUNICATION_STARTUP_LOGIN_REQUIRED'});pageState.current=ready;
+  owner='foreign';await assert.rejects(f.c.startupOpen(f.input),{code:'PLUGIN_COMMUNICATION_STARTUP_ADDRESS_UNCONFIRMED'});owner=project.attempt.requestId;
+  project.attempt.attemptGeneration='replacement';
+  await assert.rejects(f.c.startupOpen(f.input),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});project.attempt.attemptGeneration=f.owner.attempt_generation;
+  fresh=false;await assert.rejects(f.c.startupOpen(f.input),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});fresh=true;
+  for(let part=1;part<first.total;part++)await f.c.content({...f.input,context_ref:first.context_ref,part});
+  assert.equal((await f.c.startupComplete({...f.input,context_sha256:first.context_ref})).complete,true);
+  const run=f.c.runs.get(f.input.run_id);
+  assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,0);
+  assert.equal(run.events.filter(e=>e.event_type==='startup.complete').length,1);
+});
+
 test('a model-pull read ordered before cancellation stays recorded; all later reads and ack are denied',async t=>{
   const f=await fixture(t,{delivery_mode:'model-pull',correlated:true}),{c,input,owner,invitation}=f;
   const store=c.store;let enter,release;

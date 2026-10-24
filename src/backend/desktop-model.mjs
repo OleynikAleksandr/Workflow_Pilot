@@ -873,7 +873,6 @@ async function reviewWorkspace(workspace, openReady = false, { generation = null
   if (!navigationCurrent(ownNavigation)) return false;
   if (store.project(canonical)?.archivedAt) { await openArchiveWindow(canonical); publish(); return false; }
   settingsState = null; deletion.clear();
-  const firstSessionExperience = 'chat';
   setupState = { phase: 'checking', mode: 'existing', workspace }; publish();
   const preview = await workspaceSetup.preview({ mode: 'existing', workspace });
   if (!navigationCurrent(ownNavigation)) return false;
