@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1022,
+  "plan_revision": 1024,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -1014,14 +1014,15 @@
         "Штатный installer проверил установленную либо pending копию и rollback; backend не остановлен, приложение не перезапущено."
       ],
       "expected_commit_message": "feat: Обновить собственную установленную копию готовым macOS bundle",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "INSTALL",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH",
@@ -1079,7 +1080,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1022
+Revision: 1024
 
 ## Цель
 
@@ -1151,8 +1152,8 @@ Revision: 1022
   - Файлы: package.json, package-lock.json, release-manifest.json, scripts/release-all.mjs, scripts/release-package.mjs, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Обновить собственную установленную копию готовым macOS bundle — Ожидает
-  - Git Commit: [PENDING] feat: Обновить собственную установленную копию готовым macOS bundle
+- [DONE] INSTALL: Обновить собственную установленную копию готовым macOS bundle — Завершено
+  - Git Commit: [DONE] feat: Обновить собственную установленную копию готовым macOS bundle
   - Reference: chat-only-url-bootstrap / INSTALL / implementation
   - Файлы: release-manifest.json, docs/modules/release.md
   - Параллельность: исключительное выполнение
