@@ -26,7 +26,7 @@ export function makeProbeFiles() {
 // User runs this in a new empty ChatGPT page; no Send, API calls or account access.
 export function pasteProbe(dom, makeFiles) {
   if(location.protocol!=='https:' || location.hostname!=='chatgpt.com') throw new Error('OPEN_CHATGPT_FIRST');
-  if(!['/','/work','/work/'].includes(location.pathname) || dom.messages('user').length) throw new Error('OPEN_NEW_EMPTY_CHAT');
+  if(location.pathname!=='/' || new URL(location.href).searchParams.has('surface') || dom.messages('user').length) throw new Error('OPEN_NEW_EMPTY_CHAT');
   const editor=dom.editor();
   if(!editor || editor.disabled || editor.readOnly || editor.getAttribute('contenteditable')==='false') throw new Error('EDITOR_NOT_READY');
   if(dom.busy() || dom.connectionError()) throw new Error('CHAT_NOT_READY');

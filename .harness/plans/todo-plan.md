@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1058,
+  "plan_revision": 1060,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
@@ -98,7 +98,11 @@
       "tests/dialogue-delivery.test.mjs",
       "tests/session-roles.test.mjs",
       "src/control/workflow/plan-continuation.mjs",
-      "tests/fixtures/status-menu-electron.cjs"
+      "tests/fixtures/status-menu-electron.cjs",
+      "packages/workflow-kit/src/lib/installer.mjs",
+      "scripts/probe-chatgpt-file-paste.mjs",
+      "tests/fixtures/released-kit/kit-1.9.8.tar.gz",
+      "tests/fixtures/released-kit/manifest.json"
     ],
     "documentation_paths": [
       "README.md",
@@ -450,8 +454,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
         "task_id": "VERSION",
@@ -468,7 +472,11 @@
         "packages/workflow-kit/src/lib/common.mjs",
         "packages/workflow-kit/src/lib/installation-files.mjs",
         "scripts/stage-workflow-kit.mjs",
-        "tests/workflow-kit-upgrade.test.mjs"
+        "tests/workflow-kit-upgrade.test.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "scripts/probe-chatgpt-file-paste.mjs",
+        "tests/fixtures/released-kit/kit-1.9.8.tar.gz",
+        "tests/fixtures/released-kit/manifest.json"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -486,7 +494,19 @@
         "Приложение 0.5.33 и новая версия Kit согласованы в исходниках, lock и генерируемых ресурсах."
       ],
       "expected_commit_message": "chore: подготовить версии приложения и Kit",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "scripts/probe-chatgpt-file-paste.mjs",
+        "src/contracts/backend.mjs",
+        "tests/fixtures/released-kit/kit-1.9.8.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -678,7 +698,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-session-without-modes
 Current Task: нет
-Revision: 1058
+Revision: 1060
 
 ## Цель
 
@@ -714,10 +734,10 @@ Revision: 1058
   - Файлы: src/backend/main.mjs, src/backend/status-menu.mjs, src/contracts/backend.mjs, tests/backend-diagnostics.test.mjs, tests/backend-shutdown.test.mjs, tests/fixtures/status-menu-electron.cjs
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
-- [TODO] VERSION: chore: подготовить версии приложения и Kit — Ожидает
-  - Git Commit: [PENDING] chore: подготовить версии приложения и Kit
+- [DONE] VERSION: chore: подготовить версии приложения и Kit — Завершено
+  - Git Commit: [DONE] chore: подготовить версии приложения и Kit
   - Reference: chat-session-without-modes / VERSION / implementation
-  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installation-files.mjs, scripts/stage-workflow-kit.mjs, tests/workflow-kit-upgrade.test.mjs
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installation-files.mjs, scripts/stage-workflow-kit.mjs, tests/workflow-kit-upgrade.test.mjs, packages/workflow-kit/src/lib/installer.mjs, scripts/probe-chatgpt-file-paste.mjs, tests/fixtures/released-kit/kit-1.9.8.tar.gz, tests/fixtures/released-kit/manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: TRAY
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

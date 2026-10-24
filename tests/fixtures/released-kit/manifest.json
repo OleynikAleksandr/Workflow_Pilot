@@ -127,6 +127,15 @@
       "version": "1.9.7",
       "file": "kit-1.9.7.tar.gz",
       "sha256": "8d5dd7eb62504ce0cbff4e74ae8e6369e6bb0db59d94bc951853105f3d637ad1"
+    },
+    {
+      "ref": "v0.5.32",
+      "repository": "https://github.com/OleynikAleksandr/Workflow_Pilot",
+      "commit": "4ebef1ce3fc81945875d1bdd75d050c411d2f19d",
+      "source_path": "packages/workflow-kit/src",
+      "version": "1.9.8",
+      "file": "kit-1.9.8.tar.gz",
+      "sha256": "327b16b9bdb7c1d18843051e763b77e3b2e7433bf7701416f930b1a52fb6f5f3"
     }
   ]
 }
