@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1035,
+  "plan_revision": 1036,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -1209,7 +1209,8 @@
       "functional_paths": [
         "package.json",
         "package-lock.json",
-        "src/backend/desktop-model.mjs"
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs"
       ],
       "documentation_paths": [
         "docs/planning/chatgpt-search-extension.md"
@@ -1384,7 +1385,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1035
+Revision: 1036
 
 ## Цель
 
@@ -1489,7 +1490,7 @@ Revision: 1035
 - [TODO] VERSION-2: Подготовить версию 0.5.32 — Ожидает
   - Git Commit: [PENDING] feat: Подготовить версию 0.5.32
   - Reference: chat-only-url-bootstrap / VERSION-2 / implementation
-  - Файлы: package.json, package-lock.json, src/backend/desktop-model.mjs, docs/planning/chatgpt-search-extension.md
+  - Файлы: package.json, package-lock.json, src/backend/desktop-model.mjs, src/contracts/backend.mjs, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXT03
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
