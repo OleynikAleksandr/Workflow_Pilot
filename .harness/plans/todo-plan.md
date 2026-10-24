@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1028,
+  "plan_revision": 1030,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -1093,14 +1093,22 @@
         "Закреплённый официальный CRX проверяется до безопасной распаковки; полный кэш проверяется перед загрузкой, offline/concurrency/retry и повреждение покрыты."
       ],
       "expected_commit_message": "feat: Автоматически загружать и атомарно устанавливать официальное расширение",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "EXT01",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/chatgpt-search-extension.md",
+        "src/execution/browser/chatgpt-search-extension.mjs",
+        "src/execution/browser/search-extension-pin.mjs",
+        "tests/chatgpt-search-extension.test.mjs",
+        "package.json",
+        "package-lock.json"
+      ]
     },
     {
       "id": "EXT02",
@@ -1358,7 +1366,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1028
+Revision: 1030
 
 ## Цель
 
@@ -1442,8 +1450,8 @@ Revision: 1028
   - Файлы: release-manifest.json, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
-- [TODO] EXT01: Автоматически загружать и атомарно устанавливать официальное расширение — Ожидает
-  - Git Commit: [PENDING] feat: Автоматически загружать и атомарно устанавливать официальное расширение
+- [DONE] EXT01: Автоматически загружать и атомарно устанавливать официальное расширение — Завершено
+  - Git Commit: [DONE] feat: Автоматически загружать и атомарно устанавливать официальное расширение
   - Reference: chat-only-url-bootstrap / EXT01 / implementation
   - Файлы: src/execution/browser/chatgpt-search-extension.mjs, src/execution/browser/search-extension-pin.mjs, tests/chatgpt-search-extension.test.mjs, package.json, package-lock.json, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение
