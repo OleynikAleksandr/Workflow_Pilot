@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1041,
+  "plan_revision": 1043,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -1316,14 +1316,17 @@
         "DOCS своего раунда завершён; три проверенных пакета одного sourceCommit, pinned downloader включён в каждый."
       ],
       "expected_commit_message": "feat: Собрать проверенный выпуск 0.5.32 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "RELEASE-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-2",
@@ -1413,7 +1416,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1041
+Revision: 1043
 
 ## Цель
 
@@ -1527,8 +1530,8 @@ Revision: 1041
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/chatgpt-search-extension.md, docs/modules/release.md, docs/modules/chatgpt-search-extension.md, resources/THIRD-PARTY.md, README.md, docs/acceptance/chat-only-startup.md, docs/modules/browser.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/orchestrator-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXT01, EXT02, EXT03, VERSION-2
-- [TODO] RELEASE-2: Собрать проверенный выпуск 0.5.32 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать проверенный выпуск 0.5.32 для трёх ОС
+- [DONE] RELEASE-2: Собрать проверенный выпуск 0.5.32 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать проверенный выпуск 0.5.32 для трёх ОС
   - Reference: chat-only-url-bootstrap / RELEASE-2 / implementation
   - Файлы: release-manifest.json, docs/planning/chatgpt-search-extension.md
   - Параллельность: исключительное выполнение

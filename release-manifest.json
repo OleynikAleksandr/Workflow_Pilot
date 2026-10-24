@@ -1,23 +1,23 @@
 {
   "schemaVersion": 2,
-  "version": "0.5.31",
-  "sourceCommit": "a2d6fbf9b96ec64f2e88235e43918d01a5256e18",
-  "sourceFiles": 258,
+  "version": "0.5.32",
+  "sourceCommit": "4ebef1ce3fc81945875d1bdd75d050c411d2f19d",
+  "sourceFiles": 260,
   "sources": {
     "LICENSE": "43a6559711f10402ae87af80b8ac779ed3df6af92aba3f2ed85bf80d4ebf3c69",
     "packages/workflow-kit/package.json": "02b651ee45f7082efb4e4cbc0df1affc53fe6875211847ed7da68dc3886a3555",
     "packages/workflow-kit/index.mjs": "3daab9251d8ceab8c3b54148469848d263c27dd731782dd64b4e3484fcc85dba",
-    "package.json": "e5a4749f3d92d5896fd96f11ae5ea503c4da69b8aa3cdf2a89517a839164fce6",
-    "package-lock.json": "e46eaaed7779d430c8c10bd91973816c0ed976884f56e24c3ac0273b8dba9423",
+    "package.json": "12e8614076a25e543f08bec4c1dd23906652f30601c09c032db22efb0657f707",
+    "package-lock.json": "a824badd762afc89f711dfb0cef0f3856df80b678ad57ec381408910fa65132d",
     "src/backend/bootstrap.mjs": "91412ff8eb1fcd1a136b77ad515728221d24602e1c5c9dec4ac980b13dc7df9d",
     "src/backend/control-lease.mjs": "1fabe048b528c08af1aa74c5cc80063dacaa664ba41def7e440b37b720da2775",
-    "src/backend/desktop-model.mjs": "1e8c4bd3bf5f49259be40ab08835a83a9bbb759e4664d79b71e62fe3eeb46d07",
+    "src/backend/desktop-model.mjs": "89b5f6271c2c130c7accbc004083f41b95dc275fc767b9a6e241d864eadc2ec5",
     "src/backend/diagnostics.mjs": "ae72898d7a9f22f09e2d6136663e30e6a1b8ea5660daf6a6b0d78ee8758fc88d",
     "src/backend/events.mjs": "96e77f84aca6bb9ba792e90dbb2f9279b57b68db7e3442f3d4e89f4994aaa797",
     "src/backend/force-stop.mjs": "bed8281916f81013678b3d1484aa5cf90b3b7df5ae63eabd3745f1269b615f0e",
     "src/backend/identity.mjs": "7ab1b2b43adcd6e60ac81e6109abbd83b35c2141508dd87e7b70093b80dedd83",
     "src/backend/lifecycle.mjs": "89b998449d11c18bfe52f4689ba90e7d04d0bcb61a6feb06a5f420536da18bf0",
-    "src/backend/main.mjs": "9771c701d7f4d351d9ab2dc55c1c42a9316a04e009fd403f5a70f6a89ce00b88",
+    "src/backend/main.mjs": "f0834590cc97c07f6284753a6bb9f8f3c49f0dd8761d06eb5cfc0d2f307fbe00",
     "src/backend/operations.mjs": "1101d3654469492cb86c9f5c41f7fa3fe9f628732773862e5b7e88be1db262b6",
     "src/backend/protocol.mjs": "1ae1b8730201df0b17252e11a80a0f5a44cfd707152ea9723567dcc6e12de728",
     "src/backend/remote-access.mjs": "b67778553185d66e3dbcc3dfdbcff51a835990487849623fed08d4c1f42c16a7",
@@ -31,7 +31,7 @@
     "src/chatgpt-composer.mjs": "b3e9ca8c2b9db94ac8f42d35526e1770058229fef7607ddd38d20f7282dcfac7",
     "src/chatgpt-dom.mjs": "b913cf4298d106e48f80430a5ff694fa439ee010d40b3e974278becc7768f9ba",
     "src/chatgpt-experience.mjs": "80dc2e64c637b6be497ea692552530b951351c84015584b5b9093bc3b998037f",
-    "src/contracts/backend.mjs": "3e045618c0b542e9d29598a2f30e3fea1b7e007c623640f8e6a67d79a3ec7e04",
+    "src/contracts/backend.mjs": "24d96b5b786052edc7fccdd0d667805701fef1f7e85d3d1298e8313b861d2075",
     "src/contracts/browser-presentation.mjs": "d6bceb184efa4b1e8611787df6cd2f01348448cc3ff13bd2369c8f98a3350500",
     "src/contracts/browser.mjs": "4371e1c4957e45259f3f0e377155c93c2f59318261f1e871be4e55ddae663af3",
     "src/contracts/chat-colors.mjs": "2f230f2905566624cb4e3a4af3c88acfb1132e70eccd9f45bd97b6efc02d651a",
@@ -108,6 +108,7 @@
     "src/execution/browser/chatgpt-dom.mjs": "18ad170379b84530b9648136e76f33e95802924c77f4f1bf8970a12f49736897",
     "src/execution/browser/chatgpt-experience.mjs": "695d270c6c827558b76a903194bfeb5254e36aa3df4aa3750809da73c0e02d79",
     "src/execution/browser/chatgpt-page-observer.mjs": "cc5d6ee21f029c78ea5a856b1977dc17a7e6f6237994d69677f986a068dabdfb",
+    "src/execution/browser/chatgpt-search-extension.mjs": "f795d05002df64d3e108ab280e37f9e885c68cfa724fb22e67f7fc665edb53c9",
     "src/execution/browser/chatgpt-title.mjs": "575de8d061acdabff64e8bd66f619d8736c241347d6413f77618dc3a17612206",
     "src/execution/browser/chatgpt-tool-filter.mjs": "58a0dec47c416f6056105decf6b7b03fe8e4d94cf88e6deda02466e49a9291c2",
     "src/execution/browser/diagnostics.mjs": "a616930ba8dd90c65d339fc9d1dab5266d652727bb53f3511306d3019ebd1f13",
@@ -116,12 +117,13 @@
     "src/execution/browser/presentation/host.mjs": "574dc40f39d4bdddf68bfd666cbaf49ea23026486c6b957b7eef73c0aa7ae37b",
     "src/execution/browser/presentation/input.mjs": "cd84bb2b1005772175cd00e04a132329465a74c48fc39570b20c29c8f69fe4af",
     "src/execution/browser/presentation/transport.mjs": "f42720ec6ca52d7b93f516a49e3335d03e6f8f1bffaefdda8262e533593be29a",
-    "src/execution/browser/session-runtime.mjs": "640e15e985875b98bddac9dec7025b9f9a5305dcae13fc2852b0743260aa0367",
+    "src/execution/browser/search-extension-pin.mjs": "46578343890c767bc5043408b8fc5ff86b4a8375211d33b95b40c0da787ccef1",
+    "src/execution/browser/session-runtime.mjs": "927ae368cf60f71e6b00cc2a799b30018c2481b8f468eb65a3965ab03d20b6e9",
     "src/execution/browser/startup-network-trace.mjs": "f1e7dd004a95761517b801ede224b44cb5546400df74f2bd8a02db83be75bfea",
     "src/execution/commands/activity-probe.mjs": "5ed97e3a1ef1565d35056cc2271d8910c004c9aa5ece4422a3a2ec049975a7c7",
     "src/execution/commands/service.mjs": "0c6164eb811b7699062fe1a6f4918e0a3db85f0f43064f287b18e8421acfc34b",
     "src/execution/desktop-dependencies.mjs": "00f6698b24fc62bd0fc36140d8fbf3a647bae8847dfca9f931af5d6c65a159f3",
-    "src/execution/facade.mjs": "6b9fe51140286c8dbe5a9508117dc198271a9c023cdda151bd7e761ff618273a",
+    "src/execution/facade.mjs": "dee8314173db332789f0f8396e159f40c5d70e6507f94e7d2569b4b497a03d21",
     "src/execution/files/adapter.mjs": "a861bbe1072ac09a3d785726c34181284322bebffc621e5272b439e06fb0ae52",
     "src/execution/files/diagnostics.mjs": "3824bd49a6c33f683c299ec186a963cb5d4c9d817ee077f0f48a9a61121e5857",
     "src/execution/files/project-input-watch.mjs": "8e9f8fb43dda6180313920921bcc93481d057e3dfeb3bc93b0387a1febb461b7",
@@ -147,7 +149,7 @@
     "src/frontend/client/service-stop.mjs": "115c062e073b9b78ef06e262a4f19bc5cc6347c0dedc48ce251f79a02838a694",
     "src/frontend/desktop/application.mjs": "b03255d7998218096527849bc7225127e832ac945cfd2740a3eed796e4ca4a27",
     "src/frontend/desktop/archive-preload.cjs": "4421eccac23bd66b9fb548049b682618f5587ba653971de3ffb729da052437d9",
-    "src/frontend/desktop/bootstrap.mjs": "118915c629c4af5c4354afa4076e74de5d578f375cfed6bc7d328ca35ee1e42f",
+    "src/frontend/desktop/bootstrap.mjs": "2821b47cb2659ff1ce67eb8f7592555be90e33289bde75419bc842d02a28bfb6",
     "src/frontend/desktop/browser-host.mjs": "5f71f0c90a67febbbd034301c926d275161091884fe7550271cf0ba96bd92174",
     "src/frontend/desktop/browser-view-preload.cjs": "a394d4687357d8bbd138520e81869a90a2246784047d2836b7c2ecfb6970872a",
     "src/frontend/desktop/chat-colors-preload.cjs": "999244ca7e238753a8da6f0945c826d9ff69c8bbf5034b142dfd008968bfc811",
@@ -179,7 +181,7 @@
     "src/frontend/web/ipc.js": "eecd581a22e52cde58c5e3c61b072bb7c5add7c2cb06fe8b9cebdf1ac38ae66b",
     "src/frontend/web/touch-input.mjs": "b687d149ce52178dc511c9a077c74552f8de30d8c028de6da814a090ca6b8b4f",
     "src/main.mjs": "418dcc3e1ed5489db291169f5559721021df1a704a82525f4c0af1b10e6e290f",
-    "resources/THIRD-PARTY.md": "a40e1f9fec34c8c247c1a33ac1db4e52f4b60cbd78a17f3479c164067a1d1ad9",
+    "resources/THIRD-PARTY.md": "51f6d22466eb54d5aa5cf81aee26e34522eff5c5069fba853d080d329a593ff2",
     "resources/chatgpt-page-observer-preload.cjs": "9af69f68467edbf305755b58ea2e52552c87412c8eda450eff359b81f1aecb55",
     "resources/mac-permissions.plist": "4f20c4a12f31a7e3f5a3950ebb91c1e5720f224962c20c8a07d4a097f15ab7b8",
     "resources/project-doctor-worker.mjs": "3b6ea8a87a2b48c7687fb7ade8e3484e2d7c70c44dd4cc406dbb89d3084d0184",
@@ -253,7 +255,7 @@
     "tools/codex-app-server-mcp/control.py": "875b1aabb6edcade7e8c1162ea1969ff6af4454dc50f9dc0d5bbe4c86ea19043",
     "tools/codex-app-server-mcp/linux_desktop.py": "5fb02227a28c41bcdae333154c4ee1dc4736f31912f000e38d4c1945cb910676",
     "tools/codex-app-server-mcp/linux_runtime.py": "6efa1bcc6c81cbd3bd3f8e62937422f385f4d3daa23a00843bff003baca94883",
-    "tools/codex-app-server-mcp/plugin-ui.html": "44635208368f976a72f8225b1744270ee48db94e81d565d59f273747bfc5c75c",
+    "tools/codex-app-server-mcp/plugin-ui.html": "503bd74591bf956634a1c3540dfffe6e313d80b50660d59466be5fcfe06ad572",
     "tools/codex-app-server-mcp/plugin.py": "3d44769334d54701308030d2e834ff78cb84715c91adcc0b1af25bf0c4d301bb",
     "tools/codex-app-server-mcp/requirements-linux.in": "081ff759c914456b2886a63fbd100855e8e2a75facfbd281ca016f862f99b8ce",
     "tools/codex-app-server-mcp/requirements-linux.lock": "3f9979e11eb6f454af921ff9cf734b811b7e7e98064f8dfb5929178443237752",
@@ -264,7 +266,7 @@
     "tools/codex-app-server-mcp/windows_notify.ps1": "6b67095838698735bdd44981e744cac2b572427252bc7ebd56face2293b9acdb"
   },
   "locks": {
-    "package-lock.json": "e46eaaed7779d430c8c10bd91973816c0ed976884f56e24c3ac0273b8dba9423",
+    "package-lock.json": "a824badd762afc89f711dfb0cef0f3856df80b678ad57ec381408910fa65132d",
     "tools/codex-app-server-mcp/codex-tools.lock.json": "ac2d9de8ef62562b78b1d8ee2fb75cf15375a68aa802ecd4435c47c8ebf73068",
     "tools/codex-app-server-mcp/requirements-linux.lock": "3f9979e11eb6f454af921ff9cf734b811b7e7e98064f8dfb5929178443237752"
   },
@@ -280,7 +282,7 @@
     "identity": "A0F7CEBAE465D22E7A0CD3FFC3C5F785589A85A5",
     "teamId": "JG9T5YMR4M",
     "identifier": "com.oleynik.WorkflowPilot",
-    "cdhash": "445b0daeedd36511e501388a9112fc14c5ece554",
+    "cdhash": "e56ca22f32a3b7e1a14bc6683344ca6c4d1fc47e",
     "requirement": "identifier \"com.oleynik.WorkflowPilot\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: alexandrovichroman@gmail.com (DQT97QNYK6)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */"
   },
   "artifacts": [
@@ -288,31 +290,31 @@
       "platform": "macOS arm64",
       "os": "darwin",
       "arch": "arm64",
-      "asarSha256": "33650f1f0abc527bc3c11019f2416dc57aec20ad98e2d253c7fc01540473a7c6",
+      "asarSha256": "e96bf0c163743bae9756b159bbac21e14f835869c641cefcdbabab27b731ee56",
       "packageFiles": 367,
-      "file": "Workflow-Pilot-0.5.31-macOS-arm64.zip",
-      "bytes": 185895279,
-      "sha256": "4bb6d1f17853cc5810e9e8fb669cd15ddcca60563f15dc2c168d361aa5293c19"
+      "file": "Workflow-Pilot-0.5.32-macOS-arm64.zip",
+      "bytes": 185933578,
+      "sha256": "e13da44cff0b659dc275c15d5b9f1237e713415869523a619385bd7043e55aaa"
     },
     {
       "platform": "Windows x64",
       "os": "win32",
       "arch": "x64",
-      "asarSha256": "33650f1f0abc527bc3c11019f2416dc57aec20ad98e2d253c7fc01540473a7c6",
+      "asarSha256": "e96bf0c163743bae9756b159bbac21e14f835869c641cefcdbabab27b731ee56",
       "packageFiles": 2154,
-      "file": "Workflow-Pilot-0.5.31-Windows-x64.zip",
-      "bytes": 321843182,
-      "sha256": "334c7b930e031cbd3105c1dd7838aabcf6d102518772308557a00e1d30216a65"
+      "file": "Workflow-Pilot-0.5.32-Windows-x64.zip",
+      "bytes": 321881491,
+      "sha256": "bdf86b0b29a280be8df230a1a0e2df944df260d2c73b535cf69294f421653aad"
     },
     {
       "platform": "Linux x64",
       "os": "linux",
       "arch": "x64",
-      "asarSha256": "33650f1f0abc527bc3c11019f2416dc57aec20ad98e2d253c7fc01540473a7c6",
+      "asarSha256": "e96bf0c163743bae9756b159bbac21e14f835869c641cefcdbabab27b731ee56",
       "packageFiles": 9687,
-      "file": "Workflow-Pilot-0.5.31-Linux-x64.tar.gz",
-      "bytes": 380184809,
-      "sha256": "06fe4741ea53ba1868802836965d33c3c2581a1c39ffd9a5a733086540aa38b0"
+      "file": "Workflow-Pilot-0.5.32-Linux-x64.tar.gz",
+      "bytes": 380223744,
+      "sha256": "21435257b0af0710efa97e823ec58be39d09522d38f5883f8238048d95cbbf12"
     }
   ],
   "windowsRuntimeArchive": {
@@ -324,12 +326,12 @@
     {
       "file": "SHA256SUMS.txt",
       "bytes": 414,
-      "sha256": "1c5b3bc3a14a2202959ea0459b7b7e71a3a2f95490e60f9d3c75e5c69f990a39"
+      "sha256": "ab8a5ed18ef2877af5031aa51643965ace750c20ec77b9514cf9d597d1a3d534"
     },
     {
       "file": "INSTALL.txt",
       "bytes": 2076,
-      "sha256": "39ea2a4ff17ddd740fcad1c3a7d1fa0cfd43fa6e211778d92a941b7977b52662"
+      "sha256": "da72ecda31c081a9776f86f6be1ec1b4265f151fb16f7cfd25af52870a899933"
     }
   ],
   "nativeMacTested": false,
