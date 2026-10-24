@@ -318,6 +318,43 @@
       ],
       "timeout_ms": 300000,
       "evidence": "Изолированные проверки стартового канала O, bootstrap, receipts, restart, UNKNOWN и UI."
+    },
+    {
+      "id": "search-extension-unit",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/chatgpt-search-extension.test.mjs"
+      ],
+      "timeout_ms": 180000,
+      "evidence": "Официальный pin, cold/cache/offline, атомарность, ограничения ZIP/HTTP и ошибки; временные каталоги и fake Electron API."
+    },
+    {
+      "id": "search-extension-startup",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/session-runtime.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-desktop-model.test.mjs"
+      ],
+      "timeout_ms": 180000,
+      "evidence": "Готовность расширения до loadURL, отмена/гонки/ошибки без расходования токена, существующий backend и навигация."
+    },
+    {
+      "id": "search-extension-native",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "scripts/check-search-extension.mjs"
+      ],
+      "timeout_ms": 180000,
+      "evidence": "Настоящий Electron, автоматическое скачивание/установка официального расширения, local HTTPS q с document_start marker, offline restart; без реальных сообщений и рабочих профилей."
     }
   ],
   "budget": {
