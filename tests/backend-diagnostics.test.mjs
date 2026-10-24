@@ -6,6 +6,49 @@ import os from 'node:os';
 import path from 'node:path';
 import {createBackendJournal,launchServicesType} from '../src/backend/diagnostics.mjs';
 
+test('native Electron creates and disposes the isolated status icon',{skip:process.platform!=='darwin',timeout:25000},async t=>{
+  const {execFile}=await import('node:child_process');
+  const {promisify}=await import('node:util');
+  const {fileURLToPath}=await import('node:url');
+  const root=await fsp.mkdtemp(path.join(os.tmpdir(),'wp-status-icon-'));t.after(()=>fsp.rm(root,{recursive:true,force:true}));
+  const electron=(await import('electron')).default,env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+  const {stdout}=await promisify(execFile)(electron,[fileURLToPath(new URL('./fixtures/status-menu-electron.cjs',import.meta.url)),root],
+    {env,timeout:20000,killSignal:'SIGKILL',maxBuffer:1024*1024});
+  const result=stdout.trim().split('\n').map(line=>{try{return JSON.parse(line);}catch{return null;}}).find(value=>value?.initial);
+  assert.equal(result?.ok,true);assert.equal(result.initial.available,true);assert.equal(result.disposed.available,false);
+  assert.equal(result.disposed.phase,'disposed');assert.ok(result.states.some(state=>state.phase==='available'));
+});
+
+test('status icon retries bounded failures, restores latest menu and cancels all recovery on disposal',async()=>{
+  const {createStatusMenu}=await import('../src/backend/status-menu.mjs');
+  const queued=new Map(),states=[],menus=[];let serial=0,created=0,destroyed=0;
+  const schedule=fn=>{const id=++serial;queued.set(id,fn);return id;},cancel=id=>queued.delete(id);
+  const next=()=>{const [id,fn]=queued.entries().next().value;queued.delete(id);fn();};
+  class Tray{constructor(){if(++created<3)throw Error('PRIVATE q=ticket');}setToolTip(){}setContextMenu(menu){menus.push(menu);}destroy(){destroyed++;}}
+  const options={Tray,Menu:{buildFromTemplate:items=>items},nativeImage:{createFromBitmap:()=>({isEmpty:()=>false,setTemplateImage(){}})},
+    onOpen(){},onStop(){},onCancelStop(){},schedule,cancel,onState:s=>states.push(s)};
+  const icon=createStatusMenu(options);assert.deepEqual(icon.view(),{available:false,attempts:1,phase:'unavailable',errorCode:'TRAY_CREATE_FAILED'});
+  icon.update({service:{phase:'draining',reasons:[]},pages:4});assert.equal(queued.size,1);
+  next();assert.equal(queued.size,1);next();assert.equal(queued.size,0);
+  assert.equal(icon.view().available,true);assert.equal(icon.view().attempts,3);assert.match(menus.at(-1)[0].label,/страниц: 4/);
+  assert.ok(menus.at(-1).some(item=>item.label==='Отменить остановку'));
+  assert.equal(JSON.stringify(states).includes('PRIVATE'),false);icon.destroy();icon.destroy();assert.equal(destroyed,1);assert.equal(icon.view().phase,'disposed');
+  created=0;const failed=createStatusMenu({...options,Tray:class{constructor(){created++;throw Error('no tray');}}});
+  next();next();assert.equal(created,3);assert.equal(queued.size,0);assert.equal(failed.view().available,false);failed.destroy();
+  const cancelled=createStatusMenu({...options,Tray:class{constructor(){throw Error('no tray');}}});
+  const pending=[...queued.values()][0];cancelled.destroy();assert.equal(queued.size,0);pending();assert.equal(cancelled.view().attempts,1);
+});
+
+test('a menu failure retires its icon before recovery and exposes only a safe stage',async()=>{
+  const {createStatusMenu}=await import('../src/backend/status-menu.mjs');let tick,destroyed=0,fail=true;
+  class Tray{setToolTip(){}setContextMenu(){if(fail)throw Error('PRIVATE');}destroy(){destroyed++;}}
+  const icon=createStatusMenu({Tray,Menu:{buildFromTemplate:items=>items},nativeImage:{createFromBitmap:()=>({setTemplateImage(){}})},
+    onOpen(){},onStop(){},onCancelStop(){},schedule:fn=>{tick=fn;return 1;},cancel(){}});
+  icon.update({service:{phase:'running',reasons:[]}});assert.equal(destroyed,1);assert.equal(icon.view().errorCode,'TRAY_MENU_FAILED');
+  fail=false;tick();assert.equal(icon.view().available,true);icon.destroy();assert.equal(destroyed,2);
+});
+
+
 test('backend journal keeps only small scalar facts, private and bounded',async t=>{
   const root=await fsp.mkdtemp(path.join(os.tmpdir(),'wp-backend-journal-'));t.after(()=>fsp.rm(root,{recursive:true,force:true}));
   const file=path.join(root,'diagnostics','backend-events.jsonl');

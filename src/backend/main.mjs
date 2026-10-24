@@ -112,7 +112,8 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
         prepareBrowserNavigation:searchExtension?url=>searchExtension.prepareNavigation(url):null});
       if(!await desktop.start())throw Object.assign(new Error('Desktop model did not start.'),{code:'BACKEND_STARTUP_FAILED'});
       const base=desktop.services;
-      const service=Object.freeze({view:()=>stopper?.view()??{phase:'running',reasons:[],since:null,error:null},
+      const service=Object.freeze({view:()=>({...stopper?.view()??{phase:'running',reasons:[],since:null,error:null},
+          statusIcon:statusMenu?.view()??{available:false,attempts:0,phase:fixtureRoot?'disabled':'starting',errorCode:null}}),
         request:()=>stopper.request(),cancel:()=>stopper.cancel(),force:()=>{
           setTimeout(()=>forceStop(),50);return {phase:'force-stopping'};}});
       // window.open from a launch of the app: the native window, where this backend has one.
@@ -145,11 +146,11 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       disposeAccess=()=>access.dispose();
       const status=()=>({service:stopper.view(),pages:base.sessions.all().length,pairings:devices.view().pairings});
       stopper=createStopController({drainState:()=>desktop.drainState(),pause:value=>desktop.pause(value),stop:shutdown,
-        onChange:view=>{events.ui('service',view);statusMenu?.update(status());
+        onChange:view=>{events.ui('service',service.view());statusMenu?.update(status());
           // Codes only, and only when they change: a long wait does not flood the journal.
           const entry={phase:view.phase,reasons:view.reasons.map(reason=>reason.code),error:view.error?.code??null};
           const key=JSON.stringify(entry);if(key!==lastServiceEntry){lastServiceEntry=key;journal.record('service',entry);}}});
-      events.ui('service',stopper.view());
+      events.ui('service',service.view());
       // The native window: the same client opened inside this process with the
       // real page views. Fixtures open it hidden and never change the Dock.
       const nativePages=Object.freeze({attach:(id,container,bounds)=>host.attach(id,container,bounds),
@@ -198,6 +199,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       }
       if(!fixtureRoot) {
         statusMenu=createStatusMenu({Tray:electron.Tray,Menu:electron.Menu,nativeImage:electron.nativeImage,onOpen:()=>openClient('status-menu'),
+          onState:view=>{journal.record('status-icon',view);queueMicrotask(()=>{if(!stopping)events.ui('service',service.view());});},
           onForceStop:confirmForceStop,
           onOpenHttp:nativeAvailable()?()=>openClient('status-menu-http',{http:true}):null,
           onApprove:pairingId=>{try{devices.approve(pairingId);}catch{ /* an expired request disappears from the menu */ }},

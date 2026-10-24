@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1056,
+  "plan_revision": 1058,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
@@ -97,7 +97,8 @@
       "tests/chatgpt-title.test.mjs",
       "tests/dialogue-delivery.test.mjs",
       "tests/session-roles.test.mjs",
-      "src/control/workflow/plan-continuation.mjs"
+      "src/control/workflow/plan-continuation.mjs",
+      "tests/fixtures/status-menu-electron.cjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -406,8 +407,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
         "task_id": "TRAY",
@@ -421,7 +422,8 @@
         "src/backend/status-menu.mjs",
         "src/contracts/backend.mjs",
         "tests/backend-diagnostics.test.mjs",
-        "tests/backend-shutdown.test.mjs"
+        "tests/backend-shutdown.test.mjs",
+        "tests/fixtures/status-menu-electron.cjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -438,7 +440,14 @@
         "Работающую пользовательскую службу не останавливать."
       ],
       "expected_commit_message": "fix: диагностировать и восстанавливать значок службы",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/main.mjs",
+        "src/backend/status-menu.mjs",
+        "tests/backend-diagnostics.test.mjs",
+        "tests/backend-shutdown.test.mjs",
+        "tests/fixtures/status-menu-electron.cjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -669,7 +678,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-session-without-modes
 Current Task: нет
-Revision: 1056
+Revision: 1058
 
 ## Цель
 
@@ -699,10 +708,10 @@ Revision: 1056
   - Файлы: tests/electron-smoke.mjs, tests/context-session.test.mjs, tests/startup-context.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, scripts/check-search-extension.mjs, src/backend/desktop-model.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/plan-continuation.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/automatic-agent-dialogue.test.mjs, tests/backend-api.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-upgrade.test.mjs, tests/chatgpt-plugin.test.mjs, tests/control-facade.test.mjs, tests/page-state.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plugin-enrollment.test.mjs, tests/project-doctor-ui.test.mjs, tests/session-opening-performance.test.mjs, tests/session-runtime.test.mjs, tests/sidebar.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CORE
-- [TODO] TRAY: fix: диагностировать и восстанавливать значок службы — Ожидает
-  - Git Commit: [PENDING] fix: диагностировать и восстанавливать значок службы
+- [DONE] TRAY: fix: диагностировать и восстанавливать значок службы — Завершено
+  - Git Commit: [DONE] fix: диагностировать и восстанавливать значок службы
   - Reference: chat-session-without-modes / TRAY / implementation
-  - Файлы: src/backend/main.mjs, src/backend/status-menu.mjs, src/contracts/backend.mjs, tests/backend-diagnostics.test.mjs, tests/backend-shutdown.test.mjs
+  - Файлы: src/backend/main.mjs, src/backend/status-menu.mjs, src/contracts/backend.mjs, tests/backend-diagnostics.test.mjs, tests/backend-shutdown.test.mjs, tests/fixtures/status-menu-electron.cjs
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
 - [TODO] VERSION: chore: подготовить версии приложения и Kit — Ожидает

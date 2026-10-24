@@ -115,8 +115,9 @@ test('status menu shows the actual service state and the matching action',()=>{
     assert.notEqual(force.enabled,false);force.click();
   }
   assert.deepEqual(actions.slice(-3),['force','force','force']);
-  assert.equal(createStatusMenu({Tray:class{constructor(){throw new Error('no tray');}},Menu,nativeImage,onOpen(){},onStop(){},onCancelStop(){}}),null,
-    'without a system tray the client menu is the fallback');
+  status.destroy();
+  const unavailable=createStatusMenu({Tray:class{constructor(){throw new Error('no tray');}},Menu,nativeImage,onOpen(){},onStop(){},onCancelStop(){}});
+  assert.equal(unavailable.view().available,false,'without a system tray the client menu is the fallback');unavailable.destroy();
 });
 
 for(const forced of [false,true])test('Electron backend stops through the API and releases profile; force='+forced,{skip:process.platform!=='darwin'?'macOS Electron fixture only':false,timeout:90000},async t=>{
@@ -136,7 +137,8 @@ for(const forced of [false,true])test('Electron backend stops through the API an
   const client=new BackendConnection({port:ready.port,token:ready.token});t.after(()=>client.close());
   await client.connect();
   const services=[];client.subscribe({onUi:(kind,value)=>{if(kind==='service')services.push(value);}});
-  assert.equal((await client.read('service.status')).phase,'running');
+  const state=await client.read('service.status');assert.equal(state.phase,'running');
+  assert.deepEqual(state.statusIcon,{available:false,attempts:0,phase:'disabled',errorCode:null});
   await assert.rejects(client.run('service.stop'),{code:'BACKEND_LEASE_REQUIRED'});
   await client.acquire();
   const accepted=await client.submit(forced?'service.force-stop':'service.stop',forced?{confirmed:true}:{});
