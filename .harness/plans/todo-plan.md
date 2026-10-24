@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1017,
+  "plan_revision": 1020,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -141,13 +141,13 @@
     "documents": [
       {
         "path": "docs/planning/chat-only-url-lifecycle.md",
-        "required": true,
-        "revision": "WORKTREE"
+        "required": false,
+        "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
       },
       {
         "path": "docs/planning/chat-only-url-acceptance.md",
         "required": false,
-        "revision": "WORKTREE"
+        "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -187,6 +187,11 @@
       {
         "path": "docs/planning/chat-only-url-start.md",
         "required": false,
+        "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
+      },
+      {
+        "path": "docs/modules/chat-only-startup.md",
+        "required": true,
         "revision": "WORKTREE"
       }
     ],
@@ -256,15 +261,18 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -349,15 +357,18 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -429,15 +440,18 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -542,15 +556,18 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -651,15 +668,18 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -760,15 +780,18 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
-            "required": true
+            "required": true,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -838,8 +861,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "DOCS",
@@ -888,22 +911,46 @@
         "documents": [
           {
             "path": "docs/planning/chat-only-url-start.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-lifecycle.md",
-            "required": true
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
           },
           {
             "path": "docs/planning/chat-only-url-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "9f52057e96d09c738ba75cff82803f4d9544207d"
+          },
+          {
+            "path": "docs/modules/chat-only-startup.md",
+            "required": true
           }
         ],
         "include_last_completed_task": true,
         "dependency_task_ids": [
           "T006"
         ]
-      }
+      },
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/chat-only-startup.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/browser.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/first-run-onboarding.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/release.md",
+        "docs/planning/chat-only-url-acceptance.md",
+        "docs/planning/chat-only-url-lifecycle.md",
+        "docs/planning/chat-only-url-start.md"
+      ]
     },
     {
       "id": "RELEASE",
@@ -1029,7 +1076,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1017
+Revision: 1020
 
 ## Цель
 
@@ -1089,8 +1136,8 @@ Revision: 1017
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, docs/planning/chat-only-url-start.md
   - Параллельность: исключительное выполнение
   - Зависимости: T006
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: уточнить результат Chat-only и условия приёмки URL-старта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: уточнить результат Chat-only и условия приёмки URL-старта
   - Reference: chat-only-url-bootstrap / DOCS / implementation
   - Файлы: docs/planning/chat-only-url-start.md, docs/planning/chat-only-url-lifecycle.md, docs/planning/chat-only-url-acceptance.md, docs/architecture/OVERVIEW.md, docs/modules/release.md, README.md, docs/modules/browser.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/project-lifecycle.md, docs/modules/desktop.md, docs/modules/first-run-onboarding.md, docs/modules/control.md, docs/acceptance/chat-only-startup.md, docs/modules/chat-only-startup.md
   - Параллельность: исключительное выполнение
@@ -1126,5 +1173,6 @@ Revision: 1017
 - docs/modules/user-choice.md
 - docs/modules/release.md
 - docs/planning/chat-only-url-start.md
+- docs/modules/chat-only-startup.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
