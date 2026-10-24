@@ -4,7 +4,7 @@ export function startupLaunch(attempt,now=Date.now()){
   return {registration:attempt.state==='sent'?'confirmed':!attempt.sendStartedAtMs?'not-started':attempt.state==='unknown'?'unknown':'pending',
     address:attempt.addressStatus??'pending',modeConfirmed:!!attempt.modeConfirmed,cancel:attempt.cancelState??'none',
     modeViolation:!!attempt.modeViolation,loginLost:!!attempt.loginLost,
-    addressOverdue:!!attempt.sendStartedAtMs&&now-attempt.sendStartedAtMs>=60000};
+    addressOverdue:attempt.addressStatus!=='confirmed'&&!!attempt.sendStartedAtMs&&now-attempt.sendStartedAtMs>=60000};
 }
 export function startupView(progress){
   const launch=progress?.launch;

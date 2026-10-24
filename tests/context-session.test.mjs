@@ -213,6 +213,12 @@ test('persistent T1/T2 expire independently; restart never resets the deadline o
   f.controller.attach(f.saved);f.advance(120000);await f.controller.tick();assert.equal(f.saved.attempt.state,'unknown');
   await f.controller.retry();assert.equal(f.starts.length,1);f.proof();await f.controller.tick();assert.equal(f.saved.attempt.state,'sent');
 });
+test('a durable sent receipt survives a missing enrollment reader after restart without querying or resending',async()=>{
+  const f=urlFixture();await f.controller.tick();await settle();f.proof();await f.controller.tick();
+  delete f.runtime.enrollmentProgress;f.controller.attach(f.saved);await f.controller.tick();
+  assert.equal(f.saved.attempt.state,'sent');assert.equal(f.controller.state.messageSent,true);assert.notEqual(f.controller.state.phase,'send-unknown');
+  assert.equal(f.starts.length,1);
+});
 test('all preflight unknowns preserve draft and block reserve and q',async()=>{
   for(const [key,value,phase] of [['accountStatus','unknown','waiting-login'],['accountStatus','signed-out','waiting-login'],
     ['experience','unknown','waiting-experience'],['experience','work','waiting-experience'],['documentId',null,'waiting-composer'],
@@ -322,6 +328,22 @@ test('assigned executor waits for permission; disabling permission never replays
   const f=urlFixture();let allowed=false;await f.store.updateSession('','',{assignmentId:'a'});f.controller.canSendContext=()=>allowed;
   await f.controller.tick();assert.equal(f.saved.attempt,null);allowed=true;await f.controller.tick();await settle();
   allowed=false;await f.controller.tick();assert.equal(f.starts.length,1);
+});
+test('a confirmed URL snapshot observes fingerprint changes without rebuilding or replaying',async()=>{
+  const f=urlFixture();let key='before',builds=0;
+  f.controller.contextCache=new ContextCache({load:async()=>{builds++;return packet();},inputKey:async()=>key});
+  await f.controller.tick();await settle();await f.navigate();await f.observe();f.proof();f.setComplete();await f.controller.tick();
+  key='after';f.controller.projectChanged();await settle();
+  assert.equal(f.controller.state.startup.complete,true);assert.equal(f.controller.state.startup.snapshot_stale,true);
+  assert.equal(f.starts.length,1);assert.equal(builds,1);
+});
+test('backend draining before and during dispatch blocks a new q and resuming cannot replay it',async()=>{
+  const f=urlFixture();let allowed=true;f.controller.canStartChat=()=>allowed;
+  const stage=f.runtime.stageStartup;f.runtime.stageStartup=async(...a)=>{const m=await stage(...a);allowed=false;return m;};
+  await f.controller.tick();assert.equal(f.starts.length,0);assert.equal(f.saved.attempt.cancelState,'revoked');
+  const g=urlFixture();g.controller.canStartChat=()=>allowed;allowed=true;
+  g.composer.startChat=async input=>{allowed=false;assert.equal(input.canContinue(),false);return null;};
+  await g.controller.tick();await settle();allowed=true;await g.controller.retry();assert.equal(g.starts.length,0);
 });
 test('legacy bound and unknown attempts remain readable without services or a fresh Send',async()=>{
   for(const state of ['sent','unknown','acknowledged']){

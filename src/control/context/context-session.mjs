@@ -112,8 +112,8 @@ const normalChatTarget = value => {
 
 export class ContextSession {
   constructor({ store, runtime, composer, contextCache = null, onChange = () => {}, onChatBound = () => {}, now = Date.now, uuid = randomUUID,
-    wait = pause, readRetryDelays = [25, 100] }) {
-    Object.assign(this, { store, runtime, composer, contextCache, onChange, onChatBound, now, uuid, wait, readRetryDelays });
+    wait = pause, readRetryDelays = [25, 100],canStartChat=()=>true }) {
+    Object.assign(this, { store, runtime, composer, contextCache, onChange, onChatBound, now, uuid, wait, readRetryDelays,canStartChat });
     this.generation = 0;
     this.active = null;
     this.pending = false;
@@ -355,8 +355,8 @@ export class ContextSession {
     assertSessionMode(project);
     if(project.preparationPaused){this.emit({phase:'preparation-paused',error:null});return;}
     if(attempt?.sendStartedAtMs){
-      if(!this.runtime.enrollmentProgress)throw failure('STARTUP_CHANNEL_UNAVAILABLE','Нет подтверждения регистрации панели.');
-      const proof=await this.runtime.enrollmentProgress(project,attempt);
+      if(attempt.state!=='sent'&&!this.runtime.enrollmentProgress)throw failure('STARTUP_CHANNEL_UNAVAILABLE','Нет подтверждения регистрации панели.');
+      const proof=attempt.state==='sent'?null:await this.runtime.enrollmentProgress(project,attempt);
       if(!this.current(generation))return;
       if(proof?.status==='active'&&proof.participant_id&&proof.run_id===attempt.enrollmentRef?.run_id
         &&proof.ticket_hash===attempt.enrollmentRef.ticket_hash&&proof.request_id===attempt.requestId
@@ -386,7 +386,11 @@ export class ContextSession {
       if(attempt.state!=='sent'&&elapsed>=180000)attempt=await this.patchUrl(project,attempt,latest=>
         this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{});
       const progress=this.runtime.startupProgress?.(project.sessionId,attempt.requestId);
-      const startup=progress?.complete?{...progress,snapshot_stale:!packetMatchesProject(attempt.packet,project)}:progress;
+      if(progress?.complete&&this.inputsChanged&&this.contextCache){
+        this.inputsChanged=false;this.inputStale=!await this.packetIsCurrent(attempt.packet,project);
+        if(!this.current(generation))return;
+      }
+      const startup=progress?.complete?{...progress,snapshot_stale:this.inputStale||!packetMatchesProject(attempt.packet,project)}:progress;
       const phase=attempt.state!=='sent'?(elapsed>=180000?'send-unknown':'waiting-registration')
         :startup?.complete?'delivered':!attempt.modeConfirmed?'waiting-experience':'startup-channel';
       this.emit({phase,projectInfo:info,messageSent:attempt.state==='sent',startup,attempt:urlStatus(attempt),
@@ -451,7 +455,7 @@ export class ContextSession {
       ||observation.accountStatus!=='signed-in'||observation.experience!=='chat'||observation.draftLength!==0||observation.busy
       ||!observation.editorAvailable||!observation.writable||snapshot.incarnation!==preflightSnapshot.incarnation
       ||snapshot.epoch!==preflightSnapshot.epoch||bootstrap.expires_at<=this.now()
-      ||!await this.packetIsCurrent(attempt.packet,{...project,...latestInfo})||!this.current(generation)){
+      ||!await this.packetIsCurrent(attempt.packet,{...project,...latestInfo})||!this.current(generation)||!this.canStartChat(project)){
       this.cancelledRequests.add(attempt.requestId);
       attempt=await this.patchUrl(project,attempt,{cancelState:'requested',cancelReason:'preflight-changed',cancelRequestedAtMs:this.now()});
       return this.reconcileCancellation(project,attempt);
@@ -462,7 +466,7 @@ export class ContextSession {
     if(!this.startupAllowed(attempt))return this.reconcileCancellation(project,attempt);
     const mayDispatch=()=>{const current=this.store.project(project.workspace,project.sessionId),navigation=this.composer.navigationSnapshot();
       return current?.attempt?.requestId===attempt.requestId&&current.attempt.attemptGeneration===attempt.attemptGeneration
-        &&this.startupAllowed(current.attempt)&&!current.preparationPaused&&!['lost','conflict'].includes(current.attempt.addressStatus)
+        &&this.startupAllowed(current.attempt)&&!current.preparationPaused&&this.canStartChat(current)&&!['lost','conflict'].includes(current.attempt.addressStatus)
         &&navigation.incarnation===attempt.navigation.incarnation&&(navigation.epoch===preflightSnapshot.epoch&&newChatRoot(this.composer.getURL())
           ||navigation.epoch===attempt.navigation.epoch&&navigation.navigationOwner===attempt.requestId);};
     this.emit({phase:'sending',projectInfo:info,messageSent:false,attempt:urlStatus(attempt),error:null});
@@ -737,7 +741,7 @@ export class ContextSession {
         if(currentAttempt.sendStartedAtMs)await this.patchUrl(persisted,currentAttempt,latest=>
           this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{}).catch(()=>{});
         const latest=this.store.project(project.workspace)?.attempt??currentAttempt;
-        this.emit({phase:latest.cancelState!=='none'?'cancel-pending':latest.sendStartedAtMs?'send-unknown':'error',
+        this.emit({phase:latest.cancelState!=='none'?'cancel-pending':latest.state==='sent'?'error':latest.sendStartedAtMs?'send-unknown':'error',
           messageSent:latest.state==='sent',attempt:urlStatus(latest),error:{code:error.code??'STARTUP_ERROR',message:error.message}});
         return;
       }

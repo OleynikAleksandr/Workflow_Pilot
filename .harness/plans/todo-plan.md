@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1009,
+  "plan_revision": 1013,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -697,8 +697,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "T006",
@@ -728,7 +728,12 @@
         "tests/backend-desktop-model.test.mjs",
         "scripts/stage-page-observer.mjs",
         "scripts/stage-chatgpt-plugin.mjs",
-        "tools/codex-app-server-mcp/plugin.py"
+        "tools/codex-app-server-mcp/plugin.py",
+        "src/control/context/context-session.mjs",
+        "src/contracts/startup-view.mjs",
+        "tests/context-session.test.mjs",
+        "src/control/sessions/service.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -742,7 +747,9 @@
       "acceptance_criteria": [
         "Изолированный Electron smoke проходит first-project/newChat, один dispatch и все этапы регистрации/адреса/контекста без настоящей модели.",
         "Проверены 2 сессии, restart, revoke/enroll в обоих порядках, foreign navigation, Work redirect, draft/login и q reload.",
-        "Устаревшие assertions вложений/Work заменены контрактными тестами без снижения гарантий. Live ChatGPT остаётся NOT_RUN до свидетельства пользователя."
+        "Устаревшие assertions вложений/Work заменены контрактными тестами без снижения гарантий. Live ChatGPT остаётся NOT_RUN до свидетельства пользователя.",
+        "Остановка backend блокирует q между подготовкой и dispatch; возобновление не повторяет попытку.",
+        "Собственное ручное первое сообщение сохраняет manualStart до постоянного адреса; pending/restart не запускают автоматическую панель и не открывают корень повторно."
       ],
       "expected_commit_message": "feat: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke",
       "parallel_safe": false,
@@ -778,7 +785,17 @@
         "dependency_task_ids": [
           "T005"
         ]
-      }
+      },
+      "actual_files": [
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/sessions/service.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/context-session.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/session-runtime.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "VERSION",
@@ -1003,7 +1020,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1009
+Revision: 1013
 
 ## Цель
 
@@ -1051,10 +1068,10 @@ Revision: 1009
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/client.mjs, src/backend/desktop-model.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, tools/codex-app-server-mcp/plugin.py, tests/sidebar.test.mjs, tests/startup-ui.test.mjs, tests/progress.test.mjs, tests/desktop-client.test.mjs, tests/backend-desktop-model.test.mjs, src/frontend/desktop/preload.cjs, src/contracts/desktop.mjs, tests/project-doctor-ui.test.mjs, src/contracts/startup-view.mjs, src/backend/bootstrap.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/frontend/desktop/ui/project-doctor.mjs, tests/backend-browser-lifecycle.test.mjs, src/control/context/context-session.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T004
-- [TODO] T006: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke — Ожидает
-  - Git Commit: [PENDING] feat: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke
+- [DONE] T006: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke — Завершено
+  - Git Commit: [DONE] feat: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke
   - Reference: chat-only-url-bootstrap / T006 / implementation
-  - Файлы: tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/fixtures/dialogue-runtime.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts/stage-page-observer.mjs, scripts/stage-chatgpt-plugin.mjs, tools/codex-app-server-mcp/plugin.py
+  - Файлы: tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/fixtures/dialogue-runtime.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts/stage-page-observer.mjs, scripts/stage-chatgpt-plugin.mjs, tools/codex-app-server-mcp/plugin.py, src/control/context/context-session.mjs, src/contracts/startup-view.mjs, tests/context-session.test.mjs, src/control/sessions/service.mjs, src/frontend/desktop/ui/sidebar.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: T005
 - [TODO] VERSION: Подготовить версию 0.5.31 для единого выпуска — Ожидает

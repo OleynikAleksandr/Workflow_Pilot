@@ -166,6 +166,7 @@ const phases = {
   stale: ['Разговор сохранён', 'План изменился. Новый стартовый пакет доступен в новой сессии.', 'neutral'],
   'prepared-stale': ['Пакет в поле устарел', 'Уберите подготовленный черновик и повторите подготовку. Отправка приостановлена.', 'working'],
   'manual-session': ['Разговор сохранён', 'Для полного стартового пакета создайте новую сессию.', 'neutral'],
+  'waiting-manual-chat':['Ручной разговор','Ожидаем постоянный адрес этого разговора. Автоматическая команда панели не отправляется.','neutral'],
   'legacy-session': ['Сохранённый чат проекта', 'Для полного стартового пакета создайте новую сессию.', 'neutral'],
   'send-unknown': ['Исход отправки неизвестен', 'Проверьте сообщения в этом чате. Повторной отправки нет; для нового полного пакета создайте новую сессию.', 'neutral'],
   'chat-changed': ['Открыт другой чат', 'Этот чат пока не связан с проектом. Вернитесь к сессии проекта или создайте новую через меню проекта.', 'working'],
@@ -598,7 +599,7 @@ function render(state) {
   const preparing=['preparing','loading-context','preparing-message','waiting-attachments','waiting-composer','waiting-experience','waiting-login','waiting-draft'].includes(context.phase);
   const startupProblem=['startup-stale','startup-failed','startup-uncertain','cancel-pending','startup-cancelled'].includes(startup?.phase);
   const addressPending=context.launch&&context.launch.address!=='confirmed';
-  const attention=startupProblem||addressPending||preparing||['waiting-registration','cancel-pending','startup-cancelled','historical-session','preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);
+  const attention=startupProblem||addressPending||preparing||['waiting-registration','waiting-manual-chat','cancel-pending','startup-cancelled','historical-session','preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);
   const started=selected?.manualStart||context.messageSent||['sending','unknown','sent','acknowledged'].includes(selected?.attempt?.state);
   $('session-notice').hidden=!selected||!attention||!!state.setup||!!state.settings;
   $('session-notice-title').textContent=(selected?.title||'Текущая сессия')+' · '+title;

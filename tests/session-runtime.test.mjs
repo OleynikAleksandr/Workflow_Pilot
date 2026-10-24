@@ -257,3 +257,24 @@ test('renderer loss cancels only its controller and a replacement gets a fresh p
   assert.notEqual(replacement.browser,a.browser);assert.equal(replacement.browser.snapshot().disposed,false);
   assert.equal(a.browser.release(),false,'stale release cannot close the replacement');
 });
+
+test('owned manual Send checkpoints before its permanent address and never reopens the root while the save waits',async()=>{
+  let saved={workspace:'/manual',sessionId:'manual',experience:'chat',chatUrl:null,attempt:null},release,tail=Promise.resolve();
+  const gate=new Promise(r=>release=r),errors=[];
+  const store={project:()=>structuredClone(saved),
+    updateSession:(_w,_s,patch)=>tail=tail.then(async()=>{await gate;Object.assign(saved,patch);return structuredClone(saved);}),
+    bindChat:(_w,_s,url)=>tail=tail.then(()=>{saved.chatUrl=url;return structuredClone(saved);})};
+  const phases=[],record={project:store.project,epoch:7,ready:true,disposed:false,loading:false,
+    pageState:{current:{documentId:'own-document'}},controller:{cancel:()=>{},emit:s=>phases.push(s.phase),tick:()=>{throw Error('manual Send restarted bootstrap');}}};
+  const sessions=new SessionRuntimes({store,runtime:()=>({}),onError:(_r,e)=>errors.push(e)});
+  const state={url:'https://chatgpt.com/',experience:'chat',userMessageCount:0,manualSendRevision:0};
+  assert.equal(sessions.observeManualConversation(state,record),false);
+  assert.equal(sessions.observeManualConversation({...state,url:'https://chatgpt.com/c/WEB:12345678-1234-1234-1234-123456789abc',
+    userMessageCount:1,manualSendRevision:1},record),true);
+  assert.equal(record.manualStartObserved,true);assert.equal(saved.manualStart,undefined,'disk save has not completed');
+  sessions.tick(record);assert.equal(phases.at(-1),'waiting-manual-chat');
+  sessions.tick=()=>{};
+  assert.equal(sessions.observeManualConversation({...state,url:'https://chatgpt.com/c/manual1234',userMessageCount:1,manualSendRevision:1},record),true);
+  release();await tail;await record.manualDocumentOwner.checkpoint;
+  assert.equal(saved.manualStart,true);assert.equal(saved.chatUrl,'https://chatgpt.com/c/manual1234');assert.deepEqual(errors,[]);
+});

@@ -27,6 +27,8 @@ import {ExecutionFacade} from '../src/execution/facade.mjs';
 
 let packetLoads = 0;
 let smokeDataDir;
+let fixtureBootstrap=null;
+let fixtureWorkRedirect=false;
 const fixtureConversationTitles = new Map();
 let fixtureTitleAuthFailures = 0;
 let fixtureTitleReadFailures = 0;
@@ -65,7 +67,7 @@ document.getElementById('prompt-textarea').addEventListener('paste',event=>{
  editor.append(document.createTextNode(event.clipboardData.getData('text/plain')));
  editor.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertFromPaste'}));
 });
-window.fixtureMode=location.pathname.startsWith('/work')?'work':localStorage.getItem('fixture-mode')||'work';
+window.fixtureMode=location.pathname.startsWith('/work')?'work':localStorage.getItem('fixture-mode')||'chatgpt';
 window.fixtureModeClicks=0;
 function setFixtureMode(mode){window.fixtureMode=mode;localStorage.setItem('fixture-mode',mode);document.querySelectorAll('[data-tpp-toggle-value]').forEach(button=>button.setAttribute('data-state',button.dataset.tppToggleValue===mode?'on':'off'));if(!location.pathname.startsWith('/c/')) document.getElementById('prompt-textarea').textContent=localStorage.getItem('fixture-restored-draft-'+mode)||'';}
 setFixtureMode(window.fixtureMode);
@@ -87,14 +89,22 @@ document.querySelector('form').addEventListener('submit',event=>{
  const message={text,files:window.fixtureFiles||[],at:Date.now(),mode:window.fixtureMode};window.fixtureMessages.push(message);
  window.fixtureFiles=[];document.querySelectorAll('form > div:not(#prompt-textarea)').forEach(card=>card.remove());
  showMessage(text);
- editor.textContent='';const match=text.match(/wp-request-[a-zA-Z0-9-]+/) || ['manual-'+crypto.randomUUID()];
+ editor.textContent='';localStorage.removeItem('fixture-restored-draft-'+window.fixtureMode);
+ const match=text.match(/wp-request-[a-zA-Z0-9-]+/) || ['manual-'+crypto.randomUUID()];
  if(match && !location.pathname.startsWith('/c/')){
    const target='/c/'+match[0];history.pushState({},'', '/c/WEB:12345678-1234-1234-1234-123456789abc');
    localStorage.setItem('fixture-messages:'+target,JSON.stringify(window.fixtureMessages));saveTurns(target);
-   window.fixtureFinishConversation=()=>history.replaceState({},'',target);
+   window.fixtureFinishConversation=()=>{history.replaceState({},'',target);saveTurns(target);};
    if(!localStorage.getItem('fixture-hold-conversation'))setTimeout(window.fixtureFinishConversation,600);
  }else{localStorage.setItem('fixture-messages:'+location.pathname,JSON.stringify(window.fixtureMessages));saveTurns();}
 });
+const bootstrapCommand=new URL(location.href).searchParams.get('q');
+if(bootstrapCommand){
+ document.getElementById('prompt-textarea').textContent=bootstrapCommand;
+ document.querySelector('form').requestSubmit();
+ fetch('/fixture-bootstrap',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:bootstrapCommand})})
+  .then(r=>r.json()).then(result=>{if(result.error)window.fixtureBootstrapError=result.error;else window.fixtureAssistant('Контекст подтверждён');});
+}
 </script></body></html>`;
 
 // Seed only the fresh smoke profile, before main restores settings or creates a page.
@@ -112,6 +122,15 @@ export async function createRuntime({ browser, session }) {
   // Explicit isolated test mode only. No request is sent to a real service.
   await session.protocol.handle('https', async request => {
     const url = new URL(request.url);
+    if(fixtureWorkRedirect&&url.hostname==='chatgpt.com'&&url.pathname==='/'&&url.searchParams.has('q')){
+      fixtureWorkRedirect=false;return Response.redirect('https://chatgpt.com/work/fixture-redirect',302);
+    }
+    if(url.hostname==='chatgpt.com'&&url.pathname==='/work/fixture-redirect')
+      return Response.redirect('https://chatgpt.com/c/fixture-work-redirect',302);
+    if(url.hostname==='chatgpt.com'&&url.pathname==='/fixture-bootstrap'&&request.method==='POST'){
+      try{assert.ok(fixtureBootstrap);await fixtureBootstrap((await request.json()).text);return Response.json({ok:true});}
+      catch(error){return Response.json({error:{code:error.code,message:error.message}});}
+    }
     if (url.hostname === 'chatgpt.com' && url.pathname === '/fixture-clipboard' && request.method === 'POST') {
       clipboard.writeText(await request.text());
       return new Response('{}', { headers: { 'content-type': 'application/json' } });
@@ -146,7 +165,9 @@ export async function createRuntime({ browser, session }) {
       return new Response(JSON.stringify({ id, title: fixtureConversationTitles.get(id) ?? '' }),
         { headers: { 'content-type': 'application/json; charset=utf-8' } });
     }
-    return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    const signedIn=url.hostname==='chatgpt.com'&&(url.pathname==='/'||url.pathname.startsWith('/c/')||url.pathname.startsWith('/work'));
+    return new Response(signedIn?html.replace('<body>','<body><button data-testid="profile-button">Account</button>'):html,
+      { headers: { 'content-type': 'text/html; charset=utf-8' } });
   });
   return {
     ensure: async () => ({ mcp: { ready: true }, tunnel: { ready: true }, fixture: true }),
@@ -216,10 +237,12 @@ async function verifyUninterruptedRequest(dataDir) {
 
 export async function run({ app, window, sidebar, store, plugin, selectWorkspace, workspaceSetup, snapshot, assertLocalSender, permissionAllowed, dataDir, chromiumDiagnosticsFile, navigate, getArchiveWindow, getColorWindow, eventBaseline = false, runtimeMetrics = null, planContinuation, getLive, liveSessions, sessionView, deletion, deletionHooks, execution, withStartupFixture, continuePlan }) {
   // Since 0.5.20 a startup ends in the panel channel; the fixture page never opens the panel, so a sent startup stays there.
-  const settled = () => snapshot().context.phase === 'delivered'
-    || ['startup-channel','startup-complete'].includes(snapshot().context.phase) && !!store.selected()?.chatUrl;
+  const settled = () => !!store.selected()?.chatUrl&&(snapshot().context.phase === 'delivered'
+    || snapshot().context.phase==='startup-complete'
+    || store.selected()?.attempt?.bootstrapTransport!=='url-query'&&snapshot().context.phase==='startup-channel');
   // A packet invalidated by a later Kit change: 'stale' for attachments, a stale startup error for the panel.
-  const stale = () => snapshot().context.phase === 'stale' || snapshot().context.startup?.error?.code === 'PLUGIN_COMMUNICATION_STALE_MESSAGE';
+  const stale = () => snapshot().context.phase === 'stale' || snapshot().context.startup?.snapshot_stale
+    || snapshot().context.startup?.error?.code === 'PLUGIN_COMMUNICATION_STALE_MESSAGE';
   // Test actions follow the visible page; production controllers retain their own page.
   const currentObject=key=>new Proxy({}, {
     get:(_target,property)=>{const value=getLive()[key][property];return typeof value==='function'?value.bind(getLive()[key]):value;},
@@ -227,6 +250,22 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   });
   const browser=currentObject('browser'),controller=currentObject('controller'),pageState=currentObject('pageState'),chromiumDiagnostics=currentObject('chromiumDiagnostics');
   smokeDataDir = dataDir;
+  fixtureBootstrap=async text=>{
+    assert.match(text,/^Открой панель Workflow Pilot:/);assert.doesNotMatch(text,/Раздел 1:|wp-request-/);
+    const ticket=JSON.parse(text.match(/workflow_pilot_panel с аргументами (\{"enrollment_ticket":"[a-f0-9]{64}"\})/)[1]).enrollment_ticket;
+    const hash=createHash('sha256').update(ticket).digest('hex');
+    const raw=store.snapshot().projects.flatMap(p=>p.sessions.map(s=>({...s,workspace:p.workspace})))
+      .find(s=>s.attempt?.enrollmentRef?.ticket_hash===hash);
+    assert.ok(raw,'use the dispatched ticket, never reserve a second invitation');
+    const record=liveSessions.find(raw);
+    await waitFor(()=>record.project().attempt?.modeConfirmed,'post-navigation Chat and login proof',snapshot);
+    const metadata={'openai/session':'smoke-'+raw.sessionId,'openai/subject':'smoke'};
+    const first=(await plugin.panel({enrollment_ticket:ticket,metadata})).startup_context;
+    assert.ok(first,'the first response includes startup context');
+    for(let part=1;part<first.total;part++)await plugin.communication.content({metadata,message_id:first.message_id,context_ref:first.context_ref,part});
+    assert.equal((await plugin.communication.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref})).complete,true);
+    liveSessions.tick(record);
+  };
   const savedAutoState=async()=>{const settings=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8'));
     const p=store.selected(),state=settings.projectPlanContinuation?.[p?.parentWorkspace??p?.workspace];
     return {planContinuationEnabled:state?.enabled===true,continuationCheckpoint:state?.sessions?.[p?.sessionId]?.continuationCheckpoint??null};};
@@ -497,62 +536,34 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await assert.rejects(fs.stat(workspace), { code: 'ENOENT' });
   await previewNew();
   assert.equal(snapshot().setup.firstSessionExperience, 'chat', 'choice is not remembered globally after cancel');
-  const deliverNormally = ChatGPTComposer.prototype.deliver;
-  let manualDeliveryArmed = !eventBaseline, manualDeliveryClicked = false;
-  if (manualDeliveryArmed) ChatGPTComposer.prototype.deliver = async function(options) {
-    // Since 0.5.20 the startup carries no attachments: the agent pulls the context through the panel.
-    assert.deepEqual(options.attachments ?? [], [], 'startup sends no files');
-    await controller.composer.inspect({ action: 'fill', text: options.text, requestId: options.requestId });
-    const ready=await this.waitForSendReady(options,0,()=>true);
-    assert.ok(ready,'manual Send waits until the composer is ready');
-    return { state: 'deferred', reason: 'DRAFT_CHANGED' };
-  };
-  await sidebar.executeJavaScript('document.getElementById("setup-experience-chat").click(); document.getElementById("setup-experience-work").click()');
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("setup-experience-work")'),null);
+  await sidebar.executeJavaScript('document.getElementById("setup-experience-chat").click(); document.getElementById("setup-experience-chat").click()');
   await waitFor(() => sidebar.executeJavaScript(`(() => { const e=document.getElementById('operation-progress'); return !e.hidden && e.querySelector('.operation-label').textContent.length > 0; })()`), 'visible recovery spinner', snapshot);
   assert.equal(await sidebar.executeJavaScript("getComputedStyle(document.querySelector('.operation-spinner')).animationName"), 'operation-spin');
   assert.equal(await sidebar.executeJavaScript("document.getElementById('operation-progress').getAttribute('role')"), 'status');
   const progressBounds = await sidebar.executeJavaScript("(() => { const r=document.getElementById('operation-progress').getBoundingClientRect(); return {x:0,y:Math.max(0,Math.floor(r.y)-8),width:Math.ceil(innerWidth),height:Math.ceil(r.height)+16}; })()");
   await fs.writeFile(path.join(dataDir,'progress-ui.png'), (await sidebar.capturePage(progressBounds)).toPNG());
 
-  await waitFor(async () => {
-    if (snapshot().context.phase === 'waiting-draft') {
-      if (manualDeliveryArmed) {
-        manualDeliveryArmed = false; manualDeliveryClicked = true;
-        assert.equal(store.selected().chatUrl, null);
-        assert.equal(store.selected().attempt.sendStartedAtMs, null);
-        ChatGPTComposer.prototype.deliver = deliverNormally;
-        await browser.executeJavaScript("document.querySelector('[data-testid=send-button]').click()", true);
-        return false;
-      }
-      // Send already cleared the field; allow the asynchronous session update to finish.
-      if (manualDeliveryClicked) return false;
-      const actual = await browser.executeJavaScript('document.getElementById("prompt-textarea").innerText');
-      const expected = store.selected().attempt?.text ?? '';
-      let offset = 0; while (offset < Math.min(actual.length, expected.length) && actual[offset] === expected[offset]) offset++;
-      throw new Error('FIXTURE_DRAFT_MISMATCH: ' + JSON.stringify({ offset, actualLength: actual.length, expectedLength: expected.length, actual: actual.slice(Math.max(0,offset-40),offset+100), expected: expected.slice(Math.max(0,offset-40),offset+100) }));
-    }
-    // The panel transport ends the send with the startup channel; a legacy fixture still reports delivered.
-    return ['delivered','startup-channel','startup-complete'].includes(snapshot().context.phase);
-  }, 'first fixture context', snapshot);
+  await waitFor(()=>settled()&&snapshot().context.startup?.complete,'first URL command, registration and complete context',snapshot);
   await browser.executeJavaScript("document.title='Первый разговор проекта'");
   await waitFor(() => snapshot().projects[0].sessions[0].title === 'Первый разговор проекта', 'conversation title', snapshot);
   const first = store.selected();
   assert.equal(first.experience, 'chat');
-  assert.equal(await browser.executeJavaScript('window.fixtureMessages[0].mode'), 'chatgpt', 'root defaults to Work but startup explicitly selects Chat');
-  assert.equal(await browser.executeJavaScript('window.fixtureModeClicks'), 1);
+  assert.equal(await browser.executeJavaScript('window.fixtureMessages[0].mode'), 'chatgpt');
+  assert.equal(await browser.executeJavaScript('window.fixtureModeClicks'), 0,'startup never clicks a surface selector');
   assert.ok(first.chatUrl.startsWith('https://chatgpt.com/c/'));
   assert.equal(await sidebar.executeJavaScript('document.querySelector(".session-experience").textContent'), 'Chat');
   assert.equal(await sidebar.executeJavaScript('document.getElementById("new-chat")'), null, 'context card has no session creation button');
   assert.equal(first.attempt.state, 'sent');
-  assert.ok(!first.attempt.text.includes(fixtureContext));
+  assert.equal(first.attempt.text,undefined,'raw ticket is not persisted in the attempt');
   // The context is pulled through the panel: the first message has no files and names the panel tool.
   const files = await browser.executeJavaScript('window.fixtureMessages[0].files');
   assert.deepEqual(files ?? [], []);
-  assert.match(first.attempt.text, /workflow_pilot_panel/);
+  assert.ok(first.attempt.sentEvidence.participant_id);
   assert.ok(Buffer.byteLength(fixtureContext) > 60000);
   assert.equal(snapshot().selected.attempt.text, undefined, 'Full prompt stays out of sidebar IPC');
   const sent = await browser.executeJavaScript('window.fixtureMessages[0].text');
-  assert.equal(sent.replace(/\n+/g, '\n'), first.attempt.text.replace(/\n+/g, '\n'));
+  assert.match(sent,/workflow_pilot_panel/);assert.equal(sent.includes(fixtureContext),false);
   assert.ok(pageState.current, 'sandbox preload delivered its initial observation');
   const popupOpened = new Promise(resolve => browser.once('did-create-window', resolve));
   await browser.executeJavaScript("void window.open('https://auth.openai.com/fixture-popup')", true);
@@ -643,7 +654,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').click()");
   await waitFor(()=>snapshot().planReview.enabled,'review enabled',snapshot);
   // A panel startup packet becomes stale through the channel; a legacy packet reports 'stale'.
-  await waitFor(()=>snapshot().context.phase==='stale'||snapshot().context.startup?.error?.code==='PLUGIN_COMMUNICATION_STALE_MESSAGE','review policy invalidates delivered recovery',snapshot);
+  await waitFor(stale,'review policy marks the confirmed snapshot stale without losing its receipt',snapshot);
   assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').getAttribute('aria-pressed')"),'true');
   assert.ok(['rgb(228, 241, 240)','rgb(32, 53, 54)'].includes(await sidebar.executeJavaScript("getComputedStyle(document.getElementById('plan-review-toggle')).backgroundColor")),'the switch uses the shared selected token');
   assert.equal(JSON.parse(await fs.readFile(path.join(workspace,'.harness/runtime/plan-review/state.json'),'utf8')).enabled,true);
@@ -860,7 +871,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await controller.contextCache.load(workspace);
   const warmPacketLoads = packetLoads;
   assert.deepEqual(await sidebar.executeJavaScript(`(() => { document.querySelector('.project-menu-button').click(); return Array.from(document.querySelectorAll('.project-menu button')).map(button => button.textContent); })()`),
-    ['Новый Chat', 'Новый Work', 'Переименовать', 'Скопировать полный путь', 'Скопировать строку для внешнего клиента', 'Перенести в архив']);
+    ['Новый Chat', 'Переименовать', 'Скопировать полный путь', 'Скопировать строку для внешнего клиента', 'Перенести в архив']);
   await sidebar.executeJavaScript(`document.querySelector('.project-menu-button').click(); document.querySelector('.rename-project').click()`);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("rename-dialog").open'), true);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("rename-dialog-input").value'), 'Тестовый проект с пробелами');
@@ -958,16 +969,17 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(second.attempt.packet.contextSha256, first.attempt.packet.contextSha256);
   assert.notEqual(second.attempt.requestId, first.attempt.requestId);
   assert.ok(Number.isFinite(second.attempt.packet.preparationMs));
-  assert.ok(Number.isFinite(second.attempt.packet.deliveryMs));
   assert.match(await sidebar.executeJavaScript('document.getElementById(\"session-detail\").textContent'), /Подготовка:/);
   assert.equal(second.experience, 'chat');
   assert.equal(store.snapshot().projects[0].sessions.length, 2);
   assert.deepEqual(await sidebar.executeJavaScript('Array.from(document.querySelectorAll(".session-experience")).map(e=>e.textContent)'), ['Chat', 'Chat']);
   assert.equal(snapshot().projects[0].sessions[0].attempt, undefined, 'Session tree only receives metadata');
   await browser.executeJavaScript("localStorage.setItem('fixture-hold-conversation','yes')");
-  await sidebar.executeJavaScript(`document.querySelector('.project-menu-button').click(); document.querySelector('.new-project-work').click()`);
-  await waitFor(()=>store.selected()?.experience==='work'&&store.selected()?.attempt?.state==='sent'&&!store.selected()?.chatUrl,
-    'bootstrap dispatched before permanent Work URL',snapshot);
+  const rejectedWork=await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)},"work")`);
+  assert.equal(rejectedWork.ok,false);assert.equal(store.selected().sessionId,second.sessionId);
+  await sidebar.executeJavaScript(`document.querySelector('.project-menu-button').click(); document.querySelector('.new-project-chat').click()`);
+  await waitFor(()=>store.selected()?.sessionId!==second.sessionId&&store.selected()?.attempt?.state==='sent'&&!store.selected()?.chatUrl,
+    'second Chat bootstrap dispatched before permanent URL',snapshot);
   const pendingWork=store.selected(),workRecord=liveSessions.find(pendingWork),workDocument=workRecord.pageState.current.documentId;
   for(const sessionId of [first.sessionId,pendingWork.sessionId])
     await sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)},${JSON.stringify(sessionId)})`);
@@ -975,23 +987,23 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(workRecord.pageState.current.documentId,workDocument);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),1);
   await browser.executeJavaScript("localStorage.removeItem('fixture-hold-conversation');window.fixtureFinishConversation()");
-  await waitFor(() => store.selected()?.experience === 'work' && settled(), 'new Work via project menu IPC', snapshot);
+  await waitFor(() => store.selected()?.sessionId===pendingWork.sessionId && settled(), 'second Chat via project menu IPC', snapshot);
   assert.equal(packetLoads, warmPacketLoads, 'new Work reuses the same checkout-scoped recovery packet');
   const third = store.selected();
-  assert.equal(third.experience, 'work');
+  assert.equal(third.experience, 'chat');
   assert.ok(third.chatUrl.startsWith('https://chatgpt.com/c/'));
   assert.ok(browser.getURL().startsWith('https://chatgpt.com/c/'));
-  assert.equal(third.experience, 'work', 'shared /c URL keeps Work provenance');
+  assert.equal(third.experience, 'chat');
   assert.equal(store.snapshot().projects[0].sessions.length, 3);
-  assert.deepEqual(await sidebar.executeJavaScript('Array.from(document.querySelectorAll(".session-experience")).map(e=>e.textContent)'), ['Work', 'Chat', 'Chat']);
-  assert.equal(await browser.executeJavaScript('window.fixtureMessages[0].mode'), 'work');
+  assert.deepEqual(await sidebar.executeJavaScript('Array.from(document.querySelectorAll(".session-experience")).map(e=>e.textContent)'), ['Chat', 'Chat', 'Chat']);
+  assert.equal(await browser.executeJavaScript('window.fixtureMessages[0].mode'), 'chatgpt');
   await sidebar.executeJavaScript(`document.querySelector('.project-menu-button').click(); document.querySelector('.new-project-chat').click()`);
-  await waitFor(() => store.selected()?.experience === 'chat' && store.selected()?.sessionId !== second.sessionId
+  await waitFor(() => store.selected()?.experience === 'chat' && store.selected()?.sessionId !== third.sessionId
     && settled(), 'new Chat after Work remembers browser preference', snapshot);
   assert.equal(packetLoads, warmPacketLoads, 'chat navigation does not duplicate checkout recovery');
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages[0].mode'), 'chatgpt');
-  assert.equal(await browser.executeJavaScript('window.fixtureModeClicks'), 1);
+  assert.equal(await browser.executeJavaScript('window.fixtureModeClicks'), 0);
   const fourth = store.selected();
   assert.deepEqual(snapshot().projects[0].sessions.map(s => s.sessionId), [fourth.sessionId, third.sessionId, second.sessionId, first.sessionId]);
   const treeScreenshots = [];
@@ -1045,7 +1057,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.deepEqual(snapshot().projects[0].sessions.map(s => s.sessionId), [fourth.sessionId, third.sessionId, second.sessionId, first.sessionId]);
   assert.equal(packetLoads, warmPacketLoads, 'Earlier chat does not receive another context packet');
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
-  assert.ok(await browser.executeJavaScript(`window.fixtureMessages[0].text.includes('${first.attempt.requestId}')`));
+  assert.ok(await browser.executeJavaScript("window.fixtureMessages[0].text.includes('workflow_pilot_panel')"));
   assert.equal(store.selected().attempt.requestId, first.attempt.requestId);
   assert.equal(store.snapshot().projects[0].sessions[1].sessionId, second.sessionId);
   assert.equal(store.snapshot().projects[0].sessions[2].sessionId, third.sessionId);
@@ -1075,7 +1087,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => sessionArchive.executeJavaScript('typeof window.webPilotArchive === "object"'), 'session delete archive preload ready', snapshot);
   await sessionArchive.executeJavaScript('document.getElementById("tab-sessions").click()');
   await waitFor(() => sessionArchive.executeJavaScript('document.querySelectorAll(".item").length === 1'), 'Work session in archive', snapshot);
-  assert.ok(await sessionArchive.executeJavaScript('document.querySelector(".item").textContent.includes("Work")'));
+  assert.ok(await sessionArchive.executeJavaScript('document.querySelector(".item").textContent.includes("Chat")'));
   await sessionArchive.executeJavaScript('document.querySelector(".item").click(); document.getElementById("delete-sessions").click()');
   await waitFor(() => sessionArchive.executeJavaScript('!document.getElementById("session-delete-panel").hidden'), 'session local delete confirmation', snapshot);
   assert.ok(await sessionArchive.executeJavaScript('document.getElementById("session-delete-panel").textContent.includes("OpenAI")'));
@@ -1551,16 +1563,20 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.notEqual(fixtureConversationTitles.get(new URL(untouchedLegacy.chatUrl).pathname.split('/').at(-1)), currentScopeTitle);
 
   const loadsBeforeNewCurrentChat = packetLoads;
-  await browser.executeJavaScript("localStorage.setItem('fixture-restored-draft-chatgpt','Старый контекст wp-request-archived-chat');localStorage.setItem('fixture-restored-draft-work','Старый контекст wp-request-archived-work')");
+  await browser.executeJavaScript("localStorage.setItem('fixture-restored-draft-chatgpt','Мой сохранённый черновик')");
 
   await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
+  await waitFor(()=>snapshot().context.phase==='waiting-draft','root draft blocks q without being cleared',snapshot);
+  assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),0);
+  assert.equal(await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent"),'Мой сохранённый черновик');
+  await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent='';document.getElementById('prompt-textarea').dispatchEvent(new Event('input',{bubbles:true}))");
   await waitFor(() => !legacyChats.some(item => item.sessionId === store.selected()?.sessionId)
     && settled() && snapshot().selected?.scopeId === 'fixture-current-plan',
     'new Chat continues current checkout plan', snapshot);
   const currentChat = store.selected();
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
   assert.equal(await browser.executeJavaScript("window.fixtureMessages[0].text.includes('wp-request-archived-')"), false);
-  assert.ok(await browser.executeJavaScript('window.fixtureMessages[0].text.includes(' + JSON.stringify(currentChat.attempt.requestId) + ')'));
+  assert.ok(await browser.executeJavaScript("window.fixtureMessages[0].text.includes('workflow_pilot_panel')"));
   await browser.executeJavaScript("localStorage.setItem('fixture-restored-draft-work','Старый контекст wp-request-archived-work')");
 
   assert.equal(currentChat.planId, 'fixture-current-plan');
@@ -1573,13 +1589,13 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.ok(packetLoads <= loadsBeforeNewCurrentChat + 1, 'at most one checkout recovery build is needed after plan creation');
   const currentPlanPacketLoads = packetLoads;
 
-  await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "work")`);
-  await waitFor(() => store.selected()?.experience === 'work' && settled()
-    && snapshot().selected?.scopeId === 'fixture-current-plan', 'new Work continues current checkout plan', snapshot);
+  await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
+  await waitFor(() => store.selected()?.sessionId!==currentChat.sessionId && settled()
+    && snapshot().selected?.scopeId === 'fixture-current-plan', 'another Chat continues current checkout plan', snapshot);
   const currentWork = store.selected();
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'), 1);
   assert.equal(await browser.executeJavaScript("window.fixtureMessages[0].text.includes('wp-request-archived-')"), false);
-  assert.ok(await browser.executeJavaScript('window.fixtureMessages[0].text.includes(' + JSON.stringify(currentWork.attempt.requestId) + ')'));
+  assert.ok(await browser.executeJavaScript("window.fixtureMessages[0].text.includes('workflow_pilot_panel')"));
 
   assert.equal(currentWork.planId, 'fixture-current-plan');
   assert.equal(currentWork.attempt.packet.facts.scope_id, 'fixture-current-plan');
@@ -1602,13 +1618,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   // The fixture page never opens the panel: the agent's side of the panel startup runs here
   // (open with an invitation, read every part, confirm), as tests/startup-context.test.mjs does.
   const completePanelStartup = async session => {
-    const metadata = { 'openai/session': 'smoke-' + session.sessionId, 'openai/subject': 'smoke' };
-    const { enrollment_ticket } = await plugin.reserveParticipant(session.sessionId);
-    const first = (await plugin.panel({ enrollment_ticket, metadata })).startup_context;
-    if (!first) return;
-    for (let part = 1; part < first.total; part++)
-      await plugin.communication.content({ metadata, message_id: first.message_id, context_ref: first.context_ref, part });
-    assert.equal((await plugin.communication.startupComplete({ metadata, message_id: first.message_id, context_sha256: first.context_ref })).complete, true);
+    await waitFor(()=>plugin.communication.startup.progress(session.sessionId,session.attempt.requestId)?.complete,
+      'actual dispatched invitation completed through fixture host',snapshot);
   };
   for (const target of [currentChat, currentWork]) await completePanelStartup(target);
   // Sidebar -> IPC -> real composer -> sandboxed observer in Chat and Work.
@@ -1631,7 +1642,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     await waitFor(() => sidebar.executeJavaScript("document.getElementById('plan-continuation-message').textContent.includes('Продолжай» №1')"),
       'confirmed counter visible in sidebar', snapshot);
     await noExtraSend(before + 1);
-    if (target.experience === 'chat') {
+    if (target.sessionId === currentChat.sessionId) {
       await beginAnswer(); await appendAnswer('Частичный обычный ответ перед Stop.');
       await trustedClick('#auto-fixture-stop');
       await waitFor(()=>!pageState.current.state.busy&&pageState.current.state.manualStopRevision>0,'trusted Stop pauses automation',snapshot);
@@ -1833,9 +1844,10 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => !controller.contextCache.isPending(), 'background preparation before new Work', snapshot);
   await sidebar.executeJavaScript('window.webPilot.openSettings()');
   const beforeDoctorNew = store.snapshot().projects.find(p => p.workspace === workspace).sessions.length;
-  await sidebar.executeJavaScript('window.webPilot.continueDoctor("work")');
+  const doctorWork=await sidebar.executeJavaScript('window.webPilot.continueDoctor("work")');assert.equal(doctorWork.ok,false);
+  await sidebar.executeJavaScript('window.webPilot.continueDoctor("chat")');
   await waitFor(() => store.selected().sessionId !== doctorSession && settled(), 'doctor new Work created', snapshot);
-  assert.equal(store.selected().experience, 'work');
+  assert.equal(store.selected().experience, 'chat');
   assert.equal(store.snapshot().projects.find(p => p.workspace === workspace).sessions.length, beforeDoctorNew + 1);
 
   // A new project's first Work session uses the same one-click path and real IPC.
@@ -1859,10 +1871,13 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(invalidMode.ok, false); await assert.rejects(fs.stat(workTarget), { code: 'ENOENT' });
   await sidebar.executeJavaScript('window.webPilot.refreshSetup()');
   await waitFor(() => snapshot().setup?.phase === 'preview' && !snapshot().setup.error, 'recover rejected mode', snapshot);
-  await waitFor(() => sidebar.executeJavaScript('!document.getElementById("setup-experience-work").disabled'), 'first Work button ready', snapshot);
-  await sidebar.executeJavaScript('document.getElementById("setup-experience-work").click(); document.getElementById("setup-experience-work").click()');
+  const firstWork=await sidebar.executeJavaScript('window.webPilot.applySetup('+JSON.stringify(snapshot().setup.token)+',"work")');
+  assert.equal(firstWork.ok,false);await assert.rejects(fs.stat(workTarget),{code:'ENOENT'});
+  await sidebar.executeJavaScript('window.webPilot.refreshSetup()');
+  await waitFor(() => sidebar.executeJavaScript('!document.getElementById("setup-experience-chat").disabled'), 'first Chat button ready', snapshot);
+  await sidebar.executeJavaScript('document.getElementById("setup-experience-chat").click(); document.getElementById("setup-experience-chat").click()');
   await waitFor(() => store.selected()?.workspace === workTarget && settled(), 'first Work opens directly', snapshot);
-  assert.equal(store.selected().experience, 'work');
+  assert.equal(store.selected().experience, 'chat');
   assert.equal(store.snapshot().projects.find(p => p.workspace === workTarget).sessions.length, 1);
 
   // Animation frames run in the hidden, unthrottled fixture renderer.
@@ -1889,14 +1904,9 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-card").hidden'), false);
   assert.equal(snapshot().selected?.sessionId, beforeSidebarReload.selected?.sessionId, 'sidebar reload does not change selected session');
   // Ordinary first message: actual trusted input, persisted URL, no recovery acknowledgement.
-  const deliverBeforeManual = ChatGPTComposer.prototype.deliver;
-  ChatGPTComposer.prototype.deliver = async function () {
-    await this.inspect({ action: 'fill', text: 'Моё обычное ручное сообщение' });
-    return { state: 'deferred', reason: 'DRAFT_PRESENT' };
-  };
+  await browser.executeJavaScript("localStorage.setItem('fixture-restored-draft-chatgpt','Моё обычное ручное сообщение')");
   await sidebar.executeJavaScript('window.webPilot.newSession(' + JSON.stringify(workTarget) + ', "chat")');
   await waitFor(() => snapshot().context.phase === 'waiting-draft', 'ordinary manual draft', snapshot);
-  ChatGPTComposer.prototype.deliver = deliverBeforeManual;
   await trustedClick('[data-testid=send-button]');
   await waitFor(() => snapshot().context.phase === 'manual-session' && !!store.selected().chatUrl, 'ordinary Send binds its own conversation', snapshot);
   const manualSession = store.selected();
@@ -1938,16 +1948,26 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const selectEmbedded=await sidebar.executeJavaScript('window.webPilot.selectSession('+JSON.stringify(nativeProject.workspace)+','+JSON.stringify(nativeProject.sessionId)+')');
   assert.equal(selectEmbedded.ok,true,JSON.stringify(selectEmbedded.error));
   assert.equal(store.selected().external,undefined);
+  fixtureWorkRedirect=true;
+  const guarded=await sidebar.executeJavaScript('window.webPilot.newSession('+JSON.stringify(nativeProject.workspace)+',"chat")');
+  assert.equal(guarded.ok,true,JSON.stringify(guarded.error));
+  await waitFor(()=>store.selected()?.attempt?.modeViolation&&store.selected().attempt.cancelState==='revoked',
+    'real Work redirect before shared c is durably rejected',snapshot);
+  const denied=store.selected();assert.equal(denied.chatUrl,null);assert.notEqual(denied.attempt.state,'sent');
+  const deniedMessage=[...plugin.communication.runs.values()].flatMap(r=>r.messages).find(m=>m.message_id===denied.attempt.contextRef.message_id);
+  assert.equal(deniedMessage.read,false);assert.equal(deniedMessage.cancelled,true);
+  const returnEmbedded=await sidebar.executeJavaScript('window.webPilot.selectSession('+JSON.stringify(nativeProject.workspace)+','+JSON.stringify(nativeProject.sessionId)+')');
+  assert.equal(returnEmbedded.ok,true);
   // The former parallel UI scenario (tests/parallel-execution-smoke-fixture.cjs) started executors with attachments.
   // Since 0.5.20 executors start only through the panel channel, which the fixture ChatGPT page does not have;
   // the executor dialogue is covered by the isolated parallel-execution, parallel-finalization,
   // automatic-agent-dialogue and prepared-flow-cycle suites.
   await verifyDeletionRecoveryUi({sidebar,browser,store,snapshot,dataDir,deletion,deletionHooks,execution,dialog,makeAux,getArchiveWindow,waitFor,neighbour:auxE});
-  const result = { legacyParallelScenario: 'retired-panel-startup', panelStartupCompleted: true, ordinaryManualSend: true, manualRecoverySend: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, directFirstWork: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
-    singleActivePlanScreenshot, mode: 'isolated-fixture', electron: process.versions.electron, chromium: process.versions.chrome,
+  const result = { legacyParallelScenario: 'retired-panel-startup', panelStartupCompleted: true, ordinaryManualSend: true, urlQueryBootstrap: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, explicitWorkRejected: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
+    singleActivePlanScreenshot,workRedirectRejected:true, mode: 'isolated-fixture', electron: process.versions.electron, chromium: process.versions.chrome,
     views: window.contentView.children.length, secureRemote: true, sidebarIpc: true, archiveRestore: true, archiveRestart: true, deleteCancel: true, localDeletion: true, cloudChatPreserved: true, workspaceCreation: true, workspaceValidation: true, cancelPreservesSession: true, startupMessages: 4, canonicalPacketLoads: packetLoads, recoveryCache: true, operationProgress: true, progressScreenshot: path.join(dataDir, 'progress-ui.png'),
     tokenCounterRemoved: true, projectRename: true, sessionRename: true, sessionScopedTitleSync: true, restartKeepsSession: true, newChatCreatesSession: true, sessionTree: true, selectsEarlierSession: true, compactWorkspaceDetails: true, projectPathClipboard: true, sessionPlans: true, singleCurrentPlan: true, clientPlanContinuation: true, planContinuation01TestAuto: true,
-    planContinuationFreshProcessModes: ['busy', 'sent', 'sending', 'manual', 'off'], planContinuationReloadNoDuplicate: true, manualChatWorkChoice: true, noAcceptanceButton: true, chromiumDiagnostics: true, contextWindowIndicatorRemoved: true, resizableSidebar: true, separateArchiveWindow: true, archiveMultiSelect: true, archiveForgetKeepsFolder: true, archiveRecoveryAfterInterrupt: true, replacementFolderProtected: true, orphanSettingsConfirmed: true, orphanUnknownRefused: true, shellTheme: true, nativeTitlebarTheme: nativeTheme.shouldUseDarkColors, toolCallFilter: true, microphonePermission: true, geolocationPermission: true, cameraPermission: false, fullContextBytes: Buffer.byteLength(fixtureContext), liveChatGPT: false, agentToolsRequired: false };
+    planContinuationFreshProcessModes: ['busy', 'sent', 'sending', 'manual', 'off'], planContinuationReloadNoDuplicate: true, chatOnly: true, noAcceptanceButton: true, chromiumDiagnostics: true, contextWindowIndicatorRemoved: true, resizableSidebar: true, separateArchiveWindow: true, archiveMultiSelect: true, archiveForgetKeepsFolder: true, archiveRecoveryAfterInterrupt: true, replacementFolderProtected: true, orphanSettingsConfirmed: true, orphanUnknownRefused: true, shellTheme: true, nativeTitlebarTheme: nativeTheme.shouldUseDarkColors, toolCallFilter: true, microphonePermission: true, geolocationPermission: true, cameraPermission: false, fullContextBytes: Buffer.byteLength(fixtureContext), liveChatGPT: false, agentToolsRequired: false };
   await fs.writeFile(path.join(dataDir, 'smoke-result.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 }

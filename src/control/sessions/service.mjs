@@ -65,6 +65,8 @@ export class SessionRuntimes {
     const scopedStore=identity?sessionStore(this.store,identity):this.store;
     record.composer=browser.composer;
     record.controller=new ContextSession({store:scopedStore,runtime:this.runtime(),contextCache:this.contextCache,
+      canStartChat:()=>{const p=record.project();return !this.paused&&!record.disposed&&record.ready
+        &&!record.manualStartObserved&&!p?.manualStart&&sessionModeAllowed(p)&&!p.archivedAt&&!p.sessionArchivedAt;},
       composer:record.composer,onChange:()=>{this.syncStartupObservation(record);this.onChange(record);},onChatBound:()=>this.onChatBound(record)});
     record.controller.onIdle=()=>this.onChange(record);
     record.timer=new AgentTimer({onFinish:(target,durationMs)=>{
@@ -125,6 +127,9 @@ export class SessionRuntimes {
     const urlStartup=project?.attempt?.bootstrapTransport==='url-query',cancelling=urlStartup&&project.attempt.cancelState==='requested';
     if(record.disposed||!project||project.archivedAt||project.sessionArchivedAt)return;
     if(!cancelling&&(this.paused||!record.ready||record.loading||!sessionModeAllowed(project)))return;
+    if(!project.chatUrl&&!project.attempt&&(record.manualStartObserved||project.manualStart)){
+      record.controller.emit({phase:'waiting-manual-chat',messageSent:false,error:null});return;
+    }
     if(!urlStartup&&record.addressLost&&!normalizeChatUrl(record.composer.getURL())) {
       record.controller.emit({phase:'send-unknown',error:{code:'SESSION_CHAT_ADDRESS_UNKNOWN',
         message:'Страница разговора утрачена до сохранения адреса. Первоначальная отправка не повторяется; восстановите исходный разговор.'}});
@@ -161,7 +166,7 @@ export class SessionRuntimes {
   }
   observeManualConversation(state, record = this.visible) {
     const selected = record?.project(), documentId = record?.pageState.current?.documentId;
-    if (!selected || selected.chatUrl || !documentId) return false;
+    if (!selected || selected.chatUrl || !documentId||!sessionModeAllowed(selected)||state.experience==='work') return false;
     if (!record.manualDocumentOwner && /^https:\/\/chatgpt\.com\/(?:work\/?)?$/.test(state.url) && state.userMessageCount === 0)
       record.manualDocumentOwner = {documentId, workspace:selected.workspace, sessionId:selected.sessionId, generation:record.epoch, binding:false};
     const owner = record.manualDocumentOwner;
@@ -169,7 +174,13 @@ export class SessionRuntimes {
         || owner.sessionId !== selected.sessionId || owner.generation !== record.epoch || !state.manualSendRevision) return false;
     if (selected.attempt?.state === 'sent' || selected.attempt?.sendStartedAtMs) return false;
     const url = normalizeChatUrl(state.url);
+    record.manualStartObserved=true;
     record.controller.cancel();
+    if(!selected.manualStart&&!owner.checkpoint){
+      owner.checkpoint=this.store.updateSession(owner.workspace,owner.sessionId,{manualStart:true},{background:true}).then(()=>{
+        if(!record.disposed){this.tick(record);this.onChange(record);}
+      },error=>{owner.checkpoint=null;this.onError(record,error);});
+    }
     if (!url || owner.binding) return true;
     owner.binding = true;
     void this.store.bindChat(owner.workspace, owner.sessionId, url, {manual:true,background:true}).then(() => {
