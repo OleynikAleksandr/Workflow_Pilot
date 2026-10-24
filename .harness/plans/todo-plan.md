@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1008,
+  "plan_revision": 1009,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
@@ -727,7 +727,8 @@
         "tests/startup-context.test.mjs",
         "tests/backend-desktop-model.test.mjs",
         "scripts/stage-page-observer.mjs",
-        "scripts/stage-chatgpt-plugin.mjs"
+        "scripts/stage-chatgpt-plugin.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -1002,7 +1003,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1008
+Revision: 1009
 
 ## Цель
 
@@ -1053,7 +1054,7 @@ Revision: 1008
 - [TODO] T006: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke — Ожидает
   - Git Commit: [PENDING] feat: Проверить Chat-only bootstrap сквозными fixtures и обновить smoke
   - Reference: chat-only-url-bootstrap / T006 / implementation
-  - Файлы: tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/fixtures/dialogue-runtime.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts/stage-page-observer.mjs, scripts/stage-chatgpt-plugin.mjs
+  - Файлы: tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/fixtures/dialogue-runtime.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/backend-browser-viewer.mjs, tests/fixtures/backend-browser-client.mjs, tests/fixtures/backend-browser-viewer.html, tests/fixtures/backend-browser-viewer-preload.cjs, tests/fixtures/backend-browser-page.html, tests/fixtures/backend-browser-probe.mjs, tests/automatic-agent-dialogue.test.mjs, tests/executor-background-startup.test.mjs, tests/executor-startup-lifecycle.test.mjs, tests/session-runtime.test.mjs, tests/plugin-enrollment.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, scripts/stage-page-observer.mjs, scripts/stage-chatgpt-plugin.mjs, tools/codex-app-server-mcp/plugin.py
   - Параллельность: исключительное выполнение
   - Зависимости: T005
 - [TODO] VERSION: Подготовить версию 0.5.31 для единого выпуска — Ожидает
