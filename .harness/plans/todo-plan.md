@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1045,
+  "plan_revision": 1047,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-only-url-bootstrap",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Оставить только Chat-сессии и заменить DOM-ввод первого сообщения одним URL-bootstrap с тикетом, сохранив идентичность, отмену и получение контекста.",
   "acceptance_criteria": [
     "Work упразднён; история сохранена без исполнения и потери назначений.",
@@ -1384,14 +1384,15 @@
         "Семь assets GitHub совпадают по размеру и SHA, тег sourceCommit, main совпадает с HEAD, ограничения приёмки указаны."
       ],
       "expected_commit_message": "feat: Опубликовать выпуск 0.5.32 на GitHub",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-only-url-bootstrap",
         "task_id": "PUBLISH-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1414,10 +1415,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: chat-only-url-bootstrap
 Current Task: нет
-Revision: 1045
+Revision: 1047
 
 ## Цель
 
@@ -1543,8 +1544,8 @@ Revision: 1045
   - Файлы: release-manifest.json, docs/planning/chatgpt-search-extension.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-2, DOCS-2
-- [TODO] PUBLISH-2: Опубликовать выпуск 0.5.32 на GitHub — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.5.32 на GitHub
+- [DONE] PUBLISH-2: Опубликовать выпуск 0.5.32 на GitHub — Завершено
+  - Git Commit: [DONE] feat: Опубликовать выпуск 0.5.32 на GitHub
   - Reference: chat-only-url-bootstrap / PUBLISH-2 / implementation
   - Файлы: release-manifest.json, docs/planning/chatgpt-search-extension.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
