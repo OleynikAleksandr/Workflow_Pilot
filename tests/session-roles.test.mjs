@@ -36,10 +36,10 @@ test('roles: a session without a plan is a candidate, publication picks the orig
   const { folder, store, write } = await fixture(t);
   const first = await store.select(folder);
   assert.equal(first.role, 'orchestrator');
-  const second = await store.newSession(folder, 'chat');
+  const second = await store.newSession(folder);
   assert.equal(second.role, 'orchestrator');assert.equal(second.orchestratorScopeId, undefined);
   // A legacy session from an earlier version has no role.
-  const legacy = await store.newSession(folder, 'chat');
+  const legacy = await store.newSession(folder);
   delete store.data.projects[0].sessions.find(s => s.sessionId === legacy.sessionId).role;
   await write(orchestrated(second.sessionId));
   assert.equal(await store.reconcileRoles(folder), true);
@@ -48,7 +48,7 @@ test('roles: a session without a plan is a candidate, publication picks the orig
   for (const id of [first.sessionId, legacy.sessionId]) assert.equal(session(store, folder, id).role, 'discussion');
   assert.equal(store.project(folder).orchestrationIssue, null);
   assert.equal(await store.reconcileRoles(folder), false, 'repeat changes nothing');
-  const third = await store.newSession(folder, 'chat');
+  const third = await store.newSession(folder);
   assert.equal(third.role, 'discussion', 'a new session beside the active plan is a discussion chat');
   // Roles survive a restart; derived state is not persisted.
   const restarted = new WorkspaceSessions(store.file);await restarted.load();
@@ -58,7 +58,7 @@ test('roles: a session without a plan is a candidate, publication picks the orig
 
 test('roles: the planning owner is the only orchestrator before publication; a record of a closed plan is ignored', async t => {
   const { folder, store, write } = await fixture(t);
-  const first = await store.select(folder), second = await store.newSession(folder, 'chat');
+  const first = await store.select(folder), second = await store.newSession(folder);
   const owner = async (sessionId, archived = null) => fs.writeFile(path.join(folder, '.harness/runtime/planning-owner.json'),
     JSON.stringify({ version: 1, session_id: sessionId, claimed_at: new Date().toISOString(), generation: 1, scope_id: null, plan_revision: 1, archived_scope_id: archived }));
   await fs.mkdir(path.join(folder, '.harness/runtime'), { recursive: true });
@@ -67,7 +67,7 @@ test('roles: the planning owner is the only orchestrator before publication; a r
   assert.equal(session(store, folder, second.sessionId).role, 'orchestrator');
   assert.equal(session(store, folder, first.sessionId).role, 'discussion', 'the other candidate discusses');
   assert.equal(store.project(folder).planningOwnerSessionId, second.sessionId);
-  assert.equal((await store.newSession(folder, 'chat')).role, 'discussion', 'a new session beside a planning owner discusses');
+  assert.equal((await store.newSession(folder)).role, 'discussion', 'a new session beside a planning owner discusses');
   assert.equal(newSessionRole({ scopeStatus: 'NONE', planningOwnerSessionId: null }), 'orchestrator');
   // The user's transfer to a discussion chat makes it the orchestrator.
   await owner(first.sessionId);await store.reconcileRoles(folder);
@@ -81,12 +81,12 @@ test('roles: the planning owner is the only orchestrator before publication; a r
   await write({ archived_scope_id: 'orchestrated-scope', plan_revision: 3 });await owner(first.sessionId, null);
   await store.reconcileRoles(folder);
   assert.equal(store.project(folder).planningOwnerSessionId, null);
-  assert.equal((await store.newSession(folder, 'chat')).role, 'orchestrator', 'the next plan has free candidates again');
+  assert.equal((await store.newSession(folder)).role, 'orchestrator', 'the next plan has free candidates again');
 });
 
 test('roles: the orchestrator of an active plan and its project cannot be archived; discussion chats can', async t => {
   const { folder, store, write } = await fixture(t);
-  const orchestrator = await store.select(folder), chat = await store.newSession(folder, 'chat');
+  const orchestrator = await store.select(folder), chat = await store.newSession(folder);
   await write(orchestrated(orchestrator.sessionId));await store.reconcileRoles(folder);
   await assert.rejects(store.setSessionArchived(folder, orchestrator.sessionId, true), { code: 'ORCHESTRATOR_ACTIVE' });
   await assert.rejects(store.setArchived(folder, true), { code: 'PLAN_ACTIVE' });
@@ -138,7 +138,7 @@ test('roles: a closed plan keeps its orchestrator with the closing commit; the n
   assert.equal(closed.role, 'orchestrator');assert.equal(closed.closedPlanCommit, CLOSED);
   assert.ok(gitCalls.some(args => args.includes('--grep=Workflow-Scope: orchestrated-scope')));
   assert.equal(await store.setSessionArchived(folder, first.sessionId, false) && true, true);
-  const next = await store.newSession(folder, 'chat');assert.equal(next.role, 'orchestrator');
+  const next = await store.newSession(folder);assert.equal(next.role, 'orchestrator');
   await write(orchestrated(next.sessionId, { scope_id: 'second-scope', plan_revision: 4 }));await store.reconcileRoles(folder);
   assert.equal(session(store, folder, first.sessionId).orchestratorScopeId, 'orchestrated-scope', 'earlier orchestrators keep their plan');
   assert.equal(session(store, folder, next.sessionId).orchestratorScopeId, 'second-scope');
@@ -146,7 +146,7 @@ test('roles: a closed plan keeps its orchestrator with the closing commit; the n
 
 test('roles: an unknown origin needs the user, who explicitly assigns the orchestrator', async t => {
   const { folder, store, write } = await fixture(t);
-  const first = await store.select(folder), second = await store.newSession(folder, 'chat');
+  const first = await store.select(folder), second = await store.newSession(folder);
   await write(orchestrated('web-pilot-unknown'));await store.reconcileRoles(folder);
   assert.equal(store.project(folder).orchestrationIssue, 'ORIGIN_MISMATCH');
   for (const id of [first.sessionId, second.sessionId]) assert.equal(session(store, folder, id).role, 'discussion');
@@ -163,7 +163,7 @@ test('roles: a legacy active plan keeps role-less sessions and plugin sessions g
   const { folder, store, write, id } = await fixture(t, { scope_id: 'legacy', execution_scope_status: 'ACTIVE',
     tasks: [{ id: 'T001', title: 'Task', implementation_status: 'TODO', commit_status: 'PENDING' }] });
   const first = await store.select(folder);
-  assert.equal(first.role, undefined);assert.equal((await store.newSession(folder, 'chat')).role, undefined);
+  assert.equal(first.role, undefined);assert.equal((await store.newSession(folder)).role, undefined);
   const plugin = await store.connectExternal(folder, { projectId: id, requestId: randomUUID(), conversationKey: 'a'.repeat(64) });
   assert.equal(plugin.role, undefined);
   await write(orchestrated(first.sessionId, { scope_id: 'next', plan_revision: 5 }));await store.reconcileRoles(folder);

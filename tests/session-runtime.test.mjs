@@ -211,10 +211,10 @@ test('ordinary orchestrator readiness is reconciled without selecting its card',
     state:{url:'https://chatgpt.com/',editorAvailable:true,writable:true,busy:false,sendEnabled:false,
       editorRevision:1,draftRevision:0,userMessageCount:0,userMessagesRevision:0}};};
   f.manager.tick=()=>{ticks++;a.controller.emit({phase:'preparing-message'});};
-  a.controller.emit({phase:'waiting-experience'});
+  a.controller.emit({phase:'waiting-login'});
   await new Promise(resolve=>setTimeout(resolve,550));
   assert.equal(reads,1);assert.ok(ticks>=1);assert.equal(f.manager.visible,null);
-  f.projects.a.preparationPaused=true;a.controller.emit({phase:'waiting-experience'});
+  f.projects.a.preparationPaused=true;a.controller.emit({phase:'waiting-login'});
   assert.equal(a.startupObservation.timer,null);
 });
 

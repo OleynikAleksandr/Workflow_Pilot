@@ -85,8 +85,8 @@ for (const state of ['NONE', 'ACTIVE', 'PARTIAL_DONE']) test('donor 1.7.2 ' + st
   assert.deepEqual(fs.readFileSync(path.join(f.project, 'README.md')), content);
   assert.deepEqual(resolveReferences(f.project, readPlan(f.project)), refs);
   assert.deepEqual(f.run('git', ['rev-list', 'HEAD']).trim().split('\n').slice(1), history, 'one kit-update, unchanged donor history');
-  const first = await control.projects.select(f.project, { experience: 'chat' });
-  const second = await control.projects.newSession(first.workspace, 'chat');
+  const first = await control.projects.select(f.project, {});
+  const second = await control.projects.newSession(first.workspace);
   assert.equal(first.projectId, before.project_id); assert.equal(second.projectId, before.project_id);
   assert.notEqual(first.sessionId, second.sessionId); assert.equal(first.chatUrl, null); assert.equal(second.chatUrl, null);
   const packet = await control.plans.loadContext(first.workspace);

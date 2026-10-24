@@ -223,7 +223,7 @@ test('startup admission requires the persisted sent attempt and fresh packet, no
   d.project=()=>project;d.observe=()=>({canSend:true});
   const m={kind:'startup-context',request_id:'r'};
   assert.equal((await d.admit(target,m)).allowed,false);
-  project.preparationPaused=true;assert.equal(await d.currentMessage(target,m),false);
+  project.preparationPaused=true;await assert.rejects(d.currentMessage(target,m),{code:'PLUGIN_COMMUNICATION_STARTUP_PAUSED'});
   delete project.preparationPaused;project.attempt.requestId='other';assert.equal(await d.currentMessage(target,m),false);
 });
 
@@ -362,7 +362,7 @@ test('issued S snapshot survives a concurrent plan revision on durable WAL witho
   assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,0);
   assert.equal(run.grant,undefined);
   project.preparationPaused=true;
-  await assert.rejects(restored.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
+  await assert.rejects(restored.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_STARTUP_PAUSED'});
   project.preparationPaused=false;
   project.attempt.requestId='different-request';
   await assert.rejects(restored.content({...input,context_ref:first.context_ref,part:1}),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});

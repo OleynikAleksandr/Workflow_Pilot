@@ -68,7 +68,7 @@ test('Electron backend runs the Desktop model; the client uses the former channe
   const {spawn}=await import('node:child_process');
   const readline=await import('node:readline');
   const {fileURLToPath}=await import('node:url');
-  const root=await fsp.mkdtemp(path.join(os.tmpdir(),'wp-desktop-model-'));t.after(()=>fsp.rm(root,{recursive:true,force:true}));
+  const root=await fsp.mkdtemp(path.join(os.tmpdir(),'wp-desktop-model-'));
   const workspace=path.join(root,'alpha');
   await fsp.mkdir(path.join(workspace,'.harness/plans'),{recursive:true});
   await fsp.mkdir(path.join(workspace,'scripts'),{recursive:true});
@@ -84,7 +84,7 @@ test('Electron backend runs the Desktop model; the client uses the former channe
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
   const backend=spawn(electron,['.','--backend-host','--backend-fixture-root='+root],
     {cwd:fileURLToPath(new URL('../',import.meta.url)),env,stdio:['pipe','pipe','pipe']});
-  t.after(()=>{if(backend.exitCode===null)backend.kill('SIGKILL');});
+  t.after(async()=>{if(backend.exitCode===null)backend.kill('SIGKILL');await fsp.rm(root,{recursive:true,force:true,maxRetries:3,retryDelay:50});});
   let errors='';backend.stderr.setEncoding('utf8');backend.stderr.on('data',chunk=>{errors+=chunk;});
   const lines=readline.createInterface({input:backend.stdout});
   let deadline;
@@ -105,9 +105,9 @@ test('Electron backend runs the Desktop model; the client uses the former channe
   assert.equal(read.state.projects[0].workspace,project.workspace);assert.ok(Array.isArray(read.archive.archives));
   await assert.rejects(client.invoke('local','pilot:rename-project',{workspace:project.workspace,name:'Альфа'}),{code:'BACKEND_LEASE_REQUIRED'});
   await client.acquire();
-  const work=await client.invoke('local','pilot:new-session',{workspace:project.workspace,experience:'work'});
-  assert.equal(work.ok,false);assert.equal(work.error.code,'SESSION_EXPERIENCE_UNSUPPORTED');
-  assert.equal((await client.read('ui.state')).state.selected.sessionId,project.sessionId,'rejected Work cannot change selection');
+  const invalid=await client.invoke('local','pilot:new-session',{workspace:project.workspace,unsupported:true});
+  assert.equal(invalid.ok,false);assert.equal(invalid.error.code,'SESSION_INPUT');
+  assert.equal((await client.read('ui.state')).state.selected.sessionId,project.sessionId,'rejected options cannot change selection');
   assert.equal((await client.invoke('local','pilot:rename-project',{workspace:project.workspace,name:'Альфа'})).ok,true);
   await until(()=>ui.get('state')?.projects?.[0]?.name==='Альфа','renamed state');
   const failed=await client.invoke('local','pilot:rename-project',{workspace:path.join(root,'missing'),name:'x'});

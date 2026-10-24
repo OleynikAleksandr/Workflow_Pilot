@@ -4,6 +4,8 @@ import {executorPageState} from './executor-session.mjs';
 import {AUTOMATIC_DIALOGUE_ENABLED} from '../../contracts/backend.mjs';
 import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 import {startupLaunch} from '../../contracts/startup-view.mjs';
+import {normalizeChatUrl} from '../../contracts/browser.mjs';
+const startupFailure=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 // A narrow adapter for the existing scheduler. It owns no assignments or plan.
@@ -11,20 +13,42 @@ export class DialogueDelivery {
   constructor({store,getPlugin,record,route,state,signals,kitPermission=async()=>{}}){Object.assign(this,{store,getPlugin,record,route,state,signals,kitPermission});}
   async currentMessage(target,message){
     if(message.kind==='startup-context'){
-      await this.record?.(this.project(target.local_session_id))?.navigationTail;
-      await this.store.whenIdle?.();
-      const project=this.project(target.local_session_id),attempt=project?.attempt;
-      if(!project||project.preparationPaused||attempt?.modeViolation||attempt?.cancelState&&attempt.cancelState!=='none'
-        ||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel')return false;
-      if(attempt.bootstrapTransport==='url-query'&&(!attempt.modeConfirmed||attempt.loginLost
-        ||this.record?.(project)?.controller?.startupAllowed?.(attempt)===false))return false;
-      // A discussion chat has already received an immutable, authenticated
-      // model-pull snapshot. Its remaining reads acknowledge that snapshot,
-      // not the latest plan revision. All pre-open, SDK and O/E checks stay strict.
-      if(target.role==='S'&&message.delivery_mode==='model-pull'&&message.read
-        &&message.parts_read?.includes(0))return true;
-      const info=await this.store.inspect(project.workspace,project.sessionId);
-      return await this.record(project)?.controller.packetIsCurrent(attempt.packet,{...project,...info})===true;
+      const deadline=Date.now()+2000;
+      for(;;){
+        let project=this.project(target.local_session_id),record=this.record?.(project);
+        await record?.navigationTail;
+        await this.store.whenIdle?.();
+        project=this.project(target.local_session_id);record=this.record?.(project);
+        const attempt=project?.attempt;
+        if(!project||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel')return false;
+        if(project.preparationPaused)throw startupFailure('STARTUP_PAUSED','Подготовка сессии приостановлена. Контекст не выдан.');
+        if(attempt.loginLost)throw startupFailure('STARTUP_LOGIN_REQUIRED','Вход в ChatGPT утрачен. Контекст не выдан.');
+        if(attempt.cancelState&&attempt.cancelState!=='none'||record?.controller?.startupAllowed?.(attempt)===false)
+          throw startupFailure('STARTUP_CANCELLED','Запуск отменён. Дальнейшее чтение и подтверждение запрещены.');
+        if(attempt.bootstrapTransport==='url-query'){
+          const observation=record?.pageState?.current,page=observation?.state;
+          if(page?.login==='signed-out')throw startupFailure('STARTUP_LOGIN_REQUIRED','Нужно войти в ChatGPT. Контекст не выдан.');
+          const snapshot=record?.browser?.snapshot?.()??record?.composer?.navigationSnapshot?.();
+          const owned=project.chatUrl?normalizeChatUrl(page?.url)===project.chatUrl
+            :snapshot&&snapshot.id===attempt.navigation?.id&&snapshot.incarnation===attempt.navigation?.incarnation
+              &&snapshot.epoch===attempt.navigation?.epoch&&snapshot.navigationOwner===attempt.requestId
+              &&!['lost','conflict'].includes(attempt.addressStatus);
+          if(!owned)throw startupFailure('STARTUP_ADDRESS_UNCONFIRMED','Принадлежность страницы этой попытке не подтверждена. Контекст не выдан.');
+          const ready=page?.login==='signed-in'&&observation.documentId
+            &&(project.chatUrl||observation.documentId!==attempt.preflightDocumentId);
+          if(!ready){
+            const remaining=deadline-Date.now();
+            if(remaining<=0||!record?.pageState?.waitForChange)throw startupFailure('STARTUP_NOT_READY','Ожидается подтверждение входа и готовности страницы ChatGPT. Контекст пока не выдан.');
+            await record.pageState.waitForChange(record.pageState.version,{timeoutMs:remaining,
+              canContinue:()=>this.project(target.local_session_id)?.attempt?.requestId===message.request_id});
+            continue;
+          }
+        }
+        // An already issued discussion snapshot remains immutable across plan changes.
+        if(target.role==='S'&&message.delivery_mode==='model-pull'&&message.read&&message.parts_read?.includes(0))return true;
+        const info=await this.store.inspect(project.workspace,project.sessionId);
+        return await record?.controller.packetIsCurrent(attempt.packet,{...project,...info})===true;
+      }
     }
     if(message.dialogue_version===1&&message.assignment_id){
       const state=await this.getPlugin().communication.assignment.state(target,message.assignment_id);
@@ -64,7 +88,7 @@ export class DialogueDelivery {
     await this.record?.(this.project(target.local_session_id))?.navigationTail;
     await this.store.whenIdle?.();
     const project=this.project(target.local_session_id);
-    if(project?.attempt?.modeViolation||project?.attempt?.cancelState&&project.attempt.cancelState!=='none')
+    if(project?.attempt?.cancelState&&project.attempt.cancelState!=='none')
       return {allowed:false,reason:'admission-denied'};
     if(message?.kind==='startup-context'){
       if(!project||project.attempt?.state!=='sent'||project.attempt.requestId!==message.request_id

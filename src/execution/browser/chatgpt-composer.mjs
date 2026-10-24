@@ -6,7 +6,7 @@ class ComposerError extends Error {
 }
 
 // Runs only in the visible ChatGPT document. No page internals, cookies or API requests.
-export function pageOperation({ action = 'inspect', text = '', requestId = '', expectedExperience = null, diagnose = false, draftToken = '', attachments = [], attachmentIndex = null } = {}, dom = createChatGPTDOM(CHATGPT_SELECTORS)) {
+export function pageOperation({ action = 'inspect', text = '', requestId = '', expectedUrl = null, diagnose = false, draftToken = '', attachments = [], attachmentIndex = null } = {}, dom = createChatGPTDOM(CHATGPT_SELECTORS)) {
   const { first } = dom;
   const editor = dom.editor();
   const busy = dom.busy();
@@ -23,12 +23,11 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
   const draftMatches = !!text && actual === expected;
   const writable = !!editor && !editor.disabled && !editor.readOnly && editor.getAttribute('contenteditable') !== 'false';
   const sendEnabled = !!button && !button.disabled && button.getAttribute('aria-disabled') !== 'true';
-  const modeButtons = dom.modeButtons();
-  const modeOf = dom.modeOf;
-  const experience = dom.experience();
   const result = { connectionError, url: location.href, editorAvailable: !!editor, writable, login,
     accountStatus: dom.account().login, busy,
-    draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount: messages.length, experience };
+    draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount: messages.length };
+  if (expectedUrl !== null && location.href !== expectedUrl)
+    return { ...result, action: 'deferred', reason: 'CHAT_CHANGED' };
   // Only visible composer cards count. Message history cannot prove draft uploads.
   const attachmentKey = Symbol.for('web-pilot-file-paste');
   const owner = editor?.[attachmentKey];
@@ -132,8 +131,8 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
   if (login || !writable) return { ...result, action: 'deferred', reason: 'LOGIN_REQUIRED' };
   if (busy) return { ...result, action: 'deferred', reason: 'GENERATION_ACTIVE' };
   if (action === 'clear-new-draft') {
-    // Explicit New Chat/Work only. A conversation (even empty) is never cleared.
-    if (!['/', '/work', '/work/'].includes(location.pathname) || messages.length)
+    // Explicit New Chat only. A conversation (even empty) is never cleared.
+    if (location.pathname !== '/' || messages.length)
       return { ...result, action: 'deferred', reason: 'CHAT_CHANGED' };
     if (draftLength) {
       editor.focus();
@@ -151,23 +150,6 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
     return { ...result, draftLength: normalized(draft()).length,
       action: normalized(draft()).length ? 'deferred' : 'draft-cleared',
       reason: normalized(draft()).length ? 'DRAFT_CLEAR_FAILED' : null };
-  }
-  if (expectedExperience) {
-    const entry = location.pathname.replace(/\/+$/, '') || '/';
-    const atEntrypoint = entry === '/' || entry === '/work';
-    if (!atEntrypoint || messages.length) return { ...result, action: 'deferred', reason: 'CHAT_CHANGED' };
-    if (action === 'select-experience') {
-      if (experience === expectedExperience) return { ...result, action: 'experience-confirmed' };
-      if (draftLength) return { ...result, action: 'deferred', reason: 'DRAFT_PRESENT' };
-      const target = modeButtons.find(element => modeOf(element) === expectedExperience);
-      if (!target || target.disabled || target.getAttribute('aria-disabled') === 'true') {
-        return { ...result, action: 'deferred', reason: 'EXPERIENCE_UNCONFIRMED' };
-      }
-      target.click();
-      // Confirmation requires a fresh observation after React processes the native click.
-      return { ...result, action: 'experience-selecting' };
-    }
-    if (experience !== expectedExperience) return { ...result, action: 'deferred', reason: 'EXPERIENCE_UNCONFIRMED' };
   }
   if (action === 'retry-remove-attachment' || action === 'retry-paste-attachment') {
     const owned = editor[attachmentKey], index = attachmentIndex, card = cards[index];
@@ -305,7 +287,7 @@ export class ChatGPTComposer {
     this.filledRequest = null;
   }
 
-  async inspect({ text = '', requestId = '', action = 'inspect', expectedExperience = null, canContinue = () => true, draftToken = '', attachments = [], attachmentIndex = null } = {}) {
+  async inspect({ text = '', requestId = '', action = 'inspect', expectedUrl = null, canContinue = () => true, draftToken = '', attachments = [], attachmentIndex = null } = {}) {
     const current = this.contents.getURL();
     let url;
     try { url = new URL(current); } catch { return { login: true, editorAvailable: false, url: current }; }
@@ -317,20 +299,20 @@ export class ChatGPTComposer {
     const started = this.now();
     if (diagnose && action !== 'inspect') this.trace('action-start', { action, requestId });
     const documentKey = this.documentKey();
-    let observation = await this.contents.executeJavaScript(pageScript({ action, text, requestId, expectedExperience, diagnose, draftToken, attachments, attachmentIndex }), action !== 'inspect');
+    let observation = await this.contents.executeJavaScript(pageScript({ action, text, requestId, expectedUrl, diagnose, draftToken, attachments, attachmentIndex }), action !== 'inspect');
     if (observation.action === 'paste-ready') {
       if (!canContinue() || this.documentKey() !== documentKey)
         return { action: 'deferred', reason: 'CHAT_CHANGED' };
       observation = await this.contents.executeJavaScript(pageScript({
-        action: 'paste', text, requestId, expectedExperience, diagnose, draftToken, attachments,
+        action: 'paste', text, requestId, diagnose, draftToken, attachments,
       }), true);
     }
     if (diagnose) {
       const { diagnostic, editorAvailable, writable, login, busy, draftLength, draftMatches, sendEnabled,
-        messageSeen, userMessageCount, experience, connectionError, insertionMethod, pasteHandled,
+        messageSeen, userMessageCount, connectionError, insertionMethod, pasteHandled,
         attachmentsPresent, attachmentsReady, attachmentsFailed, attachmentsTotal, attachmentsReadyCount, attachmentStates, attachmentMatches, attachmentOwnershipChanged, action: outcome, reason } = observation;
       this.trace('observation', { action, requestId, diagnostic, editorAvailable, writable, login, busy,
-        draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount, experience, connectionError, insertionMethod, pasteHandled,
+        draftLength, draftMatches, sendEnabled, messageSeen, userMessageCount, connectionError, insertionMethod, pasteHandled,
         attachmentsPresent, attachmentsReady, attachmentsFailed, attachmentsTotal, attachmentsReadyCount, attachmentStates, attachmentMatches, attachmentOwnershipChanged, outcome, reason },
         Math.max(0, this.now() - started));
     }
@@ -529,10 +511,11 @@ export class ChatGPTComposer {
     }
   }
 
-  async deliverInternal({ text, requestId, attachments = [], expectedExperience = null, retryAttachments = false, onUploadProgress = () => {}, canContinue = () => true, onBeforeFill = async () => {}, onBeforeSend = async () => {} }) {
+  async deliverInternal({ text, requestId, attachments = [], retryAttachments = false, onUploadProgress = () => {}, canContinue = () => true, onBeforeFill = async () => {}, onBeforeSend = async () => {} }) {
     if (this.inFlight) throw new ComposerError('SEND_IN_PROGRESS', 'Другая отправка ещё не завершилась.');
     if (typeof text !== 'string' || !text || !requestId || !text.includes(requestId)) throw new ComposerError('MESSAGE_INVALID', 'Не подготовлено стартовое сообщение.');
     this.inFlight = true;
+    const expectedUrl = this.getURL(), expectedDocument = this.documentKey();
     let clicked = false;
     try {
       if (!canContinue()) return { state: 'cancelled' };
@@ -545,13 +528,13 @@ export class ChatGPTComposer {
       const fillVersion = this.pageState?.version ?? 0;
       if (retryAttachments && attachments.length) {
         await onBeforeFill();
-        if (!canContinue() || !await this.restartAttachments({ text, requestId, attachments, expectedExperience }, canContinue)) return { state: 'cancelled' };
+        if (!canContinue() || !await this.restartAttachments({ text, requestId, attachments }, canContinue)) return { state: 'cancelled' };
       }
       if (attachments.length && (this.attachmentRequest?.requestId !== requestId || this.attachmentRequest.documentKey !== this.documentKey())) {
         await onBeforeFill();
         if (!canContinue()) return { state: 'cancelled' };
         this.attachmentRequest = { requestId, documentKey: this.documentKey() };
-        observation = await this.inspect({ action: 'attach', attachments, requestId, expectedExperience });
+        observation = await this.inspect({ action: 'attach', attachments, requestId });
         if (!['attachments-dispatched', 'deferred'].includes(observation.action))
           return { state: 'deferred', reason: observation.reason ?? 'ATTACHMENTS_PENDING', observation };
         if (observation.reason && observation.reason !== 'ATTACHMENTS_PENDING') {
@@ -563,7 +546,7 @@ export class ChatGPTComposer {
         await onBeforeFill();
         if (!canContinue()) return { state: 'cancelled' };
         const documentKey = this.documentKey();
-        observation = await this.inspect({ action: 'fill', text, requestId, expectedExperience, canContinue });
+        observation = await this.inspect({ action: 'fill', text, requestId, canContinue });
         if (observation.action === 'already-sent') return { state: 'sent', recovered: true, observation };
         if (observation.action !== 'filled') return { state: 'deferred', reason: observation.reason ?? 'LOGIN_REQUIRED', observation };
         if (!canContinue() || this.documentKey() !== documentKey) return { state: 'cancelled' };
@@ -583,9 +566,11 @@ export class ChatGPTComposer {
       await onBeforeSend();
       this.trace('before-send-complete', { requestId });
       if (!canContinue()) return { state: 'cancelled' };
+      if (this.getURL() !== expectedUrl || this.documentKey() !== expectedDocument)
+        return { state: 'cancelled', reason: 'CHAT_CHANGED' };
       clicked = true; // An exception after dispatch has an uncertain outcome, never replay automatically.
       this.uncertainRequestId = requestId;
-      observation = await this.inspect({ action: 'send', text, requestId, expectedExperience, attachments });
+      observation = await this.inspect({ action: 'send', text, requestId, expectedUrl, attachments });
       if (observation.action === 'already-sent') return { state: 'sent', recovered: true, observation };
       if (observation.action !== 'clicked') { clicked = false; this.uncertainRequestId = null; return { state: 'deferred', reason: observation.reason, observation }; }
       clicked = true;

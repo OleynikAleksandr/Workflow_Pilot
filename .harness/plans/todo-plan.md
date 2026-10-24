@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1049,
+  "plan_revision": 1052,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "chat-session-without-modes",
@@ -19,28 +19,133 @@
   ],
   "approved_scope": {
     "functional_paths": [
-      "src",
-      "tests",
-      "resources",
-      "scripts",
-      "packages/workflow-kit",
-      "package.json",
-      "package-lock.json",
-      "release-manifest.json",
-      "packages/workflow-kit/src",
-      "src/backend",
+      "src/backend/bootstrap.mjs",
+      "src/backend/desktop-model.mjs",
+      "src/backend/operations.mjs",
+      "src/chatgpt-experience.mjs",
+      "src/contracts/desktop.mjs",
+      "src/contracts/startup-view.mjs",
+      "src/control/context/context-session.mjs",
+      "src/control/facade.mjs",
+      "src/control/plugin/enrollment.mjs",
+      "src/control/sessions/service.mjs",
+      "src/control/sessions/workspace-session.mjs",
+      "src/control/workflow/coordination.mjs",
+      "src/control/workflow/dialogue-delivery.mjs",
+      "src/control/workflow/execution-projection.mjs",
+      "src/control/workflow/executor-session.mjs",
+      "src/control/workflow/project-session-plan-continuation.mjs",
+      "src/execution/browser/chatgpt-composer.mjs",
+      "src/execution/browser/chatgpt-dom.mjs",
+      "src/execution/browser/chatgpt-experience.mjs",
+      "src/execution/browser/chatgpt-page-observer.mjs",
+      "src/execution/browser/page-state.mjs",
+      "src/execution/browser/session-runtime.mjs",
+      "src/execution/desktop-dependencies.mjs",
+      "src/execution/facade.mjs",
+      "src/frontend/desktop/preload.cjs",
+      "src/frontend/desktop/ui/archive.html",
+      "src/frontend/desktop/ui/archive.mjs",
+      "src/frontend/desktop/ui/index.html",
+      "src/frontend/desktop/ui/sidebar.mjs",
+      "src/frontend/desktop/ui/workspace-setup.mjs",
+      "tests/automatic-agent-dialogue.test.mjs",
+      "tests/backend-api.test.mjs",
+      "tests/backend-browser-lifecycle.test.mjs",
+      "tests/backend-desktop-model.test.mjs",
+      "tests/backend-upgrade.test.mjs",
+      "tests/chatgpt-composer.test.mjs",
+      "tests/chatgpt-dom.test.mjs",
+      "tests/chatgpt-experience.test.mjs",
+      "tests/context-session.test.mjs",
+      "tests/control-facade.test.mjs",
+      "tests/electron-smoke.mjs",
+      "tests/fixtures/automatic-agent-dialogue.mjs",
+      "tests/fixtures/executor-background-startup.mjs",
+      "tests/migration-compatibility.test.mjs",
+      "tests/page-state.test.mjs",
+      "tests/parallel-execution-ui.test.mjs",
+      "tests/parallel-execution.test.mjs",
+      "tests/plugin-enrollment.test.mjs",
+      "tests/project-doctor-ui.test.mjs",
+      "tests/session-opening-performance.test.mjs",
+      "tests/session-plans.test.mjs",
+      "tests/session-runtime.test.mjs",
+      "tests/sidebar.test.mjs",
+      "tests/workspace-session.test.mjs",
+      "src/contracts/browser.mjs",
+      "src/execution/browser/chatgpt-title.mjs",
+      "resources/chatgpt-page-observer-preload.cjs",
+      "scripts/prepare-agent-dialogue-experiment.mjs",
+      "packages/workflow-kit/src/lib/plan.mjs",
+      "tests/startup-context.test.mjs",
+      "scripts/check-search-extension.mjs",
+      "src/backend/main.mjs",
+      "src/backend/status-menu.mjs",
+      "src/contracts/backend.mjs",
       "tests/backend-diagnostics.test.mjs",
       "tests/backend-shutdown.test.mjs",
-      "src/contracts/backend.mjs",
-      "scripts/prepare-agent-dialogue-experiment.mjs"
+      "package.json",
+      "package-lock.json",
+      "packages/workflow-kit/package.json",
+      "packages/workflow-kit/src/lib/common.mjs",
+      "packages/workflow-kit/src/lib/installation-files.mjs",
+      "scripts/stage-workflow-kit.mjs",
+      "tests/workflow-kit-upgrade.test.mjs",
+      "release-manifest.json",
+      "tests/chatgpt-plugin.test.mjs",
+      "tests/chatgpt-title.test.mjs",
+      "tests/dialogue-delivery.test.mjs",
+      "tests/session-roles.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
-      "docs",
-      "packages/workflow-kit/README.md",
-      "packages/workflow-kit/docs",
+      "docs/acceptance/backend-independence.md",
+      "docs/acceptance/chat-only-startup.md",
+      "docs/acceptance/interruption-recovery.md",
+      "docs/acceptance/migration-0.1.0.md",
+      "docs/acceptance/orchestrated-execution.md",
+      "docs/acceptance/remote-access.md",
+      "docs/architecture/OVERVIEW.md",
+      "docs/modules/assignment-dialogue-reliability.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/automatic-agent-dialogue-acceptance.md",
+      "docs/modules/backend-shutdown.md",
+      "docs/modules/backend.md",
+      "docs/modules/browser.md",
+      "docs/modules/chat-only-startup.md",
+      "docs/modules/chatgpt-plugin-acceptance.md",
+      "docs/modules/chatgpt-plugin.md",
+      "docs/modules/chatgpt-search-extension.md",
+      "docs/modules/control.md",
+      "docs/modules/desktop.md",
+      "docs/modules/dialogue-timing.md",
+      "docs/modules/execution.md",
+      "docs/modules/first-run-onboarding.md",
+      "docs/modules/linux.md",
+      "docs/modules/native-window.md",
+      "docs/modules/orchestrated-execution.md",
+      "docs/modules/orchestrator-startup.md",
+      "docs/modules/plugin-communication-handoff.md",
+      "docs/modules/project-compatibility.md",
+      "docs/modules/project-lifecycle.md",
+      "docs/modules/release.md",
+      "docs/modules/remote-access.md",
+      "docs/modules/user-choice.md",
+      "docs/modules/workflow-execution.md",
+      "docs/planning/backend-independence-followup.md",
       "docs/planning/chat-session-without-modes.md",
-      "docs/architecture/OVERVIEW.md"
+      "docs/planning/executor-readiness-recovery.md",
+      "docs/planning/native-startup-followup.md",
+      "docs/planning/phased-plans-recovery-followup.md",
+      "docs/planning/plan-start-recovery.md",
+      "docs/planning/recovery-and-interruption-2026-10.md",
+      "docs/planning/recovery-and-interruption-todo-draft.md",
+      "docs/planning/review-instructions-followup.md",
+      "packages/workflow-kit/README.md",
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+      "packages/workflow-kit/docs/modules/parallel-assignments.md",
+      "packages/workflow-kit/docs/modules/workflow-kit-package.md"
     ]
   },
   "baseline_commit": "2abec8cab8dc8308ee8d96b4f5fdbaee0b045a12",
@@ -73,8 +178,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "chat-session-without-modes",
         "task_id": "CORE",
@@ -82,11 +187,70 @@
       },
       "dependencies": [],
       "functional_paths": [
-        "src",
-        "tests",
-        "resources",
-        "scripts",
-        "packages/workflow-kit/src"
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/operations.mjs",
+        "src/chatgpt-experience.mjs",
+        "src/contracts/desktop.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/project-session-plan-continuation.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-experience.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/page-state.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/execution/desktop-dependencies.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/archive.html",
+        "src/frontend/desktop/ui/archive.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/workspace-setup.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-browser-lifecycle.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/chatgpt-dom.test.mjs",
+        "tests/chatgpt-experience.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/migration-compatibility.test.mjs",
+        "tests/page-state.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/project-doctor-ui.test.mjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/session-plans.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "src/contracts/browser.mjs",
+        "src/execution/browser/chatgpt-title.mjs",
+        "resources/chatgpt-page-observer-preload.cjs",
+        "scripts/prepare-agent-dialogue-experiment.mjs",
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/chatgpt-title.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/startup-context.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -104,7 +268,57 @@
         "Причины stale/cancel/pause/login/ownership различаются; неподдерживаемые URL дают общий отказ без определения режима."
       ],
       "expected_commit_message": "fix: удалить режимы сессии из всех слоёв приложения",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "scripts/prepare-agent-dialogue-experiment.mjs",
+        "src/backend/bootstrap.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/operations.mjs",
+        "src/contracts/browser.mjs",
+        "src/contracts/desktop.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/project-session-plan-continuation.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-experience.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/chatgpt-title.mjs",
+        "src/execution/browser/page-state.mjs",
+        "src/execution/desktop-dependencies.mjs",
+        "src/execution/facade.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/archive.html",
+        "src/frontend/desktop/ui/archive.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/workspace-setup.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/chatgpt-dom.test.mjs",
+        "tests/chatgpt-experience.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/chatgpt-title.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/control-facade.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/migration-compatibility.test.mjs",
+        "tests/session-roles.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/workspace-session.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -118,9 +332,12 @@
         "CORE"
       ],
       "functional_paths": [
-        "tests",
-        "scripts",
-        "src"
+        "tests/electron-smoke.mjs",
+        "tests/context-session.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "scripts/check-search-extension.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -153,10 +370,11 @@
         "PROOF"
       ],
       "functional_paths": [
-        "src/backend",
+        "src/backend/main.mjs",
+        "src/backend/status-menu.mjs",
+        "src/contracts/backend.mjs",
         "tests/backend-diagnostics.test.mjs",
-        "tests/backend-shutdown.test.mjs",
-        "src/contracts/backend.mjs"
+        "tests/backend-shutdown.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -190,7 +408,11 @@
         "package.json",
         "package-lock.json",
         "src/contracts/backend.mjs",
-        "packages/workflow-kit"
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installation-files.mjs",
+        "scripts/stage-workflow-kit.mjs",
+        "tests/workflow-kit-upgrade.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -226,10 +448,52 @@
       "functional_paths": [],
       "documentation_paths": [
         "README.md",
-        "docs",
+        "docs/acceptance/backend-independence.md",
+        "docs/acceptance/chat-only-startup.md",
+        "docs/acceptance/interruption-recovery.md",
+        "docs/acceptance/migration-0.1.0.md",
+        "docs/acceptance/orchestrated-execution.md",
+        "docs/acceptance/remote-access.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/backend-shutdown.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin-acceptance.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/chatgpt-search-extension.md",
+        "docs/modules/control.md",
+        "docs/modules/desktop.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/execution.md",
+        "docs/modules/first-run-onboarding.md",
+        "docs/modules/linux.md",
+        "docs/modules/native-window.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/release.md",
+        "docs/modules/remote-access.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/backend-independence-followup.md",
+        "docs/planning/chat-session-without-modes.md",
+        "docs/planning/executor-readiness-recovery.md",
+        "docs/planning/native-startup-followup.md",
+        "docs/planning/phased-plans-recovery-followup.md",
+        "docs/planning/plan-start-recovery.md",
+        "docs/planning/recovery-and-interruption-2026-10.md",
+        "docs/planning/recovery-and-interruption-todo-draft.md",
+        "docs/planning/review-instructions-followup.md",
         "packages/workflow-kit/README.md",
-        "packages/workflow-kit/docs",
-        "docs/architecture/OVERVIEW.md"
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -357,7 +621,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: chat-session-without-modes
 Current Task: нет
-Revision: 1049
+Revision: 1052
 
 ## Цель
 
@@ -375,34 +639,34 @@ Revision: 1049
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Пользователь поручил выполнить всю разработку самому агенту; изменения проходят сквозные контракты общих файлов и не допускают независимой выдачи без интеграционных промежутков.
 
-- [TODO] CORE: fix: удалить режимы сессии из всех слоёв приложения — Ожидает
-  - Git Commit: [PENDING] fix: удалить режимы сессии из всех слоёв приложения
+- [DONE] CORE: fix: удалить режимы сессии из всех слоёв приложения — Завершено
+  - Git Commit: [DONE] fix: удалить режимы сессии из всех слоёв приложения
   - Reference: chat-session-without-modes / CORE / implementation
-  - Файлы: src, tests, resources, scripts, packages/workflow-kit/src
+  - Файлы: src/backend/bootstrap.mjs, src/backend/desktop-model.mjs, src/backend/operations.mjs, src/chatgpt-experience.mjs, src/contracts/desktop.mjs, src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/facade.mjs, src/control/plugin/enrollment.mjs, src/control/sessions/service.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/execution/browser/chatgpt-composer.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-experience.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/execution/browser/session-runtime.mjs, src/execution/desktop-dependencies.mjs, src/execution/facade.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/ui/archive.html, src/frontend/desktop/ui/archive.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/workspace-setup.mjs, tests/automatic-agent-dialogue.test.mjs, tests/backend-api.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/backend-desktop-model.test.mjs, tests/backend-upgrade.test.mjs, tests/chatgpt-composer.test.mjs, tests/chatgpt-dom.test.mjs, tests/chatgpt-experience.test.mjs, tests/context-session.test.mjs, tests/control-facade.test.mjs, tests/electron-smoke.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/migration-compatibility.test.mjs, tests/page-state.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plugin-enrollment.test.mjs, tests/project-doctor-ui.test.mjs, tests/session-opening-performance.test.mjs, tests/session-plans.test.mjs, tests/session-runtime.test.mjs, tests/sidebar.test.mjs, tests/workspace-session.test.mjs, src/contracts/browser.mjs, src/execution/browser/chatgpt-title.mjs, resources/chatgpt-page-observer-preload.cjs, scripts/prepare-agent-dialogue-experiment.mjs, packages/workflow-kit/src/lib/plan.mjs, tests/chatgpt-plugin.test.mjs, tests/chatgpt-title.test.mjs, tests/dialogue-delivery.test.mjs, tests/session-roles.test.mjs, tests/startup-context.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] PROOF: test: проверить полный Chat bootstrap без переключателя — Ожидает
   - Git Commit: [PENDING] test: проверить полный Chat bootstrap без переключателя
   - Reference: chat-session-without-modes / PROOF / implementation
-  - Файлы: tests, scripts, src
+  - Файлы: tests/electron-smoke.mjs, tests/context-session.test.mjs, tests/startup-context.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, scripts/check-search-extension.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CORE
 - [TODO] TRAY: fix: диагностировать и восстанавливать значок службы — Ожидает
   - Git Commit: [PENDING] fix: диагностировать и восстанавливать значок службы
   - Reference: chat-session-without-modes / TRAY / implementation
-  - Файлы: src/backend, tests/backend-diagnostics.test.mjs, tests/backend-shutdown.test.mjs, src/contracts/backend.mjs
+  - Файлы: src/backend/main.mjs, src/backend/status-menu.mjs, src/contracts/backend.mjs, tests/backend-diagnostics.test.mjs, tests/backend-shutdown.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
 - [TODO] VERSION: chore: подготовить версии приложения и Kit — Ожидает
   - Git Commit: [PENDING] chore: подготовить версии приложения и Kit
   - Reference: chat-session-without-modes / VERSION / implementation
-  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installation-files.mjs, scripts/stage-workflow-kit.mjs, tests/workflow-kit-upgrade.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: TRAY
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: обновить контракты единственного Chat
   - Reference: chat-session-without-modes / DOCS / implementation
-  - Файлы: README.md, docs, packages/workflow-kit/README.md, packages/workflow-kit/docs, docs/architecture/OVERVIEW.md
+  - Файлы: README.md, docs/acceptance/backend-independence.md, docs/acceptance/chat-only-startup.md, docs/acceptance/interruption-recovery.md, docs/acceptance/migration-0.1.0.md, docs/acceptance/orchestrated-execution.md, docs/acceptance/remote-access.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/assignment-dialogue.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/backend-shutdown.md, docs/modules/backend.md, docs/modules/browser.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin-acceptance.md, docs/modules/chatgpt-plugin.md, docs/modules/chatgpt-search-extension.md, docs/modules/control.md, docs/modules/desktop.md, docs/modules/dialogue-timing.md, docs/modules/execution.md, docs/modules/first-run-onboarding.md, docs/modules/linux.md, docs/modules/native-window.md, docs/modules/orchestrated-execution.md, docs/modules/orchestrator-startup.md, docs/modules/plugin-communication-handoff.md, docs/modules/project-compatibility.md, docs/modules/project-lifecycle.md, docs/modules/release.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/workflow-execution.md, docs/planning/backend-independence-followup.md, docs/planning/chat-session-without-modes.md, docs/planning/executor-readiness-recovery.md, docs/planning/native-startup-followup.md, docs/planning/phased-plans-recovery-followup.md, docs/planning/plan-start-recovery.md, docs/planning/recovery-and-interruption-2026-10.md, docs/planning/recovery-and-interruption-todo-draft.md, docs/planning/review-instructions-followup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, packages/workflow-kit/docs/modules/workflow-kit-package.md
   - Параллельность: исключительное выполнение
   - Зависимости: CORE, PROOF, TRAY, VERSION
 - [TODO] RELEASE: build: собрать и проверить три платформы — Ожидает

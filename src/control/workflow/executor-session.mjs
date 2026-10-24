@@ -3,12 +3,11 @@ import { AutomationSendState } from './automation-send-state.mjs';
 import { PlanMonitor } from './plan-monitor.mjs';
 import { ProjectInputWatch } from '../../execution/facade.mjs';
 import { ExecutorTimer } from '../sessions/agent-timer.mjs';
-import { sessionModeAllowed, assertSessionMode } from '../sessions/workspace-session.mjs';
 
 export function executorPageState(record) {
   const project=record?.project(),page=record?.pageState.current?.state;
-  const observed=sessionModeAllowed(project)&&!!project.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt&&!record.disposed&&!record.loading&&record.ready
-    &&(!project.attempt?.cancelState||project.attempt.cancelState==='none')&&page?.experience!=='work'
+  const observed=!!project&&!!project.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt&&!record.disposed&&!record.loading&&record.ready
+    &&(!project.attempt?.cancelState||project.attempt.cancelState==='none')
     &&page?.url===project.chatUrl&&!page.busy&&!page.connectionError&&page.lastMessageRole==='assistant'
     &&page.login!=='signed-out';
   const stopped=observed&&!record.controller.pending&&!record.composer.inFlight;
@@ -28,7 +27,6 @@ export function executorPageState(record) {
 export function configureExecutor(record,{store,inspectPlan,enabled,onChange,signal,dialogue=null,log=()=>{}}) {
   if(record.executor)return record.executor;
   const saved=record.project(),checkpoint=saved.executionAutomation??{};
-  assertSessionMode(saved);
   const clock=new ExecutorTimer({saved:saved.executionTime,
     onCheckpoint:async time=>{await store.saveExecutorTime(saved.workspace,saved.sessionId,time);onChange();},
     onError:error=>{record.error={code:error.code??'EXECUTOR_TIME_SAVE',message:error.message};onChange();}});

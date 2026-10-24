@@ -90,7 +90,7 @@ export function projectExecutors(projects,workspace,execution,recordFor,channelF
       const assignment=execution.assignments.find(a=>a.id===session.assignmentId);
       return {workspace:project.workspace,sessionId:session.sessionId,originSessionId:session.executionOriginSessionId,parentScopeId:session.parentScopeId,
         createdAt:session.createdAt,
-        assignmentId:session.assignmentId,taskId:session.taskId,title:session.title,experience:session.experience,
+        assignmentId:session.assignmentId,taskId:session.taskId,title:session.title,
         chatUrl:session.chatUrl,worktree:true,...executorStatus(assignment,record,execution.integration,{channel:channelFor(target)}),
         attempt:assignment?.dialogue?.attempt??1,
         sourceCommit:assignment?.source_commit??null,integrationCommit:assignment?.integration_commit??null,

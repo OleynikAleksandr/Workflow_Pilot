@@ -6,7 +6,6 @@ export const CHATGPT_SELECTORS = Object.freeze({
   user: '[data-message-author-role="user"],[data-testid="user-message"],[data-user-message-bubble]',
   assistant: '[data-message-author-role="assistant"],[data-testid="assistant-message"],[data-markdown-text-style="assistant-message"]',
   userBubble: '.user-message-bubble-color,.user-message-bubble,[data-user-message-bubble]',
-  modeGroup: '[aria-label="Select chat surface"],[aria-label="Выберите режим чата"],[role="group"][aria-label="Режим редактора"],[role="group"][aria-label="Composer mode"]',
   activity: 'div[class~="group/activity-header"]',
   scroller: '.thread-scroll-container',
   login: '[data-testid="login-button"],[data-testid="signup-button"],a[href="/auth/login"],a[href="https://chatgpt.com/auth/login"]',
@@ -21,23 +20,6 @@ export function createChatGPTDOM(selectors) {
   const messages = role => {
     const nodes = [...document.querySelectorAll(selectors[role])].filter(e => !e.closest('pre,code,[contenteditable="true"]'));
     return nodes.filter(e => !nodes.some(other => other !== e && other.contains(e)));
-  };
-  const modeOf = e => {
-    const v = e.getAttribute('data-tpp-toggle-value');
-    if (v === 'chatgpt') return 'chat';
-    if (v === 'work') return 'work';
-    const label = (e.innerText ?? e.textContent ?? '').trim();
-    return /^(Chat|Чат)$/.test(label) ? 'chat' : /^(Work|Работа)$/.test(label) ? 'work' : null;
-  };
-  const modeButtons = () => {
-    const native = [...document.querySelectorAll('button[data-tpp-toggle-value]')].filter(visible);
-    if (native.length) return native;
-    return [...document.querySelectorAll(selectors.modeGroup)].filter(visible).flatMap(g => [...g.querySelectorAll('button')].filter(visible));
-  };
-  const experience = () => {
-    const selected = [...new Set(modeButtons().filter(e => e.getAttribute('data-state') === 'on'
-      || e.getAttribute('aria-checked') === 'true' || e.getAttribute('aria-pressed') === 'true').map(modeOf).filter(Boolean))];
-    return selected.length === 1 ? selected[0] : null;
   };
   const editor = () => first(selectors.editor);
   const account = () => {
@@ -60,7 +42,7 @@ export function createChatGPTDOM(selectors) {
       let url;
       try { url = new URL(link.href, location.href); } catch { continue; }
       if (url.origin !== 'https://chatgpt.com') continue;
-      historyLink ||= /^\/(?:c|work\/c|g\/[^/]+\/c)\/[a-zA-Z0-9_-]{8,}\/?$/.test(url.pathname);
+      historyLink ||= /^\/(?:c|g\/[^/]+\/c)\/[a-zA-Z0-9_-]{8,}\/?$/.test(url.pathname);
       projectLink ||= /^\/g\/g-p-[a-zA-Z0-9_-]+(?:\/project)?\/?$/.test(url.pathname)
         || /^\/projects?\/[a-zA-Z0-9_-]+\/?$/.test(url.pathname);
     }
@@ -91,6 +73,6 @@ export function createChatGPTDOM(selectors) {
     }
     return null;
   };
-  return { selectors, visible, first, messages, connectionError, modeOf, modeButtons, experience, editor, account, sendButton, busy: () => !!first(selectors.stop) };
+  return { selectors, visible, first, messages, connectionError, editor, account, sendButton, busy: () => !!first(selectors.stop) };
 }
 export const chatGPTDOMScript = () => `(${createChatGPTDOM.toString()})(${JSON.stringify(CHATGPT_SELECTORS)})`;

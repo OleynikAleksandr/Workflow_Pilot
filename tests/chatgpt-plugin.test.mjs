@@ -213,7 +213,7 @@ test('the real project projection reserves the published origin even though pers
     plan_revision:2,scope_id:null,execution_scope_status:'NONE',delivery_status:'IN_PROGRESS',current_task_id:null,tasks:[],...state})+'\n```\n<!-- workflow-state:end -->');
   await write({});
   await assert.rejects(f.store.newSession(workspace,'work'),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
-  const origin=await f.store.newSession(workspace,'chat');
+  const origin=await f.store.newSession(workspace);
   const initial=await f.plugin.reserveParticipant(origin.sessionId);
   await write({scope_id:'automatic',execution_scope_status:'ACTIVE',execution_strategy:'orchestrated',parallel_allowed:true,max_workers:2,
     execution_reason:'fixture',execution_origin_session_id:origin.sessionId,release:false,
@@ -225,7 +225,7 @@ test('the real project projection reserves the published origin even though pers
   const registered=await f.plugin.panel({enrollment_ticket:initial.enrollment_ticket,metadata});
   assert.equal(registered.registration.local_session_id,origin.sessionId);
   const next=await f.plugin.reserveParticipant(origin.sessionId);assert.equal(next.run_id,initial.run_id);
-  const discussion=await f.store.newSession(workspace,'chat');
+  const discussion=await f.store.newSession(workspace);
   const chat=await f.plugin.reserveParticipant(discussion.sessionId);
   assert.notEqual(chat.run_id,initial.run_id);
   const chatTarget=await f.plugin.participantTarget(discussion.sessionId);assert.equal(chatTarget.role,'S');

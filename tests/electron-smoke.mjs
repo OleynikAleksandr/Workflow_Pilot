@@ -1500,7 +1500,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     .find(session => !session.archivedAt && session.chatUrl);
   await continuePlan(true);
   assert.equal((await savedAutoState()).planContinuationEnabled, true, 'explicit pre-plan authorization persists');
-  await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
+  await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)})`);
   await waitFor(() => store.selected()?.sessionId !== prePlanChat.sessionId
     && settled() && !snapshot().selected?.scopeId,
     '01TestAuto new Chat starts with NONE and saved ON', snapshot);
@@ -1569,7 +1569,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const loadsBeforeNewCurrentChat = packetLoads;
   await browser.executeJavaScript("localStorage.setItem('fixture-restored-draft-chatgpt','Мой сохранённый черновик')");
 
-  await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
+  await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)})`);
   await waitFor(()=>snapshot().context.phase==='waiting-draft','root draft blocks q without being cleared',snapshot);
   assert.equal(await browser.executeJavaScript('window.fixtureMessages.length'),0);
   assert.equal(await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent"),'Мой сохранённый черновик');
@@ -1593,7 +1593,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.ok(packetLoads <= loadsBeforeNewCurrentChat + 1, 'at most one checkout recovery build is needed after plan creation');
   const currentPlanPacketLoads = packetLoads;
 
-  await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)}, "chat")`);
+  await sidebar.executeJavaScript(`window.webPilot.newSession(${JSON.stringify(workspace)})`);
   await waitFor(() => store.selected()?.sessionId!==currentChat.sessionId && settled()
     && snapshot().selected?.scopeId === 'fixture-current-plan', 'another Chat continues current checkout plan', snapshot);
   const currentWork = store.selected();
@@ -1909,7 +1909,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(snapshot().selected?.sessionId, beforeSidebarReload.selected?.sessionId, 'sidebar reload does not change selected session');
   // Ordinary first message: actual trusted input, persisted URL, no recovery acknowledgement.
   await browser.executeJavaScript("localStorage.setItem('fixture-restored-draft-chatgpt','Моё обычное ручное сообщение')");
-  await sidebar.executeJavaScript('window.webPilot.newSession(' + JSON.stringify(workTarget) + ', "chat")');
+  await sidebar.executeJavaScript('window.webPilot.newSession(' + JSON.stringify(workTarget) + ')');
   await waitFor(() => snapshot().context.phase === 'waiting-draft', 'ordinary manual draft', snapshot);
   await trustedClick('[data-testid=send-button]');
   await waitFor(() => snapshot().context.phase === 'manual-session' && !!store.selected().chatUrl, 'ordinary Send binds its own conversation', snapshot);
@@ -1953,7 +1953,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   assert.equal(selectEmbedded.ok,true,JSON.stringify(selectEmbedded.error));
   assert.equal(store.selected().external,undefined);
   fixtureWorkRedirect=true;
-  const guarded=await sidebar.executeJavaScript('window.webPilot.newSession('+JSON.stringify(nativeProject.workspace)+',"chat")');
+  const guarded=await sidebar.executeJavaScript('window.webPilot.newSession('+JSON.stringify(nativeProject.workspace)+')');
   assert.equal(guarded.ok,true,JSON.stringify(guarded.error));
   await waitFor(()=>store.selected()?.attempt?.modeViolation&&store.selected().attempt.cancelState==='revoked',
     'real Work redirect before shared c is durably rejected',snapshot);

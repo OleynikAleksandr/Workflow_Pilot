@@ -18,7 +18,7 @@ export function conversationIdFromChatUrl(input) {
   const normalized = normalizeChatUrl(input);
   if (!normalized) return null;
   const path = new URL(normalized).pathname;
-  return path.match(/^\/(?:c|work\/c|work|g\/[A-Za-z0-9_-]+\/c)\/([A-Za-z0-9_-]{8,})$/)?.[1] ?? null;
+  return path.match(/^\/(?:c|g\/[A-Za-z0-9_-]+\/c)\/([A-Za-z0-9_-]{8,})$/)?.[1] ?? null;
 }
 
 // Runs inside the authenticated ChatGPT renderer. The access token is read and
@@ -30,7 +30,7 @@ async function renameChatGPTConversationPage({ expectedUrl, title }) {
     const current = location.origin + location.pathname.replace(/\/$/, '');
     if (location.origin !== 'https://chatgpt.com' || current !== exact.origin + exact.pathname.replace(/\/$/, '')) return fail('CHAT_CHANGED');
 
-    const match = exact.pathname.match(/^\/(?:c|work\/c|work|g\/[A-Za-z0-9_-]+\/c)\/([A-Za-z0-9_-]{8,})$/);
+    const match = exact.pathname.match(/^\/(?:c|g\/[A-Za-z0-9_-]+\/c)\/([A-Za-z0-9_-]{8,})$/);
     if (!match) return fail('CHAT_URL_INVALID');
     const id = match[1];
 

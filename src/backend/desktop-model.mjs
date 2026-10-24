@@ -3,7 +3,7 @@ import os from 'node:os';
 import fsp from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
-  pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive,sessionModeAllowed } from '../control/facade.mjs';
+  pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
@@ -43,7 +43,7 @@ export function createDesktopModel({electron,sourceDir,dataDir,partition,smoke,e
   prepareBrowserNavigation=null}) {
 const {app,session,ipcMain,dialog,clipboard,shell}=electron;
 const {LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode}=dependencies;
-const {ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, chatGPTEntrypoint, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel}=dependencies;
+const {ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, CHATGPT_CHAT_ENTRYPOINT, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel}=dependencies;
 // Allowlisted handlers by surface; the surface authenticates its own callers.
 const handlers = { local: new Map(), archive: new Map(), colors: new Map() };
 const desktopIpc = {
@@ -218,7 +218,7 @@ function projectedSessionArchives() {
   return store.snapshot().projects.filter(project => !project.archivedAt&&!project.parentWorkspace).flatMap(project => project.sessions
     .filter(session => session.archivedAt)
     .map((session, index) => ({ workspace: project.workspace, projectId: project.projectId, projectName: project.displayName || project.name,
-      sessionId: session.sessionId, title: session.title || `Сессия ${index + 1}`, experience: session.experience,availability:session.availability,
+      sessionId: session.sessionId, title: session.title || `Сессия ${index + 1}`, 
       chatUrl: session.chatUrl, archivedAt: session.archivedAt, createdAt: session.createdAt })));
 }
 function archiveSnapshot() {
@@ -478,7 +478,7 @@ function snapshot() {
   const info = planMonitor.view(saved, controller?.state.projectInfo);
   const selected = saved && { ...saved, attempt: saved.attempt && { protocol: saved.attempt.protocol,
     requestId: saved.attempt.requestId, state: saved.attempt.state,bootstrapTransport:saved.attempt.bootstrapTransport,
-    addressStatus:saved.attempt.addressStatus,cancelState:saved.attempt.cancelState,modeViolation:!!saved.attempt.modeViolation }, receipt: undefined,
+    addressStatus:saved.attempt.addressStatus,cancelState:saved.attempt.cancelState }, receipt: undefined,
     ...(info?.workspace === saved.workspace && info.inspectedSessionId === saved.sessionId ? info : {}),
     planReadError: planMonitor.error ?? planMonitor.watchError, agentRun: agentTimer?.view(saved) ?? null };
   return { projects: projects.filter(p => !p.archivedAt&&!p.parentWorkspace)
@@ -490,8 +490,8 @@ function snapshot() {
       ||store.project(r.identity?.workspace)?.parentWorkspace===workspace)&&r.pageState.current?.state.busy)?'working'
       :execution.view(workspace).error||sessions.some(s=>liveRecord({workspace,sessionId:s.sessionId})?.controller.state.error)?'attention':'idle',
     executors:executorViews(projects,workspace),
-    sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, experience, availability,attempt,chatUrl, title, createdAt, external, role, orchestratorScopeId, closedPlanCommit }) =>
-      ({ sessionId, experience,availability,modeViolation:!!attempt?.modeViolation, chatUrl, title, createdAt, external:!!external, role:role??null, orchestratorScopeId:orchestratorScopeId??null,
+    sessions: activeSessionsNewestFirst(sessions).map(({ sessionId, chatUrl, title, createdAt, external, role, orchestratorScopeId, closedPlanCommit }) =>
+      ({ sessionId, chatUrl, title, createdAt, external:!!external, role:role??null, orchestratorScopeId:orchestratorScopeId??null,
         orchestratorState:orchestratorState(workspace,{role,orchestratorScopeId,closedPlanCommit}),
         planningOwner:sessionId===planningOwnerOf(workspace,scopeStatus),
         // The badge «Ждёт вашего выбора»: an offered or postponed card of this session.
@@ -507,13 +507,12 @@ function snapshot() {
     conversationRecovery: saved?.external ? {phase:'idle',message:'',canRetry:false} : conversationRecovery?.view() ?? { phase: 'idle', message: '', canRetry: false },
     planContinuation: {...(liveSessions.visible?.executor?.flow.view()??planContinuation.view()),
       enabled:!saved?.external&&projectPlanContinuation.enabled(saved?.parentWorkspace??saved?.workspace,saved?.parentScopeId??info?.scopeId??saved?.scopeId)},
-    planRun: saved&&!sessionModeAllowed(saved)?null:planRunView(saved),
+    planRun: planRunView(saved),
     orchestratorPlan: orchestratorPlanView(saved),
     workProgress: workProgressView(saved?.parentWorkspace??saved?.workspace,info),
-    userChoice: saved&&sessionModeAllowed(saved)&&!saved.external?workflow.userChoices.view(saved.sessionId):null,
+    userChoice: saved&&!saved.external?workflow.userChoices.view(saved.sessionId):null,
     planReview: {...planReview.view(),...(reviewContinuation.persistenceError?{message:reviewContinuation.message,indicator:'attention'}: {})},
-    selected, context: saved&&!sessionModeAllowed(saved)&&saved.attempt?.bootstrapTransport!=='url-query'?{phase:'historical-session',servicesReady:false,messageSent:false}
-      : saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
+    selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
       : saved&&workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)&&!['sent','unknown','acknowledged'].includes(saved.attempt?.state)
         ? {phase:'error',messageSent:false,error:workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)}
       : saved?.attempt?.bootstrapTransport==='url-query'||saved?.attempt?.contextTransport==='panel'&&saved.attempt.state==='sent'
@@ -792,7 +791,6 @@ function attachController(project, { freshDraft = false } = {}) {
 }
 
 async function navigate(project = store.selected(), { refresh = false, generation = null, resume = false, entryUrl = null, freshDraft = false } = {}) {
-  if(project&&!sessionModeAllowed(project)){liveSessions.hide();pageLoading=false;publish();return;}
   if(project?.external) {liveSessions.hide();pageLoading=false;publish();return;}
   if (!project && pageLoading) return;
   const ownNavigation = generation ?? nextNavigation();
@@ -804,7 +802,7 @@ async function navigate(project = store.selected(), { refresh = false, generatio
   pageLoading = record.loading; startupFlow?.beginPage(ownNavigation); publish();
   void planMonitor.refresh();
   const target = entryUrl ?? project?.chatUrl
-    ?? (project ? chatGPTEntrypoint(project.experience ?? 'chat') : CHATGPT_SIGNIN_ENTRYPOINT);
+    ?? (project ? CHATGPT_CHAT_ENTRYPOINT : CHATGPT_SIGNIN_ENTRYPOINT);
   const began = Date.now();
   chromiumDiagnostics?.log.record('app', 'navigation-requested', { generation: ownNavigation, url: safeUrl(target), ...surface.bounds() });
   const waiting = setTimeout(() => {
@@ -876,11 +874,11 @@ async function reviewWorkspace(workspace, openReady = false, { generation = null
   if (store.project(canonical)?.archivedAt) { await openArchiveWindow(canonical); publish(); return false; }
   settingsState = null; deletion.clear();
   const firstSessionExperience = 'chat';
-  setupState = { phase: 'checking', mode: 'existing', workspace, firstSessionExperience }; publish();
+  setupState = { phase: 'checking', mode: 'existing', workspace }; publish();
   const preview = await workspaceSetup.preview({ mode: 'existing', workspace });
   if (!navigationCurrent(ownNavigation)) return false;
   const firstSessionRequired = !store.project(preview.workspace);
-  setupState = { ...preview, phase: 'preview', firstSessionRequired, firstSessionExperience: firstSessionRequired ? firstSessionExperience : 'chat' };
+  setupState = { ...preview, phase: 'preview', firstSessionRequired};
   if (preview.ready && openReady) {
     workspaceHealth = { ...preview, phase: 'ready', generation: ownNavigation }; setupState = null; workspaceSetup.clear();
     return true;
@@ -933,9 +931,6 @@ async function openConnectedSession(input, sessionId = null, options = {}) {
     const project = await store.selectSession(workspace, sessionId, { isCurrent: current, expand: latest || explicitSession });
     if (!current() || !project) return null;
     publish();
-    if(!sessionModeAllowed(project)){
-      liveSessions.hide();pageLoading=false;workspaceHealth=null;publish();return project;
-    }
     if(project.external) {
       workspaceHealth={workspace,sessionId,generation,phase:'ready',ready:true};
       await navigate(project,{generation});void planMonitor.refresh();return project;
@@ -1233,9 +1228,9 @@ function registerIpc() {
     const generation = navigationId, existing = store.project(workspace);
     if(deletion.isPending(workspace))throw new Error('Сначала завершите подтверждённую очистку проекта.');
     if(!existing){await executionServices.allowProjectCommands(workspace);execution.allow(workspace);}
-    let project = await store.select(workspace, { experience: 'chat', isCurrent: () => navigationCurrent(generation) });
+    let project = await store.select(workspace, { isCurrent: () => navigationCurrent(generation) });
     if (!navigationCurrent(generation) || !project) return;
-    if (mode==='chat' && existing) project = await store.newSession(workspace, 'chat');
+    if (mode==='chat' && existing) project = await store.newSession(workspace);
     if (!navigationCurrent(generation)) return;
     await navigate(project, { generation, freshDraft: !existing || mode==='chat' });
   });
@@ -1341,7 +1336,7 @@ function registerIpc() {
   registerAction('pilot:begin-create', () => {
     if (storageError) throw new Error('Сначала нужно восстановить сохранённый список проектов.');
     settingsState = null; deletion.clear(); pauseForSetup(); workspaceSetup.clear();
-    setupState = { phase: 'form', mode: 'new', name: '', firstSessionRequired: true, firstSessionExperience: 'chat', parent: preferences.projectsParent };
+    setupState = { phase: 'form', mode: 'new', name: '', firstSessionRequired: true, parent: preferences.projectsParent };
   });
   // A remote client has no access to the Mac's folder dialog: it sends a path
   // of an existing folder on this computer instead, checked the same way.
@@ -1363,40 +1358,29 @@ function registerIpc() {
       if (typeof parent !== 'string' || !path.isAbsolute(parent)) throw new Error('Выберите папку для проектов.');
       await saveSettings({ projectsParent: parent });
     }
-    setupState = { phase: 'form', mode: 'new', name, firstSessionRequired: true, firstSessionExperience: setupState.firstSessionExperience ?? 'chat', parent };
+    setupState = { phase: 'form', mode: 'new', name, firstSessionRequired: true, parent };
   });
   registerAction('pilot:preview-new', async input => {
     if (setupState?.mode !== 'new') throw new Error('Сначала нажмите «Создать проект».');
-    const parent = setupState.parent, name = input?.name, firstSessionExperience = setupState.firstSessionExperience ?? 'chat';
+    const parent = setupState.parent, name = input?.name;
     if (typeof parent !== 'string' || !path.isAbsolute(parent)) throw new Error('Сначала выберите расположение папки для проектов.');
-    setupState = { phase: 'checking', mode: 'new', parent, name, firstSessionRequired: true, firstSessionExperience }; publish();
+    setupState = { phase: 'checking', mode: 'new', parent, name, firstSessionRequired: true }; publish();
     const preview = await workspaceSetup.preview({ mode: 'new', parent, name });
-    setupState = { ...preview, phase: 'preview', parent, name, firstSessionRequired: true, firstSessionExperience };
+    setupState = { ...preview, phase: 'preview', parent, name, firstSessionRequired: true };
   });
   registerAction('pilot:refresh-setup', async () => {
     if (!setupState) return;
     const { mode, parent, name, workspace } = setupState;
-    const firstSessionExperience = setupState.firstSessionExperience ?? 'chat';
-    setupState = { phase: 'checking', mode, parent, name, workspace, firstSessionRequired: setupState.firstSessionRequired, firstSessionExperience }; startupError = null; publish();
+    setupState = { phase: 'checking', mode, parent, name, workspace, firstSessionRequired: setupState.firstSessionRequired }; startupError = null; publish();
     const preview = await workspaceSetup.preview({ mode, parent, name, workspace });
     const firstSessionRequired = !store.project(preview.workspace);
-    setupState = { ...preview, phase: 'preview', parent, name: preview.name, firstSessionRequired, firstSessionExperience: firstSessionRequired ? firstSessionExperience : 'chat' };
-  });
-  registerAction('pilot:set-first-session-experience', input => {
-    if (!setupState?.firstSessionRequired || input!=='chat') throw new Error('Для первой сессии поддерживается только Chat.');
-    setupState = { ...setupState, firstSessionExperience: input };
-    return input;
+    setupState = { ...preview, phase: 'preview', parent, name: preview.name, firstSessionRequired};
   });
   registerAction('pilot:cancel-setup', cancelSetup);
   registerAction('pilot:apply-setup', async input => {
     if (!setupState?.token || input?.token !== setupState.token) throw new Error('Сначала проверьте выбранную папку.');
-    if (input.experience !== undefined && input.experience!=='chat')
-      throw Object.assign(new Error('Поддерживается только Chat.'),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
+    if (Object.keys(input).some(key=>key!=='token'))throw Object.assign(new Error('Неподдерживаемые параметры сессии.'),{code:'SESSION_INPUT'});
     const firstSessionRequired = !!setupState.firstSessionRequired;
-    const requestedExperience = input.experience ?? setupState.firstSessionExperience;
-    if(requestedExperience!==undefined&&requestedExperience!=='chat')
-      throw Object.assign(new Error('Поддерживается только Chat.'),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
-    const firstSessionExperience = 'chat';
     if(firstSessionRequired&&setupState.workspace&&!store.project(setupState.workspace)&&!deletion.isPending(setupState.workspace)){
       await executionServices.allowProjectCommands(setupState.workspace);execution.allow(setupState.workspace);
     }
@@ -1404,10 +1388,10 @@ function registerIpc() {
     const generation = navigationId;
     const result = await workspaceSetup.apply(input.token);
     if (!navigationCurrent(generation)) return;
-    setupState = { ...result, phase: 'preview', mode: 'existing', firstSessionRequired, firstSessionExperience };
+    setupState = { ...result, phase: 'preview', mode: 'existing', firstSessionRequired };
     if (!result.ready) return;
     workspaceHealth = result;
-    const project = await store.select(result.workspace, { experience: firstSessionExperience, isCurrent: () => navigationCurrent(generation) });
+    const project = await store.select(result.workspace, { isCurrent: () => navigationCurrent(generation) });
     if (!navigationCurrent(generation) || !project) return;
     workspaceHealth = { ...workspaceHealth, generation };
     setupState = null; publish(); void navigate(project, { generation, freshDraft: firstSessionRequired });
@@ -1434,14 +1418,13 @@ function registerIpc() {
   });
   registerAction('pilot:new-session', async input => {
     if (typeof input?.workspace !== 'string') throw new Error('Выберите проект для нового Chat.');
-    if(input.experience!==undefined&&input.experience!=='chat')
-      throw Object.assign(new Error('Поддерживается только Chat.'),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
+    if(Object.keys(input).some(key=>key!=='workspace'))throw Object.assign(new Error('Неподдерживаемые параметры сессии.'),{code:'SESSION_INPUT'});
     if (!store.project(input.workspace)) throw new Error('Выберите активный проект.');
     if (!await reviewWorkspace(input.workspace, true)) return;
     const generation = navigationId;
     await store.select(input.workspace, { isCurrent: () => navigationCurrent(generation) });
     if (!navigationCurrent(generation)) return;
-    const project = await store.newSession(input.workspace, 'chat');
+    const project = await store.newSession(input.workspace);
     if (!navigationCurrent(generation)) return;
     startupError = null; void navigate(project, { generation, freshDraft: true });
   });

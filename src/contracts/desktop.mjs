@@ -37,7 +37,6 @@ export const DESKTOP_CHANNELS = Object.freeze({
     "pilot:choose-parent",
     "pilot:preview-new",
     "pilot:refresh-setup",
-    "pilot:set-first-session-experience",
     "pilot:cancel-setup",
     "pilot:apply-setup",
     "pilot:choose-workspace",

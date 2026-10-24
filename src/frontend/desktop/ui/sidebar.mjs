@@ -149,7 +149,6 @@ const phases = {
   preparing: ['Подготавливаем подключение', 'Проверяем локальные инструменты и связь с ChatGPT.', 'working'],
   'loading-context': ['Получаем контекст проекта', 'Готовим полный пакет для первого сообщения.', 'working'],
   'waiting-login': ['Войдите в ChatGPT', 'После входа Web Pilot продолжит автоматически.', 'working'],
-  'waiting-experience': ['Ожидаем обычный Chat', 'Workflow Pilot продолжит после подтверждения режима Chat в ChatGPT.', 'working'],
   'waiting-composer': ['Ожидаем поле сообщения', 'Откройте доступное поле ChatGPT. Старт продолжится автоматически.', 'working'],
   'waiting-draft': ['В поле есть черновик', 'Закончите или уберите свой черновик. Стартовое сообщение подождёт.', 'working'],
   'waiting-generation': ['Ждём завершения ответа', 'ChatGPT отвечает. Передача контекста начнётся, когда поле освободится.', 'working'],
@@ -160,7 +159,6 @@ const phases = {
   'waiting-registration':['Ожидаем регистрацию панели','Команда запущена. Повторной отправки нет.','working'],
   'cancel-pending':['Завершаем отмену запуска','Отзыв приглашения ещё не подтверждён. Новый запуск этой попытки запрещён.','attention'],
   'startup-cancelled':['Запуск остановлен','Создайте новый Chat через меню проекта. Повторной отправки нет.','neutral'],
-  'historical-session':['История сессии','Режим этой записи не поддерживается или не подтверждён. История сохранена; разговор и назначения не запускаются. Создайте новый Chat через меню проекта.','neutral'],
   'waiting-chat': ['Контекст отправлен', 'Можно продолжать разговор. Адрес чата сохранится при его появлении.', 'success'],
   delivered: ['Контекст передан', 'Полный пакет отправлен в этот чат. Агент кратко подтвердит получение и опишет проект.', 'success'],
   stale: ['Разговор сохранён', 'План изменился. Новый стартовый пакет доступен в новой сессии.', 'neutral'],
@@ -381,10 +379,8 @@ function render(state) {
           meta.append(wait);
         }
         copy.append(title, meta);
-        const history=session.experience==='work'||session.availability&&session.availability!=='active'||session.modeViolation;
-        const experience = document.createElement('span'); experience.className = 'session-experience'; experience.dataset.experience = history?'history':'chat'; experience.textContent = history?'История':session.external ? 'ChatGPT ↗' : 'Chat';
+        const experience = document.createElement('span'); experience.className = 'session-experience'; experience.dataset.experience = 'chat'; experience.textContent = session.external ? 'ChatGPT ↗' : 'Chat';
         choice.title = `${session.title || 'Новая сессия'} · ${experience.textContent}\n${new Date(session.createdAt).toLocaleString('ru-RU')}`;
-        if(history)choice.title+='\nНеподдерживаемый или неподтверждённый режим. Без запуска разговора.';
         choice.append(copy, experience);
         choice.addEventListener('click', () => action('selectSession', project.workspace, session.sessionId));
         const menuButton = document.createElement('button'); menuButton.className = 'icon-button session-menu-button'; menuButton.append(treeIcon('ellipsis'));
@@ -423,7 +419,7 @@ function render(state) {
           choice.dataset.sessionId=executor.sessionId;choice.dataset.phase=executor.phase;
           if(executor.sessionId===selected?.sessionId)choice.setAttribute('aria-current','page');
           const name=document.createElement('strong');name.textContent=executor.title||executor.taskId;
-          const caption=document.createElement('span');caption.textContent=executor.taskId+' · worktree · '+(executor.experience==='work'?'История':'Chat');
+          const caption=document.createElement('span');caption.textContent=executor.taskId+' · worktree · '+'Chat';
           const status=document.createElement('span');status.className='executor-status';status.textContent=executor.label+(executor.attempt>1?' · попытка '+executor.attempt:'');
           const time=document.createElement('span');time.dataset.executorTime=executor.sessionId;time.executorTime=executor.time;
           choice.title=executor.workspace;choice.append(name,caption,status,time);
@@ -596,7 +592,7 @@ function render(state) {
   }
   const startup=context.startup||['startup-channel','startup-complete','startup-failed'].includes(context.phase)?startupView(context.startup):null;
   const [title, detail] = startup?[startup.title,startup.detail]:context.phase==='external-session' ? ['Открыто в ChatGPT','Продолжайте разговор в приложении ChatGPT. Эта сессия подключена через плагин Workflow Pilot.'] : phases[context.phase] ?? phases.selected;
-  const preparing=['preparing','loading-context','preparing-message','waiting-attachments','waiting-composer','waiting-experience','waiting-login','waiting-draft'].includes(context.phase);
+  const preparing=['preparing','loading-context','preparing-message','waiting-attachments','waiting-composer','waiting-login','waiting-draft'].includes(context.phase);
   const startupProblem=['startup-stale','startup-failed','startup-uncertain','cancel-pending','startup-cancelled'].includes(startup?.phase);
   const addressPending=context.launch&&context.launch.address!=='confirmed';
   const attention=startupProblem||addressPending||preparing||['waiting-registration','waiting-manual-chat','cancel-pending','startup-cancelled','historical-session','preparation-paused','external-session','error','prepared-stale','chat-changed','send-unknown'].includes(context.phase);

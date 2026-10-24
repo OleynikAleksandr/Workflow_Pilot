@@ -363,57 +363,15 @@ test('normal user message does not retry an unobserved click and respects cancel
   assert.equal(f2.sends(),0); assert.equal(f2.editor.value,'');
 });
 
-function nativeMode(f, initial = 'work', fallback = false) {
-  const group = f.document.createElement('div');
-  group.setAttribute('aria-label', 'Выберите режим чата');
-  for (const [mode, value, label] of [['chat', 'chatgpt', 'Чат'], ['work', 'work', 'Работа']]) {
-    const button = f.document.createElement('button');
-    button.type = 'button'; button.textContent = label;
-    if (!fallback) button.setAttribute('data-tpp-toggle-value', value);
-    button.setAttribute('data-state', mode === initial ? 'on' : 'off');
-    button.addEventListener('click', () => {
-      for (const item of group.children) item.setAttribute('data-state', item === button ? 'on' : 'off');
-    });
-    group.append(button);
-  }
-  f.document.body.prepend(group);
-  return group;
-}
-test('native mode selection changes Work to Chat before filling and observes confirmation separately', async () => {
-  for (const fallback of [false, true]) {
-    const f = fixture(); nativeMode(f, 'work', fallback);
-    assert.equal((await f.composer.inspect()).experience, 'work');
-    assert.equal((await f.composer.inspect({action:'select-experience',expectedExperience:'chat'})).action, 'experience-selecting');
-    assert.equal(f.editor.value, ''); assert.equal(f.sends(), 0);
-    assert.equal((await f.composer.inspect({action:'select-experience',expectedExperience:'chat'})).action, 'experience-confirmed');
-    assert.equal((await f.composer.deliver({...request,expectedExperience:'chat'})).state, 'sent');
-    assert.equal(f.sends(), 1);
-  }
+test('a Chat editor sends once without any surface switch',async()=>{
+  const f=fixture();assert.equal(Object.hasOwn(await f.composer.inspect(),'experience'),false);
+  assert.equal((await f.composer.deliver(request)).state,'sent');
+  assert.equal((await f.composer.deliver(request)).state,'sent');assert.equal(f.sends(),1);
 });
-test('missing, disabled, or conflicting native mode controls fail closed without a send', async () => {
-  for (const kind of ['missing', 'disabled', 'conflicting']) {
-    const f = fixture();
-    if (kind !== 'missing') {
-      const group = nativeMode(f);
-      if (kind === 'disabled') group.children[0].disabled = true;
-      else group.children[0].setAttribute('data-state', 'on');
-    }
-    const result = await f.composer.deliver({...request,expectedExperience:'chat'});
-    assert.equal(result.state, 'deferred'); assert.equal(f.sends(), 0); assert.equal(f.editor.value, '');
-  }
-  const f = fixture({draft:'Мой черновик'}); nativeMode(f);
-  assert.equal((await f.composer.inspect({action:'select-experience',expectedExperience:'chat'})).reason, 'DRAFT_PRESENT');
-  assert.equal((await f.composer.inspect()).experience, 'work'); assert.equal(f.editor.value, 'Мой черновик');
-});
-test('switching mode or opening a foreign conversation immediately before Send blocks the click', async () => {
-  for (const change of ['mode', 'url']) {
-    const f = fixture(); const group = nativeMode(f, 'chat');
-    const result = await f.composer.deliver({...request,expectedExperience:'chat',onBeforeSend:async()=>{
-      if (change === 'mode') group.children[1].click();
-      else f.dom.reconfigure({url:'https://chatgpt.com/c/foreign-chat'});
-    }});
-    assert.equal(result.state, 'deferred'); assert.equal(f.sends(), 0); assert.equal(f.editor.value, message);
-  }
+test('a conversation change immediately before Send preserves the draft and prevents dispatch',async()=>{
+  const f=fixture();
+  const result=await f.composer.deliver({...request,onBeforeSend:async()=>f.dom.reconfigure({url:'https://chatgpt.com/c/foreign-chat'})});
+  assert.equal(result.state,'cancelled');assert.equal(result.reason,'CHAT_CHANGED');assert.equal(f.sends(),0);assert.equal(f.editor.value,message);
 });
 
 test('event-driven composer confirms its marker without using the polling wait', async () => {

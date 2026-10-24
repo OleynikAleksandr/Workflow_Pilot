@@ -136,7 +136,7 @@ function urlFixture({attempt=null,chatUrl=null}={}){
   let saved={...structuredClone(project),chatUrl,attempt},clock=now,serial=0;
   const info={...project},order=[],starts=[],bindings=[];
   const snap={id:'browser',incarnation:'incarnation',epoch:1,navigationSequence:0,navigationOwner:null};
-  const page={url:chatUrl??'https://chatgpt.com/',documentId:'preflight',accountStatus:'signed-in',experience:'chat',
+  const page={url:chatUrl??'https://chatgpt.com/',documentId:'preflight',accountStatus:'signed-in',
     editorAvailable:true,writable:true,draftLength:0,busy:false};
   const store={selected:()=>structuredClone(saved),project:()=>structuredClone(saved),
     inspect:async()=>{const {attempt,chatUrl,receipt,...p}=info;return structuredClone(p);},
@@ -187,7 +187,7 @@ test('URL bootstrap stages full role context and saves checkpoint before exactly
     await f.controller.retry();assert.equal(f.starts.length,1);
   }
 });
-test('URL alone is never sent; exact durable registration is sent; URL and mode proof bind independently',async()=>{
+test('URL alone is never sent; exact durable registration is sent; URL and signed-in observation bind independently',async()=>{
   for(const registrationFirst of [false,true]){
     const f=urlFixture();await f.controller.tick();await settle();
     if(registrationFirst){f.proof();await f.controller.tick();assert.equal(f.saved.attempt.state,'sent');assert.equal(f.saved.chatUrl,null);}
@@ -221,7 +221,7 @@ test('a durable sent receipt survives a missing enrollment reader after restart 
 });
 test('all preflight unknowns preserve draft and block reserve and q',async()=>{
   for(const [key,value,phase] of [['accountStatus','unknown','waiting-login'],['accountStatus','signed-out','waiting-login'],
-    ['experience','unknown','waiting-experience'],['experience','work','waiting-experience'],['documentId',null,'waiting-composer'],
+    ['documentId',null,'waiting-composer'],
     ['draftLength',4,'waiting-draft'],['draftLength',undefined,'waiting-draft'],['busy',true,'waiting-generation'],
     ['writable',false,'waiting-composer'],['editorAvailable',false,'waiting-composer']]){
     const f=urlFixture();f.page[key]=value;await f.controller.tick();assert.equal(f.starts.length,0);assert.equal(f.saved.attempt,null);
@@ -232,8 +232,8 @@ test('composer on an old conversation is not evidence of the new-chat draft',asy
   const f=urlFixture();f.page.url=project.chatUrl;await f.controller.tick();assert.deepEqual(f.order,['root']);
   f.page.draftLength=5;await f.controller.tick();assert.equal(f.starts.length,0);assert.equal(f.controller.state.phase,'waiting-draft');
 });
-test('plan, account, mode, document, draft, fingerprint and expiry changes during staging revoke before q',async()=>{
-  for(const change of [f=>f.info.planRevision++,f=>f.page.accountStatus='unknown',f=>f.page.experience='work',
+test('plan, account, document, draft, fingerprint and expiry changes during staging revoke before q',async()=>{
+  for(const change of [f=>f.info.planRevision++,f=>f.page.accountStatus='unknown',
     f=>f.page.documentId='replacement',f=>f.page.draftLength=3,f=>f.snap.epoch++,f=>f.advance(1800001)]){
     const f=urlFixture(),stage=f.runtime.stageStartup;f.runtime.stageStartup=async(...args)=>{const m=await stage(...args);change(f);return m;};
     await f.controller.tick();assert.equal(f.starts.length,0);assert.equal(f.saved.attempt.cancelState,'revoked');
@@ -297,13 +297,13 @@ test('iframe and old event cannot provide an address; a second or foreign main f
   await f.navigate();await f.observe();await f.navigate('https://chatgpt.com/c/foreign1234');f.proof();await f.controller.tick();
   assert.equal(f.saved.chatUrl,null);assert.equal(f.saved.attempt.cancelState,'registered-stopped');
 });
-test('Work redirect is sticky before a shared c URL and blocks late registration',async()=>{
-  const f=urlFixture();await f.controller.tick();await settle();await f.navigate('https://chatgpt.com/work/entry',{navigationKind:'redirect'});
+test('unsupported redirect is sticky before a conversation URL and blocks late registration',async()=>{
+  const f=urlFixture();await f.controller.tick();await settle();await f.navigate('https://chatgpt.com/unsupported/entry',{navigationKind:'redirect'});
   await f.navigate();await f.observe();f.proof();await f.controller.tick();
-  assert.equal(f.saved.attempt.modeViolation,true);assert.equal(f.saved.chatUrl,null);assert.notEqual(f.saved.attempt.state,'sent');
+  assert.equal(f.saved.attempt.cancelReason,'foreign-navigation');assert.equal(f.saved.chatUrl,null);assert.notEqual(f.saved.attempt.state,'sent');
 });
-test('fresh Work or signed-out observer stops context after registration without changing identity',async()=>{
-  for(const extra of [{experience:'work'},{accountStatus:'signed-out'}]){
+test('signed-out observer stops context after registration without changing identity',async()=>{
+  for(const extra of [{accountStatus:'signed-out'}]){
     const f=urlFixture();await f.controller.tick();await settle();f.proof();await f.controller.tick();
     await f.observe(extra);await f.controller.tick();assert.equal(f.saved.attempt.state,'sent');assert.equal(f.saved.attempt.cancelState,'registered-stopped');
   }
@@ -313,7 +313,7 @@ test('crash/replacement runtime loses address authority; late registration never
   f.snap.incarnation='replacement';f.page.url='https://chatgpt.com/c/unrelated';f.proof();await f.controller.tick();
   assert.equal(f.saved.attempt.state,'sent');assert.equal(f.saved.attempt.addressStatus,'lost');assert.equal(f.saved.chatUrl,null);
 });
-test('user refresh ends address authority even if mode and registration later succeed',async()=>{
+test('user refresh ends address authority even if account and registration later succeed',async()=>{
   const f=urlFixture();await f.controller.tick();await settle();await f.navigate();await f.observe();
   await f.navigate(project.chatUrl,{type:'navigation-interrupted',navigationKind:'refresh'});f.proof();await f.controller.tick();
   await f.navigate();await f.controller.tick();

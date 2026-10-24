@@ -1,5 +1,4 @@
 import {createHash, randomBytes} from 'node:crypto';
-import { sessionModeAllowed, projectModeBlocked } from '../sessions/workspace-session.mjs';
 
 const fail = (code, message) => Object.assign(new Error(message), {code:'PLUGIN_COMMUNICATION_'+code});
 const check = (value, code, message) => {if(!value)throw fail(code,message);};
@@ -157,12 +156,11 @@ export function localParticipantTarget(projects,sessionId) {
     planView:projects.project?.(project.workspace)?.planView??project.planView}));
   const project=all.find(p=>!p.archivedAt&&p.sessions.some(s=>s.sessionId===sessionId&&!s.archivedAt));
   const session=project?.sessions.find(s=>s.sessionId===sessionId);
-  if(!sessionModeAllowed(session)||session.external||session.closedPlanCommit)return null;
-  if(projectModeBlocked(all,project.parentWorkspace??project.workspace))return null;
+  if(!session||session.external||session.closedPlanCommit)return null;
   if(session.role==='executor') {
     const parent=all.find(p=>p.workspace===session.parentWorkspace&&!p.archivedAt&&!p.parentWorkspace);
     const origin=parent?.sessions.find(s=>s.sessionId===session.executionOriginSessionId&&!s.archivedAt&&s.role==='orchestrator');
-    if(!sessionModeAllowed(origin)||parent.projectId!==session.parentProjectId||parent.scopeId!==session.parentScopeId
+    if(!origin||parent.projectId!==session.parentProjectId||parent.scopeId!==session.parentScopeId
       ||parent.planExecution?.execution_origin_session_id!==origin.sessionId
       ||project.ownershipState!=='confirmed'||!session.assignmentId||!session.taskId)return null;
     return {project_id:parent.projectId,local_session_id:sessionId,origin_session_id:origin.sessionId,role:'E',

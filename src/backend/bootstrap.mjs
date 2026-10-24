@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import {ControlFacade,sessionModeAllowed,assertSessionMode} from '../control/facade.mjs';
-import {ExecutionFacade,nodeExecutableCandidates,chatGPTEntrypoint,decorateBackendPage,ChromiumDiagnostics} from '../execution/facade.mjs';
+import {ControlFacade} from '../control/facade.mjs';
+import {ExecutionFacade,nodeExecutableCandidates,CHATGPT_CHAT_ENTRYPOINT,decorateBackendPage,ChromiumDiagnostics} from '../execution/facade.mjs';
 import {journal} from '@webpilot/workflow-kit/lib/validate';
 
 // The same product composition is used by legacy Desktop during migration and
@@ -112,7 +112,7 @@ export async function initializeBackendServices({dataDir,sourceDir,resourcesDir,
     restore:async()=>{
       workflow.restoreBackground();
       const selected=control.projects.selected();
-      if(sessionModeAllowed(selected)&&!selected.external&&!selected.archivedAt&&!selected.sessionArchivedAt)await pages.select(selected);
+      if(!!selected&&!selected.external&&!selected.archivedAt&&!selected.sessionArchivedAt)await pages.select(selected);
     },
     dispose:async()=>{
       workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
@@ -133,12 +133,11 @@ export function createBackendPages({sessions,setup,store,host,onReady=()=>{}}) {
     async select(project) {
       if(!project||project.external)throw Object.assign(new Error('Сессия недоступна backend.'),{code:'EXTERNAL_SESSION'});
       const current=store.project(project.workspace,project.sessionId)??project;
-      if(!sessionModeAllowed(current)){sessions.hide();onReady();return null;}
       const page=sessions.ensure(current);sessions.show(page);
       const epoch=++page.readinessEpoch;
       // Readiness is project-specific; it never depends on a window or viewer.
       const readiness=Promise.resolve().then(()=>setup.ready(current.workspace)).then(result=>result?.ready===true,()=>false);
-      await sessions.navigate(page,current.chatUrl??chatGPTEntrypoint(current.experience),{freshDraft:!current.chatUrl});
+      await sessions.navigate(page,current.chatUrl??CHATGPT_CHAT_ENTRYPOINT,{freshDraft:!current.chatUrl});
       const ready=await readiness;
       if(page.disposed||page.readinessEpoch!==epoch)return page.key;
       page.ready=ready;onReady();

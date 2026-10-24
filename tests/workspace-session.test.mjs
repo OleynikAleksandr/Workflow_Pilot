@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import { WorkspaceSessions, unsentExecutor, readWorkspace, normalizeChatUrl, conversationExperience, conversationUrlCompatibleWithExperience, activeSessionsNewestFirst } from '../src/control/sessions/workspace-session.mjs';
+import { WorkspaceSessions, unsentExecutor, readWorkspace, normalizeChatUrl, activeSessionsNewestFirst } from '../src/control/sessions/workspace-session.mjs';
 import { sessionExecutionMessage } from '../src/control/context/context-session.mjs';
 
 const directoryLink = (target, link) => fs.symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir');
@@ -23,7 +23,7 @@ test('attempt CAS merges navigation with sent, preserves cancellation and ignore
   await store.patchAttempt(p.workspace,p.sessionId,null,{...identity,bootstrapTransport:'url-query',state:'sending',cancelState:'none'});
   assert.equal(await store.patchAttempt(p.workspace,p.sessionId,null,{requestId:'another',attemptGeneration:'another'}),null);
   await Promise.all([store.patchAttempt(p.workspace,p.sessionId,identity,{state:'sent',sentAtMs:1}),
-    store.patchAttempt(p.workspace,p.sessionId,identity,{addressCandidate:'https://chatgpt.com/c/own-chat',addressStatus:'pending',modeConfirmed:true})]);
+    store.patchAttempt(p.workspace,p.sessionId,identity,{addressCandidate:'https://chatgpt.com/c/own-chat',addressStatus:'pending',accountConfirmed:true})]);
   assert.equal(store.project(p.workspace).attempt.state,'sent');
   await store.patchAttempt(p.workspace,p.sessionId,identity,{cancelState:'requested'});
   await store.patchAttempt(p.workspace,p.sessionId,identity,latest=>latest.cancelState==='none'?{state:'unknown'}:{});
@@ -54,14 +54,14 @@ test('integration projection retains the Git-proven parent identity while the wo
 test('assignment gets one inherited session without moving selection and persists its separate worktree',async t=>{
   const {project,store}=await fixture(t);
   store.getExecutionSettings=()=>({parallel_allowed:true,max_workers:2});
-  const main=await store.select(await project('Main'),{experience:'chat'}),worktree=await fs.realpath(await project('Assigned worktree'));
+  const main=await store.select(await project('Main')),worktree=await fs.realpath(await project('Assigned worktree'));
   const assignment={id:'worker-one',worktree,parent_root:main.workspace,parent_scope_id:'scope',parent_task_id:'T001',title:'Assigned task'};
   store.getExecutionSettings=()=>{throw Error('must inherit');};
   const first=await store.ensureExecutor(assignment,main),again=await store.ensureExecutor(assignment,main);
   assert.equal(first.sessionId,again.sessionId);assert.equal(store.selected().sessionId,main.sessionId);
   assert.equal(first.workspace,worktree);assert.equal(first.parentWorkspace,main.workspace);assert.equal(first.taskId,'T001');
   assert.equal(first.parentProjectId,main.projectId);
-  assert.equal(first.experience,'chat');assert.deepEqual(first.executionSnapshot,main.executionSnapshot);
+  assert.equal(Object.hasOwn(first,'experience'),false);assert.deepEqual(first.executionSnapshot,main.executionSnapshot);
   await store.saveExecutorAutomation(worktree,first.sessionId,{continuationCheckpoint:{version:3,entries:[]}});
   const restarted=new WorkspaceSessions(store.file);await restarted.load();
   assert.equal(restarted.project(worktree).assignmentId,assignment.id);
@@ -70,19 +70,8 @@ test('assignment gets one inherited session without moving selection and persist
   await assert.rejects(store.ensureExecutor({...assignment,parent_task_id:'T002'},main),{code:'ASSIGNMENT_OWNER'});
 });
 
-test('historical Work executor cannot be converted or restarted as Chat',async t=>{
-  const {project,store}=await fixture(t),main=await store.select(await project('Parent'));
-  const worktree=await fs.realpath(await project('Worker'));
-  const assignment={id:'worker',worktree,parent_root:main.workspace,parent_scope_id:'fixture-scope',parent_task_id:'T001',title:'Task'};
-  const executor=await store.ensureExecutor(assignment,main);
-  const raw=store.snapshot();raw.schemaVersion=6;const record=raw.projects.find(p=>p.workspace===worktree).sessions[0];
-  record.experience='work';delete record.availability;await fs.writeFile(store.file,JSON.stringify(raw));
-  const restarted=new WorkspaceSessions(store.file);await restarted.load();
-  assert.equal(restarted.project(worktree).availability,'legacy-work');
-  await assert.rejects(restarted.ensureExecutor(assignment,restarted.project(main.workspace)),{code:'SESSION_MODE_UNSUPPORTED'});
-  await assert.rejects(restarted.resetUnsentExecutor(worktree,executor.sessionId),{code:'SESSION_MODE_UNSUPPORTED'});
-  assert.equal(restarted.project(worktree).assignmentId,assignment.id);
-  assert.equal(restarted.project(worktree).experience,'work');
+test('unsent executors cannot be reset after any observed send',()=>{
+  const executor={assignmentId:'a',chatUrl:null,attempt:null};
   assert.equal(unsentExecutor({...executor,attempt:{state:'prepared',sendStartedAtMs:null}}),true);
   for(const started of [{chatUrl:'https://chatgpt.com/c/aaaaaaaa'},{manualStart:true},{attempt:{state:'sending',sendStartedAtMs:1}},{attempt:{state:'unknown'}}])assert.equal(unsentExecutor({...executor,...started}),false);
 });
@@ -224,9 +213,9 @@ test('execution settings are captured at creation, independent of edits, selecti
   const { project, store } = await fixture(t);
   let settings = { parallel_allowed: true, max_workers: 3 };
   store.getExecutionSettings = () => settings;
-  const first = await store.select(await project('Execution snapshots'), { experience: 'chat' });
+  const first = await store.select(await project('Execution snapshots'), {});
   settings.max_workers = 5;
-  const second = await store.newSession(first.workspace, 'chat');
+  const second = await store.newSession(first.workspace);
   assert.deepEqual(first.executionSnapshot, { parallel_allowed: true, max_workers: 3 });
   assert.deepEqual(second.executionSnapshot, { parallel_allowed: true, max_workers: 5 });
   settings = { parallel_allowed: false, max_workers: 1 };
@@ -237,12 +226,12 @@ test('execution settings are captured at creation, independent of edits, selecti
   await assert.rejects(store.updateSession(first.workspace, first.sessionId, { executionSnapshot: settings }), /INVALID_SESSION_PATCH/);
   const restarted = new WorkspaceSessions(store.file, { getExecutionSettings: () => settings });
   await restarted.load();
-  assert.equal(restarted.selected().experience, 'chat');
+  assert.equal(Object.hasOwn(restarted.selected(),'experience'),false);
   assert.equal(restarted.selected().executionSnapshot.max_workers, 3);
-  assert.deepEqual((await restarted.newSession(first.workspace, 'chat')).executionSnapshot, settings);
+  assert.deepEqual((await restarted.newSession(first.workspace)).executionSnapshot, settings);
   restarted.getExecutionSettings = () => { throw new Error('Inherited snapshot must not read Settings'); };
   const inherited = { parallel_allowed: true, max_workers: 3 };
-  assert.deepEqual((await restarted.newSession(first.workspace, 'chat', { executionSnapshot: inherited })).executionSnapshot, inherited);
+  assert.deepEqual((await restarted.newSession(first.workspace, { executionSnapshot: inherited })).executionSnapshot, inherited);
 });
 
 test('new sessions preserve active plan parameters without creating or rewriting a plan', async t => {
@@ -253,7 +242,7 @@ test('new sessions preserve active plan parameters without creating or rewriting
   const file = path.join(folder, '.harness/plans/todo-plan.md'), before = await fs.readFile(file, 'utf8');
   store.getExecutionSettings = () => ({ parallel_allowed: false, max_workers: 1 });
   await store.select(folder);
-  const fresh = await store.newSession(folder, 'chat');
+  const fresh = await store.newSession(folder);
   assert.deepEqual(fresh.planExecution, policy);
   assert.deepEqual(fresh.executionSnapshot, { parallel_allowed: false, max_workers: 1 });
   assert.match(sessionExecutionMessage(fresh), /следующему новому плану/);
@@ -273,7 +262,7 @@ test('legacy sessions retain data and never acquire current execution settings',
   await store.renameSession(first.workspace, first.sessionId, 'Ручное имя');
   await store.recordAgentTime(first.workspace, first.sessionId, 1250);
   await store.updateSession(first.workspace, first.sessionId, { attempt: { state: 'sent', requestId: 'preserved' }, receipt: { preserved: true } });
-  await store.newSession(first.workspace, 'chat');
+  await store.newSession(first.workspace);
   await store.setSessionArchived(first.workspace, first.sessionId, true);
   const legacy = store.snapshot();
   for (const session of legacy.projects[0].sessions) delete session.executionSnapshot;
@@ -283,7 +272,7 @@ test('legacy sessions retain data and never acquire current execution settings',
   assert.deepEqual(restarted.snapshot(), legacy);
   assert.equal(await fs.readFile(store.file, 'utf8'), original, 'no unnecessary migration rewrites');
   assert.match(sessionExecutionMessage(restarted.selected()), /Legacy-сессия.*выключено/);
-  assert.equal((await restarted.newSession(first.workspace, 'chat')).executionSnapshot.max_workers, 7);
+  assert.equal((await restarted.newSession(first.workspace)).executionSnapshot.max_workers, 7);
   const broken = restarted.snapshot(); broken.projects[0].sessions[0].executionSnapshot = { parallel_allowed: true, max_workers: 0 };
   const bad = JSON.stringify(broken); await fs.writeFile(store.file, bad);
   await assert.rejects(new WorkspaceSessions(store.file).load(), { code: 'SESSIONS_INVALID' });
@@ -293,7 +282,7 @@ test('legacy sessions retain data and never acquire current execution settings',
 test('explicit background delivery updates only its own live saved session', async t => {
   const { project, store } = await fixture(t);
   const a=await store.select(await project('Background'));
-  const b=await store.newSession(a.workspace,'chat');
+  const b=await store.newSession(a.workspace);
   await assert.rejects(store.updateSession(a.workspace,a.sessionId,{attempt:{state:'sent'}}),{code:'SESSION_CHANGED'});
   await store.updateSession(a.workspace,a.sessionId,{attempt:{state:'sent'}},{background:true});
   const bound=await store.bindChat(a.workspace,a.sessionId,'https://chatgpt.com/c/background-worker',{background:true});
@@ -417,7 +406,7 @@ test('old and new sessions keep their chats while projecting one current checkou
   const first = await store.select(await project('Single current plan'));
   const firstUrl = 'https://chatgpt.com/c/aaaaaaaa-1111-2222-3333-eeeeeeeeeeee';
   await store.bindChat(first.workspace, first.sessionId, firstUrl);
-  const second = await store.newSession(first.workspace, 'chat');
+  const second = await store.newSession(first.workspace);
   const secondUrl = 'https://chatgpt.com/c/bbbbbbbb-1111-2222-3333-eeeeeeeeeeee';
   await store.bindChat(first.workspace, second.sessionId, secondUrl);
 
@@ -428,7 +417,7 @@ test('old and new sessions keep their chats while projecting one current checkou
   assert.deepEqual(a.planView, b.planView);
   assert.equal(a.chatUrl, firstUrl); assert.equal(b.chatUrl, secondUrl);
 
-  const third = await store.newSession(first.workspace, 'chat');
+  const third = await store.newSession(first.workspace);
   assert.equal(third.scopeId, 'fixture-scope');
   assert.equal(third.nextTaskId, 'T001');
   assert.equal(third.chatUrl, null);
@@ -461,7 +450,7 @@ test('session titles remain chat metadata independent of the current project pla
   const { project, store } = await fixture(t);
   const first = await store.select(await project('Chat titles'));
   assert.equal(await store.setSessionTitle(first.workspace, first.sessionId, 'Первый ChatGPT title'), true);
-  const second = await store.newSession(first.workspace, 'chat');
+  const second = await store.newSession(first.workspace);
   await store.renameSession(first.workspace, second.sessionId, 'Ручное имя второй сессии');
 
   const reopenedFirst = await store.selectSession(first.workspace, first.sessionId);
@@ -478,7 +467,7 @@ test('scope naming belongs to one session, while newly created sessions may inhe
   const { project, store } = await fixture(t);
   const folder = await project('Scope titles');
   const first = await store.select(folder);
-  const second = await store.newSession(first.workspace, 'chat');
+  const second = await store.newSession(first.workspace);
   await store.selectSession(first.workspace, first.sessionId);
   const info = { scopeId: first.scopeId, objective: 'Синхронизация названий',
     nextTaskTitle: 'Добавить локальное автоимя', scopeStatus: 'ACTIVE' };
@@ -507,7 +496,7 @@ test('scope naming belongs to one session, while newly created sessions may inhe
   const block = text.match(/<!-- workflow-state:begin -->\s*```json\s*([\s\S]*?)```\s*<!-- workflow-state:end -->/);
   const plan = JSON.parse(block[1]); plan.objective = info.objective;
   await fs.writeFile(planFile, '<!-- workflow-state:begin -->\n```json\n' + JSON.stringify(plan) + '\n```\n<!-- workflow-state:end -->');
-  const third = await store.newSession(first.workspace, 'chat');
+  const third = await store.newSession(first.workspace);
   assert.equal(third.title, 'Синхронизация названий');
   assert.equal(third.titleSource, 'scope');
   assert.equal(third.lastNamedScopeId, first.scopeId);
@@ -544,45 +533,34 @@ test('switching project cannot mutate another chat or accept late session result
 
 
 
-test('new and first sessions reject Work without creating or changing a project',async t=>{
+test('first and new sessions reject unsupported options without changing selection',async t=>{
   const {project,store}=await fixture(t),folder=await project('Only Chat');
-  await assert.rejects(store.select(folder,{experience:'work'}),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
-  assert.equal(store.snapshot().projects.length,0);
+  await assert.rejects(store.select(folder,{unsupported:true}),{code:'SESSION_INPUT'});assert.equal(store.snapshot().projects.length,0);
   const first=await store.select(folder);
-  await assert.rejects(store.newSession(folder,'work'),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
-  await assert.rejects(store.newSession(folder,'astra'),{code:'SESSION_EXPERIENCE'});
+  await assert.rejects(store.newSession(folder,{unsupported:true}),{code:'SESSION_INPUT'});
+  await assert.rejects(store.newSession(folder,'unsupported'),{code:'SESSION_INPUT'});
   assert.equal((await store.select(folder)).sessionId,first.sessionId);
   assert.equal(store.snapshot().projects[0].sessions.length,1);
-  assert.equal(first.availability,'active');
-  await assert.rejects(store.bindChat(first.workspace,first.sessionId,'https://chatgpt.com/work/not-chat'),{code:'CHAT_EXPERIENCE_MISMATCH'});
+  assert.equal(Object.hasOwn(first,'availability'),false);assert.equal(Object.hasOwn(first,'experience'),false);
+  await assert.rejects(store.bindChat(first.workspace,first.sessionId,'https://chatgpt.com/unsupported/not-chat'),{code:'CHAT_URL_INVALID'});
 });
 
-test('migration preserves unknown v3 modes, null URL, explicit v6 Chat and Work history',async t=>{
+test('Chat schema upgrade preserves identity and startup receipts without mode fields',async t=>{
   const {project,store}=await fixture(t),chat=await store.select(await project('Migration'));
-  const second=await store.newChat(chat.workspace),third=await store.newChat(chat.workspace);
-  const raw=store.snapshot();raw.schemaVersion=3;
-  raw.projects[0].sessions[0].chatUrl='https://chatgpt.com/c/chat-session';raw.projects[0].sessions[1].chatUrl='https://chatgpt.com/work/legacy-work';
-  for(const session of raw.projects[0].sessions){delete session.experience;delete session.availability;}
+  const raw=store.snapshot();raw.schemaVersion=7;
+  const session=raw.projects[0].sessions[0];session.experience='chat';session.availability='active';
+  session.attempt={requestId:'r',attemptGeneration:'g',state:'sent',sendStartedAtMs:1,modeViolation:false,contextRef:{message_id:'m'},enrollmentRef:{run_id:'run',ticket_hash:'a'.repeat(64)}};
   const original=JSON.stringify(raw);await fs.writeFile(store.file,original);
-  const migrated=new WorkspaceSessions(store.file);await migrated.load();
-  assert.equal(migrated.snapshot().schemaVersion,7);
-  assert.deepEqual(migrated.snapshot().projects[0].sessions.map(s=>s.availability),['mode-unverified','legacy-work','mode-unverified']);
-  assert.equal(await fs.readFile(store.file+'.v3-backup','utf8'),original);
-  await assert.rejects(migrated.bindChat(chat.workspace,third.sessionId,'https://chatgpt.com/c/another-chat'),{code:'SESSION_MODE_UNVERIFIED'});
-  const again=new WorkspaceSessions(store.file);await again.load();assert.deepEqual(again.snapshot(),migrated.snapshot());
-  raw.projects[0].sessions[0].experience='work';
-  await fs.writeFile(store.file,JSON.stringify(raw));
-  const explicitOld=new WorkspaceSessions(store.file);await explicitOld.load();
-  assert.equal(explicitOld.project(chat.workspace,chat.sessionId).availability,'legacy-work','explicit Work survives even an old schema with a shared /c URL');
-  assert.equal(explicitOld.project(chat.workspace,chat.sessionId).chatUrl,'https://chatgpt.com/c/chat-session');
-  const v6=store.snapshot();v6.schemaVersion=6;for(const session of v6.projects[0].sessions)delete session.availability;
-  v6.projects[0].sessions[1].experience='work';v6.projects[0].sessions[1].chatUrl='https://chatgpt.com/c/work-session';
-  await fs.writeFile(store.file,JSON.stringify(v6));const explicit=new WorkspaceSessions(store.file);await explicit.load();
-  assert.deepEqual(explicit.snapshot().projects[0].sessions.map(s=>s.availability),['active','legacy-work','active']);
-  assert.equal(explicit.project(chat.workspace,second.sessionId).experience,'work');
-  assert.equal(conversationExperience('https://chatgpt.com/work/aaaaaaaa'),'work');
-  assert.equal(conversationUrlCompatibleWithExperience('https://chatgpt.com/c/aaaaaaaa','work'),true);
-  assert.equal(conversationUrlCompatibleWithExperience('https://chatgpt.com/work/aaaaaaaa','chat'),false);
+  const next=new WorkspaceSessions(store.file);await next.load();
+  assert.equal(next.snapshot().schemaVersion,8);const saved=next.project(chat.workspace,chat.sessionId);
+  assert.equal(saved.sessionId,chat.sessionId);assert.equal(saved.attempt.requestId,'r');assert.equal(saved.attempt.contextRef.message_id,'m');
+  assert.deepEqual(saved.attempt.enrollmentRef,session.attempt.enrollmentRef);
+  assert.equal(Object.hasOwn(saved,'experience'),false);assert.equal(Object.hasOwn(saved,'availability'),false);assert.equal(Object.hasOwn(saved.attempt,'modeViolation'),false);
+  assert.equal(await fs.readFile(store.file+'.v7-backup','utf8'),original);
+  const again=new WorkspaceSessions(store.file);await again.load();assert.deepEqual(again.snapshot(),next.snapshot());
+  raw.projects[0].sessions[0].experience='unsupported';await fs.writeFile(store.file,JSON.stringify(raw));
+  await assert.rejects(new WorkspaceSessions(store.file).load(),{code:'SESSIONS_INVALID'});
+  assert.equal(await fs.readFile(store.file,'utf8'),JSON.stringify(raw));
 });
 
 test('session archive switches selection, blocks the last active session, restores, and persists', async t => {
@@ -590,8 +568,8 @@ test('session archive switches selection, blocks the last active session, restor
   const { project, root } = await fixture(t);
   const store = new WorkspaceSessions(path.join(root, 'app-data/archive-sessions.json'), { now: () => ++clock });
   const first = await store.select(await project('Session archive'));
-  const second = await store.newSession(first.workspace, 'chat');
-  const third = await store.newSession(first.workspace, 'chat');
+  const second = await store.newSession(first.workspace);
+  const third = await store.newSession(first.workspace);
   await store.selectSession(first.workspace, first.sessionId);
   await store.setSessionArchived(first.workspace, first.sessionId, true);
   assert.equal(store.selected().sessionId, third.sessionId, 'most recently opened remaining session becomes selected');
@@ -605,14 +583,14 @@ test('session archive switches selection, blocks the last active session, restor
   await store.setSessionArchived(first.workspace, third.sessionId, true);
   await assert.rejects(store.setSessionArchived(first.workspace, first.sessionId, true), { code: 'SESSION_LAST_ACTIVE' });
   const restarted = new WorkspaceSessions(store.file); await restarted.load();
-  assert.equal(restarted.snapshot().schemaVersion, 7);
+  assert.equal(restarted.snapshot().schemaVersion, 8);
   assert.equal(restarted.snapshot().projects[0].sessions.filter(session => session.archivedAt === null).length, 1);
 });
 
 test('forget archived session removes local references but keeps project folder and active sessions', async t => {
   const { root, project, store } = await fixture(t);
   const first = await store.select(await project('Forget session'));
-  const second = await store.newSession(first.workspace, 'chat');
+  const second = await store.newSession(first.workspace);
   await store.bindChat(first.workspace, second.sessionId, 'https://chatgpt.com/c/work-session-delete');
   await store.setSessionArchived(first.workspace, second.sessionId, true);
   const backup = store.snapshot(); backup.schemaVersion = 4;
@@ -654,7 +632,7 @@ test('only actual HTTPS ChatGPT conversation URLs can be saved', () => {
   for (const url of ['http://chatgpt.com/c/aaaaaaaa', 'https://chatgpt.com.evil.test/c/aaaaaaaa',
     'file:///tmp/chat', 'https://evil@chatgpt.com/c/aaaaaaaa', 'https://chatgpt.com/',
     'https://chatgpt.com/auth/login', 'https://chatgpt.com:444/c/aaaaaaaa']) assert.equal(normalizeChatUrl(url), null);
-  assert.equal(normalizeChatUrl('https://chatgpt.com/work/aaaaaaaa'), 'https://chatgpt.com/work/aaaaaaaa');
+  assert.equal(normalizeChatUrl('https://chatgpt.com/unsupported/aaaaaaaa'), null);
 });
 
 test('new chats retain all previous sessions and their independent context after restart', async t => {
@@ -688,7 +666,7 @@ test('legacy storage migrates intact with an exclusive backup and is not migrate
   const text = JSON.stringify(legacy);
   await fs.writeFile(store.file, text);
   const restored = new WorkspaceSessions(store.file); await restored.load();
-  assert.equal(restored.snapshot().schemaVersion, 7);
+  assert.equal(restored.snapshot().schemaVersion, 8);
   assert.equal(restored.snapshot().projects[0].sessions.length, 1);
   assert.equal(restored.selected().attempt.text, 'Точный старый текст');
   assert.equal(restored.selected().chatUrl, legacy.projects[0].chatUrl);
@@ -758,8 +736,8 @@ test('version two history migrates with an exact backup and preserves unknown mo
   const old = store.snapshot(); old.schemaVersion = 2; delete old.projects[0].archivedAt;
   const original = JSON.stringify(old); await fs.writeFile(store.file, original);
   const next = new WorkspaceSessions(store.file); await next.load();
-  assert.equal(next.snapshot().schemaVersion, 7); assert.equal(next.selected().archivedAt, null);
-  assert.deepEqual(next.snapshot().projects[0].sessions, old.projects[0].sessions.map(session => ({ ...session, experience: conversationExperience(session.chatUrl) ?? 'chat', availability:'mode-unverified', archivedAt: null })));
+  assert.equal(next.snapshot().schemaVersion, 8); assert.equal(next.selected().archivedAt, null);
+  assert.deepEqual(next.snapshot().projects[0].sessions, old.projects[0].sessions.map(session => ({ ...session, archivedAt: null })));
   assert.equal(await fs.readFile(store.file + '.v2-backup', 'utf8'), original);
 });
 test('archive save failure preserves current state and queued edits do not lose other projects', async t => {
@@ -811,7 +789,7 @@ test('retired token estimates are removed on load without changing sessions or a
   await store.select(folder);
   const first = store.selected();
   await store.bindChat(folder, first.sessionId, 'https://chatgpt.com/c/removed-counter-chat');
-  await store.newSession(folder, 'chat');
+  await store.newSession(folder);
   const second = store.selected();
   await store.bindChat(folder, second.sessionId, 'https://chatgpt.com/c/removed-counter-work');
   await store.setSessionArchived(folder, first.sessionId, true);
@@ -849,8 +827,8 @@ test('project selection chooses newest created active session without reordering
   const firstUrl = 'https://chatgpt.com/c/aaaaaaaa-1111-2222-3333-eeeeeeeeeeee';
   await store.bindChat(folder, first.sessionId, firstUrl);
   time = 200;
-  const second = await store.newSession(folder, 'chat');
-  const third = await store.newSession(folder, 'chat');
+  const second = await store.newSession(folder);
+  const third = await store.newSession(folder);
   const order = () => activeSessionsNewestFirst(store.snapshot().projects.find(p => p.workspace === folder).sessions).map(s => s.sessionId);
   assert.deepEqual(order(), [third.sessionId, second.sessionId, first.sessionId], 'equal creation times use reverse insertion order');
   time = 500;
@@ -875,8 +853,8 @@ test('project selection chooses newest created active session without reordering
 test('v5 migration backs up evidence and never guesses when several chats received the same scope', async t => {
   const { project, store } = await fixture(t);
   const first = await store.select(await project('Evidence'));
-  const second = await store.newSession(first.workspace, 'chat');
-  const third = await store.newSession(first.workspace, 'chat');
+  const second = await store.newSession(first.workspace);
+  const third = await store.newSession(first.workspace);
   const old = store.snapshot(); old.schemaVersion = 5;
   for (const session of old.projects[0].sessions) {
     delete session.planId; delete session.originSessionId; delete session.legacyPlanId; delete session.planBinding;
@@ -958,7 +936,7 @@ test('agent time accumulates per session, survives restart and rejects malformed
   await store.select(folder);
   const first = store.selected().sessionId;
   assert.equal(await store.recordAgentTime(folder, first, 65400.4), true);
-  await store.newSession(folder, 'chat');
+  await store.newSession(folder);
   const second = store.selected().sessionId;
   assert.equal(await store.recordAgentTime(folder, first, 1000), true, 'a request finishing after a switch still belongs to its own session');
   assert.equal(await store.recordAgentTime(folder, 'missing-session', 1000), false);

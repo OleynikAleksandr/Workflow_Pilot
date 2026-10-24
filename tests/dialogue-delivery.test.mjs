@@ -105,7 +105,7 @@ test('only issued S model-pull snapshots skip revision freshness; replacement an
   assert.equal(await delivery.currentMessage({...s,role:'O'},message),false);
   assert.equal(await delivery.currentMessage(s,{...message,delivery_mode:'sdk-notification'}),false);
   project.preparationPaused=true;
-  assert.equal(await delivery.currentMessage(s,message),false,'cancelled preparation cannot complete');
+  await assert.rejects(delivery.currentMessage(s,message),{code:'PLUGIN_COMMUNICATION_STARTUP_PAUSED'});
   project.preparationPaused=false;project.attempt.requestId='replacement';
   assert.equal(await delivery.currentMessage(s,message),false,'different request cannot inherit the receipt');
   project.attempt.requestId='request-5';project.attempt.contextTransport='attachments';
@@ -124,7 +124,7 @@ test('durable cancellation intent and pending navigation deny even an issued S s
   const read=delivery.currentMessage({role:'S',local_session_id:'s'},
     {kind:'startup-context',request_id:'r',delivery_mode:'model-pull',read:true,parts_read:[0]}).then(result=>{settled=true;return result;});
   finishNavigation();await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);
-  project.attempt.cancelState='requested';finishStore();assert.equal(await read,false);
+  project.attempt.cancelState='requested';finishStore();await assert.rejects(read,{code:'PLUGIN_COMMUNICATION_STARTUP_CANCELLED'});
   assert.equal((await delivery.admit({local_session_id:'s'},{kind:'startup-context',request_id:'r'})).allowed,false);
 });
 

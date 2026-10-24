@@ -69,7 +69,7 @@ const exact=(args,keys)=>{if(!object(args)||!Object.keys(args).every(key=>keys.i
 function publicProject(project) {
   return {workspace:project.workspace,projectId:project.projectId??null,name:project.displayName||project.name||path.basename(project.workspace),
     archived:!!project.archivedAt,executor:!!project.parentWorkspace,selectedSessionId:project.selectedSessionId??null,
-    sessions:(project.sessions??[]).map(session=>({sessionId:session.sessionId,title:session.title||'',experience:session.experience??'chat',
+    sessions:(project.sessions??[]).map(session=>({sessionId:session.sessionId,title:session.title||'',
       archived:!!session.archivedAt,external:!!session.external,bound:!!session.chatUrl}))};
 }
 
@@ -131,8 +131,8 @@ function desktopCatalog(services,base) {
       return {changed:await local('pilot:rename-project',args)};},
     'sessions.select':async args=>{exact(args,['workspace','sessionId']);if(!absolute(args.workspace)||!sessionId(args.sessionId))throw invalid();
       await local('pilot:select-session',args);return {selected:{workspace:args.workspace,sessionId:args.sessionId}};},
-    'sessions.create':async args=>{exact(args,['workspace','experience']);
-      if(!absolute(args.workspace)||args.experience!==undefined&&!['chat','work'].includes(args.experience))throw invalid();
+    'sessions.create':async args=>{exact(args,['workspace']);
+      if(!absolute(args.workspace))throw invalid();
       await local('pilot:new-session',args);const selected=services.control.projects.selected();
       return {selected:selected?{workspace:selected.workspace,sessionId:selected.sessionId}:null};},
     'sessions.rename':async args=>{exact(args,['workspace','sessionId','name']);
@@ -189,9 +189,9 @@ function baseCatalog(services) {
       return {changed:await store.setProjectDisplayName(args.workspace,args.name)};},
     'sessions.select':async args=>{exact(args,['workspace','sessionId']);if(!absolute(args.workspace)||!sessionId(args.sessionId))throw invalid();
       registered(args.workspace);return open(await store.selectSession(args.workspace,args.sessionId));},
-    'sessions.create':async args=>{exact(args,['workspace','experience']);
-      if(!absolute(args.workspace)||args.experience!==undefined&&!['chat','work'].includes(args.experience))throw invalid();
-      registered(args.workspace);return open(await store.newSession(args.workspace,args.experience));},
+    'sessions.create':async args=>{exact(args,['workspace']);
+      if(!absolute(args.workspace))throw invalid();
+      registered(args.workspace);return open(await store.newSession(args.workspace));},
     'sessions.rename':async args=>{exact(args,['workspace','sessionId','name']);
       if(!absolute(args.workspace)||!sessionId(args.sessionId)||!name(args.name))throw invalid();
       return {changed:await store.renameSession(args.workspace,args.sessionId,args.name)};},

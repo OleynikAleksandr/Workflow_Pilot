@@ -35,7 +35,7 @@ test('Control facade restores exact Chat ownership and detached snapshots',async
   const planFile=path.join(first.workspace,'.harness/plans/todo-plan.md'), before=await fs.readFile(planFile,'utf8');
   await store.bindChat(first.workspace,first.sessionId,'https://chatgpt.com/c/aaaaaaaa',{manual:true});
   await assert.rejects(store.newSession(first.workspace,'work'),{code:'SESSION_EXPERIENCE_UNSUPPORTED'});
-  const work=await store.newSession(first.workspace,'chat');
+  const work=await store.newSession(first.workspace);
   assert.equal(work.experience,'chat');
   const neighbour=await store.select(await f.project('Neighbour'));
   const scoped=sessionStore(store,first);
@@ -66,7 +66,7 @@ test('failed Control save rolls back ownership and restart retains the last dura
   const first=await store.select(await f.project('First'));
   const rename=fs.rename;
   fs.rename=async(from,to)=>{if(to===f.file)throw Object.assign(new Error('fixture write failure'),{code:'EIO'});return rename(from,to);};
-  try { await assert.rejects(store.newSession(first.workspace,'chat'),{code:'EIO'}); }
+  try { await assert.rejects(store.newSession(first.workspace),{code:'EIO'}); }
   finally { fs.rename=rename; }
   assert.equal(store.selected().sessionId,first.sessionId);
   assert.equal(store.snapshot().projects[0].sessions.length,1);

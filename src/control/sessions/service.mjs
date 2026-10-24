@@ -1,7 +1,6 @@
 import { ContextSession } from '../context/context-session.mjs';
 import { AgentTimer } from './agent-timer.mjs';
 import { ConversationRecovery } from './conversation-recovery.mjs';
-import { assertSessionMode, sessionModeAllowed, projectModeBlocked } from './workspace-session.mjs';
 import { normalizeChatUrl } from '../../contracts/browser.mjs';
 import { sessionRuntimeKey } from '../../contracts/control.mjs';
 export { sessionRuntimeKey } from '../../contracts/control.mjs';
@@ -35,10 +34,6 @@ export class SessionRuntimes {
     this.paused=false;
   }
   ensure(project=null) {
-    if(project)assertSessionMode(project);
-    if(project&&this.store.snapshot&&projectModeBlocked(this.store.snapshot().projects.map(p=>({...p,
-      planExecution:this.store.project(p.workspace)?.planExecution,planView:this.store.project(p.workspace)?.planView})),project.parentWorkspace??project.workspace))
-      throw Object.assign(new Error('Проект удержан: назначение связано с исторической сессией. Данные сохранены.'),{code:'SESSION_MODE_UNSUPPORTED'});
     if(project?.external)throw Object.assign(new Error('Эта сессия открыта в ChatGPT. Продолжайте разговор там.'),{code:'EXTERNAL_SESSION'});
     const key=sessionRuntimeKey(project), existing=this.#records.get(key);
     if(existing)return existing;
@@ -66,7 +61,7 @@ export class SessionRuntimes {
     record.composer=browser.composer;
     record.controller=new ContextSession({store:scopedStore,runtime:this.runtime(),contextCache:this.contextCache,
       canStartChat:()=>{const p=record.project();return !this.paused&&!record.disposed&&record.ready
-        &&!record.manualStartObserved&&!p?.manualStart&&sessionModeAllowed(p)&&!p.archivedAt&&!p.sessionArchivedAt;},
+        &&!record.manualStartObserved&&!p?.manualStart&&!!p&&!p.archivedAt&&!p.sessionArchivedAt;},
       composer:record.composer,onChange:()=>{this.syncStartupObservation(record);this.onChange(record);},onChatBound:()=>this.onChatBound(record)});
     record.controller.onIdle=()=>this.onChange(record);
     record.timer=new AgentTimer({onFinish:(target,durationMs)=>{
@@ -126,7 +121,7 @@ export class SessionRuntimes {
     const project=record.project();
     const urlStartup=project?.attempt?.bootstrapTransport==='url-query',cancelling=urlStartup&&project.attempt.cancelState==='requested';
     if(record.disposed||!project||project.archivedAt||project.sessionArchivedAt)return;
-    if(!cancelling&&(this.paused||!record.ready||record.loading||!sessionModeAllowed(project)))return;
+    if(!cancelling&&(this.paused||!record.ready||record.loading))return;
     if(!project.chatUrl&&!project.attempt&&(record.manualStartObserved||project.manualStart)){
       record.controller.emit({phase:'waiting-manual-chat',messageSent:false,error:null});return;
     }
@@ -148,7 +143,7 @@ export class SessionRuntimes {
     const eligible=controller&&record.ready&&!record.disposed&&!this.paused&&!record.loading
       &&!project?.archivedAt&&!project?.sessionArchivedAt&&!project?.manualStart&&!project?.preparationPaused&&!project?.chatUrl
       &&!attempt?.sendStartedAtMs&&!['sending','sent','acknowledged','unknown'].includes(attempt?.state)
-      &&['waiting-composer','waiting-experience','waiting-login'].includes(controller.state.phase);
+      &&['waiting-composer','waiting-login'].includes(controller.state.phase);
     let probe=record.startupObservation;
     if(!eligible){if(probe)clearTimeout(probe.timer);if(probe)probe.timer=null;return;}
     if(probe?.generation!==controller.generation){if(probe)clearTimeout(probe.timer);
@@ -166,8 +161,8 @@ export class SessionRuntimes {
   }
   observeManualConversation(state, record = this.visible) {
     const selected = record?.project(), documentId = record?.pageState.current?.documentId;
-    if (!selected || selected.chatUrl || !documentId||!sessionModeAllowed(selected)||state.experience==='work') return false;
-    if (!record.manualDocumentOwner && /^https:\/\/chatgpt\.com\/(?:work\/?)?$/.test(state.url) && state.userMessageCount === 0)
+    if (!selected || selected.chatUrl || !documentId) return false;
+    if (!record.manualDocumentOwner && /^https:\/\/chatgpt\.com\/$/.test(state.url) && state.userMessageCount === 0)
       record.manualDocumentOwner = {documentId, workspace:selected.workspace, sessionId:selected.sessionId, generation:record.epoch, binding:false};
     const owner = record.manualDocumentOwner;
     if (!owner || owner.documentId !== documentId || owner.workspace !== selected.workspace

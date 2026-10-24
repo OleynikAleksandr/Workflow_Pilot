@@ -56,7 +56,7 @@ export function prepareExperiment(value){
   run('git',['commit','-m','test: isolated dialogue baseline']);install({project:workspace,mode:'existing'});
   fs.writeFileSync(path.join(target,'ORCHESTRATOR_BRIEF.md'),`# Orchestrator-only product decision
 
-Open workspace as a new Workflow Pilot project with two allowed parallel workers and a new Chat or Work orchestrator. Use its ordinary startup and automatically opened panel. Discuss, review when enabled, and publish a new orchestrated plan for TASKS.md, with T001 and T002 independent and T003 dependent on both integrations. Assign npm checks from package.json. Do not start until the user's single Start.
+Open workspace as a new Workflow Pilot project with two allowed parallel workers and a new Chat orchestrator. Use its ordinary startup and automatically opened panel. Discuss, review when enabled, and publish a new orchestrated plan for TASKS.md, with T001 and T002 independent and T003 dependent on both integrations. Assign npm checks from package.json. Do not start until the user's single Start.
 
 This is live scenario B for the orchestrator-owned dialogue. After Start, read each ready event and send each executor its own task and only the selected context through workflow_assignment_send. Do not rely on backend task text or DOM delivery. The plan's context_pack is your input for selection, not an automatic attachment to E.
 
@@ -72,7 +72,7 @@ C (separate revision experiment): NOT_RUN
 D (separate five-executor/background/restart/deletion runs): NOT_RUN
 
 - Application / backend / panel build / protocol / Kit / sourceCommit:
-- Client (embedded Workflow Pilot), orchestrator Chat or Work:
+- Client (embedded Workflow Pilot), orchestrator Chat:
 - New project / scope / sessions / assignments / task IDs:
 - User actions (one Start expected after normal preparation):
 - Host confirmation required per new chat (yes means automation FAIL):

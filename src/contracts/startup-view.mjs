@@ -2,8 +2,8 @@
 export function startupLaunch(attempt,now=Date.now()){
   if(attempt?.bootstrapTransport!=='url-query')return null;
   return {registration:attempt.state==='sent'?'confirmed':!attempt.sendStartedAtMs?'not-started':attempt.state==='unknown'?'unknown':'pending',
-    address:attempt.addressStatus??'pending',modeConfirmed:!!attempt.modeConfirmed,cancel:attempt.cancelState??'none',
-    modeViolation:!!attempt.modeViolation,loginLost:!!attempt.loginLost,
+    address:attempt.addressStatus??'pending',cancel:attempt.cancelState??'none',
+    loginLost:!!attempt.loginLost,
     addressOverdue:attempt.addressStatus!=='confirmed'&&!!attempt.sendStartedAtMs&&now-attempt.sendStartedAtMs>=60000};
 }
 export function startupView(progress){

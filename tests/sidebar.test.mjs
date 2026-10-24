@@ -623,12 +623,10 @@ test('the window names session roles, marks a waiting choice and offers the same
   f.emit({ ...base, userChoice: null });assert.equal(card.hidden, true);
 });
 
-test('only Chat is offered and historical modes are labelled without promising a live conversation',async t=>{
-  const f=await fixture(t),$=id=>f.document.getElementById(id);
-  assert.equal(f.document.querySelector('.new-project-work'),null);
-  assert.ok([...f.document.querySelectorAll('.session-experience')].some(n=>n.textContent==='История'));
-  f.emit({...f.state,context:{phase:'historical-session'}});
-  assert.equal($('session-notice').hidden,false);assert.match($('session-notice-detail').textContent,/История сохранена/);
+test('all session rows are Chat and the project offers one new Chat action',async t=>{
+  const f=await fixture(t);
+  assert.ok(f.document.querySelector('.new-project-chat'));
+  assert.ok([...f.document.querySelectorAll('.session-experience')].every(n=>n.textContent==='Chat'));
 });
 test('URL startup exposes registration, lost address, partial reading and cancellation after prior completion',async t=>{
   const f=await fixture(t),$=id=>f.document.getElementById(id);

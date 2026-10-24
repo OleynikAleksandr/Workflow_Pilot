@@ -11,16 +11,16 @@ export function workspaceSetupView(action) {
   $('setup-doctor').addEventListener('click', () => action('openDoctor'));
   $('setup-refresh').addEventListener('click', () => action('refreshSetup'));
   $('setup-apply').addEventListener('click', () => action('applySetup', last?.setup?.token));
-  function createFirst(experience) {
-    const button = $('setup-experience-' + experience);
-    if (button.disabled || $('setup-experience').hidden || submitting) return;
-    const args = [last.setup.token, experience];
+  function createFirst() {
+    const button = $('setup-create-chat');
+    if (button.disabled || $('setup-first-chat').hidden || submitting) return;
+    const args = [last.setup.token];
     submitting = true; render(last, pending);
     void Promise.resolve().then(() => action('applySetup', ...args)).finally(() => {
       submitting = false; if (last) render(last, pending);
     });
   }
-  $('setup-experience-chat').addEventListener('click', () => createFirst('chat'));
+  $('setup-create-chat').addEventListener('click', () => createFirst());
   function render(state, actionPending) {
     last = state; pending = actionPending;
     const setup = state.setup;
@@ -82,10 +82,10 @@ export function workspaceSetupView(action) {
       || (!setup.action && setup.checks?.some(check => !check.ok));
     const firstSession = !!setup.firstSessionRequired;
     const canApply = !!setup.action && !!setup.token && !problem;
-    $('setup-experience').hidden = !firstSession || form || busy || !canApply;
-    for (const mode of ['chat']) {
-      $('setup-experience-' + mode).removeAttribute('aria-pressed');
-      $('setup-experience-' + mode).disabled = busy || actionPending || submitting || !canApply;
+    $('setup-first-chat').hidden = !firstSession || form || busy || !canApply;
+    {
+      $('setup-create-chat').removeAttribute('aria-pressed');
+      $('setup-create-chat').disabled = busy || actionPending || submitting || !canApply;
     }
     $('setup-apply').hidden = firstSession || !canApply || busy;
     $('setup-apply').textContent = { install: setup.mode === 'new' ? 'Создать и открыть' : 'Подготовить и открыть', reconnect: 'Восстановить и открыть', upgrade: 'Обновить и открыть', open: 'Открыть проект' }[setup.action] ?? 'Открыть проект';

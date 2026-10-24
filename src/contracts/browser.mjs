@@ -3,8 +3,8 @@ export function normalizeChatUrl(input) {
   if (typeof input !== 'string') return null;
   try {
     const url = new URL(input);
-    if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.port || url.username || url.password) return null;
-    const match = url.pathname.match(/^\/(?:c|work\/c|work|g\/[a-zA-Z0-9_-]+\/c)\/([a-zA-Z0-9_-]{8,})\/?$/);
+    if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.port || url.username || url.password || url.searchParams.has('surface')) return null;
+    const match = url.pathname.match(/^\/(?:c|g\/[a-zA-Z0-9_-]+\/c)\/([a-zA-Z0-9_-]{8,})\/?$/);
     return match ? url.origin + url.pathname.replace(/\/$/, '') : null;
   } catch { return null; }
 }

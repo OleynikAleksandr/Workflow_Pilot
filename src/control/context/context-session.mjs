@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { normalizeChatUrl, conversationUrlCompatibleWithExperience, assertSessionMode } from '../sessions/workspace-session.mjs';
+import { normalizeChatUrl } from '../sessions/workspace-session.mjs';
 import { CONTEXT_PROTOCOL, validateContextPacket } from '../../contracts/context.mjs';
-import { chatGPTUrlMatchesExperience, isPendingChatGPTConversation, CHATGPT_CHAT_ENTRYPOINT } from '../../execution/facade.mjs';
+import { isChatGPTChatUrl, isPendingChatGPTConversation, CHATGPT_CHAT_ENTRYPOINT } from '../../execution/facade.mjs';
 import { validateParallelSettings } from '../workflow/parallel-settings.mjs';
 
 // The roles of the session table in docs/planning/user-choice-and-plan-modes.md.
@@ -87,28 +87,23 @@ export function externalClientLine(project, platform = process.platform) {
 const startedThroughMcp = attempt => attempt?.packet?.contextMode === 'mcp';
 
 const phaseForReason = reason => ({ LOGIN_REQUIRED: 'waiting-login', GENERATION_ACTIVE: 'waiting-generation',
-  DRAFT_PRESENT: 'waiting-draft', DRAFT_CHANGED: 'waiting-draft', EXPERIENCE_UNCONFIRMED: 'waiting-experience' })[reason] ?? 'waiting-composer';
+  DRAFT_PRESENT: 'waiting-draft', DRAFT_CHANGED: 'waiting-draft' })[reason] ?? 'waiting-composer';
 const metadata = packet => ({ workspace: packet.workspace, session_id: packet.session_id, plan_id: packet.plan_id, plan_path: packet.plan_path, facts: packet.facts, signature: packet.signature,
   head: packet.head, recoveryProfile:packet.recovery_profile??null, contextBytes: packet.context_bytes, contextSha256: packet.context_sha256,
   generatedAtMs: packet.generated_at_ms, cacheKey: packet.preparation?.inputKey,
   preparationMs: packet.preparation?.ms, cacheHit: packet.preparation?.cacheHit });
-const isModeEntrypoint = value => /^https:\/\/chatgpt\.com\/(?:work\/?)?(?:[?#].*)?$/.test(value);
 const failure = (code, message) => Object.assign(new Error(message), { code });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const urlAttempt = attempt => attempt?.bootstrapTransport==='url-query';
 const attemptIdentity = attempt => ({requestId:attempt.requestId,attemptGeneration:attempt.attemptGeneration});
 const urlStatus = attempt => ({requestId:attempt.requestId,state:attempt.state,addressStatus:attempt.addressStatus,
-  cancelState:attempt.cancelState,modeViolation:!!attempt.modeViolation,modeConfirmed:!!attempt.modeConfirmed,
+  cancelState:attempt.cancelState,
   sendStartedAtMs:attempt.sendStartedAtMs??null,sentAtMs:attempt.sentAtMs??null});
 const newChatRoot = value => {
-  try{const u=new URL(value);return chatGPTUrlMatchesExperience(value,'chat')&&u.pathname==='/'&&!u.searchParams.has('q');}
+  try{const u=new URL(value);return isChatGPTChatUrl(value)&&u.pathname==='/'&&!u.searchParams.has('q');}
   catch{return false;}
 };
-const normalChatTarget = value => {
-  try{return chatGPTUrlMatchesExperience(value,'chat')&&(new URL(value).pathname==='/'
-    ||normalizeChatUrl(value)?.startsWith('https://chatgpt.com/c/'))||isPendingChatGPTConversation(value);}
-  catch{return false;}
-};
+const normalChatTarget = isChatGPTChatUrl;
 
 export class ContextSession {
   constructor({ store, runtime, composer, contextCache = null, onChange = () => {}, onChatBound = () => {}, now = Date.now, uuid = randomUUID,
@@ -182,8 +177,8 @@ export class ContextSession {
     const url = normalizeChatUrl(current);
     if (project.chatUrl) return project.chatUrl === url;
     if (!url) return (!!attempt?.sendStartedAtMs && isPendingChatGPTConversation(current))
-      || isModeEntrypoint(current);
-    return !!attempt?.sendStartedAtMs && conversationUrlCompatibleWithExperience(url, project.experience ?? 'chat');
+      || newChatRoot(current);
+    return !!attempt?.sendStartedAtMs && !!normalizeChatUrl(url);
   }
 
   async packetIsCurrent(packet, project) {
@@ -281,7 +276,7 @@ export class ContextSession {
   }
 
   startupAllowed(attempt){return !!attempt&&!this.cancelledRequests.has(attempt.requestId)
-    &&!attempt.modeViolation&&!attempt.loginLost&&(!attempt.cancelState||attempt.cancelState==='none');}
+    &&!attempt.loginLost&&(!attempt.cancelState||attempt.cancelState==='none');}
   async patchUrl(project,attempt,patch){
     if(!this.store.patchAttempt)throw failure('STARTUP_STORE_UNAVAILABLE','Хранилище попытки запуска недоступно.');
     const saved=await this.store.patchAttempt(project.workspace,project.sessionId,attempt?attemptIdentity(attempt):null,patch);
@@ -294,11 +289,8 @@ export class ContextSession {
       ||event.snapshot?.id!==source.id||event.snapshot?.incarnation!==this.composer.navigationSnapshot?.().incarnation
       ||attempt.cancelState!=='none')return;
     let patch;
-    if(chatGPTUrlMatchesExperience(event.url,'work')){
-      this.cancelledRequests.add(attempt.requestId);
-      patch={modeViolation:true,cancelState:'requested',cancelReason:'mode-violation',cancelRequestedAtMs:this.now(),addressStatus:'conflict'};
-    }else if(event.snapshot.incarnation!==source.incarnation||event.navigationSequence<=source.afterSequence)return;
-    else if(['lost','conflict'].includes(attempt.addressStatus))return;
+    if(event.snapshot.incarnation!==source.incarnation||event.navigationSequence<=source.afterSequence)return;
+    if(['lost','conflict'].includes(attempt.addressStatus))return;
     else if(event.type==='crashed'||event.navigationKind==='crashed')patch={addressStatus:'lost'};
     else if(event.type==='navigation-interrupted'){
       if(event.navigationKind==='user-input'&&attempt.addressCandidate===normalizeChatUrl(event.url))return;
@@ -325,17 +317,17 @@ export class ContextSession {
     if(!urlAttempt(attempt)||!attempt.sendStartedAtMs||!source||event.reset||!event.state
       ||snapshot?.id!==source.id||attempt.cancelState!=='none')return;
     const page=event.state;
-    if(page.experience==='work'||page.login==='signed-out'){
+    if(page.login==='signed-out'){
       this.cancelledRequests.add(attempt.requestId);
       await this.store.patchAttempt(project.workspace,project.sessionId,attemptIdentity(attempt),{
-        ...(page.experience==='work'?{modeViolation:true}:{loginLost:true}),cancelState:'requested',
-        cancelRequestedAtMs:this.now(),cancelReason:page.experience==='work'?'mode-violation':'login-lost',addressStatus:'conflict'});
+        loginLost:true,cancelState:'requested',
+        cancelRequestedAtMs:this.now(),cancelReason:'login-lost',addressStatus:'conflict'});
     }else if(snapshot.incarnation===source.incarnation&&snapshot.epoch===source.epoch
-      &&!attempt.modeConfirmed&&page.experience==='chat'&&page.login==='signed-in'
+      &&!attempt.accountConfirmed&&page.login==='signed-in'
       &&event.documentId&&event.documentId!==attempt.preflightDocumentId&&normalChatTarget(page.url)
       &&(snapshot.navigationOwner===source.token||attempt.addressCandidate===normalizeChatUrl(page.url))){
       await this.store.patchAttempt(project.workspace,project.sessionId,attemptIdentity(attempt),latest=>
-        this.startupAllowed(latest)?{modeConfirmed:{documentId:event.documentId,incarnation:snapshot.incarnation,atMs:this.now()}}:{});
+        this.startupAllowed(latest)?{accountConfirmed:{documentId:event.documentId,incarnation:snapshot.incarnation,atMs:this.now()}}:{});
     }
   }
   async reconcileCancellation(project,attempt){
@@ -352,7 +344,6 @@ export class ContextSession {
   }
   async tickUrl(project,info,attempt,generation){
     if(attempt?.cancelState&&attempt.cancelState!=='none')return this.reconcileCancellation(project,attempt);
-    assertSessionMode(project);
     if(project.preparationPaused){this.emit({phase:'preparation-paused',error:null});return;}
     if(attempt?.sendStartedAtMs){
       if(attempt.state!=='sent'&&!this.runtime.enrollmentProgress)throw failure('STARTUP_CHANNEL_UNAVAILABLE','Нет подтверждения регистрации панели.');
@@ -374,7 +365,7 @@ export class ContextSession {
         &&this.composer.navigationSnapshot?.().incarnation===attempt.navigation.incarnation
         &&this.composer.navigationSnapshot?.().epoch===attempt.navigation.epoch
         &&normalizeChatUrl(this.composer.getURL())===attempt.addressCandidate;
-      if(!project.chatUrl&&attempt.state==='sent'&&attempt.modeConfirmed&&attempt.addressCandidate
+      if(!project.chatUrl&&attempt.state==='sent'&&attempt.accountConfirmed&&attempt.addressCandidate
         &&!['lost','conflict'].includes(attempt.addressStatus)&&mayBind()){
         const bound=await this.store.bindChat(project.workspace,project.sessionId,attempt.addressCandidate,
           {attemptIdentity:attemptIdentity(attempt),isCurrent:mayBind});
@@ -392,7 +383,7 @@ export class ContextSession {
       }
       const startup=progress?.complete?{...progress,snapshot_stale:this.inputStale||!packetMatchesProject(attempt.packet,project)}:progress;
       const phase=attempt.state!=='sent'?(elapsed>=180000?'send-unknown':'waiting-registration')
-        :startup?.complete?'delivered':!attempt.modeConfirmed?'waiting-experience':'startup-channel';
+        :startup?.complete?'delivered':!attempt.accountConfirmed?'waiting-login':'startup-channel';
       this.emit({phase,projectInfo:info,messageSent:attempt.state==='sent',startup,attempt:urlStatus(attempt),
         delivery:attempt.state==='sent'?{...attempt.packet,sentAtMs:attempt.sentAtMs}:null,
         addressStatus:attempt.addressStatus,addressOverdue:!project.chatUrl&&elapsed>=60000,error:null});return;
@@ -414,7 +405,6 @@ export class ContextSession {
     let observation=await this.composer.inspect();
     if(!this.current(generation))return;
     const deferred=observation.accountStatus!=='signed-in'?'waiting-login'
-      :observation.experience!=='chat'?'waiting-experience'
       :!observation.documentId||!observation.editorAvailable||!observation.writable?'waiting-composer'
       :observation.busy?'waiting-generation':observation.draftLength!==0?'waiting-draft':null;
     if(deferred){if(['waiting-composer','waiting-generation','waiting-draft'].includes(deferred))this.warm(project,generation);
@@ -433,7 +423,7 @@ export class ContextSession {
     attempt=await this.patchUrl(project,null,{protocol:CONTEXT_PROTOCOL,bootstrapTransport:'url-query',contextTransport:'panel',
       requestId:'wp-request-'+this.uuid(),attemptGeneration:this.uuid(),state:'reserving',createdAtMs:this.now(),sendStartedAtMs:null,
       packet:metadata(packet),startupText:orchestratorStartupContext(project,packet,this.runtime.startupRules??[]),
-      preflightDocumentId,cancelState:'none',addressStatus:'pending',modeViolation:false});
+      preflightDocumentId,cancelState:'none',addressStatus:'pending'});
     const bootstrap=await this.runtime.prepareBootstrap?.(project,{request_id:attempt.requestId,attempt_generation:attempt.attemptGeneration});
     if(!this.current(generation)||!this.startupAllowed(this.store.project(project.workspace,project.sessionId)?.attempt)){
       attempt=await this.patchUrl(project,attempt,{cancelState:'requested',cancelReason:'preparation-interrupted',cancelRequestedAtMs:this.now(),
@@ -452,7 +442,7 @@ export class ContextSession {
     const latestInfo=await this.inspectProject(project.workspace,project.sessionId,generation),snapshot=this.composer.navigationSnapshot();
     if(!this.current(generation))return;
     if(!newChatRoot(observation.url)||!newChatRoot(this.composer.getURL())||observation.documentId!==preflightDocumentId
-      ||observation.accountStatus!=='signed-in'||observation.experience!=='chat'||observation.draftLength!==0||observation.busy
+      ||observation.accountStatus!=='signed-in'||observation.draftLength!==0||observation.busy
       ||!observation.editorAvailable||!observation.writable||snapshot.incarnation!==preflightSnapshot.incarnation
       ||snapshot.epoch!==preflightSnapshot.epoch||bootstrap.expires_at<=this.now()
       ||!await this.packetIsCurrent(attempt.packet,{...project,...latestInfo})||!this.current(generation)||!this.canStartChat(project)){
@@ -496,7 +486,6 @@ export class ContextSession {
       if(urlAttempt(attempt)||!attempt&&!project.chatUrl&&!project.manualStart){
         await this.tickUrl(project,info,attempt,generation);return;
       }
-      assertSessionMode(project);
       if(!attempt&&project.chatUrl){this.emit({phase:'manual-session',projectInfo:info,messageSent:false,error:null});return;}
       if(attempt&&!attempt.sendStartedAtMs&&!['sending','unknown','sent','acknowledged'].includes(attempt.state))
         throw failure('LEGACY_CONTEXT_DISABLED','Прежний неотправленный старт сохранён. Создайте новый Chat для URL-запуска.');
@@ -508,7 +497,6 @@ export class ContextSession {
         : { requestId: attempt?.requestId, text: attempt?.text });
       if (!this.current(generation)) return;
       if (observation.login) { this.emit({ phase: 'waiting-login', projectInfo: info }); return; }
-      const experience = project.experience ?? 'chat';
       const currentUrl = normalizeChatUrl(observation.url);
       // A manual Send can bypass onBeforeSend. The persisted marker in a user
       // message proves delivery; a URL, message count or assistant quote cannot.
@@ -516,7 +504,7 @@ export class ContextSession {
         && attempt.text?.includes(attempt.requestId) && attempt.packet?.workspace === project.workspace
         && observation.messageSeen;
       const sameConversation = project.chatUrl ? currentUrl === project.chatUrl
-        : conversationUrlCompatibleWithExperience(currentUrl, experience) || isPendingChatGPTConversation(observation.url);
+        : !!currentUrl || isPendingChatGPTConversation(observation.url);
       if (ownMessageSeen && sameConversation && attempt.state !== 'sent') {
         attempt = { ...attempt, state: 'sent', sentAtMs: this.now() };
         await this.store.updateSession(project.workspace, project.sessionId, { attempt, manualStart: false });
@@ -527,17 +515,13 @@ export class ContextSession {
         if (currentUrl !== project.chatUrl) { this.emit({ phase: 'chat-changed', projectInfo: info }); return; }
       } else if (currentUrl) {
         if (!attempt?.sendStartedAtMs && attempt?.state !== 'sent') {
-          if (!chatGPTUrlMatchesExperience(observation.url, experience)) {
-            throw failure('CHATGPT_EXPERIENCE_MISMATCH', experience === 'work'
-              ? 'Work-сессия не открыта в режиме Work. Recovery не отправлен.'
-              : 'Chat-сессия не открыта в обычном Chat. Recovery не отправлен.');
+          if (!isChatGPTChatUrl(observation.url)) {
+            throw failure('CHATGPT_URL_UNSUPPORTED', 'Открыт неподдерживаемый адрес ChatGPT. Recovery не отправлен.');
           }
           this.emit({ phase: 'chat-changed', projectInfo: info }); return;
         }
-        if (!conversationUrlCompatibleWithExperience(currentUrl, experience)) {
-          throw failure('CHATGPT_EXPERIENCE_MISMATCH', experience === 'work'
-            ? 'Work-сессия перешла в неподдерживаемый разговор. Recovery не привязан.'
-            : 'Chat-сессия перешла в неподдерживаемый разговор. Recovery не привязан.');
+        if (!!!currentUrl) {
+          throw failure('CHATGPT_URL_UNSUPPORTED', 'Открыт неподдерживаемый адрес ChatGPT. Recovery не отправлен.');
         }
         if (!sendAttempted && !ownMessageSeen) { this.emit({ phase: 'chat-changed', projectInfo: info }); return; }
         project = { ...await this.store.bindChat(project.workspace, project.sessionId, currentUrl), ...info };
@@ -553,11 +537,9 @@ export class ContextSession {
         }
         this.emit({ phase: sent ? 'waiting-chat' : 'send-unknown', projectInfo: info, messageSent: sent, error: null });
         return;
-      } else if (!chatGPTUrlMatchesExperience(observation.url, experience)
-          && !isModeEntrypoint(observation.url)) {
-        throw failure('CHATGPT_EXPERIENCE_MISMATCH', experience === 'work'
-          ? 'Work-сессия не открыта в режиме Work. Recovery не отправлен.'
-          : 'Chat-сессия не открыта в обычном Chat. Recovery не отправлен.');
+      } else if (!isChatGPTChatUrl(observation.url)
+          && !newChatRoot(observation.url)) {
+        throw failure('CHATGPT_URL_UNSUPPORTED', 'Открыт неподдерживаемый адрес ChatGPT. Recovery не отправлен.');
       }
       if (project.manualStart && !ownMessageSeen) {
         this.emit({ phase: 'manual-session', projectInfo: info, messageSent: false, delivery: null, error: null }); return;
@@ -575,17 +557,7 @@ export class ContextSession {
             projectInfo: info }); return;
         }
       }
-      if (!project.chatUrl && !attempt?.sendStartedAtMs) {
-        observation = await this.composer.inspect({ action: 'select-experience', expectedExperience: experience,
-          requestId: attempt?.requestId, text: attempt?.text });
-        if (!this.current(generation)) return;
-        if (observation.action !== 'experience-confirmed') {
-          this.emit({ phase: observation.reason === 'CHAT_CHANGED' ? 'chat-changed' : phaseForReason(observation.reason),
-            projectInfo: info });
-          return;
-        }
-      }
-      // The new editor and requested mode are ready. Later user input is preserved.
+      // The editor is ready. Later user input is preserved.
       this.freshDraft = false;
       if (attempt && attempt.protocol !== CONTEXT_PROTOCOL) {
         const known = ['sent', 'acknowledged'].includes(attempt.state) || observation.messageSeen;
@@ -709,7 +681,6 @@ export class ContextSession {
             || this.state.uploadProgress?.ready !== progress.ready || this.state.uploadProgress?.total !== progress.total))
             this.emit({ phase: 'waiting-attachments', uploadProgress: progress });
         },
-        expectedExperience: project.chatUrl ? null : experience,
         canContinue: () => this.current(generation) && this.atExpectedChat(project, attempt) && (!this.canSendContext||this.canSendContext(project)), onBeforeFill: async () => {
           const latest = { ...project, ...await this.inspectProject(project.workspace, project.sessionId, generation) };
           if (!await this.packetIsCurrent(attempt.packet, latest)) {

@@ -24,7 +24,7 @@ function page(url, calls, { patchStatus = 200, initialTitle = 'Старое им
 
 test('conversation id follows the same concrete ChatGPT URL contract', () => {
   assert.equal(conversationIdFromChatUrl('https://chatgpt.com/c/aaaaaaaa-bbbb'), 'aaaaaaaa-bbbb');
-  assert.equal(conversationIdFromChatUrl('https://chatgpt.com/work/cccccccc-dddd'), 'cccccccc-dddd');
+  assert.equal(conversationIdFromChatUrl('https://chatgpt.com/unsupported/cccccccc-dddd'), null);
   assert.equal(conversationIdFromChatUrl('https://example.com/c/aaaaaaaa'), null);
   assert.equal(conversationIdFromChatUrl('https://chatgpt.com/'), null);
 });

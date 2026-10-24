@@ -45,51 +45,6 @@ export function activeSessionsNewestFirst(sessions) {
     .map(({ session }) => session);
 }
 
-export function conversationExperience(input) {
-  const normalized = normalizeChatUrl(input);
-  if (!normalized) return null;
-  const pathname = new URL(normalized).pathname;
-  // Legacy inference only: before schema v4, /c/<id> meant Chat because experience was not persisted.
-  return pathname.startsWith('/work/') ? 'work' : 'chat';
-}
-
-export function conversationUrlCompatibleWithExperience(input, experience) {
-  const normalized = normalizeChatUrl(input);
-  if (!normalized || !['chat', 'work'].includes(experience)) return false;
-  const pathname = new URL(normalized).pathname;
-  if (experience === 'chat') return !pathname.startsWith('/work/');
-  // Production ChatGPT Work enters through /work/, but created Work conversations currently use shared /c/<id>.
-  return pathname.startsWith('/work/') || /^\/c\/[a-zA-Z0-9_-]{8,}$/.test(pathname);
-}
-
-function sessionExperience(value) {
-  if (value === 'work') throw new WorkspaceError('SESSION_EXPERIENCE_UNSUPPORTED', 'Режим Work больше не поддерживается. Создайте новый Chat.');
-  if (value !== 'chat') throw new WorkspaceError('SESSION_EXPERIENCE', 'Поддерживается только Chat.');
-  return value;
-}
-
-export const sessionModeAllowed = session => !!session && session.experience !== 'work' && !session.attempt?.modeViolation
-  && (!session.availability || session.availability === 'active');
-export function assertSessionMode(session) {
-  if (!sessionModeAllowed(session)) throw new WorkspaceError(session?.availability === 'mode-unverified'
-    ? 'SESSION_MODE_UNVERIFIED' : 'SESSION_MODE_UNSUPPORTED',
-  'Эта сессия сохранена только как история. Создайте новый Chat; назначения и результаты сохранены.');
-  return session;
-}
-// A project cannot restore or integrate an assignment through a retired mode.
-// The records themselves remain intact, including results whose outcome is unknown.
-export function projectModeBlocked(projects, workspace, originSessionId = null) {
-  const parent=projects.find(p=>p.workspace===workspace&&!p.parentWorkspace);
-  if(!parent)return false;
-  const origin=originSessionId??parent.planExecution?.execution_origin_session_id
-    ??parent.sessions.find(s=>s.role==='orchestrator'&&!s.archivedAt&&s.orchestratorScopeId===parent.scopeId)?.sessionId;
-  const originSession=parent.sessions.find(s=>s.sessionId===origin);
-  if(originSession&&!sessionModeAllowed(originSession))return true;
-  return projects.some(p=>p.parentWorkspace===workspace&&p.parentProjectId===parent.projectId&&!p.archivedAt
-    &&p.sessions.some(s=>!s.archivedAt&&!sessionModeAllowed(s)
-      &&!parent.planView?.tasks?.some(t=>t.id===s.taskId&&(t.commit_status==='DONE'||t.status==='done'))));
-}
-
 export async function readWorkspace(input, sessionId = null) {
   if (typeof input !== 'string' || !path.isAbsolute(input)) {
     throw new WorkspaceError('WORKSPACE_REQUIRED', 'Выберите папку проекта.');
@@ -340,7 +295,7 @@ const validAgentTime = value => typeof value === 'object' && !Array.isArray(valu
   && validDuration(value.totalMs) && validDuration(value.lastMs) && value.lastMs <= value.totalMs;
 
 function validate(data) {
-  if (data?.schemaVersion !== 7 || !Array.isArray(data.projects)) throw invalid();
+  if (data?.schemaVersion !== 8 || !Array.isArray(data.projects)) throw invalid();
   const urls = [], ids = [], workspaces = [];
   for (const p of data.projects) {
     if (!p || typeof p.workspace !== 'string' || !path.isAbsolute(p.workspace)
@@ -364,13 +319,10 @@ function validate(data) {
     for (const s of p.sessions) {
       if (!s || typeof s.sessionId !== 'string' || !s.sessionId || typeof s.title !== 'string'
           || (s.titleSource !== undefined && s.titleSource !== null && !['page', 'manual', 'scope'].includes(s.titleSource))
-          || !['chat', 'work'].includes(s.experience)
-          || !['active', 'legacy-work', 'mode-unverified'].includes(s.availability)
-          || (s.experience === 'work' && s.availability !== 'legacy-work')
+          || Object.hasOwn(s, 'experience') || Object.hasOwn(s, 'availability')
           || !Number.isFinite(s.createdAt) || !Number.isFinite(s.lastOpenedAt)
           || (s.archivedAt !== null && (!Number.isFinite(s.archivedAt) || s.archivedAt <= 0))
-          || (s.chatUrl !== null && (!normalizeChatUrl(s.chatUrl) || normalizeChatUrl(s.chatUrl) !== s.chatUrl
-            || !conversationUrlCompatibleWithExperience(s.chatUrl, s.experience)))) throw invalid();
+          || (s.chatUrl !== null && (!normalizeChatUrl(s.chatUrl) || normalizeChatUrl(s.chatUrl) !== s.chatUrl))) throw invalid();
       if (s.manualStart !== undefined && typeof s.manualStart !== 'boolean') throw invalid();
       if (s.preparationPaused !== undefined && typeof s.preparationPaused !== 'boolean') throw invalid();
       if (s.external !== undefined && (s.external?.provider !== 'chatgpt-plugin'
@@ -421,9 +373,7 @@ function migrate(data) {
   }
   if (data?.schemaVersion === 3 && Array.isArray(data.projects)) {
     data = { ...data, schemaVersion: 4, projects: data.projects.map(p => ({ ...p,
-      sessions: p.sessions.map(session => ({ ...session,
-        experience: session.experience === 'work' ? 'work' : conversationExperience(session.chatUrl) ?? 'chat',
-        availability: session.experience === 'work' || conversationExperience(session.chatUrl) === 'work' ? 'legacy-work' : 'mode-unverified' })) })) };
+      sessions: p.sessions.map(session => ({ ...session })) })) };
   }
   if (data?.schemaVersion === 4 && Array.isArray(data.projects)) data = { ...data, schemaVersion: 5, projects: data.projects.map(p => ({ ...p,
     sessions: p.sessions.map(session => ({ ...session, archivedAt: null })) })) };
@@ -445,10 +395,20 @@ function migrate(data) {
     const { planView, preparedPlans, unassignedPlans, scopeTransition, ...info } = project;
     return { ...info, sessions };
   }) };
-  if (data?.schemaVersion !== 6 || !Array.isArray(data.projects)) throw invalid();
-  return { ...data, schemaVersion: 7, projects: data.projects.map(project => ({ ...project,
-    sessions: project.sessions.map(session => ({ ...session, availability: session.experience === 'work'
-      ? 'legacy-work' : session.availability === 'mode-unverified' ? 'mode-unverified' : 'active' })) })) };
+  if (![6, 7].includes(data?.schemaVersion) || !Array.isArray(data.projects)) throw invalid();
+  return { ...data, schemaVersion: 8, projects: data.projects.map(project => ({ ...project,
+    sessions: project.sessions.map(session => {
+      if (session.experience !== undefined && session.experience !== 'chat'
+          || session.availability !== undefined && session.availability !== 'active') throw invalid();
+      const { experience, availability, ...record } = session;
+      if (record.attempt) {
+        const { modeConfirmed, modeViolation, ...attempt } = record.attempt;
+        if (modeViolation) throw invalid();
+        record.attempt = attempt;
+      }
+      return record;
+    }) })) };
+
 }
 
 // Interrupted atomic writes leave whole copies of the store beside it, with project records in them.
@@ -456,7 +416,7 @@ function migrate(data) {
 // diagnostics.jsonl(.1).tmp*. Callers run this when none of their own writes is in flight.
 export async function removeStoreTemporaries(storeFile) {
   const folder = path.dirname(storeFile), base = path.basename(storeFile).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const own = new RegExp(`^(?:${base}(?:\\.v[1-6]-backup)?|diagnostics\\.jsonl(?:\\.1)?)\\.tmp(?:-.+)?$`);
+  const own = new RegExp(`^(?:${base}(?:\\.v[1-7]-backup)?|diagnostics\\.jsonl(?:\\.1)?)\\.tmp(?:-.+)?$`);
   let entries;
   try { entries = await fs.readdir(folder, { withFileTypes: true }); } catch (error) {
     if (error.code === 'ENOENT') return 0;
@@ -478,7 +438,7 @@ async function writeJsonAtomic(file, data) {
 }
 
 async function purgeSessionCopies(storeFile, workspace, sessionId) {
-  for (const version of [1, 2, 3, 4, 5, 6]) {
+  for (const version of [1, 2, 3, 4, 5, 6, 7]) {
     const file = storeFile + `.v${version}-backup`;
     if (!await exists(file, { strict: true })) continue;
     const data = JSON.parse(await fs.readFile(file, 'utf8'));
@@ -538,7 +498,7 @@ export class WorkspaceSessions {
     this.saveTail = Promise.resolve();
     this.mutationTail = Promise.resolve();
     this.selectionGeneration = 0;
-    this.data = { schemaVersion: 7, selectedWorkspace: null, projects: [] };
+    this.data = { schemaVersion: 8, selectedWorkspace: null, projects: [] };
   }
 
   async load() {
@@ -552,7 +512,7 @@ export class WorkspaceSessions {
     }
     let parsed;
     try { parsed = JSON.parse(text); } catch { throw invalid(); }
-    const legacy = [1, 2, 3, 4, 5, 6].includes(parsed.schemaVersion);
+    const legacy = [1, 2, 3, 4, 5, 6, 7].includes(parsed.schemaVersion);
     const data = validate(legacy ? migrate(parsed) : parsed);
     if (legacy) {
       try { await fs.writeFile(this.file + `.v${parsed.schemaVersion}-backup`, text, { mode: 0o600, flag: 'wx' }); }
@@ -651,10 +611,9 @@ export class WorkspaceSessions {
     return operation;
   }
 
-  createSession(experience = 'chat', executionSnapshot = this.getExecutionSettings()) {
-    experience = sessionExperience(experience);
+  createSession(executionSnapshot = this.getExecutionSettings()) {
     executionSnapshot = validateParallelSettings(executionSnapshot);
-    return { sessionId: 'web-pilot-' + this.uuid(), planId: null, originSessionId: null, legacyPlanId: null, planBinding: 'none', lastNamedScopeId: null, experience, availability: 'active', chatUrl: null, title: '', titleSource: null,
+    return { sessionId: 'web-pilot-' + this.uuid(), planId: null, originSessionId: null, legacyPlanId: null, planBinding: 'none', lastNamedScopeId: null, chatUrl: null, title: '', titleSource: null,
       executionSnapshot, createdAt: this.now(), lastOpenedAt: this.now(), archivedAt: null, attempt: null, receipt: null };
   }
 
@@ -677,16 +636,16 @@ export class WorkspaceSessions {
     return operation;
   }
 
-  select(input, { experience = 'chat', latest = false, isCurrent = () => true } = {}) {
+  select(input, { latest = false, isCurrent = () => true, ...unsupported } = {}) {
     return this.mutate(async data => {
-      sessionExperience(experience);
+      if (Object.keys(unsupported).length) throw new WorkspaceError('SESSION_INPUT', 'Неподдерживаемые параметры сессии.');
       const info = await this.inspect(input);
       let project = data.projects.find(p => p.workspace === info.workspace);
       this.assertParent(project,data);
       if (project?.archivedAt) throw new WorkspaceError('PROJECT_ARCHIVED', 'Сначала верните проект из архива в настройках.');
       if (project && project.projectId !== info.projectId) throw new WorkspaceError('PROJECT_REPLACED', 'В этой папке теперь другой проект. Сохранённые чаты оставлены без изменений.');
       if (!project) {
-        const session = this.createSession(experience);
+        const session = this.createSession();
         const role = newSessionRole(info);
         if (role) session.role = role;
         project = { ...info, selectedSessionId: session.sessionId, sessions: [session], expanded: true, archivedAt: null };
@@ -731,12 +690,7 @@ export class WorkspaceSessions {
       if(attemptIdentity&&(session.attempt?.requestId!==attemptIdentity.requestId
         ||session.attempt?.attemptGeneration!==attemptIdentity.attemptGeneration
         ||session.attempt.addressCandidate!==url||['lost','conflict'].includes(session.attempt.addressStatus)
-        ||session.attempt.cancelState!=='none'||!session.attempt.modeConfirmed))return null;
-      assertSessionMode(session);
-      if (!conversationUrlCompatibleWithExperience(url, session.experience)) {
-        throw new WorkspaceError('CHAT_EXPERIENCE_MISMATCH', session.experience === 'work'
-          ? 'Эта сессия создана как Work. Откройте разговор, созданный из Work.' : 'Эта сессия создана как Chat. Откройте обычный Chat.');
-      }
+        ||session.attempt.cancelState!=='none'||!session.attempt.accountConfirmed))return null;
       if (session.chatUrl && session.chatUrl !== url) throw new WorkspaceError('CHAT_CHANGED', 'Открыт другой чат. Выберите его в дереве или вернитесь к сессии проекта.');
       if (data.projects.some(p => p.sessions.some(s => s.sessionId !== sessionId && s.chatUrl === url))) throw new WorkspaceError('CHAT_IN_USE', 'Этот чат уже связан с другой сессией.');
       session.chatUrl = url;
@@ -745,14 +699,16 @@ export class WorkspaceSessions {
     },isCurrent);
   }
 
-  newSession(workspace, experience = 'chat', { executionSnapshot } = {}) {
+  newSession(workspace, options = {}) {
     return this.mutate(async data => {
-      experience = sessionExperience(experience);
+      if (!options || typeof options !== 'object' || Array.isArray(options)
+          || Object.keys(options).some(key => key !== 'executionSnapshot')) throw new WorkspaceError('SESSION_INPUT', 'Неподдерживаемые параметры сессии.');
+      const { executionSnapshot } = options;
       const project = data.projects.find(p => p.workspace === workspace);
       if (!project) throw new WorkspaceError('WORKSPACE_REQUIRED', 'Сначала выберите проект.');
       if (project.archivedAt) throw new WorkspaceError('PROJECT_ARCHIVED', 'Сначала верните проект из архива.');
       // An explicitly inherited snapshot never consults the current Settings.
-      const session = this.createSession(experience, executionSnapshot);
+      const session = this.createSession(executionSnapshot);
       project.sessions.push(session); project.selectedSessionId = session.sessionId; project.expanded = true;
       const info = await this.inspect(workspace, session.sessionId);
       Object.assign(project, info);
@@ -770,7 +726,7 @@ export class WorkspaceSessions {
     });
   }
 
-  newChat(workspace) { return this.newSession(workspace, 'chat'); }
+  newChat(workspace) { return this.newSession(workspace); }
 
   // Navigation and registration merge into the latest attempt in this queue.
   // A delayed event cannot overwrite sent/cancellation or claim a newer request.
@@ -784,7 +740,6 @@ export class WorkspaceSessions {
         throw new WorkspaceError('STARTUP_ATTEMPT_INVALID','Нужна синхронная поправка состояния попытки.');
       if(expected===null){
         if(current)return null;
-        assertSessionMode(session);
         if(typeof delta.requestId!=='string'||typeof delta.attemptGeneration!=='string')
           throw new WorkspaceError('STARTUP_ATTEMPT_INVALID','Нужна идентичность попытки.');
       }else{
@@ -862,7 +817,6 @@ export class WorkspaceSessions {
 
   ensureExecutor(assignment,origin) {
     return this.mutate(async data=>{
-      assertSessionMode(origin);
       if(typeof assignment.worktree!=='string'||!path.isAbsolute(assignment.worktree))
         throw new WorkspaceError('ASSIGNMENT_OWNER','Неверная папка назначения.');
       const workspace=await fs.realpath(assignment.worktree);
@@ -873,16 +827,15 @@ export class WorkspaceSessions {
         throw new WorkspaceError('ASSIGNMENT_OWNER','Неверная папка назначения.');
       let project=data.projects.find(p=>p.workspace===workspace);
       const existing=project?.sessions.find(s=>s.assignmentId===assignment.id);
-      // Executors of an orchestrated plan always work in Chat, whatever the orchestrator uses.
+      // Each assigned task keeps its own Chat.
       if(existing) {
         if(!ownedExecutor(project,parent)||existing.parentProjectId!==parent.projectId||existing.taskId!==assignment.parent_task_id||existing.parentScopeId!==assignment.parent_scope_id
           ||existing.executionOriginSessionId!==origin.sessionId||existing.archivedAt||project.archivedAt)
           throw new WorkspaceError('ASSIGNMENT_OWNER','Сохранённая сессия не соответствует назначению.');
-        assertSessionMode(existing);
         return currentView(project,existing.sessionId);
       }
       if(project)throw new WorkspaceError('ASSIGNMENT_OWNER','Worktree уже подключён без этого назначения.');
-      const info=await this.inspect(workspace),session=this.createSession('chat',origin.executionSnapshot);
+      const info=await this.inspect(workspace),session=this.createSession(origin.executionSnapshot);
       Object.assign(session,{role:'executor',assignmentId:assignment.id,taskId:assignment.parent_task_id,parentWorkspace:origin.workspace,parentProjectId:parent.projectId,
         parentScopeId:assignment.parent_scope_id,executionOriginSessionId:origin.sessionId,
         title:sessionName(assignment.parent_task_id+' — '+assignment.title),titleSource:'manual'});
@@ -909,12 +862,11 @@ export class WorkspaceSessions {
     });
   }
 
-  // An unsent executor of an orchestrated plan restarts in Chat (0.4.0–0.4.1 saved it in Work).
+  // Reconcile an executor that has not sent its bootstrap.
   resetUnsentExecutor(workspace,sessionId) {
     return this.mutate(data=>{
       const project=data.projects.find(p=>p.workspace===workspace),session=project?.sessions.find(s=>s.sessionId===sessionId);
       if(!session||!unsentExecutor(session))throw new WorkspaceError('ASSIGNMENT_OWNER','Исполнитель уже начал работу или не найден.');
-      assertSessionMode(session);
       return currentView(project,sessionId);
     });
   }

@@ -36,7 +36,7 @@ export function installPageObserver(dom, send) {
     }
     const assistants = dom.messages('assistant'), users = dom.messages('user');
     const assistant = assistants.at(-1), user = users.at(-1);
-    // Native IDs may be inside the outer semantic wrapper (Work) or on its ancestor.
+    // Native IDs may be inside a semantic wrapper or on its ancestor.
     // DOM counts are not identities: virtualized history keeps a bounded window.
     const machineId = node => node?.getAttribute('data-message-id')
       || node?.closest('[data-message-id]')?.getAttribute('data-message-id')
@@ -52,7 +52,7 @@ export function installPageObserver(dom, send) {
     const button = dom.sendButton();
     const account = dom.account();
     return {
-      url: location.href, experience: dom.experience(), ...account,
+      url: location.href, ...account,
       visibility: document.visibilityState,
       editorAvailable: !!editor, editorRevision,
       writable: !!editor && !editor.disabled && !editor.readOnly && editor.getAttribute('contenteditable') !== 'false',

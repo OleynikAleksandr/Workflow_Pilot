@@ -1,7 +1,6 @@
 export const PAGE_STATE_CHANNEL = 'pilot:page-observation';
 const MAX_MESSAGE_BYTES = 8192;
 const allowedLogin = new Set(['signed-in', 'signed-out', 'unknown']);
-const allowedExperience = new Set(['chat', 'work', null]);
 const allowedVisibility = new Set(['visible', 'hidden', 'prerender', 'unknown']);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -20,7 +19,6 @@ export function normalizePageObservation(message) {
     throw Object.assign(new Error('Некорректная схема наблюдателя страницы.'), { code: 'PAGE_OBSERVATION_INVALID' });
   const state = message.state;
   const url = typeof state.url === 'string' && state.url.length <= 2048 ? state.url : '';
-  const experience = allowedExperience.has(state.experience) ? state.experience : null;
   const login = allowedLogin.has(state.login) ? state.login : 'unknown';
   const visibility = allowedVisibility.has(state.visibility) ? state.visibility : 'unknown';
   for (const key of ['editorRevision', 'draftRevision', 'userMessageCount', 'userMessagesRevision']) {
@@ -34,7 +32,7 @@ export function normalizePageObservation(message) {
     documentId: message.documentId,
     seq: message.seq,
     state: {
-      url, experience, login, loginEvidence: normalizeLoginEvidence(state.loginEvidence), visibility,
+      url, login, loginEvidence: normalizeLoginEvidence(state.loginEvidence), visibility,
       connectionError: state.connectionError === 'stream-interrupted' ? state.connectionError : null,
       editorAvailable: state.editorAvailable,
       editorRevision: state.editorRevision,
