@@ -87,13 +87,16 @@ export class WorkflowChannel {
     const question=dialogue.findLast(m=>m.blocking&&m.kind==='question');
     const blocked=!!question&&!dialogue.some(m=>m.kind==='decision'&&m.resume&&m.block_id===question.block_id);
     const incoming=run?.messages.find(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
-      &&!m.superseded&&!m.reply_observed);
+      &&!m.superseded&&!m.startup_complete&&!m.reply_observed);
     const draft=target.role==='E'&&Object.values(run?.assignment_intents??{}).findLast(i=>
       i.effect.assignment_id===target.assignment_id&&i.effect.scope_id===target.scope_id
       &&i.effect.kind==='task'&&!['published','retired','failed'].includes(i.phase));
     return {registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
       generation:member?.generation??null,blocked,
-      ...(incoming?{incoming:{kind:incoming.kind,task_id:incoming.task_id,read:!!incoming.read,
+      ...(incoming?{incoming:{message_id:incoming.message_id,created_at:incoming.created_at,kind:incoming.kind,task_id:incoming.task_id,
+        sender_role:incoming.sender_role,recipient_role:member?.role??target.role,read:!!incoming.read,
+        service_action:incoming.idempotency_key?.startsWith('prepare:')?'prepare'
+          :incoming.idempotency_key?.startsWith('parked:')?'parked':incoming.idempotency_key?.startsWith('authorize:')?'authorize':null,
         handled:!!incoming.yielded,delivery:incoming.delivery,reason:incoming.claim_wait_reason??null}}:{}),
       ...(draft?{draft:{phase:draft.phase}}:{}),
       initial:initial?{message_id:initial.message_id,delivery:initial.delivery,read:initial.read,handled:!!initial.yielded,physical_complete:!!initial.reply_observed}:null};

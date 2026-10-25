@@ -1,6 +1,6 @@
 import { desktopFiles as fs } from '../../execution/facade.mjs';
 import { safePath } from '@webpilot/workflow-kit/lib/common';
-import { reviewStatus, setReviewEnabled } from '@webpilot/workflow-kit/lib/plan-review';
+import { reviewStatus, readReview, setReviewEnabled } from '@webpilot/workflow-kit/lib/plan-review';
 
 const messages={IDLE:'',PREPARED:'Документы готовы к ревью.',RUNNING:'Claude проверяет документы.',
   AUTHOR_PENDING:'Основной агент рассматривает замечания.',AGREED:'Документы согласованы.',
@@ -9,13 +9,23 @@ const messages={IDLE:'',PREPARED:'Документы готовы к ревью.
 // Why the switch is frozen. Kit enforces the same rules; the view only explains them.
 const LOCK_PUBLISHED='Review применяется к новому плану; текущий план уже опубликован. Переключение доступно после закрытия плана.';
 const LOCK_BUSY='Идёт ревью; переключение доступно после его завершения.';
+function projection(s,{supported,error=null,activityError=null,published=false}={}){
+  const enabled=s?.enabled===true;
+  const attention=error||s?.cleanup_error||activityError||(enabled&&(s?.error||['NEEDS_USER','STALE'].includes(s?.stage)));
+  const indicator=attention?'attention':!enabled?'none':['RUNNING','PUBLISHING'].includes(s?.stage)?'working'
+    :['AGREED','PUBLISHED'].includes(s?.stage)?'success':['PREPARED','AUTHOR_PENDING'].includes(s?.stage)?'waiting':'none';
+  const lock=!supported||error?null:published?LOCK_PUBLISHED:['RUNNING','PUBLISHING'].includes(s?.stage)?LOCK_BUSY:null;
+  return {enabled,supported,error,stage:s?.stage??'IDLE',round:s?.round??0,indicator,lock,
+    runId:s?.run_id??null,startedAt:s?.started_at??null,
+    message:error||s?.cleanup_error||activityError||(enabled?[s?.round?`Раунд ${s.round}.`:'',messages[s?.stage]??'',s?.error?.message??''].filter(Boolean).join(' '):'')};
+}
 
 // Data comes from the checkout. Never import or execute a module from that checkout in the app.
 export class PlanReviewClient {
-  constructor({selected,onChange=()=>{},read=reviewStatus,write=setReviewEnabled,published=()=>false,
+  constructor({selected,onChange=()=>{},read=reviewStatus,readSnapshot=readReview,write=setReviewEnabled,published=()=>false,
     schedule=setTimeout,cancel=clearTimeout,now=Date.now,
     supports=workspace=>fs.existsSync(safePath(workspace,'.harness/kit/lib/plan-review.mjs'))}) {
-    Object.assign(this,{selected,onChange,read,write,published,supports,schedule,cancel,now});
+    Object.assign(this,{selected,onChange,read,readSnapshot,write,published,supports,schedule,cancel,now});
     this.workspace=null;this.state=null;this.error=null;this.supported=false;this.signature='';
     this.timer=null;this.activityError=null;this.disposed=false;
   }
@@ -59,14 +69,13 @@ export class PlanReviewClient {
     return this.view();
   }
   view() {
-    const s=this.state,enabled=s?.enabled===true;
-    const attention=this.error || s?.cleanup_error || this.activityError || (enabled && (s?.error || ['NEEDS_USER','STALE'].includes(s?.stage)));
-    const indicator=attention?'attention':!enabled?'none':['RUNNING','PUBLISHING'].includes(s?.stage)?'working'
-      :['AGREED','PUBLISHED'].includes(s?.stage)?'success':['PREPARED','AUTHOR_PENDING'].includes(s?.stage)?'waiting':'none';
-    const lock=!this.supported||this.error?null:this.published(this.workspace)?LOCK_PUBLISHED
-      :['RUNNING','PUBLISHING'].includes(s?.stage)?LOCK_BUSY:null;
-    return {enabled,supported:this.supported,error:this.error,stage:s?.stage??'IDLE',round:s?.round??0,indicator,lock,
-      message:this.error || s?.cleanup_error || this.activityError || (enabled?[s?.round?`Раунд ${s.round}.`:'',messages[s?.stage]??'',s?.error?.message??''].filter(Boolean).join(' '):'')};
+    return projection(this.state,{supported:this.supported,error:this.error,activityError:this.activityError,published:this.published(this.workspace)});
+  }
+  viewFor(workspace){
+    if(workspace===this.workspace)return this.view();
+    try{const supported=!!workspace&&this.supports(workspace);
+      return projection(supported?this.readSnapshot(workspace):null,{supported,published:this.published(workspace)});
+    }catch(error){return projection(null,{supported:false,error:error.message});}
   }
   dispose(){this.disposed=true;this.cancel(this.timer);this.timer=null;}
 }

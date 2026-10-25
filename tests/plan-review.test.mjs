@@ -12,6 +12,16 @@ import { install } from '@webpilot/workflow-kit/lib/installer';
 import { setReviewEnabled, readReview } from '@webpilot/workflow-kit/lib/plan-review';
 import { runReview, REVIEW_MODEL } from '@webpilot/workflow-kit/lib/claude-review';
 
+test('progress reads another workspace without leaking the selected review or starting a runner',()=>{
+  const client=new PlanReviewClient({selected:()=>({workspace:'/selected'}),supports:()=>true,
+    read:()=>({enabled:true,stage:'RUNNING',round:2,run_id:'selected',started_at:new Date().toISOString(),runner_pid:1}),
+    readSnapshot:workspace=>({enabled:true,stage:'PREPARED',round:1,run_id:workspace})});
+  client.observeSelection();
+  assert.equal(client.viewFor('/selected').runId,'selected');
+  assert.equal(client.viewFor('/other').runId,'/other');assert.equal(client.viewFor('/other').stage,'PREPARED');
+  assert.equal(client.view().stage,'RUNNING');client.dispose();
+});
+
 test('explicit session ID through normal prepare and simulated Claude round routes pauses and restart only to its recipient',async t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'review-routing-'));
   let flow,client;

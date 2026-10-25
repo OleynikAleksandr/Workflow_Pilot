@@ -430,7 +430,8 @@ test('startup progress reads current assignment and live SDK separately without 
   assert.equal(f.c.workflow.progress('e').registered,true);assert.equal(f.c.workflow.progress('e').sdk,false);
   const b=await f.bind(f.c,e),first=await queue(f.c,e);const run=f.c.runs.get(b.run_id),seq=run.events.length;
   assert.deepEqual(f.c.workflow.progress('e'),{registered:true,sdk:true,permitted:true,generation:b.permission_generation,blocked:false,
-    incoming:{kind:'assignment-start',task_id:e.task_id,read:false,handled:false,delivery:'pending',reason:null},
+    incoming:{message_id:first.message_id,created_at:run.messages.find(m=>m.message_id===first.message_id).created_at,
+      kind:'assignment-start',task_id:e.task_id,sender_role:'backend',recipient_role:'E',service_action:null,read:false,handled:false,delivery:'pending',reason:null},
     initial:{message_id:first.message_id,delivery:'pending',read:false,handled:false,physical_complete:false}});
   assert.equal(run.events.length,seq,'projection creates no telemetry or grants');
   await delivered(f,b,first.message_id);assert.deepEqual(f.c.workflow.progress('e').initial,{message_id:first.message_id,delivery:'accepted',read:true,handled:false,physical_complete:true});

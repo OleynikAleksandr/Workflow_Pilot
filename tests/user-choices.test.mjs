@@ -21,6 +21,21 @@ function fixture(initial = []) {
   return { choices, acts, delivered, receipts, page, set: value => { facts = value; }, tick: ms => { now += ms; } };
 }
 const refused = { session_id: 'o', workspace: '/w', kind: 'refused', key: 'refused:s:x', data: { message: 'Kit отказал в назначении T001: STACK', task_id: 'T001' }, role: 'orchestrator' };
+test('a chosen receipt waits for durable save; failure restores offered options before any effect',async()=>{
+  const f=fixture([refused]);f.choices.reconcile();let release,entered;
+  const started=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);let fail=true;
+  f.choices.persist=async()=>{entered();await gate;if(fail)throw Error('fixture storage refused');};
+  const before=f.choices.view('o'),pending=f.choices.choose({session_id:'o',choice_id:before.choice_id,generation:before.generation,option_id:'fix'});
+  await started;assert.equal(f.choices.view('o').state,'saving');assert.equal(f.acts.length,0);assert.equal(f.delivered.length,0);
+  release();await assert.rejects(pending,{code:'USER_CHOICE_SAVE'});
+  assert.equal(f.choices.view('o').state,'offered');assert.match(f.choices.view('o').error,/storage refused/);
+  assert.equal(f.choices.view('o').generation,before.generation);assert.equal(f.delivered.length,0);
+  fail=false;const saved=await f.choices.choose({session_id:'o',choice_id:before.choice_id,generation:before.generation,option_id:'fix'});
+  assert.equal(saved.state,'chosen');f.receipts.set('m1',{delivery:'accepted'});f.choices.reconcile();assert.equal(f.choices.view('o').state,'chosen');
+  f.receipts.set('m1',{read:true});assert.equal(f.choices.view('o'),null,'read retires the current confirmation without waiting for the model turn');
+  f.choices.reconcile();const ids=f.choices.workspaceHistory('/w').map(e=>e.id);assert.equal(new Set(ids).size,ids.length);
+  const count=ids.length;f.choices.reconcile();assert.equal(f.choices.history.length,count,'receipt replay creates no history duplicate');
+});
 
 test('one card per session follows priority; a press acts once and stale generations are refused', async () => {
   const f = fixture([{ ...refused, kind: 'acceptance', key: 'acceptance:s', data: { scope_id: 's' } }, refused]);

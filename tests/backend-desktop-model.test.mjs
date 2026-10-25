@@ -32,7 +32,7 @@ test('orchestrated evidence separates checked child commits from Kit main integr
 test('worker stages distinguish authorized, SDK pending/accepted and Kit RUNNING without inferring starts',()=>{
   const a={status:'READY',dialogue_version:1};
   assert.match(executorDispatchStage(a,{draft:{phase:'prepared'}}).label,/Поручение подготовлено/);
-  assert.match(executorDispatchStage(a,{draft:{phase:'authorized'}}).label,/Kit разрешил/);
+  assert.match(executorDispatchStage(a,{draft:{phase:'authorized'}}).label,/Поручение сохранено · ожидаем канал исполнителя/);
   assert.match(executorDispatchStage(a,{initial:{delivery:'pending',read:false}}).label,/не доставлено/);
   assert.match(executorDispatchStage(a,{initial:{delivery:'accepted',read:false}}).label,/SDK принял/);
   assert.match(executorDispatchStage(a,{initial:{delivery:'accepted',read:true}}).label,/запуск не подтверждён/);

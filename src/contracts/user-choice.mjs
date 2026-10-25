@@ -2,7 +2,7 @@
 export const CHOICE_KINDS = Object.freeze(['refused', 'review', 'acceptance', 'mode', 'second-session']);
 // One card per session: the most urgent cause is shown, the others wait.
 export const CHOICE_PRIORITY = Object.freeze({ review: 0, refused: 1, acceptance: 2, mode: 3, 'second-session': 4 });
-export const CHOICE_STATES = Object.freeze(['offered', 'postponed', 'chosen', 'declined', 'stale']);
+export const CHOICE_STATES = Object.freeze(['offered', 'saving', 'postponed', 'chosen', 'declined', 'stale']);
 const MODE_TEXT = {
   sequential: { label: 'Выполнить самому, последовательно', detail: 'Эта сессия выполняет задачи по порядку в основном checkout. Меньше координации; для небольших и связанных задач.' },
   orchestrated: { label: 'Оркестрация с исполнителями', detail: 'Сессия становится оркестратором, задачи выполняют исполнители в своих worktree, возможна параллельность. Для больших или независимых задач.' },
@@ -58,11 +58,12 @@ export function choiceOptions(kind, facts = {}) {
 // The first option is the recommended one in every card.
 export function choiceView(record, delivery = null) {
   if (!record || !['offered', 'postponed', 'chosen'].includes(record.state)) return null;
+  if(record.state==='chosen'&&delivery==='read')return null;
   const chosen = record.options.find(o => o.id === record.chosen_option) ?? null;
   return { choice_id: record.choice_id, generation: record.generation, kind: record.kind, state: record.state,
-    question: record.question, reason: record.reason ?? null,
+    question: record.question, reason: record.reason ?? null,error:record.save_error??null,
     options: record.options.map((o, index) => ({ id: o.id, label: o.label, detail: o.detail, recommended: index === 0 })),
-    chosen: chosen ? { id: chosen.id, label: chosen.label, delivered: delivery === 'read', error: record.error ?? null } : null };
+    chosen: chosen ? { id: chosen.id, label: chosen.label, delivered: delivery === 'read',uncertain:record.effect_state==='unknown', error: record.error ?? null } : null };
 }
 export const choiceSender = 'Пользователь';
 

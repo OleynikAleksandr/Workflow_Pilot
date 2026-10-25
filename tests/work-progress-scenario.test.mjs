@@ -106,7 +106,7 @@ test('the prototype scenario: sidebar and panel show the same projection at ever
     assert.deepEqual(rows.map(row=>row.querySelector('.wp-spin')?'act':row.classList.contains('warn')?'warn':'wait'),value.now.map(item=>item.kind),name);
     assert.deepEqual(rows.map(row=>row.querySelector('.wp-what').textContent),value.now.map(item=>item.name+' '+item.text),name);
     assert.equal(p('progress-history-count').textContent,eventCount(value.history.length),name);
-    if(name==='План готов')assert.match(p('progress-now').textContent,/План ждёт вашей проверки и запуска: нажмите «Начать выполнение плана»/,'a ready plan is a wait for the user, not an empty list');
+    if(name==='План готов')assert.match(p('progress-now').textContent,/План ждёт вашей проверки и запуска\. Нажмите «Начать выполнение плана» слева/,'a ready plan is a wait for the user, not an empty list');
     // The problem block appears only with a problem; the foot stays pinned.
     assert.equal($('plan-attention').hidden,!value.attention,name);
     assert.ok($('plan-foot').contains($('plan-review-toggle')),name);

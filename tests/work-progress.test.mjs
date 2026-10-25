@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {planPhase,buildWorkProgress,commitProgress,commitProgressLabel,eventCount,messageEvent,plural,stageKind,participantName} from '../src/contracts/work-progress.mjs';
+import {planPhase,buildWorkProgress,commitProgress,commitProgressLabel,eventCount,messageEvent,plural,stageKind,participantName,reviewActivity} from '../src/contracts/work-progress.mjs';
 
 test('Russian plural forms of the history count',()=>{
   assert.deepEqual([0,1,2,4,5,11,12,14,21,22,25,34,111].map(eventCount),['0 событий','1 событие','2 события','4 события','5 событий',
@@ -22,7 +22,7 @@ test('stage phases map to action, waiting and attention',()=>{
   for(const phase of ['waiting','waiting-task','question','review','report','accepted','ready','paused','complete'])assert.equal(stageKind(phase),'wait');
   assert.equal(stageKind('attention'),'warn');
   assert.equal(stageKind('waiting',{busy:true}),'act','an answering chat is acting');
-  assert.deepEqual(['O','S','APP','KIT','PLAN','T002'].map(participantName),['Оркестратор','Обсуждение','Приложение','Workflow Kit','План','T002']);
+  assert.deepEqual(['O','S','APP','KIT','PLAN','T002'].map(participantName),['Оркестратор','Агент','Приложение','Workflow Kit','План','Исполнитель T002']);
 });
 
 test('history keeps messages in plain words and hides service mechanics',()=>{
@@ -47,7 +47,7 @@ test('projection orders problems, actions and waits; history is newest first and
     history:Array.from({length:205},(_,i)=>({at:1000+i,actor:'O',text:'событие '+i})),
     attention:{title:'T003 молчит',text:'Ответа нет.',action:{kind:'open-session'}}});
   assert.deepEqual(value.now.map(i=>i.kind),['warn','act','wait']);
-  assert.equal(value.now[1].name,'T002');assert.equal(value.now[2].name,'Оркестратор');
+  assert.equal(value.now[1].name,'Исполнитель T002');assert.equal(value.now[2].name,'Оркестратор');
   assert.equal(value.tasks[1].elapsedMs,1235);assert.deepEqual(value.tasks[1].timers,{workMs:5,waitMs:6});assert.equal(value.tasks[0].timers,null);
   assert.equal(value.history.length,200);assert.equal(value.history[0].text,'событие 204');
   assert.equal(value.attention.action.kind,'open-session');
@@ -75,5 +75,25 @@ test('participants: the user, planning and self-executing sessions have their ow
   const {participantName,roleActor}=await import('../src/contracts/work-progress.mjs');
   assert.equal(participantName('USER'),'Пользователь');
   assert.deepEqual(['orchestrator','planning','self','discussion'].map(roleActor),['O','P','SELF','S']);
-  assert.deepEqual(['O','P','SELF','S'].map(participantName),['Оркестратор','Планирование','Выполняет план','Обсуждение']);
+  assert.deepEqual(['O','P','SELF','S'].map(participantName),['Оркестратор','Агент','Агент','Агент']);
+});
+
+test('one primary reason keeps independent work, exact review stages and durable event identity',()=>{
+  const review={enabled:true,stage:'RUNNING',round:2,runId:'r2',startedAt:'2026-10-25T09:00:00Z'};
+  const activity=reviewActivity(review,Date.parse('2026-10-25T09:00:12Z'));
+  assert.equal(activity.text,'Рецензирование плана · Claude · раунд 2');assert.equal(activity.elapsedMs,12000);
+  assert.equal(activity.key,reviewActivity(review).key);
+  assert.deepEqual(planPhase({review,acting:true}),['Рецензирование плана',true]);
+  assert.match(reviewActivity({...review,stage:'PREPARED'}).text,/Ожидаем начала/);
+  assert.equal(reviewActivity({...review,stage:'PUBLISHED'}),null);
+  const value=buildWorkProgress({now:[activity,{actor:'T001',text:'выполняет задачу',kind:'act'},
+    {actor:'O',text:'ждёт вашего выбора',kind:'warn',stage:'choice',choiceId:'c1'}],
+    history:[{id:'startup:m',at:null,actor:'APP',text:'Контекст подтверждён'},
+      {id:'startup:m',at:null,actor:'APP',text:'Контекст подтверждён'}]});
+  assert.equal(value.primary.choiceId,'c1');assert.equal(value.now.length,3);
+  assert.equal(value.now.find(i=>i.actor==='T001').elapsedMs,null,'no invented elapsed zero');
+  assert.equal(value.history.length,1);assert.equal(value.history[0].at,null);
+  const blocked=buildWorkProgress({...value,attention:{title:'Выполнение приостановлено',text:'MAIN_DIRTY',action:{kind:'open-session'}}});
+  assert.equal(blocked.primary.stage,'attention');assert.equal(blocked.primary.reason,'MAIN_DIRTY');
+  assert.equal(blocked.now.length,3);
 });

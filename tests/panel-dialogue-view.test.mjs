@@ -6,6 +6,19 @@ import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 import {executorStatus} from '../src/control/workflow/execution-projection.mjs';
 import {currentPlanTasks,planActivity,activityClock,assignmentStage} from '../src/contracts/dialogue-view.mjs';
 
+test('preparation delivery names its real recipient and anchors the same message clock after refresh',()=>{
+  const incoming={kind:'recovery',task_id:'T001',service_action:'prepare',recipient_role:'O',message_id:'m1',
+    created_at:'2026-10-25T09:00:00Z',read:false,delivery:'pending'};
+  const input={run:{state:'running'},channel:{sdk:false,incoming}};
+  const stage=planActivity(input);
+  assert.match(stage.label,/Канал оркестратора восстанавливается/);assert.doesNotMatch(stage.label,/SDK первого исполнителя/);
+  assert.equal(stage.recipient,'O');
+  const clock=()=>activityClock({now:()=>0,wallNow:()=>Date.parse('2026-10-25T09:00:20Z')});
+  assert.equal(clock()('p',stage).elapsedMs,20000);assert.equal(clock()('p',stage).elapsedMs,20000);
+  input.channel.incoming={...incoming,kind:'task',service_action:null,recipient_role:'E',delivery:'accepted'};
+  assert.match(planActivity(input).label,/Хост принял сообщение для исполнителя · T001; чтение ещё не подтверждено/);
+});
+
 test('observable plan stages separate transport, processing, integration, cleanup and durable completion',()=>{
   const execution={planView:{tasks:[{status:'done'}]},assignments:[{cleanup:{status:'PENDING'}}]};
   const input={run:{state:'running'},execution};

@@ -3,7 +3,7 @@ import { normalizeChatColors, validateColorChange } from '../../contracts/chat-c
 import { validateParallelSettings } from '../../contracts/parallel-settings.mjs';
 import { queueProjectStatePurge } from '../projects/project-state-cleanup.mjs';
 
-const workflowKeys = ['projectPlanContinuation','reviewCheckpoint','automationCheckpoint','parallelExecutionBook'];
+const workflowKeys = ['projectPlanContinuation','reviewCheckpoint','automationCheckpoint','parallelExecutionBook','executionControl','userChoices'];
 // Settings of 0.4.6 and earlier kept the continuation permissions under their former name.
 const legacyWorkflowKeys = { projectAutoPlan: 'projectPlanContinuation' };
 function preferences(value = {}) {

@@ -7,8 +7,8 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
-import {startupContextState} from '../contracts/startup-view.mjs';
-import {roleActor,buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS} from '../contracts/work-progress.mjs';
+import {startupContextState,startupView} from '../contracts/startup-view.mjs';
+import {roleActor,buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -30,7 +30,7 @@ export function executorDispatchStage(assignment,channel) {
   if(initial?.delivery==='accepted')return {phase:'dispatch',label:'SDK принял задание · чтение не подтверждено'};
   if(initial?.delivery==='claimed')return {phase:'dispatch',label:'SDK отправляет задание · подтверждения нет'};
   if(initial?.delivery==='pending')return {phase:'dispatch',label:'Задание сохранено в Kit · ожидает SDK (не доставлено)'};
-  if(channel?.draft?.phase==='authorized')return {phase:'waiting-channel',label:'Kit разрешил поручение · ожидает SDK'};
+  if(channel?.draft?.phase==='authorized')return {phase:'waiting-channel',label:'Поручение сохранено · ожидаем канал исполнителя'};
   if(['draft','prepared'].includes(channel?.draft?.phase))return {phase:'waiting-task',label:'Поручение подготовлено · авторизация ожидается'};
   return null;
 }
@@ -312,17 +312,8 @@ function planRunView(saved) {
     const run=workflow.executionControl.view(workspace,project.scopeId),view=execution.view(workspace);
     const origin=project.planExecution.execution_origin_session_id,record=origin&&liveRecord({workspace,sessionId:origin});
     const channel=origin&&plugin?.communication.workflow.progress(origin);
-    const activity=planActivity({run:{...run,issue:project.orchestrationIssue},execution:view.scopeId===project.scopeId?view:{},
+    const activity=planActivity({run:{...run,issue:project.orchestrationIssue??run.issue},execution:view.scopeId===project.scopeId?view:{},
       channel,physical:record?.pageState.current?.state});
-    const incoming=channel?.incoming;
-    if(activity.phase==='delivery'&&incoming&&!incoming.read){
-      const suffix=incoming.task_id?' · '+incoming.task_id:'';
-      if(incoming.delivery==='pending'){activity.label='Сообщение сохранено · ожидает SDK'+suffix;
-        activity.reason='Это ещё не доставка. Получатель не подтвердил отправку или чтение.';}
-      else if(incoming.delivery==='claimed')activity.label='SDK отправляет сообщение'+suffix;
-      else if(incoming.delivery==='accepted'){activity.label='SDK принял сообщение'+suffix;
-        activity.reason='Принято хостом, но чтение исполнителем ещё не подтверждено.';}
-    }
     return {workspace,scopeId:project.scopeId,...run,issue:project.orchestrationIssue??run.issue??null,complete:run.state==='complete',
       activity:observeActivity(JSON.stringify([project.projectId,project.scopeId,'plan']),activity)};
   }
@@ -346,26 +337,51 @@ function workProgressView(workspace,fresh=null) {
   const run=planRunView({workspace}),view=execution.view(workspace),scope=run?.scopeId??null;
   const orchestrated=project.planExecution?.execution_strategy==='orchestrated';
   const now=[],history=[];let attention=null;
+  const review=workflow.planReview.viewFor(workspace),reviewWork=reviewActivity(review);
+  const choices=sessions.map(session=>({session,choice:workflow.userChoices.view(session.sessionId)})).filter(item=>item.choice);
+  const offered=choices.filter(item=>item.choice.state==='offered');
+  const choiceCovers=kind=>offered.some(item=>item.choice.kind===kind);
   const warn=(title,text,action=null)=>{attention??={title,text,action};};
   // Startup of orchestrator and discussion chats is shown here, not under the session card.
   const starting=new Set();
   for(const session of sessions){
     const actor=roleActor(session.role);
     // A chat of a closed plan finished its work; its startup is history, not a problem.
-    if(session.closedPlanCommit||session.attempt?.contextTransport!=='panel'||session.attempt.state!=='sent')continue;
+    if(session.attempt?.contextTransport!=='panel')continue;
     const progress=workflow.startupProgress(session.sessionId,session.attempt.requestId);
-    if(progress?.complete)continue;
-    starting.add(session.sessionId);
-    if(progress===null||progress?.error||['rejected','unknown'].includes(progress?.delivery)){
-      warn('Сессия не получила стартовый контекст','Создайте новую сессию через меню проекта.',{kind:'project-menu',workspace});
-      now.push({actor,text:'не получил стартовый контекст',kind:'warn',elapsedMs:0});continue;
+    const record=liveRecord({workspace,sessionId:session.sessionId}),page=record?.pageState.current;
+    const context=startupContextState(record?.controller?.state,progress,session.attempt,
+      {chatUrl:session.chatUrl,currentUrl:page?.documentId?page.state?.url:undefined});
+    if(progress?.complete){
+      const at=Date.parse(progress.completion?.at??'');
+      history.push({id:progress.completion?.id??'startup:'+progress.message_id,at:Number.isFinite(at)?at:null,
+        actor:'APP',text:'Контекст сессии получен и подтверждён',kind:'done'});
+      if(!context.error&&context.launch?.address!=='lost'&&context.launch?.address!=='saved')continue;
     }
-    const text=progress?.read?'читает стартовый контекст · часть '+progress.parts_read+' из '+progress.total_parts:'получает стартовый контекст';
-    const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'startup']),{phase:'startup',label:'',reason:''}).elapsedMs;
+    if(session.closedPlanCommit&&!progress?.complete)continue;
+    starting.add(session.sessionId);
+    const presentation=startupView(context.startup);
+    if(context.error||context.launch?.address==='lost'||context.launch?.address==='conflict'||progress?.error||['rejected','unknown'].includes(progress?.delivery)){
+      warn(presentation.title,presentation.detail,{kind:'open-session',workspace,sessionId:session.sessionId,label:'Открыть чат сессии'});
+      now.push({actor,text:presentation.title,reason:presentation.detail,stage:'startup',kind:'warn',elapsedMs:null});continue;
+    }
+    const text=progress?.complete?'Адрес чата сохранён · текущая страница проверяется':presentation.title;
+    const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'startup']),{phase:presentation.phase,label:'',reason:''}).elapsedMs;
     // A start left unread for long is an abandoned chat, not a running action.
-    if(elapsedMs<=WORK_SILENCE_MS)now.push({actor,text,kind:'act',elapsedMs});
+    if(elapsedMs<=WORK_SILENCE_MS)now.push({actor:progress?.read?actor:'APP',name:progress?.read?undefined:'',text,
+      stage:'startup',kind:progress?.complete?'wait':'act',elapsedMs,key:'startup:'+session.attempt.requestId+':'+presentation.phase});
   }
   const startingNow=now.some(i=>i.kind==='act');
+  for(const {session,choice} of choices){
+    const needed=choice.state==='offered',saved=choice.state==='chosen',saving=choice.state==='saving';
+    if(choice.chosen?.uncertain)warn('Исход выбранного действия требует проверки',choice.chosen.error,
+      {kind:'open-session',workspace,sessionId:session.sessionId,label:'Открыть чат сессии'});
+    now.push({actor:saving?'APP':roleActor(session.role),text:needed?'ждёт вашего выбора':saving?'Сохраняем ваш выбор':saved?'Ваш выбор сохранён · передаём решение агенту':'Результат ожидает вашей проверки',
+      name:saved||saving?'':undefined,stage:needed?'choice':saving?'choice-saving':saved?'choice-saved':'choice-postponed',choiceId:choice.choice_id,
+      key:'choice:'+choice.choice_id+':'+choice.generation,kind:needed?'warn':saving?'act':'wait',elapsedMs:null,
+      recipient:needed?'USER':roleActor(session.role),action:{kind:'open-session',workspace,sessionId:session.sessionId,label:'Открыть запрос'}});
+  }
+  if(reviewWork&&!choiceCovers('review'))now.push(reviewWork);
   // Answers of the orchestrator before a plan and of discussion chats come from their page state.
   for(const session of sessions){
     if(session.closedPlanCommit||starting.has(session.sessionId)||!['orchestrator','planning','self','discussion'].includes(session.role))continue;
@@ -374,8 +390,11 @@ function workProgressView(workspace,fresh=null) {
     if(session.role==='orchestrator'&&(scope||session.orchestratorScopeId)||session.role==='self'&&scope)continue;
     const busy=liveRecord({workspace,sessionId:session.sessionId})?.pageState.current?.state.busy;
     if(typeof busy!=='boolean'||(!busy&&!orchestrator))continue;
+    if(choices.some(item=>item.session.sessionId===session.sessionId)||reviewWork&&session.sessionId===project.planningOwnerSessionId)continue;
     const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'answer']),{phase:busy?'answer':'idle',label:'',reason:''}).elapsedMs;
-    now.push({actor:roleActor(session.role),text:busy?'работает над ответом':'ждёт вашего сообщения',kind:busy?'act':'wait',elapsedMs});
+    const preparingPlan=busy&&!!project.executionMode?.strategy&&session.sessionId===project.planningOwnerSessionId;
+    now.push({actor:roleActor(session.role),text:preparingPlan?'готовит план':busy?'работает над ответом':'ждёт вашего сообщения',
+      stage:preparingPlan?'plan-prepare':busy?'answer':'idle',kind:busy?'act':'wait',elapsedMs});
   }
   const executors=scope?executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope):[];
   const assignments=view.scopeId===scope?view.assignments??[]:[];
@@ -406,9 +425,10 @@ function workProgressView(workspace,fresh=null) {
     if(stuck)warn('Очистка '+(taskId??'назначения')+' не завершена','Откройте чат исполнителя: подтверждение конца его хода завершит очистку.',
       own?.workspace&&own.sessionId?{kind:'open-session',workspace:own.workspace,sessionId:own.sessionId,label:'Открыть чат '+taskId}:null);
   }
-  if(run?.activity&&!['ready'].includes(run.activity.phase)&&!cleanups.length){
-    const activity=run.activity,actor=activity.actor==='Workflow Kit'?'KIT':'O';
-    now.push({actor,text:activity.label,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs});
+  if(run?.activity&&!['ready'].includes(run.activity.phase)&&!cleanups.length&&!(run.reason==='refused'&&choiceCovers('refused'))){
+    const activity=run.activity,actor=({'Workflow Kit':'KIT','План':'PLAN','Канал связи':'APP'})[activity.actor]??'O';
+    now.push({actor,text:activity.label,reason:activity.reason,stage:activity.phase,recipient:activity.recipient,
+      key:activity.key,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs});
   }
   for(const task of tasks.filter(t=>['current','attention'].includes(t.status))){
     const own=executors.find(e=>e.taskId===task.id),kit=kitLabel(task.id);
@@ -428,14 +448,15 @@ function workProgressView(workspace,fresh=null) {
   if(!orchestrated&&view.kitProgress&&!tasks.some(t=>t.id===view.kitProgress.taskId))
     now.push({actor:'KIT',text:commitProgressLabel(view.kitProgress),kind:'act',elapsedMs:Date.now()-view.kitProgress.checkStartedAt});
   if(project.orchestrationIssue)warn('Нужно внимание',project.orchestrationIssue.message??'Оркестратор плана не определён.');
-  if(view.scopeId===scope&&view.error)warn('Нужно внимание',view.error.message);
-  if(['escalation','unknown','refused'].includes(run?.reason))warn(run.reason==='unknown'?'Исход операции неизвестен':run.reason==='refused'?'Kit отказал в назначении':'Оркестратор передал проблему',run.message??'');
+  if(view.scopeId===scope&&view.error&&!(run?.reason==='refused'&&choiceCovers('refused')))warn('Нужно внимание',view.error.message);
+  if(['escalation','unknown','refused','blocked'].includes(run?.reason)&&!(run.reason==='refused'&&choiceCovers('refused')))
+    warn(run.reason==='unknown'?'Исход операции неизвестен':run.reason==='refused'?'Kit отказал в назначении':run.reason==='blocked'?'Выполнение приостановлено':'Оркестратор передал проблему',run.issue?.message??run.message??'');
   const unknown=(view.commands??[]).filter(c=>c.state==='unknown');
   if(unknown.length)warn('Исход команды неизвестен',unknown[0].reason??'Завершение команды не подтверждено.',{kind:'command-issues'});
   // History: finished dialogue messages of the plan from the durable communication journal.
   // The user's choices of this project: offered, chosen, declined or retired cards.
   for(const entry of workflow.userChoices.history(workspace)){
-    const at=Date.parse(entry.at);if(Number.isFinite(at))history.push({at,actor:entry.actor??'APP',text:entry.text,kind:entry.kind==='warn'?'warn':'done'});
+    const at=Date.parse(entry.at);if(Number.isFinite(at))history.push({id:entry.id,at,actor:entry.actor??'APP',text:entry.text,kind:entry.kind==='warn'?'warn':'done'});
   }
   if(scope){
     const titles=Object.fromEntries(source.map(t=>[t.id,t.title]));
@@ -448,7 +469,8 @@ function workProgressView(workspace,fresh=null) {
   const [phase,busy]=planPhase({scope,starting:startingNow,acting:now.some(i=>i.kind==='act'),attention:!!attention,allDone,started,
     complete:!!scope&&(run.complete||project.planView?.state==='awaiting-acceptance'),
     paused:orchestrated&&['paused','pausing'].includes(run?.state),notStarted:run?.state==='not-started',
-    preparing:orchestrated&&view.phase==='preparing',running:run?.state==='running',planning:!!project.planningOwnerSessionId});
+    preparing:orchestrated&&view.phase==='preparing',running:run?.state==='running',planning:!!project.executionMode?.strategy,
+    review,choice:offered.length>0});
   return buildWorkProgress({title:scope?project.scopeTitle||project.objective||scope:'',phase,busy,done,total:tasks.length,
     strategy:project.planExecution?.execution_strategy??(scope?'sequential':null),tasks,now,history,attention});
 }

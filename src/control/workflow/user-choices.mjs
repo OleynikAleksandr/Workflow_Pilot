@@ -48,10 +48,11 @@ export function collectChoiceFacts({ manual = new Map(), projects, project, exec
 // keeps one card per session, and turns a button press into an existing app action and/or
 // an addressed message to the agent. Records survive a backend restart through snapshot().
 export class UserChoices {
-  constructor({ facts, act = async () => {}, deliver = async () => null, receipt = () => null, onChange = () => {},
+  constructor({ facts, act = async () => {}, deliver = async () => null, receipt = () => null, persist = async () => {}, onChange = () => {},
     report = () => {}, now = () => Date.now(), id = randomUUID } = {}) {
-    Object.assign(this, { facts, act, deliver, receipt, onChange, report, now, id });
+    Object.assign(this, { facts, act, deliver, receipt, persist, onChange, report, now, id });
     this.records = new Map(); this.keys = new Map(); this.manual = new Map(); this.pages = new Map(); this.history = [];
+    this.saving=new Set();
   }
   snapshot() {
     return structuredClone({ records: [...this.records.values()], keys: [...this.keys], manual: [...this.manual], history: this.history });
@@ -61,11 +62,16 @@ export class UserChoices {
     this.keys = new Map(Array.isArray(saved.keys) ? saved.keys.filter(e => Array.isArray(e) && e.length === 2) : []);
     this.manual = new Map(Array.isArray(saved.manual) ? saved.manual.filter(e => Array.isArray(e) && typeof e[0] === 'string' && Number.isFinite(e[1])) : []);
     this.history = Array.isArray(saved.history) ? saved.history.slice(-HISTORY_LIMIT) : [];
+    this.saving.clear();
+    for(const record of this.records.values())if(record.state==='chosen'&&!record.message_id){
+      record.effect_state='unknown';record.error='Выбор сохранён, но исход действия до перезапуска не подтверждён. Сверьте состояние проекта и чат; автоматического повтора нет.';
+    }
     this.pages.clear();
   }
   // History lines read «Пользователь → Оркестратор · выбор: «…»» in the window and the panel.
   log(record, kind, text, actor = 'APP') {
-    this.history.push({ at: new Date(this.now()).toISOString(), workspace: record.workspace, session_id: record.session_id, kind, text, actor });
+    record.history_sequence=(record.history_sequence??0)+1;
+    this.history.push({ id:'choice:'+record.choice_id+':'+record.history_sequence,at: new Date(this.now()).toISOString(), workspace: record.workspace, session_id: record.session_id, kind, text, actor });
     if (this.history.length > HISTORY_LIMIT) this.history.splice(0, this.history.length - HISTORY_LIMIT);
   }
   // A cause may be offered when it was never shown, was superseded, or was declined and the
@@ -75,10 +81,16 @@ export class UserChoices {
     if (!seen || seen.state === 'stale') return true;
     return seen.state === 'declined' && seen.turnEnded && PERSISTENT.has(fact.kind);
   }
+  retireRead(record){
+    if(record?.state!=='chosen'||!record.message_id||this.delivery(record)!=='read')return false;
+    record.state='done';record.resolved_at=new Date(this.now()).toISOString();
+    this.log(record,'ok','агент получил сохранённый выбор: «'+(record.options.find(o=>o.id===record.chosen_option)?.label??'')+'»');return true;
+  }
   reconcile() {
     let facts;
     try { facts = this.facts({ manual: this.manual }) ?? []; } catch (error) { this.report(error); return false; }
     let changed = false;
+    for(const record of this.records.values())changed=this.retireRead(record)||changed;
     const best = new Map();
     // The most urgent cause that may still be shown; an answered cause lets the next one through.
     for (const fact of facts) {
@@ -125,12 +137,22 @@ export class UserChoices {
       return choiceView(record);
     }
     // The decision is recorded before any effect: a repeated press can never act twice.
-    Object.assign(record, { state: 'chosen', chosen_option: option.id, chosen_at: new Date(this.now()).toISOString(),
+    const before=structuredClone(record),seen=this.keys.get(record.session_id+'\n'+record.key);
+    this.saving.add(record.choice_id);
+    Object.assign(record, { state: 'chosen', chosen_option: option.id, chosen_at: new Date(this.now()).toISOString(),effect_state:'recorded',
       source: source === 'window' ? 'window' : 'panel', generation: record.generation + 1 });
     this.keys.set(record.session_id + '\n' + record.key, { state: 'chosen' });
+    try{await this.persist();}
+    catch(error){
+      for(const key of Object.keys(record))delete record[key];Object.assign(record,before,{save_error:'Сохранение выбора не подтверждено: '+error.message});
+      this.keys.set(record.session_id+'\n'+record.key,seen);this.saving.delete(record.choice_id);this.onChange();
+      throw fail('USER_CHOICE_SAVE',record.save_error);
+    }finally{this.saving.delete(record.choice_id);}
+    delete record.save_error;
     this.log(record, 'ok', '→ ' + participantName(roleActor(record.role)) + ' · выбор: «' + option.label + '»', 'USER'); this.onChange();
     try {
       if (option.action && option.action !== 'dismiss') await this.act(record, option);
+      record.effect_state='applied';
       if (option.message) record.message_id = (await this.deliver(record, option))?.message_id ?? null;
     } catch (error) {
       record.error = error.message;
@@ -138,6 +160,7 @@ export class UserChoices {
     }
     // An app action without a message is complete at once; a failed one frees the card for the next cause.
     if (!record.message_id || record.error) record.state = 'done';
+    await this.persist();
     this.onChange(); this.reconcile();
     return choiceView(record, this.delivery(record));
   }
@@ -174,11 +197,12 @@ export class UserChoices {
         seen.turnEnded = true; changed = true;
       }
       const record = this.records.get(sessionId);
-      if (record?.state === 'chosen' && (!record.message_id || this.delivery(record) === 'read')) { record.state = 'done'; changed = true; }
+      changed=this.retireRead(record)||changed;
     }
     if (changed) { this.onChange(); this.reconcile(); }
   }
-  view(sessionId) { const record = this.records.get(sessionId); return choiceView(record, this.delivery(record)); }
+  view(sessionId) { const record = this.records.get(sessionId),value=choiceView(record,this.delivery(record));
+    return value&&this.saving.has(record.choice_id)?{...value,state:'saving',chosen:null}:value; }
   pending(sessionId) { const record = this.records.get(sessionId); return !!record && (OPEN.includes(record.state) || record.state === 'chosen'); }
   workspaceHistory(workspace) { return this.history.filter(entry => entry.workspace === workspace); }
   forget(sessionId) {

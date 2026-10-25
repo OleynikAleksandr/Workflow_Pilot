@@ -38,7 +38,7 @@ const waits={
 export function planActivity({run={},execution={},channel,physical}={}) {
   const stage=(phase,label,reason='',actor='Оркестратор')=>({phase,label,reason,actor});
   if(run.state==='complete')return stage('complete','Выполнение завершено — ожидается ваша приёмка','','План');
-  if(run.issue||execution.error)return stage('attention','Требуется внимание',execution.error?.message??'Оркестратор плана не определён.','План');
+  if(run.issue||execution.error)return stage('attention','Требуется внимание',execution.error?.message??run.issue?.message??'Оркестратор плана не определён.','План');
   if(['paused','pausing'].includes(run.state))return stage('paused',run.state==='pausing'?'Выполнение приостанавливается':'Выполнение на паузе',run.message??'Новые назначения и отправки приостановлены.','План');
   if(run.state==='not-started')return stage('ready','План готов к запуску','','План');
   const command=(execution.commands??[]).find(c=>c.blocksIntegration||c.state==='running');
@@ -47,16 +47,26 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     ['UNKNOWN','CONFLICT','CHECKS_FAILED'].includes(execution.integration.status)?'Интеграция требует исправления.':'Ожидаем результат операции Kit.','Workflow Kit');
   const incoming=channel?.incoming,task=incoming?.task_id?' · '+incoming.task_id:'';
   if(incoming){
-    if(['unknown','rejected'].includes(incoming.delivery))return stage('attention','Доставка требует сверки'+task,'Автоматическая повторная отправка запрещена.','Канал связи');
-    if(!incoming.read)return stage('delivery',incoming.delivery==='accepted'?'Ожидаем прочтение сообщения'+task:'Доставка сообщения'+task,
-      waits[incoming.reason]??'Прочтение оркестратором ещё не подтверждено.','Канал связи');
-    if(incoming.handled)return stage('turn-end',incoming.kind==='finalization'?'Завершается итоговый ответ':'Ожидаем завершение ответа'+task,
+    const preparation=incoming.kind==='ready'||incoming.kind==='recovery'&&['prepare',undefined].includes(incoming.service_action);
+    const recipient=incoming.recipient_role??'O',to=recipient==='O'?'оркестратору':'исполнителю'+task;
+    const current=(...args)=>({...stage(...args),recipient,key:'message:'+(incoming.message_id??incoming.kind)+':'+args[0],
+      startedAt:incoming.created_at??null});
+    if(['unknown','rejected'].includes(incoming.delivery))return current('attention','Доставка требует сверки'+task,'Автоматическая повторная отправка запрещена.','Канал связи');
+    if(!incoming.read){
+      const label=preparation&&recipient==='O'
+        ?channel.sdk===false?'Канал оркестратора восстанавливается; запрос'+task+' ещё не доставлен'
+          :'Запрос подготовки'+task+' ожидает доставки оркестратору'
+        :incoming.delivery==='accepted'?'Хост принял сообщение для '+(recipient==='O'?'оркестратора':'исполнителя'+task)+'; чтение ещё не подтверждено'
+          :'Сообщение ожидает доставки '+to;
+      return current('delivery',label,waits[incoming.reason]??'Сохранение сообщения не подтверждает его получение.','Канал связи');
+    }
+    if(incoming.handled)return current('turn-end',incoming.kind==='finalization'?'Завершается итоговый ответ':'Ожидаем завершение ответа'+task,
       'Сообщение обработано; физический конец хода ещё не подтверждён.');
-    if(incoming.kind==='result')return stage('result','Обрабатывает результат'+task,'Результат прочитан; начало конкретной проверки ещё не подтверждено.');
-    if(incoming.kind==='finalization')return stage('final','Готовит итоговый ответ','Итоговый ход начат; очистка и последние квитанции проверяются отдельно.');
-    if(['ready','recovery'].includes(incoming.kind))return stage('prepare','Готовит поручение'+task,'Служебные данные прочитаны оркестратором.');
-    if(incoming.kind==='question')return stage('question','Обрабатывает вопрос исполнителя'+task);
-    return stage('processing','Обрабатывает сообщение'+task);
+    if(incoming.kind==='result')return current('result','Обрабатывает результат'+task,'Результат прочитан; начало конкретной проверки ещё не подтверждено.');
+    if(incoming.kind==='finalization')return current('final','Готовит итоговый ответ','Итоговый ход начат; очистка и последние квитанции проверяются отдельно.');
+    if(preparation)return current('prepare','Готовит поручение'+task,'Служебные данные прочитаны оркестратором.');
+    if(incoming.kind==='question')return current('question','Обрабатывает вопрос исполнителя'+task);
+    return current('processing','Обрабатывает сообщение'+task);
   }
   const tasks=execution.planView?.tasks??[],allDone=tasks.length>0&&tasks.every(t=>t.status==='done');
   if(allDone){
@@ -71,13 +81,15 @@ export function planActivity({run={},execution={},channel,physical}={}) {
 }
 
 // Bounded, local observation time. Restart resets it; it is not model thinking.
-export function activityClock({now=()=>performance.now(),limit=256}={}) {
+export function activityClock({now=()=>performance.now(),wallNow=Date.now,limit=256}={}) {
   const entries=new Map();
   return (key,stage)=>{
-    const stamp=now(),signature=JSON.stringify([stage.phase,stage.label,stage.reason]),old=entries.get(key);
+    const stamp=now(),signature=JSON.stringify([stage.phase,stage.label,stage.reason,stage.key]),old=entries.get(key);
     const since=old?.signature===signature?old.since:stamp;
     entries.delete(key);entries.set(key,{signature,since});
     while(entries.size>limit)entries.delete(entries.keys().next().value);
-    return {...stage,elapsedMs:Math.max(0,stamp-since),clock:'observed-backend-monotonic'};
+    const start=Date.parse(stage.startedAt??'');
+    return {...stage,elapsedMs:Math.max(0,Number.isFinite(start)?wallNow()-start:stamp-since),
+      clock:Number.isFinite(start)?'durable-stage-time':'observed-backend-monotonic'};
   };
 }

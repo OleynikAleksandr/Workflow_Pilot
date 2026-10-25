@@ -14,10 +14,24 @@ export function plural(count,one,few,many) {
 export const eventCount=count=>plural(count,'событие','события','событий');
 
 export function participantName(actor) {
-  return actor==='O'?'Оркестратор':actor==='S'?'Обсуждение':actor==='P'?'Планирование':actor==='SELF'?'Выполняет план':actor==='USER'?'Пользователь'
-    :actor==='APP'?'Приложение':actor==='KIT'?'Workflow Kit':actor==='PLAN'?'План':String(actor??'');
+  return actor==='O'?'Оркестратор':['S','P','SELF'].includes(actor)?'Агент':actor==='USER'?'Пользователь'
+    :actor==='REVIEW'?'Рецензент':actor==='APP'?'Приложение':actor==='KIT'?'Workflow Kit':actor==='PLAN'?'План'
+    :actor?'Исполнитель '+actor:'';
 }
-export const PLAN_READY_TEXT='ждёт вашей проверки и запуска: нажмите «Начать выполнение плана»';
+export const PLAN_READY_TEXT='ждёт вашей проверки и запуска. Нажмите «Начать выполнение плана» слева';
+
+export function reviewActivity(review,now=Date.now()){
+  if(!review?.enabled||['IDLE','PUBLISHED','CANCELLED'].includes(review.stage))return null;
+  const words={RUNNING:'Рецензирование плана · Claude · раунд '+review.round,
+    PREPARED:'Ожидаем начала рецензирования',AUTHOR_PENDING:'Агент рассматривает замечания рецензента',
+    AGREED:'План согласован · ожидаем публикацию',PUBLISHING:'Публикуется согласованный план',
+    NEEDS_USER:'Рецензирование ждёт решения пользователя',STALE:'Рецензирование требует актуализации документов'};
+  const started=Date.parse(review.startedAt??''),kind=review.indicator==='attention'?'warn'
+    :['RUNNING','PUBLISHING','AUTHOR_PENDING'].includes(review.stage)?'act':'wait';
+  return {actor:'REVIEW',name:'',stage:'plan-review',text:words[review.stage]??'Проверяем состояние рецензирования',kind,
+    reason:kind==='warn'?review.message??'':null,elapsedMs:Number.isFinite(started)&&review.stage==='RUNNING'?Math.max(0,now-started):null,
+    key:'review:'+(review.runId??'unknown')+':'+review.round+':'+review.stage};
+}
 
 // Kit 1.9.5 writes this record while commit checks run; older Kit writes nothing.
 export function commitProgress(value) {
@@ -69,7 +83,12 @@ export const roleActor=role=>({orchestrator:'O',planning:'P',self:'SELF'})[role]
 // The plan stage shown at the top of the sidebar card and the panel header: [label, busy].
 // Without a plan: «Подготовка плана» once a session owns planning, otherwise «Ждёт задачи» or «Обсуждение» while a chat answers.
 export function planPhase({scope=null,starting=false,acting=false,complete=false,attention=false,paused=false,allDone=false,started=false,
-  notStarted=false,preparing=false,running=false,planning=false}={}) {
+  notStarted=false,preparing=false,running=false,planning=false,review=null,choice=false}={}) {
+  if(attention&&!complete)return ['Нужно внимание',false];
+  if(choice&&!complete)return ['Ждёт вашего выбора',false];
+  if(review?.enabled&&review.stage==='RUNNING')return ['Рецензирование плана',true];
+  if(review?.enabled&&review.stage==='PREPARED')return ['Ожидает рецензирования',false];
+  if(review?.enabled&&review.stage==='AUTHOR_PENDING')return ['Доработка плана',true];
   if(!scope)return starting?['Подготовка',true]:planning?['Подготовка плана',!!acting]:acting?['Обсуждение',true]:['Ждёт задачи',false];
   if(complete)return ['Ждёт приёмки',false];
   if(attention)return ['Нужно внимание',false];
@@ -84,15 +103,22 @@ const order=item=>WORK_KINDS.indexOf(item.kind);
 // Normalizes the collected facts; times are elapsed milliseconds measured by the backend.
 export function buildWorkProgress({title='',phase='',busy=false,done=0,total=0,strategy=null,tasks=[],now=[],history=[],attention=null,self=null,generatedAt=Date.now()}={}) {
   const current=now.filter(item=>item&&item.text).map(item=>({actor:item.actor,name:item.name??participantName(item.actor),text:String(item.text),
-    kind:WORK_KINDS.includes(item.kind)?item.kind:'act',elapsedMs:Math.max(0,Math.round(item.elapsedMs??0)),key:item.key??item.actor+':'+item.text}))
-    .sort((a,b)=>order(a)-order(b));
-  const events=history.filter(item=>item&&Number.isFinite(item.at)&&item.text)
-    .sort((a,b)=>b.at-a.at).slice(0,WORK_HISTORY_LIMIT)
-    .map(item=>({at:item.at,actor:item.actor,name:item.name??participantName(item.actor),text:item.text,kind:item.kind==='warn'?'warn':'done'}));
+    kind:WORK_KINDS.includes(item.kind)?item.kind:'act',elapsedMs:item.elapsedMs==null?null:Math.max(0,Math.round(item.elapsedMs)),key:item.key??item.actor+':'+item.text,
+    stage:item.stage??null,recipient:item.recipient??null,reason:item.reason??null,choiceId:item.choiceId??null,
+    action:item.action??null,priority:item.priority??(item.stage==='choice'?1:item.kind==='warn'?0:item.kind==='act'?2:3)}))
+    .sort((a,b)=>a.priority-b.priority||order(a)-order(b));
+  const unique=new Map();
+  for(const item of history)if(item&&item.text){const id=item.id??JSON.stringify([item.at,item.actor,item.text]);if(!unique.has(id))unique.set(id,{...item,id});}
+  const events=[...unique.values()].filter(item=>item.at===null||Number.isFinite(item.at))
+    .sort((a,b)=>(b.at??-Infinity)-(a.at??-Infinity)).slice(0,WORK_HISTORY_LIMIT)
+    .map(item=>({id:item.id,at:item.at,actor:item.actor,name:item.name??participantName(item.actor),text:item.text,kind:item.kind==='warn'?'warn':'done'}));
+  const primary=attention?{actor:'APP',name:'',text:attention.title,reason:attention.text??'',action:attention.action??null,
+    key:attention.id??'attention:'+attention.title+':'+(attention.text??''),stage:'attention',kind:'warn',elapsedMs:null}
+    :current[0]??null;
   return {version:1,title,phase,busy:!!busy,done,total,strategy,generatedAt,self,
     tasks:tasks.map(task=>({id:task.id,title:task.title,status:task.status,label:task.label,mode:task.mode??null,
       elapsedMs:task.elapsedMs==null?null:Math.max(0,Math.round(task.elapsedMs)),target:task.target??null,
       // Accumulated work and wait timers of the executor page, shown only in the panel diagnostics.
       timers:task.timers??null})),
-    now:current,history:events,attention:attention?{title:attention.title,text:attention.text??'',action:attention.action??null}:null};
+    now:current,primary,history:events,attention:attention?{title:attention.title,text:attention.text??'',action:attention.action??null}:null};
 }

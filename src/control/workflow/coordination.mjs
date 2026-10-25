@@ -156,6 +156,7 @@ async function withKitLock(operation){
   }
 }
 const userChoices=new UserChoices({facts:choiceFacts,report,
+  persist:()=>saveSettings(),
   async act(record,option){
     if(option.action==='continue')return setPlanExecution(true,record.workspace);
     if(option.action==='transfer')return planningOwners.assign(record.workspace,record.session_id,{transfer:true});
@@ -578,7 +579,7 @@ return Object.freeze({
     refresh:()=>planMonitor.refresh(),invalidate:()=>planMonitor.invalidate(),close:()=>planMonitor.close(),
   }),
   planningOwners:Object.freeze({assign:(...args)=>planningOwners.assign(...args),forget:(...args)=>planningOwners.forget(...args)}),
-  planReview:Object.freeze({view:()=>planReview.view(),setEnabled:input=>planReview.setEnabled(input),
+  planReview:Object.freeze({view:()=>planReview.view(),viewFor:workspace=>planReview.viewFor(workspace),setEnabled:input=>planReview.setEnabled(input),
     refresh:()=>planReview.refresh(),observeSelection:()=>planReview.observeSelection(),dispose:()=>planReview.dispose()}),
   reviewContinuation:Object.freeze({get persistenceError(){return reviewContinuation.persistenceError;},
     get message(){return reviewContinuation.flow.state.message;},

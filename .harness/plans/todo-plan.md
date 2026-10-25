@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1089,
+  "plan_revision": 1093,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -110,7 +110,11 @@
       "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
       "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
       "tests/startup-context.test.mjs",
-      "tests/workspace-session.test.mjs"
+      "tests/workspace-session.test.mjs",
+      "src/contracts/dialogue-view.mjs",
+      "tests/plan-review.test.mjs",
+      "src/control/settings/service.mjs",
+      "tests/settings-workflow-state.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/release-0533-defects.md",
@@ -607,8 +611,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "STATUS",
@@ -630,7 +634,15 @@
         "tests/session-roles.test.mjs",
         "tests/user-choices.test.mjs",
         "tests/user-choice-view.test.mjs",
-        "tests/backend-desktop-model.test.mjs"
+        "tests/backend-desktop-model.test.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "src/control/settings/service.mjs",
+        "tests/settings-workflow-state.test.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -677,7 +689,26 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/contracts/user-choice.mjs",
+        "src/contracts/work-progress.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/settings/service.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/plan-review.mjs",
+        "src/control/workflow/user-choices.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/settings-workflow-state.test.mjs",
+        "tests/user-choices.test.mjs",
+        "tests/work-progress-scenario.test.mjs",
+        "tests/work-progress.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1079,7 +1110,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1089
+Revision: 1093
 
 ## Цель
 
@@ -1128,10 +1159,10 @@ Revision: 1089
   - Файлы: src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, tests/startup-ui.test.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/backend-desktop-model.test.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, tests/startup-context.test.mjs, tests/workspace-session.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: BLOCK
-- [TODO] STATUS: Дать всем клиентам единые роли, стадии и приоритет внимания — Ожидает
-  - Git Commit: [PENDING] fix: дать всем клиентам единые роли, стадии и приоритет внимания
+- [DONE] STATUS: Дать всем клиентам единые роли, стадии и приоритет внимания — Завершено
+  - Git Commit: [DONE] fix: дать всем клиентам единые роли, стадии и приоритет внимания
   - Reference: release-0533-defects / STATUS / implementation
-  - Файлы: src/contracts/work-progress.mjs, src/contracts/user-choice.mjs, src/backend/desktop-model.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/user-choices.mjs, src/control/workflow/plan-review.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/session-roles.test.mjs, tests/user-choices.test.mjs, tests/user-choice-view.test.mjs, tests/backend-desktop-model.test.mjs
+  - Файлы: src/contracts/work-progress.mjs, src/contracts/user-choice.mjs, src/backend/desktop-model.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/user-choices.mjs, src/control/workflow/plan-review.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/session-roles.test.mjs, tests/user-choices.test.mjs, tests/user-choice-view.test.mjs, tests/backend-desktop-model.test.mjs, src/contracts/dialogue-view.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/coordination.mjs, tests/plan-review.test.mjs, tests/panel-dialogue-view.test.mjs, src/control/settings/service.mjs, tests/settings-workflow-state.test.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: PREPARE, STARTUP
 - [TODO] VIEW: Убрать дубли и сделать инструкции читаемыми — Ожидает
