@@ -60,7 +60,7 @@ export async function runReview(root,{maxTurns,timeoutMs}={}, {spawn=nodeSpawn}=
     check(old.stage==='PREPARED','REVIEW_NOT_READY','Сначала review:status и review:prepare; работающий запуск повторять нельзя.');
     checkReviewInputs(root,old);
     const review_history=assertAuthorResponses(root,old);
-    return saveReview(root,{...old,review_history,user_decision:null,stage:'RUNNING',round:old.round+1,launch_id:id(),runner_pid:process.pid,
+    return saveReview(root,{...old,review_history,user_decision:null,stage:'RUNNING',round:old.round+1,launch_id:id(),runner_pid:process.pid,invoked_at:null,
       requested_session_id:old.claude_session_id??old.requested_session_id??id(),started_at:new Date().toISOString(),error:null,notification_handled:false});
   });
   const dir=reviewDirectory(root,s.run_id), prefix='round-'+s.round;
@@ -70,7 +70,7 @@ export async function runReview(root,{maxTurns,timeoutMs}={}, {spawn=nodeSpawn}=
     '--permission-mode','dontAsk','--permission-prompts','none','--strict-mcp-config','--settings','{"disableAllHooks":true}',
     '--disable-slash-commands','--no-chrome',...(maxTurns===undefined?[]:['--max-turns',String(maxTurns)])];
   const metadata={model:REVIEW_MODEL,effort:'high',argv,launch_id:s.launch_id,started_at:s.started_at,request_sha256:hash(request),input_hashes:s.input_hashes,documents:s.documents};
-  const started=Date.now();let exitCode=null, verdict=null, failure=null, result=null, out, err;
+  const started=Date.now();let exitCode=null, verdict=null, failure=null, result=null, out, err,invokedAt=null;
   try {
     atomic(safePath(dir,requestFile),request);
     out=fs.openSync(safePath(dir,resultFile),'wx');err=fs.openSync(safePath(dir,stderrFile),'wx');
@@ -80,6 +80,13 @@ export async function runReview(root,{maxTurns,timeoutMs}={}, {spawn=nodeSpawn}=
       const finish=()=>{clearTimeout(timer);clearTimeout(killTimer);};
       try{child=spawn(command,argv,{cwd:root,stdio:['pipe',out,err],windowsHide:true,shell:false});}
       catch(e){reject(e);return;}
+      child.once('spawn',()=>{
+        invokedAt=new Date().toISOString();
+        // The positive spawn fact survives even if another short Kit operation
+        // owns the lock: the final state below persists it with its original time.
+        try{locked(root,()=>{const latest=readReview(root);
+          if(latest.launch_id===s.launch_id&&latest.stage==='RUNNING')saveReview(root,{...latest,invoked_at:invokedAt});});}catch{}
+      });
       child.once('error',e=>{finish();reject(e);});
       child.once('close',code=>{finish();timedOut?reject(Object.assign(new Error('Claude превысил время ожидания.'),{code:'REVIEW_TIMEOUT'})):resolve(code);});
       child.stdin.on('error',()=>{});
@@ -104,12 +111,14 @@ export async function runReview(root,{maxTurns,timeoutMs}={}, {spawn=nodeSpawn}=
     try{if(!latest.published_scope)checkReviewInputs(root,latest);}catch(e){failure={code:e.code??'REVIEW_STALE',message:e.message};}
     const stage=latest.published_scope?'PUBLISHED':failure?'NEEDS_USER':verdict.verdict==='approved'?'AGREED':'AUTHOR_PENDING';
     atomic(safePath(dir,prefix+'-metadata.json'),json({...metadata,exit_code:exitCode,session_id:result?.session_id,models:Object.keys(result?.modelUsage??{}),duration_ms:Date.now()-started,stage,error:failure}));
-    return saveReview(root,{...latest,stage,runner_pid:null,claude_session_id:result?.session_id===s.requested_session_id?s.requested_session_id:latest.claude_session_id,
+    const ended_at=new Date().toISOString();
+    return saveReview(root,{...latest,stage,runner_pid:null,invoked_at:invokedAt??latest.invoked_at,
+      claude_session_id:result?.session_id===s.requested_session_id?s.requested_session_id:latest.claude_session_id,
       result_file:resultFile,review_file:verdict?prefix+'-review.txt':null,stderr_file:stderrFile,
-      review_history:!failure && verdict?[...s.review_history,{round:s.round,verdict:verdict.verdict,review_file:prefix+'-review.txt',
+      review_history:!failure && verdict?[...s.review_history,{round:s.round,completed_at:ended_at,verdict:verdict.verdict,review_file:prefix+'-review.txt',
         review_sha256:hash(fs.readFileSync(safePath(dir,prefix+'-review.txt'))),plan_digest:s.plan_digest,documents:s.documents,author_response:null}]:s.review_history,
       error:failure,
-      verdict:verdict?.verdict??null,ended_at:new Date().toISOString(),notification_handled:false});
+      verdict:verdict?.verdict??null,ended_at,notification_handled:false});
   });
   if(finished.stage==='PUBLISHED')locked(root,()=>cleanupReview(root,readPlan(root)));
   return {ok:true,...finished,run_directory:dir,next_action:finished.stage==='PUBLISHED'?'План опубликован при Review OFF; продолжайте обычный workflow.':finished.stage==='NEEDS_USER'?'Если получен успешный отзыв, сохраните позицию через review:respond. Выполните review:acknowledge, сообщите проблему и спросите пользователя. Не повторяйте запуск автоматически.':'Прочитайте review_file полностью и сохраните позицию через review:respond, включая approved. Согласованная неизменённая пара — review:publish без нового раунда. Исправления и существенные решения внесите в spec/критерии; затем review:prepare и review:run.'};

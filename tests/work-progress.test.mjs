@@ -1,6 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {planPhase,buildWorkProgress,commitProgress,commitProgressLabel,eventCount,messageEvent,plural,stageKind,participantName,reviewActivity} from '../src/contracts/work-progress.mjs';
+import {planPhase,buildWorkProgress,commitProgress,commitProgressLabel,eventCount,messageEvent,plural,stageKind,participantName,reviewActivity,reviewHistoryEvents} from '../src/contracts/work-progress.mjs';
+
+test('Review history separates request, real process start, feedback, author and publication without inventing legacy times',()=>{
+  const types=['prepared','requested','started','feedback','author','published'];
+  const events=types.map((type,index)=>({id:type,type,round:1,at:new Date(1000+index).toISOString(),verdict:'changes_requested',disposition:'revise'}));
+  const history=reviewHistoryEvents({events:[...events,events[0]],runId:'r',legacyHistory:[{round:1,verdict:'changes_requested'},
+    {round:2,verdict:'approved',review_sha256:'legacy'}]});
+  assert.equal(history.length,7);assert.equal(history.at(-1).at,null);
+  assert.match(history[0].text,/подготовлены/);assert.match(history[1].text,/запуска/);assert.match(history[2].text,/запущен/);
+  assert.match(history[3].text,/замечания/);assert.match(history[4].text,/позицию/);assert.match(history[5].text,/опубликован/);
+  assert.equal(reviewActivity({enabled:true,stage:'PUBLISHED'}),null,'publication keeps history, not an active reviewer');
+});
 
 test('Russian plural forms of the history count',()=>{
   assert.deepEqual([0,1,2,4,5,11,12,14,21,22,25,34,111].map(eventCount),['0 событий','1 событие','2 события','4 события','5 событий',

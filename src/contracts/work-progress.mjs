@@ -21,9 +21,11 @@ export function participantName(actor) {
 export const PLAN_READY_TEXT='ждёт вашей проверки и запуска. Нажмите «Начать выполнение плана» слева';
 
 export function reviewActivity(review,now=Date.now()){
+  if(review?.error)return {actor:'APP',name:'',stage:'plan-review',text:'Не удалось проверить состояние рецензирования',
+    reason:review.error,kind:'warn',elapsedMs:null,key:'review-read-error:'+review.error};
   if(!review?.enabled||['IDLE','PUBLISHED','CANCELLED'].includes(review.stage))return null;
   const words={RUNNING:'Рецензирование плана · Claude · раунд '+review.round,
-    PREPARED:'Ожидаем начала рецензирования',AUTHOR_PENDING:'Агент рассматривает замечания рецензента',
+    PREPARED:'Ожидаем начала рецензирования',AUTHOR_PENDING:(review.authorName??'Агент')+' рассматривает замечания рецензента',
     AGREED:'План согласован · ожидаем публикацию',PUBLISHING:'Публикуется согласованный план',
     NEEDS_USER:'Рецензирование ждёт решения пользователя',STALE:'Рецензирование требует актуализации документов'};
   const started=Date.parse(review.startedAt??''),kind=review.indicator==='attention'?'warn'
@@ -31,6 +33,41 @@ export function reviewActivity(review,now=Date.now()){
   return {actor:'REVIEW',name:'',stage:'plan-review',text:words[review.stage]??'Проверяем состояние рецензирования',kind,
     reason:kind==='warn'?review.message??'':null,elapsedMs:Number.isFinite(started)&&review.stage==='RUNNING'?Math.max(0,now-started):null,
     key:'review:'+(review.runId??'unknown')+':'+review.round+':'+review.stage};
+}
+
+// Only canonical Kit facts become history. Unknown legacy times remain unknown;
+// preparing a pair never pretends that the reviewer process received it.
+export function reviewHistoryEvents(review){
+  const result=[],seen=new Set();
+  const add=(event,text,actor='APP',kind='done')=>{
+    const id='kit-review:'+event.id;if(seen.has(id))return;seen.add(id);
+    const at=Date.parse(event.at??'');
+    result.push({id,at:Number.isFinite(at)?at:null,actor,text,kind});
+  };
+  for(const e of review?.events??[]){
+    const round=Number.isSafeInteger(e.round)?' · раунд '+e.round:'';
+    if(e.type==='preference'&&typeof e.enabled==='boolean')add(e,'Review '+(e.enabled?'включён':'выключен'),e.recipient_session_id?'USER':'APP');
+    if(e.type==='prepared')add(e,'Спецификация и ToDo Plan подготовлены для рецензирования','O');
+    if(e.type==='requested')add(e,'Пара документов передана Workflow Kit для запуска Claude Review'+round,'O');
+    if(e.type==='started')add(e,'Claude Review запущен'+round,'REVIEW');
+    if(e.type==='feedback')add(e,e.verdict==='approved'?'Claude согласовал документы'+round:
+      e.verdict==='changes_requested'?'Получены замечания Claude'+round:'Получен отзыв Claude'+round,'REVIEW');
+    if(e.type==='author')add(e,'сохранил позицию'+round+': '+({accept:'согласен',revise:'доработать документы',needs_user:'нужно решение пользователя'}[e.disposition]??'позиция сохранена'),'O',e.disposition==='needs_user'?'warn':'done');
+    if(e.type==='published')add(e,'Согласованный план опубликован','KIT');
+    if(e.type==='error')add(e,'Рецензирование не завершено; требуется проверка'+round,'APP','warn');
+    if(e.type==='cancelled')add(e,'Рецензирование отменено','APP');
+    if(e.type==='stale')add(e,'Документы изменились; нужно обновить рецензирование','APP','warn');
+  }
+  for(const h of review?.legacyHistory??[]){
+    const prefix='review:'+review.runId;
+    if(!(review.events??[]).some(e=>e.type==='feedback'&&e.round===h.round))
+      add({id:prefix+':legacy-feedback:'+h.round+':'+h.review_sha256,at:h.completed_at},
+        'Сохранённый отзыв Claude · раунд '+h.round+' · '+h.verdict,'REVIEW');
+    const a=h.author_response;
+    if(a&&!(review.events??[]).some(e=>e.type==='author'&&e.round===h.round))
+      add({id:prefix+':legacy-author:'+h.round+':'+a.sha256,at:a.recorded_at},'Сохранена позиция автора · раунд '+h.round,'O');
+  }
+  return result;
 }
 
 // Kit 1.9.5 writes this record while commit checks run; older Kit writes nothing.

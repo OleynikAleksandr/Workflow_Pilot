@@ -25,6 +25,9 @@ import { commitTask } from '@webpilot/workflow-kit/lib/transaction';
 import { measureEventRuntimeBaseline } from './event-runtime-baseline.mjs';
 import {ExecutionFacade,ChatGPTSearchExtension} from '../src/execution/facade.mjs';
 import {verifyCurrentActionsLayout} from './fixtures/current-actions-layout.mjs';
+import {bridge as pluginFixtureBridge,client as pluginFixtureClient,communicationHtml} from './fixtures/plugin-host.mjs';
+import {saveReview,readReview} from '@webpilot/workflow-kit/lib/review-state';
+import {COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/contracts/backend.mjs';
 
 let packetLoads = 0;
 let smokeDataDir;
@@ -733,6 +736,52 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   }
 
   // Restore the fixture input so unrelated context scenarios still start from the original packet.
+  // The real backend projection, Python MCP and complete HTML/SDK remain one
+  // path, even before plan publication. This viewer cannot send model messages.
+  const reviewCleanups=[],reviewPort={after:fn=>reviewCleanups.unshift(fn)},reviewDirectory=path.join(dataDir,'review-panel-proof');
+  await fs.mkdir(reviewDirectory,{recursive:true});
+  try{
+    // This extra fixture transport borrows the running backend's channel;
+    // closing it must not dispose the owner used by the remaining smoke steps.
+    const borrowed=Object.create(plugin);
+    borrowed.communication=new Proxy(plugin.communication,{get(target,key){
+      if(key==='dispose')return ()=>{};
+      const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;
+    }});
+    await pluginFixtureBridge(reviewPort,{directory:reviewDirectory,plugin:borrowed});
+    const reviewClient=await pluginFixtureClient(reviewPort,{directory:reviewDirectory});
+    const reviewMetadata={'openai/session':'smoke-'+store.selected().sessionId,'openai/subject':'smoke'};
+    const panel=await communicationHtml(reviewPort,reviewClient,{hostMetadata:reviewMetadata,messageSupported:false,timerMs:ms=>ms===2000?20:ms});
+    const progressNow=()=>panel.dom.window.document.getElementById('progress-now').textContent;
+    await waitFor(()=>[...plugin.communication.panels.values()].some(p=>p.identity&&p.messageSupported===false),'review viewer binding',snapshot);
+    const record=[...plugin.communication.runs.values()].flatMap(run=>Object.values(run.members).map(member=>({run,member})))
+      .find(({member})=>member.target.local_session_id===store.selected().sessionId);
+    const sdk=[...plugin.communication.panels.entries()].find(([,p])=>p.memberId===record.member.id&&p.runId===record.run.id);
+    const binding={run_id:record.run.id,participant_id:record.member.id,panel_instance_id:sdk[0],metadata:reviewMetadata,
+      permission_generation:record.member.generation,build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
+    const base=readReview(workspace),startedAt=new Date().toISOString();
+    saveReview(workspace,{...base,enabled:true,stage:'RUNNING',run_id:'renderer-review-fixture',launch_id:'round-one',round:1,
+      scope_id:'unpublished-review',recipient_mode:'manual',recipient_session_id:null,runner_pid:process.pid,started_at:startedAt});
+    const immediate=await plugin.communication.sync({...binding,message_supported:false});
+    assert.ok(immediate.work_progress.now.some(item=>item.text.includes('Рецензирование плана · Claude · раунд 1')),
+      'canonical Review is present in the actual sync projection');
+    await waitFor(()=>progressNow().includes('Рецензирование плана · Claude · раунд 1'),'Review reaches the main MCP panel',snapshot);
+    const feedback={round:1,verdict:'changes_requested',review_file:'fixture-feedback.txt',review_sha256:'a'.repeat(64),completed_at:new Date().toISOString()};
+    saveReview(workspace,{...readReview(workspace),stage:'AUTHOR_PENDING',runner_pid:null,review_history:[feedback]});
+    await waitFor(()=>progressNow().includes('рассматривает замечания'),'author stage reaches main panel',snapshot);
+    saveReview(workspace,{...readReview(workspace),stage:'RUNNING',launch_id:'round-two',round:2,runner_pid:process.pid,started_at:new Date().toISOString()});
+    await waitFor(()=>progressNow().includes('Рецензирование плана · Claude · раунд 2'),'second Review round reaches main panel',snapshot);
+    const approved={round:2,verdict:'approved',review_file:'fixture-approved.txt',review_sha256:'c'.repeat(64),completed_at:new Date().toISOString(),
+      author_response:{sha256:'d'.repeat(64),disposition:'accept',recorded_at:new Date().toISOString()}};
+    saveReview(workspace,{...readReview(workspace),stage:'AGREED',runner_pid:null,review_history:[feedback,approved]});
+    await waitFor(()=>progressNow().includes('План согласован'),'agreement reaches main panel',snapshot);
+    saveReview(workspace,{...readReview(workspace),stage:'PUBLISHED',published_scope:'unpublished-review',published_commit:'b'.repeat(40),published_at:new Date().toISOString()});
+    await waitFor(()=>panel.dom.window.document.getElementById('progress-events').textContent.includes('Согласованный план опубликован'),
+      'Review history survives publication in the main MCP panel',snapshot);
+    const text=panel.dom.window.document.getElementById('progress-events').textContent;
+    assert.match(text,/передана Workflow Kit/);assert.match(text,/замечания Claude/);assert.match(text,/Claude согласовал документы · раунд 2/);
+    assert.equal((text.match(/Согласованный план опубликован/g)??[]).length,1);
+  }finally{for(const cleanup of reviewCleanups)await cleanup();}
   if(originalReviewState)await fs.writeFile(reviewStateFile,originalReviewState);else await fs.rm(reviewStateFile);
 
   const planFile = path.join(workspace, '.harness/plans/todo-plan.md');

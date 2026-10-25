@@ -23,9 +23,36 @@ export function reviewDirectory(root, runId) {
 // Call only while holding Kit's short operation lock. The CLI runner never holds it while waiting.
 export function saveReview(root, state) {
   const previous=readReview(root);
+  const events=[...(state.review_events??previous.review_events??[])],now=new Date().toISOString();
+  const record=(type,key,fields={},at=now)=>{
+    const eventId='review:'+state.run_id+':'+type+':'+key;
+    if(!events.some(e=>e.id===eventId))events.push({id:eventId,type,run_id:state.run_id,scope_id:state.scope_id??null,
+      round:state.round??null,at,...fields});
+  };
+  if(state.run_id){
+    if(state.stage==='PREPARED'&&(previous.run_id!==state.run_id||previous.stage!=='PREPARED'||previous.plan_digest!==state.plan_digest))
+      record('prepared',(state.round??0)+':'+state.plan_digest,{plan_digest:state.plan_digest});
+    if(state.stage==='RUNNING'&&state.launch_id&&previous.launch_id!==state.launch_id)
+      record('requested',state.launch_id,{},state.started_at??now);
+    if(state.invoked_at&&state.launch_id&&(previous.invoked_at!==state.invoked_at||previous.launch_id!==state.launch_id))
+      record('started',state.launch_id,{},state.invoked_at);
+    for(const review of state.review_history??[]){
+      const old=(previous.review_history??[]).find(r=>r.round===review.round&&r.review_sha256===review.review_sha256);
+      if(!old&&review.review_file)record('feedback',review.round+':'+review.review_sha256,
+        {round:review.round,verdict:review.verdict},review.completed_at??null);
+      if(review.author_response&&review.author_response.sha256!==old?.author_response?.sha256)
+        record('author',review.round+':'+review.author_response.sha256,
+          {round:review.round,disposition:review.author_response.disposition},review.author_response.recorded_at??null);
+    }
+    if(state.stage==='NEEDS_USER'&&state.error&&(previous.stage!==state.stage||previous.error?.code!==state.error.code))
+      record('error',(state.launch_id??state.round??0)+':'+state.error.code,{code:state.error.code});
+    if(['CANCELLED','STALE'].includes(state.stage)&&previous.stage!==state.stage)record(state.stage.toLowerCase(),state.generation??0);
+    if(state.stage==='PUBLISHED'&&state.published_commit&&previous.published_commit!==state.published_commit)
+      record('published',state.published_commit,{commit:state.published_commit},state.published_at??now);
+  }
   const next = {...state, generation:(state.generation ?? 0)+1,
     ...(state.preference??previous.preference?{preference:state.preference??previous.preference}:{}),
-    ...((state.review_events??previous.review_events)?.length?{review_events:(state.review_events??previous.review_events).slice(-200)}:{})};
+    ...(events.length?{review_events:events.slice(-200)}:{})};
   atomic(safePath(root, REVIEW_STATE), json(next));
   return next;
 }
@@ -117,7 +144,8 @@ export function finishReviewPublication(root, plan, sha) {
     for (const d of s.documents) check(hash(git(root,['show',sha+':'+d.source]).stdout.replace(/\r\n/g,'\n')) === (d.lf_sha256??d.sha256),
       'REVIEW_PUBLICATION', 'Закоммиченная спецификация отличается от одобренной.');
   }
-  saveReview(root,{...s,stage:s.stage==='RUNNING'?'RUNNING':'PUBLISHED',published_scope:plan.scope_id,published_commit:sha,notification_handled:true});
+  saveReview(root,{...s,stage:s.stage==='RUNNING'?'RUNNING':'PUBLISHED',published_scope:plan.scope_id,published_commit:sha,
+    published_at:new Date().toISOString(),notification_handled:true});
 }
 // Runs under task:start's lock, AFTER the plan transition. Cleanup never rolls it back.
 export function cleanupReview(root, plan) {

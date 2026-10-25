@@ -8,7 +8,7 @@ import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntime
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
 import {startupContextState,startupView} from '../contracts/startup-view.mjs';
-import {roleActor,buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity} from '../contracts/work-progress.mjs';
+import {roleActor,participantName,buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity,reviewHistoryEvents} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -337,7 +337,10 @@ function workProgressView(workspace,fresh=null) {
   const run=planRunView({workspace}),view=execution.view(workspace),scope=run?.scopeId??null;
   const orchestrated=project.planExecution?.execution_strategy==='orchestrated';
   const now=[],history=[];let attention=null;
-  const review=workflow.planReview.viewFor(workspace),reviewWork=reviewActivity(review);
+  const review=workflow.planReview.viewFor(workspace);
+  const reviewAuthor=sessions.find(s=>s.sessionId===review.recipientSessionId);
+  const reviewWork=reviewActivity({...review,authorName:reviewAuthor?participantName(roleActor(reviewAuthor.role)):'Агент'});
+  history.push(...reviewHistoryEvents(review));
   const choices=sessions.map(session=>({session,choice:workflow.userChoices.view(session.sessionId)})).filter(item=>item.choice);
   const offered=choices.filter(item=>item.choice.state==='offered');
   const choiceCovers=kind=>offered.some(item=>item.choice.kind===kind);
@@ -390,7 +393,8 @@ function workProgressView(workspace,fresh=null) {
     if(session.role==='orchestrator'&&(scope||session.orchestratorScopeId)||session.role==='self'&&scope)continue;
     const busy=liveRecord({workspace,sessionId:session.sessionId})?.pageState.current?.state.busy;
     if(typeof busy!=='boolean'||(!busy&&!orchestrator))continue;
-    if(choices.some(item=>item.session.sessionId===session.sessionId)||reviewWork&&session.sessionId===project.planningOwnerSessionId)continue;
+    if(choices.some(item=>item.session.sessionId===session.sessionId)||reviewWork
+      &&[project.planningOwnerSessionId,review.recipientSessionId].includes(session.sessionId))continue;
     const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'answer']),{phase:busy?'answer':'idle',label:'',reason:''}).elapsedMs;
     const preparingPlan=busy&&!!project.executionMode?.strategy&&session.sessionId===project.planningOwnerSessionId;
     now.push({actor:roleActor(session.role),text:preparingPlan?'готовит план':busy?'работает над ответом':'ждёт вашего сообщения',

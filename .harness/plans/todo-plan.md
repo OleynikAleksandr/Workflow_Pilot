@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1136,
+  "plan_revision": 1139,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -436,8 +436,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0534-defects",
         "task_id": "REVIEW-VIEW",
@@ -467,7 +467,8 @@
         "tests/chatgpt-plugin.test.mjs",
         "src/control/plugin/communication.mjs",
         "src/execution/files/project-input-watch.mjs",
-        "tests/workflow-channel.test.mjs"
+        "tests/workflow-channel.test.mjs",
+        "tests/electron-smoke.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -478,7 +479,8 @@
         "architecture",
         "kit-upgrade",
         "executor-channel",
-        "codex-tools-live"
+        "codex-tools-live",
+        "electron-smoke"
       ],
       "id": "REVIEW-VIEW",
       "title": "Показать раунды Review и сохранить историю согласования",
@@ -509,7 +511,19 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "REVIEW002/REVIEW003. Воспроизвести полную доставку статуса в основную панель; построить историю по подтверждённым фактам Kit.\nОбъём: src/backend/desktop-model.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/plan-monitor.mjs, src/contracts/work-progress.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, tests/plan-review.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/plugin/communication.mjs, src/execution/files/project-input-watch.mjs, tests/workflow-channel.test.mjs\nКритерии: Основная панель показывает реальную стадию/Claude/раунд своего проекта, затем доработку/повтор/публикацию; причина пропажи активной стадии воспроизведена, не выведена только из CSS sidebar. История содержит подготовку/передачу пары, фактический запуск, отзыв, позицию автора, повторный раунд, согласование и публикацию по отдельным подтверждённым фактам; есть changes_requested/error/cancel. Устойчивые ID/фактическое время исключают дубли; история переживает PUBLISHED/restart/очистку Review. Старым данным даты и события не выдумываются; нет второй подробной ленты в sidebar.\nПроверки: unit-all, kit-check, kit-assignments, chatgpt-plugin, architecture, kit-upgrade, executor-channel, codex-tools-live.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
+      "task_brief": "REVIEW002/REVIEW003. Воспроизвести полную доставку статуса в основную панель; построить историю по подтверждённым фактам Kit.\nОбъём: src/backend/desktop-model.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/plan-monitor.mjs, src/contracts/work-progress.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, tests/plan-review.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/plugin/communication.mjs, src/execution/files/project-input-watch.mjs, tests/workflow-channel.test.mjs\nКритерии: Основная панель показывает реальную стадию/Claude/раунд своего проекта, затем доработку/повтор/публикацию; причина пропажи активной стадии воспроизведена, не выведена только из CSS sidebar. История содержит подготовку/передачу пары, фактический запуск, отзыв, позицию автора, повторный раунд, согласование и публикацию по отдельным подтверждённым фактам; есть changes_requested/error/cancel. Устойчивые ID/фактическое время исключают дубли; история переживает PUBLISHED/restart/очистку Review. Старым данным даты и события не выдумываются; нет второй подробной ленты в sidebar.\nПроверки: unit-all, kit-check, kit-assignments, chatgpt-plugin, architecture, kit-upgrade, executor-channel, codex-tools-live.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать.",
+      "actual_files": [
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+        "packages/workflow-kit/src/lib/claude-review.mjs",
+        "packages/workflow-kit/src/lib/plan-review.mjs",
+        "packages/workflow-kit/src/lib/review-state.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/work-progress.mjs",
+        "src/control/workflow/plan-review.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/work-progress.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -851,7 +865,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1136
+Revision: 1139
 
 ## Цель
 
@@ -895,10 +909,10 @@ Revision: 1136
   - Файлы: src/control/workflow/plan-review.mjs, src/control/workflow/coordination.mjs, src/control/workflow/review-continuation.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, src/control/context/context-session.mjs, src/contracts/plugin-communication.mjs, src/frontend/plugin/launch.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/review-state.mjs, tools/codex-app-server-mcp/plugin.py, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/startup-context.test.mjs, src/backend/desktop-model.mjs, tests/backend-desktop-model.test.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/electron-smoke.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXECUTOR-START
-- [TODO] REVIEW-VIEW: Показать раунды Review и сохранить историю согласования — Ожидает
-  - Git Commit: [PENDING] fix: показать раунды review и сохранить историю согласования
+- [DONE] REVIEW-VIEW: Показать раунды Review и сохранить историю согласования — Завершено
+  - Git Commit: [DONE] fix: показать раунды review и сохранить историю согласования
   - Reference: release-0534-defects / REVIEW-VIEW / implementation
-  - Файлы: src/backend/desktop-model.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/plan-monitor.mjs, src/contracts/work-progress.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, tests/plan-review.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/plugin/communication.mjs, src/execution/files/project-input-watch.mjs, tests/workflow-channel.test.mjs
+  - Файлы: src/backend/desktop-model.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/plan-monitor.mjs, src/contracts/work-progress.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, tests/plan-review.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/plugin/communication.mjs, src/execution/files/project-input-watch.mjs, tests/workflow-channel.test.mjs, tests/electron-smoke.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: UI-EVENTS
 - [TODO] STATUS: Объяснять текущую работу и реальную причину задержки — Ожидает

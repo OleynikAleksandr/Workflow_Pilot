@@ -46,11 +46,23 @@ test('Review UI preference is durable before enqueue and replays its exact recip
 test('progress reads another workspace without leaking the selected review or starting a runner',()=>{
   const client=new PlanReviewClient({selected:()=>({workspace:'/selected'}),supports:()=>true,
     read:()=>({enabled:true,stage:'RUNNING',round:2,run_id:'selected',started_at:new Date().toISOString(),runner_pid:1}),
-    readSnapshot:workspace=>({enabled:true,stage:'PREPARED',round:1,run_id:workspace})});
+    readSnapshot:workspace=>workspace==='/selected'?{enabled:true,stage:'RUNNING',round:2,run_id:'selected',started_at:new Date().toISOString(),runner_pid:1}
+      :{enabled:true,stage:'PREPARED',round:1,run_id:workspace}});
   client.observeSelection();
   assert.equal(client.viewFor('/selected').runId,'selected');
   assert.equal(client.viewFor('/other').runId,'/other');assert.equal(client.viewFor('/other').stage,'PREPARED');
   assert.equal(client.view().stage,'RUNNING');client.dispose();
+});
+
+test('selected progress reads canonical Review even when a watcher notification is lost',()=>{
+  let canonical={enabled:false,stage:'IDLE',generation:1};
+  const client=new PlanReviewClient({selected:()=>({workspace:'/fixture'}),supports:()=>true,
+    read:()=>structuredClone(canonical),readSnapshot:()=>structuredClone(canonical)});
+  try{client.observeSelection();canonical={enabled:true,stage:'RUNNING',generation:2,run_id:'own',round:2,
+    runner_pid:process.pid,started_at:new Date().toISOString()};
+    assert.equal(client.state.stage,'IDLE','no refresh or watcher event was delivered');
+    assert.equal(client.viewFor('/fixture').stage,'RUNNING');assert.equal(client.viewFor('/fixture').round,2);
+  }finally{client.dispose();}
 });
 
 test('explicit session ID through normal prepare and simulated Claude round routes pauses and restart only to its recipient',async t=>{

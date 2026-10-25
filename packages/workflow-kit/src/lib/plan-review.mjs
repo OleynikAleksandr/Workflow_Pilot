@@ -24,10 +24,11 @@ export function respondReview(root, input) {
     const dir=reviewDirectory(root,s.run_id);
     check(fingerprint(dir,review.review_file)===review.review_sha256, 'REVIEW_RESPONSE_STALE', 'Отзыв изменён после получения.');
     const file='round-'+review.round+'-author-'+id().slice(0,8)+'.json';
-    const content=json({round:review.round,review_file:review.review_file,review_sha256:review.review_sha256,
+    const recorded_at=new Date().toISOString();
+    const content=json({round:review.round,recorded_at,review_file:review.review_file,review_sha256:review.review_sha256,
       plan_digest:review.plan_digest,documents:review.documents,disposition:input.disposition,position:input.position.trim()});
     atomic(safePath(dir,file),content);
-    const updated={...review,author_response:{file,sha256:hash(content),disposition:input.disposition}};
+    const updated={...review,author_response:{file,sha256:hash(content),disposition:input.disposition,recorded_at}};
     const overridden=s.user_decision?.action==='publish';
     const stage=overridden?s.stage:input.disposition==='needs_user'?'NEEDS_USER'
       :s.stage==='AGREED' && input.disposition==='revise'?'AUTHOR_PENDING'

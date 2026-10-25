@@ -39,6 +39,7 @@ const respond=(root,disposition='accept',position=authorPosition)=>respondReview
 // A simulated CLI result exercises the actual runner, never a live Claude/ChatGPT session.
 const simulate=(root,verdict=approval,{fail=false}={})=>runReview(root,{}, {spawn:(_command,args,options)=>{
   const child=new EventEmitter();child.stdin=new EventEmitter();child.stdin.end=()=>queueMicrotask(()=>{
+    child.emit('spawn');
     if(!fail)fs.writeSync(options.stdio[1],JSON.stringify({subtype:'success',is_error:false,
       session_id:args[args.indexOf(args.includes('--resume')?'--resume':'--session-id')+1],
       modelUsage:{[REVIEW_MODEL]:{}},structured_output:verdict}));
@@ -47,6 +48,19 @@ const simulate=(root,verdict=approval,{fail=false}={})=>runReview(root,{}, {spaw
 }});
 async function agree(root) {await simulate(root);respond(root);}
 try {
+  {
+    const {root,input}=fixture();setReviewEnabled(root,true);prepareReview(root,input);
+    await simulate(root,{verdict:'changes_requested',summary:'Уточнить критерий',findings:[]});
+    respond(root,'revise','Принимаю замечание: добавляю явную проверку результата в спецификацию до повторного согласования.');
+    write(root,'docs/planning/review.md','# Review fixture\nПроверить оба результата.\n');
+    prepareReview(root,input);await agree(root);publishReview(root);
+    const events=readReview(root).review_events,types=events.map(e=>e.type);
+    for(const type of ['prepared','requested','started','feedback','author'])assert.equal(types.filter(t=>t===type).length,2,type);
+    assert.equal(types.filter(t=>t==='published').length,1);
+    assert.ok(events.every(e=>Number.isFinite(Date.parse(e.at))),'new facts have actual timestamps');
+    assert.equal(new Set(events.map(e=>e.id)).size,events.length);
+    startTask(root,'T001');assert.deepEqual(readReview(root).review_events,events,'history survives removal of all temporary review files');
+  }
   {
     const {root,input}=fixture();setReviewEnabled(root,true);
     const missing=structuredClone(input);delete missing.scope.session_id;

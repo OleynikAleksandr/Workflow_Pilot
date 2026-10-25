@@ -25,6 +25,10 @@ function projection(s,{supported,error=null,activityError=null,published=false}=
   const lock=!supported||error?null:published?LOCK_PUBLISHED:['RUNNING','PUBLISHING'].includes(s?.stage)?LOCK_BUSY:null;
   return {enabled,supported,error,stage:s?.stage??'IDLE',round:s?.round??0,indicator,lock,
     runId:s?.run_id??null,startedAt:s?.started_at??null,
+    recipientSessionId:s?.recipient_session_id??null,events:s?.review_events??[],
+    legacyHistory:(s?.review_history??[]).map(h=>({round:h.round,verdict:h.verdict,review_sha256:h.review_sha256,
+      completed_at:h.completed_at??null,author_response:h.author_response?{sha256:h.author_response.sha256,
+        disposition:h.author_response.disposition,recorded_at:h.author_response.recorded_at??null}:null})),
     message:error||s?.cleanup_error||activityError||(enabled?[s?.round?`Раунд ${s.round}.`:'',messages[s?.stage]??'',s?.error?.message??''].filter(Boolean).join(' '):'')};
 }
 
@@ -111,9 +115,13 @@ export class PlanReviewClient {
     return projection(this.state,{supported:this.supported,error:this.error,activityError:this.activityError??this.preferenceErrors.get(this.workspace),published:this.published(this.workspace)});
   }
   viewFor(workspace){
-    if(workspace===this.workspace)return this.view();
     try{const supported=!!workspace&&this.supports(workspace);
-      return projection(supported?this.readSnapshot(workspace):null,{supported,published:this.published(workspace)});
+      const state=supported?this.readSnapshot(workspace):null;
+      // sync/wait reads the canonical state even if a filesystem notification
+      // was missed. A cached IDLE must not hide a running reviewer in the panel.
+      const same=workspace===this.workspace&&state?.generation===this.state?.generation;
+      return projection(state,{supported,published:this.published(workspace),
+        activityError:(same?this.activityError:null)??this.preferenceErrors.get(workspace)});
     }catch(error){return projection(null,{supported:false,error:error.message});}
   }
   dispose(){this.disposed=true;this.cancel(this.timer);this.timer=null;}
