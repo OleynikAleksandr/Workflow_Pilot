@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1128,
+  "plan_revision": 1129,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -695,7 +695,7 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Сверить контракты реализованных исправлений без объявления невыпущенной версии установленной; сохранить pending и отложенные требования.\nОбъём: docs/planning/release-0534-defects.md, docs/planning/review-instructions-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/orchestrated-execution.md, docs/acceptance/release-0534-defects.md\nКритерии: Все семь замечаний и результаты адресных проверок сопоставлены с кодом/планом; незавершённое не удалено и отсутствие delivery явно указано. Выпущенные модульные документы продолжают честно описывать 0.5.34, невыпущенная работа — spec/план/Git; нет ложного release/PASS по документационному коммиту. Полные инструкции не противоречат role-protocol/startup/MCP/Kit; документы ≤28000 байт. При новом поручении выпуска нужен отдельный delivery-хвост. Шаг 9 прежней приёмки описывает выпущенную 0.5.34; удаление fallback отмечено для следующей версии без стирания прежних фактов. Ограничение HTTP без MCP iframe сохранено.\nПроверки: схема/состав документационного коммита.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
+      "task_brief": "Сверить контракты реализованных исправлений без объявления невыпущенной версии установленной; сохранить pending и отложенные требования.\nОбъём: docs/planning/release-0534-defects.md, docs/planning/review-instructions-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/orchestrated-execution.md, docs/acceptance/release-0534-defects.md, docs/modules/release.md, packages/workflow-kit/README.md\nКритерии: Сверены действующие контракты реализованных семи замечаний и версии 0.5.35, незавершённое и pending живой приёмки сохранены. Полные инструкции role-protocol/startup/MCP/Kit согласованы; документы ≤28000 байт; DOCS до production. Выпущенная приёмка 0.5.34 не переписана как факт нового выпуска; удаление HTTP fallback явно описано.\nПроверки: схема и состав документационного коммита.\nПользователь разрешил реализацию, выпуск 0.5.35 и GitHub публикацию. DOCS предшествует RELEASE; документальный коммит не доказывает сборку, установку или живую приёмку."
     },
     {
       "id": "RELEASE",
@@ -820,7 +820,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1128
+Revision: 1129
 
 ## Цель
 
