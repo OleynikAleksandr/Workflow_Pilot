@@ -1,14 +1,14 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.33, Kit 1.9.9, протокол панели `5`, build `0.5.33-communication-5`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.34, Kit 1.10.0, протокол панели `5`, build `0.5.34-communication-5`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
 Основная панель Workflow Pilot обслуживает стартовый контекст любой локальной сессии и рабочий диалог. PiP-пробник отсутствует.
 
 1. Пользователь создаёт новый обычный Chat. [URL-команда с тикетом](chat-only-startup.md) открывает workflow_pilot_panel без DOM-ввода/вложений. Ответ включает первую часть recovery; агент дочитывает остальные и подтверждает SHA в том же ходе. Iframe/SDK и разрешение плана проверяются отдельно.
-2. Обсуждение, Review и публикация сохраняют прежний путь. Публикация связывает scope с точным `execution_origin_session_id`, но не запускает работу.
-3. Одна кнопка Start разрешает scope. Control/ParallelExecution через Kit создаёт назначения, worktree и Chat-исполнителей в пределах max_workers. Пока E проходит bootstrap, O выбирает задачу/контекст и вызывает prepare с dispatch_when_ready=true. Backend сохраняет явную авторизацию и отправляет неизменяемый пакет после SDK/bind и конца bootstrap, без отдельного ready-хода. Без флага prepare остаётся черновиком. Backend assignment-start сохранён только для прежнего контракта.
+2. До окончательного Review/публикации автор сохраняет полные [подготовленные поручения](prepared-tasks.md) всех обычных задач и DOCS: байты, hash, автор/project/scope и semantic digest. Публикация связывает scope с execution_origin_session_id и не запускает работу.
+3. Одна кнопка Start после preflight разрешает scope. Control/ParallelExecution создаёт настоящие назначения/worktree/Chat E; backend механически связывает и авторизует согласованный пакет, доставляя после SDK/bind/конца bootstrap без нового хода O для сочинения. Старые brief-only планы сохраняют поздний prepare O. Backend assignment-start — только прежний контракт.
 4. Поручения, продолжения, вопросы/решения, интеграции, delivery и итог передаются через канал. Пользователь не переносит run/participant, не открывает панели исполнителей, не вызывает join/Enable и не пишет «продолжай» при обычной технической блокировке.
 
 Панель не создаёт второй scheduler. Kit остаётся источником задач, назначений, проверок и DONE; локальный коммит исполнителя требует проверенной интеграции. [Оркестрация](orchestrated-execution.md) определяет волны и итоговую очистку. URL передаёт только приглашение панели. Правила и identity всех ролей читаются через MCP; прежние Review/legacy сохраняют отдельные контракты. [Роли, рабочий API и приёмка результатов](assignment-dialogue.md) определяют dialogue_version=1. Выбранный маршрут `plugin-v1`/`legacy-dom` сохраняется; ошибки канала не переключают его скрыто на DOM.
@@ -25,7 +25,7 @@ Control резервирует случайное 32-байтовое пригл
 
 ## Разрешение и срок жизни
 
-Start/Continue выдаёт допуск текущему плану. Лимит 30 минут к нему не применяется. Lease SDK — 60 секунд: sync подтверждает её, wait продлевает только ещё действующую lease того же поколения. Истёкшая lease/restart требуют свежего sync; wait не возобновляет допуск. Старая авторизация draft после смены generation/boot требует подтверждения O.
+Start/Continue после свежего preflight выдаёт допуск текущему scope/generation без 30-минутного лимита. SDK lease — 60 секунд. Status/progress/admission используют единый предикат identity/run/member/generation/live lease/message_supported. Исторический handshake и running не означают готовность. При generation-mismatch/lease-expired выполняется один status→sync→wait с epoch/abort/single-flight/backoff; поздний callback не меняет новый binding. Sync подтверждает присутствие, не выдаёт grant и не снимает ручную паузу. Плановый пакет переавторизуется после Continue по свежему допуску, старый draft требует сверки O.
 
 | Событие | Поведение |
 | --- | --- |
@@ -50,7 +50,7 @@ Observer и журнал команд сообщают занятость/чер
 
 Рабочий model API — workflow_assignment_prepare/dispatch/send/yield/status: черновик O без grant, его отправка после готовности, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Yield.reason явно ограничен awaiting_reply/tasks_sent/result_sent/handled. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 
-[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 8: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
+[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 9: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
 
 ## MCP и SDK
 
@@ -92,13 +92,13 @@ WAL в собственном `plugin-communication`: legacy schema 1, workflow 
 
 ### Ход работ в панели
 
-С 0.5.25 основной вид панели одинаков у O, E и S — ход всего плана проекта: шапка (план, этап, «в main N из M», открытый чат); «Сейчас» — строка на каждое текущее действие участника (проблема, действие со спиннером, ожидание) со временем, свои выделены; с 0.5.30 под ней карточка [выбора пользователя](user-choice.md) (`user_choice` в status/sync/wait; `user-choice` доставляется и без разрешения плана); свёрнутая «История» — закончившиеся события, свежие сверху, без механики. `workProgress` (превью без секретов) приходит в `status` (view `panel`), `sync` и `wait`; видимость сырых сообщений и журнала для E и S прежняя. Wait просыпается при смене проекции; завершённый план обновляется редким status. Участник, отсоединённый закрытием плана (ASSIGNMENT_CHANGED/PROJECT_REMOVED, все задачи в main), видит «План закрыт, активных действий нет» без спиннера и опроса. Свёрнутая «Диагностика» — привязка, legacy bind/enable, Stop, SDK, roster, outbox, сообщения, журнал, экспорт и таймеры. Палитра — общие токены sidebar; `data-theme` хоста приоритетнее системной темы. Read-only preview не отмечает read; после удаления проекта допуск отозван, поздние вызовы — PROJECT_REMOVED. [Наблюдаемость](assignment-dialogue-reliability.md#наблюдаемость), [sidebar](desktop.md#ход-работ).
+Основной вид O/E/S — ход проекта: шапка с названием и счётчиком main без дублирующей стадии; одна главная причина/операция и независимые активные участники; [выбор](user-choice.md), свёрнутая история и диагностика. Общий workProgress приходит через status/sync/wait без секретов; права сырых сообщений прежние. Offered оранжевый, сохранённый chosen нейтральный, read переносит его в устойчивую историю. Startup-успех тоже исторический. [Текущие действия](current-actions.md) полностью переносят инструкцию/ID и отделяют таймер; native/HTTP дают то же представление без MCP iframe и без новой модели. В sidebar нет дублей выбора/startup/стадий. Закрытый план не имеет spinner/wait; complete не означает приёмку пользователя. Диагностика сохраняет binding/SDK/Stop/roster/outbox/export, read-only preview не отмечает read. Удалённый проект отзывает допуск, поздний вызов — PROJECT_REMOVED. Темы используют общую палитру, host data-theme приоритетен.
 
 Журнал «Диагностики» — последние 200 событий; экспорт фиксирует through_seq и полноту. Телеметрия идёт пакетами (буфер 64, пакет до 16) отдельно от доставки, с client_time/server_received_at, монотонными длительностями и frontend.gap/diagnostic.gap; она не будит функциональную очередь. Intent ≠ invocation, accepted ≠ read; секреты, raw metadata и аргументы инструментов в spans не входят. [Тайминги и экспорт](dialogue-timing.md).
 
 Ошибки имеют isError/structuredContent.error и префикс PLUGIN_COMMUNICATION_: IDENTITY_REQUIRED, BINDING, VERSION, UNSUPPORTED, STOPPED, ASSIGNMENT_CHANGED, PROJECT_REMOVED, ENROLLMENT/ENROLLMENT_EXPIRED/ENROLLMENT_REVOKED, MODE, CLAIM_DENIED, READ_DENIED, STALE_MESSAGE, CONTEXT, CONFLICT, STORE_*, LIMIT и ошибки входа/курсора. Не маскировать их повторным join/Enable или DOM Send.
 
-Код ошибки сохраняется и при отклонении SDK Promise. Свежий status/sync с complete прекращает wait текущей привязки без Stop; при ошибке ожидания запрашивается status (pause сохраняет Continue, недоступный status — не complete). Поздний ответ проверяется по binding/epoch; recover даёт новую привязку, старый допуск не возобновляется.
+Код ошибки сохраняется при отклонении SDK Promise, включая структурированный STOPPED. При потере кода свежий status различает complete, pause и непригодную lease/generation конкретной панели; недоступный status не означает complete. Разрешённый recovery делает один sync с подтверждённой identity, затем заменяет binding до нового wait. Binding/version/storage/removal останавливают доставку с точной причиной; transient network повторяет безопасные чтения с backoff. Никакого повторного Send или обхода manual Stop; новый mount не оживляется старым callback.
 
 ## Прямое подключение и поставка
 

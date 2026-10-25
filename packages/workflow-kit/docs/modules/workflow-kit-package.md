@@ -1,6 +1,6 @@
 # Workflow Kit — контракт пакета
 
-`@webpilot/workflow-kit` 1.9.3 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
+`@webpilot/workflow-kit` 1.10.0 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
 
 ## Код
 - `index.mjs` — `VERSION`, `WorkflowError`, `getRuntimeRoot()`, `currentPlanView`, `sessionPlanView`, пространства `actions`, `plan`, `sessionPlans`, `recovery`, `installer`. Exports: `.`, `./cli`, `./install`, `./lib/*`, `./schemas/*`, `./templates/*`, `./examples/*`, `./WORKFLOW.md`; bin `workflow`. Экспорты и lib-подпути сохраняются: их импортируют потребители.
@@ -30,6 +30,8 @@
 - `task:update` добавляет files/checks/acceptance; `plan:apply` не меняет статусы и DONE (`MANAGED_FIELDS`, `COMPLETED_TASK_IMMUTABLE`); `config:apply` — полный файл; непустой stack ставит DEVELOPMENT (1.9.7).
 - `project:rename --name` — имя в плане, recovery и путях hooks manifest одним коммитом kit-update; без активной задачи (`TASK_ACTIVE`), ≤ 100 символов (`PROJECT_NAME`); повтор без изменений — без коммита; папку не переименовывает.
 - `repair --dry-run` → `repair_id` → `--apply` (завершить/повторить транзакцию, восстановить проекцию, отложить DOCS) или `--cancel` (отменить неподтверждённую подготовку). Журнал вручную не удалять.
+
+Подготовка новых orchestrated-планов, prepared_task, проверка автора/байтов/digest и совместимость brief-only — [контракт](../../../../docs/modules/prepared-tasks.md). Ролевые правила 9 одинаковы в PLAN/recovery/MCP.
 
 ### Опциональный Review
 `lib/plan-review` и `lib/claude-review`: prepare/run/respond/status/acknowledge/resolve/cancel/publish, gate новых plan:create/scope:create при ON, очистка на task:start. Политика и цикл — один `.harness/runtime/plan-review/state.json`; по умолчанию OFF без зависимости от Claude. Долгий процесс запускается вне operation.lock. Recovery содержит политику, получателя, стадию и инструкции сохранения позиции, не отзывы.
@@ -89,7 +91,8 @@ Prepare требует явного получателя либо manual; respon
 ### Установка и обновление
 - `install --project <abs> [--mode new] [--dry-run]`: new — пустая папка (`FOLDER_NOT_EMPTY`); без Git — `git init -b main`. Создаёт `.harness/kit/**`, `scripts/workflow{,.mjs,.cmd}`, `.harness/workflow.json` (`document_bytes` 28000, `hard_bytes` 180000), NONE-план, Kit-секцию AGENTS, README и OVERVIEW при отсутствии, секции `.gitignore`/`.gitattributes`, SessionStart в `.codex/hooks.json`, git hooks, manifest. Занятые пути не перезаписываются (`INSTALL_CONFLICT`); `--expected-fingerprint` → `PREVIEW_CHANGED`. Нет автора Git (задаётся `--git-name`/`--git-email`) или есть исходные изменения — коммит ждёт `install:commit`. Та же версия — reconnect (hooks, runtime).
 - Runtime: macOS/Linux — Node ≥ 22 из `/opt/homebrew/bin` или `/usr/local/bin`, иначе копия в `.harness/runtime/node`; Windows — `.harness/runtime/node.exe`, MinGit из `WORKFLOW_GIT_HOME` в `.harness/runtime/git` (иначе системный Git).
-- install --update поддерживает upgradeFrom: 1.1.0–1.3.0, 1.4.0–1.4.13, 1.5.0–1.5.6, 1.6.0–1.6.4, 1.7.0–1.7.3, 1.8.0–1.8.2. Неизвестная версия/изменённый owned-файл → UNSUPPORTED_MIGRATION. До записи проверяет plan, Git, identity, index и пути; operation.lock, незавершённая transaction, активное назначение/интеграция запрещают upgrade до записи. Backup — .harness/runtime/kit-upgrade-<id>/. Legacy tracked-пути удаляются только при равенстве HEAD/index/worktree; NONE получает required OVERVIEW. Один kit-update сохраняет активный план. [Контракт](parallel-assignments.md).
+- install --update поддерживает upgradeFrom: 1.1.0–1.3.0, 1.4.0–1.4.13, 1.5.0–1.5.6, 1.6.0–1.6.4, 1.7.0–1.7.3, 1.8.0–1.8.2, 1.9.0–1.9.9. Неизвестная версия/изменённый owned-файл → UNSUPPORTED_MIGRATION. До записи проверяет plan, Git, identity, index и пути; operation.lock, незавершённая transaction, активное назначение/интеграция запрещают upgrade до записи. Backup — .harness/runtime/kit-upgrade-<id>/. Legacy tracked-пути удаляются только при равенстве HEAD/index/worktree; NONE получает required OVERVIEW. Один kit-update сохраняет активный план. [Контракт](parallel-assignments.md).
+- Installer доставляет `.DS_Store` root/nested, сохраняя user sections/manifest и dirty-защиту. Без удаления/untrack/глобального Git. [Границы](../../../../docs/modules/project-compatibility.md).
 - Упразднённые документы и индекс установщик не восстанавливает (миграция документации — отдельная работа); `soft_tokens`/`hard_tokens` принимаются, но не ограничивают.
 - `inspect`, `doctor` ничего не меняют; `remove --dry-run` → `--apply <remove_id>` — только при NONE без транзакции (`ACTIVE_SCOPE`), изменённое сохраняется.
 
@@ -97,7 +100,7 @@ Prepare требует явного получателя либо manual; respon
 `getRuntimeRoot()` — самодостаточный `src/`, потребитель копирует его. Workflow Pilot: worker подготовки — `installer` (`inspectWithDiagnostics`, `install`, `upgradeFrom`), `inspection-inputs`, `common`, `installation-files`, `git`; Доктор проекта — `installation-files`, `common`, `git`, `plan`, `validate`, `transaction`; recovery — CLI проекта (`recover --format packet`), кеш по ключу входов.
 
 ## Решения и запреты
-Одно правило — один источник: Workflow Core — процесс; PROTOTYPE — выполнение задачи; Kit-секция AGENTS — recovery; проектная часть AGENTS — ограничения; Workflow Pilot — транспорт. PLAN/PROTOTYPE/WORKFLOW требуют смысловой декомпозиции без норм строк/файлов/задач. Финальное поручение основной сессии завершает Kit-интеграции и проверку main, не архивирует план и не останавливает предпросмотр. Общий timeout commit/integration — максимум 10 минут и суммы timeout_ms проверок + 60 с; лимит каждой проверки сохраняется.
+Источники: Workflow Core — процесс, PROTOTYPE — выполнение, role-protocol — роли, Workflow Pilot — транспорт. PLAN не задаёт нормативов числа задач/строк/файлов. Итог завершает интеграции и проверку main, не архивирует scope без приёмки. Timeout commit/integration — максимум из 10 минут и суммы timeout_ms проверок + 60 с; лимит каждой проверки сохраняется.
 
 Не возвращать:
 - выбор плана по chat/session, `plan:prepare/bind/adopt`, реестр, базу или облачное хранилище планов, session-router, второй формат recovery, слияние legacy-планов;
@@ -112,5 +115,5 @@ Prepare требует явного получателя либо manual; respon
 - Пользователь: живой ChatGPT, native Windows (`workflow.cmd`, PowerShell-hook, MinGit); fixtures на Mac их не заменяют, для нового приложения не подтверждены.
 
 ## Открыто
-- Поддержка upgradeFrom шире динамического покрытия: проверены синтетические 1.4.13/1.7.1, неизменяемые 1.5.6/1.6.4, Review 1.6.3, parallel handoff после 1.7.0 и donor 1.7.2 NONE/ACTIVE/частично DONE, собственный 1.8.1 с задачей/legacy-сигналами. Политика и разделение циклов — [совместимость](../../../../docs/modules/project-compatibility.md).
+- Динамическое покрытие не равно всему upgradeFrom; фактические consumer fixtures, поддерживаемые старые версии и ограничения — [совместимость](../../../../docs/modules/project-compatibility.md).
 - Hot-swap bridge Workflow Pilot ↔ Kit — только операции current plan, без session-маршрутизации; не реализован.

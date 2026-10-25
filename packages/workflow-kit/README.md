@@ -1,8 +1,8 @@
 # Workflow Kit
 
-Пакет `@webpilot/workflow-kit` версии **1.9.9** внутри репозитория Workflow Pilot. Даёт один текущий план на Git checkout/worktree, проверяемые коммиты задач, подчинённые назначения parallel-плана и полный recovery. Пакет приватный, в npm не публикуется.
+Пакет `@webpilot/workflow-kit` версии **1.10.0** внутри репозитория Workflow Pilot. Даёт один текущий план на Git checkout/worktree, проверяемые коммиты задач, подчинённые назначения parallel-плана и полный recovery. Пакет приватный, в npm не публикуется.
 
-В текущем проекте исходник — **1.9.9**; установленный `.harness/kit` обновляет до него приложение Workflow Pilot штатным обновлением Kit проекта (коммит `chore: обновить Project Workflow Kit`), не installer выпуска. Изменение исходника и коммит плана не заменяют установленную копию автоматически.
+В текущем проекте исходник — **1.10.0**; установленный `.harness/kit` обновляет до него приложение Workflow Pilot штатным обновлением Kit проекта (коммит `chore: обновить Project Workflow Kit`), не installer выпуска. Изменение исходника и коммит плана не заменяют установленную копию автоматически.
 
 ## Требования
 Node.js 22+ и Git; приложение Workflow Pilot использует Node 24.21.0. На Windows установщик кладёт Node в `.harness/runtime` проекта; Git — MinGit приложения или системный.
@@ -23,7 +23,7 @@ node packages/workflow-kit/src/install.mjs --project /absolute/empty/folder --mo
 node packages/workflow-kit/src/install.mjs --project /absolute/project/path --update
 ```
 
-`--dry-run` показывает изменения без записи. Установщик не перезаписывает занятые и изменённые файлы. `--update` поддерживает **1.1.0, 1.2.0, 1.3.0, 1.4.0–1.4.13, 1.5.0–1.5.6, 1.6.0–1.6.4, 1.7.0–1.7.3, 1.8.0–1.8.2, 1.9.0–1.9.3**: backup в .harness/runtime/kit-upgrade-*, текущий план сохраняется, один управляемый коммит. Чужая operation.lock и незавершённая transaction также блокируют upgrade, не сбрасывая состояние. Нужны автор Git (можно --git-name/--git-email), завершённые merge/rebase, отсутствие чужого index и активных назначений/интеграций; иначе отказ до записи. Новая установка без автора или поверх незакоммиченных изменений ждёт install:commit.
+`--dry-run` показывает изменения без записи. Установщик не перезаписывает занятые и изменённые файлы. `--update` поддерживает **1.1.0, 1.2.0, 1.3.0, 1.4.0–1.4.13, 1.5.0–1.5.6, 1.6.0–1.6.4, 1.7.0–1.7.3, 1.8.0–1.8.2, 1.9.0–1.9.9**: backup в .harness/runtime/kit-upgrade-*, текущий план сохраняется, один управляемый коммит. Чужая operation.lock и незавершённая transaction также блокируют upgrade, не сбрасывая состояние. Нужны автор Git (можно --git-name/--git-email), завершённые merge/rebase, отсутствие чужого index и активных назначений/интеграций; иначе отказ до записи. Новая установка без автора или поверх незакоммиченных изменений ждёт install:commit.
 
 ## Работа в проекте
 ```bash
@@ -43,10 +43,16 @@ node packages/workflow-kit/src/install.mjs --project /absolute/project/path --up
 - `docs:commit` фиксирует `.md` вне `.harness/` без плана или между задачами. Каждый изменённый документ ≤ `budget.document_bytes`, по умолчанию 28000 байт UTF-8. Recovery делится на части того же предела: всего ≤ 180000 байт и ≤ 7 частей, без усечения.
 - Закрытие плана (`archive`) и перенос незавершённого (`plan:carryover`) — только по поручению пользователя; прежний план читается из Git, архивных копий нет.
 
+## Подготовленные поручения
+
+Новый orchestrated dialogue_version=1 получает preparation_version=1. До Review/публикации автор явно сохраняет полный task_brief и prepared_task каждой обычной задачи и DOCS; Kit связывает байты/manifest/hash с project/scope/author/semantic task. После Start приложение механически связывает согласованный пакет с фактическим назначением, не сочиняя его; старые brief-only планы не авторизуются задним числом. [Контракт подготовки](../../docs/modules/prepared-tasks.md), [план O](docs/modules/orchestrated-plans.md). Ролевой протокол 9 и PLAN/MCP/startup используют одну последовательность.
+
+Installer добавляет точное `.DS_Store` в managed ignore новых/обновляемых workspace/worktree, сохраняет пользовательские секции. Tracked/реальные изменения продолжают блокировать; глобальный Git и файлы не изменяются ради обхода guard.
+
 ## Review нового плана
 Опциональное согласование spec + to-do plan через Claude CLI перед ACTIVE. По умолчанию OFF, обычным потребителям Claude не нужен. При ON: `review:prepare --help` → `review:run` → `review:respond --input <позиция.json>` → `review:publish`. Позиция обязательна на каждый успешный отзыв, включая approved. Неизменённое согласие не требует лишнего раунда; изменение пары требует нового ревью. Решения для исполнителя сохраняются в spec/критериях до окончательного согласования.
 
-С 1.9.8 режим плана сессии Workflow Pilot выбирает пользователь: агент вызывает `plan:mode-request --session ID --recommended sequential|orchestrated --reason "…"` (это же занимает владельца планирования), приложение записывает нажатие через `plan:mode-choose`; `plan:create`, `scope:create` и `review:prepare` при записи режима или с `execution_origin_session_id` требуют выбор этой сессии и совпадение стратегии (`EXECUTION_MODE_REQUIRED`/`EXECUTION_MODE_MISMATCH`) до любой записи; передача, освобождение владельца и `archive` удаляют запись. Ролевой протокол 8: роли planning и self, правило развилок. С 1.9.7 публикация через Review проверяет задачи как `plan:create`, `config:apply` со стеком ставит DEVELOPMENT, владелец планирования (`planning-owner.json`) отсекает чужую публикацию кодом `PLANNING_OWNED`. С 1.9.6 действует положение переключателя в момент публикации: `REVIEW_REQUIRED` при ON означает пройти ревью, а не просить выключить его. `setReviewEnabled` отказывает `REVIEW_BUSY` во время `RUNNING`/`PUBLISHING` и `REVIEW_LOCKED`, пока план опубликован (execution_scope_status не NONE); выключение на незавершённом ревью переводит его в `CANCELLED`.
+С 1.9.8 режим плана сессии Workflow Pilot выбирает пользователь: агент вызывает `plan:mode-request --session ID --recommended sequential|orchestrated --reason "…"` (это же занимает владельца планирования), приложение записывает нажатие через `plan:mode-choose`; `plan:create`, `scope:create` и `review:prepare` при записи режима или с `execution_origin_session_id` требуют выбор этой сессии и совпадение стратегии (`EXECUTION_MODE_REQUIRED`/`EXECUTION_MODE_MISMATCH`) до любой записи; передача, освобождение владельца и `archive` удаляют запись. Ролевой протокол 9: роли planning и self, правило развилок. С 1.9.7 публикация через Review проверяет задачи как `plan:create`, `config:apply` со стеком ставит DEVELOPMENT, владелец планирования (`planning-owner.json`) отсекает чужую публикацию кодом `PLANNING_OWNED`. С 1.9.6 действует положение переключателя в момент публикации: `REVIEW_REQUIRED` при ON означает пройти ревью, а не просить выключить его. `setReviewEnabled` отказывает `REVIEW_BUSY` во время `RUNNING`/`PUBLISHING` и `REVIEW_LOCKED`, пока план опубликован (execution_scope_status не NONE); выключение на незавершённом ревью переводит его в `CANCELLED`.
 
 Для доставки продолжения Workflow Pilot передаёт явный `recipient_session_id` из стартового сообщения (либо совпадающий `scope.session_id`); вне приложения нужен `recipient_mode: manual`. План по-прежнему один на checkout. Смена адресата — только с `recipient_change_note` по поручению пользователя.
 

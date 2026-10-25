@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Workflow Pilot 0.5.33 — локальные проекты, Workflow Kit 1.9.9 и обычный ChatGPT Chat, собственный MCP-исполнитель и [панель](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
+Workflow Pilot 0.5.34 — локальные проекты, Workflow Kit 1.10.0 и обычный ChatGPT Chat, собственный MCP-исполнитель и [панель](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
 
 Перед первой страницей ChatGPT backend подготавливает [официальное расширение поиска](../modules/chatgpt-search-extension.md) в своей persistent session: проверенная автоматическая загрузка/установка, затем локальный кэш. Новые сессии используют [Chat-only URL-start](../modules/chat-only-startup.md): короткий `q`, сохранённая попытка и отдельные подтверждения регистрации, адреса и контекста. Выбора режима и чтения старых Work-сессий нет. Schema 8 обновляет прежние Chat без смены identity; вход и принадлежность страницы проверяются независимо от переключателя. [Выбор пользователя](../modules/user-choice.md), роли, Kit и SDK-диалог сохраняются. [Живая приёмка](../acceptance/chat-only-startup.md) ChatGPT и native Windows/Linux остаётся NOT_RUN.
 
@@ -20,7 +20,7 @@ Backend — фоновая служба с Control, Execution, Kit, stores, ст
 
 ## Выполнение и диалог
 
-Во время планирования O сохраняет task_brief, после Start читает очередь уже доступных подготовок и авторизует несколько поручений одним ходом. Backend доставляет только явно разрешённый авторский пакет при готовности канала. Итог короткий по умолчанию; подтверждённый complete останавливает wait/sync панели. [Подготовка и завершение](../modules/assignment-dialogue.md).
+До Review/публикации O сохраняет полные task_brief/prepared_task и неизменяемые байты контекста всех обычных задач и DOCS. После Start backend механически связывает согласованный пакет с настоящим assignment/attempt и отдельно авторизует по свежему grant; каждый E получает его по готовности без нового хода O для сочинения. Старые brief-only планы сохраняют поздний prepare. [Авторская подготовка](../modules/prepared-tasks.md), [рабочий диалог](../modules/assignment-dialogue.md).
 
 Одна кнопка Start/Пауза/Continue и Review сохранены. Новые orchestrated-планы имеют dialogue_version=1: O выбирает задачи/контекст, ведёт уточнения и принимает конкретные результаты перед интеграцией. Backend создаёт допустимые назначения, доставляет сообщения и пробуждает агентов; Kit хранит план/proof, WAL — текст/receipts. Автоматического merge по READY в новом режиме нет.
 
@@ -30,7 +30,7 @@ Backend — фоновая служба с Control, Execution, Kit, stores, ст
 
 FIFO учитывает read, коррелированный yield и свежий физический конец хода без обязательного user bubble. Intent → идемпотентный Kit → WAL сохраняет эффект между сбоями. После вопроса следующий ответ не ждёт DONE. Неопределённый Send не повторяется. Закрытие окна сохраняет backend; restart требует одного Continue. Пауза запрещает новые назначения/пробуждения/интеграции, активный ход может сохранить outbox. DOCS/delivery/cleanup/итог и обработанные receipts предшествуют отключению связи.
 
-Терминальная acceptance требует read/yield/физического конца E и подтверждения backend в Kit до удаления worktree. DOCS после проверенных интеграций может запускаться при продолжающемся текстовом ответе O; итог O может обрабатываться до последних acceptance E. Ранняя cleanup остаётся PENDING и автоматически продолжается. Complete требует cleanup DONE, конца итогового O, чистого main и отсутствия команд; restart сохраняет завершение. Sidebar показывает стадию, причину и наблюдаемое время, отличает 3/3 интеграции от complete. После него явно ожидается приёмка пользователя; архив проекта её не заменяет и не предупреждает об остановке уже завершённого плана.
+Терминальная acceptance требует read/yield/физического конца E и подтверждения backend в Kit до удаления worktree. DOCS после проверенных интеграций может запускаться при продолжающемся текстовом ответе O; итог O может обрабатываться до последних acceptance E. Ранняя cleanup остаётся PENDING и автоматически продолжается. Complete требует cleanup DONE, конца итогового O, чистого main и отсутствия команд; restart сохраняет завершение. [Текущие действия](../modules/current-actions.md) показывают одну главную причину, точные роли/стадии/адресатов и независимую работу. В sidebar только нейтральный агент и опубликованный план с одной кнопкой; выбор/startup/таймеры/Review не дублируются. 3/3 интеграции отличаются от complete. После него явно ожидается приёмка пользователя; архив проекта её не заменяет и не предупреждает об остановке уже завершённого плана.
 
 Прогресс backend/SSE отличает **результаты E** (checked source_commit/Kit proof) от **интеграций main** (Kit DONE). `prepared`, `authorized`, сохранённый `pending`, SDK accepted, read и Kit RUNNING показываются как разные факты; `UNKNOWN` не угадывается. Все DONE и `READY_FOR_ACCEPTANCE` показывают ожидание приёмки, даже когда scope ещё ACTIVE. Метка `DOCS checks:[]` означает, что документальный коммит **не выполнял application tests**; их PASS подтверждается записями проверок ранее выполненных задач, а не DOCS.
 
@@ -40,9 +40,12 @@ FIFO учитывает read, коррелированный yield и свежи
 
 В совместимом пути вложений повторная часть получает уникальное имя и распознаётся при допустимом переименовании и замене карточки. Неполный или изменённый пользователем пакет не отправляется. Диагностика различает загрузку, обработку и отсутствие наблюдаемого прогресса без текста файлов. Адресные проверки пройдены; первоначальное плавающее зависание требует живых данных, его устранение пока не заявлено. [Контракт вложений](../modules/browser.md).
 
+MAIN_DIRTY до выдачи даёт paused/blocked и «Продолжить» с безопасными путями. Свежий Continue не повторяет UNKNOWN и не снимает ручной Stop. Installer Kit доставляет общее `.DS_Store` для workspace/worktree, сохраняя пользовательские правила и блокировку настоящих правок. Смена SDK generation/lease восстанавливается единственным status→sync→wait; running и исторический handshake сами по себе не означают живую панель. Сохранённая собственная Chat-привязка не теряется из-за старого lost, чужой документ не признаётся своим. Наблюдатель child receipts при подключении один раз сверяет состояние без постоянного polling.
+
 ## Карта модулей
 
 - [Плагин/канал](../modules/chatgpt-plugin.md), [приёмка A–D](../modules/automatic-agent-dialogue-acceptance.md), [матрица](../modules/chatgpt-plugin-acceptance.md), [legacy P0/P1](../modules/plugin-communication-handoff.md).
+- [Авторские поручения до Start](../modules/prepared-tasks.md), [одно место текущих действий](../modules/current-actions.md), [повторная приёмка D001–D011](../acceptance/release-0534-defects.md).
 - [Тайминги и сокращение ожиданий](../modules/dialogue-timing.md): очередь, Kit, панель, SDK и наблюдаемые стадии без предположений о скрытом рассуждении модели.
 - [Backend](../modules/backend.md), [Desktop](../modules/desktop.md), [встроенное окно](../modules/native-window.md), [Browser](../modules/browser.md), [iPad/Tailscale](../modules/remote-access.md).
 - [Control](../modules/control.md), [workflow coordination](../modules/workflow-execution.md), [оркестрация](../modules/orchestrated-execution.md), [совместимость Kit](../modules/project-compatibility.md), [жизненный цикл проектов](../modules/project-lifecycle.md).

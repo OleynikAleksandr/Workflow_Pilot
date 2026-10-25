@@ -1,6 +1,6 @@
 # План оркестратора
 
-Workflow Kit 1.9.3 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
+Workflow Kit 1.10.0 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
 
 ## План
 
@@ -13,19 +13,19 @@ Workflow Kit 1.9.3 поддерживает `execution_strategy: "orchestrated"`
 
 В упрощённом plan:create общая спецификация orchestrated-плана — read-контекст, не неявная область записи каждого E. DOCS владеет переносом/удалением. Явно общие documentation_paths всё равно запрещают одновременные назначения; legacy parallel сохранён.
 
-Необязательное task_brief — непустая основа поручения O до 12000 байт UTF-8. Сохраняется plan:create/review/plan:apply, включая явно указанную DOCS, входит в digest плана/назначения. Неверный тип и превышение размера отклоняются. Старые задачи без поля совместимы. Это не task grant: после Start O сверяет актуальные факты и авторизует окончательный текст через канал. Child contract сохраняет brief для проверки интеграции, но recovery/bootstrap/status исполнителя его не выводят; статус родительского Kit возвращает поле O. Для DOCS заранее пишутся только стабильные требования, фактические результаты добавляются O после зависимостей.
+Новый dialogue_version=1 имеет preparation_version=1: до Review/публикации обязательны task_brief (полное поручение ≤12000 UTF-8 байт) и явный prepared_task каждой обычной задачи и DOCS. После нормализации Kit сохраняет неизменяемые contexts/source/commit/hash/bytes, project/scope/author и доменно разделённый semantic digest задачи. Потеря байтов/подмена договора или отсутствие подготовки даёт TASK_PREPARATION с task ID; обрезки нет. task:update/plan:extend принимают явную актуализацию подготовки без прежнего digest, DONE не переписываются. [Полный контракт и бюджеты](../../../../docs/modules/prepared-tasks.md). Sequential без E и delivery package/installed этого не требуют.
 
 ## Версия рабочего диалога
 
-Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 8. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
+Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 9. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
 
 Kit хранит grant/attempt/result/acceptance и идемпотентные operation_id через assignment:dialogue. task:start требует grant текущей попытки и plan permission; integration требует acceptance точного result_id/source_commit. Revision создаёт новую попытку до интеграции, сохраняет старые proof и отзывает acceptance. После INTEGRATED нужна новая задача. [Полный контракт](../../../../docs/modules/assignment-dialogue.md).
 
-Prepare O сохраняется в WAL без эффекта Kit; assignment:dialogue-status отдаёт digest требований для связи черновика с контрактом. Dispatch после свежего подтверждения канала проверяет этот digest, scope/assignment/attempt и только затем выдаёт grant. Общий task.context_pack автоматически E не передаётся.
+После Start доверенная внутренняя плановая привязка переносит согласованные body/contexts в настоящий assignment/WAL и авторизует точные attempt/generation при текущем разрешении. Зависимые факты добавляются только по доказанным интеграциям. Backend не сочиняет содержание, публичный prepare не подделывает planned preparation. Перед effect повторно проверяются договор, SDK/binding/physical/grant и pause. Intent→Kit→WAL/idempotency сохраняют один пакет между сбоями; published/UNKNOWN не повторяются.
 
 Plan:permission зеркалирует разрешение backend scope/generation; пауза запрещает новые назначения/task:start/resume/integration, но result/question активного хода можно сохранить. Старые планы сохраняют прежние правила. Миграция 0.5.7 выполняется только штатно при безопасной паузе, без повторной работы и ручной правки managed-файлов.
 
-Prepare с dispatch_when_ready=true хранит явную авторизацию O в WAL; Kit task grant возникает только после актуальной готовности канала. WORKFLOW_LOCKED во время подготовки назначения означает временную занятость единственного writer: сверить состояние и повторить тот же operation/idempotency key после освобождения, не повторяя совершённый эффект.
+Существующие brief-only планы сохраняют поздний prepare(dispatch_when_ready=true)/dispatch(when_ready=true), needs_confirmation после смены поколения и очередь O; чтение/extend не приписывают им готовую подготовку. Согласованный плановый пакет после Continue может переавторизоваться механически по свежему допуску без нового O-хода. WORKFLOW_LOCKED — сверка/ожидание того же operation key, не удаление lock.
 
 ## Выполнение
 
@@ -61,7 +61,7 @@ Prepare с dispatch_when_ready=true хранит явную авторизаци
 - executor — только в worktree назначения: идентичность, Workflow Core, PROTOTYPE, проектная часть AGENTS и собственное состояние. В dialogue_version=1 документы context_pack не прикладываются: O выбирает их для адресной отправки. Legacy сохраняет задачу и её context_pack. Полные документы плана, список docs/planning, Review и решения пользователя не передаются.
 - Без роли — прежний recovery. Для orchestrated-плана в main recovery показывает исполнителей, очистку и заблокированные задачи, а продолжение не предлагает task:start обычных задач.
 
-`.workflow-temp/` входит в управляемую секцию `.gitignore`; install --update дополняет её, ручная правка секции останавливает обновление (`MODIFIED_INTEGRATION`).
+`.workflow-temp/` и точное `.DS_Store` входят в управляемую секцию `.gitignore`; install --update дополняет её, ручная правка секции останавливает обновление (`MODIFIED_INTEGRATION`).
 
 ## Проверки
 
@@ -75,4 +75,4 @@ Prepare с dispatch_when_ready=true хранит явную авторизаци
 
 При существующей записи `plan:create`, `scope:create` и `review:prepare` требуют `execution_origin_session_id` этой сессии, записанный выбор и ту же стратегию, иначе `EXECUTION_MODE_REQUIRED`/`EXECUTION_MODE_MISMATCH` до любой записи, включая `applyConfig`; план с origin всегда требует запись своей сессии (legacy parallel и CLI без origin не затронуты). Выбор попадает в решения пользователя плана. Передача и освобождение владельца, `archive` удаляют запись; recovery показывает запрос и выбор. Kit не отличает вызов приложения от вызова агентом: гарантия — ролевой текст.
 
-Ролевой протокол 8: роли planning (обсуждение, спецификация, запрос режима) и self (sequential-план выполняет сама сессия), правило развилок во всех ролях чатов с пользователем.
+Ролевой протокол 9: роли planning (обсуждение, спецификация, запрос режима) и self (sequential-план выполняет сама сессия), правило развилок во всех ролях чатов с пользователем.

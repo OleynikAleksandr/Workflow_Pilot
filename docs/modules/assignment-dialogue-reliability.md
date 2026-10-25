@@ -1,6 +1,6 @@
 # Надёжность рабочего диалога
 
-Дополнение [контракта O/E](assignment-dialogue.md) для Workflow Pilot 0.5.33 / Kit 1.9.9. Версия рабочего диалога 1 отделена от протокола панели 5 и версии ролей 8. Legacy sequential/parallel, прежний orchestrated без версии и ручной эксперимент не меняются молча.
+Дополнение [контракта O/E](assignment-dialogue.md) для Workflow Pilot 0.5.34 / Kit 1.10.0. Версия рабочего диалога 1 отделена от протокола панели 5 и версии ролей 9. Legacy sequential/parallel, прежний orchestrated без версии и ручной эксперимент не меняются молча.
 
 ## Источники состояния и восстановление операций
 
@@ -8,21 +8,23 @@ Kit хранит задачи, назначения, попытки, блоки�
 
 Порядок изменяющего сообщения: durable intent с payload и единым operation_id → проверяемый идемпотентный эффект Kit → публикация сообщения в WAL → SDK-доставка. До публикации SDK не получает сообщение. Сбой между шагами продолжает тот же ID/receipt. Это журнал согласования двух владельцев, не обещание общей транзакции Git/WAL.
 
-Фазы intent: draft/prepared/authorized/needs_confirmation/deferred/published/failed/retired. Обычный prepare сохраняет черновик; prepare с dispatch_when_ready=true или dispatch с when_ready=true явно разрешает отправку при готовности. Авторизация связана с generation/boot/recipient/assignment/attempt/digest; старое поколение требует needs_confirmation, а не автоматического возобновления. Idempotency связывает автора, scope и ключ. Временный lock/команда удерживает эффект, постоянный отказ остаётся failed, удаление закрывает intent как retired. Prepared/authorized/needs_confirmation/deferred и необработанная доставка удерживают завершение; failed/retired не держат исправленный план навсегда. UNKNOWN не повторяется. Ненужные не начатые ready/recovery того же назначения/попытки гасятся; read требует yield, существующий SDK intent сохраняет фактические квитанции.
+Фазы intent: draft/prepared/authorized/needs_confirmation/deferred/published/failed/retired. Авторизация связана с generation/boot/recipient/assignment/attempt/digest. Для новых [плановых пакетов](prepared-tasks.md) backend связывает согласованный до Review снимок и после Continue может авторизовать его заново по свежему допуску; старый поздний draft требует сверки O. Intent→Kit→WAL и единый operation/idempotency key закрывают разрыв между хранилищами. Временный lock/команда удерживает эффект, постоянный отказ остаётся failed, удаление — retired. Незавершённая подготовка/доставка удерживает complete, failed/retired не держат исправленный план навсегда. Опубликованное и UNKNOWN не отправляются повторно; read требует yield без выдуманных квитанций.
 
 `assignment:dialogue` применяет эффект под блокировками main/назначения; `assignment:dialogue-status` читает состояние. Корреляция сигналов CLI и MCP исключает второй вопрос/ответ. Проверка источника, attempt, block_id, proof, SHA, роли и разрешённых путей не ослабляется ради recovery.
 
 ## Фоновые страницы и запуск
 
-Путь готовности: Start → Kit assignment/worktree → page → DOM-bootstrap → registration → mount/SDK/bind → физический конец bootstrap → разрешённый task O → E. Ни сессия, ни composer, ни регистрация не доказывают живую панель. Сохранённый авторизованный пакет отправляется по готовности без отдельного ready-хода O.
+Путь готовности: Start → Kit assignment/worktree → page → URL-bootstrap → registration → mount/SDK/bind → физический конец bootstrap → разрешённый task O → E. Ни сессия, ни composer, ни регистрация не доказывают живую панель. Сохранённый авторизованный пакет отправляется по готовности без отдельного ready-хода O.
 
-Сразу после назначения recovery с recipient_ref запускает подготовку O параллельно bootstrap E. Небольшой текст включён целиком в read_message, большие части читаются отдельно. Prepare/авторизация не зависят от готовности E; публикация зависит. DOCS создаётся только после проверенных интеграций, но не ждёт конца независимого текстового ответа O. Команда, грязный main, незавершённая интеграция или stale база блокируют setup; Kit проверяет scope/revision/base под единственной блокировкой. WORKFLOW_LOCKED означает повторяемое ожидание, не разрешение удалить lock. Fixture проверяет task.prepared/авторизация < binding.confirmed < message.persisted, отсутствие лишнего ready/dispatch-хода и перекрытие DOCS/O; скорость модели этим не измеряется.
+Для новых планов поручения всех обычных задач и DOCS готовы до Review/Start. После создания назначения backend механически связывает согласованные body/contexts с фактическими assignment/attempt; bootstrap E и binding идут независимо, публикация ждёт свежей готовности. Только существующий brief-only план уведомляет O о поздней подготовке. DOCS создаётся после проверенных интеграций без ожидания конца независимого текстового ответа O. Чистый main, отсутствие команд и свободный writer обязательны; Kit сверяет scope/revision/base под lock. WORKFLOW_LOCKED — ожидание той же операции, не разрешение удалить lock.
 
 ContextSession повторяет только проверку/подготовку до Send при позднем editor: ограниченные попытки, актуальная identity и epoch, без select/show/focus. Sending/sent/unknown не повторяются. Stop, удаление и смена поколения отменяют дальнейшую подготовку; поздний callback не открывает новую работу. Настоящий скрытый Electron fixture проверяет два и пять исполнителей без посещения карточек.
 
 Координатор ограниченно перечитывает снимок Kit/Git при замене плана во время commit/merge, включая промежуточное несовпадение DONE/proof. Активная parent/child operation.lock даёт WORKFLOW_LOCKED; стабильная порча без writer остаётся UNKNOWN. Свежие HEAD/revision/proof сверяются, неподтверждённое DONE не проецируется как выполненное.
 
 Проверка принадлежности участника допускает до трёх новых чтений с паузой 50 мс при временно отсутствующем снимке, ENOENT или ошибке чтения плана/Kit. Старый успешный grant не кешируется как замена проверки; устойчивый отказ остаётся отказом. Kit-операции отдельно ограниченно перечитывают промежуточные ошибки проекции плана.
+
+При generation-mismatch/lease-expired/sdk-unavailable/plan-paused status, progress и admission используют один предикат живой панели. Исторический handshake и running не удостоверяют SDK. Единственный recovery/listen использует epoch/abort/single-flight/backoff: поздний ответ не меняет новый binding, sync не выдаёт grant и не снимает ручную паузу. Binding/version/store/project removal дают точную терминальную причину, transient network — безопасные чтения с backoff. Ошибки не маскируются произвольным NETWORK_ERROR и не повторяют Send.
 
 ## SDK, FIFO и конец хода
 
@@ -54,7 +56,7 @@ Start/Continue разрешает scope и его generation. Backend зерка
 
 В версии диалога 1 пауза запрещает новые назначения, пробуждения и интеграции. Уже принятый хостом ход не отменяется; агент может сохранить вопрос/result в outbox и закончить команды. Пауза не требует ждать бизнес-ответа на уже сохранённую блокировку. Continue восстанавливает актуальное поколение и очередь без повторного задания. Для legacy остаётся прежняя семантика паузы.
 
-Закрытие клиентского окна не отзывает grant, не уничтожает backend-страницы и не останавливает службу. Restart сохраняет назначения, черновики, текст, receipts и proof; незавершённый запуск требует одного общего Continue, завершённый сохраняет complete. Отправленный bootstrap и UNKNOWN не повторяются, черновик не отправляется сам. Если сам хост уничтожил iframe, отсутствие SDK удерживает очередь; это отдельная живая проверка, не основание для DOM fallback.
+Закрытие клиентского окна не отзывает grant, не уничтожает backend-страницы и не останавливает службу. Restart сохраняет назначения, черновики, текст, receipts и proof; незавершённая работа требует общего Continue, complete сохраняется. Плановая подготовка переавторизуется только по свежему разрешению, поздний draft — после сверки O. Отправленный URL-bootstrap и UNKNOWN не повторяются. Если хост уничтожил iframe, новый mount должен подтвердить SDK; DOM fallback не появляется.
 
 Архив/«Убрать из списка»/удаление незавершённого проекта не требуют DONE или чистых worktree. Подтверждённое действие прекращает только собственные операции, отзывает разрешение, закрывает intent и сохраняет запрет позднего восстановления ссылки. При «Убрать из списка» папки сохраняются; удаление с диска проверяет пути и очищает собственные worktree. Соседи, donor, общий backend и чужие процессы не затрагиваются. [Полный контракт удаления](project-lifecycle.md).
 
@@ -78,7 +80,7 @@ Start/Continue разрешает scope и его generation. Backend зерка
 
 ## Проверки и граница доказательств
 
-Ранний task_brief проверяется на roundtrip, размер UTF-8, изменение Review/contract digest и O-only выдачу без нарушения child contract. Сквозной fixture читает две доступные подготовки за один SDK-ход, затем проходит DOCS/cleanup/complete. SDK fixtures сохраняют код STOPPED через isError и JSON-RPC rejection; даже при потере кода завершение определяется свежим status. Проверяются pause→Continue, восстановление нового scope и отсутствие wait/sync после complete.
+Подготовленные task_brief/prepared_task проверяются на roundtrip, UTF-8/размер, неизменность байтов, author/project/scope и Review/semantic digest. Сквозной цикл выдаёт две согласованные задачи без нового O-хода, затем проходит DOCS/cleanup/complete. Старые brief-only планы сохраняют позднюю preparation_queue. SDK fixtures проводят STOPPED через isError/JSON-RPC; при утрате кода свежий status проверяет lease/generation, затем единственный sync. Pause/Stop, новый scope и complete не обходятся.
 
 Автоматические suites используют реальные API Start, Control, Execution adapters, Kit CLI/Git, HTTP Python MCP, staged HTML и SDK; физический ChatGPT, модель и lifecycle-команды заменены на обозначенной границе. Нет рабочих профилей или новых модельных команд.
 

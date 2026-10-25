@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1105,
+  "plan_revision": 1108,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -149,7 +149,12 @@
       "docs/acceptance/interruption-recovery.md",
       "packages/workflow-kit/docs/modules/orchestrated-plans.md",
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
-      "packages/workflow-kit/src/templates/PLAN.md"
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "docs/modules/prepared-tasks.md",
+      "docs/modules/current-actions.md",
+      "docs/acceptance/release-0534-defects.md",
+      "docs/modules/release.md",
+      "packages/workflow-kit/README.md"
     ]
   },
   "baseline_commit": "5f3ed62a14259308042754032a378503d461d0df",
@@ -159,12 +164,12 @@
       {
         "path": "docs/planning/release-0533-defects-execution.md",
         "required": false,
-        "revision": "WORKTREE"
+        "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
       },
       {
         "path": "docs/planning/release-0533-defects-ui.md",
         "required": false,
-        "revision": "WORKTREE"
+        "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -174,7 +179,7 @@
       {
         "path": "docs/planning/release-0533-defects.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
       }
     ],
     "include_last_completed_task": false,
@@ -225,15 +230,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -294,15 +302,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/modules/project-compatibility.md",
@@ -373,15 +384,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/modules/orchestrated-execution.md",
@@ -481,15 +495,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/modules/assignment-dialogue.md",
@@ -589,15 +606,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/modules/chat-only-startup.md",
@@ -675,15 +695,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/modules/user-choice.md",
@@ -787,15 +810,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/modules/desktop.md",
@@ -905,15 +931,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/modules/automatic-agent-dialogue-acceptance.md",
@@ -993,8 +1022,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "DOCS",
@@ -1034,7 +1063,12 @@
         "docs/planning/release-0533-defects.md",
         "docs/planning/release-0533-defects-execution.md",
         "docs/planning/release-0533-defects-ui.md",
-        "packages/workflow-kit/src/templates/PLAN.md"
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/current-actions.md",
+        "docs/acceptance/release-0534-defects.md",
+        "docs/modules/release.md",
+        "packages/workflow-kit/README.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -1052,15 +1086,18 @@
         "documents": [
           {
             "path": "docs/planning/release-0533-defects.md",
-            "required": true
+            "required": true,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": false
+            "required": false,
+            "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -1069,7 +1106,35 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/interruption-recovery.md",
+        "docs/acceptance/release-0534-defects.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/desktop.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/native-window.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/remote-access.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/release-0533-defects-execution.md",
+        "docs/planning/release-0533-defects-ui.md",
+        "docs/planning/release-0533-defects.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "id": "RELEASE",
@@ -1194,7 +1259,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1105
+Revision: 1108
 
 ## Цель
 
@@ -1267,10 +1332,10 @@ Revision: 1105
   - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать контракты и подготовить повторную приёмку
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать контракты и подготовить повторную приёмку
   - Reference: release-0533-defects / DOCS / implementation
-  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/orchestrator-startup.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/acceptance/interruption-recovery.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/release-0533-defects.md, docs/planning/release-0533-defects-execution.md, docs/planning/release-0533-defects-ui.md, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/orchestrator-startup.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/acceptance/interruption-recovery.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/release-0533-defects.md, docs/planning/release-0533-defects-execution.md, docs/planning/release-0533-defects-ui.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/prepared-tasks.md, docs/modules/current-actions.md, docs/acceptance/release-0534-defects.md, docs/modules/release.md, packages/workflow-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHANNEL, GIT, BLOCK, PREPARE, STARTUP, STATUS, VIEW, PROOF, VERSION
 - [TODO] RELEASE: Собрать и проверить релиз macOS Windows Linux — Ожидает
