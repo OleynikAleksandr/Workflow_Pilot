@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1070,
+  "plan_revision": 1071,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -749,6 +749,13 @@
         "role": "implementation"
       },
       "dependencies": [
+        "CHANNEL",
+        "GIT",
+        "BLOCK",
+        "PREPARE",
+        "STARTUP",
+        "STATUS",
+        "VIEW",
         "PROOF"
       ],
       "functional_paths": [],
@@ -777,7 +784,7 @@
       ],
       "verification_ids": [],
       "id": "DOCS",
-      "title": "Актуализировать контракты и подготовить повторную приёмку",
+      "title": "Актуализация всех документов проекта",
       "why": "После проверенных исправлений сверить README/OVERVIEW и затронутые module contracts, Kit docs и acceptance. Действующие release-документы описывают последний выпуск, невыпущенное остаётся в planning/Git до отдельно разрешённого delivery. Не удалять незавершённые требования и не считать DOCS checks:[] запуском app suite. Ничего не публиковать и не архивировать без отдельного поручения.",
       "acceptance_criteria": [
         "Сверены все действующие модули, role-protocol/startup/MCP/шаблоны; фактические ограничения и NOT_RUN сохранены.",
@@ -817,6 +824,11 @@
       "id": "4c654c18-6b0d-4b8b-bbcd-1c1b29d3728c",
       "text": "25.10.2026 пользователь поручил перенести все исправления и замечания из трёх Desktop-журналов в спецификацию и новый to-do. Предыдущий scope закрыт. В текущем поручении подготовить и согласовать план; реализацию не начинать.",
       "recorded_at": "2026-10-25T07:16:59.186Z"
+    },
+    {
+      "id": "delivery-2026-10-25",
+      "text": "Пользователь поручил добавить выпуск для macOS Windows Linux, установку на этот Mac и GitHub публикацию; выполнить весь план без пауз.",
+      "recorded_at": "2026-10-25T07:36:00.513Z"
     }
   ],
   "parallel_allowed": false,
@@ -833,7 +845,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1070
+Revision: 1071
 
 ## Цель
 
@@ -900,12 +912,12 @@ Revision: 1070
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/plugin-host.mjs, tests/work-progress-scenario.test.mjs, tests/backend-api.test.mjs, tests/execution-control.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: VIEW
-- [TODO] DOCS: Актуализировать контракты и подготовить повторную приёмку — Ожидает
+- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать контракты и подготовить повторную приёмку
   - Reference: release-0533-defects / DOCS / implementation
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/orchestrator-startup.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/acceptance/interruption-recovery.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/release-0533-defects.md, docs/planning/release-0533-defects-execution.md, docs/planning/release-0533-defects-ui.md
   - Параллельность: исключительное выполнение
-  - Зависимости: PROOF
+  - Зависимости: CHANNEL, GIT, BLOCK, PREPARE, STARTUP, STATUS, VIEW, PROOF
 
 ## Context Pack For This Cycle
 
