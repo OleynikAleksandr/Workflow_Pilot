@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1108,
+  "plan_revision": 1110,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -1158,14 +1158,17 @@
         "Перед каждой production-командой Python caches безопасно очищены; подпись и состав проверены без ослабления."
       ],
       "expected_commit_message": "build: собрать полный выпуск 0.5.34",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "RELEASE",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL",
@@ -1259,7 +1262,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1108
+Revision: 1110
 
 ## Цель
 
@@ -1338,8 +1341,8 @@ Revision: 1108
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/orchestrator-startup.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/acceptance/interruption-recovery.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/release-0533-defects.md, docs/planning/release-0533-defects-execution.md, docs/planning/release-0533-defects-ui.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/prepared-tasks.md, docs/modules/current-actions.md, docs/acceptance/release-0534-defects.md, docs/modules/release.md, packages/workflow-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHANNEL, GIT, BLOCK, PREPARE, STARTUP, STATUS, VIEW, PROOF, VERSION
-- [TODO] RELEASE: Собрать и проверить релиз macOS Windows Linux — Ожидает
-  - Git Commit: [PENDING] build: собрать полный выпуск 0.5.34
+- [DONE] RELEASE: Собрать и проверить релиз macOS Windows Linux — Завершено
+  - Git Commit: [DONE] build: собрать полный выпуск 0.5.34
   - Reference: release-0533-defects / RELEASE / implementation
   - Файлы: release-manifest.json, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
