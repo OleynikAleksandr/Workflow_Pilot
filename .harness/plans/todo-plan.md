@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1124,
+  "plan_revision": 1125,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -75,7 +75,15 @@
       "src/contracts/dialogue-view.mjs",
       "src/frontend/desktop/ui/current-actions.mjs",
       "tests/fixtures/current-actions-layout.mjs",
-      "tests/backend-api.test.mjs"
+      "tests/backend-api.test.mjs",
+      "package.json",
+      "package-lock.json",
+      "packages/workflow-kit/package.json",
+      "packages/workflow-kit/src/lib/common.mjs",
+      "src/contracts/backend.mjs",
+      "tests/codex-app-server-mcp.test.mjs",
+      "tests/migration-compatibility.test.mjs",
+      "release-manifest.json"
     ],
     "documentation_paths": [
       "docs/planning/release-0534-defects.md",
@@ -104,12 +112,12 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/release-0534-defects.md",
+        "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "WORKTREE"
       },
       {
-        "path": "docs/architecture/OVERVIEW.md",
+        "path": "docs/planning/release-0534-defects.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -570,6 +578,47 @@
       "task_brief": "Регрессия всех UI001/REVIEW001–003/EXEC001–002/STATUS001 через API/MCP/SDK/Kit/Git/Electron, без моделей и живых проектов. Найденный дефект продукта получает отдельную штатную задачу до DOCS; scope тестовой задачи не расширяется молча.\nОбъём: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/plan-review.test.mjs, tests/backend-api.test.mjs, tests/electron-smoke.mjs, tests/web-client-electron.test.mjs, tests/fixtures/current-actions-layout.mjs\nКритерии: Связный fixture начинается до публикации: OFF→ON→read события→выбор без user bubble→два Review→публикация→один Start→задержка регистрации 2E→task/read→result→O read/acceptance→интеграции→зависимая задача→DOCS→cleanup/complete. Fault injection вокруг WAL/intent/SDK/read, rapid toggle, stale identity/attempt, pause/Stop/UNKNOWN и повторные callbacks сохраняют один эффект и изоляцию соседей. Каждый из семи дефектов имеет доказательство; полный набор Kit включает обе части. Настоящий ChatGPT/macOS/native Windows/Linux остаётся NOT_RUN до пользователя.\nПроверки: unit-all, kit-check, kit-assignments, architecture, chatgpt-plugin, electron-smoke, executor-channel, codex-tools-live, kit-upgrade.\nДействовать по общей спецификации. Не изменять продукт до отдельного поручения реализации. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
     },
     {
+      "id": "VERSION",
+      "title": "Подготовить версии приложения, Kit и панели для 0.5.35",
+      "why": "Согласованный выпуск новых контрактов и immutable панели до DOCS/build.",
+      "dependencies": [
+        "PROOF"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "src/contracts/backend.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/migration-compatibility.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/release-0534-defects.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "kit-check",
+        "kit-assignments",
+        "executor-channel",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "App 0.5.35, новая версия Kit/ролевых инструкций, package locks и panel build согласованы; fixtures и upgrade проходят.",
+        "Нет зависимости от старого iframe; публичные версии/контракты проверены до DOCS."
+      ],
+      "expected_commit_message": "chore: подготовить выпуск 0.5.35",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "release-0534-defects",
+        "task_id": "VERSION",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -584,7 +633,8 @@
         "UI-EVENTS",
         "REVIEW-VIEW",
         "STATUS",
-        "PROOF"
+        "PROOF",
+        "VERSION"
       ],
       "functional_paths": [],
       "documentation_paths": [
@@ -627,6 +677,101 @@
         "dependency_task_ids": []
       },
       "task_brief": "Сверить контракты реализованных исправлений без объявления невыпущенной версии установленной; сохранить pending и отложенные требования.\nОбъём: docs/planning/release-0534-defects.md, docs/planning/review-instructions-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/orchestrated-execution.md, docs/acceptance/release-0534-defects.md\nКритерии: Все семь замечаний и результаты адресных проверок сопоставлены с кодом/планом; незавершённое не удалено и отсутствие delivery явно указано. Выпущенные модульные документы продолжают честно описывать 0.5.34, невыпущенная работа — spec/план/Git; нет ложного release/PASS по документационному коммиту. Полные инструкции не противоречат role-protocol/startup/MCP/Kit; документы ≤28000 байт. При новом поручении выпуска нужен отдельный delivery-хвост. Шаг 9 прежней приёмки описывает выпущенную 0.5.34; удаление fallback отмечено для следующей версии без стирания прежних фактов. Ограничение HTTP без MCP iframe сохранено.\nПроверки: схема/состав документационного коммита.\nДействовать по общей спецификации. Не изменять продукт до отдельного поручения реализации. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
+    },
+    {
+      "id": "RELEASE",
+      "title": "Собрать и проверить релиз macOS Windows Linux",
+      "why": "Собрать и проверить релиз macOS Windows Linux",
+      "dependencies": [
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/release-0534-defects.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три платформы и все семь assets из одного sourceCommit проверены; manifest и Downloads согласованы.",
+        "Перед каждой production-командой Python caches безопасно очищены; подпись и состав проверены без ослабления."
+      ],
+      "expected_commit_message": "build: собрать полный выпуск 0.5.35",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "release-0534-defects",
+        "task_id": "RELEASE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL",
+      "title": "Установить проверенный выпуск на этот Mac",
+      "why": "Установить проверенный выпуск на этот Mac",
+      "dependencies": [
+        "RELEASE",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/release-0534-defects.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Готовый bundle из проверенного комплекта доставлен в проект и /Applications с manifest/signature/rollback; installed или подтверждённый pending.",
+        "Нет пересборки, переподписи, закрытия приложения или остановки действующей службы."
+      ],
+      "expected_commit_message": "delivery: установить проверенный выпуск 0.5.35",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "release-0534-defects",
+        "task_id": "INSTALL",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH",
+      "title": "Опубликовать полный выпуск на GitHub",
+      "why": "Опубликовать полный выпуск на GitHub",
+      "dependencies": [
+        "INSTALL",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/release-0534-defects.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Собственный GitHub Release v0.5.35 published, семь assets проверены по size/digest, tag на manifest.sourceCommit, main актуален.",
+        "Неизменный комплект, ограничения live/native приёмки отражены; итог по всем задачам."
+      ],
+      "expected_commit_message": "release: опубликовать полный комплект 0.5.35",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "release-0534-defects",
+        "task_id": "PUBLISH",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -651,7 +796,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1124
+Revision: 1125
 
 ## Цель
 
@@ -713,16 +858,40 @@ Revision: 1124
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/plan-review.test.mjs, tests/backend-api.test.mjs, tests/electron-smoke.mjs, tests/web-client-electron.test.mjs, tests/fixtures/current-actions-layout.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: STATUS
+- [TODO] VERSION: Подготовить версии приложения, Kit и панели для 0.5.35 — Ожидает
+  - Git Commit: [PENDING] chore: подготовить выпуск 0.5.35
+  - Reference: release-0534-defects / VERSION / implementation
+  - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, docs/planning/release-0534-defects.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PROOF
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализация всех документов проекта
   - Reference: release-0534-defects / DOCS / implementation
   - Файлы: docs/planning/release-0534-defects.md, docs/planning/review-instructions-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/orchestrated-execution.md, docs/acceptance/release-0534-defects.md
   - Параллельность: исключительное выполнение
-  - Зависимости: UI-CONTROLS, RESULT-DELIVERY, EXECUTOR-START, UI-EVENTS, REVIEW-VIEW, STATUS, PROOF
+  - Зависимости: UI-CONTROLS, RESULT-DELIVERY, EXECUTOR-START, UI-EVENTS, REVIEW-VIEW, STATUS, PROOF, VERSION
+- [TODO] RELEASE: Собрать и проверить релиз macOS Windows Linux — Ожидает
+  - Git Commit: [PENDING] build: собрать полный выпуск 0.5.35
+  - Reference: release-0534-defects / RELEASE / implementation
+  - Файлы: release-manifest.json, docs/planning/release-0534-defects.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS
+- [TODO] INSTALL: Установить проверенный выпуск на этот Mac — Ожидает
+  - Git Commit: [PENDING] delivery: установить проверенный выпуск 0.5.35
+  - Reference: release-0534-defects / INSTALL / implementation
+  - Файлы: release-manifest.json, docs/planning/release-0534-defects.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE, DOCS
+- [TODO] PUBLISH: Опубликовать полный выпуск на GitHub — Ожидает
+  - Git Commit: [PENDING] release: опубликовать полный комплект 0.5.35
+  - Reference: release-0534-defects / PUBLISH / implementation
+  - Файлы: release-manifest.json, docs/planning/release-0534-defects.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL, DOCS
 
 ## Context Pack For This Cycle
 
-- docs/planning/release-0534-defects.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/release-0534-defects.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
