@@ -1,6 +1,6 @@
 # Оркестрованное выполнение плана
 
-Оркестрованные планы Workflow Pilot 0.5.34 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
+Оркестрованные планы Workflow Pilot 0.5.35 используют `execution_strategy: orchestrated` и `dialogue_version: 1`. O ведёт план, E выполняют задачи в отдельных worktree, Kit подтверждает Git-интеграции. Один Start/Пауза/Continue и Review сохранены. [Полный протокол и роли](assignment-dialogue.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md), [координация](workflow-execution.md), [приёмка A–D](automatic-agent-dialogue-acceptance.md).
 
 С 0.5.30 режим плана выбирает пользователь в [карточке выбора](user-choice.md): оркестрация или выполнение самой сессией (sequential). Владелец планирования — сессия, запросившая режим (`plan:mode-request`, Kit 1.9.8); оркестратором она становится только по выбору оркестрации. С Kit 1.9.7 — прежний захват по первой задаче пользователя. Публикация orchestrated-плана сверяет `execution_origin_session_id` с владельцем; другие сессии проекта — обсуждение до архива плана.
 
@@ -18,7 +18,7 @@ ParallelExecution остаётся единственным scheduler. Он ме
 
 До Review/публикации O сохраняет полный task_brief/prepared_task всех обычных задач и DOCS. [Согласованный снимок](prepared-tasks.md) содержит авторство, байты и semantic digest. После Start приложение создаёт настоящее назначение и механически связывает/авторизует пакет параллельно bootstrap E. SDK/bind, конец bootstrap, отсутствие команд и свежий grant обязательны перед доставкой; каждый E независим. Новый O-ход для сочинения не нужен. Старые brief-only планы сохраняют поздний prepare/dispatch O, UNKNOWN не повторяется. Два-пять E не требуют select/show/focus, ID или Enable; ограниченный повтор до Send не разрешает повтор sending/sent/unknown.
 
-O отправляет task/context конкретному E; Kit сохраняет grant назначения. E выполняет task:start → работа → commit --task → result O. При нехватке данных спрашивает O, при блокировке ведёт коррелированный диалог до decision; после yield заканчивает ход. Обычное ожидание не запускает модельный polling. Канонические правила — role-protocol.mjs, версия 9.
+O отправляет task/context конкретному E; Kit сохраняет grant назначения. E выполняет task:start → работа → commit --task → result O. При нехватке данных спрашивает O, при блокировке ведёт коррелированный диалог до decision; после yield заканчивает ход. Обычное ожидание не запускает модельный polling. Канонические правила — role-protocol.mjs, версия 10.
 
 O проверяет result/diff/proof и принимает точный source_commit либо открывает revision_request новой попытки. Только затем выполняет integration:start/continue. Автоматического merge по READY в версии 1 нет; main DONE требует доказательства Git. Зависимая задача выдаётся после интеграций предшественников. Конфликт/check failure сохраняет операцию для исправления O без принудительного ours/theirs.
 
@@ -40,11 +40,11 @@ MAIN_DIRTY до первого назначения даёт paused/blocked с �
 
 Существующие sequential/parallel и orchestrated без dialogue_version=1 сохраняют прежний маршрут и доказательства. Их backend assignment-start, сигналы CLI, автоматическая интеграция готовых источников и прежняя семантика паузы не выдаются за новый O-authored протокол. Одна кнопка управления остаётся и у них.
 
-Переход активного orchestrated 0.5.7 выполняет O отдельной штатной миграцией только в безопасной паузе; installer сохраняет старые коммиты, READY требует отчёта E по просьбе O, INTEGRATED не повторяется. [Условия и отказы](assignment-dialogue-reliability.md#переход-старого-плана). Обычная подготовка проекта обновляет Kit до 1.10.0 при допустимом состоянии, managed-файлы вручную не меняются.
+Переход активного orchestrated 0.5.7 выполняет O отдельной штатной миграцией только в безопасной паузе; installer сохраняет старые коммиты, READY требует отчёта E по просьбе O, INTEGRATED не повторяется. [Условия и отказы](assignment-dialogue-reliability.md#переход-старого-плана). Обычная подготовка проекта обновляет Kit до 1.10.1 при допустимом состоянии, managed-файлы вручную не меняются.
 
 ## Интерфейс и удаление
 
-Дерево показывает нейтрального агента и опубликованный план с задачами/прогрессом/одной кнопкой. Нет допланового плана, дублей choice/startup/Review/текущих стадий/таймеров. [Текущие действия](current-actions.md) панели или явной клиентской области показывают actor/stage/recipient/reason, одну главную причину и независимую работу остальных. Native/HTTP используют тот же контракт и CAS.
+Дерево показывает нейтрального агента и опубликованный план с задачами/прогрессом/одной кнопкой. Нет допланового плана, дублей choice/startup/Review/текущих стадий/таймеров. [Основная MCP-панель](current-actions.md) показывает actor/stage/recipient/reason, одну главную причину и независимую работу остальных. Клиентское окно-копия удалено; HTTP без MCP iframe не имеет прежнего fallback выбора. CAS принадлежит backend.
 
 Счётчики в orchestrated-плане независимы: **«Результаты исполнителей X/N»** — полученные checked commits (или уже доказанный Kit DONE) и **«Интегрировано Y/N»** — только Kit DONE в main. `prepared`/`authorized` не равны SDK доставке; `pending` сохранён, но ещё не доставлен, SDK accepted не означает прочтение, Kit RUNNING — отдельное подтверждение начала задачи. Если факта нет, статус неизвестен, не подменяется PASS. При всех Kit DONE и `delivery_status=READY_FOR_ACCEPTANCE` UI показывает ожидание приёмки даже при ACTIVE scope; `DOCS checks:[]` не запускает application tests. Документальная задача с `verification_ids:[]` лишь фиксирует описания; тестовые PASS доказываются предыдущими коммитами.
 

@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.34, Kit 1.10.0, протокол панели `5`, build `0.5.34-communication-5`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
+Workflow Pilot 0.5.34, Kit 1.10.1, протокол панели `5`, build `0.5.35-communication-5`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT.
 
 ## Пользовательский путь
 
@@ -44,13 +44,13 @@ Start/Continue после свежего preflight выдаёт допуск т�
 
 ## Доставка и блокировки
 
-Observer и журнал команд сообщают занятость/черновик. Перед SDK объединённый claim_ready проверяет identity/назначение/generation/допуск и сохраняет durable send.intent; старые claim/verify сохранены. Между подтверждением и SDK нет ожидания UI refresh/telemetry. FIFO освобождается по read + yield + свежему физическому концу без user bubble. Ранний yield/старый idle не открывают вход; read-only сверка не запускает модель. [Контракт](assignment-dialogue-reliability.md#sdk-fifo-и-конец-хода).
+Observer и журнал команд сообщают занятость/черновик. Claim_ready проверяет identity/назначение/generation/допуск и сохраняет durable send.intent; claim/verify сохранены. UI refresh/telemetry не задерживают SDK. FIFO назначения требует read + yield + свежий физический конец без user bubble. Пользовательский user-choice требует read и свежий конец ответа, без task yield; Start не сбрасывает gate. Старый idle не открывает вход. [Контракт](assignment-dialogue-reliability.md#sdk-fifo-и-конец-хода).
 
 `pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report не возвращает pending. UNKNOWN и остальные терминальные исходы не повторяются через SDK или DOM. После restart claimed становится unknown. Стартовый контекст имеет [отдельный контракт](orchestrator-startup.md). Рабочий контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
 
 Рабочий model API — workflow_assignment_prepare/dispatch/send/yield/status: черновик O без grant, его отправка после готовности, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Yield.reason явно ограничен awaiting_reply/tasks_sent/result_sent/handled. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 
-[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 9: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
+[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 10: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
 
 ## MCP и SDK
 
@@ -92,7 +92,7 @@ WAL в собственном `plugin-communication`: legacy schema 1, workflow 
 
 ### Ход работ в панели
 
-Основной вид O/E/S — ход проекта: шапка с названием и счётчиком main без дублирующей стадии; одна главная причина/операция и независимые активные участники; [выбор](user-choice.md), свёрнутая история и диагностика. Общий workProgress приходит через status/sync/wait без секретов; права сырых сообщений прежние. Offered оранжевый, сохранённый chosen нейтральный, read переносит его в устойчивую историю. Startup-успех тоже исторический. [Текущие действия](current-actions.md) полностью переносят инструкцию/ID и отделяют таймер; native/HTTP дают то же представление без MCP iframe и без новой модели. В sidebar нет дублей выбора/startup/стадий. Закрытый план не имеет spinner/wait; complete не означает приёмку пользователя. Диагностика сохраняет binding/SDK/Stop/roster/outbox/export, read-only preview не отмечает read. Удалённый проект отзывает допуск, поздний вызов — PROJECT_REMOVED. Темы используют общую палитру, host data-theme приоритетен.
+Основной вид O/E/S: название, счётчик main, одна главная причина и независимая работа; [выбор](user-choice.md), история и диагностика. WorkProgress приходит через status/sync/wait без секретов; права сырых сообщений прежние. Offered оранжевый, chosen нейтральный, read переносит выбор в историю; startup-успех исторический. [Инструкция и таймер](current-actions.md) не перекрываются. Клиентская кнопка/dialog удалены; HTTP без MCP iframe не имеет fallback выбора. Review читает канонический Kit; раунды и позиции сохраняются после публикации/cleanup. Blocker учитывает прежний scope; read не выдаётся за недоставленность или начало проверки. Sidebar не дублирует ленту. Закрытый план без spinner/wait; complete ждёт приёмки. Диагностика сохраняет binding/SDK/Stop/roster/outbox/export; preview не отмечает read. Удаление отзывает допуск, поздний вызов — PROJECT_REMOVED. Палитра общая, host data-theme приоритетен.
 
 Журнал «Диагностики» — последние 200 событий; экспорт фиксирует through_seq и полноту. Телеметрия идёт пакетами (буфер 64, пакет до 16) отдельно от доставки, с client_time/server_received_at, монотонными длительностями и frontend.gap/diagnostic.gap; она не будит функциональную очередь. Intent ≠ invocation, accepted ≠ read; секреты, raw metadata и аргументы инструментов в spans не входят. [Тайминги и экспорт](dialogue-timing.md).
 

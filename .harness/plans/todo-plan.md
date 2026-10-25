@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1145,
+  "plan_revision": 1149,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -17,7 +17,7 @@
     "Событие Review ON/OFF сразу записывается в существующий адресный канал; агент читает актуальное решение, которое не разрешает реализацию.",
     "Фактический Review/раунды/отзывы/позиция/публикация видны в основной панели и долговечной истории; нет дубля sidebar или выдуманного события.",
     "Один понятный current status показывает настоящую причину ожидания, нужное внимание и полную инструкцию; технические receipts находятся в диагностике.",
-    "Изолированный доплановый цикл и назначенные checks, включая обе части Kit, подтверждены; live/native pending и отсутствие нового delivery явно указаны."
+    "Изолированный доплановый цикл и назначенные checks, включая обе части Kit, подтверждены; live/native pending отделены от собственных доказательств RELEASE/INSTALL/PUBLISH."
   ],
   "approved_scope": {
     "functional_paths": [
@@ -108,7 +108,12 @@
       "docs/modules/orchestrated-execution.md",
       "docs/acceptance/release-0534-defects.md",
       "docs/modules/release.md",
-      "packages/workflow-kit/README.md"
+      "packages/workflow-kit/README.md",
+      "docs/acceptance/release-0535-defects.md",
+      "docs/modules/project-compatibility.md",
+      "docs/modules/orchestrator-startup.md",
+      "docs/modules/chat-only-startup.md",
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md"
     ]
   },
   "baseline_commit": "b94b7c7c0fb9da928c40666add51c49e0f394577",
@@ -123,7 +128,7 @@
       {
         "path": "docs/planning/release-0534-defects.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "ef9f037757f89ff5adf7fea88adc2e31d4bc09f3"
       }
     ],
     "include_last_completed_task": false,
@@ -712,8 +717,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0534-defects",
         "task_id": "DOCS",
@@ -751,7 +756,12 @@
         "docs/modules/orchestrated-execution.md",
         "docs/acceptance/release-0534-defects.md",
         "docs/modules/release.md",
-        "packages/workflow-kit/README.md"
+        "packages/workflow-kit/README.md",
+        "docs/acceptance/release-0535-defects.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/chat-only-startup.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -770,7 +780,33 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Сверить контракты реализованных исправлений без объявления невыпущенной версии установленной; сохранить pending и отложенные требования.\nОбъём: docs/planning/release-0534-defects.md, docs/planning/review-instructions-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/orchestrated-execution.md, docs/acceptance/release-0534-defects.md, docs/modules/release.md, packages/workflow-kit/README.md\nКритерии: Сверены действующие контракты реализованных семи замечаний и версии 0.5.35, незавершённое и pending живой приёмки сохранены. Полные инструкции role-protocol/startup/MCP/Kit согласованы; документы ≤28000 байт; DOCS до production. Выпущенная приёмка 0.5.34 не переписана как факт нового выпуска; удаление HTTP fallback явно описано.\nПроверки: схема и состав документационного коммита.\nПользователь разрешил реализацию, выпуск 0.5.35 и GitHub публикацию. DOCS предшествует RELEASE; документальный коммит не доказывает сборку, установку или живую приёмку."
+      "task_brief": "Сверить контракты реализованных исправлений без объявления невыпущенной версии установленной; сохранить pending и отложенные требования.\nОбъём: docs/planning/release-0534-defects.md, docs/planning/review-instructions-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/orchestrated-execution.md, docs/acceptance/release-0534-defects.md, docs/modules/release.md, packages/workflow-kit/README.md\nКритерии: Сверены действующие контракты реализованных семи замечаний и версии 0.5.35, незавершённое и pending живой приёмки сохранены. Полные инструкции role-protocol/startup/MCP/Kit согласованы; документы ≤28000 байт; DOCS до production. Выпущенная приёмка 0.5.34 не переписана как факт нового выпуска; удаление HTTP fallback явно описано.\nПроверки: схема и состав документационного коммита.\nПользователь разрешил реализацию, выпуск 0.5.35 и GitHub публикацию. DOCS предшествует RELEASE; документальный коммит не доказывает сборку, установку или живую приёмку.",
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/release-0535-defects.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/desktop.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/native-window.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/remote-access.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/release-0534-defects.md",
+        "docs/planning/review-instructions-followup.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "id": "RELEASE",
@@ -895,7 +931,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1145
+Revision: 1149
 
 ## Цель
 
@@ -908,7 +944,7 @@ Revision: 1145
 - Событие Review ON/OFF сразу записывается в существующий адресный канал; агент читает актуальное решение, которое не разрешает реализацию.
 - Фактический Review/раунды/отзывы/позиция/публикация видны в основной панели и долговечной истории; нет дубля sidebar или выдуманного события.
 - Один понятный current status показывает настоящую причину ожидания, нужное внимание и полную инструкцию; технические receipts находятся в диагностике.
-- Изолированный доплановый цикл и назначенные checks, включая обе части Kit, подтверждены; live/native pending и отсутствие нового delivery явно указаны.
+- Изолированный доплановый цикл и назначенные checks, включая обе части Kit, подтверждены; live/native pending отделены от собственных доказательств RELEASE/INSTALL/PUBLISH.
 
 ## Микрозадачи
 
@@ -963,10 +999,10 @@ Revision: 1145
   - Файлы: package.json, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, tests/fixtures/remote-serve-proxy.mjs, docs/planning/release-0534-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализация всех документов проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализация всех документов проекта
   - Reference: release-0534-defects / DOCS / implementation
-  - Файлы: docs/planning/release-0534-defects.md, docs/planning/review-instructions-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/orchestrated-execution.md, docs/acceptance/release-0534-defects.md, docs/modules/release.md, packages/workflow-kit/README.md
+  - Файлы: docs/planning/release-0534-defects.md, docs/planning/review-instructions-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/orchestrated-execution.md, docs/acceptance/release-0534-defects.md, docs/modules/release.md, packages/workflow-kit/README.md, docs/acceptance/release-0535-defects.md, docs/modules/project-compatibility.md, docs/modules/orchestrator-startup.md, docs/modules/chat-only-startup.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение
   - Зависимости: UI-CONTROLS, RESULT-DELIVERY, EXECUTOR-START, UI-EVENTS, REVIEW-VIEW, STATUS, PROOF, VERSION
 - [TODO] RELEASE: Собрать и проверить релиз macOS Windows Linux — Ожидает

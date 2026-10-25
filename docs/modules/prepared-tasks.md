@@ -1,6 +1,6 @@
 # Подготовленные поручения до запуска плана
 
-Контракт Workflow Pilot 0.5.34 / Workflow Kit 1.10.0, ролевой протокол 9. Новый orchestrated-план с `dialogue_version:1` имеет `preparation_version:1`: авторское поручение и выбранный контекст каждой обычной задачи и DOCS готовы **до Review и публикации**, а не после нажатия Start. Исполнение разрешает только пользователь. [Рабочий диалог](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
+Контракт Workflow Pilot 0.5.35 / Workflow Kit 1.10.1, ролевой протокол 10. Новый orchestrated-план с `dialogue_version:1` имеет `preparation_version:1`: авторское поручение и выбранный контекст каждой обычной задачи и DOCS готовы **до Review и публикации**, а не после нажатия Start. Исполнение разрешает только пользователь. [Рабочий диалог](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
 
 ## Авторский снимок
 
@@ -60,5 +60,7 @@ T003 и DOCS заранее содержат полные стабильные �
 Существующий Chat-план без `preparation_version:1` и согласованного prepared_task сохраняет поздний путь: O читает service recovery/preparation_queue, явно готовит и разрешает `prepare(dispatch_when_ready:true)` либо `dispatch(when_ready:true)`. После смены поколения старому авторизованному draft требуется сверка O (`needs_confirmation`). Brief сам по себе не получает автоматической авторизации. Чтение, update Settings или простое расширение старого плана не делают его новым. В UI показывается фактический этап и адресат, включая ожидание канала O.
 
 ## Проверки
+
+Если собственное назначение уже известно, но участник E ещё не зарезервирован, bindPlan возвращает participant-reservation после проверки авторского пакета. Подготовка остаётся сохранённой, следующий проход связывает тот же пакет без нового авторского хода O. Отзыв приглашения, чужая identity, stale/digest и UNKNOWN остаются отказами. Подтверждённый успех того же восстановления снимает только его старый RECIPIENT, не другие ошибки.
 
 `prepared-task-flow.test.mjs` проверяет roundtrip, бюджеты/UTF-8, явную DOCS, неизменность байтов, author/scope/hash/договор и старые brief-only планы. Kit core/assignments проверяют Review, дочерний контракт, зависимости и интеграции. `workflow-channel.test.mjs` и `automatic-agent-dialogue.test.mjs` проходят плановую привязку, Kit→WAL crash/restart, stale/pause/UNKNOWN и полный цикл двух/пяти E без дополнительной подготовки O. Настоящие API/MCP/SDK adapters, stores, Kit/Git используются с подставленной моделью; скорость настоящего ChatGPT не доказана. [Повторная приёмка D010/D011](../acceptance/release-0534-defects.md).

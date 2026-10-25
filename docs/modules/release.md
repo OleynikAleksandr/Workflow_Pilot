@@ -1,10 +1,10 @@
 # Единая поставка Workflow Pilot
 
-Версия 0.5.34. Порядок DOCS → RELEASE → INSTALL → PUBLISH по поручению пользователя выполнить весь план. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Фактические пакет/подпись/установка/публикация подтверждаются manifest и Kit evidence delivery-задач, не этой документацией. Живые ChatGPT, native Windows/Linux, VM и clean-install — NOT_RUN; [повторная приёмка D001–D011](../acceptance/release-0534-defects.md).
+Версия 0.5.35. Порядок DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Фактические пакет/подпись/установка/публикация подтверждаются manifest и Kit evidence delivery-задач, не этой документацией. Живые ChatGPT, native Windows/Linux, VM и clean-install — NOT_RUN; [приёмка семи исправлений](../acceptance/release-0535-defects.md). Прежняя [D001–D011](../acceptance/release-0534-defects.md) сохраняет свой результат.
 
 ## Комплект
 
-0.5.34: согласованные авторские поручения до Start, восстановление SDK generation/lease, техническая пауза/Continue, managed `.DS_Store`, сохранённый адрес и единая область текущих действий. Kit 1.10.0/роли 9, панель 5 с новым build. Только Chat, одна q-команда, официальный search extension, контекст панелью и прежние границы WAL/identity/UNKNOWN. Fixtures не запускают модели и рабочие профили.
+0.5.35: удалено окно-копия текущих действий, Review ON/OFF передаётся агенту, раунды и позиции сохраняются в истории, доплановый выбор не удерживает результаты. Ожидаемая регистрация E нейтральна, главный статус объясняет фактический blocker. Kit 1.10.1/роли 10, build панели 0.5.35-communication-5, протокол 5; обновление Kit 1.10.0 поддерживается. Только Chat, одна q-команда, официальный search extension, контекст панелью и прежние границы WAL/identity/UNKNOWN. Fixtures не запускают модели и рабочие профили.
 
 Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`. Цели и симлинки проверяются до записи. Без любой платформы полный выпуск запрещён.
 

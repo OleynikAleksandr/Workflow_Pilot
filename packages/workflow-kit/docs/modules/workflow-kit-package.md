@@ -1,6 +1,6 @@
 # Workflow Kit — контракт пакета
 
-`@webpilot/workflow-kit` 1.10.0 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
+`@webpilot/workflow-kit` 1.10.1 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
 
 ## Код
 - `index.mjs` — `VERSION`, `WorkflowError`, `getRuntimeRoot()`, `currentPlanView`, `sessionPlanView`, пространства `actions`, `plan`, `sessionPlans`, `recovery`, `installer`. Exports: `.`, `./cli`, `./install`, `./lib/*`, `./schemas/*`, `./templates/*`, `./examples/*`, `./WORKFLOW.md`; bin `workflow`. Экспорты и lib-подпути сохраняются: их импортируют потребители.
@@ -31,12 +31,12 @@
 - `project:rename --name` — имя в плане, recovery и путях hooks manifest одним коммитом kit-update; без активной задачи (`TASK_ACTIVE`), ≤ 100 символов (`PROJECT_NAME`); повтор без изменений — без коммита; папку не переименовывает.
 - `repair --dry-run` → `repair_id` → `--apply` (завершить/повторить транзакцию, восстановить проекцию, отложить DOCS) или `--cancel` (отменить неподтверждённую подготовку). Журнал вручную не удалять.
 
-Подготовка новых orchestrated-планов, prepared_task, проверка автора/байтов/digest и совместимость brief-only — [контракт](../../../../docs/modules/prepared-tasks.md). Ролевые правила 9 одинаковы в PLAN/recovery/MCP.
+Подготовка новых orchestrated-планов, prepared_task, проверка автора/байтов/digest и совместимость brief-only — [контракт](../../../../docs/modules/prepared-tasks.md). Ролевые правила 10 одинаковы в PLAN/recovery/MCP.
 
 ### Опциональный Review
-`lib/plan-review` и `lib/claude-review`: prepare/run/respond/status/acknowledge/resolve/cancel/publish, gate новых plan:create/scope:create при ON, очистка на task:start. Политика и цикл — один `.harness/runtime/plan-review/state.json`; по умолчанию OFF без зависимости от Claude. Долгий процесс запускается вне operation.lock. Recovery содержит политику, получателя, стадию и инструкции сохранения позиции, не отзывы.
+`lib/plan-review`/`lib/claude-review`: prepare/run/respond/status/acknowledge/resolve/cancel/publish, gate новых планов при ON, cleanup на task:start. Один `.harness/runtime/plan-review/state.json`, по умолчанию OFF. Долгий процесс — вне operation.lock. Prepare требует адресата/manual, каждый успешный отзыв — позиции respond; публикация проверяет пару/согласие либо resolve. Решения — в spec и user_decisions; recovery не включает отзывы.
 
-Prepare требует явного получателя либо manual; respond сохраняет позицию каждого успешного отзыва, включая approved. Gate проверяет пару, позиции и согласие либо явное resolve publish. Решения остаются в spec/критериях, пользовательское разрешение — в user_decisions. OFF возвращает обычный путь. Входы, ошибки и исключения — [Review](../../../../docs/modules/workflow-execution.md).
+Preference хранит ID/версию/ON-OFF/адресата/время. До 200 review_events различают подготовку, запрос, положительный spawn, отзыв, автора и публикацию/ошибку/отмену. ID/даты устойчивы; cleanup сохраняет историю, legacy не получает выдуманных фактов. Полные входы, ошибки и семантика — [контракт Review](../../../../docs/modules/workflow-execution.md).
 
 ### Коммит и Git
 - Каждый коммит — транзакция Kit (`<git-dir>/workflow-kit/transaction.json`) с trailers `Workflow-Scope`, `Workflow-Task`, `Workflow-Role`, `Workflow-Transaction`, у implementation — `Workflow-Iteration` (нет — 1). Коммит без журнала → `MANAGED_COMMIT_REQUIRED`; hooks не обходить, `--no-verify` запрещён.
