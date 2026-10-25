@@ -5,13 +5,13 @@ import {readPlan,isDeliveryTask,isDocumentationFinalizationTask,taskContextPack}
 import {readConfig,taskChecks} from './validate.mjs';
 import {applyPlan} from './actions.mjs';
 
-const TASK_FIELDS=['id','title','why','files','checks','dependencies','acceptance','commit','verification_kind','before','parallel_safe','context_pack'];
+const TASK_FIELDS=['id','title','why','files','checks','dependencies','acceptance','commit','verification_kind','before','parallel_safe','context_pack','task_brief','prepared_task'];
 const notStarted=t=>t.implementation_status==='TODO'&&t.commit_status==='PENDING';
 
 // Only new domain tasks and added dependencies enter here. applyPlan owns locking, revision and history.
 export function extendPlan(root,input,expectedRevision) {
   check(input && typeof input==='object' && !Array.isArray(input),'PLAN_SCHEMA','Ожидается объект с tasks.');
-  check(Object.keys(input).every(k=>['spec','tasks','dependencies'].includes(k)),'PLAN_SCHEMA','plan:extend принимает только spec, tasks и dependencies; прежний план копировать не нужно.');
+  check(Object.keys(input).every(k=>['spec','tasks','dependencies','prepared_tasks'].includes(k)),'PLAN_SCHEMA','plan:extend принимает spec, tasks, dependencies и prepared_tasks для обновления затронутых поручений.');
   const plan=readPlan(root),config=readConfig(root);
   check(expectedRevision!==undefined,'EXPECTED_REVISION_REQUIRED','Укажите --expected-revision из status.');
   check(Number(expectedRevision)===plan.plan_revision,'REVISION_CONFLICT','План изменился. Прочитайте status и проверьте, не добавлены ли уже ваши задачи.',{expected:expectedRevision,actual:plan.plan_revision});
@@ -39,6 +39,7 @@ export function extendPlan(root,input,expectedRevision) {
     const task={id,title:t.title,why:t.why??t.title,dependencies:t.dependencies??[],functional_paths:t.files.filter(f=>!f.endsWith('.md')),documentation_paths:[...new Set([...(input.spec?[input.spec]:[]),...t.files.filter(f=>f.endsWith('.md'))])],verification_ids:t.checks??[],verification_kind:t.verification_kind??'code',acceptance_criteria:t.acceptance??[t.title],expected_commit_message:t.commit??'feat: '+t.title,implementation_status:'TODO',commit_status:'PENDING',commit_ref:{scope_id:plan.scope_id,task_id:id,role:'implementation'}};
     if(Object.hasOwn(t,'parallel_safe'))task.parallel_safe=t.parallel_safe;
     if(Object.hasOwn(t,'context_pack'))task.context_pack=taskContextPack(t.context_pack,field+'.context_pack');
+    for(const key of ['task_brief','prepared_task'])if(Object.hasOwn(t,key))task[key]=t[key];
     check(Array.isArray(task.verification_ids),'PLAN_SCHEMA',field+'.checks: нужен массив ID проверок.');
     try{taskChecks(task,config);}catch(error){error.message=field+'.checks ('+id+'): '+error.message;error.details={...error.details,task_id:id,field:field+'.checks',available_checks:config.checks.map(c=>c.id)};throw error;}
     if(t.before===undefined)ordered.push(task);
@@ -68,6 +69,7 @@ export function extendPlan(root,input,expectedRevision) {
       check(d==='DOCS'||order.indexOf(d)<order.indexOf(t.id),'TASK_ORDER','Задача '+t.id+' зависит от '+d+', которая стоит в плане позже. Порядок в плане — порядок выполнения: поставьте новую задачу раньше через before.',{task_id:t.id,dependency:d});
   }
   const changes={tasks:ordered,approved_scope:{...plan.approved_scope,functional_paths:[...new Set([...plan.approved_scope.functional_paths,...tasks.flatMap(t=>t.functional_paths)])],documentation_paths:[...new Set([...plan.approved_scope.documentation_paths,...tasks.flatMap(t=>t.documentation_paths)])]}};
+  if(input.prepared_tasks!==undefined)changes.prepared_tasks=input.prepared_tasks;
   if(input.spec)changes.context_pack={...plan.context_pack,documents:[...plan.context_pack.documents.filter(d=>d.path!==input.spec),{path:input.spec,required:true}]};
   // The captured revision prevents a concurrent writer from being overwritten.
   return applyPlan(root,changes,expectedRevision);

@@ -169,6 +169,40 @@ function dialogueKitFixture(){
       effects.set(input.operation_id,receipt);states.set(input.assignment_id,{attempt:input.attempt,grant:input.kind==='task'?{message_id:input.message_id}:null});
       return receipt;}};
 }
+test('agreed plan packets bind two E before readiness, survive Continue and never recreate a published task',async t=>{
+  const kit=dialogueKitFixture(),base=kit.status,sha=text=>createHash('sha256').update(text).digest('hex');
+  let foreign=false;
+  kit.status=async(target,id)=>({...await base(target,id),...(target.role==='O'?{prepared_task:{version:1,
+    project_id:'p',scope_id:'s',author_session_id:foreign?'foreign':'o',body:'Agreed '+id,body_sha256:sha('Agreed '+id),
+    contract_digest:sha(id),contexts:[{source:'selected.md',text:'Exact immutable bytes',sha256:sha('Exact immutable bytes'),bytes:21,commit:null}],
+    dependency_task_ids:[],dependency_facts:[]}}:{})});
+  const f=await fixture(t,undefined,kit),a=f.target('a'),b=f.target('b');
+  await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o);await f.c.reserve(a);await f.c.reserve(b);
+  foreign=true;await assert.rejects(f.c.assignment.bindPrepared(a),{code:'PLUGIN_COMMUNICATION_STALE_DRAFT'});foreign=false;
+  assert.equal(await f.c.assignment.bindPrepared(a),true);assert.equal(await f.c.assignment.bindPrepared(b),true);
+  assert.equal(kit.calls,0,'binding and authorizing precede SDK readiness');
+  await f.c.assignment.bindPrepared(a);
+  assert.equal(Object.keys(f.c.runs.get(o.run_id).assignment_intents).length,2,'same preparation has one intent');
+  await f.c.workflow.grant(f.o,'paused');await f.bind(f.c,a);
+  await f.c.assignment.bindPrepared(a);assert.equal(kit.calls,0,'pause cannot be bypassed by agreed content');
+  const restarted=await f.create();await restarted.workflow.grant(f.o);await f.bind(restarted,a);
+  await restarted.assignment.bindPrepared(a);assert.equal(kit.calls,1,'Continue mechanically authorizes the same immutable packet');
+  await restarted.assignment.bindPrepared(a);assert.equal(kit.calls,1,'published task is not repeated');
+  const apply=kit.apply;let interrupted=true;
+  kit.apply=async(...args)=>{const receipt=await apply(...args);if(interrupted){interrupted=false;throw Object.assign(Error('after Kit before WAL'),{code:'TEST_INTERRUPTION'});}return receipt;};
+  await f.bind(restarted,b);await restarted.assignment.bindPrepared(b);assert.equal(kit.calls,2);
+  assert.equal(restarted.runs.get(o.run_id).messages.filter(m=>m.kind==='task').length,1,'no publication is invented after the interrupted Kit response');
+  const recovered=await f.create();await recovered.workflow.grant(f.o);await f.bind(recovered,b);
+  await recovered.assignment.bindPrepared(b);assert.equal(kit.calls,2,'the existing idempotent Kit effect is reconciled across restart');
+  const run=recovered.runs.get(o.run_id),tasks=run.messages.filter(m=>m.kind==='task');
+  assert.equal(tasks.length,2);assert.ok(tasks.every(m=>m.sender_role==='O'&&m.delivery==='pending'&&!m.read));
+  const aBinding=await f.bind(recovered,a),claim=await recovered.claimReady({...aBinding,message_id:tasks.find(m=>m.assignment_id==='a-a').message_id});
+  await recovered.report({...aBinding,message_id:claim.message_id??tasks.find(m=>m.assignment_id==='a-a').message_id,
+    delivery_attempt_id:claim.delivery_attempt_id,outcome:'unknown'});
+  await recovered.assignment.bindPrepared(a);
+  assert.equal(recovered.runs.get(o.run_id).messages.find(m=>m.assignment_id==='a-a'&&m.kind==='task').delivery,'unknown');
+  assert.equal(recovered.runs.get(o.run_id).messages.filter(m=>m.kind==='task').length,2);assert.equal(kit.calls,2,'UNKNOWN never creates a second Kit effect');
+});
 test('one O turn explicitly reads queued preparations and authorizes both, without forged receipts or a second SDK turn',async t=>{
   const kit=dialogueKitFixture(),base=kit.status;
   kit.status=async(target,id)=>({...await base(target,id),...(target.role==='O'?{task_brief:'Draft '+id}:{})});
@@ -343,7 +377,7 @@ test('working API derives author, addresses distinct assignments and sends immut
   const question=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'question',
     body:'Уточни пустой ввод',in_reply_to:sent.message_id,idempotency_key:'question-e'});
   const answer=await f.c.readMessage({metadata:meta('o'),message_id:question.message_id});
-  assert.equal(answer.sender_role,'E');assert.match(answer.instructions,/сам отправь task/);
+  assert.equal(answer.sender_role,'E');assert.match(answer.instructions,/старого brief-only/);
   assert.match(answer.instructions,/Не жди общего финального поручения/);
   await assert.rejects(f.c.assignmentSend({...input,metadata:meta('e'),idempotency_key:'spoof'}),{code:'PLUGIN_COMMUNICATION_ROLE'});
   await assert.rejects(f.c.assignmentYield({metadata:meta('other'),message_ids:[sent.message_id],reason:'handled'}),{code:'PLUGIN_COMMUNICATION_YIELD_DENIED'});

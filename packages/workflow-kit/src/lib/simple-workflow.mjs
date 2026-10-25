@@ -31,6 +31,7 @@ export function createSimplePlan(root,input) {
   for (const [index,task] of tasks.entries()) {
     const source=input.tasks[index];
     if(source&&Object.hasOwn(source,'task_brief'))task.task_brief=source.task_brief;
+    if(source&&Object.hasOwn(source,'prepared_task'))task.prepared_task=source.prepared_task;
     check(['code','package','installed'].includes(task.verification_kind),'PLAN_SCHEMA','Некорректный verification_kind.',{task_id:task.id});
     taskChecks(task,config);
   }
@@ -42,11 +43,13 @@ export function createSimplePlan(root,input) {
   const normalizedDelivery=delivery.map(t=>({...t,dependencies:[...new Set([...t.dependencies,'DOCS'])]}));
   const explicitDocs=tasks.find(t=>t.id==='DOCS');
   if(explicitDocs&&Object.hasOwn(explicitDocs,'task_brief'))finalTask.task_brief=explicitDocs.task_brief;
+  if(explicitDocs&&Object.hasOwn(explicitDocs,'prepared_task'))finalTask.prepared_task=explicitDocs.prepared_task;
   // An orchestrated plan always ends with DOCS, with or without a release.
   tasks.splice(0,tasks.length,...work,...(delivery.length||input.execution_strategy==='orchestrated' ? [finalTask,...normalizedDelivery] : []));
   const policy=Object.fromEntries([...EXECUTION_POLICY_FIELDS,'execution_origin_session_id','release','dialogue_version'].filter(key=>Object.hasOwn(input,key)).map(key=>[key,input[key]]));
   const scope={...policy,scope_id:input.id,objective:input.objective,approval_note:input.approval??'Пользователь поручил выполнить описанную задачу и план.',acceptance_criteria:input.acceptance??[input.objective],approved_scope:{functional_paths:[...new Set(tasks.flatMap(t=>t.functional_paths))],documentation_paths:[...new Set(tasks.flatMap(t=>t.documentation_paths))]},context_pack:{documents:[{path:input.spec,required:true}],include_last_completed_task:false,dependency_task_ids:[]},tasks};
   // Reject invalid execution metadata before changing project configuration.
+  assertExecutionMode(root,scope);
   const candidate=buildScopePlan(root,scope,readPlan(root),config);
   assertExecutionMode(root,candidate);
   if(input.stack||input.checks)applyConfig(root,config);

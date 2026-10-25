@@ -34,7 +34,8 @@ export async function interruptionRegression(t){
   const root=createFixture(directory),git=(workspace,...args)=>execFileSync('git',args,{cwd:workspace,encoding:'utf8'}).trim();
   const task=(id,file)=>({id,title:'Check '+file,why:'Isolated interruption regression',dependencies:[],
     parallel_safe:true,functional_paths:[],documentation_paths:[file],verification_ids:['dependency'],
-    acceptance_criteria:['Checked commit is preserved after interruption'],expected_commit_message:'docs: verify '+id});
+    acceptance_criteria:['Checked commit is preserved after interruption'],expected_commit_message:'docs: verify '+id,
+    task_brief:'Update only '+file+'; preserve the checked result and report proof.',prepared_task:{version:1,contexts:[]}});
   userChoseMode(root,'fixture-orchestrator');
   createScope(root,{scope_id:'interruptions',objective:'Exercise Kit interruption boundaries',
     approval_note:'User requested isolated O1/O2/E1/E2 regression checks.',
@@ -42,7 +43,8 @@ export async function interruptionRegression(t){
     approved_scope:{functional_paths:[],documentation_paths:['README.md','SECOND.md']},
     parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',
     execution_reason:'Two separate child worktrees',execution_origin_session_id:'fixture-orchestrator',release:false,
-    tasks:[task('T001','README.md'),task('T002','SECOND.md')]},readPlan(root).plan_revision);
+    tasks:[task('T001','README.md'),task('T002','SECOND.md'),
+      {...task('DOCS','docs/architecture/OVERVIEW.md'),title:'Актуализация всех документов проекта',verification_ids:[]}]},readPlan(root).plan_revision);
   setPlanPermission(root,{scope_id:'interruptions',backend_id:'isolated-backend',backend_pid:process.pid,active:true});
   const base=git(root,'rev-parse','HEAD');
   const children={};
@@ -143,7 +145,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
-  const drafts=new Map();let preparationTurn=false;
+  const drafts=new Map();
   const fast=owned&&batchResults,modelCalls=[];
   const root=createFixture(directory,{setupDelayMs:owned&&batchResults?1500:0}),setup={node:async()=>process.execPath,
     environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
@@ -185,12 +187,6 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       const r=await c.callTool({name:name.startsWith('assignment_')?'workflow_'+name:'workflow_communication_'+name,arguments:input,_meta:metadata});
       assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
     };
-    if(fast&&!record.project().assignmentId&&record.startupComplete&&!preparationTurn){
-      // Hold only the first work turn, after the separate startup receipt.
-      preparationTurn=true;
-      await wait(()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
-        .filter(m=>m.idempotency_key?.startsWith('prepare:')).length===2,'two queued preparations');
-    }
     const message=await call('read_message',args);
     if(message.kind==='startup-context'){
       for(let part=0,total=1;part<total;part++){
@@ -239,10 +235,21 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
         await call('assignment_dispatch',{draft_id:drafts.get(message.assignment_id)});
       }else if(message.kind==='task'){
         assert.equal(message.sender_role,'O');assert.equal(record.bootstrapCount,1);
+        const agreedTask=readPlan(root).tasks.find(t=>t.id===project.taskId);
+        assert.equal(text,agreedTask.task_brief,'E receives the exact text authored before Start');
         let selected='';for(let part=0,total=1;part<total;part++){
           const v=await call('read_context',{message_id:message.message_id,context_ref:message.contexts[0].sha256,part});selected+=v.text;total=v.total;
         }
         assert.equal(selected,'Selected context for '+project.taskId);
+        if(agreedTask.dependencies.length){
+          const factsContext=message.contexts.find(c=>c.source==='workflow-kit-dependencies.json');assert.ok(factsContext);
+          let factsText='';for(let part=0,total=1;part<total;part++){
+            const v=await call('read_context',{message_id:message.message_id,context_ref:factsContext.sha256,part});factsText+=v.text;total=v.total;
+          }
+          const facts=JSON.parse(factsText),proof=validate(root).resolved;
+          assert.deepEqual(facts.map(f=>f.task_id),agreedTask.dependencies);
+          assert.ok(facts.every(f=>proof[f.task_id]?.sha===f.commit),'deferred inputs contain only proven integration commits');
+        }
         if(workers===5&&independent.includes(project.taskId))await wait(()=>
           new Set(notifications.filter(n=>n.kind==='task'&&independent.includes(n.task_id)).map(n=>n.assignment_id)).size===5,
           'five simultaneously active addressed tasks');
@@ -426,7 +433,9 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
         await record.controller.observePage({documentId:record.pageState.current.documentId,state:page},{...navigation});
         composer.inFlight=true;page.busy=true;
         const bootstrap=async()=>{
-          if(owned&&project.assignmentId)await wait(()=>drafts.has(project.assignmentId),'O prepares while E bootstrap is unfinished');
+          if(owned&&project.assignmentId)await wait(()=>[...plugin.communication.runs.values()].some(run=>
+            Object.values(run.assignment_intents??{}).some(i=>i.effect.assignment_id===project.assignmentId&&i.planned_preparation)),
+            'agreed author packet binds before E bootstrap finishes');
           const invitation=JSON.parse(text.match(/workflow_pilot_panel с аргументами (\{"enrollment_ticket":"[a-f0-9]+"\})/)[1]);
           const registered=await c.callTool({name:'workflow_pilot_panel',arguments:invitation,_meta:record.metadata});
           assert.equal(registered.isError,false,JSON.stringify(registered.structuredContent));
@@ -515,15 +524,16 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   await fs.writeFile(path.join(root,'docs/planning/dialogue.md'),'# Isolated automatic dialogue\n');
   const task=(id,file,dependencies=[])=>({id,title:'Write '+file,why:'Actual automatic dialogue fixture',dependencies,parallel_safe:true,
     files:[file],checks:['dependency'],acceptance:['Checked output committed'],commit:'docs: '+file,
-    ...(fast?{task_brief:'Implement only '+id+' and return the checked commit.'}:{})});
+    ...((owned||fast)?{task_brief:'Implement only '+id+' and return the checked commit.'}:{}),
+    ...(owned?{prepared_task:{version:1,contexts:[{source:'orchestrator-selection',text:'Selected context for '+id}]}}:{})});
   userChoseMode(root,origin.sessionId);
   await plans.call(root,'plan:create',[],{id:'dialogue-fixture',spec:'docs/planning/dialogue.md',stack:'Node fixture',objective:'Two independent assignments, a question and a dependent result',approval:'Isolated fixture authorized',
     parallel_allowed:true,max_workers:workers,execution_strategy:'orchestrated',execution_reason:'Independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,...(owned?{}:{dialogue_version:0}),
     acceptance:['One Start; complete work without manual panel action'],checks:[{id:'dependency',executable:'npm',args:['test'],required:false,timeout_ms:30000}],
     tasks:[...independent.map(id=>task(id,taskFile[id])),...(batchResults?[]:[task('T003','THIRD.md',independent)]),
-      ...(fast?[task('DOCS','docs/planning/dialogue.md',independent)]:[])]});
+      ...((owned||fast)?[task('DOCS','docs/planning/dialogue.md',independent)]:[])]});
   if(owned&&batchResults)await plans.call(root,'task:update',['--task','DOCS','--expected-revision',String(readPlan(root).plan_revision)],
-    {checks:['dependency']});
+    {checks:['dependency'],prepared_task:{version:1,contexts:[{source:'orchestrator-selection',text:'Selected context for DOCS'}]}});
   assert.equal(readPlan(root).dialogue_version,owned?1:0,'new owned plan defaults to dialogue; legacy fixture opts into its former contract');
   await store.reconcileRoles(root);await store.selectSession(root,origin.sessionId);workflow.execution.observe(root);
   await workflow.execution.signal(root);assert.equal(records.size,1,'publication alone opens no executor');
@@ -549,13 +559,13 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     assert.equal(Object.hasOwn(record.project(),'experience'),false);
   }
   if(owned){
-    assert.equal(drafts.size,taskCount);
+    assert.equal(drafts.size,0,'author snapshots were complete before Start; no model preparation turn');
     for(const kind of ['ready','task','result','acceptance'])assert.equal(notifications.filter(n=>n.kind===kind).length,
-      fast&&kind==='ready'?0:taskCount+(conversation&&kind==='result'?1:0),kind);
+      kind==='ready'?0:taskCount+(conversation&&kind==='result'?1:0),kind);
     if(fast){
-      assert.equal(modelCalls.filter(n=>n==='assignment_prepare').length,taskCount);
+      assert.equal(modelCalls.filter(n=>n==='assignment_prepare').length,0);
       assert.equal(modelCalls.filter(n=>n==='assignment_dispatch').length,0,'no second model call to authorize dispatch');
-      assert.equal(notifications.filter(n=>n.directPreparation).length,1,'two preparations handled within one SDK turn');
+      assert.equal(notifications.filter(n=>n.directPreparation).length,0,'Start needs no preparation SDK turn');
     }
     if(batchResults)assert.equal(notifications.filter(n=>n.directRead).length,1,'one result is read within the other SDK turn');
     if(conversation){
@@ -579,7 +589,8 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     assert.equal(count(),settled,'complete stops wait and sync, including the accelerated sync timer');
     assert.equal(o.ui.calls.includes('workflow_communication_stop'),false,'complete needs no automatic Stop');
   }
-  if(owned)for(const [assignmentId,draftId] of drafts){
+  if(owned)for(const intent of Object.values(run.assignment_intents??{}).filter(i=>i.planned_preparation)){
+    const assignmentId=intent.effect.assignment_id,draftId=intent.message_id;
     const prepared=run.events.find(e=>e.event_type==='task.prepared'&&e.message_id===draftId);
     const member=Object.values(run.members).find(m=>m.target.assignment_id===assignmentId);
     const bound=run.events.find(e=>e.event_type==='binding.confirmed'&&e.participant_id===member.id);

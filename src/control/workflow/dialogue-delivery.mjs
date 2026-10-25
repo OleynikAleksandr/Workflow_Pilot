@@ -110,6 +110,8 @@ export class DialogueDelivery {
     if(!AUTOMATIC_DIALOGUE_ENABLED)throw Object.assign(Error('Канал стартового контекста отключён.'),{code:'STARTUP_CHANNEL_REQUIRED'});
     const ticket=await this.getPlugin().reserveParticipant(project.sessionId,correlation);
     if(project.role==='executor'&&this.owned(project)){
+      const target=await this.getPlugin().participantTarget?.(project.sessionId);
+      if(target&&await this.getPlugin().communication.assignment.bindPrepared(target))return {...ticket,context_transport:'panel'};
       const origin=this.project(project.executionOriginSessionId);
       if(origin)await this.send(origin,'Назначение создано; подключение исполнителя продолжается параллельно. Сейчас подготовьте task и выбранный контекст через workflow_assignment_prepare с dispatch_when_ready=true: это явное разрешение отправить сохранённое поручение при подтверждённой готовности канала. Используйте recipient_ref из read_message, attempt=1. Отдельного ready и dispatch ждать не нужно. Без dispatch_when_ready сохраняется только черновик. Данные backend: '+JSON.stringify({
         assignment_id:project.assignmentId,task_id:project.taskId}), 'recovery',{
@@ -168,7 +170,9 @@ export class DialogueDelivery {
   async start(project){
     if(!this.uses(project))return;
     if(this.owned(project)){
-      const plugin=this.getPlugin(),progress=plugin.communication.workflow.progress(project.sessionId);
+      const plugin=this.getPlugin(),worker=await plugin.participantTarget(project.sessionId);
+      const agreed=worker&&await plugin.communication.assignment.bindPrepared(worker);
+      const progress=plugin.communication.workflow.progress(project.sessionId);
       if(!progress?.sdk||!progress.permitted||!this.observe({local_session_id:project.sessionId}).stopped)return;
       const origin=this.project(project.executionOriginSessionId),target=await plugin.participantTarget(origin?.sessionId);
       if(!target)return;
@@ -181,6 +185,7 @@ export class DialogueDelivery {
           key:'parked:'+hash(JSON.stringify([project.assignmentId,attempt,state.block.block_id,physical.documentId,physical.turnId,physical.assistantRevision])),
           block_id:state.block.block_id,subject:{assignment_id:project.assignmentId,task_id:project.taskId},attempt});
       }
+      if(agreed)return;
       if(state.migration&&state.dialogue?.grant?.legacy_authorization&&!state.dialogue.result){
         return this.send(origin,'Назначение переведено на рабочий диалог. Обновите инструкции исполнителя адресным context. Если есть проверенный коммит, запросите у E result этого коммита без повторения работы; иначе уточните сохранённую точку и продолжите её. Данные backend: '+JSON.stringify({
           assignment_id:project.assignmentId,task_id:project.taskId,attempt,source_commit:state.dialogue.grant.source_commit??null}),'recovery',{

@@ -163,7 +163,9 @@ try {
     assert.match(recover(root).parts.flatMap(p=>p.sources).find(x=>x.source==='planning-owner').content,/owner-chat/);
     assert.throws(()=>prepareReview(root,input),e=>e.code==='PLANNING_OWNED'&&e.details.owner_session_id==='owner-chat');
     const orchestrated={...scope,session_id:undefined,execution_strategy:'orchestrated',parallel_allowed:false,max_workers:1,
-      execution_reason:'Fixture orchestrated plan',execution_origin_session_id:'second-chat',release:false};
+      execution_reason:'Fixture orchestrated plan',execution_origin_session_id:'second-chat',release:false,
+      tasks:[...scope.tasks.map(t=>({...t,task_brief:'Update the assigned document and return a verified commit.',prepared_task:{version:1,contexts:[]}})),
+        {...scope.tasks[0],id:'DOCS',title:'Актуализация всех документов проекта',task_brief:'Reconcile the project documents with verified integrations.',prepared_task:{version:1,contexts:[]}}]};
     expect('PLANNING_OWNED',()=>prepareReview(root,{scope:orchestrated,documents:input.documents,recipient_mode:'manual'}));
     expect('EXECUTION_MODE_REQUIRED',()=>prepareReview(root,{scope:{...orchestrated,execution_origin_session_id:'owner-chat'},documents:input.documents,recipient_mode:'manual'}));
     const asked=requestExecutionMode(root,{session_id:'owner-chat',recommended:'orchestrated',reason:'Large independent fixture tasks'});

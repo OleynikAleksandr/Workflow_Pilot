@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PLAN, planPath, currentPlanSelection, check, json, atomic, textFile, relativePath, id } from './common.mjs';
+import {validatePreparedTask} from './prepared-task.mjs';
 
 const BEGIN = '<!-- workflow-state:begin -->';
 const END = '<!-- workflow-state:end -->';
@@ -111,7 +112,7 @@ export function emptyPlan(name) {
     baseline_commit: null, current_task_id: null, context_pack: projectContextPack(),
     tasks: [], blocked_reason: null, user_decisions: [] };
 }
-export function validatePlan(p) {
+export function validatePlan(p,{preparation=true}={}) {
   check(p && typeof p === 'object' && p.schema_version === 1, 'PLAN_SCHEMA', 'Неподдерживаемая схема плана.');
   check(Number.isSafeInteger(p.plan_revision) && p.plan_revision > 0, 'PLAN_SCHEMA', 'Некорректная revision.');
   string(p.project_id, 'project_id'); string(p.project_name, 'project_name');
@@ -229,6 +230,13 @@ export function validatePlan(p) {
       'Каждая delivery-задача должна зависеть от DOCS своего раунда.', {task_id:task.id});
   }
   check(p.delivery_status !== 'READY_FOR_ACCEPTANCE' || (p.tasks.length > 0 && p.tasks.every(t => t.commit_status === 'DONE')), 'PLAN_SCHEMA', 'Готовность к приёмке не подтверждается задачами.');
+  if(preparation){
+    check(p.preparation_version===undefined||p.preparation_version===1,'PLAN_SCHEMA','Неизвестная версия подготовки.');
+    for(const t of p.tasks){
+      if(p.preparation_version===1&&!isDeliveryTask(t))check(!!t.prepared_task,'TASK_PREPARATION','Отсутствует подготовка '+t.id,{task_id:t.id});
+      validatePreparedTask(p,t);
+    }
+  }
   return p;
 }
 export function renderPlan(p) {

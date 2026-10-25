@@ -232,6 +232,10 @@ export class ParallelExecution {
           // An unknown outcome of an orchestrated plan pauses it; nothing is retried.
           if(UNKNOWN_CODES.includes(error.code)&&this.view(workspace).strategy==='orchestrated')
             this.onPause(workspace,this.view(workspace).scopeId,'unknown',issue(error).message);
+          else if(this.view(workspace).strategy==='orchestrated'&&[
+            'TASK_PREPARATION','TASK_PREPARATION_STALE','PLUGIN_ASSIGNMENT_TASK_PREPARATION',
+            'PLUGIN_ASSIGNMENT_TASK_PREPARATION_STALE','PLUGIN_COMMUNICATION_STALE_DRAFT','PLUGIN_COMMUNICATION_INTENT_CLOSED'
+          ].includes(error.code))this.onPause(workspace,this.view(workspace).scopeId,'blocked',issue(error).message,issue(error));
         }
       }while(queue.again&&!this.closed&&!this.suspended.has(workspace));
       return this.view(workspace);

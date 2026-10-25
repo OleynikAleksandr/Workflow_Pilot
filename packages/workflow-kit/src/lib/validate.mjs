@@ -1,5 +1,6 @@
 import { assertAssignment } from './assignment-contract.mjs';
 import { check, planPath, contextPath } from './common.mjs';
+import {validatePreparedTask} from './prepared-task.mjs';
 import { readPlan, isOrchestratedPlan, isDocumentationFinalizationTask } from './plan.mjs';
 
 import { validateConfig, readConfig } from './validation-rules.mjs';
@@ -11,6 +12,7 @@ export { resolveReferences } from './commit-references.mjs';
 export function validatePlanConfiguration(root, plan, config) {
   validateConfig(config);
   for (const task of plan.tasks) {
+    validatePreparedTask(plan,task,config.budget);
     for (const p of [...task.functional_paths, ...task.documentation_paths]) contextPath(root, p);
     for (const test of task.verification_ids) check(config.checks.some(c => c.id === test), 'NOT_CONFIGURED', 'Нет конфигурации проверки ' + test);
   }

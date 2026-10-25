@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {ASSIGNMENT_DIALOGUE_VERSION,assignmentPayload,assignmentCheck as check} from '../../contracts/plugin-communication.mjs';
+import {workflowRunId} from './enrollment.mjs';
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const allowed={O:new Set(['task','context','question','clarification','decision','acceptance','revision_request']),
@@ -144,8 +145,61 @@ export class AssignmentDialogue {
     check(progress?.sdk&&progress.permitted&&physical?.stopped&&!physical.busy&&physical.commandsIdle===true,
       'CHANNEL_NOT_READY','Отправка ждёт текущего SDK, привязки и конца bootstrap. Явно авторизованное поручение отправится автоматически; обычный черновик требует dispatch. Завершите ход без опроса модели.');
   }
-  async dispatchDraft(input){
-    const {run,member}=this.c.member(input),intent=run.assignment_intents?.[input.draft_id];
+  // Backend-only binding. The actual O member and Kit's checked author snapshot
+  // replace neither host identity nor a public model authorization endpoint.
+  async bindPrepared(target){
+    const result=await this.c.mutate('assignmentPlanBind',{run_id:workflowRunId(target),target});
+    if(result.message_id)await this.complete(workflowRunId(target),result.message_id);
+    return result.prepared===true;
+  }
+  async bindPlan(input){
+    const c=this.c,run=c.run(input),target=input.target;
+    check(target.role==='E'&&target.dialogue_version===1&&run.mode==='workflow'&&!run.removed,
+      'ROLE','Подготовка связывается только с собственным назначением E.');
+    const member=Object.values(run.members).find(m=>m.role==='O'&&m.target.local_session_id===target.origin_session_id);
+    if(!member)return {prepared:false};
+    await c.enrollment.validate(member.target);await c.enrollment.validate(target);
+    const state=await this.state(member.target,target.assignment_id),p=state.prepared_task;
+    if(!p)return {prepared:false};
+    check(p.version===1&&p.project_id===target.project_id&&p.scope_id===target.scope_id
+      &&p.author_session_id===member.target.local_session_id&&p.body_sha256===hash(p.body),
+      'STALE_DRAFT','Подготовка не принадлежит текущему автору и назначению.');
+    if(run.grant?.scope_id!==target.scope_id||!run.grant.active||run.grant.phase!=='running')return {prepared:true};
+    // Revisions are authored decisions of O; never replace one by the first task.
+    const attempt=state.dialogue?.attempt??1;
+    if(attempt!==1)return {prepared:true};
+    const previous=Object.values(run.assignment_intents??{}).find(i=>i.effect.assignment_id===target.assignment_id
+      &&i.effect.scope_id===target.scope_id&&i.effect.attempt===attempt&&i.planned_preparation===p.contract_digest);
+    if(state.dialogue?.grant&&!previous)return {prepared:true};
+    if(previous?.phase==='published')return {prepared:true};
+    if(previous?.phase==='authorized'&&this.authorized(run,previous))return {prepared:true,message_id:previous.message_id};
+    if(previous)check(['draft','authorized','needs_confirmation'].includes(previous.phase),
+      'INTENT_CLOSED','Сохранённая подготовка требует адресного разбора отказа.');
+    const contexts=p.contexts.map(item=>{
+      check(item.sha256===hash(item.text)&&item.bytes===Buffer.byteLength(item.text),'STALE_DRAFT','Snapshot контекста повреждён.');
+      return {source:item.source,text:item.text,commit:item.commit};
+    });
+    if(p.dependency_task_ids.length){
+      const facts=p.dependency_facts;
+      check(Array.isArray(facts)&&p.dependency_task_ids.length===facts.length
+        &&p.dependency_task_ids.every(id=>facts.some(f=>f.task_id===id&&/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(f.commit))),
+        'STALE_DRAFT','Не подтверждены интегрированные зависимости подготовки.');
+      const text=JSON.stringify(facts);
+      check(Buffer.byteLength(text)+512<=28000,'CONTEXT','Факты зависимостей превышают размер части.');
+      contexts.push({source:'workflow-kit-dependencies.json',text});
+    }
+    check(Buffer.byteLength(p.body)+contexts.reduce((n,item)=>n+Buffer.byteLength(item.text),0)<=(p.hard_bytes??180000),
+      'CONTEXT','Пакет с проверенными фактами зависимостей превышает бюджет; он не обрезан.');
+    const key='plan:'+hash(JSON.stringify([target.project_id,target.scope_id,target.task_id,p.contract_digest,target.assignment_id,attempt]));
+    const payload=assignmentPayload({kind:'task',recipient:reference(run,target),attempt,body:p.body,contexts,idempotency_key:key});
+    const context={run,member},result=await this.prepare({...input,payload,key,draft:true,planned_preparation:p.contract_digest},context);
+    await this.dispatchDraft({...input,draft_id:result.message_id,when_ready:true},context);
+    c.event(run,'task.plan_bound',{message_id:result.message_id,assignment_id:target.assignment_id,task_id:target.task_id,
+      preparation_digest:p.contract_digest});
+    return {prepared:true,message_id:result.message_id};
+  }
+  async dispatchDraft(input,trusted=null){
+    const {run,member}=trusted??this.c.member(input),intent=run.assignment_intents?.[input.draft_id];
     check(member.role==='O'&&intent?.sender_id===member.id&&intent.effect.kind==='task','ROLE','Нужен собственный черновик O.');
     check(intent.effect.scope_id===run.grant?.scope_id,'STALE_DRAFT','Черновик относится к другому плану.');
     if(intent.phase==='published')return {message_id:intent.message_id};
@@ -164,8 +218,8 @@ export class AssignmentDialogue {
     this.c.event(run,'task.dispatch_requested',{message_id:intent.message_id,assignment_id:intent.effect.assignment_id});
     return {message_id:intent.message_id};
   }
-  async prepare(input){
-    const c=this.c,{run,member}=c.member(input),payload=input.payload;
+  async prepare(input,trusted=null){
+    const c=this.c,{run,member}=trusted??c.member(input),payload=input.payload;
     check(run.mode==='workflow'&&run.grant&&!run.removed,'MODE','Нужен рабочий план.');
     check(allowed[member.role].has(payload.kind),'ROLE','Роль не допускает это сообщение.');
     check(!input.draft||member.role==='O'&&payload.kind==='task','ROLE','Подготовка доступна только оркестратору для task.');
@@ -199,6 +253,7 @@ export class AssignmentDialogue {
       ...(state.contract_digest?{contract_digest:state.contract_digest}:{})};
     const intent={message_id:messageId,operation_id:operationId,key,fingerprint,sender_id:member.id,source:member.target,target,
       effect,context_ref:content,contexts,in_reply_to:payload.in_reply_to,contract_digest:state.contract_digest,
+      ...(trusted&&input.planned_preparation?{planned_preparation:input.planned_preparation}:{}),
       phase:input.draft?'draft':'prepared',created_at:new Date(c.now()).toISOString()};
     (run.assignment_intents??={})[messageId]=structuredClone(intent);
     c.event(run,input.draft?'task.prepared':'message.intent',{message_id:messageId,assignment_id:worker.assignment_id,kind:payload.kind});

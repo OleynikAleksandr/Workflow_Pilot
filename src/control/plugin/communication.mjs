@@ -230,6 +230,7 @@ export class PluginCommunication {
   _grant(input){return this.workflow._grant(input);}
   _enqueue(input){return this.workflow._enqueue(input);}
   _assignmentIntent(input){return this.assignment.prepare(input);}
+  _assignmentPlanBind(input){return this.assignment.bindPlan(input);}
   _assignmentDispatch(input){return this.assignment.dispatchDraft(input);}
   _assignmentAuthorized(input){return this.assignment.applyAuthorized(input);}
   assignmentPrepare(input){return this.assignment.draft(input);}

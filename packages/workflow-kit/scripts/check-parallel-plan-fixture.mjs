@@ -31,6 +31,8 @@ const policy = {parallel_allowed:true, max_workers:2, execution_strategy:'parall
 const task = (id, file, dependencies = []) => ({id, title:'Update '+file, why:'Fixture', dependencies,
   functional_paths:[], documentation_paths:[file], verification_ids:[],
   acceptance_criteria:['Document is updated'], expected_commit_message:'docs: update '+file});
+const authored=t=>({...t,task_brief:'Update only '+t.id+' within its listed files; verify all criteria and return the checked commit.',prepared_task:{version:1,contexts:[]}});
+const authoredDocs=()=>authored({...task('DOCS','docs/architecture/OVERVIEW.md'),title:'Актуализация всех документов проекта'});
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-parallel-plan-')); roots.push(root);
   git(root,'init','-b','main'); git(root,'config','user.name','Parallel Fixture'); git(root,'config','user.email','fixture@test.local');
@@ -196,7 +198,8 @@ try {
       assert.doesNotThrow(()=>JSON.parse(fs.readFileSync(new URL('../src/schemas/'+schema,import.meta.url),'utf8')),schema);
     const {root, scope} = fixture();
     const orchestrated = {...structuredClone(scope),parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',
-      execution_reason:'Fixture orchestration',execution_origin_session_id:'orchestrator-1',release:false};
+      execution_reason:'Fixture orchestration',execution_origin_session_id:'orchestrator-1',release:false,
+      tasks:[...scope.tasks.map(authored),authoredDocs()]};
     const plan = build(root,orchestrated);
     assert.equal(plan.dialogue_version,1,'new orchestrated plans use O-owned dialogue');
     assert.equal(build(root,{...orchestrated,dialogue_version:0}).dialogue_version,0,'explicit legacy fixture keeps its contract');
@@ -257,7 +260,8 @@ try {
     createSimplePlan(root,{id:'simple-orchestrated',spec:'docs/planning/parallel.md',objective:'Orchestrated plan',
       parallel_allowed:true,max_workers:2,execution_strategy:'orchestrated',execution_reason:'Fixture',
       execution_origin_session_id:'orchestrator-1',release:false,
-      tasks:[{id:'T001',title:'One',files:['README.md'],parallel_safe:true,context_pack:context},{id:'T002',title:'Two',files:['GUIDE.md'],parallel_safe:true}]});
+      tasks:[authored({id:'T001',title:'One',files:['README.md'],parallel_safe:true,context_pack:context}),authored({id:'T002',title:'Two',files:['GUIDE.md'],parallel_safe:true}),
+        authored({id:'DOCS',title:'Documents',files:['docs/architecture/OVERVIEW.md']})]});
     let current = readPlan(root);
     assert.equal(current.dialogue_version,1,'simple plan entry uses the same default');
     assert.deepEqual(current.tasks.map(t=>t.id),['T001','T002','DOCS']);
@@ -268,13 +272,14 @@ try {
     assert.ok(current.tasks[2].documentation_paths.includes('docs/planning/parallel.md'),'DOCS retains specification ownership');
     const shared=current.tasks.slice(0,2).map(t=>({...t,documentation_paths:[...t.documentation_paths,'docs/planning/parallel.md']}));
     assert.equal(parallelTasksCompatible(...shared),false,'explicit shared specification writes remain exclusive');
-    extendPlan(root,{tasks:[{id:'T003',title:'Three',files:['NOTES.md'],context_pack:{documents:[{path:'README.md',required:false}]}}]},current.plan_revision);
+    extendPlan(root,{tasks:[authored({id:'T003',title:'Three',files:['NOTES.md'],context_pack:{documents:[{path:'README.md',required:false}]}})],
+      prepared_tasks:{DOCS:{prepared_task:{version:1,contexts:[]}}}},current.plan_revision);
     current = readPlan(root);
     assert.deepEqual(current.tasks.map(t=>t.id),['T001','T002','T003','DOCS'],'new work stays before DOCS');
     assert.ok(current.tasks[3].dependencies.includes('T003'));
     assert.equal(current.tasks[2].context_pack.documents[0].path,'README.md');
     expect('PLAN_SCHEMA',()=>extendPlan(root,{tasks:[{id:'T004',title:'Bad',files:['NOTES.md'],context_pack:{documents:[{path:'README.md',required:true}],extra:1}}]},current.plan_revision));
-    updateTask(root,'T002',{context_pack:{documents:[{path:'NOTES.md',required:true}]}},current.plan_revision);
+    updateTask(root,'T002',{context_pack:{documents:[{path:'NOTES.md',required:true}]},prepared_task:{version:1,contexts:[]}},current.plan_revision);
     current = readPlan(root);
     assert.deepEqual(current.tasks[1].context_pack.documents.map(d=>d.path),['NOTES.md'],'task:update replaces the context');
     expect('ORCHESTRATED_MAIN_READ_ONLY',()=>startTask(root,'T001'));

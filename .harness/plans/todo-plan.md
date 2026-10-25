@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1081,
+  "plan_revision": 1086,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -102,7 +102,13 @@
       "src/contracts/backend.mjs",
       "tests/codex-app-server-mcp.test.mjs",
       "tests/migration-compatibility.test.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "packages/workflow-kit/src/lib/prepared-task.mjs",
+      "packages/workflow-kit/src/lib/task-update.mjs",
+      "packages/workflow-kit/src/lib/extend-plan.mjs",
+      "tests/prepared-task-flow.test.mjs",
+      "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+      "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs"
     ],
     "documentation_paths": [
       "docs/planning/release-0533-defects.md",
@@ -125,7 +131,8 @@
       "docs/modules/project-compatibility.md",
       "docs/acceptance/interruption-recovery.md",
       "packages/workflow-kit/docs/modules/orchestrated-plans.md",
-      "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+      "packages/workflow-kit/src/templates/PLAN.md"
     ]
   },
   "baseline_commit": "5f3ed62a14259308042754032a378503d461d0df",
@@ -386,8 +393,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "PREPARE",
@@ -406,7 +413,6 @@
         "packages/workflow-kit/src/lib/role-protocol.mjs",
         "packages/workflow-kit/src/lib/actions.mjs",
         "packages/workflow-kit/src/schemas/plan.schema.json",
-        "packages/workflow-kit/src/templates/PLAN.md",
         "src/control/plugin/assignment-dialogue.mjs",
         "src/control/plugin/workflow-channel.mjs",
         "src/control/workflow/dialogue-delivery.mjs",
@@ -420,9 +426,20 @@
         "packages/workflow-kit/src/lib/simple-workflow.mjs",
         "packages/workflow-kit/src/lib/dialogue-migration.mjs",
         "packages/workflow-kit/src/lib/validate.mjs",
-        "packages/workflow-kit/src/lib/validation-rules.mjs"
+        "packages/workflow-kit/src/lib/validation-rules.mjs",
+        "packages/workflow-kit/src/lib/prepared-task.mjs",
+        "packages/workflow-kit/src/lib/task-update.mjs",
+        "packages/workflow-kit/src/lib/extend-plan.mjs",
+        "src/control/plugin/communication.mjs",
+        "tests/prepared-task-flow.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "src/control/workflow/parallel-execution.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "packages/workflow-kit/src/templates/PLAN.md"
+      ],
       "verification_ids": [
         "unit-all",
         "kit-check",
@@ -480,7 +497,32 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+        "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/assignment-dialogue.mjs",
+        "packages/workflow-kit/src/lib/extend-plan.mjs",
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "packages/workflow-kit/src/lib/prepared-task.mjs",
+        "packages/workflow-kit/src/lib/recovery.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/simple-workflow.mjs",
+        "packages/workflow-kit/src/lib/task-update.mjs",
+        "packages/workflow-kit/src/lib/validate.mjs",
+        "packages/workflow-kit/src/schemas/plan.schema.json",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/prepared-task-flow.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -862,7 +904,8 @@
         "packages/workflow-kit/docs/modules/workflow-kit-package.md",
         "docs/planning/release-0533-defects.md",
         "docs/planning/release-0533-defects-execution.md",
-        "docs/planning/release-0533-defects-ui.md"
+        "docs/planning/release-0533-defects-ui.md",
+        "packages/workflow-kit/src/templates/PLAN.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -1022,7 +1065,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1081
+Revision: 1086
 
 ## Цель
 
@@ -1059,10 +1102,10 @@ Revision: 1081
   - Файлы: src/control/workflow/execution-control.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, tests/execution-control.test.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/backend-api.test.mjs, src/control/workflow/parallel-kit.mjs, src/control/projects/project-doctor.mjs, src/frontend/desktop/ui/workspace-setup.mjs, src/control/workflow/dialogue-delivery.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CHANNEL, GIT
-- [TODO] PREPARE: Подготовить авторские поручения и контекст до Start — Ожидает
-  - Git Commit: [PENDING] fix: подготовить авторские поручения и контекст до start
+- [DONE] PREPARE: Подготовить авторские поручения и контекст до Start — Завершено
+  - Git Commit: [DONE] fix: подготовить авторские поручения и контекст до start
   - Reference: release-0533-defects / PREPARE / implementation
-  - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/templates/PLAN.md, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/startup-context.mjs, tools/codex-app-server-mcp/plugin.py, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/dialogue-delivery.test.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/dialogue-migration.mjs, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/validation-rules.mjs
+  - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/schemas/plan.schema.json, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/startup-context.mjs, tools/codex-app-server-mcp/plugin.py, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/dialogue-delivery.test.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/dialogue-migration.mjs, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/validation-rules.mjs, packages/workflow-kit/src/lib/prepared-task.mjs, packages/workflow-kit/src/lib/task-update.mjs, packages/workflow-kit/src/lib/extend-plan.mjs, src/control/plugin/communication.mjs, tests/prepared-task-flow.test.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, src/control/workflow/parallel-execution.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHANNEL, BLOCK
 - [TODO] STARTUP: Согласовать сохранённый адрес и жизненный цикл контекста — Ожидает
@@ -1098,7 +1141,7 @@ Revision: 1081
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать контракты и подготовить повторную приёмку
   - Reference: release-0533-defects / DOCS / implementation
-  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/orchestrator-startup.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/acceptance/interruption-recovery.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/release-0533-defects.md, docs/planning/release-0533-defects-execution.md, docs/planning/release-0533-defects-ui.md
+  - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/assignment-dialogue.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/orchestrator-startup.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/orchestrated-execution.md, docs/modules/workflow-execution.md, docs/modules/project-compatibility.md, docs/acceptance/interruption-recovery.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/planning/release-0533-defects.md, docs/planning/release-0533-defects-execution.md, docs/planning/release-0533-defects-ui.md, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHANNEL, GIT, BLOCK, PREPARE, STARTUP, STATUS, VIEW, PROOF, VERSION
 - [TODO] RELEASE: Собрать и проверить релиз macOS Windows Linux — Ожидает

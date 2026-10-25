@@ -179,7 +179,8 @@ try {
     execution_origin_session_id:'orchestrator-fixture',release:false,acceptance_criteria:['Accepted source only'],
     approved_scope:{functional_paths:[],documentation_paths:['README.md',SPEC]},
     context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false},
-    tasks:[{...task('T001','README.md',[],false),context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false}}]});
+    tasks:[{...task('T001','README.md',[],false),task_brief:'Update README only and return the checked commit.',prepared_task:{version:1,contexts:[]},context_pack:{documents:[{path:SPEC,required:true}],dependency_task_ids:[],include_last_completed_task:false}},
+      {...task('DOCS',SPEC,[],false),title:'Актуализация всех документов проекта',task_brief:'Reconcile project documentation after verified integration.',prepared_task:{version:1,contexts:[]}}]});
   const permission=active=>setPlanPermission(root,{scope_id:'dialogue-fixture',backend_id:'isolated-fixture',backend_pid:process.pid,active});
   assert.throws(()=>createAssignment(root,{id:'dialogue-e',task_id:'T001',base_commit:git(root,'rev-parse','HEAD'),worktree:path.join(dialogueDirectory,'worker')},readPlan(root).plan_revision),{code:'PLAN_PAUSED'});
   permission(true);
