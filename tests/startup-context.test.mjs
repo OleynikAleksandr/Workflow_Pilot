@@ -7,11 +7,35 @@ import {randomUUID} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
-import {startupView,startupContextState} from '../src/contracts/startup-view.mjs';
+import {startupView,startupContextState,startupLaunch} from '../src/contracts/startup-view.mjs';
 import {PluginProjects} from '../src/control/plugin/service.mjs';
 import {localParticipantTarget} from '../src/control/plugin/enrollment.mjs';
 const metadata={'openai/session':'startup-fixture','openai/subject':'local-test'};
 const target={project_id:'p',local_session_id:'o',origin_session_id:'o',role:'O',scope_id:null,assignment_id:null,task_id:null};
+test('saved own binding supersedes historical lost without certifying a foreign or unobserved page',()=>{
+  const chatUrl='https://chatgpt.com/c/own-chat-id',attempt={bootstrapTransport:'url-query',state:'sent',sendStartedAtMs:1,
+    cancelState:'none',addressStatus:'lost',addressCandidate:chatUrl,accountConfirmed:{documentId:'confirmed'},
+    sentEvidence:{participant_id:'own-participant'}};
+  const state=binding=>startupContextState({phase:'stale'},{complete:true,message_id:'m'},attempt,binding);
+  const current=state({chatUrl,currentUrl:chatUrl});assert.equal(current.launch.address,'confirmed');
+  assert.equal(current.startup.snapshot_stale,true);assert.doesNotMatch(startupView(current.startup).detail,/утрачен/);
+  const restored=state({chatUrl});assert.equal(restored.launch.address,'saved');assert.equal(restored.launch.addressOverdue,false);
+  assert.match(startupView(restored.startup).detail,/текущая страница ещё проверяется/);
+  const foreign=state({chatUrl,currentUrl:'https://chatgpt.com/c/foreign-id'});
+  assert.equal(foreign.launch.address,'conflict');assert.equal(foreign.phase,'startup-address-conflict');
+  assert.equal(foreign.error.code,'STARTUP_ADDRESS_CONFLICT');assert.equal(foreign.startup.complete,true,'historical receipt is retained');
+  assert.match(startupView(foreign.startup).title,/проверить/);
+  assert.equal(state({}).launch.address,'lost');
+  assert.equal(startupLaunch({...attempt,sentEvidence:null},100000,{chatUrl,currentUrl:chatUrl}).address,'lost');
+  assert.equal(startupLaunch({...attempt,addressStatus:'conflict'},100000,{chatUrl,currentUrl:chatUrl}).address,'conflict');
+  assert.equal(startupContextState({}, {complete:true}, {...attempt,cancelState:'requested'},{chatUrl,currentUrl:chatUrl}).phase,'cancel-pending');
+  assert.doesNotMatch(JSON.stringify(current.launch),/https:|participant/,'public status exposes no identity or address');
+  const project={attempt,chatUrl,sessionId:'o'},record={project:()=>project,pageState:{current:{documentId:'now',state:{url:chatUrl}}}};
+  const delivery=new DialogueDelivery({record:()=>record});delivery.project=()=>project;
+  assert.deepEqual(delivery.observe({local_session_id:'o'}).startupLaunch,current.launch,'plugin and desktop use the same facts');
+  record.pageState.current.state.url='https://chatgpt.com/c/foreign-id';
+  assert.equal(delivery.observe({local_session_id:'o'}).startupLaunch.address,'conflict');
+});
 test('ordinary chats receive complete panel recovery for every plan strategy without acquiring a grant',async t=>{
   for(const strategy of ['sequential','parallel','orchestrated'])for(const status of ['NONE','ACTIVE','BLOCKED']){
     const session={sessionId:'chat',role:status==='NONE'?'orchestrator':'discussion'};
@@ -31,7 +55,9 @@ test('ordinary chats receive complete panel recovery for every plan strategy wit
     const parts=[first.text];
     for(let part=1;part<first.total;part++)parts.push((await plugin.communication.content({metadata,message_id:first.message_id,context_ref:first.context_ref,part})).text);
     assert.equal(parts.join(''),text);
-    assert.equal((await plugin.communication.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref})).complete,true);
+    const completed=await plugin.communication.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref});
+    assert.equal(completed.complete,true);assert.ok(completed.completion.at);assert.equal(completed.completion.id,'startup:'+first.message_id);
+    assert.deepEqual((await plugin.communication.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref})).completion,completed.completion);
     const run=plugin.communication.runs.get(opened.registration.run_id);assert.equal(run.grant,undefined);
     assert.equal(run.events.some(e=>e.event_type==='send.intent'),false);
     if(target.role==='S')await assert.rejects(plugin.communication.workflow.grant(target),{code:'PLUGIN_COMMUNICATION_MODE'});
@@ -44,6 +70,7 @@ test('ordinary chats receive complete panel recovery for every plan strategy wit
     const resumed=await recovered.panel({enrollment_ticket:invitation.enrollment_ticket,metadata});
     assert.equal(resumed.registration.role,target.role);
     assert.equal(recovered.communication.startup.progress('chat','startup').complete,true);
+    assert.deepEqual(recovered.communication.startup.progress('chat','startup').completion,completed.completion,'one durable history identity survives restart');
     assert.equal(recovered.communication.runs.get(resumed.registration.run_id).grant,undefined);
     recovered.communication.dispose();await recovered.communication.tail;
   }

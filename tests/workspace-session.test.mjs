@@ -35,6 +35,16 @@ test('attempt CAS merges navigation with sent, preserves cancellation and ignore
   assert.equal(restored.project(p.workspace).attempt.cancelState,'requested');
   assert.equal(restored.project(p.workspace).attempt.state,'sent');
 });
+test('binding persists the exact own URL and confirmed status atomically before controller continuation',async t=>{
+  const {project,store}=await fixture(t),p=await store.select(await project('Bound'));
+  const identity={requestId:'request-bound',attemptGeneration:'generation-bound'},url='https://chatgpt.com/c/bound-chat-id';
+  await store.patchAttempt(p.workspace,p.sessionId,null,{...identity,bootstrapTransport:'url-query',state:'sent',cancelState:'none',
+    addressCandidate:url,addressStatus:'pending',accountConfirmed:true});
+  assert.equal((await store.bindChat(p.workspace,p.sessionId,url,{attemptIdentity:identity})).attempt.addressStatus,'confirmed');
+  const restored=new WorkspaceSessions(store.file);await restored.load();
+  const bound=restored.project(p.workspace,p.sessionId);assert.equal(bound.chatUrl,url);assert.equal(bound.attempt.addressStatus,'confirmed');
+  assert.equal(bound.attempt.requestId,identity.requestId);
+});
 
 test('integration projection retains the Git-proven parent identity while the worktree contains the child plan',async t=>{
   const {project}=await fixture(t),root=await project('Merging');

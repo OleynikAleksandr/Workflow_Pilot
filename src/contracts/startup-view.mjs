@@ -1,10 +1,19 @@
 // Public projection: never expose the ticket, q, context or enrollment hash.
-export function startupLaunch(attempt,now=Date.now()){
+import {normalizeChatUrl} from './browser.mjs';
+export function startupLaunch(attempt,now=Date.now(),binding=null){
   if(attempt?.bootstrapTransport!=='url-query')return null;
+  const saved=normalizeChatUrl(binding?.chatUrl),observed=normalizeChatUrl(binding?.currentUrl);
+  const owned=saved&&attempt.state==='sent'&&attempt.sentEvidence?.participant_id&&attempt.accountConfirmed
+    &&normalizeChatUrl(attempt.addressCandidate)===saved&&attempt.addressStatus!=='conflict'
+    &&!attempt.loginLost&&attempt.cancelState==='none';
+  // The launch's lost navigation authority does not erase an already bound ID.
+  // A saved ID alone never certifies the currently visible conversation.
+  const address=saved&&observed&&observed!==saved?'conflict'
+    :owned?(observed?'confirmed':'saved'):attempt.addressStatus??'pending';
   return {registration:attempt.state==='sent'?'confirmed':!attempt.sendStartedAtMs?'not-started':attempt.state==='unknown'?'unknown':'pending',
-    address:attempt.addressStatus??'pending',cancel:attempt.cancelState??'none',
+    address,cancel:attempt.cancelState??'none',
     loginLost:!!attempt.loginLost,
-    addressOverdue:attempt.addressStatus!=='confirmed'&&!!attempt.sendStartedAtMs&&now-attempt.sendStartedAtMs>=60000};
+    addressOverdue:!saved&&!['confirmed','saved'].includes(address)&&!!attempt.sendStartedAtMs&&now-attempt.sendStartedAtMs>=60000};
 }
 export function startupView(progress){
   const launch=progress?.launch;
@@ -21,9 +30,14 @@ export function startupView(progress){
     title:launch.registration==='unknown'?'Регистрация панели не подтверждена':'Ожидаем регистрацию панели',
     detail:'Первая команда запущена. Только регистрация по её приглашению подтвердит отправку. Повторной команды нет.'
       +(launch.address==='pending'?' Адрес чата ещё не подтверждён.':launch.address==='lost'?' Связь с адресом утрачена.':' Адрес пока не связан с регистрацией.')};
+  if(launch?.address==='conflict')return {phase:'startup-address-conflict',title:'Нужно проверить открытую страницу',
+    detail:(progress?.complete?'Контекст был получен и подтверждён. ':'')
+      +'Текущая страница не соответствует привязке. Откройте сохранённый чат этой сессии; автоматической перепривязки нет.'};
   const address=launch&&launch.address!=='confirmed'
     ?(launch.address==='lost'?' Адрес чата утрачен; автоматической перепривязки нет.'
-      :launch.address==='conflict'?' Адрес конфликтует; автоматической перепривязки нет.':' Регистрация подтверждена; ожидаем подтверждённый адрес чата.'):'';
+      :launch.address==='conflict'?' Открытая страница конфликтует с привязкой; автоматической перепривязки нет.'
+      :launch.address==='saved'?' Адрес чата сохранён; текущая страница ещё проверяется.'
+      :' Регистрация подтверждена; ожидаем подтверждённый адрес чата.'):'';
   if(progress?.complete)return {phase:'startup-ready',title:'Контекст восстановлен',detail:progress.snapshot_stale
     ?'Все части подтверждены. План изменился после подготовки снимка; перед следующими решениями получите актуальный контекст.'+address
     :'Все части прочитаны и подтверждены агентом. Дальнейшая работа — в рамках роли сессии.'+address};
@@ -41,17 +55,20 @@ export function startupView(progress){
 // over an old transport=pending and a stale controller observation.
 // progress===null: the channel answered that the packet is gone (terminal);
 // undefined: the channel has not answered yet, e.g. right after backend start.
-export function startupContextState(state,progress,attempt=null){
-  const launch=startupLaunch(attempt)??state?.startup?.launch??null;
+export function startupContextState(state,progress,attempt=null,binding=null){
+  const launch=startupLaunch(attempt,Date.now(),binding)??state?.startup?.launch??null;
   if(progress?.cancelled||launch&&launch.cancel!=='none')return {...state,launch,
     startup:{...progress,launch},phase:launch?.cancel==='requested'?'cancel-pending':'startup-cancelled'};
-  const failed=state?.phase==='stale'?{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE',message:'Стартовый пакет устарел.'}
+  const addressConflict=launch?.address==='conflict';
+  const failed=addressConflict?{code:'STARTUP_ADDRESS_CONFLICT',message:'Текущая страница не соответствует привязке сессии.'}
+    :state?.phase==='stale'?{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE',message:'Стартовый пакет устарел.'}
     :state?.phase==='error'?state.error??{code:'STARTUP_ERROR',message:'Восстановление завершилось ошибкой.'}
     :progress===null&&(!launch||attempt?.contextRef)?{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE',message:'Стартовый пакет отсутствует или сессия удалена.'}:null;
   const complete=progress?.complete===true;
-  const startup=complete?{...progress,snapshot_stale:state?.phase==='stale'||state?.startup?.snapshot_stale===true||progress.snapshot_stale===true}
+  const startup=complete?{...progress,snapshot_stale:state?.phase==='stale'||state?.startup?.snapshot_stale===true||progress.snapshot_stale===true,
+    ...(addressConflict?{error:failed}:{})}
     :{...progress,...(failed?{error:failed}:{})};
   return {...state,launch,startup:{...startup,...(launch?{launch}:{})},
     phase:launch&&launch.registration!=='confirmed'?state?.phase??'waiting-registration'
-      :complete?'startup-complete':failed?'startup-failed':'startup-channel',error:complete?null:failed??null};
+      :addressConflict?'startup-address-conflict':complete?'startup-complete':failed?'startup-failed':'startup-channel',error:complete&&!addressConflict?null:failed??null};
 }

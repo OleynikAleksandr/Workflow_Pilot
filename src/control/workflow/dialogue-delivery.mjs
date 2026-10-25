@@ -69,7 +69,8 @@ export class DialogueDelivery {
   project(sessionId){const p=this.store.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));return p&&this.store.project(p.workspace,sessionId);}
   observe(target){
     const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState.current;
-    return {...executorPageState(record),startupLaunch:startupLaunch(project?.attempt),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
+    return {...executorPageState(record),startupLaunch:startupLaunch(project?.attempt,Date.now(),{
+      chatUrl:project?.chatUrl,currentUrl:page?.documentId?page.state?.url:undefined}),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
       observationSeq:page?.seq??0,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
   }

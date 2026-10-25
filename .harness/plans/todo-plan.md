@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1086,
+  "plan_revision": 1089,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -108,7 +108,9 @@
       "packages/workflow-kit/src/lib/extend-plan.mjs",
       "tests/prepared-task-flow.test.mjs",
       "packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs",
-      "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs"
+      "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs",
+      "tests/startup-context.test.mjs",
+      "tests/workspace-session.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/release-0533-defects.md",
@@ -525,8 +527,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "STARTUP",
@@ -546,7 +548,10 @@
         "tests/dialogue-delivery.test.mjs",
         "tests/backend-desktop-model.test.mjs",
         "src/control/sessions/workspace-session.mjs",
-        "src/control/plugin/communication.mjs"
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/workspace-session.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -590,7 +595,16 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/workspace-session.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1065,7 +1079,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1086
+Revision: 1089
 
 ## Цель
 
@@ -1108,10 +1122,10 @@ Revision: 1086
   - Файлы: packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/assignment-dialogue.mjs, packages/workflow-kit/src/lib/assignment-contract.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/schemas/plan.schema.json, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/startup-context.mjs, tools/codex-app-server-mcp/plugin.py, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/dialogue-delivery.test.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, packages/workflow-kit/src/lib/recovery.mjs, packages/workflow-kit/src/lib/simple-workflow.mjs, packages/workflow-kit/src/lib/dialogue-migration.mjs, packages/workflow-kit/src/lib/validate.mjs, packages/workflow-kit/src/lib/validation-rules.mjs, packages/workflow-kit/src/lib/prepared-task.mjs, packages/workflow-kit/src/lib/task-update.mjs, packages/workflow-kit/src/lib/extend-plan.mjs, src/control/plugin/communication.mjs, tests/prepared-task-flow.test.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/scripts/check-parallel-plan-fixture.mjs, packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs, src/control/workflow/parallel-execution.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHANNEL, BLOCK
-- [TODO] STARTUP: Согласовать сохранённый адрес и жизненный цикл контекста — Ожидает
-  - Git Commit: [PENDING] fix: согласовать сохранённый адрес и жизненный цикл контекста
+- [DONE] STARTUP: Согласовать сохранённый адрес и жизненный цикл контекста — Завершено
+  - Git Commit: [DONE] fix: согласовать сохранённый адрес и жизненный цикл контекста
   - Reference: release-0533-defects / STARTUP / implementation
-  - Файлы: src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, tests/startup-ui.test.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/backend-desktop-model.test.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/communication.mjs
+  - Файлы: src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/workflow-channel.mjs, src/backend/desktop-model.mjs, tests/startup-ui.test.mjs, tests/context-session.test.mjs, tests/dialogue-delivery.test.mjs, tests/backend-desktop-model.test.mjs, src/control/sessions/workspace-session.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, tests/startup-context.test.mjs, tests/workspace-session.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: BLOCK
 - [TODO] STATUS: Дать всем клиентам единые роли, стадии и приоритет внимания — Ожидает

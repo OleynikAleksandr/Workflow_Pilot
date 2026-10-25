@@ -66,7 +66,8 @@ export class StartupContext {
   }
   view(m){return m?{message_id:m.message_id,request_id:m.request_id,delivery:m.delivery,read:m.read,
     delivery_mode:m.delivery_mode??'sdk-notification',complete:!!m.startup_complete,cancelled:!!m.cancelled,
-    superseded:!!m.superseded,parts_read:m.parts_read.length,total_parts:m.total_parts}:null;}
+    superseded:!!m.superseded,parts_read:m.parts_read.length,total_parts:m.total_parts,
+    ...(m.startup_complete?{completion:{id:'startup:'+m.message_id,at:m.startup_completed_at??null}}:{})}:null;}
   progress(sessionId,requestId){
     if(this.c.removedSessions.has(sessionId))return null;
     const match=m=>m.kind==='startup-context'&&m.recipient_session_id===sessionId&&m.request_id===requestId;
@@ -113,7 +114,7 @@ export class StartupContext {
     const {run,member,m}=await this.own(input);
     check(input.context_sha256===m.context_ref,'CONTEXT','Digest не совпадает со стартовым пакетом.');
     check(m.read&&m.parts_read.length===m.total_parts,'INCOMPLETE','Прочитайте все части стартового контекста перед подтверждением.');
-    if(!m.startup_complete){m.startup_complete=true;
+    if(!m.startup_complete){m.startup_complete=true;m.startup_completed_at=new Date(this.c.now()).toISOString();
       if(member.deliveryGate?.message_id===m.message_id)delete member.deliveryGate;
       this.c.event(run,'startup.complete',{message_id:m.message_id,participant_id:member.id,total_parts:m.total_parts});}
     return {...this.view(m),instructions:'Контекст полностью получен и подтверждён. Кратко сообщите о восстановлении проекта. Выполнение плана не разрешено этим подтверждением.'};

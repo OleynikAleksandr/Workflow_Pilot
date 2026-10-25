@@ -693,6 +693,8 @@ export class WorkspaceSessions {
       if (session.chatUrl && session.chatUrl !== url) throw new WorkspaceError('CHAT_CHANGED', 'Открыт другой чат. Выберите его в дереве или вернитесь к сессии проекта.');
       if (data.projects.some(p => p.sessions.some(s => s.sessionId !== sessionId && s.chatUrl === url))) throw new WorkspaceError('CHAT_IN_USE', 'Этот чат уже связан с другой сессией.');
       session.chatUrl = url;
+      // The URL and its successful attempt binding are one persisted mutation.
+      if(attemptIdentity)session.attempt={...session.attempt,addressStatus:'confirmed'};
       if (manual && !['sent', 'acknowledged'].includes(session.attempt?.state)) session.manualStart = true;
       return currentView(data.projects.find(p => p.workspace === workspace), sessionId);
     },isCurrent);

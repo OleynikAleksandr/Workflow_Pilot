@@ -474,6 +474,7 @@ function notifyWorkProgress() {
 }
 function snapshot() {
   const saved = store.selected();
+  const observation=saved&&liveRecord(saved)?.pageState.current;
   const projects=store.snapshot().projects;
   const info = planMonitor.view(saved, controller?.state.projectInfo);
   const selected = saved && { ...saved, attempt: saved.attempt && { protocol: saved.attempt.protocol,
@@ -516,7 +517,8 @@ function snapshot() {
       : saved&&workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)&&!['sent','unknown','acknowledged'].includes(saved.attempt?.state)
         ? {phase:'error',messageSent:false,error:workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)}
       : saved?.attempt?.bootstrapTransport==='url-query'||saved?.attempt?.contextTransport==='panel'&&saved.attempt.state==='sent'
-        ? startupContextState(controller?.state,workflow.startupProgress(saved.sessionId,saved.attempt.requestId),saved.attempt)
+        ? startupContextState(controller?.state,workflow.startupProgress(saved.sessionId,saved.attempt.requestId),saved.attempt,
+          {chatUrl:saved.chatUrl,currentUrl:observation?.documentId?observation.state?.url:undefined})
         : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },
     contextPreparation: { busy: selected ? contextCache.isBuilding(selected.workspace) : false },
     runtimeFolder, platform: process.platform,
