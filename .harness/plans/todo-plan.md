@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1153,
+  "plan_revision": 1154,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -117,7 +117,7 @@
     ]
   },
   "baseline_commit": "b94b7c7c0fb9da928c40666add51c49e0f394577",
-  "current_task_id": null,
+  "current_task_id": "PUBLISH",
   "context_pack": {
     "documents": [
       {
@@ -898,7 +898,7 @@
         "Неизменный комплект, ограничения live/native приёмки отражены; итог по всем задачам."
       ],
       "expected_commit_message": "release: опубликовать полный комплект 0.5.35",
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "release-0534-defects",
@@ -934,8 +934,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
-Current Task: нет
-Revision: 1153
+Current Task: PUBLISH
+Revision: 1154
 
 ## Цель
 
@@ -1021,7 +1021,7 @@ Revision: 1153
   - Файлы: release-manifest.json, docs/planning/release-0534-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать полный выпуск на GitHub — Ожидает
+- [IN_PROGRESS] PUBLISH: Опубликовать полный выпуск на GitHub — В работе
   - Git Commit: [PENDING] release: опубликовать полный комплект 0.5.35
   - Reference: release-0534-defects / PUBLISH / implementation
   - Файлы: release-manifest.json, docs/planning/release-0534-defects.md
