@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1110,
+  "plan_revision": 1112,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -1193,14 +1193,15 @@
         "Нет пересборки, переподписи, закрытия приложения или остановки действующей службы."
       ],
       "expected_commit_message": "delivery: установить проверенный выпуск 0.5.34",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "INSTALL",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH",
@@ -1262,7 +1263,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1110
+Revision: 1112
 
 ## Цель
 
@@ -1347,8 +1348,8 @@ Revision: 1110
   - Файлы: release-manifest.json, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить проверенный выпуск на этот Mac — Ожидает
-  - Git Commit: [PENDING] delivery: установить проверенный выпуск 0.5.34
+- [DONE] INSTALL: Установить проверенный выпуск на этот Mac — Завершено
+  - Git Commit: [DONE] delivery: установить проверенный выпуск 0.5.34
   - Reference: release-0533-defects / INSTALL / implementation
   - Файлы: release-manifest.json, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
