@@ -5,9 +5,33 @@ import { ParallelKit,projectVerifiedPlan } from '../src/control/workflow/paralle
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {emptyPlan,renderPlan} from '@webpilot/workflow-kit/lib/plan';
 import {ChildCommandWatches} from '../src/execution/files/project-input-watch.mjs';
 import {readCommandActivity} from '../src/control/workflow/command-activity.mjs';
+test('Kit preflight reports actual dirty paths including renames and whitespace without quoted porcelain',async t=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'parallel-dirty-paths-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8'}).trim();
+  git('init','-q','-b','main');git('config','user.name','Dirty Fixture');git('config','user.email','fixture@example.invalid');
+  await fs.mkdir(path.join(root,'.harness/plans'),{recursive:true});
+  await fs.writeFile(path.join(root,'README.md'),'# Fixture\n');git('add','README.md');git('commit','-qm','fixture');
+  const plan={...emptyPlan('Fixture'),scope_id:'scope',execution_scope_status:'ACTIVE',baseline_commit:git('rev-parse','HEAD'),
+    approved_scope:{functional_paths:['task.txt'],documentation_paths:[]},
+    objective:'Observe Git paths',acceptance_criteria:['Paths are exact'],parallel_allowed:true,max_workers:2,
+    execution_strategy:'parallel',execution_reason:'Independent fixture',execution_origin_session_id:'origin',
+    tasks:[{id:'A',title:'A',why:'Fixture',dependencies:[],parallel_safe:true,functional_paths:['task.txt'],documentation_paths:[],
+      verification_ids:[],acceptance_criteria:['Done'],expected_commit_message:'feat: A',implementation_status:'TODO',commit_status:'PENDING',
+      commit_ref:{scope_id:'scope',task_id:'A',role:'implementation'}}]};
+  await fs.writeFile(path.join(root,'.harness/plans/todo-plan.md'),renderPlan(plan));
+  git('add','.harness/plans/todo-plan.md');git('commit','-qm','fixture plan');
+  git('mv','README.md','renamed name.md');await fs.appendFile(path.join(root,'renamed name.md'),'edited');
+  const userFile=process.platform==='win32'?'new file.txt':'new\n"file.txt';await fs.writeFile(path.join(root,userFile),'user');
+  const kit=new ParallelKit({setup:{node:async()=>process.execPath,environment:{...process.env}},
+    plans:{call:async(_root,command)=>command==='validate'?{resolved:{},plan_revision:plan.plan_revision}:{status:'IDLE'}}});
+  const state=await kit.read(root);assert.equal(state.mainClean,false);
+  assert.deepEqual(new Set(state.mainChanges.map(c=>c.path)),new Set(['renamed name.md',userFile]));
+  assert.equal(state.mainChanges.find(c=>c.path==='renamed name.md').status,'RM');
+});
 test('retirement blocks a delivery paused in persistence and all late scheduler callbacks',async t=>{
   const f=fixture(t),entry={status:'pending'};let release,deliveries=0;
   const wait=new Promise(resolve=>release=resolve);f.runtime.save=()=>wait;

@@ -86,6 +86,20 @@ test('button: removing a project clears its state', () => {
   assert.equal(value.view(W, SCOPE).state, 'not-started');
 });
 
+test('technical block persists its paths and Continue clears only that block; manual and UNKNOWN win',()=>{
+  const {value}=control(),issue={code:'MAIN_DIRTY',message:'Check src/user.txt',paths:['src/user.txt']};
+  assert.equal(value.block(W,SCOPE,issue).state,'paused');
+  const restored=new ExecutionControl({saved:value.snapshot()});restored.revokeAfterRestart();
+  assert.equal(restored.view(W,SCOPE).reason,'blocked');assert.deepEqual(restored.view(W,SCOPE).issue.paths,issue.paths);
+  restored.toggle(W,SCOPE);assert.equal(restored.view(W,SCOPE).issue,undefined);
+  restored.block(W,SCOPE,issue,{busy:true});assert.equal(restored.settle(W,SCOPE,{busy:true}).state,'pausing');
+  assert.equal(restored.settle(W,SCOPE,{busy:false}).state,'paused');
+  restored.toggle(W,SCOPE);restored.toggle(W,SCOPE);
+  assert.equal(restored.block(W,SCOPE,issue).reason,'manual');
+  restored.settle(W,SCOPE,{busy:false});restored.toggle(W,SCOPE);restored.pause(W,SCOPE,'unknown');
+  assert.equal(restored.block(W,SCOPE,issue).reason,'unknown');
+});
+
 test('button command: only a published orchestrated plan starts, the state is saved and purged with its project', async t => {
   const fs = await import('node:fs/promises'), path = await import('node:path'), os = await import('node:os');
   const { ControlFacade } = await import('../src/control/facade.mjs');
@@ -98,12 +112,16 @@ test('button command: only a published orchestrated plan starts, the state is sa
     + JSON.stringify({ schema_version: 1, project_id: 'main-id', project_name: 'Main', plan_revision: 1, scope_id: null,
       execution_scope_status: 'NONE', delivery_status: 'IN_PROGRESS', current_task_id: null, tasks: [], ...state }) + '\n```\n<!-- workflow-state:end -->');
   await write({});
-  const live = [];
+  const live = [],preflight={mainClean:true,mainChanges:[],assignments:[],commandActive:false,confirmed:true,
+    plan:{project_id:'main-id',scope_id:SCOPE},integration:{status:'IDLE'}};
+  let inspectGate=null,inspectionStarted=null;
   const create = () => {
     const control = new ControlFacade({ storageFile: path.join(root, 'profile/sessions.json'), execution: {} });
     control.configureProjects({});
     const workflow = control.configureWorkflow({ getController: () => null, available: () => false, contextAvailable: () => false,
-      onChange: () => {}, report: () => {}, save: async () => {} });
+      onChange: () => {}, report: () => {}, save: async () => {},inspectExecution:async()=>{
+        inspectionStarted?.();if(inspectGate)await inspectGate;return preflight;
+      } });
     workflow.attachSessions({ all: () => live, find: () => null, visible: null, paused: true });
     t.after(() => { workflow.planContinuation.dispose(); workflow.execution.dispose(); workflow.planMonitor.close(); workflow.planReview.dispose(); workflow.reviewContinuation.dispose(); });
     return { control, workflow };
@@ -125,10 +143,24 @@ test('button command: only a published orchestrated plan starts, the state is sa
   live.push({ project: () => ({ parentWorkspace: main.workspace, parentScopeId: SCOPE }),
     executor: { setEnabled: value => enabled.push(value) }, controller: { signal: () => {} } });
   assert.equal(workflow.executorEnabled(main.workspace, SCOPE), false, 'not started: the executor waits');
+  preflight.mainClean=false;preflight.mainChanges=[{path:'src/user file.txt',status:'??'}];
+  const blocked=await workflow.setPlanExecution();
+  assert.equal(blocked.state,'paused');assert.equal(blocked.reason,'blocked');
+  assert.deepEqual(blocked.issue.paths,['src/user file.txt']);assert.equal(workflow.executorEnabled(main.workspace,SCOPE),false);
+  assert.equal((await workflow.setPlanExecution(true)).state,'paused','dirty Continue creates no work');
+  preflight.mainClean=true;preflight.mainChanges=[];
+  preflight.integration.status='UNKNOWN';
+  assert.equal((await workflow.setPlanExecution(true)).reason,'unknown');
+  assert.equal(workflow.executorEnabled(main.workspace,SCOPE),false,'Continue does not clear a real UNKNOWN');
+  preflight.integration.status='IDLE';
+  let release;inspectGate=new Promise(resolve=>release=resolve);
+  const entered=new Promise(resolve=>inspectionStarted=resolve),lateContinue=workflow.setPlanExecution(true);
+  await entered;await workflow.stopPlanExecution(main.workspace);release();inspectGate=null;inspectionStarted=null;
+  assert.equal((await lateContinue).reason,'manual','a newer Stop cancels an in-flight clean preflight');
   assert.equal((await workflow.setPlanExecution()).state, 'running');
   assert.equal(workflow.executorEnabled(main.workspace, SCOPE), true);
   assert.equal(workflow.projectPlanContinuation.enabled(main.workspace, SCOPE), false, 'PlanContinuation stays off');
-  assert.deepEqual(enabled, [true], 'the live executor is enabled at once');
+  assert.equal(enabled.at(-1),true);assert.ok(enabled.slice(0,-1).every(value=>value===false),'nothing enables the executor before the final clean Continue');
   live.length = 0;
   const saved = workflow.snapshot();
   assert.equal(saved.executionControl[main.workspace].state, 'running');

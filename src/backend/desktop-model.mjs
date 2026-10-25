@@ -323,7 +323,7 @@ function planRunView(saved) {
       else if(incoming.delivery==='accepted'){activity.label='SDK принял сообщение'+suffix;
         activity.reason='Принято хостом, но чтение исполнителем ещё не подтверждено.';}
     }
-    return {workspace,scopeId:project.scopeId,...run,issue:project.orchestrationIssue??null,complete:run.state==='complete',
+    return {workspace,scopeId:project.scopeId,...run,issue:project.orchestrationIssue??run.issue??null,complete:run.state==='complete',
       activity:observeActivity(JSON.stringify([project.projectId,project.scopeId,'plan']),activity)};
   }
   // A plan of the former model: the button shows whether its continuation engine runs.

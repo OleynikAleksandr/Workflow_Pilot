@@ -1,7 +1,7 @@
 // The single run/pause control of an orchestrated plan. It belongs to a project and its plan,
 // lives in the backend and survives restarts; publication alone never starts execution.
 export const EXECUTION_STATES = Object.freeze(['not-started', 'running', 'pausing', 'paused', 'complete']);
-export const PAUSE_REASONS = Object.freeze(['manual', 'escalation', 'unknown', 'restart', 'refused']);
+export const PAUSE_REASONS = Object.freeze(['manual', 'escalation', 'unknown', 'restart', 'refused', 'blocked']);
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const absolute = workspace => typeof workspace === 'string' && (workspace.startsWith('/') || /^[A-Za-z]:[\\/]/.test(workspace));
 const validScope = scopeId => typeof scopeId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(scopeId);
@@ -16,12 +16,14 @@ export class ExecutionControl {
       this.book[workspace] = { projectId: typeof entry.projectId === 'string' ? entry.projectId : null, scopeId: entry.scopeId,
         route:entry.route==='plugin-v1'?'plugin-v1':'legacy-dom',
         state: entry.state, reason: entry.reason ?? null, message: typeof entry.message === 'string' ? entry.message.slice(0, 1000) : null,
-        updatedAt: Number.isFinite(entry.updatedAt) ? entry.updatedAt : 0 };
+        updatedAt: Number.isFinite(entry.updatedAt) ? entry.updatedAt : 0,
+        ...(entry.issue?.code&&typeof entry.issue.message==='string'?{issue:structuredClone(entry.issue)}:{}) };
     }
   }
   snapshot() { return structuredClone(this.book); }
   revokeAfterRestart(){for(const entry of Object.values(this.book))if(entry.route==='plugin-v1'&&['running','pausing'].includes(entry.state)){
-    entry.state='paused';entry.reason='restart';entry.message='Служба перезапущена. Нажмите «Продолжить план».';
+    entry.state='paused';
+    if(!['manual','blocked'].includes(entry.reason)){entry.reason='restart';entry.message='Служба перезапущена. Нажмите «Продолжить план».';}
   }}
   route(workspace,scopeId){return this.entry(workspace,scopeId)?.route??null;}
   selectRoute(workspace,scopeId,route) {
@@ -40,16 +42,18 @@ export class ExecutionControl {
   }
   view(workspace, scopeId) {
     const entry = this.entry(workspace, scopeId);
-    return { state: entry?.state ?? 'not-started', reason: entry?.reason ?? null, message: entry?.message ?? null };
+    return { state: entry?.state ?? 'not-started', reason: entry?.reason ?? null, message: entry?.message ?? null,
+      ...(entry?.issue?{issue:structuredClone(entry.issue)}:{}) };
   }
   enabled(workspace, scopeId) { return this.view(workspace, scopeId).state === 'running'; }
   // Executors keep their normal continuations during pausing; only new tasks wait.
   issuing(workspace, scopeId) { return this.enabled(workspace, scopeId); }
-  write(workspace, scopeId, state, reason = null, message = null, route = 'legacy-dom', notify = true) {
+  write(workspace, scopeId, state, reason = null, message = null, route = 'legacy-dom', notify = true, issue = null) {
     if (!absolute(workspace) || !validScope(scopeId)) throw fail('PLAN_EXECUTION_INVALID', 'Нужен проект и опубликованный план.');
     const old = this.entry(workspace, scopeId);
-    if (old && old.state === state && old.reason === reason && old.message === message) return old;
-    this.book[workspace] = { projectId: this.identity?.(workspace) ?? null, scopeId, route:old?.route??route,state, reason, message, updatedAt: this.now() };
+    if (old && old.state === state && old.reason === reason && old.message === message&&JSON.stringify(old.issue??null)===JSON.stringify(issue)) return old;
+    this.book[workspace] = { projectId: this.identity?.(workspace) ?? null, scopeId, route:old?.route??route,state, reason, message, updatedAt: this.now(),
+      ...(issue?{issue:structuredClone(issue)}:{}) };
     if(notify)this.onChange(workspace);
     return this.book[workspace];
   }
@@ -70,10 +74,17 @@ export class ExecutionControl {
     this.write(workspace, scopeId, state === 'paused' ? 'paused' : 'pausing', reason, message);
     return this.view(workspace, scopeId);
   }
+  block(workspace,scopeId,issue,{busy=false,resuming=false}={}) {
+    const current=this.view(workspace,scopeId);
+    if(current.state==='complete'||['paused','pausing'].includes(current.state)
+      &&(current.reason==='unknown'||current.reason==='manual'&&!resuming))return current;
+    this.write(workspace,scopeId,busy?'pausing':'paused','blocked',String(issue.message).slice(0,1000),'plugin-v1',true,issue);
+    return this.view(workspace,scopeId);
+  }
   // Called by the scheduler: a requested pause takes effect once no executor is working.
   settle(workspace, scopeId, { busy }) {
     const entry = this.entry(workspace, scopeId);
-    if (entry?.state === 'pausing' && !busy) this.write(workspace, scopeId, 'paused', entry.reason, entry.message);
+    if (entry?.state === 'pausing' && !busy) this.write(workspace, scopeId, 'paused', entry.reason, entry.message,entry.route,true,entry.issue??null);
     return this.view(workspace, scopeId);
   }
   // Archiving a project stops its plan at once: no waiting for executors, nothing new is sent.

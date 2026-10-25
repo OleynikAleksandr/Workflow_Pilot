@@ -51,6 +51,17 @@ test('generation and lease readiness agree for O and two E; sync never grants a 
   assert.ok(events.some(e=>e.event_type==='operation.denied'&&e.reason==='lease-expired'));
   assert.equal(events.filter(e=>e.event_type==='send.intent').length,0);
 });
+test('a pending permission cannot overtake a newer Stop or a changed control owner',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);const binding=await f.bind(f.c,f.o);
+  const generation=f.c.runs.get(binding.run_id).grant.generation;
+  await f.c.stop({...binding,scope:'participant'});
+  await assert.rejects(f.c.workflow.grant(f.o,'running',{expectedGeneration:generation}),{code:'PLUGIN_COMMUNICATION_PERMISSION_CHANGED'});
+  await assert.rejects(f.c.workflow.grant(f.o,'running',{canContinue:()=>false}),{code:'PLUGIN_COMMUNICATION_PERMISSION_CHANGED'});
+  assert.equal(f.c.runs.get(binding.run_id).grant.active,false);
+  const current=f.c.runs.get(binding.run_id).grant.generation;
+  await f.c.workflow.grant(f.o,'running',{expectedGeneration:current,canContinue:()=>true});
+  assert.equal(f.c.runs.get(binding.run_id).grant.active,true);
+});
 test('combined claim persists one send intent and cannot be repeated after a lost response',async t=>{
   const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e);
   const message=await queue(f.c,e);

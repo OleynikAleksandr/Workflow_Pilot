@@ -25,10 +25,11 @@ export const refusalText=(taskId,error)=>'Kit отказал в назначен
 
 export class ParallelKit {
   constructor({plans,setup,execute=plans?.run??executeFile,onTiming=()=>{}}) {Object.assign(this,{plans,setup,execute,onTiming});}
-  async git(workspace,args) {
+  async git(workspace,args,{raw=false}={}) {
     await this.setup.node();
-    return (await this.execute(this.setup.environment.WORKFLOW_GIT_BIN||'git',['-C',workspace,...args],
-      {env:this.setup.environment,windowsHide:true,encoding:'utf8',timeout:10000,maxBuffer:4*1024*1024})).stdout.trim();
+    const value=(await this.execute(this.setup.environment.WORKFLOW_GIT_BIN||'git',['-C',workspace,...args],
+      {env:this.setup.environment,windowsHide:true,encoding:'utf8',timeout:10000,maxBuffer:4*1024*1024})).stdout;
+    return raw?value:value.trim();
   }
   async projectIdentity(workspace,commit) {
     if(!commit)return null;
@@ -124,11 +125,17 @@ export class ParallelKit {
     const signalText=await fs.readFile(path.join(gitDir,'workflow-kit','signals.jsonl'),'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;});
     const signals=signalText.split('\n').filter(Boolean).map(line=>{try{return JSON.parse(line);}catch{return null;}})
       .filter(signal=>signal&&typeof signal.id==='string'&&signal.scope_id===plan.scope_id);
+    const records=(await this.git(workspace,['status','--porcelain=v1','--untracked-files=all','-z'],{raw:true})).split('\0');
+    const mainChanges=[];
+    for(let i=0;i<records.length;i++)if(records[i]){
+      const record=records[i],status=record.slice(0,2);mainChanges.push({path:record.slice(3),status});
+      if(/[RC]/.test(status)&&records[i+1])i++;
+    }
     return {workspace,plan:projectVerifiedPlan(plan,proof.resolved),head,assignments,integration,confirmationError,...activity,signals,
       kitProgress:await readCommitProgress(gitDir),
       handoff:handoff&&handoff.phase!=='DONE'?handoff:null,
       watchInputs:['operation.lock','transaction.json','task-handoff.json','integration.json','assignments/','signals.jsonl'].map(name=>path.relative(workspace,path.join(gitDir,'workflow-kit',name))+(name.endsWith('/')?'/':'')).concat(childInputs),
-      mainClean:!await this.git(workspace,['status','--porcelain']),
+      mainClean:mainChanges.length===0,mainChanges,
       commandActive:activity.commandActive||await exists(path.join(gitDir,'workflow-kit','operation.lock')),
       confirmed:!confirmationError};
   }

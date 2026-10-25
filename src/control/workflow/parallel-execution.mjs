@@ -7,7 +7,7 @@ import { kitRefusal, refusalText } from './parallel-kit.mjs';
 
 const fail=(code,message)=>Object.assign(new Error(message),{code});
 const UNKNOWN_CODES=['INTEGRATION_UNKNOWN','ASSIGNMENT_UNKNOWN'];
-const issue=e=>({code:e.code??'PARALLEL_FAILED',message:String(e.message??e).slice(0,1000)});
+const issue=e=>({code:e.code??'PARALLEL_FAILED',message:String(e.message??e).slice(0,1000),...(e.paths?{paths:e.paths}:{})});
 // A changed pause or an unrelated assistant turn is not an acknowledgement.
 // The dispatched user message must first appear in the SAME observed document;
 // only its subsequent completed assistant turn can acknowledge this handoff.
@@ -358,7 +358,14 @@ export class ParallelExecution {
       this.queues.get(workspace).again=true;return;
     }
     if(!issuing()){this.publish(workspace,{phase:'paused'});this.settle(workspace,plan,assignments,state);return;}
-    if(!state.mainClean)throw fail('MAIN_DIRTY','В main есть незакоммиченные изменения. Выполнение плана не удаляет и не присваивает их.');
+    if(!state.mainClean){
+      const paths=(state.mainChanges??[]).map(item=>item.path);
+      const error={code:'MAIN_DIRTY',message:'В main есть незакоммиченные изменения.'+(paths.length?' Файлы: '+paths.slice(0,5).join(', ')+'.':'')
+        +' Сохраните нужные изменения и нажмите «Продолжить». Выполнение плана не удаляет и не присваивает их.',paths};
+      this.publish(workspace,{phase:'attention',error});
+      this.onPause(workspace,plan.scope_id,'blocked',error.message,error);
+      this.settle(workspace,plan,assignments,state);return;
+    }
     const mainPage=this.mainState(origin);
     if(plan.dialogue_version!==1&&(!mainPage.stopped||mainPage.canSend===false))
       throw fail('MAIN_CHAT_NOT_READY','Ждём готовности основного чата без активного ответа и черновика.');

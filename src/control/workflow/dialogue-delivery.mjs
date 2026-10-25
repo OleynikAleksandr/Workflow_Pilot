@@ -134,9 +134,12 @@ export class DialogueDelivery {
       local_session_id:project.sessionId,request_id:attempt.requestId,attempt_generation:attempt.attemptGeneration},
     attempt.enrollmentRef??null,reason);
   }
-  async permission(workspace,scope,phase){
+  async permission(workspace,scope,phase,canContinue=()=>true){
     if(this.route(workspace,scope)!=='plugin-v1')return;
+    if(!canContinue())return;
     const communication=this.getPlugin()?.communication;
+    const existing=[...(communication?.runs.values()??[])].find(run=>run.mode==='workflow'&&run.project_id===this.store.project(workspace)?.projectId);
+    const expectedGeneration=existing?.grant?.generation??0;
     if(this.store.project(workspace)?.planExecution?.dialogue_version===1)
       await this.kitPermission(workspace,{scope_id:scope,backend_id:communication.backendId,backend_pid:process.pid,active:phase==='running'});
     const settled=[...(communication?.runs.values()??[])].find(run=>run.mode==='workflow'&&run.project_id===this.store.project(workspace)?.projectId
@@ -146,9 +149,9 @@ export class DialogueDelivery {
       ??this.store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions.find(s=>s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId;
     const target=await this.getPlugin().participantTarget(origin);
     if(!target||target.scope_id!==scope)throw Object.assign(Error('Оркестратор опубликованного плана не подтверждён.'),{code:'PLUGIN_PLAN_IDENTITY'});
-    try{return await this.getPlugin().communication.workflow.grant(target,phase==='not-started'?'paused':phase);}
+    try{return await this.getPlugin().communication.workflow.grant(target,phase==='not-started'?'paused':phase,{canContinue,expectedGeneration});}
     catch(error){
-      if(target.dialogue_version===1)await this.kitPermission(workspace,{scope_id:scope,
+      if(target.dialogue_version===1&&canContinue())await this.kitPermission(workspace,{scope_id:scope,
         backend_id:communication.backendId,backend_pid:process.pid,active:false});
       throw error;
     }

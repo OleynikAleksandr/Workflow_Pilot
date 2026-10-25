@@ -26,7 +26,7 @@ import { desktopFiles } from '../../execution/facade.mjs';
 
 // The 0.6.115 coordination rules live here. Desktop supplies presentation/readiness and persistence.
 export function createWorkflowCoordination({store, setup:workspaceSetup, plans:sessionPlans,
-  getController, available, contextAvailable, onChange:publishModel, report, save:saveSettings,getPlugin=()=>null}) {
+  getController, available, contextAvailable, onChange:publishModel, report, save:saveSettings,getPlugin=()=>null,inspectExecution=null}) {
 // Every published change may add or retire a cause of the user's choice card.
 function publish(){publishModel();scheduleChoices();}
 let liveSessions;
@@ -74,12 +74,16 @@ const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&li
   signals:workspace=>executionKit.signals(workspace),
   kitPermission:(workspace,input)=>sessionPlans.call(workspace,'plan:permission',[],input)});
 let permissionTail=Promise.resolve();
+function queuePermission(operation){const next=permissionTail.then(operation);permissionTail=next.catch(report);return next;}
 function syncPermission(workspace){
   if(startupRecovery.has(workspace))return Promise.resolve();
   const entry=executionControl.book[workspace];if(!entry||entry.route!=='plugin-v1')return Promise.resolve();
-  const {scopeId,state}=entry;
-  const next=permissionTail.then(()=>dialogue.permission(workspace,scopeId,state));
-  permissionTail=next.catch(report);return next;
+  const {scopeId}=entry;
+  return queuePermission(()=>{
+    const current=executionControl.entry(workspace,scopeId);
+    if(!current)return;
+    return dialogue.permission(workspace,scopeId,current.state,()=>executionControl.entry(workspace,scopeId)===current);
+  });
 }
 const projectPlanContinuation=new ProjectPlanContinuation({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
   ownsSession:(workspace,id)=>store.snapshot().projects.some(p=>p.workspace===workspace&&p.sessions.some(s=>s.sessionId===id)),onChange:workspace=>{
@@ -246,10 +250,12 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   isIssuing:(workspace,scope)=>(!orchestratedPlan(workspace)||executionControl.issuing(workspace,scope)),
   canFinalize:(workspace,scope)=>orchestratedPlan(workspace)?executionControl.issuing(workspace,scope):projectPlanContinuation.finalizationAllowed(workspace,scope),
   onComplete:async(workspace,scope)=>{if(orchestratedPlan(workspace)){
-    await dialogue.permission(workspace,scope,'complete');return executionControl.complete(workspace,scope);
+    await queuePermission(()=>dialogue.permission(workspace,scope,'complete'));return executionControl.complete(workspace,scope);
   }return projectPlanContinuation.sync(workspace,scope,{complete:true,confirmed:true});},
   onSettle:(workspace,scope,facts)=>executionControl.settle(workspace,scope,facts),
-  onPause:(workspace,scope,reason,message)=>executionControl.pause(workspace,scope,reason,message??null),
+  onPause:(workspace,scope,reason,message,issue)=>reason==='blocked'
+    ?executionControl.block(workspace,scope,issue??{code:'EXECUTION_BLOCKED',message},{busy:true})
+    :executionControl.pause(workspace,scope,reason,message??null),
   sendWorker:(assignment,entry,text,ready,before,meta)=>{
     const project=store.project(assignment.worktree,entry?.sessionId),record=liveRecord(project);
     if(dialogue.uses(project))return dialogue.send(project,text,'decision',meta);
@@ -358,11 +364,43 @@ async function setPlanExecution(running,chosen=null) {
   if(info.planExecution?.execution_strategy==='orchestrated') {
     executionControl.selectRoute(workspace,info.scopeId,AUTOMATIC_DIALOGUE_ENABLED&&getPlugin()?'plugin-v1':'legacy-dom');
     const {state}=executionControl.view(workspace,info.scopeId);
+    const initialEntry=executionControl.entry(workspace,info.scopeId);
+    if(running!==false&&state!=='running'&&state!=='pausing'&&state!=='complete'){
+      const fresh=await(inspectExecution?inspectExecution(workspace):authorizedExecutionKit.read(workspace));
+      if(executionControl.entry(workspace,info.scopeId)!==initialEntry)return executionControl.view(workspace,info.scopeId);
+      if(!fresh.mainClean){
+        const paths=(fresh.mainChanges??[]).map(item=>item.path),issue={code:'MAIN_DIRTY',paths,
+          message:'В main есть незакоммиченные изменения.'+(paths.length?' Файлы: '+paths.slice(0,5).join(', ')+'.':'')
+            +' Сохраните нужные изменения и нажмите «Продолжить». Выполнение плана не удаляет и не присваивает их.'};
+        executionControl.block(workspace,info.scopeId,issue,{resuming:true,busy:!!fresh.commandActive||(fresh.assignments??[]).some(a=>a.commandActive)});
+        await permissionTail;
+        await saveSettings();publish();return executionControl.view(workspace,info.scopeId);
+      }
+      const unknown=fresh.integration?.status==='UNKNOWN'
+        ||(fresh.assignments??[]).some(a=>a.status==='UNKNOWN')
+        ||[...(fresh.commands??[]),...(fresh.assignments??[]).flatMap(a=>a.commands??[])].some(c=>c.state==='unknown');
+      if(unknown||fresh.confirmed!==true||fresh.plan?.project_id!==info.projectId||fresh.plan?.scope_id!==info.scopeId
+        ||fresh.commandActive||(fresh.assignments??[]).some(a=>a.commandActive)){
+        const issue=unknown?{code:'EXECUTION_UNKNOWN',message:'Исход предыдущей операции не подтверждён. Сверьте сохранённую операцию; повторной отправки нет.'}
+          :fresh.confirmationError??{code:'PLAN_PREFLIGHT_PENDING',message:'Проверка плана и завершения команд ещё не подтверждена. Дождитесь окончания операции и нажмите «Продолжить».'};
+        executionControl.block(workspace,info.scopeId,issue,{resuming:true});
+        if(unknown)executionControl.pause(workspace,info.scopeId,'unknown',issue.message);
+        await permissionTail;await saveSettings();publish();return executionControl.view(workspace,info.scopeId);
+      }
+    }
     if(running===undefined||(running&&!['running','pausing'].includes(state))||(running===false&&state==='running')){
       if(!['pausing','complete'].includes(state)){
-        await permissionTail;await dialogue.permission(workspace,info.scopeId,state==='running'?'pausing':'running');
+        try{await queuePermission(()=>dialogue.permission(workspace,info.scopeId,state==='running'?'pausing':'running',
+          ()=>executionControl.entry(workspace,info.scopeId)===initialEntry));}
+        catch(error){
+          if(error.code!=='PLUGIN_COMMUNICATION_PERMISSION_CHANGED')throw error;
+          if(executionControl.entry(workspace,info.scopeId)===initialEntry)executionControl.stop(workspace,info.scopeId);
+          await permissionTail;return executionControl.view(workspace,info.scopeId);
+        }
       }
-      executionControl.toggle(workspace,info.scopeId);
+      if(executionControl.entry(workspace,info.scopeId)!==initialEntry)return executionControl.view(workspace,info.scopeId);
+      const current=executionControl.view(workspace,info.scopeId).state;
+      if(running===undefined||running!==(['running','pausing'].includes(current)))executionControl.toggle(workspace,info.scopeId);
     }
     execution.observe(workspace);await saveSettings();
     await permissionTail;
@@ -555,9 +593,9 @@ return Object.freeze({
     choose:input=>input?.option_id==='reopen'?userChoices.reopen(input):userChoices.choose(input),forget:sessionId=>userChoices.forget(sessionId),
     reconcile:()=>scheduleChoices()}),
   // The user confirmed archiving a project with an active plan: execution pauses now; Kit is untouched.
-  stopPlanExecution:async workspace=>{const scope=store.project(workspace)?.scopeId;if(!scope)return null;
+  stopPlanExecution:async workspace=>{const scope=executionControl.book[workspace]?.scopeId??store.project(workspace)?.scopeId;if(!scope)return null;
     if(executionControl.view(workspace,scope).state==='complete')return executionControl.view(workspace,scope);
-    if(!startupRecovery.has(workspace))await dialogue.permission(workspace,scope,'paused');return executionControl.stop(workspace,scope);},
+    executionControl.stop(workspace,scope);await permissionTail;return executionControl.view(workspace,scope);},
   execution:executionPort,executionKit:Object.freeze({git:(...args)=>executionKit.git(...args)}),
   // The continuation engine of plans of the former model; users reach it only through the plan button.
   continuePlan,

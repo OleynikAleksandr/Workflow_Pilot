@@ -45,13 +45,16 @@ export class WorkflowChannel {
     this.c.event(run,'message.superseded',{participant_id:member.id,message_id:message.message_id,block_id:message.block_id});
     return true;
   }
-  grant(target,phase='running') {return this.c.mutate('grant',{run_id:workflowRunId(target),target,phase});}
-  _grant({target,phase}) {
+  grant(target,phase='running',guard={}) {return this.c.mutate('grant',{run_id:workflowRunId(target),target,phase,...guard});}
+  _grant({target,phase,canContinue,expectedGeneration}) {
     const c=this.c;
     check(target.role==='O'&&target.scope_id,'MODE','Нужен опубликованный план своего оркестратора.');
     check(['running','pausing','paused','complete'].includes(phase),'INPUT','Неизвестное состояние плана.');
     const run=c.enrollment.ensureRun(target),active=phase==='running'||phase==='pausing'&&target.dialogue_version!==1,old=run.grant;
+    check(!canContinue||canContinue(),'PERMISSION_CHANGED','Команда разрешения заменена более поздним действием пользователя.');
     if(old?.scope_id===target.scope_id&&old.phase===phase&&old.active===active&&old.boot===c.backendId)return this.state(run);
+    check(expectedGeneration===undefined||(old?.generation??0)===expectedGeneration,
+      'PERMISSION_CHANGED','Разрешение уже изменилось; прежняя команда не применяется.');
     const generation=Math.max(old?.generation??0,...Object.values(run.members).map(m=>m.generation))+1;
     run.grant={scope_id:target.scope_id,generation,phase,active,boot:c.backendId};
     c.assignment.invalidateAuthorizations(run);

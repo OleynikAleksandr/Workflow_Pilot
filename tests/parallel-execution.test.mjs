@@ -321,6 +321,8 @@ test('dialogue DOCS bootstrap overlaps O text only after verified dependencies a
   Object.assign(f.page,{stopped:false,canSend:false,busy:true});
   f.state.commandActive=true;await f.signal();assert.equal(f.calls.created.length,0);
   f.state.commandActive=false;f.state.mainClean=false;await f.signal();assert.equal(f.calls.created.length,0);
+  assert.equal(f.calls.pauses.at(-1).reason,'blocked');
+  f.control.state='running'; // explicit Continue after the dirty reason was removed
   f.state.mainClean=true;f.state.confirmed=false;await f.signal();assert.equal(f.calls.created.length,0);
   f.state.confirmed=true;f.state.integration={status:'PREPARED'};await f.signal();assert.equal(f.calls.created.length,0);
   f.state.integration={status:'IDLE'};await f.signal();assert.deepEqual(f.calls.created,['DOCS']);
