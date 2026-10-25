@@ -177,7 +177,15 @@ test('agreed plan packets bind two E before readiness, survive Continue and neve
     contract_digest:sha(id),contexts:[{source:'selected.md',text:'Exact immutable bytes',sha256:sha('Exact immutable bytes'),bytes:21,commit:null}],
     dependency_task_ids:[],dependency_facts:[]}}:{})});
   const f=await fixture(t,undefined,kit),a=f.target('a'),b=f.target('b');
-  await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o);await f.c.reserve(a);await f.c.reserve(b);
+  await f.c.workflow.grant(f.o);const o=await f.bind(f.c,f.o);
+  for(const worker of [b,a,a])assert.equal(await f.c.assignment.bindPrepared(worker),true,'known author packet waits for reservation');
+  assert.equal(Object.keys(f.c.runs.get(o.run_id).assignment_intents??{}).length,0);
+  assert.equal(f.c.runs.get(o.run_id).events.filter(e=>e.event_type==='operation.denied').length,0);
+  await f.c.reserve(a);await f.c.reserve(b);
+  const cancelled=f.target('cancelled'),invitation=await f.c.reserve(cancelled);
+  await f.c.mutate('revokeEnrollment',{run_id:o.run_id,ticket_hash:invitation.ticket_hash,
+    owner:{project_id:'p',local_session_id:'cancelled',request_id:null,attempt_generation:null},reason:'fixture'});
+  await assert.rejects(f.c.assignment.bindPrepared(cancelled),{code:'PLUGIN_COMMUNICATION_ENROLLMENT_REVOKED'});
   foreign=true;await assert.rejects(f.c.assignment.bindPrepared(a),{code:'PLUGIN_COMMUNICATION_STALE_DRAFT'});foreign=false;
   assert.equal(await f.c.assignment.bindPrepared(a),true);assert.equal(await f.c.assignment.bindPrepared(b),true);
   assert.equal(kit.calls,0,'binding and authorizing precede SDK readiness');

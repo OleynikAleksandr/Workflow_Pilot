@@ -152,6 +152,19 @@ test('reserved identities missing in Kit retain capacity and visible uncertainty
   assert.equal(f.runtime.view('/main').error.code,'ASSIGNMENT_UNKNOWN');
 });
 
+test('confirmed restoration clears its old recipient failure while UNKNOWN stays visible',async t=>{
+  const f=fixture(t);f.assignment('a','A','READY');f.assignment('b','B','UNKNOWN');
+  Object.assign(f.ledger.assignments.a,{phase:'attention',error:{code:'PLUGIN_COMMUNICATION_RECIPIENT',message:'Before reservation'}});
+  f.state.assignments[1].error={code:'ASSIGNMENT_UNKNOWN',message:'Unknown effect'};
+  f.ledger.assignments.b.error=f.state.assignments[1].error;
+  await f.grant();
+  assert.equal(f.ledger.assignments.a.error,null);assert.equal(f.ledger.assignments.a.phase,'running');
+  assert.equal(f.ledger.assignments.b.error.code,'ASSIGNMENT_UNKNOWN');
+  assert.ok(f.calls.restored.includes('a'));assert.equal(f.calls.restored.includes('b'),false);
+  assert.equal(f.runtime.view('/main').error.code,'ASSIGNMENT_UNKNOWN');
+  assert.equal(f.calls.created,0);assert.equal(f.calls.opened,0);
+});
+
 test('verified main commit reconciles an unknown merge without repeating source or merge',async t=>{
   const f=fixture(t);f.assignment('a','A','INTEGRATED');
   f.state.plan.tasks[0].commit_status='DONE';f.ledger.assignments.a.integration='unknown';

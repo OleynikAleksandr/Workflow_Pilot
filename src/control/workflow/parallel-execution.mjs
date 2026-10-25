@@ -274,7 +274,11 @@ export class ParallelExecution {
           const restored=await this.restoreWorker(a,origin,ledger.assignments[a.id],recovery&&enabled());
           if(restored) {
             const entry=ledger.assignments[a.id]??={id:a.id,taskId:a.parent_task_id,worktree:a.worktree};
-            if(entry.sessionId!==restored.sessionId){entry.sessionId=restored.sessionId;entry.phase='running';await this.persist();}
+            const changed=entry.sessionId!==restored.sessionId;
+            const resolved=entry.error?.code==='PLUGIN_COMMUNICATION_RECIPIENT';
+            if(changed){entry.sessionId=restored.sessionId;entry.phase='running';}
+            if(resolved){entry.error=null;if(a.status!=='INTEGRATED')entry.phase='running';}
+            if(changed||resolved)await this.persist();
           }
         }catch(error){a.error=issue(error);recoveryError??=a.error;}
       }

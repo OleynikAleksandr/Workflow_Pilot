@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1131,
+  "plan_revision": 1133,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -278,8 +278,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0534-defects",
         "task_id": "EXECUTOR-START",
@@ -298,7 +298,8 @@
         "tests/dialogue-delivery.test.mjs",
         "tests/parallel-execution-recovery.test.mjs",
         "tests/automatic-agent-dialogue.test.mjs",
-        "tests/fixtures/automatic-agent-dialogue.mjs"
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -331,7 +332,13 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "EXEC001. Ранняя подготовка сохраняется; отсутствие ещё регистрируемого собственного адресата — ожидание, настоящий конфликт — отказ.\nОбъём: src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/enrollment.mjs, tests/prepared-task-flow.test.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs\nКритерии: Задержанные/переставленные reservation и bootstrap двух E не порождают RECIPIENT/attention для ожидаемой стадии и не требуют дополнительного авторского хода O. Успех того же assignment/attempt завершает прежнюю текущую ошибку; сохранённый исторический отказ не возвращается как действующий. Чужой target/identity, stale пакет, отмена и UNKNOWN не скрываются; одна выдача каждому E, без общего таймера подавления ошибок.\nПроверки: unit-all, chatgpt-plugin, architecture.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
+      "task_brief": "EXEC001. Ранняя подготовка сохраняется; отсутствие ещё регистрируемого собственного адресата — ожидание, настоящий конфликт — отказ.\nОбъём: src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/enrollment.mjs, tests/prepared-task-flow.test.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs\nКритерии: Задержанные/переставленные reservation и bootstrap двух E не порождают RECIPIENT/attention для ожидаемой стадии и не требуют дополнительного авторского хода O. Успех того же assignment/attempt завершает прежнюю текущую ошибку; сохранённый исторический отказ не возвращается как действующий. Чужой target/identity, stale пакет, отмена и UNKNOWN не скрываются; одна выдача каждому E, без общего таймера подавления ошибок.\nПроверки: unit-all, chatgpt-plugin, architecture.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать.",
+      "actual_files": [
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "tests/parallel-execution-recovery.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -825,7 +832,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1131
+Revision: 1133
 
 ## Цель
 
@@ -857,10 +864,10 @@ Revision: 1131
   - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: UI-CONTROLS
-- [TODO] EXECUTOR-START: Согласовать регистрацию исполнителей и привязку поручений — Ожидает
-  - Git Commit: [PENDING] fix: согласовать регистрацию исполнителей и привязку поручений
+- [DONE] EXECUTOR-START: Согласовать регистрацию исполнителей и привязку поручений — Завершено
+  - Git Commit: [DONE] fix: согласовать регистрацию исполнителей и привязку поручений
   - Reference: release-0534-defects / EXECUTOR-START / implementation
-  - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/enrollment.mjs, tests/prepared-task-flow.test.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs
+  - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/enrollment.mjs, tests/prepared-task-flow.test.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: RESULT-DELIVERY
 - [TODO] UI-EVENTS: Передавать изменение Review агенту через существующий канал — Ожидает

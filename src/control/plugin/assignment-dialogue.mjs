@@ -190,6 +190,19 @@ export class AssignmentDialogue {
     }
     check(Buffer.byteLength(p.body)+contexts.reduce((n,item)=>n+Buffer.byteLength(item.text),0)<=(p.hard_bytes??180000),
       'CONTEXT','Пакет с проверенными фактами зависимостей превышает бюджет; он не обрезан.');
+    // openWorker may arrive before bootstrap reserves the known local target.
+    // This is not a rejected recipient; no intent or author turn is needed yet.
+    const invitations=Object.values(run.enrollments??{}).filter(e=>e.target?.local_session_id===target.local_session_id);
+    const registered=Object.values(run.members).some(m=>m.target.local_session_id===target.local_session_id);
+    if(!registered&&!invitations.length)return {prepared:true,waiting:'participant-reservation'};
+    check(!invitations.length||invitations.some(e=>e.status!=='revoked'),
+      'ENROLLMENT_REVOKED','Приглашение исполнителя отозвано; поручение не привязано.');
+    check(registered||invitations.some(e=>e.status!=='revoked'&&e.expires_at>c.now()),
+      'ENROLLMENT_EXPIRED','Приглашение исполнителя истекло; поручение не привязано.');
+    const known=this.targets(run).find(t=>t.local_session_id===target.local_session_id);
+    check(known&&['project_id','origin_session_id','role','scope_id','assignment_id','task_id']
+      .every(key=>(known[key]??null)===(target[key]??null)),
+      'ASSIGNMENT_CHANGED','Зарегистрированный адресат не принадлежит текущему назначению.');
     const key='plan:'+hash(JSON.stringify([target.project_id,target.scope_id,target.task_id,p.contract_digest,target.assignment_id,attempt]));
     const payload=assignmentPayload({kind:'task',recipient:reference(run,target),attempt,body:p.body,contexts,idempotency_key:key});
     const context={run,member},result=await this.prepare({...input,payload,key,draft:true,planned_preparation:p.contract_digest},context);
