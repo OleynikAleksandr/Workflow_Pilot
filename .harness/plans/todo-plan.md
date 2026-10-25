@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1112,
+  "plan_revision": 1114,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Устранить все D001–D011 тестирования 0.5.33: восстановить канал и Continue, подготовить поручения до Start, убрать дубли и недостоверные статусы.",
   "acceptance_criteria": [
     "Все D001–D011 из трёх частей журнала перенесены без потери требований и имеют отдельные критерии/задачи.",
@@ -1226,14 +1226,15 @@
         "Неизменный комплект, ограничения live/native приёмки отражены; итог по всем задачам."
       ],
       "expected_commit_message": "release: опубликовать полный комплект 0.5.34",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "PUBLISH",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1260,10 +1261,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1112
+Revision: 1114
 
 ## Цель
 
@@ -1354,8 +1355,8 @@ Revision: 1112
   - Файлы: release-manifest.json, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать полный выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] release: опубликовать полный комплект 0.5.34
+- [DONE] PUBLISH: Опубликовать полный выпуск на GitHub — Завершено
+  - Git Commit: [DONE] release: опубликовать полный комплект 0.5.34
   - Reference: release-0533-defects / PUBLISH / implementation
   - Файлы: release-manifest.json, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
