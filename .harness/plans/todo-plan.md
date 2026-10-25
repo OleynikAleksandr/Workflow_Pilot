@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1141,
+  "plan_revision": 1143,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -596,8 +596,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0534-defects",
         "task_id": "PROOF",
@@ -649,7 +649,11 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Регрессия всех UI001/REVIEW001–003/EXEC001–002/STATUS001 через API/MCP/SDK/Kit/Git/Electron, без моделей и живых проектов. Найденный дефект продукта получает отдельную штатную задачу до DOCS; scope тестовой задачи не расширяется молча.\nОбъём: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/plan-review.test.mjs, tests/backend-api.test.mjs, tests/electron-smoke.mjs, tests/web-client-electron.test.mjs, tests/fixtures/current-actions-layout.mjs\nКритерии: Связный fixture начинается до публикации: OFF→ON→read события→выбор без user bubble→два Review→публикация→один Start→задержка регистрации 2E→task/read→result→O read/acceptance→интеграции→зависимая задача→DOCS→cleanup/complete. Fault injection вокруг WAL/intent/SDK/read, rapid toggle, stale identity/attempt, pause/Stop/UNKNOWN и повторные callbacks сохраняют один эффект и изоляцию соседей. Каждый из семи дефектов имеет доказательство; полный набор Kit включает обе части. Настоящий ChatGPT/macOS/native Windows/Linux остаётся NOT_RUN до пользователя.\nПроверки: unit-all, kit-check, kit-assignments, architecture, chatgpt-plugin, electron-smoke, executor-channel, codex-tools-live, kit-upgrade.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
+      "task_brief": "Регрессия всех UI001/REVIEW001–003/EXEC001–002/STATUS001 через API/MCP/SDK/Kit/Git/Electron, без моделей и живых проектов. Найденный дефект продукта получает отдельную штатную задачу до DOCS; scope тестовой задачи не расширяется молча.\nОбъём: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/plan-review.test.mjs, tests/backend-api.test.mjs, tests/electron-smoke.mjs, tests/web-client-electron.test.mjs, tests/fixtures/current-actions-layout.mjs\nКритерии: Связный fixture начинается до публикации: OFF→ON→read события→выбор без user bubble→два Review→публикация→один Start→задержка регистрации 2E→task/read→result→O read/acceptance→интеграции→зависимая задача→DOCS→cleanup/complete. Fault injection вокруг WAL/intent/SDK/read, rapid toggle, stale identity/attempt, pause/Stop/UNKNOWN и повторные callbacks сохраняют один эффект и изоляцию соседей. Каждый из семи дефектов имеет доказательство; полный набор Kit включает обе части. Настоящий ChatGPT/macOS/native Windows/Linux остаётся NOT_RUN до пользователя.\nПроверки: unit-all, kit-check, kit-assignments, architecture, chatgpt-plugin, electron-smoke, executor-channel, codex-tools-live, kit-upgrade.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать.",
+      "actual_files": [
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs"
+      ]
     },
     {
       "id": "VERSION",
@@ -876,7 +880,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1141
+Revision: 1143
 
 ## Цель
 
@@ -932,8 +936,8 @@ Revision: 1141
   - Файлы: src/contracts/dialogue-view.mjs, src/contracts/work-progress.mjs, src/backend/desktop-model.mjs, src/control/plugin/workflow-channel.mjs, src/frontend/plugin/panel.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/work-progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/work-progress-scenario.test.mjs, tests/backend-desktop-model.test.mjs, tests/fixtures/current-actions-layout.mjs, tests/electron-smoke.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: REVIEW-VIEW
-- [TODO] PROOF: Проверить путь от обсуждения до двух результатов и завершения — Ожидает
-  - Git Commit: [PENDING] fix: проверить путь от обсуждения до двух результатов и завершения
+- [DONE] PROOF: Проверить путь от обсуждения до двух результатов и завершения — Завершено
+  - Git Commit: [DONE] fix: проверить путь от обсуждения до двух результатов и завершения
   - Reference: release-0534-defects / PROOF / implementation
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/plan-review.test.mjs, tests/backend-api.test.mjs, tests/electron-smoke.mjs, tests/web-client-electron.test.mjs, tests/fixtures/current-actions-layout.mjs
   - Параллельность: исключительное выполнение

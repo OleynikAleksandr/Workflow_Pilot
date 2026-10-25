@@ -14,6 +14,8 @@ test('automatic dialogue through startup and Start: Chat orchestrator, Chat exec
   {timeout:300000},async t=>{await automaticDialogue(t);});
 test('D001-D011 cycle: prepared plan, Finder metadata, real dirty Start/Continue, O lease recovery, two E, dependent task and DOCS',
   {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,conversation:true,defects:true});});
+test('0.5.34 defects: preplan Review ON, real MCP choice without user bubble, two review rounds, one Start, two results and completion',
+  {timeout:360000},async t=>{await automaticDialogue(t,{owned:true,preplan:true});});
 test('five simultaneous executors receive O-selected tasks and return checked results through real Start/MCP/SDK/Kit',
   {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,workers:5});});
 test('authorized fast cycle: inline preparation, no ready turn, two results, overlapping DOCS and finalization',
