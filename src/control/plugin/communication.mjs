@@ -282,7 +282,7 @@ export class PluginCommunication {
   async _observed(input){const run=this.run(input);for(const member of Object.values(run.members))
     if((!input.session_id||member.target.local_session_id===input.session_id)
       &&(!input.message_id||member.deliveryGate?.message_id===input.message_id
-        ||run.messages.some(m=>m.message_id===input.message_id&&m.recipient_id===member.id&&m.read&&m.yielded)))
+        ||run.messages.some(m=>m.message_id===input.message_id&&m.recipient_id===member.id&&m.read&&(m.yielded||m.read_page))))
       await this.workflow.observed(run,member);return {};}
   observeSession(sessionId){for(const run of this.runs.values())if(run.mode==='workflow'&&Object.values(run.members).some(m=>m.target.local_session_id===sessionId)){
     void this.mutate('observed',{run_id:run.id,session_id:sessionId}).catch(()=>{});
@@ -624,13 +624,17 @@ export class PluginCommunication {
         instructions:'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Для диалога версии 1 вызовите workflow_assignment_yield с reason=handled для этого уведомления, затем завершите ход.'};
     }
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
-    if(!message.read){message.read=true;this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id});}
+    if(!message.read){message.read=true;
+      if(message.kind==='user-choice')message.read_page=structuredClone(this.workflow.observe(member.target));
+      this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id});}
     this.event(run,'read.returned',{participant_id:member.id,message_id:message.message_id});
     if(run.mode==='workflow')await this.workflow.observed(run,member);
-    const {idempotency_key,fingerprint,...value}=message;
+    const {idempotency_key,fingerprint,read_page,handlingGate,...value}=message;
     return {...structuredClone(value),...(run.mode==='workflow'?{role_protocol:ROLE_PROTOCOL_VERSION,
       instructions:(message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
-        :roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0))+'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
+        :roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0))
+        +(message.kind==='user-choice'?'\nЭто решение пользователя в интерфейсе, не рабочее назначение: task:start и workflow_assignment_yield для этого события не требуются. Учтите решение и завершите ответ; чтение не означает окончания ответа.':'')
+        +'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
   }
   _telemetry(input) {
     const {run}=this.panel(input),data=input.event;

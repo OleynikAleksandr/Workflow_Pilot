@@ -792,3 +792,55 @@ test('a user choice reaches a chat without plan permission and carries the role 
   assert.equal(read.kind,'user-choice');assert.equal(read.recipient_role,'planning');
   assert.match(read.instructions,/РОЛЬ: ПЛАНИРОВАНИЕ/);
 });
+
+test('a preplan choice without a user bubble releases two results after publication and Start',async t=>{
+  const f=await fixture(t),o={...f.o,scope_id:null};f.targets.set('o',o);
+  let b=await f.bind(f.c,o);const page=f.pages.get('o');page.turnId='';page.userTurnId='';
+  const choice=await f.c.workflow.enqueue(o,{key:'preplan',kind:'user-choice',text:'Оркестрация',role:'planning'});
+  await sdk(f,b,choice.message_id);await f.c.read({...b,message_id:choice.message_id});
+  const run=()=>f.c.runs.get(b.run_id),msg=()=>run().messages.find(m=>m.message_id===choice.message_id);
+  delete msg().read_page; // A choice persisted by 0.5.34 has only the delivery gate baseline.
+  await observe(f,'o');f.advance(600);await observe(f,'o');assert.equal(msg().reply_observed,false,'read and old idle are insufficient');
+  const published={...o,scope_id:'s'};f.targets.set('o',published);
+  await f.c.workflow.grant(published);b=await f.sync(f.c,b);
+  const results=await Promise.all(['T001','T002'].map(id=>f.c.workflow.enqueue(published,{key:id,kind:'result',text:id})));
+  assert.equal(pending(f.c,b),null,'Start alone cannot reset the prior gate');
+  page.assistantRevision=672;page.commandsIdle=false;await observe(f,'o');f.advance(600);await observe(f,'o');
+  assert.equal(msg().reply_observed,false,'a command still blocks completion');
+  page.commandsIdle=true;await observe(f,'o');f.advance(600);await observe(f,'o');
+  assert.equal(msg().reply_observed,true);assert.equal(page.userMessagesRevision,1);
+  for(const result of results){
+    assert.equal(pending(f.c,b),result.message_id);await sdk(f,b,result.message_id);await f.c.read({...b,message_id:result.message_id});
+    // Legacy result uses its original explicit native/revision evidence.
+    page.assistantRevision++;page.userMessagesRevision++;await observe(f,'o');
+  }
+  assert.equal(run().messages.filter(m=>m.kind==='result'&&m.read).length,2);
+  assert.equal(run().events.filter(e=>e.event_type==='send.intent').length,3);
+});
+
+test('user event completion preserves unknown, manual Stop, stale document and restart barriers',async t=>{
+  for(const barrier of ['unknown','manual-stop','document','stale','restart']){
+    const f=await fixture(t),b=await f.bind(f.c,f.o),page=f.pages.get('o');
+    const choice=await f.c.workflow.enqueue(f.o,{key:barrier,kind:'user-choice',text:barrier});
+    await sdk(f,b,choice.message_id,barrier==='unknown'?'unknown':'accepted');await f.c.read({...b,message_id:choice.message_id});
+    if(barrier==='manual-stop')page.manualStopped=true;
+    if(barrier==='document')page.documentId='other';
+    if(barrier==='stale')page.stale=true;
+    let c=f.c;
+    if(barrier==='restart'){f.c.dispose();await f.c.tail;c=await f.create();page.documentId='restored';}
+    page.assistantRevision+=10;
+    for(let i=0;i<3;i++){c.observeSession('o');await c.tail;f.advance(600);}
+    const run=c.runs.get(b.run_id);assert.equal(run.messages[0].reply_observed,false,barrier);
+    assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,1,barrier);
+  }
+});
+
+test('a directly read UI decision finishes its own response without fabricating SDK acceptance',async t=>{
+  const f=await fixture(t),b=await f.bind(f.c,f.o),page=f.pages.get('o');
+  const choice=await f.c.workflow.enqueue(f.o,{key:'direct-choice',kind:'user-choice',text:'Выбор'});
+  const read=await f.c.read({...b,message_id:choice.message_id});assert.match(read.instructions,/workflow_assignment_yield.*не требуются/);
+  page.assistantRevision++;await observe(f,'o');f.advance(600);await observe(f,'o');
+  const run=f.c.runs.get(b.run_id),message=run.messages[0];
+  assert.equal(message.read,true);assert.equal(message.reply_observed,true);assert.equal(message.delivery,'pending');
+  assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,0);
+});

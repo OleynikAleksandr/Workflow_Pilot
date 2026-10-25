@@ -214,6 +214,12 @@ export class WorkflowChannel {
       userTurnId:page.userTurnId??null,assistantRevision:page.assistantRevision??0,userMessagesRevision:page.userMessagesRevision??0};
   }
   async observed(run,member) {
+    // UI decisions are not assignments: reading one does not require task yield.
+    for(const message of this.directUserEvents(run,member)){
+      const page=message.read_page;
+      const gate=message.handlingGate??={...page,message_id:message.message_id};
+      await this.observeUserEvent(run,member,message,gate,true);
+    }
     // A recipient may read several queued messages in one model turn. These
     // have no SDK delivery gate, but still need their own fresh idle evidence.
     for(const message of this.directlyHandled(run,member)){
@@ -225,6 +231,7 @@ export class WorkflowChannel {
     const gate=member.deliveryGate;if(!gate)return;
     const message=run.messages.find(m=>m.message_id===gate.message_id);
     if(message?.kind==='startup-context')return; // Explicit all-parts receipt closes this lane, not an inferred model reply.
+    if(message?.kind==='user-choice')return this.observeUserEvent(run,member,message,gate);
     if(message?.dialogue_version===1)return this.observeDialogue(run,member,message,gate);
     const page=this.observe(member.target);
     const native=gate.turnId&&page.turnId&&gate.turnId!==page.turnId&&gate.userTurnId&&page.userTurnId&&gate.userTurnId!==page.userTurnId;
@@ -236,6 +243,36 @@ export class WorkflowChannel {
         this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id});
       }
     }
+  }
+  directUserEvents(run,member){
+    return run.messages.filter(m=>m.kind==='user-choice'&&m.recipient_id===member.id&&m.read&&m.read_page
+      &&!m.intent&&m.delivery==='pending'&&!m.reply_observed&&!m.superseded);
+  }
+  async observeUserEvent(run,member,message,gate,direct=false){
+    if(!message.read||message.reply_observed||(!direct&&message.delivery!=='accepted'))return;
+    await this.c.enrollment.validate(member.target);
+    const page=await this.reconcile(member.target),baseline=message.read_page??gate;
+    if(!page||!gate.documentId||page.documentId!==gate.documentId||page.documentId!==baseline.documentId
+      ||page.observationSeq<=Math.max(gate.observationSeq??0,baseline.observationSeq??0))return;
+    const reason=!page.commandsIdle?'commands-active':page.manualStopped?'manual-stop':page.busy?'assistant-busy'
+      :!page.stopped||!page.canSend?'page-unavailable':null;
+    if(reason){
+      if(gate.idle||gate.wait_reason!==reason){delete gate.idle;gate.wait_reason=reason;
+        this.c.event(run,'turn.waiting',{message_id:message.message_id,reason});}
+      return;
+    }
+    // A snapshot of the old idle response is insufficient, even after read.
+    if(page.assistantRevision<=gate.assistantRevision)return;
+    const signature=JSON.stringify([page.documentId,page.turnId,page.assistantRevision]);
+    if(gate.idle?.signature!==signature){
+      gate.idle={signature,seq:page.observationSeq,at:this.c.now()};gate.wait_reason='confirming-idle';
+      this.c.event(run,'turn.idle_candidate',{message_id:message.message_id});return;
+    }
+    if(page.observationSeq<=gate.idle.seq||this.c.now()-gate.idle.at<500)return;
+    message.reply_observed=true;
+    if(member.deliveryGate?.message_id===message.message_id)delete member.deliveryGate;
+    delete message.handlingGate;
+    this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id,evidence:'user-event-read-fresh-idle'});
   }
   directlyHandled(run,member){
     return run.messages.filter(m=>m.recipient_id===member.id&&m.scope_id===run.grant?.scope_id
@@ -289,9 +326,10 @@ export class WorkflowChannel {
     if(this.c.disposed)return;
     const eligible=new Map(Object.values(run.members).flatMap(member=>{
       const gate=member.deliveryGate,message=run.messages.find(m=>m.message_id===gate?.message_id);
-      if(!this.permitted(run,member))return [];
-      return [...(message?.dialogue_version===1&&message.yielded&&!message.reply_observed
-        ?[[message.message_id,member]]:[]),...this.directlyHandled(run,member).map(m=>[m.message_id,member])];
+      const decision=message?.kind==='user-choice'&&message.read&&message.delivery==='accepted'&&!message.reply_observed;
+      return [...(decision||this.permitted(run,member)&&message?.dialogue_version===1&&message.yielded&&!message.reply_observed
+        ?[[message.message_id,member]]:[]),...this.directUserEvents(run,member).map(m=>[m.message_id,member]),
+        ...(this.permitted(run,member)?this.directlyHandled(run,member).map(m=>[m.message_id,member]):[])];
     }));
     for(const [id,p] of this.turnProbes)if(p.runId===run.id&&!eligible.has(id)){clearTimeout(p.timer);this.turnProbes.delete(id);}
     for(const [id] of eligible){

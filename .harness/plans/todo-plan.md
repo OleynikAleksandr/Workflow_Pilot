@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1129,
+  "plan_revision": 1131,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -214,8 +214,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0534-defects",
         "task_id": "RESULT-DELIVERY",
@@ -270,7 +270,12 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "EXEC002. Воспроизвести старый choice gate без нового user bubble, затем подтвердить свежий конец ответа, сохранив реальные барьеры.\nОбъём: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs\nКритерии: На fixture до публикации user-choice принят/прочитан, ответ завершён без нового user bubble; после Review/публикации/Start оба result доходят и читаются O. Завершение подтверждено свежими фактами своего разговора/события: read не заменяет конец хода, task yield E не навязывается доплановому выбору; Start сам gates не обнуляет. Restart/поздний callback/активная команда/manual Stop/UNKNOWN/смена document не создают повтор Send и не освобождают чужое событие.\nПроверки: unit-all, chatgpt-plugin, architecture.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
+      "task_brief": "EXEC002. Воспроизвести старый choice gate без нового user bubble, затем подтвердить свежий конец ответа, сохранив реальные барьеры.\nОбъём: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs\nКритерии: На fixture до публикации user-choice принят/прочитан, ответ завершён без нового user bubble; после Review/публикации/Start оба result доходят и читаются O. Завершение подтверждено свежими фактами своего разговора/события: read не заменяет конец хода, task yield E не навязывается доплановому выбору; Start сам gates не обнуляет. Restart/поздний callback/активная команда/manual Stop/UNKNOWN/смена document не создают повтор Send и не освобождают чужое событие.\nПроверки: unit-all, chatgpt-plugin, architecture.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать.",
+      "actual_files": [
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -820,7 +825,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1129
+Revision: 1131
 
 ## Цель
 
@@ -846,8 +851,8 @@ Revision: 1129
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/desktop/preload.cjs, src/frontend/desktop/application.mjs, src/frontend/desktop/client.mjs, src/frontend/desktop/browser-host.mjs, src/frontend/web/app.mjs, src/frontend/web/index.html, src/contracts/desktop.mjs, tests/sidebar.test.mjs, tests/electron-smoke.mjs, tests/web-client-electron.test.mjs, tests/desktop-boundaries.test.mjs, tests/work-progress-scenario.test.mjs, tests/parallel-execution-ui.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] RESULT-DELIVERY: Освободить очередь результатов после допланового выбора — Ожидает
-  - Git Commit: [PENDING] fix: освободить очередь результатов после допланового выбора
+- [DONE] RESULT-DELIVERY: Освободить очередь результатов после допланового выбора — Завершено
+  - Git Commit: [DONE] fix: освободить очередь результатов после допланового выбора
   - Reference: release-0534-defects / RESULT-DELIVERY / implementation
   - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/workflow/dialogue-delivery.mjs, src/frontend/plugin/launch.mjs, tests/workflow-channel.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
