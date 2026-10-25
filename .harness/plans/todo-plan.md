@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1117,
+  "plan_revision": 1119,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Устранить все D001–D011 тестирования 0.5.33: восстановить канал и Continue, подготовить поручения до Start, убрать дубли и недостоверные статусы.",
   "acceptance_criteria": [
     "Все D001–D011 из трёх частей журнала перенесены без потери требований и имеют отдельные критерии/задачи.",
@@ -1259,14 +1259,15 @@
         "Удаление кнопки и остальные исправления не объявлены реализованными; исходники/приложение/живые проекты не изменены, нового выпуска нет."
       ],
       "expected_commit_message": "docs: подготовить отдельный план исправлений 0.5.34",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "UI-CONTROLS",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1293,10 +1294,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1117
+Revision: 1119
 
 ## Цель
 
@@ -1393,8 +1394,8 @@ Revision: 1117
   - Файлы: release-manifest.json, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
-- [TODO] UI-CONTROLS: Подготовить передачу замечаний в отдельный план — Ожидает
-  - Git Commit: [PENDING] docs: подготовить отдельный план исправлений 0.5.34
+- [DONE] UI-CONTROLS: Подготовить передачу замечаний в отдельный план — Завершено
+  - Git Commit: [DONE] docs: подготовить отдельный план исправлений 0.5.34
   - Reference: release-0533-defects / UI-CONTROLS / implementation
   - Файлы: docs/planning/release-0534-defects.md
   - Параллельность: исключительное выполнение
