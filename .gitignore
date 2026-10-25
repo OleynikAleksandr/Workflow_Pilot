@@ -6,6 +6,7 @@
 node_modules/
 dist/
 .workflow-temp/
+.DS_Store
 # workflow-kit:end
 
 # Workflow Pilot generated files and local runtime

@@ -17,6 +17,7 @@ import { assertSingleWriter } from './session-plans.mjs';
 import { assertPlanningOwner, clearPlanningOwner } from './planning-owner.mjs';
 import { assertExecutionMode, clearExecutionMode } from './execution-mode.mjs';
 import { hooksDirectory } from './installation-files.mjs';
+import {sealPreparations} from './prepared-task.mjs';
 
 const noTransaction = root => check(!journal(root), 'TRANSACTION_PENDING', 'Сначала завершите текущую транзакцию commit/repair.');
 const acknowledgementsPath = root => path.join(root, '.harness/runtime/worktrees', hash(gitPath(root, 'index')).slice(0, 20), 'hook-acknowledgements.json');
@@ -97,6 +98,10 @@ export function buildScopePlan(root, input, previous, config = readConfig(root))
     requireModuleContext(plan);
     plan.user_decisions = input.user_decisions ?? [];
     normalizeExecutionPolicy(plan);
+    validatePlan(plan,{preparation:false});
+    if(plan.execution_strategy==='orchestrated')assertPlanningOwner(root,plan.execution_origin_session_id,'execution_origin_session_id');
+    if(plan.execution_strategy==='orchestrated'&&plan.dialogue_version===1)plan.preparation_version=1;
+    sealPreparations(plan,config.budget);
     validatePlan(plan); validatePlanConfiguration(root, plan, config);
     return plan;
 }
@@ -162,9 +167,10 @@ export function applyPlan(root, input, expectedRevision) {
   return locked(root, () => {
     noTransaction(root); assertSingleWriter(root, PLAN); const { plan: original } = validate(root);
     check(expectedRevision !== undefined, 'EXPECTED_REVISION_REQUIRED', 'Укажите --expected-revision из status.'); revision(original, expectedRevision);
-    const permitted = ['objective', 'acceptance_criteria', 'approved_scope', 'context_pack', 'tasks', 'user_decisions', 'execution_scope_status', 'blocked_reason'];
+    const permitted = ['objective', 'acceptance_criteria', 'approved_scope', 'context_pack', 'tasks', 'user_decisions', 'execution_scope_status', 'blocked_reason','prepared_tasks'];
     check(Object.keys(input).every(k => permitted.includes(k)), 'MANAGED_FIELDS', 'Служебные поля плана не меняются через plan:apply.');
-    const plan = { ...structuredClone(original), ...input, plan_revision: original.plan_revision + 1 };
+    const {prepared_tasks,...changes}=input;
+    const plan = { ...structuredClone(original), ...changes, plan_revision: original.plan_revision + 1 };
     check(['ACTIVE', 'BLOCKED'].includes(plan.execution_scope_status) && original.execution_scope_status !== 'NONE', 'SCOPE_LIFECYCLE', 'Создание/архивирование scope выполняются отдельными командами.');
     const added = plan.tasks.filter(t => !original.tasks.some(old => old.id === t.id));
     const originalFinal = original.tasks.findLast(isDocumentationFinalizationTask);
@@ -205,9 +211,20 @@ export function applyPlan(root, input, expectedRevision) {
       plan.current_task_id = null;
     }
     normalizeCompletionContract(plan);
+    if(prepared_tasks!==undefined){
+      check(prepared_tasks&&typeof prepared_tasks==='object'&&!Array.isArray(prepared_tasks),'TASK_PREPARATION','prepared_tasks: объект по ID задачи.');
+      for(const [id,prepared] of Object.entries(prepared_tasks)){
+        const task=plan.tasks.find(t=>t.id===id);
+        check(task?.implementation_status==='TODO'&&prepared&&Object.keys(prepared).every(k=>['task_brief','prepared_task'].includes(k)),
+          'TASK_PREPARATION','Подготовку можно заменить только до начала задачи '+id,{task_id:id});
+        Object.assign(task,prepared);
+      }
+    }
+    if(plan.tasks.some(t=>t.prepared_task&&t.commit_status!=='DONE'))assertPlanningOwner(root,plan.execution_origin_session_id,'execution_origin_session_id');
     if (added.some(t => t.functional_paths.length) || (input.context_pack && plan.tasks.some(t => t.functional_paths.length && t.commit_status !== 'DONE'))) requireModuleContext(plan);
     plan.delivery_status = plan.tasks.length && plan.tasks.every(t => t.commit_status === 'DONE') ? 'READY_FOR_ACCEPTANCE' : 'IN_PROGRESS';
     normalizeExecutionPolicy(plan);
+    sealPreparations(plan,readConfig(root).budget);
     validatePlan(plan); validatePlanConfiguration(root, plan, readConfig(root)); resolveReferences(root, plan);
     if(deferredTransfer)handoffTaskFiles(root,original,deferredTransfer.from,deferredTransfer.to,deferredTransfer.files);
     if (plan.current_task_id || deferDocs) writePlan(root, plan);

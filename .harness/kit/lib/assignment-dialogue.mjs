@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import {PLAN, check, hash, json, readJSON, withLock} from './common.mjs';
 import {head, git, localPath, allChanges, ensureIdleGit} from './git.mjs';
 import {readPlan,parsePlan} from './plan.mjs';
-import {readAssignment, recordPath, childRecordPath, ownWorktree, localPlan, save} from './assignment-contract.mjs';
-import {validate, taskChecks} from './validate.mjs';
+import {readAssignment, recordPath, childRecordPath, ownWorktree, localPlan, save,basePlan} from './assignment-contract.mjs';
+import {validatePreparedTask} from './prepared-task.mjs';
+import {validate, taskChecks,readConfig} from './validate.mjs';
 import {journal, activeIntegration, completedTransaction, finishTransaction} from './transaction-state.mjs';
 import {commitCandidate} from './transaction.mjs';
 import {blockTask,messageAssignment,readSignals} from './signals.mjs';
@@ -23,7 +24,22 @@ const initial = () => ({version:ASSIGNMENT_DIALOGUE_VERSION,attempt:1,grant:null
 const contractDigest=task=>hash(json(task&&{title:task.title,why:task.why,functional_paths:task.functional_paths,
   documentation_paths:task.documentation_paths,acceptance_criteria:task.acceptance_criteria,
   verification_ids:task.verification_ids,dependencies:task.dependencies,context_pack:task.context_pack,
-  ...(Object.hasOwn(task,'task_brief')?{task_brief:task.task_brief}:{})}));
+  ...(Object.hasOwn(task,'task_brief')?{task_brief:task.task_brief}:{}),
+  ...(task?.prepared_task?{prepared_task:task.prepared_task}:{})}));
+
+function preparedForAssignment(record,plan,task){
+  if(!task?.prepared_task)return null;
+  const budget=readConfig(record.parent_root).budget;
+  validatePreparedTask(plan,task,budget);
+  const committed=parsePlan(git(record.parent_root,['show','HEAD:'+PLAN]).stdout);
+  const committedTask=committed.tasks.find(t=>t.id===record.parent_task_id);
+  const base=basePlan(record.parent_root,record).tasks.find(t=>t.id===record.parent_task_id);
+  check(committed.project_id===plan.project_id&&committed.scope_id===plan.scope_id
+    &&contractDigest(committedTask)===contractDigest(task)
+    &&base?.prepared_task?.contract_digest===task.prepared_task.contract_digest,
+    'TASK_PREPARATION_STALE','Подготовка не совпадает с опубликованным планом и базой назначения.');
+  return {...task.prepared_task,body:task.task_brief,dependency_facts:record.external_dependencies,hard_bytes:budget.hard_bytes};
+}
 
 function activeBlock(record) {
   const signals=readSignals(record.parent_root),block=latestBlock(signals,{scope_id:record.parent_scope_id,
@@ -41,13 +57,14 @@ function target(root, id) {
 }
 export function assignmentDialogueStatus(root,id) {
   const {record,role}=target(root,id);
-  const task=readPlan(record.parent_root).tasks.find(t=>t.id===record.parent_task_id);
+  const plan=readPlan(record.parent_root),task=plan.tasks.find(t=>t.id===record.parent_task_id);
   const signals=readSignals(record.parent_root),last=latestBlock(signals,{scope_id:record.parent_scope_id,
     task_id:record.parent_task_id,assignment_id:record.id,assignment_attempt:record.dialogue?.attempt??1});
   const decision=last&&signals.findLast(s=>s.kind==='assignment-message'&&s.assignment_id===record.id
     &&s.block_id===last.block_id&&(s.assignment_attempt??1)===(record.dialogue?.attempt??1));
   return {ok:true,id:record.id,task_id:record.parent_task_id,role,
     ...(role==='O'&&task?.task_brief?{task_brief:task.task_brief}:{}),
+    ...(role==='O'&&task?.prepared_task?{prepared_task:preparedForAssignment(record,plan,task)}:{}),
     contract_digest:contractDigest(task),scope_id:record.parent_scope_id,worktree:record.worktree,
     cleanup:record.cleanup??null,
     phase:record.phase,migration:record.migration??null,dialogue_version:record.dialogue_version??0,dialogue:record.dialogue??null,block:activeBlock(record),

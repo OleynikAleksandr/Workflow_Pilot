@@ -181,7 +181,9 @@ function taskProjection(task, resolved) {
     + (task.parallel_safe === undefined ? '' : '\nПараллельность: ' + (task.parallel_safe ? 'допустима при непересекающихся областях' : 'исключительное выполнение; в parallel-плане отдельный исполнитель'))
     + (task.commit_ref.role === 'integration' ? '\nSource SHA: ' + task.commit_ref.source_commit + '\nИнтеграция: ' + task.commit_ref.operation_id : '')
     + '\nКритерии:\n' + task.acceptance_criteria.map(item=>'- '+item).join('\n')
-    + (task.task_brief?'\nЗаготовка поручения (не разрешение исполнения):\n'+task.task_brief:'')
+    + (task.prepared_task?'\nАвторское поручение согласовано до Start: '+task.prepared_task.contract_digest
+      +'\nSnapshot контекста: '+task.prepared_task.contexts.length+' частей; выдача только настоящему назначению после Start.'
+      :task.task_brief?'\nЗаготовка поручения (не разрешение исполнения):\n'+task.task_brief:'')
     + '\nКоммит: ' + (reference?.sha ?? (reference?.pending ? 'COMMIT_PENDING' : 'не создан'))
     + (reference?.sha ? '\nРодитель: '+reference.parent+'\nЧтение: git show '+reference.sha : '')
     + '\nФайлы:\n' + planned.map((file,i)=>(numbered?(i+1)+'. ':'- ')+file).join('\n')

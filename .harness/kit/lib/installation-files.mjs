@@ -11,7 +11,7 @@ export const kitRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url))
 export const HOOK_COMMAND = '"$(git rev-parse --show-toplevel)/scripts/workflow" hook session-start';
 export const BLOCK_START = '# workflow-kit:begin';
 // .workflow-temp/ holds documents a discussion chat writes on request, outside Git and recovery.
-export const GITIGNORE_SECTION = '.harness/runtime/\n.harness/sessions/\n.harness/settings/settings.json\nnode_modules/\ndist/\n.workflow-temp/\n';
+export const GITIGNORE_SECTION = '.harness/runtime/\n.harness/sessions/\n.harness/settings/settings.json\nnode_modules/\ndist/\n.workflow-temp/\n.DS_Store\n';
 export const BLOCK_END = '# workflow-kit:end';
 export const MD_START = '<!-- workflow-kit:begin -->';
 export const MD_END = '<!-- workflow-kit:end -->';
