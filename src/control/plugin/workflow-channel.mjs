@@ -63,14 +63,21 @@ export class WorkflowChannel {
   state(run){return {scope_id:run.grant?.scope_id??null,phase:run.grant?.phase??'not-started',active:run.grant?.active===true};}
   // Read-only local projection. Registration, a live SDK lease and message
   // receipt are separate facts; no ticket, identity or message text leaves it.
+  panelIssue(run,member,panel) {
+    if(!panel||panel.runId!==run.id||panel.memberId!==member.id||panel.identity!==member.identity)return 'panel-unbound';
+    if(panel.generation!==member.generation)return 'generation-mismatch';
+    if(panel.expiresAt<=this.c.now())return 'lease-expired';
+    if(!panel.messageSupported)return 'sdk-unavailable';
+    return null;
+  }
+  livePanel(run,member){return [...this.c.panels.values()].some(p=>this.panelIssue(run,member,p)===null);}
   progress(sessionId) {
     const c=this.c,target=c.enrollment.resolveTarget?.(sessionId);
     if(!target||c.removedSessions.has(sessionId))return null;
     const run=c.runs.get(workflowRunId(target));if(run?.removed)return null;
     const member=Object.values(run?.members??{}).find(m=>['project_id','local_session_id','origin_session_id','role','scope_id','assignment_id','task_id']
       .every(key=>(m.target[key]??null)===(target[key]??null)));
-    const sdk=!!member&&[...c.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id
-      &&p.identity===member.identity&&p.generation===member.generation&&p.expiresAt>c.now()&&p.messageSupported);
+    const sdk=!!member&&this.livePanel(run,member);
     const initial=run?.messages.findLast(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
       &&m.assignment_id===target.assignment_id&&['assignment-start','task','revision_request'].includes(m.kind)&&!m.superseded);
     const dialogue=run?.messages.filter(m=>m.assignment_id===target.assignment_id&&m.scope_id===target.scope_id&&!m.superseded)??[];

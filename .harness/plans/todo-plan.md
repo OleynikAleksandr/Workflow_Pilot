@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1073,
+  "plan_revision": 1076,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -134,12 +134,12 @@
     "documents": [
       {
         "path": "docs/planning/release-0533-defects-execution.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/planning/release-0533-defects-ui.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
@@ -158,8 +158,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "CHANNEL",
@@ -177,7 +177,9 @@
         "tests/chatgpt-plugin.test.mjs",
         "tests/fixtures/plugin-host.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/release-0533-defects.md"
+      ],
       "verification_ids": [
         "unit-all",
         "chatgpt-plugin",
@@ -207,7 +209,7 @@
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/chatgpt-plugin.md",
@@ -220,7 +222,15 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/release-0533-defects.md",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -268,7 +278,7 @@
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/project-compatibility.md",
@@ -338,7 +348,7 @@
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/orchestrated-execution.md",
@@ -423,7 +433,7 @@
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/assignment-dialogue.md",
@@ -499,7 +509,7 @@
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
@@ -568,7 +578,7 @@
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
@@ -650,7 +660,7 @@
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
@@ -733,7 +743,7 @@
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/modules/automatic-agent-dialogue-acceptance.md",
@@ -852,11 +862,11 @@
           },
           {
             "path": "docs/planning/release-0533-defects-execution.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/release-0533-defects-ui.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -990,7 +1000,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1073
+Revision: 1076
 
 ## Цель
 
@@ -1009,10 +1019,10 @@ Revision: 1073
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Разработка в этой внешней Codex-сессии без делегирования. Общие plan/WAL/status/UI contracts пересекаются; последовательные проверяемые задачи сохраняют целостность и пользовательское ограничение на модельных исполнителей.
 
-- [TODO] CHANNEL: Восстановить канал после смены generation и lease — Ожидает
-  - Git Commit: [PENDING] fix: восстановить канал после смены generation и lease
+- [DONE] CHANNEL: Восстановить канал после смены generation и lease — Завершено
+  - Git Commit: [DONE] fix: восстановить канал после смены generation и lease
   - Reference: release-0533-defects / CHANNEL / implementation
-  - Файлы: src/frontend/plugin/launch.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/contracts/plugin-communication.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-host.mjs
+  - Файлы: src/frontend/plugin/launch.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/contracts/plugin-communication.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-host.mjs, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] GIT: Исключить Finder metadata штатным installer Kit — Ожидает

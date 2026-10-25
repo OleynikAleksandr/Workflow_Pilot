@@ -29,6 +29,28 @@ async function fixture(t,currentMessage,dialogueKit=null){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+test('generation and lease readiness agree for O and two E; sync never grants a paused plan',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);
+  const bindings=await Promise.all([f.o,f.target('first'),f.target('second')].map(target=>f.bind(f.c,target)));
+  await f.c.workflow.grant(f.o,'paused');await f.c.workflow.grant(f.o);
+  for(const b of bindings){
+    assert.equal((await f.c.status(b)).channel_ready,false);
+    assert.equal(f.c.workflow.progress(f.c.runs.get(b.run_id).members[b.participant_id].target.local_session_id).sdk,false);
+    await assert.rejects(f.c.wait({...b,after_seq:0}),{code:'PLUGIN_COMMUNICATION_STOPPED',reason:'generation-mismatch'});
+    Object.assign(b,await f.sync(f.c,b));assert.equal((await f.c.status(b)).channel_ready,true);
+  }
+  f.advance(61000);
+  for(const b of bindings){
+    assert.equal((await f.c.status(b)).channel_ready,false);
+    await assert.rejects(f.c.wait({...b,after_seq:0}),{reason:'lease-expired'});
+  }
+  await f.c.workflow.grant(f.o,'paused');await f.sync(f.c,bindings[0]);
+  assert.equal((await f.c.status(bindings[0])).stopped,true);
+  const events=f.c.runs.get(bindings[0].run_id).events;
+  assert.ok(events.some(e=>e.event_type==='operation.denied'&&e.reason==='generation-mismatch'));
+  assert.ok(events.some(e=>e.event_type==='operation.denied'&&e.reason==='lease-expired'));
+  assert.equal(events.filter(e=>e.event_type==='send.intent').length,0);
+});
 test('combined claim persists one send intent and cannot be repeated after a lost response',async t=>{
   const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);const b=await f.bind(f.c,e);
   const message=await queue(f.c,e);

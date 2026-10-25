@@ -374,6 +374,34 @@ test('real SDK working channel starts automatically, reads full context and wait
   await delay(80);assert.equal(ui.messages.length,2);assert.deepEqual(ui.errors,[]);
 });
 
+test('workflow wait resynchronizes O after Continue even when the host loses STOPPED',async t=>{
+  for(const structured of [true,false])await t.test(structured?'structured STOPPED':'opaque host error',async t=>{
+    const f=await fixture(t),comm=f.plugin.communication;
+    const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
+    comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=()=>o;
+    let ready=false,changed=false,continued=false,reads=0;
+    comm.workflow.observe=()=>({canSend:ready,stopped:true,busy:false});comm.workflow.admission=async()=>ready;comm.waitMs=20;
+    const invite=await comm.reserve(o);await bridge(t,f);const c=await client(t,f);
+    await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
+    await comm.workflow.grant(o);
+    const ui=await communicationHtml(t,c,{timerMs:ms=>[2000,250].includes(ms)?10:ms,
+      toolReply:async(request,result)=>{
+        if(request.name==='workflow_communication_wait'&&!changed){
+          changed=true;await comm.workflow.grant(o,'paused');await comm.workflow.grant(o);continued=true;
+          return structured?{isError:true,structuredContent:{error:{code:'PLUGIN_COMMUNICATION_STOPPED',message:'stale generation'}}}:{transportError:true};
+        }return result;
+      },onMessage:async request=>{await modelTool(c,metadata,'read_message',notificationArgs(request));reads++;return {};}});
+    await eventually(()=>continued);ready=true;
+    await comm.workflow.enqueue(o,{key:'prepare:first',kind:'recovery',text:'Подготовь T001'});
+    await eventually(()=>reads===1);
+    assert.equal(ui.messages.length,1);assert.equal(ui.maxWaits,1);
+    assert.ok(ui.calls.filter(name=>name==='workflow_communication_sync').length>=2);
+    assert.equal(comm.runs.get(invite.run_id).events.filter(e=>e.event_type==='send.intent').length,1);
+    ui.$('stop').click();await eventually(()=>!comm.runs.get(invite.run_id).grant.active);
+    assert.deepEqual(ui.errors,[]);
+  });
+});
+
 test('real staged SDK -> Python MCP -> bridge -> Control: bind/enable/probe/wait/claim/verify/Send/report/read',async t=>{
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const modelCall=(name,args)=>c.callTool({name:'workflow_communication_'+name,arguments:args,_meta:metadata});

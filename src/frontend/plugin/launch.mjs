@@ -7,6 +7,11 @@ const detached=code=>/^PLUGIN_COMMUNICATION_(ASSIGNMENT_CHANGED|PROJECT_REMOVED)
 function toolError(value){
   const candidates=[value?.structuredContent?.error,value?.data?.structuredContent?.error,value?.data?.error,value?.error,value?.data,value];
   for(const block of value?.content??[])if(block.type==='text')try{candidates.push(JSON.parse(block.text)?.error);}catch{}
+  // MCP hosts can wrap the result inside a JSON-RPC error's result/data.
+  for(const nested of [value?.data?.result,value?.result])if(nested){
+    candidates.push(nested.structuredContent?.error,nested.error);
+    for(const block of nested.content??[])if(block.type==='text')try{candidates.push(JSON.parse(block.text)?.error);}catch{}
+  }
   const detail=candidates.find(e=>typeof e?.code==='string'&&/^PLUGIN_[A-Z_]+$/.test(e.code));
   return Object.assign(new Error(detail?.message??value?.message??'MCP отклонил запрос.'),{code:detail?.code??'MCP_ERROR'});
 }
@@ -69,12 +74,13 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     let result;
     try{result=await callTool('workflow_communication_'+name,args,{timeout:35000,...options});}
     catch(error){const normalized=toolError(error);
-      if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:normalized.code==='MCP_ERROR'?'NETWORK_ERROR':'MCP_ERROR'});
+      if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:normalized.code});
       throw normalized;}
     if(/^ui:\/\/workflow-pilot\/panel-[a-f0-9]{64}\.html$/.test(result.structuredContent?.panel_resource_uri??''))resourceUri=result.structuredContent.panel_resource_uri;
     if(result.isError){
-      if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:'MCP_ERROR'});
-      throw toolError(result);
+      const error=toolError(result);
+      if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:error.code});
+      throw error;
     }
     const value=result.structuredContent;
     if(!name.startsWith('telemetry')&&(!['wait','status','sync'].includes(name)||value?.message_id
@@ -189,18 +195,30 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});}
       catch(error){
         if(!current())return;
+        if(closePlan(error))return;
+        if(!workflow&&error.code==='PLUGIN_COMMUNICATION_STOPPED'){localStop('Разрешение связи отозвано.','waiting');return;}
+        if(terminal(error.code)&&error.code!=='PLUGIN_COMMUNICATION_STOPPED'){localStop(error.message,'error');return;}
         // Some hosts omit structured tool errors. A fresh read-only snapshot
         // can still prove complete; an unavailable snapshot proves nothing.
         if(workflow)try{
           const state=await refresh();
           if(!current())return;
           if(state?.stopped){localStop(state.startup?.complete&&!state.permission?.active?'Стартовый контекст подтверждён. Можно ставить задачу.':'Связь плана приостановлена. Ожидаем «Продолжить».');return;}
+          // Status is read-only: it cannot renew the panel's generation/lease.
+          // A successful status with a running grant is also useful when the
+          // host discarded STOPPED's structured code. Renew this bound panel,
+          // never the grant or a previously persisted SDK send intent.
+          if(state){
+            const before=binding;
+            const synced=await call('sync',{binding:before,message_supported:!!getMessage()},{signal:controller.signal});
+            if(!current()||binding!==before)return;
+            binding={...before,permission_generation:synced.permission_generation};expiresAt=synced.expires_at;
+            ui.snapshot(synced);
+            if(synced.stopped||!getMessage()){localStop(synced.stopped?'Связь плана приостановлена. Ожидаем «Продолжить».':'SDK уведомлений недоступен. Проверяем подключение.');return;}
+          }
         }catch{/* Network recovery below never repeats Send. */}
         if(!current())return;
-        if(closePlan(error))return;
-        if(error.code==='PLUGIN_COMMUNICATION_STOPPED'){localStop('Разрешение связи отозвано. Проверяем состояние плана.');return;}
-        if(terminal(error.code)){localStop(error.message,'error');return;}
-        record('wait.error',{error_code:'NETWORK_ERROR'});status('Связь со службой потеряна. Повторяем только ожидание…','error');failures++;
+        record('wait.error',{error_code:error.code??'MCP_ERROR'});status('Восстанавливаем ожидание сообщений. Отправленные запросы не повторяются.','error');failures++;
         await new Promise(resolve=>{const finish=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',finish);resolve();};
           const timer=setTimeout(finish,Math.min(5000,250*2**Math.min(failures-1,5)));controller.signal.addEventListener('abort',finish,{once:true});if(controller.signal.aborted)finish();});
         continue;

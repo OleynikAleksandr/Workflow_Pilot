@@ -123,7 +123,8 @@ export class PluginCommunication {
           const denied=structuredClone(old);
           this.expire(denied);
           this.event(denied,name==='claim'?'claim.denied':name==='send'&&error.code==='PLUGIN_COMMUNICATION_CONFLICT'?'message.conflict':'operation.denied',
-            {operation:name,error_code:/^PLUGIN_COMMUNICATION_[A-Z_]+$/.test(error.code??'')?error.code:'PLUGIN_COMMUNICATION_INPUT',severity:'warning'});
+            {operation:name,error_code:/^PLUGIN_COMMUNICATION_[A-Z_]+$/.test(error.code??'')?error.code:'PLUGIN_COMMUNICATION_INPUT',
+              ...(['plan-paused','generation-mismatch','lease-expired','sdk-unavailable','panel-unbound'].includes(error.reason)?{reason:error.reason}:{}),severity:'warning'});
           try{await this.persist(denied,old.events.length);this.runs.set(input.run_id,denied);this.syncTimers(denied);this.wake(denied,denied.events.slice(old.events.length));}catch{}
         }
         throw error;
@@ -357,7 +358,12 @@ export class PluginCommunication {
   }
   allowed(input) {
     const context=this.panel(input),{run,member,panel}=context;
-    if(run.mode==='workflow')requireValue(this.workflow.transportPermitted(run,member)&&panel.messageSupported,'STOPPED','Передача приостановлена или SDK недоступен.');
+    if(run.mode==='workflow'){
+      const reason=!this.workflow.transportPermitted(run,member)?'plan-paused'
+        :this.workflow.panelIssue(run,member,panel)??(input.permission_generation!==member.generation?'generation-mismatch':null);
+      if(reason)throw Object.assign(fail('STOPPED','Связь требует проверки: '+reason+'.'),{reason});
+      return context;
+    }
     requireValue((!member.stopped||run.mode==='workflow'&&(this.startup.active(run,member)||this.workflow.choicePending(run,member))) && panel.expiresAt>this.now() && panel.generation===member.generation
       && input.permission_generation===member.generation,'STOPPED','Связь остановлена или срок разрешения истёк.');
     return context;
@@ -404,7 +410,7 @@ export class PluginCommunication {
       permission_generation:member.generation,stopped:run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped||expiresAt<=this.now(),
       startup:startup?{...startup,launch:this.workflow.observe(member.target)?.startupLaunch??null}:null,
       ...(run.mode==='workflow'?this.choiceOf(run,member):{}),
-      ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:[...this.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id&&p.messageSupported&&p.expiresAt>this.now())}:{}),
+      ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:this.workflow.livePanel(run,member)}:{}),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:expiresAt,
       seq:run.events.length,messages:run.messages.filter(m=>m.recipient_id===member.id||m.sender_id===member.id)
@@ -632,7 +638,7 @@ export class PluginCommunication {
       &&Number.isFinite(data.duration_ms)&&data.duration_ms>=0&&data.duration_ms<=86400000,'INPUT','Некорректное событие панели.');
     const safe={event_id:data.event_id,event_type:data.event_type,client_sequence:data.client_sequence,client_time:new Date(data.client_time).toISOString(),
       duration_ms:data.duration_ms,duration_kind:'since-panel-mount',
-      ...(data.error_code?{error_code:ERROR_CODES.has(data.error_code)?data.error_code:'MCP_ERROR'}:{})};
+      ...(data.error_code?{error_code:ERROR_CODES.has(data.error_code)||/^PLUGIN_COMMUNICATION_[A-Z_]{1,64}$/.test(data.error_code)?data.error_code:'MCP_ERROR'}:{})};
     if(data.event_type==='rpc.completed'){
       requireValue(RPC_OPERATIONS.has(data.operation)&&Number.isFinite(data.operation_ms)&&data.operation_ms>=0
         &&data.operation_ms<=86400000,'INPUT','Некорректная длительность обращения панели.');
