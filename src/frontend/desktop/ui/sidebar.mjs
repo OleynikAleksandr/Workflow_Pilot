@@ -4,14 +4,33 @@ import { workspaceSetupView } from './workspace-setup.mjs';
 import {startupView} from '../../../contracts/startup-view.mjs';
 import {paletteCss,spinnerCss} from '../../../contracts/palette.mjs';
 import {choiceCardCss,renderChoiceCard} from '../../../contracts/user-choice.mjs';
-import {roleActor} from '../../../contracts/work-progress.mjs';
+import {roleActor,participantName} from '../../../contracts/work-progress.mjs';
+import {mountCurrentActions,currentActionsCss} from './current-actions.mjs';
 const $ = id => document.getElementById(id);
 // The shared palette of the sidebar and the panel; an inline style is within the page CSP.
 const paletteStyle=document.createElement('style');paletteStyle.id='wp-palette';
-paletteStyle.textContent=paletteCss()+spinnerCss+choiceCardCss;document.head.append(paletteStyle);
+paletteStyle.textContent=paletteCss()+spinnerCss+choiceCardCss+currentActionsCss;document.head.append(paletteStyle);
 const api = window.webPilot;
 let lastProjects = '';
 let currentState;
+const actionsDialog=$('current-actions-dialog');
+// Move the existing controls rather than create a second copy with independent state.
+$('current-choice-slot').append($('plan-choice'));
+$('current-legacy-slot').append($('session-notice'));
+$('current-problems').append($('plan-attention'),$('plan-run-message'),$('plan-continuation-message'),$('conversation-recovery'));
+$('workspace-details').before($('review-preference'));
+const currentActions=mountCurrentActions({document,now:$('current-now'),events:$('current-events'),count:$('current-history-count'),
+  announce:$('current-announcement'),onAction:input=>{if(input.kind==='open-session')void action('selectSession',input.workspace,input.sessionId);
+    else if(input.kind==='command-issues')$('current-diagnostics').open=true;}});
+async function openCurrentActions(){
+  const result=await api.currentActions?.(true);if(result?.ok===false)return;
+  actionsDialog.showModal();$('close-current-actions').focus();
+}
+function closeCurrentActions(){if(actionsDialog.open)actionsDialog.close();void api.currentActions?.(false);$('open-current-actions').focus();}
+$('open-current-actions').addEventListener('click',()=>void openCurrentActions());
+$('close-current-actions').addEventListener('click',closeCurrentActions);
+actionsDialog.addEventListener('cancel',event=>{event.preventDefault();closeCurrentActions();});
+window.addEventListener('pagehide',()=>void api.currentActions?.(false));
 let actionPending = false, pendingAction = null, actionGeneration = 0, planFocusKey = '';
 const navigationActions = new Set(['selectWorkspace', 'selectSession', 'reload', 'returnToChat']);
 const progress = createProgress($('operation-progress'));
@@ -366,17 +385,11 @@ function render(state) {
         // The tree shows orchestrators and discussion chats; the tasks of a plan live in its to-do plan.
         if (['orchestrator', 'planning', 'self', 'discussion'].includes(session.role)) {
           const role = document.createElement('span'); role.className = 'session-role'; role.dataset.role = session.role;
-          role.dataset.state = session.orchestratorState?.state ?? '';
+          role.dataset.state = '';
           // With an older Kit a candidate becomes the orchestrator only when the user gives it the first task.
           const candidate = session.role === 'orchestrator' && !session.orchestratorScopeId && !session.planningOwner;
-          role.textContent = session.role === 'discussion' || candidate ? 'Обсуждение' : session.role === 'planning' ? 'Планирование'
-            : session.role === 'self' ? 'Выполняет план' : ['Оркестратор', session.orchestratorState?.progress].filter(Boolean).join(' · ');
-          if (session.orchestratorState?.state === 'attention') role.title = session.orchestratorState.label;
+          role.textContent = participantName(candidate?'S':roleActor(session.role));
           meta.append(role);
-        }
-        if (session.choicePending) {
-          const wait = document.createElement('span'); wait.className = 'session-choice-wait'; wait.textContent = 'Ждёт вашего выбора';
-          meta.append(wait);
         }
         copy.append(title, meta);
         const experience = document.createElement('span'); experience.className = 'session-experience'; experience.dataset.experience = 'chat'; experience.textContent = session.external ? 'ChatGPT ↗' : 'Chat';
@@ -443,7 +456,7 @@ function render(state) {
   $('toggle-projects').setAttribute('aria-label', $('toggle-projects').title);
   // An executor of an orchestrated plan keeps the plan card: the to-do plan marks the task shown on the right.
   const planExecutor = !!selected?.assignmentId && !!state.orchestratorPlan;
-  $('plan-card').hidden = !selected || (!!selected.assignmentId && !planExecutor);
+  $('plan-card').hidden = !selected || (!selected.scopeId&&!state.orchestratorPlan?.scopeId&&!state.workProgress?.total) || (!!selected.assignmentId && !planExecutor);
   $('assignment-card').hidden = !selected?.assignmentId || planExecutor;
   const assigned = selected?.assignmentId && state.projects.flatMap(project => project.executors ?? [])
     .find(item => item.assignmentId === selected.assignmentId && item.workspace === selected.workspace);
@@ -471,9 +484,9 @@ function render(state) {
   $('plan-run-toggle').textContent = runLabels[run?.state] ?? '';
   $('plan-run-toggle').dataset.state = run?.state ?? '';
   // A held project keeps the button: pressing it runs the standard Kit recheck.
-  $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue;
+  $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue&&run.reason!=='blocked';
   // Why the plan is held; the stage, the problem block and the acceptance hint say the rest.
-  const runReason = run?.issue ? 'Оркестратор плана не определён. Назначьте его в меню сессии.'
+  const runReason = run?.issue ? run.reason==='blocked'?'Выполнение приостановлено. '+run.issue.message:run.issue.message??'Оркестратор плана не определён. Назначьте его в меню сессии.'
     : run?.reason === 'recovery' ? 'Автопродолжение отключено после восстановления Kit (не ручная пауза). '+(run.message??'')
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
     : run?.reason === 'refused' ? 'Выполнение на паузе. ' + (run.message ?? '') + ' Исправьте причину и нажмите «Продолжить».'
@@ -516,8 +529,8 @@ function render(state) {
     $('plan-title').textContent=work?.title||objective||(orchestrated?'План оркестратора':'');
     $('plan-title').title=objective||'';
     $('plan-title').hidden=!$('plan-title').textContent;
-    $('plan-phase-text').textContent=work?.phase??stateLabels[planState]??stateLabels['not-created'];
-    $('plan-phase-spinner').hidden=!work?.busy;
+    $('plan-phase-text').textContent=stateLabels[planState]??stateLabels['not-created'];
+    $('plan-phase-spinner').hidden=true;
     const total=work?.total??tasks.length,done=work?.done??tasks.filter(t=>t.status==='done').length;
     $('plan-progress').hidden=!total;
     $('plan-bar-fill').style.width=(total?Math.round(done/total*100):0)+'%';
@@ -551,11 +564,9 @@ function render(state) {
       const id=document.createElement('span');id.className='plan-task-id';id.textContent=task.id;
       title.textContent = task.title;head.append(id,title);
       const line=document.createElement('small');line.className='plan-task-line';
-      const status=document.createElement('span');status.className='plan-task-stage';status.textContent=task.label??'Состояние не подтверждено';
+      const status=document.createElement('span');status.className='plan-task-stage';status.textContent=({done:'Интегрирована',current:'В работе',attention:'Ожидает решения',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
       if(task.status!=='done'&&task.mode){const mode=document.createElement('span');mode.className='plan-task-mode';mode.textContent=' · '+task.mode;status.append(mode);}
       line.append(status);
-      if(task.elapsedMs!=null){const time=document.createElement('span');time.className='plan-task-time';
-        time.dataset.elapsed=String(task.elapsedMs);line.append(time);}
       body.append(head,line);
       // A started task opens its executor's session; an unstarted or done one only shows its row.
       if (task.target && task.status !== 'done') {
@@ -581,6 +592,9 @@ function render(state) {
   const card=state.userChoice??null;
   const press=optionId=>card&&selected&&action('chooseOption',{sessionId:selected.sessionId,choiceId:card.choice_id,optionId,generation:card.generation});
   renderChoiceCard(document,$('plan-choice'),card,{busy:actionPending,pick:press,reopen:()=>press('reopen')});
+  currentActions.render(work,{choice:card});
+  $('open-current-actions').hidden=!selected||!!state.setup||!!state.settings;
+  $('review-preference').hidden=!selected||!!state.setup||!!state.settings;
   // Busy participants of the selected project get a spinner in their tree row; text stays in the panel.
   const busyActors=new Set((work?.now??[]).filter(item=>item.kind==='act').map(item=>item.actor));
   for(const row of $('projects').querySelectorAll('.session[data-session-id]')){
@@ -607,6 +621,9 @@ function render(state) {
   $('cancel-context').hidden=context.launch?context.launch.cancel!=='none'||context.startup?.complete:started||!preparing;
   $('observe-context').hidden=context.phase!=='send-unknown';
   $('return-chat').hidden = context.phase !== 'chat-changed';
+  const startupCovered=!!work?.primary&&context.phase!=='external-session';
+  $('session-notice-title').hidden=startupCovered;$('session-notice-detail').hidden=startupCovered;
+  if(startupCovered)$('session-notice').hidden=[...$('session-notice').querySelectorAll('button')].every(button=>button.hidden);
   $('connection-detail').textContent = state.localRuntime ? `${state.localRuntime.label} · встроенный MCP` : state.runtimeFolder;
   const delivery = context.delivery;
   $('session-detail').textContent = selected ? `Сессия: ${selected.sessionId}`
@@ -629,9 +646,10 @@ function render(state) {
   $('error-banner').hidden = !error;
   $('error-banner').textContent = error ? `${error.message} (${error.code})` : '';
   for (const button of document.querySelectorAll('button')) {
+    if(button.closest('#plan-choice')||['open-current-actions','close-current-actions'].includes(button.id))continue;
     if (button.closest('#startup-panel') || button.id==='open-startup') continue;
     button.disabled = actionPending
-      || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue))
+      || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue&&state.planRun.reason!=='blocked'))
       || (button.id==='plan-review-toggle' && (!review.supported || !!review.error || !!review.lock))
       || (state.storageError && ['create-workspace', 'add-workspace', 'retry-context'].includes(button.id));
   }

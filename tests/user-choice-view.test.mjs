@@ -13,7 +13,7 @@ const card=(state='offered',extra={})=>{const {question,options}=choiceOptions('
 test('panel blocks: now, the user choice, history, then the collapsed diagnostics',async()=>{
   const html=await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8');
   const {window}=new JSDOM(html);const order=[...window.document.querySelector('main.wp').children].map(n=>n.id).filter(Boolean);
-  assert.deepEqual(order.slice(order.indexOf('progress-now')),['progress-now','progress-choice','progress-history','progress-diagnostics']);
+  assert.deepEqual(order.slice(order.indexOf('progress-now')),['progress-now','progress-choice','progress-announcement','progress-history','progress-diagnostics']);
   assert.equal(window.document.getElementById('progress-diagnostics').open,false);
   const ui=mountPanel({document:window.document}),picked=[];
   ui.onChoice({pick:id=>picked.push(id),reopen:()=>picked.push('reopen')});
@@ -27,6 +27,8 @@ test('panel blocks: now, the user choice, history, then the collapsed diagnostic
   rows[1].querySelector('button').click();assert.deepEqual(picked,['continue']);
   ui.choice(card());assert.doesNotMatch(node.className,/pulse/,'a redraw of the same card stays still');
   ui.choice(card('chosen',{chosen:{id:'fix',label:'Поручить оркестратору устранить причину',delivered:false}}));
+  assert.equal(node.dataset.state,'chosen');assert.equal(node.querySelector('.wp-choice-question'),null);
+  assert.equal(node.querySelectorAll('button').length,0,'saved choice has no repeated options');
   assert.match(node.textContent,/Выбрано: «Поручить оркестратору устранить причину» · передаётся агенту/);
   ui.choice(card('chosen',{chosen:{id:'fix',label:'X',delivered:true}}));assert.match(node.textContent,/передано агенту/);
   ui.choice(card('postponed'));node.querySelector('button').click();assert.equal(picked.at(-1),'reopen');
@@ -40,4 +42,22 @@ test('the card has its own orange, a short pulse and no motion when reduced',()=
   const {window}=new JSDOM('<div id="c"></div>');const container=window.document.getElementById('c');
   renderChoiceCard(window.document,container,card(),{busy:true});
   assert.ok([...container.querySelectorAll('button')].every(b=>b.disabled),'a press in flight disables the card');
+});
+
+test('a repeated snapshot keeps focus; a persisted choice is compact and its summary is not repeated',async()=>{
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'),{pretendToBeVisual:true});
+  const {document}=dom.window,ui=mountPanel({document}),choice=card();
+  ui.snapshot({messages:[],user_choice:choice,work_progress:{now:[{actor:'O',name:'Оркестратор',text:'ждёт вашего выбора',stage:'choice',kind:'warn',choiceId:'c1',key:'c1'}]}});
+  const button=document.querySelector('#progress-choice button');button.focus();
+  ui.choice(structuredClone(choice));assert.equal(document.activeElement,button);assert.equal(button.isConnected,true);
+  assert.equal(document.getElementById('progress-now').children.length,0);
+  const announcement=document.getElementById('progress-announcement').textContent;
+  ui.progress({now:[{actor:'O',name:'Оркестратор',text:'ждёт вашего выбора',stage:'choice',kind:'warn',choiceId:'c1',key:'c1',elapsedMs:10000}]});
+  assert.equal(document.getElementById('progress-announcement').textContent,announcement);
+  ui.choice(card('saving'));assert.match(document.getElementById('progress-choice').textContent,/Сохраняем/);
+  assert.doesNotMatch(document.getElementById('progress-choice').textContent,/Выбрано/);
+  ui.choice(card('chosen',{chosen:{label:'Оркестрация',delivered:false}}));
+  assert.equal(document.querySelector('#progress-choice .wp-choice-title'),null);
+  ui.progress({total:1,done:1,now:[],history:[]});assert.equal(ui.closed(),true);
+  assert.equal(document.getElementById('progress-choice').hidden,true,'closing the plan retires its last visible choice');dom.window.close();
 });

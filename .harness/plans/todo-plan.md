@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1093,
+  "plan_revision": 1098,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -114,7 +114,15 @@
       "src/contracts/dialogue-view.mjs",
       "tests/plan-review.test.mjs",
       "src/control/settings/service.mjs",
-      "tests/settings-workflow-state.test.mjs"
+      "tests/settings-workflow-state.test.mjs",
+      "src/frontend/desktop/ui/current-actions.mjs",
+      "src/frontend/desktop/preload.cjs",
+      "src/frontend/desktop/application.mjs",
+      "src/contracts/desktop.mjs",
+      "tests/desktop-boundaries.test.mjs",
+      "tests/web-client-electron.test.mjs",
+      "tests/fixtures/current-actions-layout.mjs",
+      "tests/parallel-execution-ui.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/release-0533-defects.md",
@@ -711,8 +719,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "VIEW",
@@ -738,7 +746,18 @@
         "src/frontend/desktop/browser-host.mjs",
         "src/frontend/client/browser-view.mjs",
         "tests/fixtures/web-client-browser.mjs",
-        "tests/electron-smoke.mjs"
+        "tests/electron-smoke.mjs",
+        "src/frontend/desktop/ui/current-actions.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/application.mjs",
+        "src/contracts/desktop.mjs",
+        "src/control/workflow/user-choices.mjs",
+        "tests/user-choices.test.mjs",
+        "tests/desktop-boundaries.test.mjs",
+        "tests/work-progress-scenario.test.mjs",
+        "tests/web-client-electron.test.mjs",
+        "tests/fixtures/current-actions-layout.mjs",
+        "tests/parallel-execution-ui.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -794,7 +813,34 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "src/contracts/desktop.mjs",
+        "src/contracts/user-choice.mjs",
+        "src/control/workflow/user-choices.mjs",
+        "src/frontend/desktop/application.mjs",
+        "src/frontend/desktop/browser-host.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/current-actions.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/panel.mjs",
+        "src/frontend/web/app.mjs",
+        "src/frontend/web/index.html",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/desktop-boundaries.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/current-actions-layout.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/user-choice-view.test.mjs",
+        "tests/user-choices.test.mjs",
+        "tests/web-client-electron.test.mjs",
+        "tests/work-progress-scenario.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1110,7 +1156,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1093
+Revision: 1098
 
 ## Цель
 
@@ -1165,10 +1211,10 @@ Revision: 1093
   - Файлы: src/contracts/work-progress.mjs, src/contracts/user-choice.mjs, src/backend/desktop-model.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/user-choices.mjs, src/control/workflow/plan-review.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/session-roles.test.mjs, tests/user-choices.test.mjs, tests/user-choice-view.test.mjs, tests/backend-desktop-model.test.mjs, src/contracts/dialogue-view.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/coordination.mjs, tests/plan-review.test.mjs, tests/panel-dialogue-view.test.mjs, src/control/settings/service.mjs, tests/settings-workflow-state.test.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: PREPARE, STARTUP
-- [TODO] VIEW: Убрать дубли и сделать инструкции читаемыми — Ожидает
-  - Git Commit: [PENDING] fix: убрать дубли и сделать инструкции читаемыми
+- [DONE] VIEW: Убрать дубли и сделать инструкции читаемыми — Завершено
+  - Git Commit: [DONE] fix: убрать дубли и сделать инструкции читаемыми
   - Reference: release-0533-defects / VIEW / implementation
-  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/frontend/desktop/client.mjs, src/frontend/web/index.html, src/contracts/user-choice.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/user-choice-view.test.mjs, tests/desktop-client.test.mjs, tests/chatgpt-plugin.test.mjs, src/frontend/web/app.mjs, src/frontend/desktop/browser-host.mjs, src/frontend/client/browser-view.mjs, tests/fixtures/web-client-browser.mjs, tests/electron-smoke.mjs
+  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/frontend/desktop/client.mjs, src/frontend/web/index.html, src/contracts/user-choice.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/user-choice-view.test.mjs, tests/desktop-client.test.mjs, tests/chatgpt-plugin.test.mjs, src/frontend/web/app.mjs, src/frontend/desktop/browser-host.mjs, src/frontend/client/browser-view.mjs, tests/fixtures/web-client-browser.mjs, tests/electron-smoke.mjs, src/frontend/desktop/ui/current-actions.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/application.mjs, src/contracts/desktop.mjs, src/control/workflow/user-choices.mjs, tests/user-choices.test.mjs, tests/desktop-boundaries.test.mjs, tests/work-progress-scenario.test.mjs, tests/web-client-electron.test.mjs, tests/fixtures/current-actions-layout.mjs, tests/parallel-execution-ui.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: STATUS
 - [TODO] PROOF: Проверить весь цикл и покрытие D001–D011 — Ожидает

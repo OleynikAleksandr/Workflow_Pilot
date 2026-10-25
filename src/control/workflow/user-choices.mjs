@@ -155,11 +155,11 @@ export class UserChoices {
       record.effect_state='applied';
       if (option.message) record.message_id = (await this.deliver(record, option))?.message_id ?? null;
     } catch (error) {
-      record.error = error.message;
-      this.log(record, 'warn', 'выбор не выполнен: ' + error.message); this.report(error);
+      record.error = error.message;record.effect_state='unknown';
+      this.log(record, 'warn', 'сохранённое действие требует проверки: ' + error.message); this.report(error);
     }
     // An app action without a message is complete at once; a failed one frees the card for the next cause.
-    if (!record.message_id || record.error) record.state = 'done';
+    if (!record.message_id && !record.error) record.state = 'done';
     await this.persist();
     this.onChange(); this.reconcile();
     return choiceView(record, this.delivery(record));

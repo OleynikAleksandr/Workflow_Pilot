@@ -6,7 +6,8 @@ import { executionFinalStages } from '../src/control/workflow/execution-projecti
 import {startupView} from '../src/contracts/startup-view.mjs';
 import {paletteCss,spinnerCss,PALETTE,shellBackground} from '../src/contracts/palette.mjs';
 import {choiceCardCss,renderChoiceCard,choiceOptions} from '../src/contracts/user-choice.mjs';
-import {roleActor} from '../src/contracts/work-progress.mjs';
+import {roleActor,participantName} from '../src/contracts/work-progress.mjs';
+import {mountCurrentActions,currentActionsCss} from '../src/frontend/desktop/ui/current-actions.mjs';
 
 test('normal panel startup is not written under the session; only a startup problem is, with the project menu',async t=>{
   const f=await fixture(t),$=id=>f.document.getElementById(id);
@@ -60,7 +61,8 @@ test('three integrations keep the observed final stage and Pause until durable c
   assert.equal($('plan-phase-text').textContent,'Выполнение');
   f.emit({...state,workProgress:{version:1,title:'Опыт',phase:'Завершение',busy:true,done:3,total:3,tasks:plan.tasks,
     now:[{actor:'KIT',text:'План завершается',kind:'act',elapsedMs:65000}],history:[],attention:null}});
-  assert.equal($('plan-phase-text').textContent,'Завершение');assert.equal($('plan-phase-spinner').hidden,false);
+  assert.equal($('plan-phase-text').textContent,'Выполнение');assert.equal($('plan-phase-spinner').hidden,true);
+  assert.match($('current-now').textContent,/План завершается/);
   assert.equal($('plan-note').hidden,true);
   assert.doesNotMatch($('plan-card').textContent,/Все 3 задачи выполнены/);
   f.emit({...state,planRun:{state:'complete',complete:true,activity:{phase:'complete',
@@ -107,7 +109,8 @@ test('external conversation stays visibly external; there is no PlanContinuation
   assert.equal(f.document.getElementById('plan-continuation-toggle'),null,'no PlanContinuation button at all');
   assert.equal(typeof f.window.webPilot.setPlanContinuation,'undefined');
   f.emit({...base,selected:{...base.selected,external:{provider:'chatgpt-plugin'},manualStart:true},
-    context:{phase:'external-session',servicesReady:true,messageSent:true},planRun:null});
+    context:{phase:'external-session',servicesReady:true,messageSent:true},planRun:null,
+    workProgress:{primary:{actor:'PLAN',text:'Ожидаем результаты',kind:'wait'},now:[],history:[]}});
   const button=f.document.getElementById('plan-run-toggle');
   assert.equal(button.hidden,true,'an external session has no plan button');
   assert.equal(f.document.getElementById('session-notice').hidden,false);
@@ -186,7 +189,7 @@ test('plan rows separate identity, planned mode and current status, including fi
   assert.equal(f.document.querySelector('.plan-task-id').textContent,'T003');
   assert.equal(f.document.querySelector('.plan-task strong').textContent,'Результат');
   assert.match(f.document.querySelector('.plan-task-mode').textContent,/После T001/);
-  assert.match(f.document.querySelector('.plan-task-stage').textContent,/^Готово к интеграции · После T001/);
+  assert.match(f.document.querySelector('.plan-task-stage').textContent,/^В работе · После T001/);
 });
 
 
@@ -209,6 +212,9 @@ async function fixture(t) {
   const { window } = dom, document = window.document, calls = [];
   window.startupView=startupView;window.paletteCss=paletteCss;window.spinnerCss=spinnerCss;
   window.choiceCardCss=choiceCardCss;window.renderChoiceCard=renderChoiceCard;window.roleActor=roleActor;
+  Object.assign(window,{participantName,mountCurrentActions,currentActionsCss});
+  window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+  window.HTMLDialogElement.prototype.close=function(){this.open=false;};
   // JSDOM has no top layer. Electron smoke verifies native popover geometry.
   const query = document.querySelectorAll.bind(document);
   document.querySelectorAll = selector => query(selector.replaceAll(':popover-open', '[data-test-open]'));
@@ -411,29 +417,29 @@ test('context has no permanent card; only pre-send recovery can retry and unknow
   assert.match(node('session-notice-detail').textContent,/Повторной отправки нет/);
 });
 
-test('plan card: pinned top and foot around the only scrolling list; stage time ticks; busy session gets a spinner',async t=>{
+test('published plan keeps its button and progress; current operation and timers are outside the sidebar',async t=>{
   const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
   assert.equal($('agent-time'),null,'session time without a caption is gone');
   assert.equal($('execution-stages'),null);assert.equal($('execution-next-action'),null);
   const card=$('plan-card'),list=$('plan-tasks');
-  assert.deepEqual([...card.children].map(node=>node.id||node.className),['plan-top','plan-choice','plan-tasks','plan-foot']);
+  assert.deepEqual([...card.children].map(node=>node.id||node.className),['plan-top','plan-tasks','plan-foot']);
   assert.ok(card.querySelector('.plan-top #plan-phase'));
-  for(const id of ['plan-run-toggle','plan-attention','plan-note','plan-review-toggle'])assert.ok($('plan-foot').contains($(id)),id+' stays pinned');
+  for(const id of ['plan-run-toggle','plan-note'])assert.ok($('plan-foot').contains($(id)),id+' stays pinned');
+  assert.ok($('current-actions-dialog').contains($('plan-attention')));assert.equal(card.contains($('plan-review-toggle')),false);
   const tasks=Array.from({length:12},(_,i)=>({id:'T0'+String(i+1).padStart(2,'0'),title:'Задача '+(i+1),status:i<3?'done':i===3?'current':'pending',
     label:i<3?'Интеграция проверена':i===3?'Kit проверяет коммит · unit-all · 2 из 3':'Не начата',mode:'Параллельно',elapsedMs:i===3?61000:null,target:null}));
-  f.emit({...base,selected:{...base.selected,role:'orchestrator',scopeId:'scope'},planRun:{state:'running',complete:false},
+  f.emit({...base,selected:{...base.selected,role:'orchestrator',scopeId:'scope',planView:{state:'working'}},planRun:{state:'running',complete:false},
     workProgress:{version:1,title:'Большой план',phase:'Выполнение',busy:true,done:3,total:12,tasks,
       now:[{actor:'O',text:'ждёт результатов',kind:'wait'},{actor:'T004',text:'Kit проверяет коммит',kind:'act'}],history:[],attention:null}});
   assert.equal($('plan-title').textContent,'Большой план');
-  assert.equal($('plan-phase-text').textContent,'Выполнение');assert.equal($('plan-phase-spinner').hidden,false);
+  assert.equal($('plan-phase-text').textContent,'Выполнение');assert.equal($('plan-phase-spinner').hidden,true);
   assert.equal($('plan-status').textContent,'в main 3 из 12');assert.equal($('plan-bar-fill').style.width,'25%');
   assert.equal(list.children.length,12);
   const running=list.children[3];
   assert.equal(running.querySelector('.plan-task-state .wp-spin')!==null,true);
-  assert.match(running.querySelector('.plan-task-stage').textContent,/^Kit проверяет коммит · unit-all · 2 из 3 · Параллельно$/);
-  assert.equal(running.querySelector('.plan-task-time').textContent,'1:01');
-  await new Promise(resolve=>setTimeout(resolve,1100));
-  assert.equal(running.querySelector('.plan-task-time').textContent,'1:02','the stage time ticks');
+  assert.match(running.querySelector('.plan-task-stage').textContent,/^В работе · Параллельно$/);
+  assert.equal(running.querySelector('.plan-task-time'),null);
+  assert.match($('current-now').textContent,/Kit проверяет коммит/);
   assert.equal(list.children[0].querySelector('.plan-task-mode'),null,'a done task does not repeat its mode');
   assert.equal($('plan-attention').hidden,true,'no problem, no alarm');
   // The orchestrator row is busy only while it acts.
@@ -511,9 +517,9 @@ test('orchestrated plan: the tree shows roles, the to-do plan opens executor ses
   emit({state:'not-started',reason:null,issue:null,complete:false});
   const roles=[...f.document.querySelectorAll('.session-role')].map(node=>node.textContent);
   // One compact line: the plan stage is not repeated in the tree.
-  assert.deepEqual(roles,['Оркестратор · 1/4','Обсуждение']);
+  assert.deepEqual(roles,['Оркестратор','Агент']);
   const card=f.document.querySelector('.session[data-session-id="s4"]');
-  assert.match(card.querySelector('.session-meta').textContent,/^\d{2}\.\d{2}, \d{2}:\d{2}( · новая)?Оркестратор · 1\/4$/);
+  assert.match(card.querySelector('.session-meta').textContent,/^\d{2}\.\d{2}, \d{2}:\d{2}( · новая)?Оркестратор$/);
   assert.equal(card.querySelectorAll('small').length,1,'date and role share one line');
   assert.equal(f.document.querySelectorAll('.executor-group').length,0,'executors of an orchestrated plan are not grouped in the tree');
   assert.equal(f.document.getElementById('plan-title').textContent,'План оркестратора');
@@ -600,7 +606,7 @@ test('one palette: the sidebar style, both themes, the window background and the
   assert.match(paletteCss({mode:'media'}),/@media \(prefers-color-scheme:dark\)/);
 });
 
-test('the window names session roles, marks a waiting choice and offers the same card', async t => {
+test('the sidebar keeps neutral roles and opens its only choice in the client actions area', async t => {
   const f = await fixture(t), base = f.state, picks = [];
   f.window.webPilot.chooseOption = async input => { picks.push(JSON.parse(JSON.stringify(input))); return null; };
   const { question, options } = choiceOptions('mode', { recommended: 'sequential', reason: 'Небольшие связанные задачи' });
@@ -610,11 +616,13 @@ test('the window names session roles, marks a waiting choice and offers the same
     { sessionId: 's4', createdAt: 4000, title: 'Владелец', role: 'planning', choicePending: true },
     { sessionId: 's3', createdAt: 3000, title: 'Исполняет', role: 'self' },
     { sessionId: 's2', createdAt: 2000, title: 'Второй', role: 'discussion' }] }], userChoice });
-  assert.deepEqual([...f.document.querySelectorAll('.session-role')].map(n => n.textContent), ['Планирование', 'Выполняет план', 'Обсуждение']);
+  assert.deepEqual([...f.document.querySelectorAll('.session-role')].map(n => n.textContent), ['Агент', 'Агент', 'Агент']);
   const badges = [...f.document.querySelectorAll('.session-choice-wait')];
-  assert.equal(badges.length, 1);assert.equal(badges[0].textContent, 'Ждёт вашего выбора');
-  assert.ok(f.document.querySelector('.session[data-session-id="s4"]').contains(badges[0]));
+  assert.equal(badges.length, 0);assert.equal(f.document.getElementById('plan-card').hidden,true);
   const card = f.document.getElementById('plan-choice');
+  assert.ok(card.closest('#current-actions-dialog'));assert.equal(f.document.getElementById('current-actions-dialog').open,false);
+  f.document.getElementById('open-current-actions').click();await f.settle();
+  assert.equal(f.document.getElementById('current-actions-dialog').open,true);
   assert.equal(card.hidden, false);assert.match(card.textContent, /Почему рекомендует агент: Небольшие связанные задачи/);
   const rows = [...card.querySelectorAll('.wp-choice-option')];
   assert.match(rows[0].textContent, /Выполнить самому, последовательно \(рекомендую\)/);

@@ -5,7 +5,8 @@ import {JSDOM} from 'jsdom';
 import {buildWorkProgress,commitProgress,commitProgressLabel,messageEvent,planPhase,eventCount,PLAN_READY_TEXT} from '../src/contracts/work-progress.mjs';
 import {paletteCss,spinnerCss} from '../src/contracts/palette.mjs';
 import {choiceCardCss,renderChoiceCard} from '../src/contracts/user-choice.mjs';
-import {roleActor} from '../src/contracts/work-progress.mjs';
+import {roleActor,participantName} from '../src/contracts/work-progress.mjs';
+import {mountCurrentActions,currentActionsCss} from '../src/frontend/desktop/ui/current-actions.mjs';
 import {startupView} from '../src/contracts/startup-view.mjs';
 import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 
@@ -16,7 +17,7 @@ async function sidebarFixture(t){
   const dom=new JSDOM(html,{runScripts:'outside-only',pretendToBeVisual:true,url:'https://fixture.invalid/'});
   t.after(async()=>{await new Promise(resolve=>setTimeout(resolve,0));dom.window.close();});
   const {window}=dom,calls=[];let listener;
-  Object.assign(window,{startupView,paletteCss,spinnerCss,choiceCardCss,renderChoiceCard,roleActor});
+  Object.assign(window,{startupView,paletteCss,spinnerCss,choiceCardCss,renderChoiceCard,roleActor,participantName,mountCurrentActions,currentActionsCss});
   const base={projects:[{workspace:'/demo',name:'Проект',expanded:true,sessions:[{sessionId:'o',createdAt:1,title:'План',role:'orchestrator',
     orchestratorScopeId:'scope',orchestratorState:{state:'running',label:'Выполняется'}},{sessionId:'s',createdAt:2,title:'Обсуждение',role:'discussion'}]}],
     selected:{workspace:'/demo',sessionId:'o',role:'orchestrator',scopeId:'scope'},context:{phase:'delivered'},planReview:{enabled:true,supported:true,message:''}};
@@ -80,7 +81,7 @@ function projection([,facts,stages,now,seen]){
     attention:warn?{title:warn[0]+' молчит',text:'Активность сейчас не наблюдается',action:null}:null});
 }
 
-test('the prototype scenario: sidebar and panel show the same projection at every step',async t=>{
+test('the shared projection puts the current operation in one area and only the published plan in the sidebar',async t=>{
   const sidebar=await sidebarFixture(t),$=id=>sidebar.document.getElementById(id);
   const panelDom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'),{pretendToBeVisual:true});
   t.after(()=>panelDom.window.close());
@@ -88,28 +89,29 @@ test('the prototype scenario: sidebar and panel show the same projection at ever
   const phases=[];
   for(const step of steps){
     const value=projection(step),name=step[0];
-    sidebar.emit(value,{planRun:{state:step[1].complete?'complete':step[1].notStarted?'not-started':'running',complete:!!step[1].complete}});
+    sidebar.emit(value,{selected:{workspace:'/demo',sessionId:'o',role:'orchestrator',scopeId:step[1].scope??null,
+      planView:{state:step[1].complete?'awaiting-acceptance':step[1].notStarted?'ready':'working'}},
+      planRun:step[1].scope?{state:step[1].complete?'complete':step[1].notStarted?'not-started':'running',complete:!!step[1].complete}:null});
     panel.progress({...value,self:'O'});
     phases.push(value.phase+(value.busy?'*':''));
-    // One stage, one progress, one list of tasks in both places.
-    assert.equal($('plan-phase-text').textContent,value.phase,name);
-    assert.ok(p('progress-phase').textContent.startsWith(value.phase),name);
-    assert.equal($('plan-phase-spinner').hidden,!value.busy,name+': the stage spinner follows the work');
+    assert.equal($('plan-card').hidden,!step[1].scope,name);
+    assert.equal($('plan-phase-spinner').hidden,true,name+': the current stage belongs to the main area');
     if(value.total){
       assert.equal($('plan-status').textContent,'в main '+value.done+' из '+value.total,name);
       assert.ok(p('progress-phase').textContent.endsWith('в main '+value.done+' из '+value.total),name);
     }else assert.equal($('plan-progress').hidden,true,name);
     assert.deepEqual([...sidebar.document.querySelectorAll('.plan-task')].map(row=>row.dataset.status),value.tasks.map(task=>task.status),name);
-    assert.deepEqual([...sidebar.document.querySelectorAll('.plan-task-stage')].map(node=>node.firstChild.textContent),value.tasks.map(task=>task.label),name);
+    assert.deepEqual([...sidebar.document.querySelectorAll('.plan-task-stage')].map(node=>node.firstChild.textContent),value.tasks.map(task=>({done:'Интегрирована',current:'В работе',attention:'Ожидает решения',pending:'Не начата'})[task.status]),name);
     // Every current action is a row of the panel, problems first, then actions, then waits.
     const rows=[...p('progress-now').children].filter(row=>!/Сейчас ничего/.test(row.textContent));
-    assert.deepEqual(rows.map(row=>row.querySelector('.wp-spin')?'act':row.classList.contains('warn')?'warn':'wait'),value.now.map(item=>item.kind),name);
-    assert.deepEqual(rows.map(row=>row.querySelector('.wp-what').textContent),value.now.map(item=>item.name+' '+item.text),name);
+    const expected=[value.primary,...value.now.filter(item=>item!==value.primary&&item.actor!==value.primary?.actor&&['act','warn'].includes(item.kind)&&item.key!==value.primary?.key)].filter(Boolean);
+    assert.deepEqual(rows.map(row=>row.querySelector('.wp-spin')?'act':row.classList.contains('warn')?'warn':'wait'),expected.map(item=>item.kind),name);
+    assert.deepEqual([...$('current-now').children].map(row=>row.textContent.replace(/\d+:\d+$/,'')),rows.map(row=>row.textContent.replace(/\d+:\d+$/,'')),name+': same current area');
     assert.equal(p('progress-history-count').textContent,eventCount(value.history.length),name);
     if(name==='План готов')assert.match(p('progress-now').textContent,/План ждёт вашей проверки и запуска\. Нажмите «Начать выполнение плана» слева/,'a ready plan is a wait for the user, not an empty list');
     // The problem block appears only with a problem; the foot stays pinned.
     assert.equal($('plan-attention').hidden,!value.attention,name);
-    assert.ok($('plan-foot').contains($('plan-review-toggle')),name);
+    assert.equal($('plan-card').contains($('plan-review-toggle')),false,name);
   }
   // A spinner (*) only while someone acts: an answering orchestrator spins, a deferred cleanup waits.
   assert.deepEqual(phases,['Подготовка*','Обсуждение*','Ждёт задачи','План готов','Запуск*','Выполнение*','Выполнение*','Выполнение*','Выполнение*',
@@ -134,7 +136,9 @@ test('a large plan keeps the stage, the run button, the problem and Review out o
   const card=$('plan-card'),list=$('plan-tasks');
   assert.equal(list.children.length,40);
   for(const id of ['plan-phase','plan-progress'])assert.equal(card.querySelector('.plan-top').contains($(id)),true,id+' is pinned above');
-  for(const id of ['plan-run-toggle','plan-attention','plan-review-toggle'])assert.equal($('plan-foot').contains($(id)),true,id+' is pinned below');
+  assert.equal($('plan-foot').contains($('plan-run-toggle')),true);
+  assert.ok($('current-actions-dialog').contains($('plan-attention')));
+  assert.equal(card.contains($('plan-review-toggle')),false);
   assert.equal(list.contains($('plan-run-toggle')),false);
   // The pinning rules of the stylesheet: only the list scrolls inside a card that may shrink.
   const css=[...sidebar.document.querySelectorAll('style')].map(node=>node.textContent).join('\n');

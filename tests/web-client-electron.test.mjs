@@ -80,6 +80,11 @@ test('remote web client in Chromium: pairing on the Mac, the same UI and page, w
   await until("document.getElementById('frame').src.startsWith('blob:')",'page frame');
   const mime=await probe("document.getElementById('frame').dataset.mime");
   assert.equal(mime,'image/jpeg','the remote device receives compressed frames');
+  await probe("document.getElementById('sidebar').contentDocument.getElementById('open-current-actions').click();true");
+  await until("document.getElementById('sidebar').contentDocument.getElementById('current-actions-dialog').open",'client actions without MCP iframe');
+  assert.equal(await probe("document.getElementById('stage').hidden&&document.getElementById('sidebar').classList.contains('current-actions-open')"),true);
+  await probe("document.getElementById('sidebar').contentDocument.getElementById('close-current-actions').click();true");
+  await until("!document.getElementById('sidebar').classList.contains('current-actions-open')&&!document.getElementById('stage').hidden",'same page visible again');
   await probe("document.getElementById('sidebar').contentWindow.webPilot.openArchive().then(()=>true)");
   await until("document.getElementById('archive-overlay').classList.contains('open')",'archive inside the page');
   await settle(300);

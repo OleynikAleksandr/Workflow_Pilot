@@ -135,12 +135,12 @@ test('panel shows every current action with its time, a collapsed history and di
     tasks:[{id:'T002',timers:{activeMs:101000,waitingMs:41000}}],attention:null};
   ui.snapshot({messages:[],work_progress:value,permission:{phase:'running'},role:'E',task_id:'T002',mode:'workflow',conversation_key:'k'});
   assert.equal($('progress-title').textContent,'JavaScript-утилиты');
-  assert.equal($('progress-phase').textContent,'Выполнение · в main 1 из 4');
+  assert.equal($('progress-phase').textContent,'в main 1 из 4');
   assert.equal($('progress-open').textContent,'открыт чат T002');
   const rows=[...$('progress-now').children];
-  assert.deepEqual(rows.map(row=>row.className),['wp-row warn','wp-row','wp-row wait me']);
+  assert.deepEqual(rows.map(row=>row.className),['wp-row warn','wp-row secondary']);
   assert.equal(rows[1].querySelector('.wp-spin')!==null,true,'an action has a spinner');
-  assert.equal(rows[2].querySelector('.wp-spin'),null,'a wait has none');
+  assert.equal(rows.some(row=>row.classList.contains('wait')),false,'ordinary waits do not duplicate the primary reason');
   assert.equal(rows[1].querySelector('.wp-flow').textContent,'← вопрос от T002');
   assert.equal(rows[0].querySelector('.wp-time').textContent,'12:00');
   assert.equal(rows[1].querySelector('.wp-time').textContent,'0:35');

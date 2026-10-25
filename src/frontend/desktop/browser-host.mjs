@@ -3,6 +3,7 @@ export class DesktopBrowserHost {
   #views = new Map();
   #visible = null;
   #container = null;
+  #suspended = false;
   constructor(createView) { this.createView = createView; }
   create(id) {
     if (this.#views.has(id)) throw new Error('BROWSER_HOST_CONFLICT');
@@ -17,14 +18,19 @@ export class DesktopBrowserHost {
     if (!view) throw new Error('SESSION_RUNTIME_RELEASED');
     if (this.#visible === id && this.#container === container) return;
     this.hide(); this.#visible = id; this.#container = container;
-    container?.addChildView(view); view.setVisible?.(true);
+    if(!this.#suspended)container?.addChildView(view); view.setVisible?.(!this.#suspended);
   }
   hide() {
     if (this.#visible !== null) {
       const view = this.#views.get(this.#visible);
-      view?.setVisible?.(false); if (view) this.#container?.removeChildView(view);
+      view?.setVisible?.(false); if (view&&!this.#suspended) this.#container?.removeChildView(view);
     }
     this.#visible = null; this.#container = null;
+  }
+  suspend(value){
+    if(this.#suspended===value)return;const view=this.visibleView();
+    if(view){if(value)this.#container?.removeChildView(view);else this.#container?.addChildView(view);view.setVisible?.(!value);}
+    this.#suspended=value;
   }
   close(id) {
     const view = this.#views.get(id);

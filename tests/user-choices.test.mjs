@@ -109,6 +109,16 @@ test('choice texts: recommendation first, existing operations only', () => {
   assert.throws(() => choiceOptions('unknown'), { code: 'USER_CHOICE_KIND' });
 });
 
+test('a saved action failure remains visible after restart and never repeats the effect',async()=>{
+  let effects=0;const choices=new UserChoices({facts:()=>[{session_id:'o',workspace:'/fixture',kind:'mode',key:'mode:failed'}],
+    act:async()=>{effects++;throw Error('KIT_LOCKED');},report:()=>{}});
+  choices.reconcile();const card=choices.view('o');
+  await choices.choose({session_id:'o',choice_id:card.choice_id,generation:card.generation,option_id:'orchestrated'});
+  assert.equal(choices.view('o').chosen.uncertain,true);assert.match(choices.view('o').chosen.error,/KIT_LOCKED/);
+  const next=new UserChoices({facts:()=>[],act:()=>effects++});next.restore(choices.snapshot());next.reconcile();
+  assert.equal(next.view('o').state,'chosen');assert.equal(effects,1);
+});
+
 test('an agent mode request in Kit is a mode card of its session; a later message elsewhere is a second-session card', t => {
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'choice-facts-')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));

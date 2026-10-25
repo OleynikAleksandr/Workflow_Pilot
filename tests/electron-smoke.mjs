@@ -24,6 +24,7 @@ import { renderPlan } from '@webpilot/workflow-kit/lib/plan';
 import { commitTask } from '@webpilot/workflow-kit/lib/transaction';
 import { measureEventRuntimeBaseline } from './event-runtime-baseline.mjs';
 import {ExecutionFacade,ChatGPTSearchExtension} from '../src/execution/facade.mjs';
+import {verifyCurrentActionsLayout} from './fixtures/current-actions-layout.mjs';
 
 let packetLoads = 0;
 let smokeDataDir;
@@ -249,6 +250,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   });
   const browser=currentObject('browser'),controller=currentObject('controller'),pageState=currentObject('pageState'),chromiumDiagnostics=currentObject('chromiumDiagnostics');
   smokeDataDir = dataDir;
+  await verifyCurrentActionsLayout(dataDir);
   fixtureBootstrap=async text=>{
     assert.match(text,/^Открой панель Workflow Pilot:/);assert.doesNotMatch(text,/Раздел 1:|wp-request-/);
     const ticket=JSON.parse(text.match(/workflow_pilot_panel с аргументами (\{"enrollment_ticket":"[a-f0-9]{64}"\})/)[1]).enrollment_ticket;
@@ -545,6 +547,13 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await browser.executeJavaScript("document.title='Первый разговор проекта'");
   await waitFor(() => snapshot().projects[0].sessions[0].title === 'Первый разговор проекта', 'conversation title', snapshot);
   const first = store.selected();
+  const viewsBeforeActions=window.contentView.children.length,urlBeforeActions=browser.getURL();
+  await sidebar.executeJavaScript('document.getElementById("open-current-actions").click()');
+  await waitFor(()=>sidebar.executeJavaScript('document.getElementById("current-actions-dialog").open'),'client current actions open',snapshot);
+  assert.equal(window.contentView.children.length,viewsBeforeActions-1,'native ChatGPT view is detached while client actions are visible');
+  await sidebar.executeJavaScript('document.getElementById("close-current-actions").click()');
+  await waitFor(()=>window.contentView.children.length===viewsBeforeActions,'native page returns',snapshot);
+  assert.equal(browser.getURL(),urlBeforeActions,'opening current actions never reloads the chat');
   assert.ok(first.chatUrl.startsWith('https://chatgpt.com/c/'));
   assert.equal(await sidebar.executeJavaScript('document.querySelector(".session-experience").textContent'), 'Chat');
   assert.equal(await sidebar.executeJavaScript('document.getElementById("new-chat")'), null, 'context card has no session creation button');
@@ -632,9 +641,9 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     planCard: !document.getElementById('plan-card').hidden,
     detailsVisible: !document.getElementById('workspace-details').hidden, oldPlanText: !!document.getElementById('plan-text'),
     revisionVisible: document.getElementById('plan-card').textContent.includes('версия') || document.getElementById('plan-card').textContent.includes('Revision')
-  })`).then(value => JSON.stringify(value)), JSON.stringify({ planCard: true, detailsVisible: true, oldPlanText: false, revisionVisible: false }));
-  // Without a plan the card shows only the stage; progress appears with the first published plan.
-  assert.ok(['Ждёт задачи','Обсуждение','Подготовка плана','Подготовка'].includes(await sidebar.executeJavaScript('document.getElementById("plan-phase-text").textContent')));
+  })`).then(value => JSON.stringify(value)), JSON.stringify({ planCard: false, detailsVisible: true, oldPlanText: false, revisionVisible: false }));
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("open-current-actions").hidden'),false);
+  assert.equal(await sidebar.executeJavaScript('!!document.getElementById("session-notice").closest("#current-actions-dialog")'),true);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-progress").hidden'), true);
   assert.equal(await sidebar.executeJavaScript('document.querySelectorAll("#plan-tasks .plan-task").length'), 0);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-title").hidden'), true);
@@ -1715,7 +1724,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     const reviewWait={...snapshot(),planReview:{enabled:true,supported:true,stage:'RUNNING',indicator:'working',
       message:'Раунд 1 из 4. Claude проверяет документы.'}};
     sidebar.send('pilot:state-changed',reviewWait);
-    await waitFor(()=>sidebar.executeJavaScript("document.getElementById('plan-review-text').textContent.includes('Claude проверяет')"),'review wait status',snapshot);
+    await waitFor(()=>sidebar.executeJavaScript("document.getElementById('plan-review-text').textContent.includes('Claude проверяет')"),'review diagnostic available',snapshot);
     assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-review-indicator').dataset.state"),'working');
     assert.equal(await sidebar.executeJavaScript("document.getElementById('conversation-recovery').hidden"),true,'review wait is not a connection error');
     sidebar.send('pilot:state-changed',snapshot());
@@ -1882,7 +1891,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const beforeSidebarReload = snapshot();
   await sidebar.reload();
   await waitFor(() => sidebar.executeJavaScript('typeof window.webPilot === "object" && document.getElementById("prototype-version")?.textContent === ' + JSON.stringify(app.getVersion())), 'sidebar reload receives initial state', snapshot);
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-card").hidden'), false);
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-card").hidden'), true,'no pre-publication plan card');
   assert.equal(snapshot().selected?.sessionId, beforeSidebarReload.selected?.sessionId, 'sidebar reload does not change selected session');
   // Ordinary first message: actual trusted input, persisted URL, no recovery acknowledgement.
   await browser.executeJavaScript("localStorage.setItem('fixture-restored-draft','Моё обычное ручное сообщение')");

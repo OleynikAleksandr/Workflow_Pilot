@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DESKTOP_CHANNELS } from '../../contracts/desktop.mjs';
 import { BackendConnection } from '../client/connection.mjs';
 import { BrowserView } from '../client/browser-view.mjs';
-import { DesktopIpc } from './ipc.mjs';
+import { DesktopIpc,assertTrustedSender } from './ipc.mjs';
 import { ChatColorsWindow } from './chat-colors-window.mjs';
 import { shellBackground } from '../../contracts/palette.mjs';
 
@@ -70,6 +70,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   const windowClientId = (embedded ? 'native-' : 'client-') + globalThis.crypto.randomUUID();
   // The real page shown by the embedded window: its browserSessionId and context menu listener.
   let nativePage = null;
+  let actionsOpen=false;
   const ipcChannels = [];
   const handleIpc = (channel, action) => { ipcMain.handle(channel, action); ipcChannels.push(channel); };
   const otherHolder = () => !!leaseHolder && leaseHolder !== windowClientId;
@@ -236,9 +237,10 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   async function showSelectedPage() {
     if (embedded) {
       if (!connection || !window || window.isDestroyed()) return;
+      if(actionsOpen)return detachNative();
       const { pages } = await connection.json('/v1/browser/pages');
       const selected = pages.find(page => page.selected && page.kind === 'page');
-      if (!window || window.isDestroyed()) return;
+      if (!window || window.isDestroyed()||actionsOpen) return;
       if (!selected) return detachNative();
       if (nativePage?.browserSessionId !== selected.browserSessionId) attachNative(selected.browserSessionId);
       return;
@@ -263,7 +265,8 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   function layout() {
     if (!window || window.isDestroyed()) return;
     const [width, height] = window.getContentSize();
-    sidebar.setBounds({ x: 0, y: 0, width: sidebarWidth, height });
+    sidebar.setBounds({ x: 0, y: 0, width: actionsOpen?width:sidebarWidth, height });
+    pageView?.setVisible(!actionsOpen);
     if (embedded) { if (nativePage) embedded.pages.setBounds(nativePage.browserSessionId, pageBounds()); return; }
     pageView.setBounds({ x: sidebarWidth, y: 0, width: Math.max(0, width - sidebarWidth), height });
     syncViewport();
@@ -326,6 +329,13 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
   const desktopIpc = new DesktopIpc(ipcMain, {
     local: () => ({ contents: sidebar?.webContents, url: sidebarUrl }),
     archive: () => ({ contents: archiveWindow?.webContents, url: archiveUrl }),
+  });
+  handleIpc('pilot:current-actions',(event,input)=>{
+    assertTrustedSender(event,{contents:sidebar?.webContents,url:sidebarUrl});
+    if(typeof input?.open!=='boolean')throw new TypeError('Expected open');
+    actionsOpen=input.open;if(actionsOpen)detachNative();layout();
+    if(!actionsOpen)void showSelectedPage().catch(()=>{});
+    return {ok:true};
   });
   // The same envelope as the former in-process IPC; state is the backend's latest.
   async function relay(surface, channel, input) {
@@ -565,6 +575,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
     window = new BaseWindow({ title: fixture ? 'Workflow Pilot — CLIENT FIXTURE' : 'Workflow Pilot', show: !fixture, focusable: !fixture,
       width: 1440, height: 940, minWidth: 980, minHeight: 700, backgroundColor: shellBackground[theme] });
     sidebar = new WebContentsView({ webPreferences: { preload: path.join(desktopDir, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
+    sidebar.webContents.on('did-start-loading',()=>{actionsOpen=false;layout();void showSelectedPage().catch(()=>{});});
     if (!embedded) pageView = new WebContentsView({ webPreferences: { preload: path.join(desktopDir, 'browser-view-preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
     for (const view of [sidebar, pageView].filter(Boolean)) {
       window.contentView.addChildView(view);

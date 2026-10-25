@@ -70,43 +70,59 @@ export const choiceSender = 'Пользователь';
 // The card markup shared by the plugin panel and the window: same contract, same look.
 export const choiceCardCss=`
 .wp-choice{display:grid;gap:8px;padding:10px 12px;border:1.5px solid var(--wp-choice);border-radius:10px;background:var(--wp-choice-soft)}
+.wp-choice[data-state=chosen],.wp-choice[data-state=saving],.wp-choice[data-state=postponed]{border-color:var(--wp-line);background:var(--wp-card);padding:8px 10px}
+.wp-choice[data-uncertain=true]{border-color:var(--wp-choice);background:var(--wp-choice-soft)}
+.wp-choice{min-width:0;overflow-wrap:anywhere;font-size:1em}.wp-choice button:focus-visible{outline:3px solid var(--wp-accent);outline-offset:3px}
 .wp-choice.pulse{animation:wp-choice-pulse 1s ease-in-out 3}
 @keyframes wp-choice-pulse{0%,100%{box-shadow:0 0 0 0 var(--wp-choice-glow)}50%{box-shadow:0 0 0 6px var(--wp-choice-glow)}}
 @media(prefers-reduced-motion:reduce){.wp-choice.pulse{animation:none}}
-.wp-choice-title{display:flex;gap:6px;align-items:baseline;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--wp-choice)}
+.wp-choice-title{display:flex;gap:6px;align-items:baseline;font-size:.85em;letter-spacing:.06em;text-transform:uppercase;color:var(--wp-choice)}
 .wp-choice-question{margin:0;font-weight:600;color:var(--wp-fg);line-height:1.4}
-.wp-choice-reason{margin:0;font-size:12px;color:var(--wp-muted)}
+.wp-choice-reason{margin:0;font-size:.92em;color:var(--wp-muted)}
 .wp-choice-options{display:grid;gap:6px;margin:0;padding:0;list-style:none}
 .wp-choice-option{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 9px;border:1px solid var(--wp-line);border-radius:8px;background:var(--wp-card)}
-.wp-choice-option b{font-weight:600;color:var(--wp-fg)}.wp-choice-option small{display:block;margin-top:2px;font-size:12px;color:var(--wp-muted);line-height:1.35}
+.wp-choice-option b{font-weight:600;color:var(--wp-fg)}.wp-choice-option small{display:block;margin-top:2px;font-size:.92em;color:var(--wp-muted);line-height:1.35}
 .wp-choice-mark{color:var(--wp-choice);font-weight:600}
-.wp-choice-option button{font:inherit;font-size:12px;cursor:pointer;border-radius:7px;padding:5px 10px;border:1px solid var(--wp-choice);background:transparent;color:var(--wp-choice);white-space:nowrap}
+.wp-choice-option button{font:inherit;font-size:.92em;cursor:pointer;border-radius:7px;padding:5px 10px;border:1px solid var(--wp-choice);background:transparent;color:var(--wp-choice);white-space:normal;overflow-wrap:anywhere}
 .wp-choice-option.recommended button{background:var(--wp-choice);color:var(--wp-choice-on)}
 .wp-choice-option button:disabled{opacity:.5;cursor:default}
-.wp-choice-hint,.wp-choice-state{margin:0;font-size:12px;color:var(--wp-muted)}
+.wp-choice-hint,.wp-choice-state{margin:0;font-size:.92em;color:var(--wp-muted)}
 .wp-choice-state.error{color:var(--wp-warn)}
+@media(max-width:480px){.wp-choice-option{grid-template-columns:minmax(0,1fr)}.wp-choice-option button{justify-self:start}}
 `;
+const renderedCards=new WeakMap();
 // Renders a choice view into container; returns nothing. pick(optionId) and reopen() are the client's calls.
 export function renderChoiceCard(document,container,view,{pick,reopen,busy=false}={}) {
   const make=(tag,className,text)=>{const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node;};
+  let state=renderedCards.get(container);if(!state){state={};renderedCards.set(container,state);}state.pick=pick;state.reopen=reopen;
+  const signature=JSON.stringify(view);
+  if(state.signature===signature){for(const button of container.querySelectorAll('button'))button.disabled=busy||view?.state==='saving';container.classList.remove('pulse');return;}
+  state.signature=signature;
+  const focused=document.activeElement?.dataset?.optionId;
   container.replaceChildren();
   if(!view){container.hidden=true;delete container.dataset.choice;return;}
   container.hidden=false;
   // A new card pulses three times; redraws of the same card stay still.
   const fresh=container.dataset.choice!==view.choice_id;container.dataset.choice=view.choice_id;
+  container.dataset.state=view.state;container.dataset.uncertain=String(!!view.chosen?.uncertain);
   container.className='wp-choice'+(fresh&&view.state==='offered'?' pulse':'');
   container.setAttribute('role','group');container.setAttribute('aria-label','Выбор пользователя');
+  if(view.state==='saving'){
+    container.append(make('p','wp-choice-state','Сохраняем ваш выбор…'));return;
+  }
+  if(view.state==='chosen'){
+    const problem=view.chosen?.error;
+    const text=problem?'Выбор сохранён; действие требует проверки: '+problem:'Выбрано: «'+view.chosen?.label+'» · '+(view.chosen?.delivered?'передано агенту':'передаётся агенту');
+    container.append(make('p','wp-choice-state'+(problem?' error':''),text));return;
+  }
   const title=make('p','wp-choice-title');title.append(make('span',null,'Выбор пользователя'));
   container.append(title,make('p','wp-choice-question',view.question));
   if(view.state==='postponed'){
-    const again=make('button',null,'Показать варианты');again.type='button';again.disabled=busy;again.addEventListener('click',()=>reopen?.());
+    const again=make('button',null,'Показать варианты');again.type='button';again.disabled=busy;again.addEventListener('click',()=>state.reopen?.());
     const row=make('div','wp-choice-option');row.append(make('span','wp-choice-state','Ждёт приёмки: вы решили проверить сами.'),again);
     container.append(row);return;
   }
-  if(view.state==='chosen'){
-    const text=view.chosen?.error?'Выбор не выполнен: '+view.chosen.error:'Выбрано: «'+view.chosen?.label+'» · '+(view.chosen?.delivered?'передано агенту':'передаётся агенту');
-    container.append(make('p','wp-choice-state'+(view.chosen?.error?' error':''),text));return;
-  }
+  if(view.error)container.append(make('p','wp-choice-state error',view.error));
   if(view.reason)container.append(make('p','wp-choice-reason','Почему рекомендует агент: '+view.reason));
   const list=make('ul','wp-choice-options');
   for(const option of view.options){
@@ -115,8 +131,9 @@ export function renderChoiceCard(document,container,view,{pick,reopen,busy=false
     if(option.recommended)text.append(' ',make('span','wp-choice-mark','(рекомендую)'));
     if(option.detail)text.append(make('small',null,option.detail));
     const button=make('button',null,'Выбрать');button.type='button';button.disabled=busy;
-    button.setAttribute('aria-label','Выбрать: '+option.label);button.addEventListener('click',()=>pick?.(option.id));
+    button.dataset.optionId=option.id;button.setAttribute('aria-label','Выбрать: '+option.label);button.addEventListener('click',()=>state.pick?.(option.id));
     row.append(text,button);list.append(row);
   }
   container.append(list,make('p','wp-choice-hint','или напишите ответ в чат своими словами'));
+  if(focused)[...container.querySelectorAll('button')].find(button=>button.dataset.optionId===focused)?.focus();
 }

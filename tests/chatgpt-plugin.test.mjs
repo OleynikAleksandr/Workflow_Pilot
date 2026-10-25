@@ -482,7 +482,7 @@ test('closing a finished plan detaches the waiting panel into a final state with
   await eventually(()=>ui.dom.window.document.getElementById('progress-now').textContent.includes('очистка ждёт'));
   // Archiving the plan detaches the orchestrator: the next read reports a changed assignment.
   current=null;comm.workflow.grant(o,'paused').catch(()=>{});
-  await eventually(()=>ui.dom.window.document.getElementById('progress-phase').textContent.startsWith('План закрыт'));
+  await eventually(()=>ui.dom.window.document.getElementById('progress-now').textContent.includes('План закрыт'));
   const now=ui.dom.window.document.getElementById('progress-now');
   assert.match(now.textContent,/План закрыт, активных действий нет/);assert.equal(now.querySelector('.wp-spin'),null);
   assert.match(ui.$('status').textContent,/План закрыт/);

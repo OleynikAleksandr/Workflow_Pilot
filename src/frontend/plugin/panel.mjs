@@ -2,18 +2,9 @@ import {assignmentStage} from '../../contracts/dialogue-view.mjs';
 import {startupView} from '../../contracts/startup-view.mjs';
 import {paletteCss,spinnerCss} from '../../contracts/palette.mjs';
 import {choiceCardCss,renderChoiceCard} from '../../contracts/user-choice.mjs';
-import {eventCount} from '../../contracts/work-progress.mjs';
+import {mountCurrentActions,currentActionsCss} from '../desktop/ui/current-actions.mjs';
 const progressClock=ms=>{const seconds=Math.max(0,Math.floor(ms/1000));return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');};
-const openedChat=self=>({O:'открыт чат оркестратора',S:'открыт чат обсуждения',P:'открыт чат планирования',SELF:'открыт чат, выполняющий план'})[self]??(self?'открыт чат '+self:'');
-// «Оркестратор → T002 задание …»: the participant in bold, the direction of a message highlighted.
-function progressText(document,name,text){
-  const node=document.createElement('span'),who=document.createElement('b');node.className='wp-what';who.textContent=name;node.append(who,' ');
-  const arrow=/^([←→])/.test(text);
-  if(arrow){const [head,...rest]=text.split(' · '),flow=document.createElement('span');flow.className='wp-flow';flow.textContent=head;
-    node.append(flow,rest.length?' · '+rest.join(' · '):'');}
-  else node.append(text);
-  node.title=name+' '+text;return node;
-}
+const openedChat=self=>({O:'открыт чат оркестратора',S:'открыт чат агента',P:'открыт чат агента',SELF:'открыт чат агента'})[self]??(self?'открыт чат '+self:'');
 const delivery={pending:'Подготовлено в Kit · ожидает SDK (не доставлено)',claimed:'SDK отправляет · подтверждения ещё нет',accepted:'Принято хостом (SDK accepted) · чтение не подтверждено',rejected:'Отклонено',unknown:'Исход неизвестен',superseded:'Устарело'};
 const sender=message=>message.sender_role==='O'?'Оркестратор':message.sender_role==='E'?'Исполнитель':message.kind==='user-choice'?'Пользователь':'Приложение';
 const label=message=>[sender(message)+' → '+(message.kind==='user-choice'?'агент · выбор':message.sender_role==='E'?'Оркестратор':message.task_id?'Исполнитель':'Оркестратор'),
@@ -32,49 +23,29 @@ const intentLabel=phase=>({draft:'Черновик подготовлен',prepa
 export function mountPanel({document}) {
   // The panel shares the sidebar palette; the host theme attribute selects light or dark.
   const palette=document.createElement('style');palette.id='wp-palette';
-  palette.textContent=paletteCss({mode:'host',aliases:false})+spinnerCss+choiceCardCss;document.head.append(palette);
+  palette.textContent=paletteCss({mode:'host',aliases:false})+spinnerCss+choiceCardCss+currentActionsCss;document.head.append(palette);
   const nodes=new Map([...document.querySelectorAll('[id]')].map(node=>[node.id,node]));
-  const view=document.defaultView;let progressTicker=null,lastProgress=null,lastChoice=null,choiceHandlers={},choiceBusy=false;
+  let lastProgress=null,lastChoice=null,choiceHandlers={},choiceBusy=false;
+  const current=mountCurrentActions({document,now:nodes.get('progress-now'),events:nodes.get('progress-events'),count:nodes.get('progress-history-count'),
+    announce:nodes.get('progress-announcement')});
   // The user's choice card: the same contract and markup as in the window.
   // A panel document of an older resource has no card block; the choice still reaches the agent.
   function renderChoice(value){lastChoice=value??null;const node=nodes.get('progress-choice');
-    if(node)renderChoiceCard(document,node,lastChoice,{...choiceHandlers,busy:choiceBusy});}
+    if(node)renderChoiceCard(document,node,lastChoice,{...choiceHandlers,busy:choiceBusy});
+    if(lastProgress)current.render(lastProgress,{choice:lastChoice});}
   // Work progress of the whole plan: header, every current action with its time, the history and executor timers.
   function renderProgress(value){
     if(!value)return;
     lastProgress=value;
     const node=id=>nodes.get(id),make=(tag,className)=>{const element=document.createElement(tag);if(className)element.className=className;return element;};
     node('progress-title').textContent=value.title||'Workflow Pilot';
-    node('progress-phase').textContent=[value.phase,value.total?'в main '+value.done+' из '+value.total:null].filter(Boolean).join(' · ');
+    node('progress-phase').textContent=value.total?'в main '+value.done+' из '+value.total:'';
     node('progress-open').textContent=openedChat(value.self);
-    const received=view.performance.now();
-    const rows=(value.now??[]).map(item=>{
-      const row=make('div','wp-row'+(item.kind==='act'?'':' '+item.kind)+(value.self&&item.actor===value.self?' me':''));
-      let icon;
-      if(item.kind==='act'){icon=make('span','wp-spin');icon.setAttribute('aria-label','выполняется');}
-      else{icon=make('span','wp-mark'+(item.kind==='warn'?' warn':''));icon.textContent=item.kind==='warn'?'!':'·';}
-      const time=make('span','wp-time');time.dataset.elapsed=String(item.elapsedMs??0);
-      row.append(icon,progressText(document,item.name,item.text),time);return row;
-    });
-    if(!rows.length){const row=make('div','wp-row wait'),mark=make('span','wp-mark'),what=make('span','wp-what');
-      mark.textContent='·';what.textContent=value.closed?'План закрыт, активных действий нет':'Сейчас ничего не выполняется';row.append(mark,what,make('span'));rows.push(row);}
-    node('progress-now').replaceChildren(...rows);
-    const history=value.history??[];
-    node('progress-history-count').textContent=eventCount(history.length);
-    node('progress-events').replaceChildren(...history.map(item=>{
-      const li=make('li',value.self&&item.actor===value.self?'me':''),at=make('span','wp-at'),mark=make('span','wp-mark '+(item.kind==='warn'?'warn':'ok'));
-      at.textContent=new Date(item.at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});mark.textContent=item.kind==='warn'?'!':'✓';
-      li.append(at,mark,progressText(document,item.name,item.text));return li;
-    }));
+    current.render(value,{choice:lastChoice});
     const timers=(value.tasks??[]).filter(task=>task.timers);
     node('progress-timers').replaceChildren(...(timers.length?timers.map(task=>{const li=make('li');
       li.textContent=task.id+' · работа '+progressClock(task.timers.activeMs??0)+' · ожидание '+progressClock(task.timers.waitingMs??0);return li;})
       :[Object.assign(make('li','muted'),{textContent:'Нет данных.'})]));
-    // Times tick in place, so an opened history stays open.
-    view.clearInterval(progressTicker);
-    const paint=()=>{for(const time of node('progress-now').querySelectorAll('.wp-time'))
-      time.textContent=progressClock(Number(time.dataset.elapsed)+view.performance.now()-received);};
-    paint();progressTicker=view.setInterval(paint,1000);
   }
   const $=id=>nodes.get('communication-'+id);let events=[],last=0,trimmed=false,workflow=false;
   const text=(id,value)=>{$(id).textContent=value;};
@@ -94,7 +65,8 @@ export function mountPanel({document}) {
   // A finished plan whose participant was detached by the closure ends without a spinner.
   function renderClosed(){
     if(!lastProgress?.total||lastProgress.done!==lastProgress.total)return false;
-    renderProgress({...lastProgress,phase:'План закрыт',now:[],closed:true});return true;
+    renderChoice(null);
+    renderProgress({...lastProgress,phase:'План закрыт',now:[],primary:null,closed:true});return true;
   }
   return {$,progress:renderProgress,closed:renderClosed,choice:renderChoice,currentChoice:()=>lastChoice,
     onChoice(handlers){choiceHandlers=handlers;renderChoice(lastChoice);},choiceBusy(value){choiceBusy=!!value;renderChoice(lastChoice);},status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
@@ -110,7 +82,7 @@ export function mountPanel({document}) {
         text('permission-help','Связь управляется кнопкой выполнения плана. Отдельное включение для каждого исполнителя не требуется.');
       }
     },
-    unbound(){text('identity','Участник не подтверждён');text('binding','Проверяем принадлежность текущему разговору.');
+    unbound(){renderChoice(null);text('identity','Участник не подтверждён');text('binding','Проверяем принадлежность текущему разговору.');
       $('roster-section').hidden=true;$('roster').replaceChildren();text('outbox','');
       $('run').value='';$('participant').value='';text('permission','Разрешение не выдано');text('queue','Очередь пока недоступна');
       text('last','Сообщений пока нет.');$('messages').replaceChildren();$('export-result').hidden=true;events=[];last=0;renderEvents();},
@@ -128,8 +100,8 @@ export function mountPanel({document}) {
       if(events.length>200){events=events.slice(-200);trimmed=true;}renderEvents();
     },
     snapshot(value){
-      if(value.work_progress)renderProgress(value.work_progress);
       if('user_choice' in value)renderChoice(value.user_choice);
+      if(value.work_progress)renderProgress(value.work_progress);
       if(value.assignments){$('roster-section').hidden=false;$('roster').replaceChildren();
         for(const assignment of value.assignments){const li=document.createElement('li'),detail=document.createElement('span');
           li.textContent=assignment.task_id+' · попытка '+(assignment.attempt??1)+' · '+(assignment.error?.message??assignmentStage(assignment).label);

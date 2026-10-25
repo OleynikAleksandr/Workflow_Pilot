@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { ChatColorsWindow } from './chat-colors-window.mjs';
 import { offerMacInstallation } from './mac-installation.mjs';
 import { DesktopBrowserHost } from './browser-host.mjs';
-import { DesktopIpc } from './ipc.mjs';
+import { DesktopIpc,assertTrustedSender } from './ipc.mjs';
 import { DESKTOP_CHANNELS } from '../../contracts/desktop.mjs';
 import { shellBackground } from '../../contracts/palette.mjs';
 
@@ -17,6 +17,7 @@ const sidebarUrl = pathToFileURL(path.join(desktopDir, 'ui/index.html')).href;
 const archiveUrl = pathToFileURL(path.join(desktopDir, 'ui/archive.html')).href;
 let window = null, sidebar = null, archiveWindow = null, colorEditor = null, model = null, fixture = null;
 let sidebarReady = false, lastSidebarStateSignature = null;
+let actionsOpen=false;
 const desktopIpc = new DesktopIpc(ipcMain, {
   local:()=>({contents:sidebar?.webContents,url:sidebarUrl}),
   archive:()=>({contents:archiveWindow?.webContents,url:archiveUrl}),
@@ -45,7 +46,7 @@ const surface = {
   layout(sidebarWidth) {
     if (!window || window.isDestroyed()) return;
     const [width, height] = window.getContentSize();
-    sidebar.setBounds({ x: 0, y: 0, width: sidebarWidth, height });
+    sidebar.setBounds({ x: 0, y: 0, width: actionsOpen?width:sidebarWidth, height });
     browserHost.visibleView()?.setBounds({ x: sidebarWidth, y: 0, width: Math.max(0, width - sidebarWidth), height });
   },
   bounds: () => ({ browserBounds: browserHost.visibleView()?.getBounds() ?? null, windowSize: window?.getContentSize() ?? null }),
@@ -99,13 +100,18 @@ const surface = {
     });
     sidebar.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     sidebar.webContents.on('will-navigate', event => event.preventDefault());
-    sidebar.webContents.on('did-start-loading', () => { sidebarReady = false; lastSidebarStateSignature = null; });
+    ipcMain.handle('pilot:current-actions',(event,input)=>{
+      assertTrustedSender(event,{contents:sidebar?.webContents,url:sidebarUrl});
+      if(typeof input?.open!=='boolean')throw new TypeError('Expected open');
+      actionsOpen=input.open;browserHost.suspend(actionsOpen);surface.layout(model.sidebarWidth);return {ok:true};
+    });
+    sidebar.webContents.on('did-start-loading', () => { sidebarReady = false; lastSidebarStateSignature = null;actionsOpen=false;browserHost.suspend(false);surface.layout(model.sidebarWidth); });
     sidebar.webContents.on('did-finish-load', () => { sidebarReady = true; lastSidebarStateSignature = null; model.publish(); });
     window.on('resize', () => surface.layout(model.sidebarWidth));
     window.on('focus', () => model.windowFocused());
     window.on('close', () => model.hideSelectedPage());
     window.on('closed', () => {
-      try { desktopIpc.dispose(); colorEditor?.dispose(); model.dispose(); }
+      try { ipcMain.removeHandler('pilot:current-actions');desktopIpc.dispose(); colorEditor?.dispose(); model.dispose(); }
       finally {
         // Auth/help popups and hidden auxiliary windows must not keep the UI alive.
         // Independent MCP/tunnel processes are deliberately not stopped here.
