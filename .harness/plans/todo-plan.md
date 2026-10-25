@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1114,
+  "plan_revision": 1115,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Устранить все D001–D011 тестирования 0.5.33: восстановить канал и Continue, подготовить поручения до Start, убрать дубли и недостоверные статусы.",
   "acceptance_criteria": [
     "Все D001–D011 из трёх частей журнала перенесены без потери требований и имеют отдельные критерии/задачи.",
@@ -154,7 +154,8 @@
       "docs/modules/current-actions.md",
       "docs/acceptance/release-0534-defects.md",
       "docs/modules/release.md",
-      "packages/workflow-kit/README.md"
+      "packages/workflow-kit/README.md",
+      "docs/planning/sidebar-controls.md"
     ]
   },
   "baseline_commit": "5f3ed62a14259308042754032a378503d461d0df",
@@ -180,6 +181,11 @@
         "path": "docs/planning/release-0533-defects.md",
         "required": true,
         "revision": "0ee5f6e40fc25658eee67e261155090ce623a292"
+      },
+      {
+        "path": "docs/planning/sidebar-controls.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -1235,6 +1241,50 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "UI-CONTROLS",
+      "title": "Убрать лишнюю кнопку Текущие действия из sidebar",
+      "why": "Прямое поручение пользователя удалить дублирующий вход без замены или изменения архитектуры.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "tests/sidebar.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/web-client-electron.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/sidebar-controls.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/desktop.md",
+        "docs/modules/native-window.md",
+        "docs/modules/remote-access.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/architecture/OVERVIEW.md",
+        "README.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Кнопки Текущие действия и её обработчиков открытия/фокуса нет в sidebar; замена в меню или другой новый вход не добавлены.",
+        "Native/HTTP сохраняют обычную страницу без открытия дублирующей области; MCP-панель и одна кнопка выполнения плана работают прежним путём.",
+        "Контракты и автоматические проверки отражают удаление; новый выпуск/установка/публикация не выполняются без поручения."
+      ],
+      "expected_commit_message": "feat: Убрать лишнюю кнопку Текущие действия из sidebar",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "release-0533-defects",
+        "task_id": "UI-CONTROLS",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1261,10 +1311,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1114
+Revision: 1115
 
 ## Цель
 
@@ -1361,6 +1411,12 @@ Revision: 1114
   - Файлы: release-manifest.json, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
+- [TODO] UI-CONTROLS: Убрать лишнюю кнопку Текущие действия из sidebar — Ожидает
+  - Git Commit: [PENDING] feat: Убрать лишнюю кнопку Текущие действия из sidebar
+  - Reference: release-0533-defects / UI-CONTROLS / implementation
+  - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, tests/sidebar.test.mjs, tests/electron-smoke.mjs, tests/web-client-electron.test.mjs, docs/planning/sidebar-controls.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/native-window.md, docs/modules/remote-access.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/architecture/OVERVIEW.md, README.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
 
 ## Context Pack For This Cycle
 
@@ -1368,5 +1424,6 @@ Revision: 1114
 - docs/planning/release-0533-defects-ui.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/release-0533-defects.md
+- docs/planning/sidebar-controls.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
