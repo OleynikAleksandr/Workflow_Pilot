@@ -4,7 +4,7 @@ import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
 import {ASSIGNMENT_DIALOGUE_VERSION} from '../../contracts/plugin-communication.mjs';
-import {ROLE_PROTOCOL_VERSION,roleUpdate} from '@webpilot/workflow-kit/lib/role-protocol';
+import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
 export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
@@ -621,7 +621,8 @@ export class PluginCommunication {
       this.event(run,'message.obsolete_read',{participant_id:member.id,message_id:message.message_id});
       await this.workflow.observed(run,member);
       return {message_id:message.message_id,superseded:true,
-        instructions:'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Для диалога версии 1 вызовите workflow_assignment_yield с reason=handled для этого уведомления, затем завершите ход.'};
+        instructions:message.kind==='user-choice'?USER_EVENT_RULE+'\nЭто событие заменено новым решением. Прочитайте актуальный review:status; прежнее решение не применяйте.'
+          :'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Для диалога версии 1 вызовите workflow_assignment_yield с reason=handled для этого уведомления, затем завершите ход.'};
     }
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;
@@ -631,9 +632,8 @@ export class PluginCommunication {
     if(run.mode==='workflow')await this.workflow.observed(run,member);
     const {idempotency_key,fingerprint,read_page,handlingGate,...value}=message;
     return {...structuredClone(value),...(run.mode==='workflow'?{role_protocol:ROLE_PROTOCOL_VERSION,
-      instructions:(message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
+      instructions:(message.ui_event?USER_EVENT_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
         :roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0))
-        +(message.kind==='user-choice'?'\nЭто решение пользователя в интерфейсе, не рабочее назначение: task:start и workflow_assignment_yield для этого события не требуются. Учтите решение и завершите ответ; чтение не означает окончания ответа.':'')
         +'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
   }
   _telemetry(input) {

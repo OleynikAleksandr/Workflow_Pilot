@@ -852,3 +852,39 @@ test('a directly read UI decision finishes its own response without fabricating 
   assert.equal(message.read,true);assert.equal(message.reply_observed,true);assert.equal(message.delivery,'pending');
   assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,0);
 });
+
+test('Review preference supersedes only unsent versions and keeps one notification across publication and restart',async t=>{
+  let current='on';const f=await fixture(t,(_target,m)=>!m.ui_event||m.ui_event.id===current);
+  const target={...f.o,scope_id:null};f.targets.set('o',target);let b=await f.bind(f.c,target);
+  const enqueue=(c,id,enabled,revision,t=target)=>c.workflow.enqueue(t,{key:'review-policy:'+id,kind:'user-choice',text:'Review '+enabled,
+    ui_event:{type:'review-preference',id,enabled,revision,recipient_session_id:'o'}});
+  const on=await enqueue(f.c,'on',true,1);current='off';const off=await enqueue(f.c,'off',false,2);
+  assert.equal((await f.c.claimReady({...b,message_id:on.message_id})).delivery_attempt_id,undefined);
+  const args=await sdk(f,b,off.message_id);
+  const read=await f.c.read({...b,message_id:off.message_id});
+  assert.doesNotMatch(read.instructions,/РОЛЬ:/,'a policy event never downgrades an orchestrator to planning');
+  assert.match(read.instructions,/не разрешение реализации/);
+  const published={...target,scope_id:'s',dialogue_version:1};f.targets.set('o',published);await f.c.workflow.grant(published);
+  f.c.dispose();await f.c.tail;const restored=await f.create();
+  assert.equal((await enqueue(restored,'off',false,2,published)).message_id,off.message_id,'semantic identity survives a changed plan envelope');
+  const run=restored.runs.get(b.run_id);assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,1);
+  assert.equal(run.messages.find(m=>m.message_id===on.message_id).superseded,true);
+  await assert.rejects(restored.report({...args,outcome:'accepted'}),{code:'PLUGIN_COMMUNICATION_BINDING'});
+  assert.equal(run.messages.find(m=>m.message_id===off.message_id).delivery,'accepted');
+});
+
+test('an obsolete accepted policy event ends its response; an UNKNOWN event never authorizes the next send',async t=>{
+  for(const outcome of ['accepted','unknown']){
+    let current='on';const f=await fixture(t,(_target,m)=>!m.ui_event||m.ui_event.id===current),b=await f.bind(f.c,f.o);
+    const send=(id,enabled,revision)=>f.c.workflow.enqueue(f.o,{key:'review-policy:'+id,kind:'user-choice',text:id,
+      ui_event:{type:'review-preference',id,revision,enabled,recipient_session_id:'o'}});
+    const on=await send('on',true,1);await sdk(f,b,on.message_id,outcome);
+    current='off';const off=await send('off',false,2);
+    const read=await f.c.read({...b,message_id:on.message_id});assert.equal(read.superseded,true);
+    assert.doesNotMatch(read.instructions,/вызовите workflow_assignment_yield/);
+    const page=f.pages.get('o');page.assistantRevision++;
+    await observe(f,'o');f.advance(600);await observe(f,'o');
+    assert.equal(pending(f.c,b),outcome==='accepted'?off.message_id:null,outcome);
+    assert.equal(f.c.runs.get(b.run_id).events.filter(e=>e.event_type==='send.intent').length,1);
+  }
+});

@@ -140,8 +140,8 @@ export class WorkflowChannel {
     }
     return {...c._status(input),stop_applied:true};
   }
-  async enqueue(target,{key,kind,text,source=null,block_id=null,signal_id=null,subject=null,attempt=null,role=null}) {
-    return this.c.mutate('enqueue',{run_id:workflowRunId(target),target,key,kind,text,source,block_id,signal_id,subject,attempt,role});
+  async enqueue(target,{key,kind,text,source=null,block_id=null,signal_id=null,subject=null,attempt=null,role=null,ui_event=null}) {
+    return this.c.mutate('enqueue',{run_id:workflowRunId(target),target,key,kind,text,source,block_id,signal_id,subject,attempt,role,ui_event});
   }
   async _enqueue(input) {
     const c=this.c,run=c.run(input),target=input.target;
@@ -149,7 +149,11 @@ export class WorkflowChannel {
     check(run.mode==='workflow'&&(choice||target.scope_id===run.grant?.scope_id),'ASSIGNMENT_CHANGED','Назначение относится к другому плану.');
     check(typeof input.key==='string'&&input.key.length>0&&input.key.length<=240&&kinds.has(input.kind),'INPUT','Неверный конверт рабочего сообщения.');
     check(typeof input.text==='string'&&input.text.trim()&&Buffer.byteLength(input.text)<=1048576,'CONTEXT','Контекст пуст или превышает допустимый размер; он не обрезан.');
-    const fingerprint=hash(JSON.stringify([target.local_session_id,target.assignment_id,input.kind,input.text,input.block_id,input.signal_id,
+    if(input.ui_event)check(choice&&input.ui_event.type==='review-preference'&&typeof input.ui_event.id==='string'
+      &&Number.isSafeInteger(input.ui_event.revision)&&input.ui_event.revision>0&&typeof input.ui_event.enabled==='boolean'
+      &&input.ui_event.recipient_session_id===target.local_session_id,'INPUT','Некорректное событие Review.');
+    const fingerprint=hash(JSON.stringify(input.ui_event?[target.local_session_id,input.kind,input.text,input.ui_event]
+      :[target.local_session_id,target.assignment_id,input.kind,input.text,input.block_id,input.signal_id,
       ...(target.dialogue_version===1?[input.subject,input.attempt]:[])]));
     const existing=run.messages.find(m=>m.idempotency_key===input.key);
     if(existing){check(existing.fingerprint===fingerprint,'CONFLICT','Ключ события уже использован для другого поручения.');return this.receipt(existing);}
@@ -167,6 +171,7 @@ export class WorkflowChannel {
         ...(input.signal_id?{blocking:input.kind==='question',resume:input.kind==='decision'}:{})}:{}),
       kind:input.kind,block_id:input.block_id,signal_id:input.signal_id,context_ref:ref,...(choice&&input.role?{recipient_role:input.role}:{}),
       body:input.kind+(target.task_id?' · '+target.task_id:''),idempotency_key:input.key,fingerprint,
+      ...(input.ui_event?{ui_event:structuredClone(input.ui_event)}:{}),
       delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
     run.messages.push(message);c.event(run,'message.persisted',{message_id:message.message_id,participant_id:recipient?.id??null,
       assignment_id:message.assignment_id,task_id:message.task_id,kind:message.kind,scope_id:message.scope_id});
@@ -249,7 +254,7 @@ export class WorkflowChannel {
       &&!m.intent&&m.delivery==='pending'&&!m.reply_observed&&!m.superseded);
   }
   async observeUserEvent(run,member,message,gate,direct=false){
-    if(!message.read||message.reply_observed||(!direct&&message.delivery!=='accepted'))return;
+    if(!(message.read||message.superseded_read)||message.reply_observed||(!direct&&message.delivery!=='accepted'))return;
     await this.c.enrollment.validate(member.target);
     const page=await this.reconcile(member.target),baseline=message.read_page??gate;
     if(!page||!gate.documentId||page.documentId!==gate.documentId||page.documentId!==baseline.documentId

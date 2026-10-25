@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { atomic, check, hash, json, safePath, readJSON } from './common.mjs';
+import { atomic, check, hash, json, safePath, readJSON, id } from './common.mjs';
 import { readPlan } from './plan.mjs';
 import { head, git } from './git.mjs';
 import { locked } from './transaction-state.mjs';
@@ -22,14 +22,19 @@ export function reviewDirectory(root, runId) {
 }
 // Call only while holding Kit's short operation lock. The CLI runner never holds it while waiting.
 export function saveReview(root, state) {
-  const next = {...state, generation:(state.generation ?? 0)+1};
+  const previous=readReview(root);
+  const next = {...state, generation:(state.generation ?? 0)+1,
+    ...(state.preference??previous.preference?{preference:state.preference??previous.preference}:{}),
+    ...((state.review_events??previous.review_events)?.length?{review_events:(state.review_events??previous.review_events).slice(-200)}:{})};
   atomic(safePath(root, REVIEW_STATE), json(next));
   return next;
 }
 // Shown whenever a plan is published while the user has Review on but no review run exists yet.
 export const REVIEW_ON_PUBLICATION = 'Review включён пользователем: положение переключателя в момент публикации — его действующее решение, даже если recovery показывал OFF. Не просите выключить Review: подготовьте полную форму scope через review:prepare --help, затем review:run, review:respond и review:publish. Конфигурация проверок не изменена.';
-export function setReviewEnabled(root, enabled) {
+export function setReviewEnabled(root, enabled, {recipient_session_id=null}={}) {
   check(typeof enabled === 'boolean', 'REVIEW_POLICY', 'enabled должен быть boolean.');
+  check(recipient_session_id===null||typeof recipient_session_id==='string'&&recipient_session_id.length>0&&recipient_session_id.length<=128,
+    'REVIEW_RECIPIENT','Нужен адресат решения пользователя.');
   return locked(root, () => {
     const s = readReview(root);
     if (s.enabled === enabled) return s;
@@ -39,8 +44,10 @@ export function setReviewEnabled(root, enabled) {
     check(!['RUNNING','PUBLISHING'].includes(s.stage), 'REVIEW_BUSY', 'Идёт ревью или публикация плана; переключите Review после их завершения.');
     // Switching Review off cancels an unfinished review; the agent then publishes the plan normally.
     const open = !enabled && s.run_id && ['PREPARED','AUTHOR_PENDING','AGREED','NEEDS_USER','STALE'].includes(s.stage);
-    return saveReview(root, open ? {...s, enabled, stage:'CANCELLED', error:null,
-      user_decision:{action:'cancel',note:'Пользователь выключил Review до публикации плана.'}} : {...s, enabled});
+    const preference={id:id(),revision:(s.preference?.revision??0)+1,enabled,recipient_session_id,at:new Date().toISOString()};
+    const changed={...s,enabled,preference,review_events:[...(s.review_events??[]),{...preference,type:'preference'}].slice(-200)};
+    return saveReview(root, open ? {...changed, stage:'CANCELLED', error:null,
+      user_decision:{action:'cancel',note:'Пользователь выключил Review до публикации плана.'}} : changed);
   });
 }
 export function assertSimpleReview(root) {

@@ -1,7 +1,7 @@
 import { ProjectPlanContinuation } from './project-plan-continuation.mjs';
 import { configureProjectPlanContinuation } from './project-session-plan-continuation.mjs';
 import { PlanContinuation } from './plan-continuation.mjs';
-import { PlanReviewClient } from './plan-review.mjs';
+import { PlanReviewClient,reviewPreferenceMessage } from './plan-review.mjs';
 import { PlanningOwners } from './planning-owner.mjs';
 import { ReviewContinuation } from './review-continuation.mjs';
 import { AutomationSendState } from './automation-send-state.mjs';
@@ -72,6 +72,10 @@ let reviewCheckpoint=null,automationCheckpoint=null,parallelExecutionBook={};
 const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&liveSessions?.find(project),
   route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>executionControl.view(workspace,scope),
   signals:workspace=>executionKit.signals(workspace),
+  uiEventCurrent:(target,event)=>{
+    const project=dialogue.project(target.local_session_id);
+    return !!project&&planReview.currentPreference(project.parentWorkspace??project.workspace,event,target.local_session_id);
+  },
   kitPermission:(workspace,input)=>sessionPlans.call(workspace,'plan:permission',[],input)});
 let permissionTail=Promise.resolve();
 function queuePermission(operation){const next=permissionTail.then(operation);permissionTail=next.catch(report);return next;}
@@ -142,6 +146,12 @@ function configurePrimary(record) {
 }
 // A published plan (ACTIVE/BLOCKED) freezes the Review switch until the plan is closed.
 const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>publish(),
+  deliverPreference:async(workspace,p)=>{
+    const project=store.project(workspace,p.recipient_session_id);
+    if(!project||project.archivedAt||project.sessionArchivedAt)return {skipped:true};
+    return dialogue.send(project,reviewPreferenceMessage(p),'user-choice',{
+      key:'review-policy:'+p.id,ui_event:{...p,type:'review-preference'}});
+  },
   published:workspace=>['ACTIVE','BLOCKED'].includes(store.project(workspace)?.scopeStatus)});
 const planningOwners=new PlanningOwners({store,onChange:()=>publish(),report});
 // The user's choice cards: causes come from facts this coordination already tracks.
@@ -579,7 +589,8 @@ return Object.freeze({
     refresh:()=>planMonitor.refresh(),invalidate:()=>planMonitor.invalidate(),close:()=>planMonitor.close(),
   }),
   planningOwners:Object.freeze({assign:(...args)=>planningOwners.assign(...args),forget:(...args)=>planningOwners.forget(...args)}),
-  planReview:Object.freeze({view:()=>planReview.view(),viewFor:workspace=>planReview.viewFor(workspace),setEnabled:input=>planReview.setEnabled(input),
+  planReview:Object.freeze({view:()=>planReview.view(),viewFor:workspace=>planReview.viewFor(workspace),setEnabled:async input=>{
+    planReview.setEnabled(input);await planReview.reconcilePreferences(input.workspace);return planReview.view();},
     refresh:()=>planReview.refresh(),observeSelection:()=>planReview.observeSelection(),dispose:()=>planReview.dispose()}),
   reviewContinuation:Object.freeze({get persistenceError(){return reviewContinuation.persistenceError;},
     get message(){return reviewContinuation.flow.state.message;},
@@ -603,6 +614,9 @@ return Object.freeze({
   configurePrimary,observePage,snapshot,restore,
   sessionChanged(record) {
     record.primaryAutomation?.update();record.executor?.changed();
+    const project=record.project();
+    if(project&&planReview.preferenceErrors.has(project.parentWorkspace??project.workspace))
+      void planReview.reconcilePreferences(project.parentWorkspace??project.workspace).catch(report);
     if(record.identity&&!record.identity.assignmentId&&execution.unwatch.has(record.identity.workspace)) {
       const stopped=executorPageState(record).stopped;
       if(record.executionStopped!==stopped){record.executionStopped=stopped;void execution.signal(record.identity.workspace);}
@@ -627,6 +641,8 @@ return Object.freeze({
       catch(error){startupRecovery.set(project.workspace,new Set([project.workspace]));report(error);}
   },
   restoreBackground() {
+    for(const project of store.snapshot().projects)if(!project.parentWorkspace&&!project.archivedAt)
+      void planReview.reconcilePreferences(project.workspace).catch(report);
     // A plan that was running or pausing continues after a backend restart, without a repeated Send.
     for(const [workspace,state] of Object.entries(executionControl.book))if(!startupRecovery.has(workspace)&&['running','pausing'].includes(state.state)) {
       execution.observe(workspace);void execution.signal(workspace);

@@ -1189,7 +1189,7 @@ function decorateSessionRuntime(record) {
 
 function registerIpc() {
   desktopIpc.handle('local', 'pilot:get-state', snapshot);
-  registerAction('pilot:plan-review', input => planReview.setEnabled(input));
+  registerAction('pilot:plan-review', ({workspace,sessionId,enabled}={}) => planReview.setEnabled({workspace,sessionId,enabled}));
   // One plan button: no input toggles it; {running} sets it (tests and the remote API).
   registerAction('pilot:plan-execution', input => workflow.setPlanExecution(typeof input?.running === 'boolean' ? input.running : undefined));
   // The same choice card in the window: the session, card and generation shown there.

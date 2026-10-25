@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1133,
+  "plan_revision": 1136,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -341,8 +341,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0534-defects",
         "task_id": "UI-EVENTS",
@@ -370,7 +370,9 @@
         "tests/chatgpt-plugin.test.mjs",
         "tests/startup-context.test.mjs",
         "src/backend/desktop-model.mjs",
-        "tests/backend-desktop-model.test.mjs"
+        "tests/backend-desktop-model.test.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/electron-smoke.mjs"
       ],
       "documentation_paths": [
         "packages/workflow-kit/src/templates/PLAN.md"
@@ -383,7 +385,8 @@
         "architecture",
         "kit-check",
         "kit-assignments",
-        "kit-upgrade"
+        "kit-upgrade",
+        "electron-smoke"
       ],
       "id": "UI-EVENTS",
       "title": "Передавать изменение Review агенту через существующий канал",
@@ -414,7 +417,23 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "REVIEW001. Долговечно сохранить ON/OFF, сразу поставить адресное событие, уведомить через панель и отдельно подтвердить чтение.\nОбъём: src/control/workflow/plan-review.mjs, src/control/workflow/coordination.mjs, src/control/workflow/review-continuation.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, src/control/context/context-session.mjs, src/contracts/plugin-communication.mjs, src/frontend/plugin/launch.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/review-state.mjs, tools/codex-app-server-mcp/plugin.py, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/startup-context.test.mjs, src/backend/desktop-model.mjs, tests/backend-desktop-model.test.mjs, packages/workflow-kit/src/templates/PLAN.md\nКритерии: После IDLE-переключения Review ON/OFF событие сразу сохранено в штатной очереди адресата; agent read отличён от записи и SDK accepted, новое выполнение не разрешено. Rapid toggle/смена проекта/ошибка сохранения/restart/закрытая панель/активный ответ и manual Stop не меняют адресата, порядок решений и не повторяют неизвестную отправку. Kit проверяет актуальный Review при публикации; агент сверяет status. Согласованы затронутые startup/read_message/role-protocol/шаблоны/MCP; нет нового транспорта или дублирования startup.\nПроверки: unit-all, chatgpt-plugin, executor-channel, codex-tools-live, architecture, kit-check, kit-assignments, kit-upgrade.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
+      "task_brief": "REVIEW001. Долговечно сохранить ON/OFF, сразу поставить адресное событие, уведомить через панель и отдельно подтвердить чтение.\nОбъём: src/control/workflow/plan-review.mjs, src/control/workflow/coordination.mjs, src/control/workflow/review-continuation.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, src/control/context/context-session.mjs, src/contracts/plugin-communication.mjs, src/frontend/plugin/launch.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/review-state.mjs, tools/codex-app-server-mcp/plugin.py, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/startup-context.test.mjs, src/backend/desktop-model.mjs, tests/backend-desktop-model.test.mjs, packages/workflow-kit/src/templates/PLAN.md\nКритерии: После IDLE-переключения Review ON/OFF событие сразу сохранено в штатной очереди адресата; agent read отличён от записи и SDK accepted, новое выполнение не разрешено. Rapid toggle/смена проекта/ошибка сохранения/restart/закрытая панель/активный ответ и manual Stop не меняют адресата, порядок решений и не повторяют неизвестную отправку. Kit проверяет актуальный Review при публикации; агент сверяет status. Согласованы затронутые startup/read_message/role-protocol/шаблоны/MCP; нет нового транспорта или дублирования startup.\nПроверки: unit-all, chatgpt-plugin, executor-channel, codex-tools-live, architecture, kit-check, kit-assignments, kit-upgrade.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать.",
+      "actual_files": [
+        "packages/workflow-kit/src/lib/review-state.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "src/backend/desktop-model.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/plan-review.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -832,7 +851,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1133
+Revision: 1136
 
 ## Цель
 
@@ -870,10 +889,10 @@ Revision: 1133
   - Файлы: src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/parallel-execution.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/enrollment.mjs, tests/prepared-task-flow.test.mjs, tests/dialogue-delivery.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: RESULT-DELIVERY
-- [TODO] UI-EVENTS: Передавать изменение Review агенту через существующий канал — Ожидает
-  - Git Commit: [PENDING] fix: передавать изменение review агенту через существующий канал
+- [DONE] UI-EVENTS: Передавать изменение Review агенту через существующий канал — Завершено
+  - Git Commit: [DONE] fix: передавать изменение review агенту через существующий канал
   - Reference: release-0534-defects / UI-EVENTS / implementation
-  - Файлы: src/control/workflow/plan-review.mjs, src/control/workflow/coordination.mjs, src/control/workflow/review-continuation.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, src/control/context/context-session.mjs, src/contracts/plugin-communication.mjs, src/frontend/plugin/launch.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/review-state.mjs, tools/codex-app-server-mcp/plugin.py, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/startup-context.test.mjs, src/backend/desktop-model.mjs, tests/backend-desktop-model.test.mjs, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: src/control/workflow/plan-review.mjs, src/control/workflow/coordination.mjs, src/control/workflow/review-continuation.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, src/control/context/context-session.mjs, src/contracts/plugin-communication.mjs, src/frontend/plugin/launch.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/review-state.mjs, tools/codex-app-server-mcp/plugin.py, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/startup-context.test.mjs, src/backend/desktop-model.mjs, tests/backend-desktop-model.test.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/electron-smoke.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: EXECUTOR-START
 - [TODO] REVIEW-VIEW: Показать раунды Review и сохранить историю согласования — Ожидает

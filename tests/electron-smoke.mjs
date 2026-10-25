@@ -655,6 +655,13 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const autoBeforeReview=snapshot().planContinuation.enabled;
   await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').click()");
   await waitFor(()=>snapshot().planReview.enabled,'review enabled',snapshot);
+  const reviewPreference=JSON.parse(await fs.readFile(reviewStateFile,'utf8')).preference;
+  assert.equal(reviewPreference.recipient_session_id,store.selected().sessionId,'the click captures the shown session');
+  await waitFor(()=>[...plugin.communication.runs.values()].some(run=>run.messages.some(m=>m.ui_event?.id===reviewPreference.id)),
+    'durable Review decision enqueued through the existing channel',snapshot);
+  const reviewNotice=[...plugin.communication.runs.values()].flatMap(run=>run.messages).find(m=>m.ui_event?.id===reviewPreference.id);
+  assert.equal(reviewNotice.ui_event.enabled,true);assert.equal(reviewNotice.recipient_session_id,reviewPreference.recipient_session_id);
+  assert.equal(reviewNotice.read,false,'a saved UI decision does not invent agent receipt');
   // A panel startup packet becomes stale through the channel; a legacy packet reports 'stale'.
   await waitFor(stale,'review policy marks the confirmed snapshot stale without losing its receipt',snapshot);
   assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-review-toggle').getAttribute('aria-pressed')"),'true');

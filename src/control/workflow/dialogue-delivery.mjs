@@ -10,8 +10,9 @@ const startupFailure=(code,message)=>Object.assign(new Error(message),{code:'PLU
 const hash=value=>createHash('sha256').update(value).digest('hex');
 // A narrow adapter for the existing scheduler. It owns no assignments or plan.
 export class DialogueDelivery {
-  constructor({store,getPlugin,record,route,state,signals,kitPermission=async()=>{}}){Object.assign(this,{store,getPlugin,record,route,state,signals,kitPermission});}
+  constructor({store,getPlugin,record,route,state,signals,uiEventCurrent=()=>true,kitPermission=async()=>{}}){Object.assign(this,{store,getPlugin,record,route,state,signals,uiEventCurrent,kitPermission});}
   async currentMessage(target,message){
+    if(message.ui_event)return this.uiEventCurrent(target,message.ui_event);
     if(message.kind==='startup-context'){
       const deadline=Date.now()+2000;
       for(;;){
@@ -165,7 +166,7 @@ export class DialogueDelivery {
     const source=meta.sourceSessionId?await plugin.participantTarget(meta.sourceSessionId):null;
     const receipt=await plugin.communication.workflow.enqueue(target,{key:meta.key??kind+':'+hash(JSON.stringify([target.scope_id,target.local_session_id,text])),
       kind:meta.kind??kind,text,source,block_id:meta.block_id??null,signal_id:meta.signal_id??null,
-      subject:meta.subject??null,attempt:meta.attempt??null,role:meta.role??null});
+      subject:meta.subject??null,attempt:meta.attempt??null,role:meta.role??null,ui_event:meta.ui_event??null});
     return {state:'queued',message_id:receipt.message_id};
   }
   async start(project){

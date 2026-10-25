@@ -11,6 +11,37 @@ import { once, EventEmitter } from 'node:events';
 import { install } from '@webpilot/workflow-kit/lib/installer';
 import { setReviewEnabled, readReview } from '@webpilot/workflow-kit/lib/plan-review';
 import { runReview, REVIEW_MODEL } from '@webpilot/workflow-kit/lib/claude-review';
+import {saveReview} from '@webpilot/workflow-kit/lib/review-state';
+
+test('Review UI preference is durable before enqueue and replays its exact recipients after a crash gap',async t=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'review-preference-'));
+  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  install({project:root,mode:'new'});
+  let selected={workspace:root,sessionId:'chat-a'},fail=true;const deliveries=new Map(),calls=[];
+  const options={selected:()=>selected,deliverPreference:async(workspace,p)=>{
+    assert.equal(readReview(workspace).review_events.some(e=>e.id===p.id),true,'decision exists before its queue effect');
+    if(fail)throw Error('fixture queue unavailable');
+    calls.push([workspace,p.recipient_session_id,p.enabled,p.revision]);deliveries.set(p.id,p);
+  }};
+  const client=new PlanReviewClient(options);t.after(()=>client.dispose());client.observeSelection();
+  assert.throws(()=>client.setEnabled({workspace:root,sessionId:'chat-b',enabled:true}),{code:'REVIEW_SELECTION_CHANGED'});
+  client.setEnabled({workspace:root,sessionId:'chat-a',enabled:true});
+  await assert.rejects(client.reconcilePreferences(root));
+  assert.equal(readReview(root).enabled,true);assert.equal(deliveries.size,0,'queue failure never rewrites the saved policy');
+  selected={workspace:root,sessionId:'chat-b'};client.setEnabled({workspace:root,sessionId:'chat-b',enabled:false});
+  await assert.rejects(client.reconcilePreferences(root));client.dispose();
+  const state=readReview(root);assert.deepEqual(state.review_events.map(e=>[e.recipient_session_id,e.enabled]),[['chat-a',true],['chat-b',false]]);
+  fail=false;const restored=new PlanReviewClient(options);t.after(()=>restored.dispose());
+  selected={workspace:root+'-other',sessionId:'unrelated'};
+  await restored.reconcilePreferences(root);await restored.reconcilePreferences(root);
+  assert.deepEqual(calls.map(c=>c.slice(1)),[['chat-a',true,1],['chat-b',false,2]]);
+  assert.equal(deliveries.size,2);
+  const latest=state.preference;
+  assert.equal(restored.currentPreference(root,{...latest,type:'review-preference'},'chat-b'),true);
+  assert.equal(restored.currentPreference(root,{...latest,type:'review-preference'},'chat-a'),false);
+  saveReview(root,{version:1,enabled:false,stage:'PUBLISHED',generation:state.generation});
+  assert.deepEqual(readReview(root).preference,latest);assert.equal(readReview(root).review_events.length,2,'cleanup-shaped state retains durable decisions');
+});
 
 test('progress reads another workspace without leaking the selected review or starting a runner',()=>{
   const client=new PlanReviewClient({selected:()=>({workspace:'/selected'}),supports:()=>true,
