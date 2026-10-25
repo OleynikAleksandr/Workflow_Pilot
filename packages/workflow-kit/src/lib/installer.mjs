@@ -26,6 +26,7 @@ upgradeFrom.add('1.9.5');
 upgradeFrom.add('1.9.6');
 upgradeFrom.add('1.9.7');
 upgradeFrom.add('1.9.8');
+upgradeFrom.add('1.9.9');
 function migrateNonePlanForContinuity(root) {
   const file = path.join(root, PLAN);
   if (!fs.existsSync(file)) return false;
@@ -401,11 +402,16 @@ export function install(opts) {
     const manifest = installationManifest(entries, { initialized_git: fresh, hook_mechanism: preview.hook_mechanism, ...runtime });
     atomic(path.join(root, MANIFEST), json(manifest));
     const installedPaths = [...entries.filter(e => !e.external).map(e => e.path), MANIFEST];
-    atomic(localPath(root, 'installation.json'), json({ paths: installedPaths, preexisting_changes: preview.existing_changes, bootstrap_pending: true }));
+    // Files newly ignored by the managed rules (e.g. Finder metadata) are
+    // neither staged nor a reason to hold the bootstrap. Actual user changes
+    // remain in the exact pre-install set and retain the existing guard.
+    const remaining=new Set(allChanges(root));
+    const preexisting=preview.existing_changes.filter(file=>remaining.has(file));
+    atomic(localPath(root, 'installation.json'), json({ paths: installedPaths, preexisting_changes: preexisting, bootstrap_pending: true }));
     fs.unlinkSync(installJournal);
     let bootstrap = null; const warnings = [];
     if (!identityReady(root)) warnings.push('Настройте имя и email автора Git, затем выполните ./scripts/workflow install:commit.');
-    else if (preview.existing_changes.length) warnings.push('Файлы установлены. Исходные изменения сохранены; bootstrap-коммит ждёт отдельной команды install:commit.');
+    else if (preexisting.length) warnings.push('Файлы установлены. Исходные изменения сохранены; bootstrap-коммит ждёт отдельной команды install:commit.');
     else {
       bootstrap = commitCandidate(root, { plan: readPlan(root), role: 'bootstrap', selected: installedPaths, message: 'chore: установить Project Workflow Kit', beforeHead: head(root) });
       atomic(localPath(root, 'installation.json'), json({ paths: installedPaths, preexisting_changes: [], bootstrap_pending: false, sha: bootstrap.sha }));

@@ -2,15 +2,36 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { VERSION, getRuntimeRoot } from '@webpilot/workflow-kit';
 import { DEFAULT_STAGE, verifyWorkflowKitRuntime } from '../scripts/stage-workflow-kit.mjs';
 import { verifyWorkflowKitDependency, workflowKitSource } from '../scripts/check-workflow-kit-dependency.mjs';
+import {install} from '@webpilot/workflow-kit/lib/installer';
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 const packageRoot = path.join(projectRoot, 'packages/workflow-kit');
+
+test('fresh installation ignores root and nested Finder files but preserves actual user changes',async t=>{
+  for(const dirty of [false,true])await t.test(dirty?'real user file':'Finder only',async t=>{
+    const root=await fs.mkdtemp(path.join(os.tmpdir(),'kit-finder-install-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+    const run=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8',
+      ...(args[0]==='check-ignore'?{env:{...process.env,GIT_LITERAL_PATHSPECS:'0'}}:{})}).trim();
+    run('init','-q','-b','main');run('config','user.name','Finder Fixture');run('config','user.email','fixture@example.invalid');
+    await fs.writeFile(path.join(root,'README.md'),'# Fixture\n');run('add','README.md');run('commit','-qm','fixture');
+    await fs.mkdir(path.join(root,'nested'));await fs.writeFile(path.join(root,'.DS_Store'),'root metadata');
+    await fs.writeFile(path.join(root,'nested/.DS_Store'),'nested metadata');
+    if(dirty)await fs.writeFile(path.join(root,'user.txt'),'user changes');
+    const result=install({project:root,mode:'existing'});
+    assert.equal(Boolean(result.bootstrap),!dirty);
+    assert.equal(await fs.readFile(path.join(root,'.DS_Store'),'utf8'),'root metadata');
+    assert.equal(run('check-ignore','.DS_Store','nested/.DS_Store'),'.DS_Store\nnested/.DS_Store');
+    if(dirty){assert.match(run('status','--porcelain'),/user\.txt/);assert.equal(await fs.readFile(path.join(root,'user.txt'),'utf8'),'user changes');}
+    else assert.equal(run('status','--porcelain'),'');
+  });
+});
 
 test('real project recovery has 20 percent reserve before and after plan normalization', () => {
   const output=execFileSync(process.execPath,[path.join(packageRoot,'scripts/check-project-recovery-fixture.mjs')],

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1076,
+  "plan_revision": 1078,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -233,8 +233,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "GIT",
@@ -291,7 +291,13 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs",
+        "packages/workflow-kit/src/lib/installation-files.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "tests/workflow-kit-source.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1000,7 +1006,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1076
+Revision: 1078
 
 ## Цель
 
@@ -1025,8 +1031,8 @@ Revision: 1076
   - Файлы: src/frontend/plugin/launch.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/contracts/plugin-communication.mjs, tools/codex-app-server-mcp/plugin.py, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/plugin-host.mjs, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] GIT: Исключить Finder metadata штатным installer Kit — Ожидает
-  - Git Commit: [PENDING] fix: исключить finder metadata штатным installer kit
+- [DONE] GIT: Исключить Finder metadata штатным installer Kit — Завершено
+  - Git Commit: [DONE] fix: исключить finder metadata штатным installer kit
   - Reference: release-0533-defects / GIT / implementation
   - Файлы: packages/workflow-kit/src/lib/installation-files.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/scripts/check-previous-upgrade-fixture.mjs, tests/workflow-kit-upgrade.test.mjs, tests/workflow-kit-source.test.mjs
   - Параллельность: исключительное выполнение
