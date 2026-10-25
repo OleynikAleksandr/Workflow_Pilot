@@ -30,7 +30,7 @@ test('Kit commit progress is versioned and bounded; old Kit and damaged records 
 
 test('stage phases map to action, waiting and attention',()=>{
   for(const phase of ['working','dispatch','starting','merging','command','integration','delivery','prepare'])assert.equal(stageKind(phase),'act');
-  for(const phase of ['waiting','waiting-task','waiting-read','question','review','report','accepted','ready','paused','complete'])assert.equal(stageKind(phase),'wait');
+  for(const phase of ['waiting','waiting-task','waiting-read','question','review','result','report','accepted','ready','paused','complete'])assert.equal(stageKind(phase),'wait');
   assert.equal(stageKind('attention'),'warn');
   assert.equal(stageKind('waiting',{busy:true}),'act','an answering chat is acting');
   assert.deepEqual(['O','S','APP','KIT','PLAN','T002'].map(participantName),['Оркестратор','Агент','Приложение','Workflow Kit','План','Исполнитель T002']);

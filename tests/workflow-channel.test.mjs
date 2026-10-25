@@ -531,7 +531,9 @@ test('terminal acceptance survives verified cleanup but cannot authorize another
   await f.c.workflow.grant(f.o);await f.bind(f.c,f.o);const b=await f.bind(f.c,e);
   const result=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'result',
     body:'Done',source_commit:'a'.repeat(40),idempotency_key:'result'});
+  assert.deepEqual(f.c.workflow.progress('e').result,{delivery:'pending',read:false});
   await f.c.readMessage({metadata:meta('o'),message_id:result.message_id});
+  assert.equal(f.c.workflow.progress('e').result.read,true,'executor progress follows the actual orchestrator receipt');
   const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
   const acceptance=await f.c.assignmentSend({metadata:meta('o'),recipient,attempt:1,kind:'acceptance',
     result_id:result.message_id,source_commit:'a'.repeat(40),body:'Accepted',idempotency_key:'acceptance'});
@@ -812,11 +814,18 @@ test('a preplan choice without a user bubble releases two results after publicat
   const published={...o,scope_id:'s'};f.targets.set('o',published);
   await f.c.workflow.grant(published);b=await f.sync(f.c,b);
   const results=await Promise.all(['T001','T002'].map(id=>f.c.workflow.enqueue(published,{key:id,kind:'result',text:id})));
+  const progress=f.c.workflow.progress('o');
+  assert.equal(progress.incoming.message_id,results[0].message_id);
+  assert.equal(progress.blocker.message_id,choice.message_id);
+  assert.equal(progress.blocker.scope_id,null,'the blocking preplan message survives the current scope filter');
+  assert.equal(progress.blocker.read,true);assert.equal(progress.blocker.kind,'user-choice');
+  assert.doesNotMatch(JSON.stringify(progress),/Оркестрация|enrollment_ticket|conversation_key/,'projection contains only safe facts');
   assert.equal(pending(f.c,b),null,'Start alone cannot reset the prior gate');
   page.assistantRevision=672;page.commandsIdle=false;await observe(f,'o');f.advance(600);await observe(f,'o');
   assert.equal(msg().reply_observed,false,'a command still blocks completion');
   page.commandsIdle=true;await observe(f,'o');f.advance(600);await observe(f,'o');
   assert.equal(msg().reply_observed,true);assert.equal(page.userMessagesRevision,1);
+  assert.equal(f.c.workflow.progress('o').blocker,undefined,'the resolved gate is not a current blocker');
   for(const result of results){
     assert.equal(pending(f.c,b),result.message_id);await sdk(f,b,result.message_id);await f.c.read({...b,message_id:result.message_id});
     // Legacy result uses its original explicit native/revision evidence.

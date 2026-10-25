@@ -430,9 +430,12 @@ function workProgressView(workspace,fresh=null) {
       own?.workspace&&own.sessionId?{kind:'open-session',workspace:own.workspace,sessionId:own.sessionId,label:'Открыть чат '+taskId}:null);
   }
   if(run?.activity&&!['ready'].includes(run.activity.phase)&&!cleanups.length&&!(run.reason==='refused'&&choiceCovers('refused'))){
-    const activity=run.activity,actor=({'Workflow Kit':'KIT','План':'PLAN','Канал связи':'APP'})[activity.actor]??'O';
+    const activity=run.activity,actor=({'Workflow Kit':'KIT','План':'PLAN','Канал связи':'APP','Приложение':'APP'})[activity.actor]??'O';
+    const origin=project.planExecution?.execution_origin_session_id;
     now.push({actor,text:activity.label,reason:activity.reason,stage:activity.phase,recipient:activity.recipient,
-      key:activity.key,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs});
+      key:activity.key,priority:activity.priority,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs,
+      action:activity.phase==='attention'&&sessions.some(s=>s.sessionId===origin)
+        ?{kind:'open-session',workspace,sessionId:origin,label:'Открыть чат оркестратора'}:null});
   }
   for(const task of tasks.filter(t=>['current','attention'].includes(t.status))){
     const own=executors.find(e=>e.taskId===task.id),kit=kitLabel(task.id);

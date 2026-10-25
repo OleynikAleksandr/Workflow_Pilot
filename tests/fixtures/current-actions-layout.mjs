@@ -17,7 +17,8 @@ export async function verifyCurrentActionsLayout(dataDir){
       const proof=await window.webContents.executeJavaScript(`(()=>{
         document.documentElement.dataset.theme=${JSON.stringify(theme)};document.body.style.fontSize=${13}*${scale}+'px';window.scrollTo(0,0);
         const text='ждёт вашей проверки и запуска. Нажмите «Начать выполнение плана» слева. '+ 'ДлинныйИдентификатор'.repeat(15);
-        const item={actor:'PLAN',name:'План',text,kind:'wait',key:'ready',elapsedMs:45000};
+        const item={actor:'PLAN',name:'План',text,reason:'Чтобы передать следующие результаты, откройте чат оркестратора и продолжите работу. '+text,
+          kind:'warn',key:'blocked',elapsedMs:45000};
         layoutPanel.progress({primary:item,now:[item],history:[{id:'startup:m',at:null,name:'Приложение',text:'Контекст получен и подтверждён'}]});
         const row=document.querySelector('#progress-now .wp-row'),what=row.querySelector('.wp-what'),time=row.querySelector('.wp-time');
         const r=row.getBoundingClientRect(),w=what.getBoundingClientRect(),t=time.getBoundingClientRect();

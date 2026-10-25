@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1139,
+  "plan_revision": 1141,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0534-defects",
@@ -526,8 +526,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0534-defects",
         "task_id": "STATUS",
@@ -548,7 +548,8 @@
         "tests/work-progress-scenario.test.mjs",
         "tests/backend-desktop-model.test.mjs",
         "tests/fixtures/current-actions-layout.mjs",
-        "tests/electron-smoke.mjs"
+        "tests/electron-smoke.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -582,7 +583,17 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "STATUS001. Показать фактический blocker предыдущего gate и понятный смысл этапа, технические квитанции оставить в диагностике.\nОбъём: src/contracts/dialogue-view.mjs, src/contracts/work-progress.mjs, src/backend/desktop-model.mjs, src/control/plugin/workflow-channel.mjs, src/frontend/plugin/panel.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/work-progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/work-progress-scenario.test.mjs, tests/backend-desktop-model.test.mjs, tests/fixtures/current-actions-layout.mjs, tests/electron-smoke.mjs\nКритерии: Обычная передача/подключение/восстановление нейтральны; блокировка объясняет причину, участника и доступное действие. Не выдавать pending за проверку O и read за недоставленность. Старый gate вне текущего scope отражается как фактическая причина ожидания; не остаётся бесконечного spinner нормальной работы или технического fallback вместо объяснения. Оранжевый акцент означает нужное внимание; разрешённое событие идёт в историю. Полные тексты и таймер проходят renderer-проверку без clipping на 320/480/900 px.\nПроверки: unit-all, chatgpt-plugin, electron-smoke, architecture.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать."
+      "task_brief": "STATUS001. Показать фактический blocker предыдущего gate и понятный смысл этапа, технические квитанции оставить в диагностике.\nОбъём: src/contracts/dialogue-view.mjs, src/contracts/work-progress.mjs, src/backend/desktop-model.mjs, src/control/plugin/workflow-channel.mjs, src/frontend/plugin/panel.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/work-progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/work-progress-scenario.test.mjs, tests/backend-desktop-model.test.mjs, tests/fixtures/current-actions-layout.mjs, tests/electron-smoke.mjs\nКритерии: Обычная передача/подключение/восстановление нейтральны; блокировка объясняет причину, участника и доступное действие. Не выдавать pending за проверку O и read за недоставленность. Старый gate вне текущего scope отражается как фактическая причина ожидания; не остаётся бесконечного spinner нормальной работы или технического fallback вместо объяснения. Оранжевый акцент означает нужное внимание; разрешённое событие идёт в историю. Полные тексты и таймер проходят renderer-проверку без clipping на 320/480/900 px.\nПроверки: unit-all, chatgpt-plugin, electron-smoke, architecture.\nДействовать по общей спецификации. Пользователь разрешил реализацию и новый выпуск 0.5.35. При реализации — Kit, временные fixtures без моделей/рабочих профилей; чужие/удалённые проекты не трогать.",
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/contracts/work-progress.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/fixtures/current-actions-layout.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/work-progress.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -865,7 +876,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0534-defects
 Current Task: нет
-Revision: 1139
+Revision: 1141
 
 ## Цель
 
@@ -915,10 +926,10 @@ Revision: 1139
   - Файлы: src/backend/desktop-model.mjs, src/control/workflow/plan-review.mjs, src/control/workflow/plan-monitor.mjs, src/contracts/work-progress.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/launch.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, packages/workflow-kit/src/lib/review-state.mjs, packages/workflow-kit/src/lib/plan-review.mjs, packages/workflow-kit/src/lib/claude-review.mjs, packages/workflow-kit/scripts/check-plan-review-fixture.mjs, tests/plan-review.test.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/plugin/communication.mjs, src/execution/files/project-input-watch.mjs, tests/workflow-channel.test.mjs, tests/electron-smoke.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: UI-EVENTS
-- [TODO] STATUS: Объяснять текущую работу и реальную причину задержки — Ожидает
-  - Git Commit: [PENDING] fix: объяснять текущую работу и реальную причину задержки
+- [DONE] STATUS: Объяснять текущую работу и реальную причину задержки — Завершено
+  - Git Commit: [DONE] fix: объяснять текущую работу и реальную причину задержки
   - Reference: release-0534-defects / STATUS / implementation
-  - Файлы: src/contracts/dialogue-view.mjs, src/contracts/work-progress.mjs, src/backend/desktop-model.mjs, src/control/plugin/workflow-channel.mjs, src/frontend/plugin/panel.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/work-progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/work-progress-scenario.test.mjs, tests/backend-desktop-model.test.mjs, tests/fixtures/current-actions-layout.mjs, tests/electron-smoke.mjs
+  - Файлы: src/contracts/dialogue-view.mjs, src/contracts/work-progress.mjs, src/backend/desktop-model.mjs, src/control/plugin/workflow-channel.mjs, src/frontend/plugin/panel.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/work-progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/work-progress-scenario.test.mjs, tests/backend-desktop-model.test.mjs, tests/fixtures/current-actions-layout.mjs, tests/electron-smoke.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: REVIEW-VIEW
 - [TODO] PROOF: Проверить путь от обсуждения до двух результатов и завершения — Ожидает

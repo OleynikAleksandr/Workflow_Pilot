@@ -13,22 +13,23 @@ export function assignmentStage({phase,status,dialogue,block,channel,physical}={
   if(channel&&!channel.permitted)return {phase:'waiting',label:'Связь плана приостановлена'};
   if(block||channel?.blocked)return {phase:'question',label:'Вопрос оркестратору · ожидаем решение'};
   if(dialogue?.acceptance)return {phase:'accepted',label:'Результат принят оркестратором · ожидаем интеграцию'};
-  if(dialogue?.result)return {phase:'review',label:'Результат отправлен · ожидаем проверку оркестратора'};
+  if(dialogue?.result)return {phase:'review',label:channel?.result?.read
+    ?'Оркестратор получил результат · ожидаем решение':'Результат готов · ожидаем рассмотрения оркестратором'};
   if(status==='READY_FOR_INTEGRATION')return {phase:'report',label:'Коммит проверен · ожидаем отчёт исполнителя'};
   if(!dialogue?.grant)return physical?.busy?{phase:'starting',label:'Завершается загрузочный ход'}
     :{phase:'waiting-task',label:'Ожидаем задание оркестратора'};
-  if(channel?.initial&&!channel.initial.read)return {phase:'dispatch',label:'Задание оркестратора в доставке · чтение не подтверждено'};
+  if(channel?.initial&&!channel.initial.read)return {phase:'dispatch',label:'Передаём задание исполнителю'};
   if((dialogue?.attempt??1)>1)return {phase:'revision',label:'Доработка · попытка '+dialogue.attempt};
   if(physical?.busy)return {phase:'working',label:'Выполняет поручение оркестратора'};
   return {phase:'waiting',label:'Задание получено · ожидаем следующий шаг'};
 }
 
 const waits={
-  'previous-turn':'Ждём подтверждённый конец предыдущего хода.',
-  'previous-message':'Ждём обработки предыдущего сообщения.',
+  'previous-turn':'Оркестратор завершает предыдущий ответ.',
+  'previous-message':'Сначала обрабатывается предыдущее сообщение.',
   'recipient-busy':'Получатель ещё отвечает.',
-  'recipient-unavailable':'Готовность получателя к отправке не подтверждена.',
-  'admission-denied':'Ожидаем разрешённое состояние назначения.',
+  'recipient-unavailable':'Восстанавливаем соединение с чатом получателя.',
+  'admission-denied':'Передача продолжится, когда назначение будет готово.',
   'commands-active':'Ожидаем завершение команды.',
   'recipient-draft':'У получателя открыт черновик.',
   'manual-stop':'Ход остановлен вручную.',
@@ -46,25 +47,47 @@ export function planActivity({run={},execution={},channel,physical}={}) {
   if(execution.integration?.status&&execution.integration.status!=='IDLE')return stage('integration','Проверка и интеграция в main',
     ['UNKNOWN','CONFLICT','CHECKS_FAILED'].includes(execution.integration.status)?'Интеграция требует исправления.':'Ожидаем результат операции Kit.','Workflow Kit');
   const incoming=channel?.incoming,task=incoming?.task_id?' · '+incoming.task_id:'';
+  const blocker=channel?.blocker;
+  if(blocker&&(blocker.message_id!==incoming?.message_id||blocker.reason==='manual-stop'||['unknown','rejected'].includes(blocker.delivery))){
+    const held=blocker.kind==='user-choice'?'вашего выбора':'предыдущего сообщения';
+    const reason=blocker.reason;
+    const current=(phase,label,detail)=>({...stage(phase,label,detail,'Канал связи'),recipient:'O',
+      priority:phase==='attention'?0:1,key:'blocked-by:'+blocker.message_id+':'+reason,startedAt:blocker.created_at});
+    if(['unknown','rejected'].includes(blocker.delivery))return current('attention',blocker.read?'Завершение ответа требует проверки':'Отправка требует проверки',
+      (blocker.read?'Оркестратор получил сообщение, но завершение ответа неизвестно. ':'Исход предыдущей отправки неизвестен. ')+
+      'Проверьте чат оркестратора. Автоматически повторять отправку нельзя.');
+    if(reason==='manual-stop')return current('attention','Ответ оркестратора остановлен вручную',
+      'Чтобы передать следующие результаты, откройте его чат и продолжите работу.');
+    if(reason==='commands-active')return current('command','Ожидаем завершения команды оркестратора',
+      'После неё передача результатов продолжится автоматически.');
+    if(reason==='recipient-busy')return current('processing','Оркестратор завершает обработку '+held,
+      'Следующие результаты ждут окончания этого ответа.');
+    return current('turn-end','Ожидаем завершения обработки '+held,
+      'Проверяем состояние чата оркестратора перед передачей следующих результатов.');
+  }
   if(incoming){
     const preparation=incoming.kind==='ready'||incoming.kind==='recovery'&&['prepare',undefined].includes(incoming.service_action);
     const recipient=incoming.recipient_role??'O',to=recipient==='O'?'оркестратору':'исполнителю'+task;
     const current=(...args)=>({...stage(...args),recipient,key:'message:'+(incoming.message_id??incoming.kind)+':'+args[0],
       startedAt:(incoming.handled?incoming.handled_at:incoming.read?incoming.read_at:incoming.delivery==='accepted'?incoming.delivery_at:incoming.created_at)??null});
-    if(['unknown','rejected'].includes(incoming.delivery))return current('attention','Доставка требует сверки'+task,'Автоматическая повторная отправка запрещена.','Канал связи');
+    if(!incoming.read&&['unknown','rejected'].includes(incoming.delivery))return current('attention','Доставка требует проверки'+task,
+      'Проверьте чат получателя. Автоматически повторять отправку нельзя.','Канал связи');
     if(!incoming.read){
-      const label=incoming.delivery==='accepted'?'Хост принял сообщение для '+(recipient==='O'?'оркестратора':'исполнителя'+task)+'; чтение ещё не подтверждено'
+      if(['manual-stop','recipient-draft'].includes(incoming.reason))return current('attention',
+        incoming.reason==='manual-stop'?'Чат получателя остановлен вручную':'В чате получателя открыт черновик',
+        incoming.reason==='manual-stop'?'Откройте чат получателя и продолжите работу.':'Отправьте или уберите черновик в чате получателя, чтобы продолжить передачу.','Канал связи');
+      const label=incoming.delivery==='accepted'?'Ожидаем, когда '+(recipient==='O'?'оркестратор':'исполнитель'+task)+' получит сообщение'
         :preparation&&recipient==='O'
-        ?channel.sdk===false?'Канал оркестратора восстанавливается; запрос'+task+' ещё не доставлен'
-          :'Запрос подготовки'+task+' ожидает доставки оркестратору'
-        :'Сообщение ожидает доставки '+to;
-      return current(incoming.delivery==='accepted'?'waiting-read':'delivery',label,waits[incoming.reason]??'Сохранение сообщения не подтверждает его получение.','Канал связи');
+        ?channel.sdk===false?'Восстанавливаем соединение с оркестратором'
+          :'Передаём запрос подготовки'+task+' оркестратору'
+        :incoming.kind==='result'?'Результат'+task+' готов · передаём '+to:'Передаём сообщение '+to;
+      return current(incoming.delivery==='accepted'?'waiting-read':'delivery',label,waits[incoming.reason]??'','Канал связи');
     }
     if(incoming.handled)return current('turn-end',incoming.kind==='finalization'?'Завершается итоговый ответ':'Ожидаем завершение ответа'+task,
-      'Сообщение обработано; физический конец хода ещё не подтверждён.');
-    if(incoming.kind==='result')return current('result','Обрабатывает результат'+task,'Результат прочитан; начало конкретной проверки ещё не подтверждено.');
-    if(incoming.kind==='finalization')return current('final','Готовит итоговый ответ','Итоговый ход начат; очистка и последние квитанции проверяются отдельно.');
-    if(preparation)return current('prepare','Готовит поручение'+task,'Служебные данные прочитаны оркестратором.');
+      'Следующие сообщения будут переданы после окончания ответа.');
+    if(incoming.kind==='result')return current('result','Получил результат'+task+' · ожидаем решение');
+    if(incoming.kind==='finalization')return current('final','Готовит итоговый ответ');
+    if(preparation)return current('prepare','Готовит поручение'+task);
     if(incoming.kind==='question')return current('question','Обрабатывает вопрос исполнителя'+task);
     return current('processing','Обрабатывает сообщение'+task);
   }
@@ -75,8 +98,8 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     return stage('finalizing','План завершается',physical?.busy?'Итоговый ответ ещё продолжается.':
       execution.finalizationReason??'Проверяем чистоту main и подтверждения завершения.','План');
   }
-  if(execution.phase==='preparing')return stage('bootstrap','Подготовка исполнителей','Создание и подключение назначений.','Workflow Kit');
-  if(physical?.busy)return stage('processing','Ход оркестратора продолжается','Конкретная операция сейчас не наблюдается.');
+  if(execution.phase==='preparing')return stage('bootstrap','Подключаем исполнителей','','Приложение');
+  if(physical?.busy)return stage('processing','Работает над планом');
   return stage('waiting','Ожидаем результаты и события','Состояние каждого исполнителя показано у его задачи.','План');
 }
 

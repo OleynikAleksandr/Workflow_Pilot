@@ -90,11 +90,25 @@ export class WorkflowChannel {
       &&!m.superseded&&!m.startup_complete&&!m.reply_observed);
     const readAt=incoming&&run.events.findLast(e=>e.event_type==='message.read'&&e.message_id===incoming.message_id)?.server_time;
     const acceptedAt=incoming&&run.events.findLast(e=>e.event_type==='send.report'&&e.message_id===incoming.message_id&&e.outcome==='accepted')?.server_time;
+    // A previous UI decision can belong to the unpublished scope and still
+    // occupy this same recipient's lane. Describe that actual gate, not only
+    // the newer result waiting behind it. Never project message text/identity.
+    const gate=member?.deliveryGate;
+    const gated=gate&&run.messages.find(m=>m.message_id===gate.message_id);
+    const page=member?this.observe(member.target):null;
+    const blocker=gated&&!gated.reply_observed?{message_id:gated.message_id,kind:gated.kind,
+      scope_id:gated.scope_id??null,task_id:gated.task_id??null,read:!!(gated.read||gated.superseded_read),delivery:gated.delivery,
+      reason:page?.manualStopped?'manual-stop':page?.commandsIdle===false?'commands-active':page?.busy?'recipient-busy'
+        :gate.wait_reason??'physical-completion-unconfirmed',created_at:gated.created_at}:null;
+    const result=target.role==='E'&&run?.messages.findLast(m=>m.assignment_id===target.assignment_id
+      &&m.scope_id===target.scope_id&&m.kind==='result'&&m.sender_role==='E'&&!m.superseded);
     const draft=target.role==='E'&&Object.values(run?.assignment_intents??{}).findLast(i=>
       i.effect.assignment_id===target.assignment_id&&i.effect.scope_id===target.scope_id
       &&i.effect.kind==='task'&&!['published','retired','failed'].includes(i.phase));
     return {registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
       generation:member?.generation??null,blocked,
+      ...(blocker?{blocker}:{}),
+      ...(result?{result:{delivery:result.delivery,read:!!result.read}}:{}),
       ...(incoming?{incoming:{message_id:incoming.message_id,created_at:incoming.created_at,delivery_at:acceptedAt??null,read_at:readAt??null,
         handled_at:Number.isFinite(incoming.yielded?.at)?new Date(incoming.yielded.at).toISOString():null,kind:incoming.kind,task_id:incoming.task_id,
         sender_role:incoming.sender_role,recipient_role:member?.role??target.role,read:!!incoming.read,

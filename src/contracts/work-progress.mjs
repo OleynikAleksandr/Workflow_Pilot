@@ -82,7 +82,7 @@ export const commitProgressLabel=progress=>'Kit проверяет коммит 
 
 // Stage phases of assignmentStage/executorStatus/executorDispatchStage and planActivity by kind.
 const WAIT_PHASES=new Set(['waiting','waiting-task','waiting-channel','question','review','report','accepted','ready','setup',
-  'paused','complete','turn-end','waiting-read']);
+  'paused','complete','turn-end','waiting-read','result']);
 const WARN_PHASES=new Set(['attention']);
 export function stageKind(phase,{busy=false}={}) {
   if(WARN_PHASES.has(phase))return 'warn';
