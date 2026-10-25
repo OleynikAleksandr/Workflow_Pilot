@@ -24,5 +24,7 @@ export async function startServeProxy({ targetPort, login = 'owner@example.com',
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return Object.freeze({ port: server.address().port, host, origin: `https://${host}`,
-    close: () => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }) });
+    // Stop accepting before destroying sockets: a reconnecting fixture client
+    // must not open a new SSE connection between the two shutdown operations.
+    close: () => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }) });
 }

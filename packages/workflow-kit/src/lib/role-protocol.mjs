@@ -1,5 +1,5 @@
 // Canonical role text: full recovery and addressed channel reads use the same version.
-export const ROLE_PROTOCOL_VERSION=9;
+export const ROLE_PROTOCOL_VERSION=10;
 export const USER_EVENT_RULE='Решения пользователя из интерфейса приходят адресными сервисными событиями. Review ON/OFF сообщает актуальную настройку и её версию: перед подготовкой и публикацией сверяй ./scripts/workflow review:status, даже если стартовый контекст содержал другое значение. Это не смена роли, не разрешение реализации или Start. Для такого события task:start и workflow_assignment_yield не требуются: прочитай контекст, учти решение и заверши ответ. Не повторяй уже выполненные действия и неизвестную отправку.';
 // Every chat that talks to the user offers its forks the same way; executors answer to their orchestrator.
 export const CHOICE_RULE='РАЗВИЛКИ: когда дальнейший ход зависит от решения пользователя, не решай за него. Предложи 2–3 варианта: первым — рекомендуемый с пометкой «(рекомендую)», у каждого — название и одна строка: что будет и чего это стоит. Если доступны кнопки выбора, покажи варианты ими, иначе нумерованным списком. Пользователь может ответить своими словами. Не предлагай выбор, когда решение очевидно или уже принято.\n'+USER_EVENT_RULE;
