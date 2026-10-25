@@ -82,3 +82,27 @@ UI проверяется native и HTTP: обсуждение, Review, выбо
 4. Одна актуальная область внимания объясняет участника, стадию, адресата, причину и следующее действие; законченные события не занимают sidebar.
 5. Потеря или обновление клиента не меняют identity и не повторяют действия. Реальные конфликты/неопределённость остаются видимыми.
 6. Все назначенные проверки завершены, ограничения и pending-приёмка сохранены. DOCS не выдаётся за запуск suite; DONE не означает пользовательскую приёмку. Закрытие этого scope требует отдельного прямого поручения.
+
+## Регрессии и границы доказательств
+
+В ходе реализации CHANNEL–VIEW подтверждены коммиты Kit и их назначенные проверки. Ниже указаны точные регрессии для повторного прогона PROOF; общие результаты и SHA записывает Kit, этот раздел не заменяет его evidence. Проверки используют временные проекты и собственные fixtures.
+
+| Дефект | Автоматическое доказательство |
+| --- | --- |
+| D001 | `startup-ui.test.mjs`, `workspace-session.test.mjs`: свой сохранённый URL против старого lost, действительная binding, другой документ, отмена, restart; URL не заменяет identity |
+| D002 | `work-progress.test.mjs`, `session-roles.test.mjs`, `sidebar.test.mjs`: имя участника, отдельная стадия, неизменные внутренние роли |
+| D003 | `sidebar.test.mjs`, `user-choice-view.test.mjs`, `web-client-electron.test.mjs`, `electron-smoke`: нет полной карточки в дереве и допланового плана; клиентская область доступна без iframe, native-страница скрывается и возвращается без нового документа |
+| D004 | `plan-review.test.mjs`, `panel-dialogue-view.test.mjs`, `work-progress-scenario.test.mjs`: фактический Review другого/выбранного проекта, primary и независимые участники; доставка, read и yield имеют разные начала таймеров |
+| D005 | `user-choices.test.mjs`, `settings-workflow-state.test.mjs`, `user-choice-view.test.mjs`: запись до эффекта, отказ записи, CAS, сохранённый нейтральный выбор, read→history, устойчивые IDs, focus, UNKNOWN без повтора |
+| D006 | `tests/fixtures/current-actions-layout.mjs` внутри `electron-smoke`: 12 настоящих Chromium layouts 320/480/900 × light/dark × 100/200%, длинный ID, геометрия текста/таймера, снимки; jsdom проверяет только семантику |
+| D007 | `startup-context.test.mjs`, `startup-ui.test.mjs`, `work-progress.test.mjs`: единственная долговечная квитанция завершения, история без выдуманной даты, незавершённая передача/ошибка остаётся текущей |
+| D008 | `check-previous-upgrade-fixture.mjs`, `workflow-kit-source.test.mjs` и связный цикл: настоящий install/upgrade, root/nested `.DS_Store`, пользовательские правила, tracked/untracked реальные изменения |
+| D009 | `execution-control.test.mjs`, `parallel-execution-recovery.test.mjs`, `sidebar.test.mjs` и связный API-цикл: dirty Start/Continue без выдачи, чистый Continue, техническая/ручная пауза, UNKNOWN, restart и поздний Stop |
+| D010 | `prepared-task-flow.test.mjs`, обе части Kit и `automatic-agent-dialogue.test.mjs`: авторский snapshot всех задач/DOCS до Start, immutable bytes/hash, точный договор задачи, stale автор/attempt, прерывание Kit→WAL, два и пять E, зависимости по интеграциям |
+| D011 | `chatgpt-plugin.test.mjs`, `workflow-channel.test.mjs`, `codex-app-server-mcp.test.mjs` и связный цикл: настоящий MCP error envelope, generation/lease recovery O, два E, один Send, правильный recipient и terminal/manual guards |
+
+Связный сценарий `D001-D011 cycle` публикует готовые авторские пакеты, оставляет root/nested Finder metadata и добавляет настоящий пользовательский файл. Start и повторный Continue дают MAIN_DIRTY без E/SDK-эффектов. После удаления только тестового пользовательского файла один Continue запускает две независимые задачи; во время их работы протухает lease O. Далее проверяются восстановление sync, вопросы/решения, revision/result/acceptance/integration, зависимая T003, DOCS, cleanup и complete. Finder metadata не удаляется. Физический ChatGPT и ответы модели подставлены; API/MCP/SDK-адаптер, stores, scheduler, Kit и Git настоящие.
+
+Обнаруженная при проверке стадий поправка: ожидание чтения после SDK accepted начинается по `send.report`, обработка — по `message.read` WAL, ожидание физического конца — по сохранённому yield; `created_at` относится к очереди доставки. Хост принял сообщение для O — отдельное нейтральное ожидание чтения, даже при последующей потере lease; оно не называется недоставленным запросом подготовки. Если квитанции времени нет, используется наблюдаемое время backend, без присвоения длительности очереди обработке.
+
+До новой пользовательской проверки остаются **NOT_RUN**: настоящие ChatGPT/расширение/SDK в рабочем аккаунте, реальные macOS-окна и assistive technology, native Windows/Linux, iPad/Tailscale и фактические живые тайминги. Поставка трёх архивов, установка и GitHub публикация подтверждаются только последующими RELEASE/INSTALL/PUBLISH; PASS fixture их не означает.

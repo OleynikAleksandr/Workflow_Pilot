@@ -547,13 +547,14 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await browser.executeJavaScript("document.title='Первый разговор проекта'");
   await waitFor(() => snapshot().projects[0].sessions[0].title === 'Первый разговор проекта', 'conversation title', snapshot);
   const first = store.selected();
-  const viewsBeforeActions=window.contentView.children.length,urlBeforeActions=browser.getURL();
+  const viewsBeforeActions=window.contentView.children.length,urlBeforeActions=browser.getURL(),documentBeforeActions=pageState.current.documentId;
   await sidebar.executeJavaScript('document.getElementById("open-current-actions").click()');
   await waitFor(()=>sidebar.executeJavaScript('document.getElementById("current-actions-dialog").open'),'client current actions open',snapshot);
   assert.equal(window.contentView.children.length,viewsBeforeActions-1,'native ChatGPT view is detached while client actions are visible');
   await sidebar.executeJavaScript('document.getElementById("close-current-actions").click()');
   await waitFor(()=>window.contentView.children.length===viewsBeforeActions,'native page returns',snapshot);
   assert.equal(browser.getURL(),urlBeforeActions,'opening current actions never reloads the chat');
+  assert.equal(pageState.current.documentId,documentBeforeActions,'the same document returns, not a reload of the same URL');
   assert.ok(first.chatUrl.startsWith('https://chatgpt.com/c/'));
   assert.equal(await sidebar.executeJavaScript('document.querySelector(".session-experience").textContent'), 'Chat');
   assert.equal(await sidebar.executeJavaScript('document.getElementById("new-chat")'), null, 'context card has no session creation button');

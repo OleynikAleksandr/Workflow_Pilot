@@ -141,12 +141,13 @@ export async function interruptionRegression(t){
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false}={}){
+export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
   const drafts=new Map();
   const fast=owned&&batchResults,modelCalls=[];
+  let leaseRecovered=false;
   const root=createFixture(directory,{setupDelayMs:owned&&batchResults?1500:0}),setup={node:async()=>process.execPath,
     environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
       GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
@@ -202,6 +203,15 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       text+=value.text;total=value.total;
     }
     const project=record.project();notifications.push({...message,text,sessionId:project.sessionId});
+    if(defects&&project.taskId==='T001'&&message.kind==='task'&&!leaseRecovered){
+      const before=o.ui.calls.filter(name=>name==='workflow_communication_sync').length;
+      const currentPanel=()=>[...plugin.communication.panels.values()].find(panel=>panel.memberId===o.registration.participant_id);
+      const panels=[...plugin.communication.panels.values()].filter(panel=>panel.memberId===o.registration.participant_id);
+      assert.equal(panels.length,1);panels[0].expiresAt=0;
+      await wait(()=>currentPanel()?.expiresAt>plugin.communication.now()&&o.ui.calls.filter(name=>name==='workflow_communication_sync').length>before,
+        'orchestrator restores its expired SDK lease while both executor assignments exist',10000);
+      assert.equal(plugin.communication.workflow.progress(origin.sessionId).sdk,true);leaseRecovered=true;
+    }
     if(owned){
       assert.equal(message.dialogue_version,1);
       const handled=[message.message_id];
@@ -537,6 +547,23 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   assert.equal(readPlan(root).dialogue_version,owned?1:0,'new owned plan defaults to dialogue; legacy fixture opts into its former contract');
   await store.reconcileRoles(root);await store.selectSession(root,origin.sessionId);workflow.execution.observe(root);
   await workflow.execution.signal(root);assert.equal(records.size,1,'publication alone opens no executor');
+  if(defects){
+    const plan=readPlan(root);assert.equal(plan.preparation_version,1);
+    assert.ok(plan.tasks.every(task=>task.prepared_task?.contract_digest),'every author packet, including DOCS, precedes Start');
+    await fs.mkdir(path.join(root,'nested'),{recursive:true});
+    for(const file of ['.DS_Store','nested/.DS_Store'])await fs.writeFile(path.join(root,file),'Finder fixture');
+    const gitEnv={...setup.environment,GIT_LITERAL_PATHSPECS:'0'};
+    assert.equal(execFileSync('git',['check-ignore','.DS_Store','nested/.DS_Store'],{cwd:root,env:gitEnv,encoding:'utf8'}).trim().split('\n').length,2);
+    await fs.writeFile(path.join(root,'user-change.txt'),'real user change');
+    for(let press=0;press<2;press++){
+      const blocked=await api.submit('plan.continue',{});await api.wait(blocked.operationId);
+      const state=workflow.executionControl.view(root,'dialogue-fixture');assert.equal(state.state,'paused');assert.equal(state.reason,'blocked');
+      assert.equal(state.issue.code,'MAIN_DIRTY');assert.deepEqual(state.issue.paths,['user-change.txt']);
+      assert.equal(records.size,1);assert.equal(workflow.execution.view(root).assignments?.length??0,0);
+      assert.equal(notifications.length,0,'dirty Start and repeated Continue create no SDK message');
+    }
+    await fs.unlink(path.join(root,'user-change.txt'));
+  }
   const start=await api.submit('plan.continue',{}),started=await api.wait(start.operationId);
   assert.equal(started.status,'completed',JSON.stringify(started));
   assert.equal(workflow.executionControl.view(root,'dialogue-fixture').state,'running','HTTP API runs the real plan button coordinator');
@@ -603,6 +630,11 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   }
   if(batchResults){assert.equal(earlyCleanup,true);assert.equal(setupLockChecked,true);assert.equal(docsOverlap,true);assert.equal(finalOverlap,true);}
   assert.equal(workflow.executionControl.snapshot()[root].route,'plugin-v1');
+  if(defects){
+    assert.equal(leaseRecovered,true);assert.equal(execFileSync('git',['status','--porcelain'],{cwd:root,encoding:'utf8'}).trim(),'');
+    assert.equal(await fs.readFile(path.join(root,'.DS_Store'),'utf8'),'Finder fixture','the global ignore never deletes Finder metadata');
+    assert.equal(notifications.filter(n=>n.directPreparation).length,0,'Continue does not add an author preparation turn');
+  }
   runtime.verify();
   return {notifications,run,root};
 }

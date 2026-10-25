@@ -13,10 +13,18 @@ test('preparation delivery names its real recipient and anchors the same message
   const stage=planActivity(input);
   assert.match(stage.label,/Канал оркестратора восстанавливается/);assert.doesNotMatch(stage.label,/SDK первого исполнителя/);
   assert.equal(stage.recipient,'O');
+  const accepted=planActivity({...input,channel:{sdk:false,incoming:{...incoming,delivery:'accepted',delivery_at:'2026-10-25T09:00:10Z'}}});
+  assert.equal(accepted.phase,'waiting-read');assert.match(accepted.label,/Хост принял сообщение для оркестратора/);
+  assert.doesNotMatch(accepted.label,/ещё не доставлен/);
   const clock=()=>activityClock({now:()=>0,wallNow:()=>Date.parse('2026-10-25T09:00:20Z')});
   assert.equal(clock()('p',stage).elapsedMs,20000);assert.equal(clock()('p',stage).elapsedMs,20000);
+  assert.equal(clock()('p',accepted).elapsedMs,10000,'accepted waits start at the host receipt, not at creation');
   input.channel.incoming={...incoming,kind:'task',service_action:null,recipient_role:'E',delivery:'accepted'};
   assert.match(planActivity(input).label,/Хост принял сообщение для исполнителя · T001; чтение ещё не подтверждено/);
+  input.channel.incoming={...incoming,read:true,read_at:'2026-10-25T09:00:15Z'};
+  assert.equal(clock()('p',planActivity(input)).elapsedMs,5000,'processing time excludes the preceding delivery queue');
+  input.channel.incoming.handled=true;input.channel.incoming.handled_at='2026-10-25T09:00:18Z';
+  assert.equal(clock()('p',planActivity(input)).elapsedMs,2000,'physical turn end waits start at the durable yield');
 });
 
 test('observable plan stages separate transport, processing, integration, cleanup and durable completion',()=>{
@@ -25,7 +33,7 @@ test('observable plan stages separate transport, processing, integration, cleanu
   assert.equal(planActivity(input).phase,'cleanup');
   assert.equal(planActivity({...input,channel:{incoming:{kind:'result',task_id:'T001',read:true}}}).phase,'result');
   assert.doesNotMatch(planActivity({...input,channel:{incoming:{kind:'result',read:true}}}).label,/проверка|тест/i);
-  assert.equal(planActivity({...input,channel:{incoming:{kind:'result',read:false,delivery:'accepted'}}}).phase,'delivery');
+  assert.equal(planActivity({...input,channel:{incoming:{kind:'result',read:false,delivery:'accepted'}}}).phase,'waiting-read');
   assert.match(planActivity({...input,channel:{incoming:{kind:'result',read:false,reason:'previous-turn'}}}).reason,/предыдущего хода/);
   assert.equal(planActivity({...input,channel:{incoming:{kind:'recovery',read:true}}}).phase,'prepare');
   assert.equal(planActivity({...input,channel:{incoming:{kind:'finalization',read:true}}}).phase,'final');

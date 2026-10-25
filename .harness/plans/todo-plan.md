@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1098,
+  "plan_revision": 1103,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "release-0533-defects",
@@ -122,7 +122,10 @@
       "tests/desktop-boundaries.test.mjs",
       "tests/web-client-electron.test.mjs",
       "tests/fixtures/current-actions-layout.mjs",
-      "tests/parallel-execution-ui.test.mjs"
+      "tests/parallel-execution-ui.test.mjs",
+      "tools/codex-app-server-mcp/codex-tools.lock.json",
+      "src/execution/files/project-input-watch.mjs",
+      "tests/project-input-watch.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/release-0533-defects.md",
@@ -843,8 +846,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "release-0533-defects",
         "task_id": "PROOF",
@@ -862,9 +865,21 @@
         "tests/execution-control.test.mjs",
         "tests/parallel-execution-recovery.test.mjs",
         "tests/chatgpt-plugin.test.mjs",
-        "tests/sidebar.test.mjs"
+        "tests/sidebar.test.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/electron-smoke.mjs",
+        "src/contracts/work-progress.mjs",
+        "tests/work-progress.test.mjs",
+        "tools/codex-app-server-mcp/codex-tools.lock.json",
+        "src/execution/files/project-input-watch.mjs",
+        "tests/project-input-watch.test.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/release-0533-defects.md"
+      ],
       "verification_ids": [
         "unit-all",
         "kit-check",
@@ -911,7 +926,23 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/release-0533-defects.md",
+        "src/contracts/dialogue-view.mjs",
+        "src/contracts/work-progress.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/execution/files/project-input-watch.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/parallel-execution-recovery.test.mjs",
+        "tests/project-input-watch.test.mjs",
+        "tests/work-progress.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/codex-tools.lock.json"
+      ]
     },
     {
       "id": "VERSION",
@@ -1156,7 +1187,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: release-0533-defects
 Current Task: нет
-Revision: 1098
+Revision: 1103
 
 ## Цель
 
@@ -1217,10 +1248,10 @@ Revision: 1098
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/frontend/desktop/client.mjs, src/frontend/web/index.html, src/contracts/user-choice.mjs, tests/sidebar.test.mjs, tests/panel-dialogue-view.test.mjs, tests/user-choice-view.test.mjs, tests/desktop-client.test.mjs, tests/chatgpt-plugin.test.mjs, src/frontend/web/app.mjs, src/frontend/desktop/browser-host.mjs, src/frontend/client/browser-view.mjs, tests/fixtures/web-client-browser.mjs, tests/electron-smoke.mjs, src/frontend/desktop/ui/current-actions.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/application.mjs, src/contracts/desktop.mjs, src/control/workflow/user-choices.mjs, tests/user-choices.test.mjs, tests/desktop-boundaries.test.mjs, tests/work-progress-scenario.test.mjs, tests/web-client-electron.test.mjs, tests/fixtures/current-actions-layout.mjs, tests/parallel-execution-ui.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: STATUS
-- [TODO] PROOF: Проверить весь цикл и покрытие D001–D011 — Ожидает
-  - Git Commit: [PENDING] fix: проверить весь цикл и покрытие d001–d011
+- [DONE] PROOF: Проверить весь цикл и покрытие D001–D011 — Завершено
+  - Git Commit: [DONE] fix: проверить весь цикл и покрытие d001–d011
   - Reference: release-0533-defects / PROOF / implementation
-  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/plugin-host.mjs, tests/work-progress-scenario.test.mjs, tests/backend-api.test.mjs, tests/execution-control.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/plugin-host.mjs, tests/work-progress-scenario.test.mjs, tests/backend-api.test.mjs, tests/execution-control.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/sidebar.test.mjs, src/contracts/dialogue-view.mjs, src/control/plugin/workflow-channel.mjs, tests/panel-dialogue-view.test.mjs, tests/workflow-channel.test.mjs, tests/electron-smoke.mjs, src/contracts/work-progress.mjs, tests/work-progress.test.mjs, tools/codex-app-server-mcp/codex-tools.lock.json, src/execution/files/project-input-watch.mjs, tests/project-input-watch.test.mjs, docs/planning/release-0533-defects.md
   - Параллельность: исключительное выполнение
   - Зависимости: VIEW
 - [TODO] VERSION: Подготовить версии приложения, Kit и панели для 0.5.34 — Ожидает

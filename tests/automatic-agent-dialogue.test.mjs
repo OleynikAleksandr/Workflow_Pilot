@@ -12,8 +12,8 @@ import {PluginCommunication} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 test('automatic dialogue through startup and Start: Chat orchestrator, Chat executors, question/decision/commit and third assignment',
   {timeout:300000},async t=>{await automaticDialogue(t);});
-test('orchestrator-owned dialogue: context request, multihop block, revision/result/acceptance, explicit integration and DOCS without user bubbles',
-  {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,conversation:true});});
+test('D001-D011 cycle: prepared plan, Finder metadata, real dirty Start/Continue, O lease recovery, two E, dependent task and DOCS',
+  {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,conversation:true,defects:true});});
 test('five simultaneous executors receive O-selected tasks and return checked results through real Start/MCP/SDK/Kit',
   {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,workers:5});});
 test('authorized fast cycle: inline preparation, no ready turn, two results, overlapping DOCS and finalization',

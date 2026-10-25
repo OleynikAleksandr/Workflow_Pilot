@@ -73,7 +73,9 @@ test('sequential legacy checkout does not require new assignment commands from i
 });
 
 test('F04: child receipt replacement wakes main without a worker page or polling, and stale watchers close',async t=>{
-  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'child-command-event-'));
+  // Real project selection canonicalizes workspace paths. On macOS /var is an
+  // alias of /private/var; the native watcher fixture must use the same identity.
+  const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'child-command-event-')));
   t.after(()=>fs.rm(directory,{recursive:true,force:true}));
   const child=path.join(directory,'assigned'),other=path.join(directory,'other');
   for(const workspace of [child,other])await fs.mkdir(path.join(workspace,'.harness/runtime/command-activity'),{recursive:true});
@@ -84,17 +86,17 @@ test('F04: child receipt replacement wakes main without a worker page or polling
   const marker=path.join(child,'.harness/runtime/command-activity','command.json');
   const record={version:2,id:'command',workspace:child,cwd:child,executor_pid:12345,
     executor_instance:'fixture',started_at_ms:Date.now(),process_id:'fixture',state:'running',sandbox_policy:'dangerFullAccess'};
-  const changed=()=>new Promise((resolve,reject)=>{
+  const changed=phase=>new Promise((resolve,reject)=>{
     // Real macOS filesystem delivery competes with the four-process suite.
     // This deadline bounds a missing event; it is not a product latency SLA.
-    const timeout=setTimeout(()=>{notify=null;reject(Error('child watcher missed a real file event'));},15000);
+    const timeout=setTimeout(()=>{notify=null;reject(Error('child watcher missed '+phase+' receipt; signals='+events+'; errors='+JSON.stringify(errors)));},15000);
     notify=()=>{clearTimeout(timeout);resolve();};
   });
-  let observed=changed();
+  let observed=changed('running');
   await fs.writeFile(marker+'.tmp',JSON.stringify(record));await fs.rename(marker+'.tmp',marker);
   await observed;
   assert.equal((await readCommandActivity(child,{isDead:()=>false})).commandActive,true);
-  observed=changed();
+  observed=changed('completed');
   await fs.writeFile(marker+'.tmp',JSON.stringify({...record,state:'completed',exit_code:7}));
   await fs.rename(marker+'.tmp',marker);
   await observed;

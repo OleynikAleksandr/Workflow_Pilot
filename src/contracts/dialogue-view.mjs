@@ -50,15 +50,15 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     const preparation=incoming.kind==='ready'||incoming.kind==='recovery'&&['prepare',undefined].includes(incoming.service_action);
     const recipient=incoming.recipient_role??'O',to=recipient==='O'?'оркестратору':'исполнителю'+task;
     const current=(...args)=>({...stage(...args),recipient,key:'message:'+(incoming.message_id??incoming.kind)+':'+args[0],
-      startedAt:incoming.created_at??null});
+      startedAt:(incoming.handled?incoming.handled_at:incoming.read?incoming.read_at:incoming.delivery==='accepted'?incoming.delivery_at:incoming.created_at)??null});
     if(['unknown','rejected'].includes(incoming.delivery))return current('attention','Доставка требует сверки'+task,'Автоматическая повторная отправка запрещена.','Канал связи');
     if(!incoming.read){
-      const label=preparation&&recipient==='O'
+      const label=incoming.delivery==='accepted'?'Хост принял сообщение для '+(recipient==='O'?'оркестратора':'исполнителя'+task)+'; чтение ещё не подтверждено'
+        :preparation&&recipient==='O'
         ?channel.sdk===false?'Канал оркестратора восстанавливается; запрос'+task+' ещё не доставлен'
           :'Запрос подготовки'+task+' ожидает доставки оркестратору'
-        :incoming.delivery==='accepted'?'Хост принял сообщение для '+(recipient==='O'?'оркестратора':'исполнителя'+task)+'; чтение ещё не подтверждено'
-          :'Сообщение ожидает доставки '+to;
-      return current('delivery',label,waits[incoming.reason]??'Сохранение сообщения не подтверждает его получение.','Канал связи');
+        :'Сообщение ожидает доставки '+to;
+      return current(incoming.delivery==='accepted'?'waiting-read':'delivery',label,waits[incoming.reason]??'Сохранение сообщения не подтверждает его получение.','Канал связи');
     }
     if(incoming.handled)return current('turn-end',incoming.kind==='finalization'?'Завершается итоговый ответ':'Ожидаем завершение ответа'+task,
       'Сообщение обработано; физический конец хода ещё не подтверждён.');

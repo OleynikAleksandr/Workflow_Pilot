@@ -88,12 +88,15 @@ export class WorkflowChannel {
     const blocked=!!question&&!dialogue.some(m=>m.kind==='decision'&&m.resume&&m.block_id===question.block_id);
     const incoming=run?.messages.find(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
       &&!m.superseded&&!m.startup_complete&&!m.reply_observed);
+    const readAt=incoming&&run.events.findLast(e=>e.event_type==='message.read'&&e.message_id===incoming.message_id)?.server_time;
+    const acceptedAt=incoming&&run.events.findLast(e=>e.event_type==='send.report'&&e.message_id===incoming.message_id&&e.outcome==='accepted')?.server_time;
     const draft=target.role==='E'&&Object.values(run?.assignment_intents??{}).findLast(i=>
       i.effect.assignment_id===target.assignment_id&&i.effect.scope_id===target.scope_id
       &&i.effect.kind==='task'&&!['published','retired','failed'].includes(i.phase));
     return {registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
       generation:member?.generation??null,blocked,
-      ...(incoming?{incoming:{message_id:incoming.message_id,created_at:incoming.created_at,kind:incoming.kind,task_id:incoming.task_id,
+      ...(incoming?{incoming:{message_id:incoming.message_id,created_at:incoming.created_at,delivery_at:acceptedAt??null,read_at:readAt??null,
+        handled_at:Number.isFinite(incoming.yielded?.at)?new Date(incoming.yielded.at).toISOString():null,kind:incoming.kind,task_id:incoming.task_id,
         sender_role:incoming.sender_role,recipient_role:member?.role??target.role,read:!!incoming.read,
         service_action:incoming.idempotency_key?.startsWith('prepare:')?'prepare'
           :incoming.idempotency_key?.startsWith('parked:')?'parked':incoming.idempotency_key?.startsWith('authorize:')?'authorize':null,

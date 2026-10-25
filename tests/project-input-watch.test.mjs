@@ -118,3 +118,17 @@ test('the agent mode request and the planning owner are watched project inputs',
   for (const file of ['.harness/runtime/execution-mode.json', '.harness/runtime/planning-owner.json'])
     assert.ok(watch.paths.includes(file), file);
 });
+
+test('a newly attached receipt watch reconciles once even if its first native event is lost, then stays idle',()=>{
+  const timers=new Map(),handles=new Map();let next=0,signals=0;
+  const watcher=new ProjectInputWatch({workspace:'/project',reconcileOnAttach:true,onSignal:()=>signals++,onError:()=>{},
+    stat:()=>({dev:1,ino:1,isDirectory:()=>true}),
+    watchDirectory:(folder,_options,callback)=>{const handle=new EventEmitter();handle.close=()=>{};handle.callback=callback;handles.set(folder,handle);return handle;},
+    schedule:callback=>{timers.set(++next,callback);return next;},unschedule:key=>timers.delete(key)});
+  watcher.update(['.harness/runtime/command-activity/']);assert.equal(timers.size,1);
+  const drain=()=>{const work=[...timers.values()];timers.clear();work.forEach(callback=>callback());};
+  drain();assert.equal(signals,1,'initial snapshot is read with no filesystem callback');assert.equal(timers.size,0);
+  watcher.refresh();assert.equal(timers.size,0,'no recurring polling');
+  handles.get('/project/.harness/runtime/command-activity').callback('rename','command.json');
+  drain();assert.equal(signals,2);assert.equal(timers.size,0);watcher.close();
+});

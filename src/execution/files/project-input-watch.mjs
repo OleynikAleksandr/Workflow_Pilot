@@ -9,8 +9,8 @@ const projectWatchInputs = ['.harness/plans/todo-plan.md', 'scripts/workflow.mjs
 // Directory identity matters: fs.watch can remain attached to an unlinked inode.
 export class ProjectInputWatch {
   constructor({ workspace, onSignal, onError, watchDirectory = watch, stat = statSync,
-    schedule = setTimeout, unschedule = clearTimeout, retryDelays = [25, 100] }) {
-    Object.assign(this, { workspace, onSignal, onError, watchDirectory, stat, schedule, unschedule, retryDelays });
+    schedule = setTimeout, unschedule = clearTimeout, retryDelays = [25, 100], reconcileOnAttach = false }) {
+    Object.assign(this, { workspace, onSignal, onError, watchDirectory, stat, schedule, unschedule, retryDelays, reconcileOnAttach });
     this.paths = projectWatchInputs; this.watches = new Map(); this.closed = false;
     this.timer = null; this.retry = 0;
   }
@@ -53,7 +53,7 @@ export class ProjectInputWatch {
         directory = path.dirname(child);
       }
     }
-    let failure = null;
+    let failure = null, attached = false;
     const wanted = new Set();
     for (const [directory, names] of directories) {
       try {
@@ -70,6 +70,7 @@ export class ProjectInputWatch {
           if (filename == null || record.names.has('*') || record.names.has(String(filename)) || String(filename) === path.basename(directory)) this.signal();
         });
         this.watches.set(directory, record);
+        attached = true;
         record.handle.on('error', error => {
           if (this.closed || this.watches.get(directory) !== record) return;
           this.watches.delete(directory); record.handle.close();
@@ -83,7 +84,12 @@ export class ProjectInputWatch {
       if (!wanted.has(directory)) { this.watches.delete(directory); record.handle.close(); }
     }
     if (failure) this.failed(failure);
-    else this.onError(null);
+    else {
+      this.onError(null);
+      // fs.watch has no ready handshake. A receipt may be replaced before the
+      // native stream starts delivering events; read its current state once.
+      if(attached && this.reconcileOnAttach)this.signal();
+    }
   }
   failed(error) {
     this.onError({ code: 'PLAN_WATCH_FAILED', message: `Автообновление проекта недоступно (${error.code ?? 'WATCH_ERROR'}). Повторите проверку или вернитесь в окно проекта.` });
@@ -115,7 +121,7 @@ export class ChildCommandWatches {
       watcher.close();this.children.delete(workspace);
     }
     for(const workspace of wanted)if(!this.children.has(workspace)){
-      const watcher=this.createWatcher({workspace,onSignal:this.onSignal,onError:error=>{
+      const watcher=this.createWatcher({workspace,reconcileOnAttach:true,onSignal:this.onSignal,onError:error=>{
         if(error)this.onError({...error,workspace});
       }});
       this.children.set(workspace,watcher);
