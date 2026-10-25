@@ -1,6 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('webPilot', Object.freeze({
-  currentActions: open => ipcRenderer.invoke('pilot:current-actions',{open:open===true}),
   togglePlanExecution: () => ipcRenderer.invoke('pilot:plan-execution'),
   setPlanExecution: running => ipcRenderer.invoke('pilot:plan-execution', { running: running === true }),
   assignOrchestrator: sessionId => ipcRenderer.invoke('pilot:assign-orchestrator', sessionId),

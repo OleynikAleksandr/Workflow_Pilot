@@ -227,7 +227,6 @@ SOFTWARE.
         <button id="toggle-projects" class="icon-button" title="Свернуть все проекты" aria-label="Свернуть все проекты"><svg class="tree-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#tree-list-chevrons-up-down"/></svg></button>
       </div>
       <ul id="projects" class="projects" aria-label="Workspace и сессии"><li class="empty">Выберите проект, чтобы начать<br>работу с его контекстом.</li></ul>
-      <button id="open-current-actions" type="button" class="secondary" hidden>Текущие действия</button>
       <section id="remote-pairing" class="card" aria-live="polite" hidden>
         <h3>Подключение устройства</h3>
         <p class="description">Сверьте код с экраном устройства и подтвердите, только если подключаете его вы.</p>
@@ -466,7 +465,6 @@ SOFTWARE.
               <p id="plan-status" class="plan-status"></p>
             </div>
           </div>
-          <section id="plan-choice" class="wp-choice" aria-live="polite" hidden></section>
           <ul id="plan-tasks" class="plan-tasks" aria-label="Задачи плана"></ul>
           <div id="plan-foot" class="plan-foot">
             <button id="plan-run-toggle" class="primary plan-run-toggle" type="button" hidden></button>
@@ -497,20 +495,8 @@ SOFTWARE.
     </div>
     <div id="sidebar-splitter" class="sidebar-splitter" role="separator" aria-orientation="vertical" aria-label="Изменить ширину панели проектов" tabindex="0"></div>
   </main>
-  <dialog id="current-actions-dialog" aria-labelledby="current-actions-title">
-    <header><h2 id="current-actions-title">Текущие действия</h2><button id="close-current-actions" type="button" class="secondary">Вернуться к чату</button></header>
-    <div id="current-now" class="wp-now" aria-label="Происходит сейчас"></div>
-    <div id="current-choice-slot"></div>
-    <div id="current-announcement" class="wp-announcement" role="status" aria-live="polite" aria-atomic="true"></div>
-    <div id="current-legacy-slot"></div>
-    <details id="current-history" class="wp-hist"><summary>История <span id="current-history-count" class="wp-count">0 событий</span></summary><ol id="current-events" class="wp-events"></ol></details>
-    <details id="current-diagnostics"><summary>Диагностика</summary><div id="current-problems"></div></details>
-  </dialog>
   <style>
-    #current-actions-dialog{box-sizing:border-box;width:min(900px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;border:1px solid var(--wp-line);border-radius:12px;padding:16px;background:var(--wp-page);color:var(--wp-fg);font-size:14px}
-    #current-actions-dialog::backdrop{background:#0008}#current-actions-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-    #current-actions-dialog h2{font-size:1.1em;margin:0;overflow-wrap:anywhere}#current-actions-dialog>div,#current-actions-dialog>details{margin-top:12px;min-width:0}
-    #review-preference{margin:8px 0}#plan-choice[hidden]{display:none}#current-actions-dialog[open]{display:block}
+    #review-preference{margin:8px 0}
     #plan-card[hidden]{display:none}#plan-review-message{display:none}
   </style>
   <dialog id="rename-dialog" class="rename-dialog" aria-labelledby="rename-dialog-title">

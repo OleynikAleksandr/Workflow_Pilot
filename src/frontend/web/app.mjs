@@ -79,11 +79,6 @@ async function takeControl({ takeover = false } = {}) {
 // Desktop UI calls (the preload API) through the backend, as the Mac window does.
 const SURFACE = { 'pilot:': 'local', 'archive:': 'archive', 'chat-colors:': 'colors' };
 async function invoke(channel, input) {
-  if(channel==='pilot:current-actions'){
-    if(typeof input?.open!=='boolean')return {ok:false};
-    $('sidebar').classList.toggle('current-actions-open',input.open);$('stage').hidden=input.open;
-    return {ok:true};
-  }
   if (channel === 'pilot:get-state') return current('pilot:state-changed');
   if (channel === 'archive:get-state') return current('pilot-archive:state-changed');
   if (channel === 'chat-colors:get-state') return current('chat-colors:state');

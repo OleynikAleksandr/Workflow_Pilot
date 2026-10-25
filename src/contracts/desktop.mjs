@@ -1,6 +1,5 @@
 // Fixed capabilities exposed by the local preload; remote pages receive none.
 // Presentation only, handled by the client without a backend mutation or lease.
-export const CLIENT_CHANNELS=Object.freeze(['pilot:current-actions']);
 export const DESKTOP_CHANNELS = Object.freeze({
   "local": Object.freeze([
     "pilot:get-state",

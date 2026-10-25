@@ -62,7 +62,7 @@ test('three integrations keep the observed final stage and Pause until durable c
   f.emit({...state,workProgress:{version:1,title:'Опыт',phase:'Завершение',busy:true,done:3,total:3,tasks:plan.tasks,
     now:[{actor:'KIT',text:'План завершается',kind:'act',elapsedMs:65000}],history:[],attention:null}});
   assert.equal($('plan-phase-text').textContent,'Выполнение');assert.equal($('plan-phase-spinner').hidden,true);
-  assert.match($('current-now').textContent,/План завершается/);
+  assert.equal($('current-now'),null,'detailed progress is only in the MCP panel');
   assert.equal($('plan-note').hidden,true);
   assert.doesNotMatch($('plan-card').textContent,/Все 3 задачи выполнены/);
   f.emit({...state,planRun:{state:'complete',complete:true,activity:{phase:'complete',
@@ -425,7 +425,7 @@ test('published plan keeps its button and progress; current operation and timers
   assert.deepEqual([...card.children].map(node=>node.id||node.className),['plan-top','plan-tasks','plan-foot']);
   assert.ok(card.querySelector('.plan-top #plan-phase'));
   for(const id of ['plan-run-toggle','plan-note'])assert.ok($('plan-foot').contains($(id)),id+' stays pinned');
-  assert.ok($('current-actions-dialog').contains($('plan-attention')));assert.equal(card.contains($('plan-review-toggle')),false);
+  assert.ok(card.contains($('plan-attention')));assert.equal(card.contains($('plan-review-toggle')),false);
   const tasks=Array.from({length:12},(_,i)=>({id:'T0'+String(i+1).padStart(2,'0'),title:'Задача '+(i+1),status:i<3?'done':i===3?'current':'pending',
     label:i<3?'Интеграция проверена':i===3?'Kit проверяет коммит · unit-all · 2 из 3':'Не начата',mode:'Параллельно',elapsedMs:i===3?61000:null,target:null}));
   f.emit({...base,selected:{...base.selected,role:'orchestrator',scopeId:'scope',planView:{state:'working'}},planRun:{state:'running',complete:false},
@@ -439,7 +439,7 @@ test('published plan keeps its button and progress; current operation and timers
   assert.equal(running.querySelector('.plan-task-state .wp-spin')!==null,true);
   assert.match(running.querySelector('.plan-task-stage').textContent,/^В работе · Параллельно$/);
   assert.equal(running.querySelector('.plan-task-time'),null);
-  assert.match($('current-now').textContent,/Kit проверяет коммит/);
+  assert.equal($('current-now'),null,'the sidebar has no second current action feed');
   assert.equal(list.children[0].querySelector('.plan-task-mode'),null,'a done task does not repeat its mode');
   assert.equal($('plan-attention').hidden,true,'no problem, no alarm');
   // The orchestrator row is busy only while it acts.
@@ -606,7 +606,7 @@ test('one palette: the sidebar style, both themes, the window background and the
   assert.match(paletteCss({mode:'media'}),/@media \(prefers-color-scheme:dark\)/);
 });
 
-test('the sidebar keeps neutral roles and opens its only choice in the client actions area', async t => {
+test('the sidebar keeps neutral roles without a duplicate choice or current actions entry', async t => {
   const f = await fixture(t), base = f.state, picks = [];
   f.window.webPilot.chooseOption = async input => { picks.push(JSON.parse(JSON.stringify(input))); return null; };
   const { question, options } = choiceOptions('mode', { recommended: 'sequential', reason: 'Небольшие связанные задачи' });
@@ -619,16 +619,9 @@ test('the sidebar keeps neutral roles and opens its only choice in the client ac
   assert.deepEqual([...f.document.querySelectorAll('.session-role')].map(n => n.textContent), ['Агент', 'Агент', 'Агент']);
   const badges = [...f.document.querySelectorAll('.session-choice-wait')];
   assert.equal(badges.length, 0);assert.equal(f.document.getElementById('plan-card').hidden,true);
-  const card = f.document.getElementById('plan-choice');
-  assert.ok(card.closest('#current-actions-dialog'));assert.equal(f.document.getElementById('current-actions-dialog').open,false);
-  f.document.getElementById('open-current-actions').click();await f.settle();
-  assert.equal(f.document.getElementById('current-actions-dialog').open,true);
-  assert.equal(card.hidden, false);assert.match(card.textContent, /Почему рекомендует агент: Небольшие связанные задачи/);
-  const rows = [...card.querySelectorAll('.wp-choice-option')];
-  assert.match(rows[0].textContent, /Выполнить самому, последовательно \(рекомендую\)/);
-  rows[1].querySelector('button').click();await f.settle();
-  assert.deepEqual(picks, [{ sessionId: 's4', choiceId: 'c1', optionId: 'orchestrated', generation: 2 }]);
-  f.emit({ ...base, userChoice: null });assert.equal(card.hidden, true);
+  for(const id of ['plan-choice','current-actions-dialog','open-current-actions','close-current-actions'])assert.equal(f.document.getElementById(id),null);
+  assert.deepEqual(picks,[]);
+  assert.equal(f.document.getElementById('review-preference').hidden,false);
 });
 
 test('all session rows are Chat and the project offers one new Chat action',async t=>{

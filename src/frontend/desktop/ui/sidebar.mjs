@@ -3,34 +3,15 @@ import { settingsPanelView } from './settings-panel.mjs';
 import { workspaceSetupView } from './workspace-setup.mjs';
 import {startupView} from '../../../contracts/startup-view.mjs';
 import {paletteCss,spinnerCss} from '../../../contracts/palette.mjs';
-import {choiceCardCss,renderChoiceCard} from '../../../contracts/user-choice.mjs';
 import {roleActor,participantName} from '../../../contracts/work-progress.mjs';
-import {mountCurrentActions,currentActionsCss} from './current-actions.mjs';
 const $ = id => document.getElementById(id);
 // The shared palette of the sidebar and the panel; an inline style is within the page CSP.
 const paletteStyle=document.createElement('style');paletteStyle.id='wp-palette';
-paletteStyle.textContent=paletteCss()+spinnerCss+choiceCardCss+currentActionsCss;document.head.append(paletteStyle);
+paletteStyle.textContent=paletteCss()+spinnerCss;document.head.append(paletteStyle);
 const api = window.webPilot;
 let lastProjects = '';
 let currentState;
-const actionsDialog=$('current-actions-dialog');
-// Move the existing controls rather than create a second copy with independent state.
-$('current-choice-slot').append($('plan-choice'));
-$('current-legacy-slot').append($('session-notice'));
-$('current-problems').append($('plan-attention'),$('plan-run-message'),$('plan-continuation-message'),$('conversation-recovery'));
 $('workspace-details').before($('review-preference'));
-const currentActions=mountCurrentActions({document,now:$('current-now'),events:$('current-events'),count:$('current-history-count'),
-  announce:$('current-announcement'),onAction:input=>{if(input.kind==='open-session')void action('selectSession',input.workspace,input.sessionId);
-    else if(input.kind==='command-issues')$('current-diagnostics').open=true;}});
-async function openCurrentActions(){
-  const result=await api.currentActions?.(true);if(result?.ok===false)return;
-  actionsDialog.showModal();$('close-current-actions').focus();
-}
-function closeCurrentActions(){if(actionsDialog.open)actionsDialog.close();void api.currentActions?.(false);$('open-current-actions').focus();}
-$('open-current-actions').addEventListener('click',()=>void openCurrentActions());
-$('close-current-actions').addEventListener('click',closeCurrentActions);
-actionsDialog.addEventListener('cancel',event=>{event.preventDefault();closeCurrentActions();});
-window.addEventListener('pagehide',()=>void api.currentActions?.(false));
 let actionPending = false, pendingAction = null, actionGeneration = 0, planFocusKey = '';
 const navigationActions = new Set(['selectWorkspace', 'selectSession', 'reload', 'returnToChat']);
 const progress = createProgress($('operation-progress'));
@@ -588,12 +569,6 @@ function render(state) {
       if(row&&(row.offsetTop<list.scrollTop||row.offsetTop+row.offsetHeight>list.scrollTop+list.clientHeight))list.scrollTop=Math.max(0,row.offsetTop-8);
     }
   } else { $('plan-tasks').replaceChildren(); $('plan-note').hidden = true; $('plan-reason').hidden = true; $('plan-attention').hidden = true; }
-  // The selected session's choice card: the same contract and markup as in the panel.
-  const card=state.userChoice??null;
-  const press=optionId=>card&&selected&&action('chooseOption',{sessionId:selected.sessionId,choiceId:card.choice_id,optionId,generation:card.generation});
-  renderChoiceCard(document,$('plan-choice'),card,{busy:actionPending,pick:press,reopen:()=>press('reopen')});
-  currentActions.render(work,{choice:card});
-  $('open-current-actions').hidden=!selected||!!state.setup||!!state.settings;
   $('review-preference').hidden=!selected||!!state.setup||!!state.settings;
   // Busy participants of the selected project get a spinner in their tree row; text stays in the panel.
   const busyActors=new Set((work?.now??[]).filter(item=>item.kind==='act').map(item=>item.actor));
@@ -646,7 +621,6 @@ function render(state) {
   $('error-banner').hidden = !error;
   $('error-banner').textContent = error ? `${error.message} (${error.code})` : '';
   for (const button of document.querySelectorAll('button')) {
-    if(button.closest('#plan-choice')||['open-current-actions','close-current-actions'].includes(button.id))continue;
     if (button.closest('#startup-panel') || button.id==='open-startup') continue;
     button.disabled = actionPending
       || (button.id==='plan-run-toggle' && (state.planRun?.state==='pausing' || !!state.planRun?.issue&&state.planRun.reason!=='blocked'))

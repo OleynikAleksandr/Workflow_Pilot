@@ -106,7 +106,7 @@ test('the shared projection puts the current operation in one area and only the 
     const rows=[...p('progress-now').children].filter(row=>!/Сейчас ничего/.test(row.textContent));
     const expected=[value.primary,...value.now.filter(item=>item!==value.primary&&item.actor!==value.primary?.actor&&['act','warn'].includes(item.kind)&&item.key!==value.primary?.key)].filter(Boolean);
     assert.deepEqual(rows.map(row=>row.querySelector('.wp-spin')?'act':row.classList.contains('warn')?'warn':'wait'),expected.map(item=>item.kind),name);
-    assert.deepEqual([...$('current-now').children].map(row=>row.textContent.replace(/\d+:\d+$/,'')),rows.map(row=>row.textContent.replace(/\d+:\d+$/,'')),name+': same current area');
+    assert.equal($('current-now'),null,name+': no duplicated current area in sidebar');
     assert.equal(p('progress-history-count').textContent,eventCount(value.history.length),name);
     if(name==='План готов')assert.match(p('progress-now').textContent,/План ждёт вашей проверки и запуска\. Нажмите «Начать выполнение плана» слева/,'a ready plan is a wait for the user, not an empty list');
     // The problem block appears only with a problem; the foot stays pinned.
@@ -137,7 +137,7 @@ test('a large plan keeps the stage, the run button, the problem and Review out o
   assert.equal(list.children.length,40);
   for(const id of ['plan-phase','plan-progress'])assert.equal(card.querySelector('.plan-top').contains($(id)),true,id+' is pinned above');
   assert.equal($('plan-foot').contains($('plan-run-toggle')),true);
-  assert.ok($('current-actions-dialog').contains($('plan-attention')));
+  assert.ok(card.contains($('plan-attention')));
   assert.equal(card.contains($('plan-review-toggle')),false);
   assert.equal(list.contains($('plan-run-toggle')),false);
   // The pinning rules of the stylesheet: only the list scrolls inside a card that may shrink.

@@ -8,7 +8,7 @@ import { EventEmitter } from 'node:events';
 import { DesktopIpc } from '../src/frontend/desktop/ipc.mjs';
 import { ControlFacade, publicVpsState, publicRuntimeState } from '../src/control/facade.mjs';
 import { desktopFiles } from '../src/execution/facade.mjs';
-import { DESKTOP_CHANNELS,CLIENT_CHANNELS } from '../src/contracts/desktop.mjs';
+import { DESKTOP_CHANNELS } from '../src/contracts/desktop.mjs';
 
 test('IPC refuses remote pages, other windows, child frames and changed URLs before invoking Control', () => {
   const handlers=new Map(),localUrl='file:///fixture/index.html',archiveUrl='file:///fixture/archive.html';
@@ -48,7 +48,7 @@ for(const [file,globalName,surface,eventName] of [
   const api=scope[globalName];assert(Object.isFrozen(api));
   assert.equal(api.invoke,undefined);assert.equal(api.send,undefined);assert.equal(api.execute,undefined);
   for(const [name,fn]of Object.entries(api))if(name!=='onState')await fn();
-  assert.deepEqual([...new Set(invoked)].sort(),[...DESKTOP_CHANNELS[surface],...(surface==='local'?CLIENT_CHANNELS:[])].sort());
+  assert.deepEqual([...new Set(invoked)].sort(),[...DESKTOP_CHANNELS[surface]].sort());
   let received=0;const unsubscribe=api.onState(()=>received++);
   events.emit(eventName,{},{});assert.equal(received,1);
   unsubscribe();events.emit(eventName,{},{});assert.equal(received,1);assert.equal(events.listenerCount(eventName),0);

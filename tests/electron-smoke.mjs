@@ -250,6 +250,10 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   });
   const browser=currentObject('browser'),controller=currentObject('controller'),pageState=currentObject('pageState'),chromiumDiagnostics=currentObject('chromiumDiagnostics');
   smokeDataDir = dataDir;
+  sidebar.on('console-message',(event,_level,message)=>{
+    const text=event.message??message;
+    if(text)process.stderr.write('[sidebar fixture] '+text+'\n');
+  });
   await verifyCurrentActionsLayout(dataDir);
   fixtureBootstrap=async text=>{
     assert.match(text,/^Открой панель Workflow Pilot:/);assert.doesNotMatch(text,/Раздел 1:|wp-request-/);
@@ -547,14 +551,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await browser.executeJavaScript("document.title='Первый разговор проекта'");
   await waitFor(() => snapshot().projects[0].sessions[0].title === 'Первый разговор проекта', 'conversation title', snapshot);
   const first = store.selected();
-  const viewsBeforeActions=window.contentView.children.length,urlBeforeActions=browser.getURL(),documentBeforeActions=pageState.current.documentId;
-  await sidebar.executeJavaScript('document.getElementById("open-current-actions").click()');
-  await waitFor(()=>sidebar.executeJavaScript('document.getElementById("current-actions-dialog").open'),'client current actions open',snapshot);
-  assert.equal(window.contentView.children.length,viewsBeforeActions-1,'native ChatGPT view is detached while client actions are visible');
-  await sidebar.executeJavaScript('document.getElementById("close-current-actions").click()');
-  await waitFor(()=>window.contentView.children.length===viewsBeforeActions,'native page returns',snapshot);
-  assert.equal(browser.getURL(),urlBeforeActions,'opening current actions never reloads the chat');
-  assert.equal(pageState.current.documentId,documentBeforeActions,'the same document returns, not a reload of the same URL');
+  assert.equal(await sidebar.executeJavaScript('["open-current-actions","current-actions-dialog","plan-choice"].every(id=>!document.getElementById(id))'),true);
+  assert.ok(window.contentView.children.some(view=>view.webContents===getLive().browser),'the native ChatGPT view stays attached');
   assert.ok(first.chatUrl.startsWith('https://chatgpt.com/c/'));
   assert.equal(await sidebar.executeJavaScript('document.querySelector(".session-experience").textContent'), 'Chat');
   assert.equal(await sidebar.executeJavaScript('document.getElementById("new-chat")'), null, 'context card has no session creation button');
@@ -643,8 +641,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     detailsVisible: !document.getElementById('workspace-details').hidden, oldPlanText: !!document.getElementById('plan-text'),
     revisionVisible: document.getElementById('plan-card').textContent.includes('версия') || document.getElementById('plan-card').textContent.includes('Revision')
   })`).then(value => JSON.stringify(value)), JSON.stringify({ planCard: false, detailsVisible: true, oldPlanText: false, revisionVisible: false }));
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("open-current-actions").hidden'),false);
-  assert.equal(await sidebar.executeJavaScript('!!document.getElementById("session-notice").closest("#current-actions-dialog")'),true);
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("open-current-actions")'),null);
+  assert.equal(await sidebar.executeJavaScript('document.getElementById("session-notice").parentElement.contains(document.getElementById("projects"))'),true);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-progress").hidden'), true);
   assert.equal(await sidebar.executeJavaScript('document.querySelectorAll("#plan-tasks .plan-task").length'), 0);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-title").hidden'), true);
@@ -748,7 +746,11 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     expected_commit_message: 'docs: rendering fixture', commit_ref: {scope_id: activePlan.scope_id, task_id: task.id, role: 'implementation'} }));
   const writeFixturePlan = async plan => fs.writeFile(planFile, renderPlan(plan));
   await writeFixturePlan(activePlan); controller.attach(store.selected()); await controller.tick();
-  await waitFor(() => sidebar.executeJavaScript('document.getElementById("plan-status").textContent === "в main 1 из 3"'), 'working plan UI', snapshot);
+  await waitFor(async () => {
+    const ui=await sidebar.executeJavaScript('({status:document.getElementById("plan-status").textContent,error:document.getElementById("error-banner").textContent})');
+    await fs.writeFile(path.join(dataDir,'plan-ui.json'),JSON.stringify(ui));
+    return ui.status==='в main 1 из 3';
+  }, 'working plan UI', snapshot);
   assert.equal(await sidebar.executeJavaScript('document.getElementById("plan-title").hidden'), false);
   const firstScopeTitle = 'Автоимя scope fixture';
   await waitFor(() => store.selected().title === firstScopeTitle && store.selected().titleSource === 'scope',
