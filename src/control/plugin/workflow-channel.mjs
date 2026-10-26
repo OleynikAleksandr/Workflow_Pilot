@@ -196,7 +196,7 @@ export class WorkflowChannel {
     }
     return {case_id:item.case_id,nonce:item.nonce,busy_kind:item.busy_kind,marker:input.marker,
       ...(item.probe?{probe:item.probe}:{}),instruction:input.marker==='begin'&&item.busy_kind==='generation'
-        ?'Продолжи заранее выбранную содержательную работу в этом же ходе. После неё checkpoint resume с этим nonce; результаты пока не читай.':'Продолжай штатный цикл без повторного SDK.'};
+        ?'Продолжи заранее выбранную содержательную работу в этом же ходе. После неё checkpoint resume с этим nonce. Входящие уведомления обрабатывай по штатному протоколу; не игнорируй их ради измерения.':'Продолжай штатный цикл без повторного SDK.'};
   }
   experimentPage(member){
     const p=this.observe(member.target);return {document_id:p.documentId??null,seq:p.observationSeq??0,

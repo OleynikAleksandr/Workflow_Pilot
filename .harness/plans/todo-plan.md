@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1198,
+  "plan_revision": 1200,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -573,14 +573,17 @@
         "Неизменность читателя communication-store относительно 0.5.36 сверена; изолированное чтение нового WAL не продолжает активный опыт и не меняет его байты."
       ],
       "expected_commit_message": "fix: не откладывать входящие уведомления ради измерения",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "INSTRUCTIONS",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/plugin/workflow-channel.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -840,7 +843,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1198
+Revision: 1200
 
 ## Цель
 
@@ -894,8 +897,8 @@ Revision: 1198
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF, EVIDENCE
-- [TODO] INSTRUCTIONS: Исключить искусственное откладывание входящих уведомлений — Ожидает
-  - Git Commit: [PENDING] fix: не откладывать входящие уведомления ради измерения
+- [DONE] INSTRUCTIONS: Исключить искусственное откладывание входящих уведомлений — Завершено
+  - Git Commit: [DONE] fix: не откладывать входящие уведомления ради измерения
   - Reference: sdk-busy-recipient / INSTRUCTIONS / implementation
   - Файлы: src/control/plugin/workflow-channel.mjs, docs/planning/sdk-busy-recipient-acceptance.md
   - Параллельность: исключительное выполнение
