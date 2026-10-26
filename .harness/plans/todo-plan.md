@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1197,
+  "plan_revision": 1198,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -80,11 +80,6 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-        "required": false,
-        "revision": "WORKTREE"
-      },
-      {
         "path": "docs/planning/sdk-busy-recipient-delivery.md",
         "required": false,
         "revision": "WORKTREE"
@@ -96,6 +91,11 @@
       },
       {
         "path": "docs/planning/sdk-busy-recipient.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/sdk-busy-recipient-acceptance.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -550,6 +550,39 @@
       ]
     },
     {
+      "id": "INSTRUCTIONS",
+      "title": "Исключить искусственное откладывание входящих уведомлений",
+      "why": "Сверка измерительного текста перед DOCS выявила двусмысленное «результаты пока не читай», способное подменить наблюдение очереди инструкцией игнорировать фактический SDK.",
+      "dependencies": [
+        "VERSION"
+      ],
+      "functional_paths": [
+        "src/control/plugin/workflow-channel.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/sdk-busy-recipient-acceptance.md"
+      ],
+      "verification_ids": [
+        "architecture",
+        "chatgpt-plugin"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Checkpoint generation не требует игнорировать пришедшее SDK-уведомление; нормальное адресное чтение допускается, MID_TURN остаётся измеримым исходом, ранний speculative model-pull до уведомления не считается доставкой.",
+        "Алгоритм допуска, nonce, gates, ролевой протокол и UI не меняются; буквальный измерительный текст и описания hold/checkpoint согласованы с запретом искусственного откладывания.",
+        "Неизменность читателя communication-store относительно 0.5.36 сверена; изолированное чтение нового WAL не продолжает активный опыт и не меняет его байты."
+      ],
+      "expected_commit_message": "fix: не откладывать входящие уведомления ради измерения",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "sdk-busy-recipient",
+        "task_id": "INSTRUCTIONS",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -563,7 +596,8 @@
         "PROBE",
         "PROOF",
         "EVIDENCE",
-        "VERSION"
+        "VERSION",
+        "INSTRUCTIONS"
       ],
       "functional_paths": [],
       "documentation_paths": [
@@ -806,7 +840,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1197
+Revision: 1198
 
 ## Цель
 
@@ -860,12 +894,18 @@ Revision: 1197
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF, EVIDENCE
+- [TODO] INSTRUCTIONS: Исключить искусственное откладывание входящих уведомлений — Ожидает
+  - Git Commit: [PENDING] fix: не откладывать входящие уведомления ради измерения
+  - Reference: sdk-busy-recipient / INSTRUCTIONS / implementation
+  - Файлы: src/control/plugin/workflow-channel.mjs, docs/planning/sdk-busy-recipient-acceptance.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: VERSION
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализация всех документов проекта
   - Reference: sdk-busy-recipient / DOCS / implementation
   - Файлы: docs/planning/sdk-busy-recipient.md, docs/planning/sdk-busy-recipient-acceptance.md, docs/planning/sdk-busy-recipient-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-busy-delivery.md, docs/acceptance/sdk-busy-recipient.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/dialogue-timing.md, docs/modules/current-actions.md, docs/modules/project-compatibility.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
-  - Зависимости: POLICY, DISPATCH, PROBE, PROOF, EVIDENCE, VERSION
+  - Зависимости: POLICY, DISPATCH, PROBE, PROOF, EVIDENCE, VERSION, INSTRUCTIONS
 - [TODO] RELEASE: Собрать проверочный комплект macOS Windows Linux — Ожидает
   - Git Commit: [PENDING] delivery: собрать проверочный комплект macos windows linux
   - Reference: sdk-busy-recipient / RELEASE / implementation
@@ -887,9 +927,9 @@ Revision: 1197
 
 ## Context Pack For This Cycle
 
-- docs/planning/sdk-busy-recipient-acceptance.md
 - docs/planning/sdk-busy-recipient-delivery.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/sdk-busy-recipient.md
+- docs/planning/sdk-busy-recipient-acceptance.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
