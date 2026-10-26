@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1194,
+  "plan_revision": 1197,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -484,8 +484,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "VERSION",
@@ -501,7 +501,8 @@
         "src/contracts/backend.mjs",
         "scripts/stage-chatgpt-plugin.mjs",
         "tests/codex-app-server-mcp.test.mjs",
-        "tests/migration-compatibility.test.mjs"
+        "tests/migration-compatibility.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -515,7 +516,8 @@
       "acceptance_criteria": [
         "Следующий фактически свободный возрастающий номер выбран после сверки локальных/remote выпусков; прежний комплект 0.5.36 не изменён.",
         "Package/lock/backend/build/immutable staged resource согласованы, SDK/Kit/role записаны; protocol меняется лишь при реальной несовместимости.",
-        "Проверочный статус до live не объявлен stable/latest; новых зависимостей и изменений Kit ради опыта нет."
+        "Проверочный статус до live не объявлен stable/latest; новых зависимостей и изменений Kit ради опыта нет.",
+        "Новый immutable HTML через настоящий MCP/SDK подтверждает long-ticket90: два sync во время pending Promise и accepted; при lease pause поздний Promise только журналируется, UNKNOWN/read=false и один intent сохранены. Это renderer contract fixture с reserved-ticket metadata; настоящий допуск двух result и 89 секунд backend проверены отдельно полным циклом и workflow-channel."
       ],
       "expected_commit_message": "feat: согласовать версию проверочной сборки",
       "parallel_safe": false,
@@ -539,7 +541,13 @@
         "dependency_task_ids": [
           "PROOF"
         ]
-      }
+      },
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -798,7 +806,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1194
+Revision: 1197
 
 ## Цель
 
@@ -846,10 +854,10 @@ Revision: 1194
   - Файлы: scripts/analyze-sdk-busy-experiment.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/sdk-busy-analysis.test.mjs, tests/workflow-channel.test.mjs, docs/planning/sdk-busy-recipient.md
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
-- [TODO] VERSION: Согласовать версию проверочной сборки — Ожидает
-  - Git Commit: [PENDING] feat: согласовать версию проверочной сборки
+- [DONE] VERSION: Согласовать версию проверочной сборки — Завершено
+  - Git Commit: [DONE] feat: согласовать версию проверочной сборки
   - Reference: sdk-busy-recipient / VERSION / implementation
-  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF, EVIDENCE
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

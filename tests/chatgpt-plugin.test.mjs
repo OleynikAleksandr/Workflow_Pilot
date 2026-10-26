@@ -402,6 +402,44 @@ test('real SDK working channel starts automatically, reads full context and wait
   ui.$('stop').click();await eventually(async()=>!(comm.runs.get(invitation.run_id).grant.active));
   await delay(80);assert.equal(ui.messages.length,2);assert.deepEqual(ui.errors,[]);
 });
+test('new immutable panel renews a long-ticket lease while SDK is pending; a paused lease records a late Promise without replay',async t=>{
+  for(const pause of [false,true])await t.test(pause?'lease-lost-late-response':'lease-renewed',async t=>{
+    const f=await fixture(t),comm=f.plugin.communication;
+    const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
+    comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=()=>o;
+    comm.workflow.observe=()=>({canSend:true,stopped:true,busy:false});comm.workflow.admission=async()=>true;comm.waitMs=30;
+    // This renderer contract fixture supplies the optional reserved ticket.
+    // Genuine two-result admission and the 89-second backend attempt are
+    // independently exercised by workflow-channel and the full-cycle fixture.
+    const verify=comm._verify.bind(comm);comm._verify=async(...args)=>{
+      const ticket=await verify(...args);comm.attempt(args[0],false).message.sdk_busy={case_id:'renderer-lease'};
+      return {...ticket,sdk_busy:{case_id:'renderer-lease',sdk_timeout_ms:90000}};
+    };
+    const invite=await comm.reserve(o);await bridge(t,f);const c=await client(t,f);
+    const registration=await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
+    assert.equal(registration.isError,false);await comm.workflow.grant(o);
+    let releaseSdk,entered=false,renewals=0;const timers=[];
+    const ui=await communicationHtml(t,c,{timerMs:ms=>{timers.push(ms);return ms===90000?1500:ms===20000?25:ms===2000?10:ms;},
+      onMessage:async()=>{entered=true;return new Promise(resolve=>releaseSdk=resolve);},toolReply:async(request,result)=>{
+        if(entered&&request.name==='workflow_communication_sync'){
+          renewals++;
+          if(pause&&renewals===1){await comm.workflow.grant(o,'paused');return {...result,structuredContent:{...result.structuredContent,stopped:true}};}
+          if(!pause&&renewals===2)releaseSdk({});
+        }return result;
+      }});
+    await eventually(()=>ui.$('binding').textContent.includes('подтверждена'));
+    const queued=await comm.workflow.enqueue(o,{key:'long-renderer-ticket',kind:'diagnostic',text:'One reserved SDK notification'});
+    const state=()=>comm.runs.get(invite.run_id).messages.find(message=>message.message_id===queued.message_id);
+    await eventually(()=>state().delivery===(pause?'unknown':'accepted'));
+    assert.ok(timers.includes(90000));assert.ok(renewals>=(pause?1:2));assert.equal(ui.messages.length,1);
+    if(pause){releaseSdk({});await eventually(()=>comm.runs.get(invite.run_id).events.some(event=>event.event_type==='sdk.late_accepted'));
+      assert.equal(state().delivery,'unknown');assert.equal(comm.runs.get(invite.run_id).grant.active,false);
+    }
+    assert.equal(state().read,false,'neither SDK acceptance nor the late Promise invents read');
+    assert.equal(comm.runs.get(invite.run_id).events.filter(event=>event.event_type==='send.intent').length,1);
+    assert.deepEqual(ui.errors,[]);
+  });
+});
 
 test('workflow wait resynchronizes O after Continue even when the host loses STOPPED',async t=>{
   for(const structured of [true,false])await t.test(structured?'structured STOPPED':'opaque host error',async t=>{
