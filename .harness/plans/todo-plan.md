@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1217,
+  "plan_revision": 1218,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-messaging",
@@ -89,7 +89,12 @@
       "tests/backend-api.test.mjs",
       "tests/backend-browser-lifecycle.test.mjs",
       "tests/panel-dialogue-view.test.mjs",
-      "tests/parallel-finalization.test.mjs"
+      "tests/parallel-finalization.test.mjs",
+      "packages/workflow-kit/src/lib/common.mjs",
+      "packages/workflow-kit/src/lib/installer.mjs",
+      "tests/workflow-kit-upgrade.test.mjs",
+      "tests/fixtures/released-kit/kit-1.10.2.tar.gz",
+      "tests/fixtures/released-kit/manifest.json"
     ],
     "documentation_paths": [
       "docs/planning/sdk-messaging.md",
@@ -401,7 +406,13 @@
         "tests/migration-compatibility.test.mjs",
         "packages/workflow-kit/package.json",
         "packages/workflow-kit/package-lock.json",
-        "packages/workflow-kit/src/lib/role-protocol.mjs"
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/fixtures/released-kit/kit-1.10.2.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tools/codex-app-server-mcp/plugin.py"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -409,7 +420,8 @@
         "architecture",
         "release-tooling",
         "chatgpt-plugin",
-        "executor-channel"
+        "executor-channel",
+        "kit-upgrade"
       ],
       "id": "VERSION",
       "title": "Согласовать новую версию и immutable панель",
@@ -417,7 +429,8 @@
       "acceptance_criteria": [
         "После проверки локальных/remote выпусков выбран свободный возрастающий номер; package/lock/backend/protocol/build и immutable resource согласованы. 0.5.36/0.5.37 артефакты не перезаписаны.",
         "Несовместимая старая панель отклоняется явно. Закреплённые SDK зависимости сохраняются; новый protocol только при изменении контракта. Релизные инструменты подтверждены.",
-        "Если SDK меняет role-protocol/instructions Kit, повысить согласованные версии role/Kit, package/lock/templates и подтвердить kit-upgrade с выпущенных версий; installed Kit меняет installer. Без изменения контракта Kit версию не повышать."
+        "Если SDK меняет role-protocol/instructions Kit, повысить согласованные версии role/Kit, package/lock/templates и подтвердить kit-upgrade с выпущенных версий; installed Kit меняет installer. Без изменения контракта Kit версию не повышать.",
+        "Фактический MCP каталог dispatch/yield описывает доставку без busy/конца ответа; terminal proof отделён от следующего SDK. Upgrade с выпущенных 1.10.1/1.10.2 подтверждает новые инструкции ролей без замены плана."
       ],
       "expected_commit_message": "feat: согласовать новую версию и immutable панель",
       "parallel_safe": false,
@@ -658,7 +671,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-messaging
 Current Task: нет
-Revision: 1217
+Revision: 1218
 
 ## Цель
 
@@ -690,7 +703,7 @@ Revision: 1217
 - [TODO] VERSION: Согласовать новую версию и immutable панель — Ожидает
   - Git Commit: [PENDING] feat: согласовать новую версию и immutable панель
   - Reference: sdk-messaging / VERSION / implementation
-  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, packages/workflow-kit/src/lib/role-protocol.mjs
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/kit-1.10.2.tar.gz, tests/fixtures/released-kit/manifest.json, tools/codex-app-server-mcp/plugin.py
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
