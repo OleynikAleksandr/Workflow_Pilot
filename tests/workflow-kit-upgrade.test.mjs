@@ -24,6 +24,28 @@ function releasedKitArchive(ref) {
   return gunzipSync(bytes);
 }
 
+test('released 1.10.1 upgrades to the topic-title protocol without replacing the checkout plan',async t=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'kit-1101-topic-upgrade-'));
+  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const old=path.join(root,'old'),project=path.join(root,'project');fs.mkdirSync(old);fs.mkdirSync(project);
+  execFileSync('tar',['-x','-C',old],{input:releasedKitArchive('v0.5.35')});
+  const previous=await import(pathToFileURL(path.join(old,'.harness/kit/lib/installer.mjs')).href);
+  const previousRole=await import(pathToFileURL(path.join(old,'.harness/kit/lib/role-protocol.mjs')).href);
+  assert.equal(previousRole.ROLE_PROTOCOL_VERSION,10);
+  const git=(...args)=>execFileSync('git',args,{cwd:project,encoding:'utf8'}).trim();
+  git('init','-q','-b','main');git('config','user.name','Upgrade Fixture');git('config','user.email','fixture@example.invalid');
+  fs.writeFileSync(path.join(project,'README.md'),'# Isolated upgrade\n');git('add','README.md');git('commit','-qm','fixture');
+  assert.equal(previous.install({project,mode:'existing'}).version,'1.10.1');
+  const plan=fs.readFileSync(path.join(project,'.harness/plans/todo-plan.md'));
+  assert.equal(upgradeFrom.has('1.10.1'),true);assert.equal(install({project,mode:'existing',update:true}).upgraded,true);
+  const manifest=JSON.parse(fs.readFileSync(path.join(project,'.harness/kit-manifest.json')));
+  assert.equal(manifest.version,VERSION);assert.equal(manifest.upgraded_from,'1.10.1');
+  assert.deepEqual(fs.readFileSync(path.join(project,'.harness/plans/todo-plan.md')),plan);
+  const updatedRole=await import(pathToFileURL(path.join(project,'.harness/kit/lib/role-protocol.mjs')).href);
+  assert.equal(updatedRole.ROLE_PROTOCOL_VERSION,11);assert.match(updatedRole.roleText('planning'),/workflow_session_set_title/);
+  assert.equal(git('status','--porcelain'),'');
+});
+
 test('released 1.6.3 review survives upgrade and adopts author positions without guessing recipient', async t => {
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'kit-163-review-upgrade-'));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));

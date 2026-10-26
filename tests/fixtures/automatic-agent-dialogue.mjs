@@ -29,6 +29,7 @@ import {communicationMessageComplete} from '../../src/contracts/plugin-communica
 import {userChoseMode} from './execution-mode.mjs';
 import {readReview,prepareReview,respondReview,publishReview} from '../../packages/workflow-kit/src/lib/plan-review.mjs';
 import {runReview,REVIEW_MODEL} from '../../packages/workflow-kit/src/lib/claude-review.mjs';
+import {BrowserSessions} from '../../src/execution/browser/session-runtime.mjs';
 
 // Deliberately separate from the happy-path browser fixture. Exercises the
 // real Kit/Git ledger at precise interruption boundaries, using only tmp Git
@@ -146,16 +147,20 @@ export async function interruptionRegression(t){
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false}={}){
+export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,modeOption='orchestrated'}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
   const drafts=new Map(),preplanEvents=[],delayedReservations=new Set();
+  let releaseChoice,commandBarrier=null,commandEventOnly=false,lateEventOnly=false,clockOffset=0;
+  const choiceResponse=new Promise(resolve=>releaseChoice=resolve);
+  const rawPage=record=>record.fixtureObservation??record.pageState.current;
   const fast=owned&&batchResults,modelCalls=[];
   let leaseRecovered=false;
   const root=createFixture(directory,{setupDelayMs:owned&&batchResults?1500:0}),setup={node:async()=>process.execPath,
     environment:{...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
       GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}};
+  const commandFile=path.join(root,'.harness/runtime/command-activity/proof-command.json');
   const plans=new SessionPlans({setup});
   if(owned&&batchResults){
     // Hold the real setup lock long enough to exercise a concurrent O command.
@@ -177,9 +182,12 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   const store=control.projects;await store.load();await store.select(root);
   const origin=await store.newSession(root);
   const error=e=>{if(!closed)errors.push(e);};
-  const reportPage=record=>{if(!closed&&!record.disposed)workflow.observePage(record.pageState.current,record);};
+  const reportPage=record=>{if(!closed&&!record.disposed){
+    if(record.publishObservation)record.publishObservation();
+    else workflow.observePage(record.pageState.current,record);
+  }};
   const finish=record=>{
-    const page=record.pageState.current.state;
+    const page=rawPage(record).state;
     page.busy=false;page.lastMessageRole='assistant';page.assistantRevision++;page.turnId='a'+page.assistantRevision;
     reportPage(record);
   };
@@ -194,6 +202,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
     };
     const message=await call('read_message',args);
+    record.handledMessage=message;
     if(message.kind==='startup-context'){
       for(let part=0,total=1;part<total;part++){
         const value=await call('read_context',{message_id:message.message_id,context_ref:message.context_ref,part});total=value.total;
@@ -210,9 +219,10 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     const project=record.project();
     if(preplan&&message.kind==='user-choice'){
       preplanEvents.push({...message,text,sessionId:project.sessionId});
-      assert.equal(readPlan(root).execution_scope_status,'NONE');
+      assert.equal(readPlan(root).execution_scope_status,message.scope_id?'ACTIVE':'NONE');
       assert.equal(readPlan(root).current_task_id,null,'a UI decision never grants implementation');
       assert.match(message.instructions,/task:start/);
+      if(preplanEvents.length===2&&modeOption==='orchestrated')await choiceResponse;
       return; // A UI decision has no assignment task/yield contract.
     }
     notifications.push({...message,text,sessionId:project.sessionId});
@@ -450,7 +460,8 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
         assert.equal(input.canContinue(),true);const text=new URL(input.url).searchParams.get('q');
         navigation.epoch++;navigation.navigationSequence++;navigation.navigationOwner=input.navigationToken;
         page.url='https://chatgpt.com/c/'+project.sessionId;
-        record.pageState.current.documentId='postflight-'+project.sessionId;
+        rawPage(record).documentId='postflight-'+project.sessionId;
+        if(record.resetObservation){record.resetObservation();reportPage(record);}
         await record.controller.observeNavigation({type:'navigated',url:page.url,isMainFrame:true,navigationKind:'in-page',
           navigationSequence:navigation.navigationSequence,navigationOwner:navigation.navigationOwner,snapshot:{...navigation}});
         await record.controller.observePage({documentId:record.pageState.current.documentId,state:page},{...navigation});
@@ -478,10 +489,21 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
           record.ui=await communicationHtml(testPort,c,{hostMetadata:record.metadata,timerMs:ms=>ms===2000?40:ms,
             onMessage:request=>{
               assert.equal(page.busy,false,'the physical conversation is idle before SDK notification');
+              const id=JSON.parse(request.content.find(item=>item.type==='text').text.match(/аргументами (\{[^\n]+?\})\./)[1]).message_id;
+              record.sdkPageVersions?.set(id,record.pageState.version);
               page.busy=true;
               if(!owned){page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;page.lastMessageRole='user';}
-              record.pageState.current.seq++;reportPage(record);
-              const job=runAgent(record,request).catch(error).finally(()=>{jobs.delete(job);finish(record);});jobs.add(job);
+              if(!preplan)record.pageState.current.seq++;reportPage(record);
+              const job=runAgent(record,request).catch(error).finally(async()=>{
+                const handled=record.handledMessage;
+                if(preplan&&!project.assignmentId&&handled?.kind==='result'&&independent.includes(handled.task_id)&&!commandBarrier){
+                  commandBarrier={version:2,id:'proof-command',workspace:root,executor_instance:'isolated-proof',
+                    executor_pid:process.pid,started_at_ms:Date.now(),state:'running'};
+                  await fs.mkdir(path.dirname(commandFile),{recursive:true});
+                  await fs.writeFile(commandFile,JSON.stringify(commandBarrier));
+                }
+                jobs.delete(job);finish(record);
+              });jobs.add(job);
               return {}; // Host acceptance precedes the model's asynchronous work.
             }});
           page.url='https://chatgpt.com/c/'+project.sessionId;page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;
@@ -503,11 +525,28 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
         stageStartup:(...args)=>workflow.stageStartup(...args),startupProgress:(...args)=>workflow.startupProgress(...args),
         enrollmentProgress:(...args)=>workflow.enrollmentProgress(...args),cancelStartup:(...args)=>workflow.cancelStartup(...args)},
       onChange:()=>{if(record.controller?.state.phase==='error')error(new Error(JSON.stringify(record.controller.state.error)));}});
+    if(preplan){
+      // The observer/model are simulated; the runtime snapshot port and its
+      // PageStateSource are production adapters. Identical snapshots advance
+      // seq but emit no event, just as a real composer snapshot does.
+      const raw=record.fixtureObservation={version:1,...record.pageState.current};
+      Object.assign(page,{sendEnabled:true,editorRevision:0,draftRevision:0,userMessageCount:1,visibility:'hidden'});
+      const contents=new EventEmitter();Object.assign(contents,{getURL:()=>page.url,isDestroyed:()=>false});
+      const browsers=new BrowserSessions({host:{create:()=>contents,close:()=>{}},ipc:new EventEmitter(),
+        connect:(_contents,_ipc,source)=>{
+          record.publishObservation=()=>source.accept(structuredClone({...raw,seq:++raw.seq}));
+          record.resetObservation=()=>source.reset();return ()=>{};
+        },createComposer:()=>({get inFlight(){return composer.inFlight;},observeSnapshot:async()=>structuredClone({...raw,seq:++raw.seq})})});
+      const port=browsers.open(project.sessionId);record.pageState=port.pageState;
+      composer.observeSnapshot=port.composer.observeSnapshot;record.sdkPageVersions=new Map();
+      record.cleanups.push(record.pageState.subscribe(event=>{if(!event.reset&&!closed)workflow.observePage(event,record);}),()=>browsers.dispose());
+      reportPage(record);
+    }
     records.set(project.sessionId,record);return record;
   }
   const live={visible:null,paused:false,all:()=>[...records.values()],find:project=>records.get(project?.sessionId),ensure,
     navigate:async(record,url,{freshDraft}={})=>{
-      record.pageState.current.state.url=url;record.controller.attach(record.project(),{freshDraft});
+      rawPage(record).state.url=url;record.controller.attach(record.project(),{freshDraft});
       await record.controller.tick();await record.controller.tick();reportPage(record);return record;
     },release:record=>{record.disposed=true;record.controller.cancel();for(const fn of record.cleanups.splice(0))fn();}};
   workflow=createWorkflowCoordination({store,setup,plans,getController:()=>live.visible?.controller,
@@ -526,9 +565,10 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       return reserve(sessionId,correlation);
     };
   }
-  await plugin.communication.ready;plugin.communication.waitMs=40;
+  await plugin.communication.ready;plugin.communication.waitMs=preplan?25000:40;
+  if(preplan){const now=plugin.communication.now;plugin.communication.now=()=>now()+clockOffset;}
   t.after(async()=>{
-    closed=true;workflow.execution.dispose();workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
+    closed=true;releaseChoice();workflow.execution.dispose();workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
     for(const record of records.values())live.release(record);
     await Promise.allSettled([...jobs]);for(const fn of cleanups)await fn();
     plugin.communication.dispose();await plugin.communication.tail;await store.whenIdle();
@@ -572,12 +612,16 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     await workflow.planReview.setEnabled({workspace:root,sessionId:origin.sessionId,enabled:true});
     await wait(()=>preplanEvents.some(e=>e.ui_event?.type==='review-preference'),'Review ON read before planning');
     assert.match(preplanEvents[0].text,/Review: ON/);
+    const named=await c.callTool({name:'workflow_session_set_title',arguments:{title:'Обсуждение контрольного проекта'},_meta:o.metadata});
+    assert.equal(named.isError,false);assert.equal(named.structuredContent.titleSource,'topic');
+    assert.equal(store.project(root,origin.sessionId).title,'Обсуждение контрольного проекта');
+    assert.equal(readPlan(root).execution_scope_status,'NONE','a meaningful topic precedes even the mode request');
     await plans.call(root,'plan:mode-request',['--session',origin.sessionId,'--recommended','orchestrated','--reason',
       'Two independent tasks followed by checked integration']);
     workflow.userChoices.reconcile();
     await wait(()=>o.ui.dom.window.document.querySelector('#progress-choice button'),'actual mode card reaches the MCP panel');
     const choose=[...o.ui.dom.window.document.querySelectorAll('#progress-choice button')]
-      .find(button=>button.closest('[data-option-id]')?.dataset.optionId==='orchestrated');
+      .find(button=>button.closest('[data-option-id]')?.dataset.optionId===modeOption);
     assert.ok(choose,'the real panel offers orchestration');choose.click();
     await wait(()=>preplanEvents.length===2,'mode choice is read without a user bubble');
     assert.equal(o.pageState.current.state.userMessagesRevision,1);
@@ -585,6 +629,15 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     const ids=preplanEvents.map(e=>e.message_id);
     const events=()=>[...plugin.communication.runs.values()].flatMap(r=>r.events);
     assert.equal(events().filter(e=>e.event_type==='send.intent'&&ids.includes(e.message_id)).length,2);
+    const decision=workflow.snapshot().userChoices.records.find(r=>r.session_id===origin.sessionId);
+    assert.ok(['chosen','done'].includes(decision.state),'the saved button press completes the user decision');
+    if(modeOption!=='orchestrated')return {modeOption,preplanEvents};
+    clockOffset+=300000; // More than the former 120 one-second UI probes, without sleeping.
+    for(const id of ids)assert.equal(plugin.communication.workflow.turnProbes.has(id),false,'UI read has no response timer');
+    // A real stream-state event also exercises automatic lease renewal after
+    // the simulated long wait. No receipt, gate or SDK response is repaired.
+    rawPage(o).state.assistantRevision++;reportPage(o);
+    await wait(()=>plugin.communication.workflow.progress(origin.sessionId)?.sdk,'SDK recovers after the simulated long wait');
     const ordinary=planInput.tasks.filter(t=>t.id!=='DOCS');
     const rawTask=t=>({id:t.id,title:t.id==='DOCS'?'Актуализация всех документов проекта':t.title,why:t.why,
       dependencies:t.id==='DOCS'?ordinary.map(t=>t.id):t.dependencies,parallel_safe:t.parallel_safe,
@@ -643,6 +696,28 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   const start=await api.submit('plan.continue',{}),started=await api.wait(start.operationId);
   assert.equal(started.status,'completed',JSON.stringify(started));
   assert.equal(workflow.executionControl.view(root,'dialogue-fixture').state,'running','HTTP API runs the real plan button coordinator');
+  let scopedChoice;
+  if(preplan){
+    const results=()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
+      .filter(m=>m.kind==='result'&&independent.includes(m.task_id));
+    await wait(()=>results().length===2,'both checked results queue while the long choice response is busy');
+    assert.ok(results().every(m=>m.delivery==='pending'&&!m.read&&!m.intent));
+    const before=o.pageState.version;releaseChoice();
+    await wait(()=>results().some(m=>m.read),'one late runtime event delivers the first result');
+    const firstResult=results().find(m=>m.read);
+    assert.equal(o.sdkPageVersions.get(firstResult.message_id),before+1,'one changed observation suffices; no second idle event');
+    lateEventOnly=true;
+    await wait(()=>commandBarrier&&!o.pageState.current.state.busy,'first result handled; a local command alone holds the second');
+    assert.equal(results().filter(m=>m.read).length,1);
+    const version=o.pageState.version,secondResult=results().find(m=>!m.read);
+    await fs.writeFile(commandFile,JSON.stringify({...commandBarrier,state:'completed',exit_code:0}));
+    await wait(()=>results().every(m=>m.read),'command file watcher delivers the second result without a page event');
+    assert.equal(o.sdkPageVersions.get(secondResult.message_id),version,'command completion needs no new observer state');
+    commandEventOnly=true;
+    const target=await plugin.participantTarget(origin.sessionId);
+    scopedChoice=await plugin.communication.workflow.enqueue(target,{key:'scope-bound-ui-proof',kind:'user-choice',
+      text:'Сохранённое решение для текущего плана',role:'orchestrator'});
+  }
   await wait(()=>{
     if(errors.length)throw errors[0];
     const state=workflow.executionControl.view(root,'dialogue-fixture');
@@ -677,7 +752,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       assert.equal(notifications.filter(n=>n.kind==='clarification').length,2);
     }
     assert.equal(notifications.some(n=>['assignment-start','continue'].includes(n.kind)),false);
-    assert.ok([...records.values()].every(r=>r.pageState.current.state.userMessagesRevision===1),'SDK creates no user bubble');
+    assert.ok([...records.values()].every(r=>rawPage(r).state.userMessagesRevision===1),'SDK creates no user bubble');
     const completed=await c.callTool({name:'workflow_communication_participants',arguments:{},_meta:o.metadata});
     assert.equal(completed.isError,false);
     assert.equal(completed.structuredContent.assignments.length,taskCount);
@@ -718,6 +793,9 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     assert.ok(preplanEvents.every(event=>communicationMessageComplete(run.messages.find(m=>m.message_id===event.message_id))));
     assert.equal(run.messages.filter(m=>m.kind==='result'&&['T001','T002'].includes(m.task_id)&&m.read).length,2);
     assert.equal(readReview(root).review_events.filter(e=>e.type==='feedback').length,2,'review history survives task cleanup');
+    const scoped=run.messages.find(m=>m.message_id===scopedChoice.message_id);
+    assert.equal(scoped.scope_id,'dialogue-fixture');assert.equal(scoped.read,true);assert.equal(scoped.reply_observed,false);
+    assert.equal(lateEventOnly&&commandEventOnly,true);assert.equal(preplanEvents.length,3);
   }
   return {notifications,preplanEvents,run,root};
 }

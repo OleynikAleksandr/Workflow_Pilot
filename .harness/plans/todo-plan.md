@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1166,
+  "plan_revision": 1169,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "session-choice-and-delivery",
@@ -66,7 +66,10 @@
       "src/contracts/plugin-communication.mjs",
       "tests/fixtures/released-session-schema-0535.json",
       "tests/fixtures/plugin-host.mjs",
-      "tests/context-session.test.mjs"
+      "tests/context-session.test.mjs",
+      "tests/workflow-kit-upgrade.test.mjs",
+      "tests/fixtures/released-kit/manifest.json",
+      "tests/fixtures/released-kit/kit-1.10.1.tar.gz"
     ],
     "documentation_paths": [
       "docs/planning/session-choice-and-delivery.md",
@@ -299,8 +302,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "session-choice-and-delivery",
         "task_id": "PROOF",
@@ -318,7 +321,10 @@
         "tests/user-choices.test.mjs",
         "tests/chatgpt-plugin.test.mjs",
         "tests/electron-smoke.mjs",
-        "tests/backend-api.test.mjs"
+        "tests/backend-api.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/released-kit/kit-1.10.1.tar.gz"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -358,7 +364,14 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Подготовка 26.10.2026: реализация допускается только после отдельного поручения пользователя. Работать через Kit без делегирования, моделей, UI control, рабочего профиля и Test_003; donor заморожен. Провести полный контрольный цикл и fault injection из спецификации на изолированных fixtures. Не заменять событийную проверку прямым вызовом обработчика; не читать пользовательский WAL в обязательном тесте. Подтвердить result/read/acceptance/merge/зависимую задачу/cleanup раздельно. Не расширять исходники продукта внутри тестовой задачи. Перед Kit production-check проверить caches по AGENTS; обе части Kit обязательны."
+      "task_brief": "Подготовка 26.10.2026: реализация допускается только после отдельного поручения пользователя. Работать через Kit без делегирования, моделей, UI control, рабочего профиля и Test_003; donor заморожен. Провести полный контрольный цикл и fault injection из спецификации на изолированных fixtures. Не заменять событийную проверку прямым вызовом обработчика; не читать пользовательский WAL в обязательном тесте. Подтвердить result/read/acceptance/merge/зависимую задачу/cleanup раздельно. Не расширять исходники продукта внутри тестовой задачи. Перед Kit production-check проверить caches по AGENTS; обе части Kit обязательны.",
+      "actual_files": [
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/released-kit/kit-1.10.1.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "id": "VERSION",
@@ -587,7 +600,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: session-choice-and-delivery
 Current Task: нет
-Revision: 1166
+Revision: 1169
 
 ## Цель
 
@@ -617,10 +630,10 @@ Revision: 1166
   - Файлы: tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/control/plugin/service.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/backend/desktop-model.mjs, src/control/plugin/startup-context.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, src/contracts/backend.mjs, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, tests/workspace-session.test.mjs, tests/chatgpt-title.test.mjs, tests/plugin-enrollment.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs, src/control/context/context-session.mjs, src/execution/facade.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/fixtures/released-session-schema-0535.json, tests/fixtures/plugin-host.mjs, tests/context-session.test.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE
-- [TODO] PROOF: Проверить длительный цикл двух исполнителей после выбора — Ожидает
-  - Git Commit: [PENDING] fix: проверить длительный цикл двух исполнителей после выбора
+- [DONE] PROOF: Проверить длительный цикл двух исполнителей после выбора — Завершено
+  - Git Commit: [DONE] fix: проверить длительный цикл двух исполнителей после выбора
   - Reference: session-choice-and-delivery / PROOF / implementation
-  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/user-choices.test.mjs, tests/chatgpt-plugin.test.mjs, tests/electron-smoke.mjs, tests/backend-api.test.mjs
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/user-choices.test.mjs, tests/chatgpt-plugin.test.mjs, tests/electron-smoke.mjs, tests/backend-api.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.1.tar.gz
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE, NAME
 - [TODO] VERSION: Подготовить согласованный выпуск 0.5.36 — Ожидает
