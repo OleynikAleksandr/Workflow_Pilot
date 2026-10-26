@@ -1,8 +1,10 @@
 # Текущие действия: одно место внимания
 
-Контракт Workflow Pilot 0.5.36. Backend строит общую `workProgress`; основная MCP-панель использует `src/frontend/desktop/ui/current-actions.mjs` и общий [выбор пользователя](user-choice.md). Кнопка «Текущие действия», клиентский dialog и его IPC/preload/HTTP-путь удалены. Ролевые полномочия и внутренние S/P/O/E не меняются ради надписей. [Desktop](desktop.md), [панель](chatgpt-plugin.md), [тайминги](dialogue-timing.md).
+Контракт Workflow Pilot 0.5.37. Backend строит общую `workProgress`; основная MCP-панель использует `src/frontend/desktop/ui/current-actions.mjs` и общий [выбор пользователя](user-choice.md). Кнопка «Текущие действия», клиентский dialog и его IPC/preload/HTTP-путь удалены. Ролевые полномочия и внутренние S/P/O/E не меняются ради надписей. [Desktop](desktop.md), [панель](chatgpt-plugin.md), [тайминги](dialogue-timing.md).
 
 ## Распределение информации
+
+[Опыт SDK](sdk-busy-delivery.md) показывает mode/case/slots в существующей диагностике; новых кнопок или дубликатов sidebar нет. Обычные статусы ниже сохраняются при default off.
 
 | Место | Содержание |
 | --- | --- |

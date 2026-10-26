@@ -1,10 +1,12 @@
 # Единая поставка Workflow Pilot
 
-Версия 0.5.36. Порядок DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Фактические пакет/подпись/установка/публикация подтверждаются manifest и Kit evidence delivery-задач, не этой документацией. Живые ChatGPT, native Windows/Linux, VM и clean-install — NOT_RUN; [приёмка семи исправлений](../acceptance/release-0535-defects.md). Прежняя [D001–D011](../acceptance/release-0534-defects.md) сохраняет свой результат.
+Версия 0.5.37. Порядок DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Фактические пакет/подпись/установка/публикация подтверждаются manifest и Kit evidence delivery-задач. Приёмку ChatGPT фиксирует INSTALL; native Windows/Linux, VM и clean-install — NOT_RUN. [Приёмка семи исправлений](../acceptance/release-0535-defects.md) и прежняя [D001–D011](../acceptance/release-0534-defects.md) сохраняют свой результат.
 
 ## Комплект
 
-0.5.36: UI-решение завершается долговечной записью кнопки, его очередь — по read без ожидания конца ответа; следующая отправка использует адресные события и свежий допуск. Добавлено раннее имя своей сессии через MCP. Kit 1.10.2/роли 11, build 0.5.36-communication-5, протокол 5; upgrade с 1.10.1 проверен на выпущенном пакете. [Новая приёмка](../acceptance/session-choice-and-delivery.md) — NOT_RUN; прежняя не переписывается.
+0.5.37 добавляет [ограниченный SDK-опыт](sdk-busy-delivery.md), default off. Комплект до живого GO — локальный проверочный. [Матрица и возврат](../acceptance/sdk-busy-recipient.md) требуют OFF, три основных полных burst и точную read-only probe; fixtures/installer не заменяют этот gate. База 0.5.36 сохраняется.
+
+0.5.37: UI-решение завершается долговечной записью кнопки, его очередь — по read без ожидания конца ответа; следующая отправка использует адресные события и свежий допуск. Добавлено раннее имя своей сессии через MCP. Kit 1.10.2/роли 11, build 0.5.37-communication-5, протокол 5; upgrade с 1.10.1 проверен на выпущенном пакете. [Новая приёмка](../acceptance/session-choice-and-delivery.md) — NOT_RUN; прежняя не переписывается.
 
 Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`. Цели и симлинки проверяются до записи. Без любой платформы полный выпуск запрещён.
 
@@ -53,6 +55,8 @@ Schema 2: version/sourceCommit, sources/locks, Electron/Node/Kit, macOS signatur
 Installer не закрывает, не останавливает и не запускает приложение/службу. При backend из целевого bundle готовая копия остаётся в pending-слоте (`BACKEND_RUNNING`). Пользователь дожидается безопасной точки, останавливает службу через значок/меню, повторяет установку и открывает новую версию. Закрытия окна с 0.2.0 недостаточно; 0.1.6 нужно полностью завершить. Клиент другой версии только объясняет переход ([backend](backend.md)). Откат bundle не означает откат данных: после titleSource=topic старая 0.5.35 их не читает. [Условия обратного перехода](project-compatibility.md#данные-сессий-и-обратный-переход) требуют отдельного решения и проверенной копии.
 
 ## Публикация и приёмка
+
+SDK-опыт не публикуется до проверенного живого GO INSTALL, связанного с теми же sourceCommit/manifest/build/cases. UNKNOWN/INCONCLUSIVE не закрывают INSTALL/PUBLISH; условная ветка возврата идёт через Kit с новым DOCS/номером. Пересборка между GO и публикацией меняет предмет проверки и запрещена. Успех не включает burst глобально.
 
 PUBLISH: собственный OleynikAleksandr/Workflow_Pilot, fast-forward main, draft → семь assets → сверка → публикация. Проверяющий script ничего не публикует: сверяет origin, remote main == local HEAD, v<version> == manifest.sourceCommit, draft/prerelease=false и все имена/размеры/digests. Delivery-коммиты могут быть позже sourceCommit; тег остаётся на исходниках сборки.
 

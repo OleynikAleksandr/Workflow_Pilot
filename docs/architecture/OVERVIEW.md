@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Workflow Pilot 0.5.36 — локальные проекты, Workflow Kit 1.10.2 и обычный ChatGPT Chat, собственный MCP-исполнитель и [панель](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
+Workflow Pilot 0.5.37 — локальные проекты, Workflow Kit 1.10.2 и обычный ChatGPT Chat, собственный MCP-исполнитель и [панель](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
 
 Перед первой страницей ChatGPT backend подготавливает [официальное расширение поиска](../modules/chatgpt-search-extension.md) в своей persistent session: проверенная автоматическая загрузка/установка, затем локальный кэш. Новые сессии используют [Chat-only URL-start](../modules/chat-only-startup.md): короткий `q`, сохранённая попытка и отдельные подтверждения регистрации, адреса и контекста. Выбора режима и чтения старых Work-сессий нет. Schema 8 обновляет прежние Chat без смены identity; вход и принадлежность страницы проверяются независимо от переключателя. [Выбор пользователя](../modules/user-choice.md), роли, Kit и SDK-диалог сохраняются. [Живая приёмка](../acceptance/chat-only-startup.md) ChatGPT и native Windows/Linux остаётся NOT_RUN.
 
@@ -19,6 +19,8 @@ Backend — фоновая служба с Control, Execution, Kit, stores, ст
 `main.mjs` выбирает режим: встроенное окно, `--http-client` или `--backend-host`. In-process desktop — только dev smoke, packaged его не допускает. Control не импортирует Electron/fs/child_process; клиент не получает shell/CDP/stores. Allowlist IPC/API, проверка источника, bearer/Host/Origin, lease управления и журнал до эффекта сохраняются. UNKNOWN не разрешает повтор Send. Dependency-cruiser запрещает циклы и обход фасадов; публичные chatgpt-dom/composer/experience/pageScript сохранены. Источники Kit — packages/workflow-kit, Python MCP — tools/codex-app-server-mcp, UI плагина — src/frontend/plugin; staged resources генерируются.
 
 ## Выполнение и диалог
+
+В 0.5.37 [SDK-опыт](../modules/sdk-busy-delivery.md) по умолчанию off. Локальный профиль собственного test scope допускает два checked result занятому O, сохраняя прежний gate, отдельные receipts и UNKNOWN. Hold/checkpoint измеряют занятость; read-only анализатор проверяет доказательства. Нормальный режим сохранён; [живой GO](../acceptance/sdk-busy-recipient.md) обязателен до GitHub, упаковка и fixtures его не заменяют.
 
 До Review/публикации O сохраняет полные task_brief/prepared_task и неизменяемые байты контекста всех обычных задач и DOCS. После Start backend механически связывает согласованный пакет с настоящим assignment/attempt и отдельно авторизует по свежему grant; каждый E получает его по готовности без нового хода O для сочинения. Старые brief-only планы сохраняют поздний prepare. [Авторская подготовка](../modules/prepared-tasks.md), [рабочий диалог](../modules/assignment-dialogue.md).
 

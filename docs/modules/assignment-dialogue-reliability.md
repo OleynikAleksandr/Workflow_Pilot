@@ -1,6 +1,6 @@
 # Надёжность рабочего диалога
 
-Дополнение [контракта O/E](assignment-dialogue.md) для Workflow Pilot 0.5.36 / Kit 1.10.2. Версия рабочего диалога 1 отделена от протокола панели 5 и версии ролей 10. Legacy sequential/parallel, прежний orchestrated без версии и ручной эксперимент не меняются молча.
+Дополнение [контракта O/E](assignment-dialogue.md) для Workflow Pilot 0.5.37 / Kit 1.10.2. Версия рабочего диалога 1 отделена от протокола панели 5 и версии ролей 11. Legacy sequential/parallel, прежний orchestrated без версии и ручной эксперимент не меняются молча.
 
 ## Источники состояния и восстановление операций
 
@@ -27,6 +27,8 @@ ContextSession повторяет только проверку/подготов
 При generation-mismatch/lease-expired/sdk-unavailable/plan-paused status, progress и admission используют один предикат живой панели. Исторический handshake и running не удостоверяют SDK. Единственный recovery/listen использует epoch/abort/single-flight/backoff: поздний ответ не меняет новый binding, sync не выдаёт grant и не снимает ручную паузу. Binding/version/store/project removal дают точную терминальную причину, transient network — безопасные чтения с backoff. Ошибки не маскируются произвольным NETWORK_ERROR и не повторяют Send.
 
 ## SDK, FIFO и конец хода
+
+[Узкий SDK-опыт](sdk-busy-delivery.md) допускает два result занятому O только в явно подготовленном test scope; default off. Остальной раздел описывает обычный режим.
 
 Исключение — `user-choice`, включая Review: нажатие завершает решение после записи, read освобождает его очередь без конца ответа, yield, роста revision или idle-таймера. Это относится к scope=null и текущему scope, включая settled/complete. Старый accepted/read UI-gate нормализуется тем же предикатом; reply_observed не подделывается. UNKNOWN/unread и gates настоящих назначений сохраняются. Следующий Send отдельно проверяет физическую готовность по адресным событиям страницы/контроллера/команд. [Контракт выбора](user-choice.md#доставка).
 

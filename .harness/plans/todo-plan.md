@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1200,
+  "plan_revision": 1203,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -80,8 +80,8 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/sdk-busy-recipient-delivery.md",
-        "required": false,
+        "path": "docs/modules/sdk-busy-delivery.md",
+        "required": true,
         "revision": "WORKTREE"
       },
       {
@@ -90,14 +90,24 @@
         "revision": "WORKTREE"
       },
       {
-        "path": "docs/planning/sdk-busy-recipient.md",
-        "required": true,
+        "path": "docs/acceptance/sdk-busy-recipient.md",
+        "required": false,
         "revision": "WORKTREE"
       },
       {
+        "path": "docs/planning/sdk-busy-recipient.md",
+        "required": false,
+        "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
+      },
+      {
         "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-        "required": true,
-        "revision": "WORKTREE"
+        "required": false,
+        "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
+      },
+      {
+        "path": "docs/planning/sdk-busy-recipient-delivery.md",
+        "required": false,
+        "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
       }
     ],
     "include_last_completed_task": false,
@@ -147,7 +157,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": true,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
@@ -225,7 +236,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": true,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
@@ -321,7 +333,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": true,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
@@ -413,7 +426,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": true,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
@@ -526,7 +540,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": true,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
@@ -586,8 +601,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "DOCS",
@@ -633,27 +648,54 @@
       "context_pack": {
         "documents": [
           {
+            "path": "docs/modules/sdk-busy-delivery.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/acceptance/sdk-busy-recipient.md",
+            "required": false,
+            "revision": "WORKTREE"
+          },
+          {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": false
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           }
         ],
         "include_last_completed_task": false,
-        "dependency_task_ids": [
-          "POLICY",
-          "DISPATCH",
-          "PROBE",
-          "PROOF",
-          "VERSION"
-        ]
-      }
+        "dependency_task_ids": []
+      },
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/sdk-busy-recipient.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-busy-delivery.md",
+        "docs/planning/sdk-busy-recipient-acceptance.md",
+        "docs/planning/sdk-busy-recipient-delivery.md",
+        "docs/planning/sdk-busy-recipient.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -687,22 +729,38 @@
       "context_pack": {
         "documents": [
           {
+            "path": "docs/modules/sdk-busy-delivery.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/acceptance/sdk-busy-recipient.md",
+            "required": false,
+            "revision": "WORKTREE"
+          },
+          {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": false
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           }
         ],
         "include_last_completed_task": false,
-        "dependency_task_ids": [
-          "DOCS"
-        ]
+        "dependency_task_ids": []
       },
       "verification_kind": "package"
     },
@@ -741,23 +799,38 @@
       "context_pack": {
         "documents": [
           {
+            "path": "docs/modules/sdk-busy-delivery.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/acceptance/sdk-busy-recipient.md",
+            "required": false,
+            "revision": "WORKTREE"
+          },
+          {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": false
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           }
         ],
         "include_last_completed_task": false,
-        "dependency_task_ids": [
-          "RELEASE",
-          "DOCS"
-        ]
+        "dependency_task_ids": []
       },
       "verification_kind": "installed"
     },
@@ -794,23 +867,38 @@
       "context_pack": {
         "documents": [
           {
+            "path": "docs/modules/sdk-busy-delivery.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/architecture/OVERVIEW.md",
+            "required": true,
+            "revision": "WORKTREE"
+          },
+          {
+            "path": "docs/acceptance/sdk-busy-recipient.md",
+            "required": false,
+            "revision": "WORKTREE"
+          },
+          {
             "path": "docs/planning/sdk-busy-recipient.md",
-            "required": true
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": false
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": false
+            "required": false,
+            "revision": "f51752ab25451636fc71c780c0ec735a9d3b0d61"
           }
         ],
         "include_last_completed_task": false,
-        "dependency_task_ids": [
-          "INSTALL",
-          "DOCS"
-        ]
+        "dependency_task_ids": []
       },
       "verification_kind": "package"
     }
@@ -843,7 +931,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1200
+Revision: 1203
 
 ## Цель
 
@@ -903,8 +991,8 @@ Revision: 1200
   - Файлы: src/control/plugin/workflow-channel.mjs, docs/planning/sdk-busy-recipient-acceptance.md
   - Параллельность: исключительное выполнение
   - Зависимости: VERSION
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализация всех документов проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализация всех документов проекта
   - Reference: sdk-busy-recipient / DOCS / implementation
   - Файлы: docs/planning/sdk-busy-recipient.md, docs/planning/sdk-busy-recipient-acceptance.md, docs/planning/sdk-busy-recipient-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-busy-delivery.md, docs/acceptance/sdk-busy-recipient.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/dialogue-timing.md, docs/modules/current-actions.md, docs/modules/project-compatibility.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
@@ -930,9 +1018,11 @@ Revision: 1200
 
 ## Context Pack For This Cycle
 
-- docs/planning/sdk-busy-recipient-delivery.md
+- docs/modules/sdk-busy-delivery.md
 - docs/architecture/OVERVIEW.md
+- docs/acceptance/sdk-busy-recipient.md
 - docs/planning/sdk-busy-recipient.md
 - docs/planning/sdk-busy-recipient-acceptance.md
+- docs/planning/sdk-busy-recipient-delivery.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
