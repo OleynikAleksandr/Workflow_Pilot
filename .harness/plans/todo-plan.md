@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1223,
+  "plan_revision": 1225,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-messaging",
@@ -577,8 +577,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-messaging",
         "task_id": "RELEASE",
@@ -619,7 +619,10 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -741,7 +744,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-messaging
 Current Task: нет
-Revision: 1223
+Revision: 1225
 
 ## Цель
 
@@ -782,8 +785,8 @@ Revision: 1223
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-busy-delivery.md, docs/acceptance/sdk-busy-recipient.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/dialogue-timing.md, docs/modules/current-actions.md, docs/modules/user-choice.md, docs/modules/prepared-tasks.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/planning/sdk-messaging.md, docs/modules/orchestrated-execution.md, docs/modules/assignment-dialogue.md, docs/modules/plugin-communication-handoff.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/sdk-messaging.md, docs/acceptance/sdk-messaging.md, docs/modules/workflow-execution.md, docs/modules/execution.md, docs/modules/orchestrator-startup.md, docs/modules/session-titles.md, docs/modules/chat-only-startup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение
   - Зависимости: SDK, PROOF, VERSION
-- [TODO] RELEASE: Собрать macOS Windows Linux из одного исходного коммита — Ожидает
-  - Git Commit: [PENDING] delivery: собрать macos windows linux из одного исходного коммита
+- [DONE] RELEASE: Собрать macOS Windows Linux из одного исходного коммита — Завершено
+  - Git Commit: [DONE] delivery: собрать macos windows linux из одного исходного коммита
   - Reference: sdk-messaging / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
