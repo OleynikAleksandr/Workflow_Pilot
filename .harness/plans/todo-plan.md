@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1227,
+  "plan_revision": 1229,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-messaging",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Полностью перевести O, E и сообщения приложения на постоянный SDK, передать очередь обработки ChatGPT, удалить опыт и выпустить новый комплект macOS/Windows/Linux с установкой на Mac и GitHub публикацией.",
   "acceptance_criteria": [
     "SDK единственный рабочий транспорт всех ролей без режима/скрипта и ожидания busy/idle.",
@@ -672,8 +672,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-messaging",
         "task_id": "PUBLISH",
@@ -715,7 +715,8 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -742,10 +743,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: sdk-messaging
 Current Task: нет
-Revision: 1227
+Revision: 1229
 
 ## Цель
 
@@ -798,8 +799,8 @@ Revision: 1227
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать полный SDK выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] delivery: опубликовать полный sdk выпуск на github
+- [DONE] PUBLISH: Опубликовать полный SDK выпуск на GitHub — Завершено
+  - Git Commit: [DONE] delivery: опубликовать полный sdk выпуск на github
   - Reference: sdk-messaging / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
