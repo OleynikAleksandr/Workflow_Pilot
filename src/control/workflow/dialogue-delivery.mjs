@@ -5,6 +5,7 @@ import {AUTOMATIC_DIALOGUE_ENABLED} from '../../contracts/backend.mjs';
 import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 import {startupLaunch} from '../../contracts/startup-view.mjs';
 import {normalizeChatUrl} from '../../contracts/browser.mjs';
+import {communicationMessageComplete} from '../../contracts/plugin-communication.mjs';
 const startupFailure=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
@@ -222,13 +223,13 @@ export class DialogueDelivery {
   reserved(project){
     if(!this.uses(project))return false;
     for(const run of this.getPlugin()?.communication.runs.values()??[])if(run.mode==='workflow')
-      if(run.messages.some(m=>m.recipient_session_id===project.sessionId&&m.scope_id===(project.parentScopeId??project.scopeId)&&!m.reply_observed&&!m.startup_complete))return true;
+      if(run.messages.some(m=>m.recipient_session_id===project.sessionId&&m.scope_id===(project.parentScopeId??project.scopeId)&&!communicationMessageComplete(m)))return true;
     return false;
   }
   settled(workspace,scope){
     const project=this.store.project(workspace);
     for(const run of this.getPlugin()?.communication.runs.values()??[])if(run.mode==='workflow'&&run.project_id===project?.projectId&&run.grant?.scope_id===scope){
-      if(run.messages.some(m=>m.scope_id===scope&&!m.reply_observed&&!m.superseded&&!m.startup_complete))return false;
+      if(run.messages.some(m=>m.scope_id===scope&&!communicationMessageComplete(m)))return false;
       if(this.getPlugin().communication.assignment?.kit?.close&&run.messages.some(m=>m.scope_id===scope
         &&m.kind==='acceptance'&&!m.kit_transport_closed))return false;
       if(Object.values(run.assignment_intents??{}).some(i=>i.effect.scope_id===scope&&['authorized','needs_confirmation','prepared','deferred'].includes(i.phase)))return false;

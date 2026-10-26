@@ -109,7 +109,7 @@ export class UserChoices {
     }
     for (const fact of best.values()) {
       const current = this.records.get(fact.session_id);
-      if (current && (OPEN.includes(current.state) || current.state === 'chosen')) continue;
+      if (current && (OPEN.includes(current.state)||this.saving.has(current.choice_id))) continue;
       const { question, reason, options } = choiceOptions(fact.kind, fact.data);
       const record = { choice_id: this.id(), generation: 1, session_id: fact.session_id, workspace: fact.workspace, kind: fact.kind,
         key: fact.key, data: fact.data ?? {}, role: fact.role ?? null, question, reason: reason ?? null, options, state: 'offered',
@@ -203,7 +203,7 @@ export class UserChoices {
   }
   view(sessionId) { const record = this.records.get(sessionId),value=choiceView(record,this.delivery(record));
     return value&&this.saving.has(record.choice_id)?{...value,state:'saving',chosen:null}:value; }
-  pending(sessionId) { const record = this.records.get(sessionId); return !!record && (OPEN.includes(record.state) || record.state === 'chosen'); }
+  pending(sessionId) { const record = this.records.get(sessionId); return !!record && (OPEN.includes(record.state)||this.saving.has(record.choice_id)); }
   workspaceHistory(workspace) { return this.history.filter(entry => entry.workspace === workspace); }
   forget(sessionId) {
     const removed = this.records.delete(sessionId);

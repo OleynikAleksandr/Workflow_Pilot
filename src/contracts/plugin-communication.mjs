@@ -1,4 +1,13 @@
 export const ASSIGNMENT_DIALOGUE_VERSION=1;
+// A UI notification is settled by its delivery receipt, not by the model's
+// subsequent answer. Other working messages retain their turn/yield contract.
+export function communicationMessageComplete(message) {
+  if(!message)return false;
+  if(message.startup_complete)return true;
+  if(message.kind==='user-choice')return !!(message.superseded&&!message.intent
+    ||(message.read||message.superseded_read)&&(!message.intent||message.delivery==='accepted'));
+  return !!(message.reply_observed||message.superseded);
+}
 export const ASSIGNMENT_KINDS=Object.freeze(['task','context_request','context','question','clarification','decision','result','revision_request','acceptance']);
 export const assignmentError=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 export const assignmentCheck=(value,code,message)=>{if(!value)throw assignmentError(code,message);};

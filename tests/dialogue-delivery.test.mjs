@@ -67,6 +67,21 @@ test('removed checkout terminal proof is narrow and requires parent identity and
   }finally{plugin.communication.dispose();await plugin.communication.tail;}
 });
 
+test('scope-bound UI receipts settle the channel without completing a model turn',()=>{
+  const message={kind:'user-choice',scope_id:'scope',recipient_session_id:'o',delivery:'accepted',intent:true,
+    read:true,reply_observed:false};
+  const run={mode:'workflow',project_id:'p',grant:{scope_id:'scope'},messages:[message],assignment_intents:{}};
+  const delivery=new DialogueDelivery({store:{project:()=>({projectId:'p'})},route:()=> 'plugin-v1',
+    getPlugin:()=>({communication:{runs:new Map([['r',run]])}})});
+  const project={sessionId:'o',scopeId:'scope'};
+  assert.equal(delivery.reserved(project),false);assert.equal(delivery.settled('/main','scope'),true);
+  message.ui_event={type:'review-preference'};assert.equal(delivery.settled('/main','scope'),true);
+  message.read=false;assert.equal(delivery.reserved(project),true);assert.equal(delivery.settled('/main','scope'),false);
+  message.read=true;message.delivery='unknown';assert.equal(delivery.settled('/main','scope'),false);
+  message.delivery='pending';delete message.intent;assert.equal(delivery.settled('/main','scope'),true);
+  assert.equal(message.reply_observed,false);
+});
+
 test('participant validation retries transient integration reads but never retains stale ownership',async()=>{
   const plugin=new PluginProjects({projects:{snapshot:()=>({projects:[]})},loadContext:async()=>null});
   let calls=0;const target={role:'O',local_session_id:'o'};

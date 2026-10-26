@@ -290,8 +290,16 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   },
   watch:(workspace,signal)=>{
     const onError=error=>{if(error)execution.publish(workspace,{phase:'attention',error});};
-    const watcher=new ProjectInputWatch({workspace,onSignal:signal,onError});
-    const children=new ChildCommandWatches({onSignal:signal,onError});
+    const changed=()=>{
+      for(const record of liveSessions.all()){
+        const project=record.project();
+        if(project&&(project.parentWorkspace??project.workspace)===workspace)
+          getPlugin()?.communication.observeSession(project.sessionId);
+      }
+      signal();
+    };
+    const watcher=new ProjectInputWatch({workspace,onSignal:changed,onError});
+    const children=new ChildCommandWatches({onSignal:changed,onError});
     const refreshAssignments=()=>{
       const state=execution.view(workspace),origin=store.project(workspace,state.originSessionId);
       // No worktree path from an unconfirmed/foreign assignment is watched.
@@ -615,6 +623,7 @@ return Object.freeze({
   sessionChanged(record) {
     record.primaryAutomation?.update();record.executor?.changed();
     const project=record.project();
+    if(project)getPlugin()?.communication.observeSession(project.sessionId);
     if(project&&planReview.preferenceErrors.has(project.parentWorkspace??project.workspace))
       void planReview.reconcilePreferences(project.parentWorkspace??project.workspace).catch(report);
     if(record.identity&&!record.identity.assignmentId&&execution.unwatch.has(record.identity.workspace)) {

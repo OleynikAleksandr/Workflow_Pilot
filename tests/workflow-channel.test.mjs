@@ -810,21 +810,22 @@ test('a preplan choice without a user bubble releases two results after publicat
   await sdk(f,b,choice.message_id);await f.c.read({...b,message_id:choice.message_id});
   const run=()=>f.c.runs.get(b.run_id),msg=()=>run().messages.find(m=>m.message_id===choice.message_id);
   delete msg().read_page; // A choice persisted by 0.5.34 has only the delivery gate baseline.
-  await observe(f,'o');f.advance(600);await observe(f,'o');assert.equal(msg().reply_observed,false,'read and old idle are insufficient');
+  run().members[b.participant_id].deliveryGate={message_id:choice.message_id,documentId:page.documentId,
+    observationSeq:1,assistantRevision:1,wait_reason:'confirming-idle'};
+  f.c.workflow.turnProbes.set(choice.message_id,{runId:b.run_id,count:120,exhausted:true,timer:null});
+  page.busy=true;page.stopped=false;page.canSend=false;f.advance(300000);
+  assert.equal(msg().reply_observed,false,'read is not a fabricated end of the response');
   const published={...o,scope_id:'s'};f.targets.set('o',published);
   await f.c.workflow.grant(published);b=await f.sync(f.c,b);
   const results=await Promise.all(['T001','T002'].map(id=>f.c.workflow.enqueue(published,{key:id,kind:'result',text:id})));
   const progress=f.c.workflow.progress('o');
   assert.equal(progress.incoming.message_id,results[0].message_id);
-  assert.equal(progress.blocker.message_id,choice.message_id);
-  assert.equal(progress.blocker.scope_id,null,'the blocking preplan message survives the current scope filter');
-  assert.equal(progress.blocker.read,true);assert.equal(progress.blocker.kind,'user-choice');
+  assert.equal(progress.blocker,undefined,'a read preplan choice no longer occupies the result lane');
   assert.doesNotMatch(JSON.stringify(progress),/Оркестрация|enrollment_ticket|conversation_key/,'projection contains only safe facts');
-  assert.equal(pending(f.c,b),null,'Start alone cannot reset the prior gate');
-  page.assistantRevision=672;page.commandsIdle=false;await observe(f,'o');f.advance(600);await observe(f,'o');
-  assert.equal(msg().reply_observed,false,'a command still blocks completion');
-  page.commandsIdle=true;await observe(f,'o');f.advance(600);await observe(f,'o');
-  assert.equal(msg().reply_observed,true);assert.equal(page.userMessagesRevision,1);
+  assert.equal(pending(f.c,b),null,'the actual busy page still prevents sending');
+  assert.equal(f.c.workflow.turnProbes.has(choice.message_id),false,'UI events do not poll for the response');
+  page.busy=false;page.stopped=true;page.canSend=true;await observe(f,'o');
+  assert.equal(msg().reply_observed,false);assert.equal(page.userMessagesRevision,1);
   assert.equal(f.c.workflow.progress('o').blocker,undefined,'the resolved gate is not a current blocker');
   for(const result of results){
     assert.equal(pending(f.c,b),result.message_id);await sdk(f,b,result.message_id);await f.c.read({...b,message_id:result.message_id});
@@ -852,13 +853,15 @@ test('user event completion preserves unknown, manual Stop, stale document and r
   }
 });
 
-test('a directly read UI decision finishes its own response without fabricating SDK acceptance',async t=>{
+test('a directly read UI decision settles delivery without inventing SDK acceptance or a reply',async t=>{
   const f=await fixture(t),b=await f.bind(f.c,f.o),page=f.pages.get('o');
   const choice=await f.c.workflow.enqueue(f.o,{key:'direct-choice',kind:'user-choice',text:'Выбор'});
   const read=await f.c.read({...b,message_id:choice.message_id});assert.match(read.instructions,/workflow_assignment_yield.*не требуются/);
   page.assistantRevision++;await observe(f,'o');f.advance(600);await observe(f,'o');
   const run=f.c.runs.get(b.run_id),message=run.messages[0];
-  assert.equal(message.read,true);assert.equal(message.reply_observed,true);assert.equal(message.delivery,'pending');
+  assert.equal(message.read,true);assert.equal(message.reply_observed,false);assert.equal(message.delivery,'pending');
+  assert.equal(f.c.workflow.choicePending(run,run.members[b.participant_id]),false);
+  assert.equal(f.c.workflow.turnProbes.size,0);
   assert.equal(run.events.filter(e=>e.event_type==='send.intent').length,0);
 });
 

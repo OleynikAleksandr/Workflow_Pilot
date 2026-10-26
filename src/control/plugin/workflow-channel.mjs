@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {workflowRunId} from './enrollment.mjs';
+import {communicationMessageComplete} from '../../contracts/plugin-communication.mjs';
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const fail=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
@@ -87,7 +88,7 @@ export class WorkflowChannel {
     const question=dialogue.findLast(m=>m.blocking&&m.kind==='question');
     const blocked=!!question&&!dialogue.some(m=>m.kind==='decision'&&m.resume&&m.block_id===question.block_id);
     const incoming=run?.messages.find(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
-      &&!m.superseded&&!m.startup_complete&&!m.reply_observed);
+      &&!communicationMessageComplete(m));
     const readAt=incoming&&run.events.findLast(e=>e.event_type==='message.read'&&e.message_id===incoming.message_id)?.server_time;
     const acceptedAt=incoming&&run.events.findLast(e=>e.event_type==='send.report'&&e.message_id===incoming.message_id&&e.outcome==='accepted')?.server_time;
     // A previous UI decision can belong to the unpublished scope and still
@@ -96,7 +97,7 @@ export class WorkflowChannel {
     const gate=member?.deliveryGate;
     const gated=gate&&run.messages.find(m=>m.message_id===gate.message_id);
     const page=member?this.observe(member.target):null;
-    const blocker=gated&&!gated.reply_observed?{message_id:gated.message_id,kind:gated.kind,
+    const blocker=gated&&this.gatePending(run,member)?{message_id:gated.message_id,kind:gated.kind,
       scope_id:gated.scope_id??null,task_id:gated.task_id??null,read:!!(gated.read||gated.superseded_read),delivery:gated.delivery,
       reason:page?.manualStopped?'manual-stop':page?.commandsIdle===false?'commands-active':page?.busy?'recipient-busy'
         :gate.wait_reason??'physical-completion-unconfirmed',created_at:gated.created_at}:null;
@@ -123,10 +124,16 @@ export class WorkflowChannel {
       &&(member.role==='O'||member.target.scope_id===run.grant.scope_id);
   }
   // The user's choice is delivered without the plan permission: no plan, paused or complete.
-  choicePending(run,member){return run.messages.some(m=>m.kind==='user-choice'&&m.recipient_id===member.id&&!m.reply_observed&&!m.superseded);}
+  choicePending(run,member){return run.messages.some(m=>m.kind==='user-choice'&&m.recipient_id===member.id&&!communicationMessageComplete(m));}
   transportPermitted(run,member){return this.permitted(run,member)||this.c.startup.active(run,member)||this.choicePending(run,member);}
-  first(run,member){return run.messages.find(m=>m.recipient_id===member.id&&!m.superseded&&!m.startup_complete
-    &&(m.kind==='startup-context'||m.kind==='user-choice'||m.scope_id===run.grant?.scope_id)&&!m.reply_observed);}
+  first(run,member){return run.messages.find(m=>m.recipient_id===member.id&&!communicationMessageComplete(m)
+    &&(m.kind==='startup-context'||m.kind==='user-choice'||m.scope_id===run.grant?.scope_id));}
+  gatePending(run,member){
+    if(!member.deliveryGate)return false;
+    const message=run.messages.find(m=>m.message_id===member.deliveryGate.message_id);
+    return message?.kind==='user-choice'?!communicationMessageComplete(message)
+      :!message?.reply_observed&&!message?.startup_complete;
+  }
   attach(run,member) {
     if(run.grant){member.generation=run.grant.generation;member.stopped=!run.grant.active;}
     for(const message of run.messages)if(message.recipient_session_id===member.target.local_session_id&&!message.recipient_id)
@@ -202,7 +209,7 @@ export class WorkflowChannel {
       block_id:message.block_id??null,problem_id:message.problem_id??null,repair_attempt:message.repair_attempt??null,
       escalation_required:message.escalation_required===true,...deliveryStage(message)}:{})};}
   pending(run,member) {
-    if(!this.transportPermitted(run,member)||member.deliveryGate||!this.observe(member.target).canSend)return null;
+    if(!this.transportPermitted(run,member)||this.gatePending(run,member)||!this.observe(member.target).canSend)return null;
     const first=this.first(run,member);
     return first?.delivery==='pending'&&!first.read&&first.delivery_mode!=='model-pull'?first:null;
   }
@@ -217,7 +224,7 @@ export class WorkflowChannel {
   }
   async claimBlockReason(run,member,message) {
     if(message.kind!=='startup-context'&&this.c.startup.active(run,member))return 'previous-message';
-    if(member.deliveryGate)return 'previous-turn';
+    if(this.gatePending(run,member))return 'previous-turn';
     const first=this.first(run,member);
     if(first?.message_id!==message.message_id)return 'previous-message';
     const physical=this.physicalBlock(member.target);if(physical)return physical;
@@ -227,17 +234,20 @@ export class WorkflowChannel {
     return this.physicalBlock(member.target);
   }
   begin(run,member,message) {
+    if(message.kind==='user-choice')return; // FIFO owns delivery until read; no model-turn gate.
     const page=this.observe(member.target);
     member.deliveryGate={message_id:message.message_id,documentId:page.documentId??null,turnId:page.turnId??null,
       observationSeq:page.observationSeq??0,
       userTurnId:page.userTurnId??null,assistantRevision:page.assistantRevision??0,userMessagesRevision:page.userMessagesRevision??0};
   }
   async observed(run,member) {
-    // UI decisions are not assignments: reading one does not require task yield.
-    for(const message of this.directUserEvents(run,member)){
-      const page=message.read_page;
-      const gate=message.handlingGate??={...page,message_id:message.message_id};
-      await this.observeUserEvent(run,member,message,gate,true);
+    // Retire only saved legacy UI gates whose own delivery is confirmed.
+    // Never manufacture reply.observed: the model may still be answering.
+    const uiGate=member.deliveryGate&&run.messages.find(m=>m.message_id===member.deliveryGate.message_id);
+    if(uiGate?.kind==='user-choice'&&communicationMessageComplete(uiGate)){
+      await this.c.enrollment.validate(member.target);
+      delete member.deliveryGate;delete uiGate.handlingGate;
+      this.c.event(run,'user_event.delivered',{participant_id:member.id,message_id:uiGate.message_id});
     }
     // A recipient may read several queued messages in one model turn. These
     // have no SDK delivery gate, but still need their own fresh idle evidence.
@@ -250,7 +260,7 @@ export class WorkflowChannel {
     const gate=member.deliveryGate;if(!gate)return;
     const message=run.messages.find(m=>m.message_id===gate.message_id);
     if(message?.kind==='startup-context')return; // Explicit all-parts receipt closes this lane, not an inferred model reply.
-    if(message?.kind==='user-choice')return this.observeUserEvent(run,member,message,gate);
+    if(message?.kind==='user-choice')return; // Uncertain/unread UI delivery remains a barrier.
     if(message?.dialogue_version===1)return this.observeDialogue(run,member,message,gate);
     const page=this.observe(member.target);
     const native=gate.turnId&&page.turnId&&gate.turnId!==page.turnId&&gate.userTurnId&&page.userTurnId&&gate.userTurnId!==page.userTurnId;
@@ -262,36 +272,6 @@ export class WorkflowChannel {
         this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id});
       }
     }
-  }
-  directUserEvents(run,member){
-    return run.messages.filter(m=>m.kind==='user-choice'&&m.recipient_id===member.id&&m.read&&m.read_page
-      &&!m.intent&&m.delivery==='pending'&&!m.reply_observed&&!m.superseded);
-  }
-  async observeUserEvent(run,member,message,gate,direct=false){
-    if(!(message.read||message.superseded_read)||message.reply_observed||(!direct&&message.delivery!=='accepted'))return;
-    await this.c.enrollment.validate(member.target);
-    const page=await this.reconcile(member.target),baseline=message.read_page??gate;
-    if(!page||!gate.documentId||page.documentId!==gate.documentId||page.documentId!==baseline.documentId
-      ||page.observationSeq<=Math.max(gate.observationSeq??0,baseline.observationSeq??0))return;
-    const reason=!page.commandsIdle?'commands-active':page.manualStopped?'manual-stop':page.busy?'assistant-busy'
-      :!page.stopped||!page.canSend?'page-unavailable':null;
-    if(reason){
-      if(gate.idle||gate.wait_reason!==reason){delete gate.idle;gate.wait_reason=reason;
-        this.c.event(run,'turn.waiting',{message_id:message.message_id,reason});}
-      return;
-    }
-    // A snapshot of the old idle response is insufficient, even after read.
-    if(page.assistantRevision<=gate.assistantRevision)return;
-    const signature=JSON.stringify([page.documentId,page.turnId,page.assistantRevision]);
-    if(gate.idle?.signature!==signature){
-      gate.idle={signature,seq:page.observationSeq,at:this.c.now()};gate.wait_reason='confirming-idle';
-      this.c.event(run,'turn.idle_candidate',{message_id:message.message_id});return;
-    }
-    if(page.observationSeq<=gate.idle.seq||this.c.now()-gate.idle.at<500)return;
-    message.reply_observed=true;
-    if(member.deliveryGate?.message_id===message.message_id)delete member.deliveryGate;
-    delete message.handlingGate;
-    this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id,evidence:'user-event-read-fresh-idle'});
   }
   directlyHandled(run,member){
     return run.messages.filter(m=>m.recipient_id===member.id&&m.scope_id===run.grant?.scope_id
@@ -345,9 +325,8 @@ export class WorkflowChannel {
     if(this.c.disposed)return;
     const eligible=new Map(Object.values(run.members).flatMap(member=>{
       const gate=member.deliveryGate,message=run.messages.find(m=>m.message_id===gate?.message_id);
-      const decision=message?.kind==='user-choice'&&message.read&&message.delivery==='accepted'&&!message.reply_observed;
-      return [...(decision||this.permitted(run,member)&&message?.dialogue_version===1&&message.yielded&&!message.reply_observed
-        ?[[message.message_id,member]]:[]),...this.directUserEvents(run,member).map(m=>[m.message_id,member]),
+      return [...(message?.kind!=='user-choice'&&this.permitted(run,member)&&message?.dialogue_version===1&&message.yielded&&!message.reply_observed
+        ?[[message.message_id,member]]:[]),
         ...(this.permitted(run,member)?this.directlyHandled(run,member).map(m=>[m.message_id,member]):[])];
     }));
     for(const [id,p] of this.turnProbes)if(p.runId===run.id&&!eligible.has(id)){clearTimeout(p.timer);this.turnProbes.delete(id);}

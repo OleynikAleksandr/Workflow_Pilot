@@ -21,17 +21,31 @@ function fixture(initial = []) {
   return { choices, acts, delivered, receipts, page, set: value => { facts = value; }, tick: ms => { now += ms; } };
 }
 const refused = { session_id: 'o', workspace: '/w', kind: 'refused', key: 'refused:s:x', data: { message: 'Kit отказал в назначении T001: STACK', task_id: 'T001' }, role: 'orchestrator' };
+test('each of the three mode buttons completes the decision at durable save, before delivery',async()=>{
+  const fact={session_id:'o',workspace:'/w',kind:'mode',key:'mode:1',data:{recommended:'orchestrated',reason:'fixture'},role:'planning'};
+  for(const option of choiceOptions('mode',fact.data).options){
+    const f=fixture([fact]);f.choices.reconcile();const view=f.choices.view('o');
+    await f.choices.choose({session_id:'o',choice_id:view.choice_id,generation:view.generation,option_id:option.id});
+    assert.equal(f.choices.pending('o'),false,option.id);
+    assert.ok(f.choices.snapshot().records[0].chosen_at,option.id);
+    assert.equal(f.delivered.length,1,option.id);
+    assert.equal(f.receipts.size,0,'no model read or reply was needed');
+    await assert.rejects(f.choices.choose({session_id:'o',choice_id:view.choice_id,generation:view.generation,option_id:option.id}),{code:'USER_CHOICE_CHANGED'});
+  }
+});
 test('a chosen receipt waits for durable save; failure restores offered options before any effect',async()=>{
   const f=fixture([refused]);f.choices.reconcile();let release,entered;
   const started=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);let fail=true;
   f.choices.persist=async()=>{entered();await gate;if(fail)throw Error('fixture storage refused');};
   const before=f.choices.view('o'),pending=f.choices.choose({session_id:'o',choice_id:before.choice_id,generation:before.generation,option_id:'fix'});
   await started;assert.equal(f.choices.view('o').state,'saving');assert.equal(f.acts.length,0);assert.equal(f.delivered.length,0);
+  assert.equal(f.choices.pending('o'),true,'an uncommitted press is not a saved decision');
   release();await assert.rejects(pending,{code:'USER_CHOICE_SAVE'});
   assert.equal(f.choices.view('o').state,'offered');assert.match(f.choices.view('o').error,/storage refused/);
   assert.equal(f.choices.view('o').generation,before.generation);assert.equal(f.delivered.length,0);
   fail=false;const saved=await f.choices.choose({session_id:'o',choice_id:before.choice_id,generation:before.generation,option_id:'fix'});
   assert.equal(saved.state,'chosen');f.receipts.set('m1',{delivery:'accepted'});f.choices.reconcile();assert.equal(f.choices.view('o').state,'chosen');
+  assert.equal(f.choices.pending('o'),false,'a saved decision does not wait for the model response');
   f.receipts.set('m1',{read:true});assert.equal(f.choices.view('o'),null,'read retires the current confirmation without waiting for the model turn');
   f.choices.reconcile();const ids=f.choices.workspaceHistory('/w').map(e=>e.id);assert.equal(new Set(ids).size,ids.length);
   const count=ids.length;f.choices.reconcile();assert.equal(f.choices.history.length,count,'receipt replay creates no history duplicate');
@@ -51,9 +65,9 @@ test('one card per session follows priority; a press acts once and stale generat
   await assert.rejects(f.choices.choose({ session_id: 'o', choice_id: view.choice_id, option_id: 'fix', generation: chosen.generation }), { code: 'USER_CHOICE_CHANGED' });
   assert.equal(f.delivered.length, 1, 'a repeated press never acts twice');
   f.choices.reconcile();
-  assert.equal(f.choices.view('o').kind, 'refused', 'the chosen card stays until delivered');
+  assert.equal(f.choices.view('o').kind, 'acceptance', 'a saved decision does not occupy the next choice');
   f.receipts.set('m1', { read: true });f.page('o', 0, true);f.page('o', 0, false);
-  assert.equal(f.choices.view('o').kind, 'acceptance', 'after delivery and the turn the next cause is offered');
+  assert.equal(f.choices.view('o').kind, 'acceptance', 'late delivery cannot replace the current choice');
 });
 
 test('the user answering in the chat declines the card; a persistent cause returns once after the turn', async () => {

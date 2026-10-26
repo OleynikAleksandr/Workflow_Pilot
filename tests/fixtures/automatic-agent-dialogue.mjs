@@ -25,6 +25,7 @@ import {startIntegration,integrationStatus} from '../../packages/workflow-kit/sr
 import {validate} from '../../packages/workflow-kit/src/lib/validate.mjs';
 import {readAssignment} from '../../packages/workflow-kit/src/lib/assignment-contract.mjs';
 import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
+import {communicationMessageComplete} from '../../src/contracts/plugin-communication.mjs';
 import {userChoseMode} from './execution-mode.mjs';
 import {readReview,prepareReview,respondReview,publishReview} from '../../packages/workflow-kit/src/lib/plan-review.mjs';
 import {runReview,REVIEW_MODEL} from '../../packages/workflow-kit/src/lib/claude-review.mjs';
@@ -714,7 +715,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   if(preplan){
     assert.equal(delayedReservations.size,4,'all four genuine assignments survive delayed registration');
     assert.equal(run.events.some(e=>e.event_type==='operation.denied'&&e.error_code==='PLUGIN_COMMUNICATION_RECIPIENT'),false);
-    assert.ok(preplanEvents.every(event=>run.messages.find(m=>m.message_id===event.message_id)?.reply_observed));
+    assert.ok(preplanEvents.every(event=>communicationMessageComplete(run.messages.find(m=>m.message_id===event.message_id))));
     assert.equal(run.messages.filter(m=>m.kind==='result'&&['T001','T002'].includes(m.task_id)&&m.read).length,2);
     assert.equal(readReview(root).review_events.filter(e=>e.type==='feedback').length,2,'review history survives task cleanup');
   }

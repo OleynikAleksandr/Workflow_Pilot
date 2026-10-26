@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1159,
+  "plan_revision": 1162,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "session-choice-and-delivery",
@@ -63,7 +63,8 @@
       "tests/fixtures/automatic-agent-dialogue.mjs",
       "tests/backend-api.test.mjs",
       "package.json",
-      "release-manifest.json"
+      "release-manifest.json",
+      "src/contracts/plugin-communication.mjs"
     ],
     "documentation_paths": [
       "docs/planning/session-choice-and-delivery.md",
@@ -108,8 +109,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "session-choice-and-delivery",
         "task_id": "CHOICE",
@@ -136,9 +137,13 @@
         "tests/electron-smoke.mjs",
         "src/frontend/plugin/launch.mjs",
         "src/frontend/plugin/panel.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/session-choice-release.md"
+      ],
       "verification_ids": [
         "unit-all",
         "electron-smoke",
@@ -171,7 +176,20 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Подготовка 26.10.2026: реализация допускается только после отдельного поручения пользователя. Работать через Kit без делегирования, моделей, UI control, рабочего профиля и Test_003; donor заморожен. По разделу EXEC003 спецификации исправить весь путь кнопка → сохранённое решение → отдельная доставка → read → очередь. Не ограничиваться ремонтом таймера: UI-решение завершается записью, его сообщение освобождает очередь по read, а canSend/commands проверяются отдельно перед SDK. Аудит first/choicePending/reserved/progress/claim и восстановление старого gate обязательны. Проверки user-choice, workflow-channel, dialogue-delivery и настоящий renderer/адаптер. Обычный O/E read/yield/acceptance не менять. Обязателен аудит incoming, DialogueDelivery.settled/coordination.channelSettled и frontend user_choice_pending; scope-bound прочитанное UI-событие не мешает finalization/cleanup/complete, unread/UNKNOWN мешает по контракту."
+      "task_brief": "Подготовка 26.10.2026: реализация допускается только после отдельного поручения пользователя. Работать через Kit без делегирования, моделей, UI control, рабочего профиля и Test_003; donor заморожен. По разделу EXEC003 спецификации исправить весь путь кнопка → сохранённое решение → отдельная доставка → read → очередь. Не ограничиваться ремонтом таймера: UI-решение завершается записью, его сообщение освобождает очередь по read, а canSend/commands проверяются отдельно перед SDK. Аудит first/choicePending/reserved/progress/claim и восстановление старого gate обязательны. Проверки user-choice, workflow-channel, dialogue-delivery и настоящий renderer/адаптер. Обычный O/E read/yield/acceptance не менять. Обязателен аудит incoming, DialogueDelivery.settled/coordination.channelSettled и frontend user_choice_pending; scope-bound прочитанное UI-событие не мешает finalization/cleanup/complete, unread/UNKNOWN мешает по контракту.",
+      "actual_files": [
+        "src/contracts/plugin-communication.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/user-choices.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/user-choices.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "docs/planning/session-choice-release.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -538,7 +556,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: session-choice-and-delivery
 Current Task: нет
-Revision: 1159
+Revision: 1162
 
 ## Цель
 
@@ -556,10 +574,10 @@ Revision: 1159
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Внешняя Codex-сессия планирует последовательную разработку без разрешения на модельное делегирование; очередь, наблюдения и общий MCP/проекция пересекаются. Независимые агенты не нужны.
 
-- [TODO] CHOICE: Завершать выбор нажатием и освобождать очередь результатов — Ожидает
-  - Git Commit: [PENDING] fix: завершать выбор нажатием и освобождать очередь результатов
+- [DONE] CHOICE: Завершать выбор нажатием и освобождать очередь результатов — Завершено
+  - Git Commit: [DONE] fix: завершать выбор нажатием и освобождать очередь результатов
   - Reference: session-choice-and-delivery / CHOICE / implementation
-  - Файлы: src/control/workflow/user-choices.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/contracts/user-choice.mjs, src/contracts/dialogue-view.mjs, src/contracts/work-progress.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/user-choices.test.mjs, tests/user-choice-view.test.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/work-progress.test.mjs, tests/backend-desktop-model.test.mjs, tests/electron-smoke.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/chatgpt-plugin.test.mjs
+  - Файлы: src/control/workflow/user-choices.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/contracts/user-choice.mjs, src/contracts/dialogue-view.mjs, src/contracts/work-progress.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/user-choices.test.mjs, tests/user-choice-view.test.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/work-progress.test.mjs, tests/backend-desktop-model.test.mjs, tests/electron-smoke.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/plugin-communication.mjs, tests/fixtures/automatic-agent-dialogue.mjs, docs/planning/session-choice-release.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] NAME: Давать сессии содержательное имя до создания плана — Ожидает

@@ -73,6 +73,9 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     if(!incoming.read&&['unknown','rejected'].includes(incoming.delivery))return current('attention','Доставка требует проверки'+task,
       'Проверьте чат получателя. Автоматически повторять отправку нельзя.','Канал связи');
     if(!incoming.read){
+      if(incoming.kind==='result'&&physical?.busy)return current('waiting',
+        'Результат'+task+' готов · ожидаем освобождения чата '+(recipient==='O'?'оркестратора':'исполнителя'),
+        'Передадим результат после текущего ответа.','Канал связи');
       if(['manual-stop','recipient-draft'].includes(incoming.reason))return current('attention',
         incoming.reason==='manual-stop'?'Чат получателя остановлен вручную':'В чате получателя открыт черновик',
         incoming.reason==='manual-stop'?'Откройте чат получателя и продолжите работу.':'Отправьте или уберите черновик в чате получателя, чтобы продолжить передачу.','Канал связи');
