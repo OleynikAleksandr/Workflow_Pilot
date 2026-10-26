@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1158,
+  "plan_revision": 1159,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "session-choice-and-delivery",
@@ -61,7 +61,9 @@
       "packages/workflow-kit/src/lib/installer.mjs",
       "tests/automatic-agent-dialogue.test.mjs",
       "tests/fixtures/automatic-agent-dialogue.mjs",
-      "tests/backend-api.test.mjs"
+      "tests/backend-api.test.mjs",
+      "package.json",
+      "release-manifest.json"
     ],
     "documentation_paths": [
       "docs/planning/session-choice-and-delivery.md",
@@ -92,6 +94,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/session-choice-release.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -306,6 +313,44 @@
       "task_brief": "Подготовка 26.10.2026: реализация допускается только после отдельного поручения пользователя. Работать через Kit без делегирования, моделей, UI control, рабочего профиля и Test_003; donor заморожен. Провести полный контрольный цикл и fault injection из спецификации на изолированных fixtures. Не заменять событийную проверку прямым вызовом обработчика; не читать пользовательский WAL в обязательном тесте. Подтвердить result/read/acceptance/merge/зависимую задачу/cleanup раздельно. Не расширять исходники продукта внутри тестовой задачи. Перед Kit production-check проверить caches по AGENTS; обе части Kit обязательны."
     },
     {
+      "id": "VERSION",
+      "title": "Подготовить согласованный выпуск 0.5.36",
+      "why": "Пользователь разрешил новый полный выпуск после исправлений.",
+      "dependencies": [
+        "PROOF"
+      ],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/migration-compatibility.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/session-choice-release.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "kit-check",
+        "kit-assignments",
+        "executor-channel",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "App 0.5.36, Kit 1.10.2, роль 11, immutable panel build и locks согласованы; обе части Kit и upgrade не ослаблены."
+      ],
+      "expected_commit_message": "chore: подготовить выпуск 0.5.36",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "session-choice-and-delivery",
+        "task_id": "VERSION",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -316,7 +361,8 @@
       "dependencies": [
         "CHOICE",
         "NAME",
-        "PROOF"
+        "PROOF",
+        "VERSION"
       ],
       "functional_paths": [],
       "documentation_paths": [
@@ -362,6 +408,98 @@
         "dependency_task_ids": []
       },
       "task_brief": "Пользователь разрешил реализацию и выпуск 0.5.36: сверить CHOICE/NAME/PROOF/VERSION, обновить действующие контракты, перенести реализованное и удалить временные specs с exact Git blob в required-контексте. Сохранить отложенное и живые NOT_RUN. Данные/службу/профиль не менять. Откат bundle не объявлять data rollback после topic. DOCS предшествует production, каждый документ ≤28000 байт UTF-8."
+    },
+    {
+      "id": "RELEASE",
+      "title": "Собрать полный выпуск macOS Windows Linux",
+      "why": "Собрать полный выпуск macOS Windows Linux",
+      "dependencies": [
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/session-choice-release.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС и семь assets из одного sourceCommit после DOCS; подпись/состав/SHA и Downloads проверены. Python caches очищены до каждой production-команды."
+      ],
+      "expected_commit_message": "build: собрать полный выпуск 0.5.36",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "session-choice-and-delivery",
+        "task_id": "RELEASE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL",
+      "title": "Установить проверенный выпуск на этот Mac",
+      "why": "Установить проверенный выпуск на этот Mac",
+      "dependencies": [
+        "RELEASE",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/session-choice-release.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Готовый проверенный bundle доставлен штатным installer в проект и Applications: installed либо verified pending, signature/manifest/version/rollback. Нет build/sign/остановки службы/закрытия окна."
+      ],
+      "expected_commit_message": "delivery: установить проверенный выпуск 0.5.36",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "session-choice-and-delivery",
+        "task_id": "INSTALL",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH",
+      "title": "Опубликовать полный выпуск на GitHub",
+      "why": "Опубликовать полный выпуск на GitHub",
+      "dependencies": [
+        "INSTALL",
+        "DOCS"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/session-choice-release.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "GitHub v0.5.36 published; tag на sourceCommit, все семь assets size/SHA, remote main совпадает с итоговым HEAD. Live/native ограничения сохранены."
+      ],
+      "expected_commit_message": "release: опубликовать полный выпуск 0.5.36",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "session-choice-and-delivery",
+        "task_id": "PUBLISH",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -400,7 +538,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: session-choice-and-delivery
 Current Task: нет
-Revision: 1158
+Revision: 1159
 
 ## Цель
 
@@ -436,16 +574,41 @@ Revision: 1158
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/user-choices.test.mjs, tests/chatgpt-plugin.test.mjs, tests/electron-smoke.mjs, tests/backend-api.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE, NAME
+- [TODO] VERSION: Подготовить согласованный выпуск 0.5.36 — Ожидает
+  - Git Commit: [PENDING] chore: подготовить выпуск 0.5.36
+  - Reference: session-choice-and-delivery / VERSION / implementation
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, docs/planning/session-choice-release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PROOF
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать контракты выбора, названий и приёмки
   - Reference: session-choice-and-delivery / DOCS / implementation
   - Файлы: docs/planning/session-choice-and-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/orchestrator-startup.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, docs/acceptance/session-choice-and-delivery.md, docs/planning/session-choice-release.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
-  - Зависимости: CHOICE, NAME, PROOF
+  - Зависимости: CHOICE, NAME, PROOF, VERSION
+- [TODO] RELEASE: Собрать полный выпуск macOS Windows Linux — Ожидает
+  - Git Commit: [PENDING] build: собрать полный выпуск 0.5.36
+  - Reference: session-choice-and-delivery / RELEASE / implementation
+  - Файлы: release-manifest.json, docs/planning/session-choice-release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DOCS
+- [TODO] INSTALL: Установить проверенный выпуск на этот Mac — Ожидает
+  - Git Commit: [PENDING] delivery: установить проверенный выпуск 0.5.36
+  - Reference: session-choice-and-delivery / INSTALL / implementation
+  - Файлы: release-manifest.json, docs/planning/session-choice-release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE, DOCS
+- [TODO] PUBLISH: Опубликовать полный выпуск на GitHub — Ожидает
+  - Git Commit: [PENDING] release: опубликовать полный выпуск 0.5.36
+  - Reference: session-choice-and-delivery / PUBLISH / implementation
+  - Файлы: release-manifest.json, docs/planning/session-choice-release.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL, DOCS
 
 ## Context Pack For This Cycle
 
 - docs/planning/session-choice-and-delivery.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/session-choice-release.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
