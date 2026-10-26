@@ -88,7 +88,7 @@ export class DialogueDelivery {
     })(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),2000);timer.unref?.();})]);}
     finally{clearTimeout(timer);}
   }
-  async admit(target,message){
+  async admit(target,message,policy){
     await this.record?.(this.project(target.local_session_id))?.navigationTail;
     await this.store.whenIdle?.();
     const project=this.project(target.local_session_id);
@@ -103,6 +103,20 @@ export class DialogueDelivery {
     if(message?.kind==='user-choice'){
       if(!project||!this.observe(target).canSend)return {allowed:false,reason:'admission-denied'};
       return (await readCommandActivity(project.workspace)).commandActive?{allowed:false,reason:'commands-active'}:{allowed:true};
+    }
+    if(policy?.bypassBusy){
+      const page=this.observe(target);
+      if(!project||!this.uses(project)||!this.owned(project)||target.role!=='O'||message.kind!=='result'||message.sender_role!=='E'
+        ||this.state(project.workspace,target.scope_id).state!=='running'||!page.sdkDocumentReady||page.manualStopped
+        ||page.draftPresent||page.connectionError||!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
+      const {commands}=await readCommandActivity(project.workspace),active=commands.filter(command=>command.state!=='completed');
+      if(policy.busy_kind==='read-only-command'){
+        const probe=policy.probe,command=active[0];
+        if(active.length!==1||!probe||command.state!=='running'||!command.processId
+          ||command.commandHash!==probe.command_hash||probe.nonce!==policy.nonce
+          ||probe.command_id&&command.id!==probe.command_id)return {allowed:false,reason:'commands-active'};
+      }else if(active.length)return {allowed:false,reason:'commands-active'};
+      return {allowed:true};
     }
     if(!this.uses(project)||!(this.owned(project)?['running']:['running','pausing']).includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)
       ||!this.observe(target).canSend)return {allowed:false,reason:'admission-denied'};

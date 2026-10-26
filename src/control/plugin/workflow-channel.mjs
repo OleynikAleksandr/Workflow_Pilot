@@ -1,6 +1,8 @@
 import {createHash} from 'node:crypto';
 import {workflowRunId} from './enrollment.mjs';
 import {communicationMessageComplete} from '../../contracts/plugin-communication.mjs';
+import {sdkBusyProfile} from '../../contracts/plugin-communication.mjs';
+import {COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const fail=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
@@ -46,8 +48,11 @@ export class WorkflowChannel {
     this.c.event(run,'message.superseded',{participant_id:member.id,message_id:message.message_id,block_id:message.block_id});
     return true;
   }
-  grant(target,phase='running',guard={}) {return this.c.mutate('grant',{run_id:workflowRunId(target),target,phase,...guard});}
-  _grant({target,phase,canContinue,expectedGeneration}) {
+  async grant(target,phase='running',guard={}) {
+    const profile=phase==='running'?await this.c.sdkBusyProfile(target):null;
+    return this.c.mutate('grant',{run_id:workflowRunId(target),target,phase,profile,...guard});
+  }
+  _grant({target,phase,canContinue,expectedGeneration,profile}) {
     const c=this.c;
     check(target.role==='O'&&target.scope_id,'MODE','Нужен опубликованный план своего оркестратора.');
     check(['running','pausing','paused','complete'].includes(phase),'INPUT','Неизвестное состояние плана.');
@@ -61,10 +66,118 @@ export class WorkflowChannel {
     c.assignment.invalidateAuthorizations(run);
     for(const member of Object.values(run.members)){member.generation=generation;member.stopped=!active;
       if(member.role==='O')member.target.scope_id=target.scope_id;}
+    if(active&&profile?.mode==='sdk-busy-burst'){
+      const value=sdkBusyProfile(profile,{workspace:profile.workspace,project_id:target.project_id,scope_id:target.scope_id,
+        role:target.role,build_id:COMMUNICATION_BUILD});
+      // Continue is not a fresh local preparation. In particular, restart may
+      // never consume the same activation again or clear an unknown intent.
+      const previous=run.sdk_busy;
+      if(previous?.activation_id!==value.activation_id){
+        const used=previous?.scope_id===target.scope_id?previous.used_case_ids??previous.cases.map(item=>item.case_id):[];
+        check(!value.cases.some(item=>used.includes(item.case_id)),'EXPERIMENT_CASE','Случай уже использован; нужны новые результаты.');
+        run.sdk_busy={...value,active:true,backend_id:c.backendId,generation,recipient_session_id:target.local_session_id,
+          used_case_ids:[...used,...value.cases.map(item=>item.case_id)],cases:value.cases.map(item=>({...item,status:'armed',messages:[],slots:[]}))};
+        c.event(run,'experiment.armed',{scope_id:target.scope_id,experiment_id:value.experiment_id,activation_id:value.activation_id});
+      }else if(previous.backend_id===c.backendId){previous.generation=generation;previous.active=true;}
+    }else if(run.sdk_busy){run.sdk_busy.active=false;}
     c.event(run,'plan.permission',{scope_id:target.scope_id,permission_generation:generation,phase,active});
     return this.state(run);
   }
   state(run){return {scope_id:run.grant?.scope_id??null,phase:run.grant?.phase??'not-started',active:run.grant?.active===true};}
+  experiment(run,member){
+    const value=run.sdk_busy;
+    return member&&value?.active&&value.backend_id===this.c.backendId&&value.scope_id===run.grant?.scope_id
+      &&value.generation===member?.generation&&member.role==='O'&&member.target.local_session_id===value.recipient_session_id
+      &&this.permitted(run,member)?value:null;
+  }
+  experimentCase(run,message){return run.sdk_busy?.cases.find(item=>item.messages.includes(message.message_id));}
+  heldExperiment(run,member,message){
+    const value=this.experiment(run,member);if(!value||message.kind!=='result'||message.sender_role!=='E')return false;
+    return value.cases.some(item=>['armed','holding'].includes(item.status)&&item.task_ids.includes(message.task_id));
+  }
+  updateExperiment(run){
+    const value=run.sdk_busy;if(!value?.active||value.backend_id!==this.c.backendId)return;
+    for(const item of value.cases){
+      if(item.status==='armed'){
+        const messages=item.task_ids.map(id=>run.messages.findLast(message=>message.scope_id===value.scope_id
+          &&message.task_id===id&&message.kind==='result'&&message.sender_role==='E'&&message.dialogue_version===1
+          &&message.recipient_session_id===value.recipient_session_id&&!message.superseded&&!message.sdk_busy
+          &&message.kit_receipt?.operation_id&&/^[a-f0-9]{40,64}$/.test(message.source_commit??'')));
+        if(messages.some(message=>!message))continue;
+        messages.sort((a,b)=>run.messages.indexOf(a)-run.messages.indexOf(b));
+        item.messages=messages.map(message=>message.message_id);item.status='holding';
+        for(const message of messages){
+          message.sdk_busy={experiment_id:value.experiment_id,case_id:item.case_id,busy_kind:item.busy_kind};
+          this.c.event(run,'experiment.fixture_hold',{message_id:message.message_id,experiment_id:value.experiment_id,case_id:item.case_id,
+            assignment_id:message.assignment_id,task_id:message.task_id,source_commit:message.source_commit,attempt:message.attempt});
+        }
+      }
+      const messages=item.messages.map(id=>run.messages.find(message=>message.message_id===id));
+      if(!['invalid','complete'].includes(item.status)&&messages.some(message=>message?.superseded
+        ||message&&run.messages.some(later=>later.kind==='result'&&later.assignment_id===message.assignment_id
+          &&run.messages.indexOf(later)>run.messages.indexOf(message)&&!later.superseded)))
+        this.invalidateExperiment(run,messages[0],'changed-result');
+      if(!['invalid','complete'].includes(item.status)&&messages.some(message=>message?.read&&!message.intent))
+        this.invalidateExperiment(run,messages.find(message=>message?.read&&!message.intent),'early-read');
+      if(item.status==='dispatching'&&messages.length===2&&messages.every(message=>communicationMessageComplete(message))){
+        item.status='complete';this.c.event(run,'experiment.handling_complete',{experiment_id:value.experiment_id,case_id:item.case_id});
+      }
+    }
+  }
+  invalidateExperiment(run,message,reason){
+    const item=this.experimentCase(run,message);if(!item||item.status==='invalid')return;
+    item.status='invalid';item.reason=reason;
+    this.c.event(run,'experiment.invalidated',{experiment_id:run.sdk_busy.experiment_id,case_id:item.case_id,message_id:message.message_id,reason});
+  }
+  beginExperiment(input){
+    const {run,member}=this.c.member(input),value=this.experiment(run,member);
+    check(value,'EXPERIMENT_DISABLED','Свой тестовый случай не вооружён.');
+    check(this.livePanel(run,member),'EXPERIMENT_PANEL','Нужна действующая собственная панель SDK.');
+    const item=value.cases.find(item=>item.case_id===input.case_id);
+    check(item&&['holding','dispatching'].includes(item.status),'EXPERIMENT_CASE','Нужны два проверенных результата своего случая.');
+    if(item.status==='holding'){
+      item.status='dispatching';item.nonce=this.c.makeId();item.begun_at=this.c.now();
+      this.c.event(run,'experiment.case_started',{experiment_id:value.experiment_id,case_id:item.case_id,busy_kind:item.busy_kind,
+        participant_id:member.id,nonce:item.nonce});
+    }
+    return {case_id:item.case_id,nonce:item.nonce,busy_kind:item.busy_kind};
+  }
+  experimentPolicy(run,member,message){
+    if(!message.sdk_busy)return null;
+    const value=this.experiment(run,member),item=this.experimentCase(run,message);
+    if(!value||!item||['invalid','complete'].includes(item.status))return null;
+    const page=this.observe(member.target);
+    let reason=this.c.startup.active(run,member)?'previous-message':item.status!=='dispatching'?'experiment-hold'
+      :item.first_claimed_at&&this.c.now()-item.first_claimed_at>120000?'experiment-window-expired'
+      :!page.sdkDocumentReady?'recipient-unavailable':page.connectionError?'recipient-connection-error'
+      :page.manualStopped?'manual-stop':page.draftPresent?'recipient-draft':!page.busy?'recipient-not-busy':null;
+    // Only the two selected independent results may cross each other unread.
+    if(!reason)for(const earlier of run.messages.slice(0,run.messages.indexOf(message))){
+      if(earlier.recipient_id!==member.id||communicationMessageComplete(earlier))continue;
+      const selected=item.messages.includes(earlier.message_id);
+      if(selected&&earlier.delivery==='accepted')continue;
+      if(!selected&&earlier.kind!=='startup-context'&&!earlier.blocking&&(earlier.read||earlier.superseded_read)
+        &&(!earlier.intent||earlier.delivery==='accepted'))continue;
+      reason='previous-message';break;
+    }
+    return {reason,experiment_id:value.experiment_id,case_id:item.case_id,busy_kind:item.busy_kind,
+      bypassBusy:true,probe:item.probe??null,nonce:item.nonce};
+  }
+  claimExperiment(run,member,message){
+    const policy=this.experimentPolicy(run,member,message);if(!policy)return;
+    check(!policy.reason,'EXPERIMENT_ADMISSION','Измерительный допуск изменился.');
+    const item=this.experimentCase(run,message);
+    check(item.slots.length<2&&!item.slots.some(slot=>slot.message_id===message.message_id),'EXPERIMENT_LIMIT','Повтор или превышение двух уведомлений.');
+    message.sdk_busy.dispatched=true;
+    item.first_claimed_at??=this.c.now();item.slots.push({message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
+    this.c.event(run,'experiment.dispatch_admitted',{experiment_id:policy.experiment_id,case_id:policy.case_id,busy_kind:policy.busy_kind,
+      message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id,participant_id:member.id,
+      source_commit:message.source_commit,assignment_id:message.assignment_id,attempt:message.attempt,
+      snapshot:((page)=>({busy:!!page.busy,document_id:page.documentId??null,observation_seq:page.observationSeq??0,
+        turn_id:page.turnId??null,manual_stopped:!!page.manualStopped,draft_present:!!page.draftPresent,
+        commands_idle:page.commandsIdle??null,sdk_document_ready:page.sdkDocumentReady===true}))(this.observe(member.target)),
+      previous_gate_message_id:member.deliveryGate?.message_id??null});
+  }
   // Read-only local projection. Registration, a live SDK lease and message
   // receipt are separate facts; no ticket, identity or message text leaves it.
   panelIssue(run,member,panel) {
@@ -209,12 +322,19 @@ export class WorkflowChannel {
       block_id:message.block_id??null,problem_id:message.problem_id??null,repair_attempt:message.repair_attempt??null,
       escalation_required:message.escalation_required===true,...deliveryStage(message)}:{})};}
   pending(run,member) {
+    const experiment=this.experiment(run,member);
+    if(experiment){
+      const message=run.messages.find(message=>message.recipient_id===member.id&&message.delivery==='pending'&&!message.read
+        &&message.sdk_busy&&this.experimentPolicy(run,member,message)?.reason===null);
+      if(message)return message;
+    }
     if(!this.transportPermitted(run,member)||this.gatePending(run,member)||!this.observe(member.target).canSend)return null;
     const first=this.first(run,member);
+    if(first&&this.heldExperiment(run,member,first))return null;
     return first?.delivery==='pending'&&!first.read&&first.delivery_mode!=='model-pull'?first:null;
   }
-  async admit(target,message){
-    const result=await this.admission(target,message);
+  async admit(target,message,policy){
+    const result=await this.admission(target,message,policy);
     return result===true||result?.allowed===true;
   }
   physicalBlock(target){
@@ -223,6 +343,14 @@ export class WorkflowChannel {
       page.busy?'recipient-busy':!page.canSend?'recipient-unavailable':null;
   }
   async claimBlockReason(run,member,message) {
+    const policy=this.experimentPolicy(run,member,message);
+    if(policy){
+      if(policy.reason)return policy.reason;
+      const admitted=await this.admission(member.target,message,policy);
+      return admitted===true||admitted?.allowed===true?this.experimentPolicy(run,member,message)?.reason
+        :admitted?.reason??'admission-denied';
+    }
+    if(this.heldExperiment(run,member,message))return 'experiment-hold';
     if(message.kind!=='startup-context'&&this.c.startup.active(run,member))return 'previous-message';
     if(this.gatePending(run,member))return 'previous-turn';
     const first=this.first(run,member);
@@ -236,6 +364,9 @@ export class WorkflowChannel {
   begin(run,member,message) {
     if(message.kind==='user-choice')return; // FIFO owns delivery until read; no model-turn gate.
     const page=this.observe(member.target);
+    if(this.experimentPolicy(run,member,message)){
+      message.handlingGate={message_id:message.message_id,documentId:page.documentId,observationSeq:page.observationSeq??0};return;
+    }
     member.deliveryGate={message_id:message.message_id,documentId:page.documentId??null,turnId:page.turnId??null,
       observationSeq:page.observationSeq??0,
       userTurnId:page.userTurnId??null,assistantRevision:page.assistantRevision??0,userMessagesRevision:page.userMessagesRevision??0};
@@ -257,6 +388,8 @@ export class WorkflowChannel {
       const gate=message.handlingGate??={documentId:baseline.documentId,observationSeq:baseline.observationSeq??0};
       await this.observeDialogue(run,member,message,gate,true);
     }
+    for(const message of this.experimentHandled(run,member))
+      await this.observeDialogue(run,member,message,message.handlingGate);
     const gate=member.deliveryGate;if(!gate)return;
     const message=run.messages.find(m=>m.message_id===gate.message_id);
     if(message?.kind==='startup-context')return; // Explicit all-parts receipt closes this lane, not an inferred model reply.
@@ -277,6 +410,9 @@ export class WorkflowChannel {
     return run.messages.filter(m=>m.recipient_id===member.id&&m.scope_id===run.grant?.scope_id
       &&m.dialogue_version===1&&m.delivery==='pending'&&!m.intent&&m.read&&m.yielded&&!m.reply_observed&&!m.superseded);
   }
+  experimentHandled(run,member){return run.messages.filter(message=>message.sdk_busy?.dispatched&&message.handlingGate
+    &&message.recipient_id===member.id&&message.scope_id===run.grant?.scope_id&&message.delivery==='accepted'
+    &&message.read&&message.yielded&&!message.reply_observed&&!message.superseded);}
   async observeDialogue(run,member,message,gate,direct=false){
     if(!this.permitted(run,member)||!(message.read||message.superseded_read)||!message.yielded
       ||(!direct&&message.delivery!=='accepted'))return;
@@ -292,7 +428,7 @@ export class WorkflowChannel {
     // Read/yield survives a backend restart; the old page no longer exists.
     // Observe the restored, verified recipient twice, without inventing SDK
     // acceptance or replaying a message it already handled.
-    if(direct&&page&&baseline&&page.documentId!==baseline.documentId
+    if((direct||message.sdk_busy?.dispatched)&&page&&baseline&&page.documentId!==baseline.documentId
       &&message.yielded.backend_id!==this.c.backendId){
       if(!page.stopped||page.busy||!page.canSend||!page.commandsIdle)return;
       gate.restoredBaseline=structuredClone(page);gate.documentId=page.documentId;
@@ -327,7 +463,7 @@ export class WorkflowChannel {
       const gate=member.deliveryGate,message=run.messages.find(m=>m.message_id===gate?.message_id);
       return [...(message?.kind!=='user-choice'&&this.permitted(run,member)&&message?.dialogue_version===1&&message.yielded&&!message.reply_observed
         ?[[message.message_id,member]]:[]),
-        ...(this.permitted(run,member)?this.directlyHandled(run,member).map(m=>[m.message_id,member]):[])];
+        ...(this.permitted(run,member)?[...this.directlyHandled(run,member),...this.experimentHandled(run,member)].map(m=>[m.message_id,member]):[])];
     }));
     for(const [id,p] of this.turnProbes)if(p.runId===run.id&&!eligible.has(id)){clearTimeout(p.timer);this.turnProbes.delete(id);}
     for(const [id] of eligible){

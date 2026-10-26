@@ -20,6 +20,7 @@ export class PluginProjects {
     this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id),
       verifyTarget:id=>this.participantTarget(id),verifyTerminal:(target,message)=>this.terminalTarget(target,message),
       observe,admit,reconcile,currentMessage,onChange:onCommunicationChange,workProgress,userChoice,choose,
+      sdkBusyProfile:target=>this.sdkBusyProfile(target),
       dialogueKit:plans?{status:(target,id)=>this.dialogueOperation(target,'assignment:dialogue-status',id),
         close:(target,input)=>this.dialogueOperation(target,'assignment:transport',input),
         apply:(target,input)=>this.dialogueOperation(target,'assignment:dialogue',input),migrate}:null});

@@ -8,14 +8,15 @@ import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '..
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
 const meta=id=>({'openai/session':id});
-async function fixture(t,currentMessage,dialogueKit=null){
+async function fixture(t,currentMessage,dialogueKit=null,busyProfile=null){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'workflow-channel-')));
   const targets=new Map(),pages=new Map(),admission=new Map(),instances=[];let now=100000;
   const create=async()=>{const c=new PluginCommunication({store:await openCommunicationStore(directory),now:()=>now,waitMs:5,
     resolveTarget:id=>targets.get(id),verifyTarget:async id=>targets.get(id),observe:target=>pages.get(target.local_session_id),
     reconcile:async target=>{const p=pages.get(target.local_session_id);if(!p)return null;
       if(!p.stale)p.observationSeq++;return structuredClone(p);},
-    admit:async target=>admission.get(target.local_session_id)!==false,currentMessage,dialogueKit});instances.push(c);await c.ready;return c;};
+    admit:async target=>admission.get(target.local_session_id)!==false,currentMessage,dialogueKit,
+    sdkBusyProfile:async()=>busyProfile??{version:1,mode:'off'}});instances.push(c);await c.ready;return c;};
   const c=await create();
   const target=(id,role='E')=>{const value={project_id:'p',scope_id:'s',local_session_id:id,origin_session_id:'o',role,
     assignment_id:role==='E'?'a-'+id:null,task_id:role==='E'?'t-'+id:null,...(dialogueKit?{dialogue_version:1}:{})};targets.set(id,value);
@@ -29,6 +30,95 @@ async function fixture(t,currentMessage,dialogueKit=null){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+const burstProfile=()=>({version:1,mode:'sdk-busy-burst',test_workspace:true,experiment_id:'busy-test',activation_id:randomUUID(),
+  workspace:'/fixture',project_id:'p',scope_id:'s',recipient_role:'O',build_id:COMMUNICATION_BUILD,
+  cases:[{case_id:'two-results',busy_kind:'tool-wait',max_notifications:2,task_ids:['t-left','t-right']}]});
+async function burstFixture(t,{unrelated=false}={}){
+  const profile=burstProfile(),f=await fixture(t,undefined,dialogueKitFixture(),profile);
+  await f.c.workflow.grant(f.o);const binding=await f.bind(f.c,f.o),run=()=>f.c.runs.get(binding.run_id);
+  const previous=await f.c.workflow.enqueue(f.o,{key:'previous',kind:'diagnostic',text:'Previous work'});
+  await sdk(f,binding,previous.message_id);await f.c.readMessage({metadata:meta('o'),message_id:previous.message_id});
+  const other=unrelated?await f.c.workflow.enqueue(f.o,{key:'unrelated',kind:'diagnostic',text:'Unrelated unread message'}):null;
+  const page=f.pages.get('o');Object.assign(page,{sdkDocumentReady:true,busy:true,canSend:false,stopped:false});
+  const results=[];
+  for(const name of ['left','right']){
+    await f.bind(f.c,f.target(name));results.push(await f.c.assignmentSend({metadata:meta(name),recipient:'orchestrator',kind:'result',
+      body:'Checked '+name,source_commit:(name==='left'?'a':'b').repeat(40),attempt:1,idempotency_key:'result'}));
+  }
+  return {...f,profile,binding,run,page,previous,other,results};
+}
+test('busy burst sends two checked results through claim/verify while preserving the previous gate and unread first result',async t=>{
+  const f=await burstFixture(t),ids=f.results.map(message=>message.message_id);
+  assert.equal(pending(f.c,f.binding),null,'measurement holds only the selected results');
+  const begin=await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});assert.ok(begin.nonce);
+  assert.equal(pending(f.c,f.binding),ids[0]);
+  const first=await f.c.claimReady({...f.binding,message_id:ids[0]});
+  assert.equal(first.sdk_busy.sdk_timeout_ms,90000);assert.ok(f.run().messages.find(message=>message.message_id===ids[0]).handlingGate);
+  assert.equal(f.run().members[f.binding.participant_id].deliveryGate.message_id,f.previous.message_id);
+  await f.c.report({...f.binding,...first,outcome:'accepted'});
+  assert.equal(f.run().messages.find(message=>message.message_id===ids[0]).read,false);
+  assert.equal(pending(f.c,f.binding),ids[1],'accepted SDK promise is enough for the second selected result');
+  await sdk(f,f.binding,ids[1]);
+  assert.equal(f.run().sdk_busy.cases[0].slots.length,2);
+  await assert.rejects(f.c.claimReady({...f.binding,message_id:ids[1]}),{code:'PLUGIN_COMMUNICATION_CLAIM_DENIED'});
+  for(const id of ids)await f.c.readMessage({metadata:meta('o'),message_id:id});
+  await f.c.assignmentYield({metadata:meta('o'),message_ids:[f.previous.message_id,...ids],reason:'handled'});
+  Object.assign(f.page,{busy:false,stopped:true,canSend:true,assistantRevision:2});
+  await observe(f,'o');f.advance(600);await observe(f,'o');
+  assert.ok(f.run().messages.every(message=>message.reply_observed));
+  assert.equal(f.run().members[f.binding.participant_id].deliveryGate,undefined);
+  assert.equal(f.run().sdk_busy.cases[0].status,'complete');
+});
+test('busy burst keeps draft/manual Stop/document/commands and unrelated unread messages as independent barriers',async t=>{
+  const f=await burstFixture(t),id=f.results[0].message_id;
+  await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});
+  for(const [field,value,reason] of [['manualStopped',true,'manual-stop'],['draftPresent',true,'recipient-draft'],['sdkDocumentReady',false,'recipient-unavailable']]){
+    const previous=f.page[field];f.page[field]=value;
+    assert.equal((await f.c.claimReady({...f.binding,message_id:id})).reason,reason);f.page[field]=previous;
+  }
+  f.admission.set('o',false);assert.equal((await f.c.claimReady({...f.binding,message_id:id})).reason,'admission-denied');f.admission.delete('o');
+  const first=await f.c.claimReady({...f.binding,message_id:id});await f.c.report({...f.binding,...first,outcome:'unknown'});
+  assert.equal(pending(f.c,f.binding),null);
+  assert.equal(f.run().sdk_busy.cases[0].reason,'sdk-unknown');
+  assert.equal(f.run().events.filter(event=>event.event_type==='send.intent').length,2,'only previous work and one result');
+});
+test('reading a held result invalidates its pair without replay or replacing the original work',async t=>{
+  const f=await burstFixture(t);
+  await f.c.readMessage({metadata:meta('o'),message_id:f.results[0].message_id});
+  assert.equal(f.run().sdk_busy.cases[0].status,'invalid');
+  assert.equal(f.run().sdk_busy.cases[0].reason,'early-read');
+  await assert.rejects(f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'}),{code:'PLUGIN_COMMUNICATION_EXPERIMENT_CASE'});
+  assert.equal(f.run().events.filter(event=>event.event_type==='send.intent').length,1);
+});
+test('busy burst does not overtake a different unread message or consume a slot while deferred',async t=>{
+  const f=await burstFixture(t,{unrelated:true});await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});
+  const id=f.results[0].message_id;
+  assert.equal(pending(f.c,f.binding),null);
+  assert.equal((await f.c.claimReady({...f.binding,message_id:id})).reason,'previous-message');
+  assert.equal(f.run().sdk_busy.cases[0].slots.length,0);
+  await f.c.readMessage({metadata:meta('o'),message_id:f.other.message_id});
+  assert.equal(pending(f.c,f.binding),id);
+});
+test('restart never re-arms the same saved experimental activation or repeats an unknown result',async t=>{
+  const f=await burstFixture(t);await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});
+  const id=f.results[0].message_id;await f.c.claimReady({...f.binding,message_id:id});
+  const restarted=await f.create();await restarted.workflow.grant(f.o);const binding=await f.bind(restarted,f.o);
+  const run=restarted.runs.get(binding.run_id);
+  assert.equal(run.sdk_busy.active,false);assert.equal(run.messages.find(message=>message.message_id===id).delivery,'unknown');
+  assert.equal(run.events.filter(event=>event.event_type==='send.intent').length,2);
+  await assert.rejects(restarted.experimentBegin({metadata:meta('o'),case_id:'two-results'}),{code:'PLUGIN_COMMUNICATION_EXPERIMENT_DISABLED'});
+});
+test('a 90-second experimental promise retains its attempt across ordinary 35-second expiry and renewed 60-second leases',async t=>{
+  const f=await burstFixture(t);await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});
+  const id=f.results[0].message_id,ticket=await f.c.claimReady({...f.binding,message_id:id});
+  for(const milliseconds of [40000,40000,9000]){
+    f.advance(milliseconds);Object.assign(f.binding,await f.sync(f.c,f.binding));
+    assert.equal(f.run().messages.find(message=>message.message_id===id).delivery,'claimed');
+  }
+  await f.c.report({...f.binding,...ticket,outcome:'accepted'});
+  assert.equal(pending(f.c,f.binding),f.results[1].message_id);
+  assert.equal(f.run().events.filter(event=>event.event_type==='send.unknown'&&event.message_id===id).length,0);
+});
 test('generation and lease readiness agree for O and two E; sync never grants a paused plan',async t=>{
   const f=await fixture(t);await f.c.workflow.grant(f.o);
   const bindings=await Promise.all([f.o,f.target('first'),f.target('second')].map(target=>f.bind(f.c,target)));

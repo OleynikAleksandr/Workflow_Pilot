@@ -33,8 +33,8 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null}={}) {
-    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose});
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null,sdkBusyProfile=async()=>({version:1,mode:'off'})}={}) {
+    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose,sdkBusyProfile});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
     this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];this.timingDrops=0;
@@ -50,6 +50,7 @@ export class PluginCommunication {
     for(const run of loaded.runs)this.runs.set(run.id,run);
     if(loaded.issues.length){this.critical=loaded.issues[0].error_code;return;}
     for(const run of this.runs.values()) {
+      if(run.sdk_busy)run.sdk_busy.active=false; // A persisted file cannot re-arm a restarted process.
       for(const id of run.removed_sessions??[])this.removedSessions.add(id);
       const offset=run.events.length;
       if(run.grant&&run.grant.phase!=='complete'){run.grant.active=false;run.grant.phase='paused';run.grant.reason='restart';run.grant.generation++;}
@@ -93,6 +94,7 @@ export class PluginCommunication {
         const result=await this['_'+name](input),run=this.runs.get(input.run_id);
         if(name==='observed')this.observedDenials.delete(input.run_id+':'+input.message_id);
         if(run){
+          if(run.mode==='workflow')this.workflow.updateExperiment(run);
           const changes=run.events.slice(offset),messageId=input.message_id??result?.message_id;
           if(run.mode==='workflow'&&messageId&&changes.some(functional))
             this.event(run,'operation.timing',{operation:name,message_id:messageId,clock_domain:'backend-monotonic',
@@ -279,6 +281,8 @@ export class PluginCommunication {
     return result;
   }
   _turnTimeout(input){return this.workflow.timeout(input);}
+  async experimentBegin(input){return this.mutate('experimentBegin',await this.modelInput(input));}
+  _experimentBegin(input){return this.workflow.beginExperiment(input);}
   async _observed(input){const run=this.run(input);for(const member of Object.values(run.members))
     if((!input.session_id||member.target.local_session_id===input.session_id)
       &&(!input.message_id||member.deliveryGate?.message_id===input.message_id
@@ -452,8 +456,9 @@ export class PluginCommunication {
   }
   expire(run) {
     if(run.mode==='workflow'){
-      for(const message of run.messages)if(message.delivery==='claimed'&&this.now()-message.claimed_at>35000){
+      for(const message of run.messages)if(message.delivery==='claimed'&&this.now()-message.claimed_at>(message.sdk_busy?.dispatched?120000:35000)){
         message.delivery='unknown';this.event(run,'send.unknown',{message_id:message.message_id});
+        if(message.sdk_busy?.dispatched)this.workflow.invalidateExperiment(run,message,'send-expired');
       }return;
     }
     for(const member of Object.values(run.members))if(!member.stopped&&this.deadline(run,member)<=this.now()){
@@ -567,6 +572,7 @@ export class PluginCommunication {
     }
     delete message.claim_wait_reason;
     message.delivery='claimed';message.delivery_attempt_id=this.makeId();message.panel_instance_id=input.panel_instance_id;
+    if(run.mode==='workflow')this.workflow.claimExperiment(run,member,message);
     if(run.mode==='workflow')message.claimed_at=this.now();
     message.permission_generation=member.generation;
     this.event(run,'claim.granted',{participant_id:member.id,message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
@@ -589,7 +595,11 @@ export class PluginCommunication {
     requireValue(message.delivery==='claimed' && !message.intent && message.permission_generation===member.generation,
       'CLAIM_DENIED','Намерение отправки уже было подтверждено. Повтор запрещён.');
     if(run.mode==='workflow'){
-      if(!alreadyChecked){
+      const experiment=this.workflow.experimentPolicy(run,member,message);
+      if(experiment){
+        requireValue(!experiment.reason&&await this.workflow.admit(member.target,message,experiment),'BUSY','Измерительный допуск изменился; повтора нет.');
+        requireValue(!this.workflow.experimentPolicy(run,member,message)?.reason,'BUSY','Получатель изменился перед SDK.');
+      }else if(!alreadyChecked){
         if(await this.workflow.superseded(run,member,message))return {superseded:true,expires_at:0};
         requireValue(await this.workflow.admit(member.target,message)&&this.workflow.observe(member.target).canSend,'BUSY','Адресат занят. Попытка оставлена без повтора; требуется проверка.');
       }
@@ -601,7 +611,9 @@ export class PluginCommunication {
     message.intent=true;
     this.event(run,'binding.verified',{participant_id:member.id,message_id:message.message_id,conversation_key:member.identity});
     this.event(run,'send.intent',{participant_id:member.id,message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
-    return {message_id:message.message_id,permission_generation:member.generation,expires_at:this.panels.get(input.panel_instance_id).expiresAt};
+    return {message_id:message.message_id,permission_generation:member.generation,expires_at:this.panels.get(input.panel_instance_id).expiresAt,
+      ...(message.sdk_busy?.dispatched?{sdk_busy:{experiment_id:message.sdk_busy.experiment_id,case_id:message.sdk_busy.case_id,
+        busy_kind:message.sdk_busy.busy_kind,sdk_timeout_ms:90000}}:{})};
   }
   async _report(input) {
     const {run,message}=this.attempt(input,false);
@@ -609,6 +621,7 @@ export class PluginCommunication {
     requireValue(message.delivery==='claimed'||message.delivery===input.outcome||message.resolved_by_read,'CONFLICT','Результат доставки уже записан.');
     if(!message.resolved_by_read)message.delivery=input.outcome;
     this.event(run,'send.report',{message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id,outcome:input.outcome});
+    if(message.sdk_busy?.dispatched&&input.outcome!=='accepted')this.workflow.invalidateExperiment(run,message,'sdk-'+input.outcome);
     if(run.mode==='workflow')await this.workflow.observed(run,run.members[message.recipient_id]);
     return {delivery:message.delivery,read:message.read};
   }

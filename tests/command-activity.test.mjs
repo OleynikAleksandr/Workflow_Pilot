@@ -22,6 +22,16 @@ test('command projection distinguishes terminal proof, protected services and wr
  await f.write('writer');view=await readCommandActivity(f.root,{isDead:()=>false});
  assert.equal(view.commandActive,true);assert.equal(view.commands.find(c=>c.id==='writer').blocksDeletion,true);
 });
+test('command snapshots retain exact hashes and all protected services without changing ordinary integration policy',async t=>{
+ const f=await fixture(t),hash='a'.repeat(64);
+ await f.write('probe',{command_hash:hash,read_only_verified:true,sandbox_policy:'readOnly'});
+ await f.write('other',{command_hash:'not-a-digest',read_only_verified:true,sandbox_policy:'readOnly'});
+ const view=await readCommandActivity(f.root,{isDead:()=>false});
+ assert.equal(view.commandActive,false);assert.equal(view.commands.length,2);
+ assert.equal(view.commands.find(command=>command.id==='probe').commandHash,hash);
+ assert.equal(view.commands.find(command=>command.id==='other').commandHash,null);
+ assert.equal(view.services.length,2,'experiment can inspect every active service rather than commandActive');
+});
 test('read-only UNKNOWN after restart cannot write, while legacy and incomplete evidence remain blocked',async t=>{
  const f=await fixture(t);
  await f.write('server',{read_only_verified:true,sandbox_policy:'readOnly'});

@@ -563,7 +563,7 @@ return Object.freeze({
   startupProgress:(sessionId,requestId)=>getPlugin()?.communication.startup.progress(sessionId,requestId),
   enrollmentProgress:(project,attempt)=>dialogue.enrollmentProgress(project,attempt),
   cancelStartup:(project,attempt,reason)=>dialogue.cancelStartup(project,attempt,reason),
-  observeParticipant:target=>dialogue.observe(target),admitParticipant:(target,message)=>dialogue.admit(target,message),
+    observeParticipant:target=>dialogue.observe(target),admitParticipant:(target,message,policy)=>dialogue.admit(target,message,policy),
   reconcileParticipant:target=>dialogue.reconcile(target),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),
   communicationChanged:(runId,events=[])=>{

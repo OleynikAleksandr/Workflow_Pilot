@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1185,
+  "plan_revision": 1187,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -172,8 +172,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "DISPATCH",
@@ -198,7 +198,8 @@
         "tests/sdk-busy-experiment.test.mjs",
         "tests/chatgpt-plugin.test.mjs",
         "src/control/workflow/command-activity.mjs",
-        "tests/command-activity.test.mjs"
+        "tests/command-activity.test.mjs",
+        "src/control/plugin/service.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -239,7 +240,20 @@
         "dependency_task_ids": [
           "POLICY"
         ]
-      }
+      },
+      "actual_files": [
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/command-activity.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/command-activity.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -708,7 +722,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1185
+Revision: 1187
 
 ## Цель
 
@@ -732,10 +746,10 @@ Revision: 1185
   - Файлы: src/execution/plugin/sdk-busy-experiment.mjs, scripts/prepare-sdk-busy-experiment.mjs, src/execution/facade.mjs, src/control/facade.mjs, src/backend/desktop-model.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, src/contracts/plugin-communication.mjs, tests/sdk-busy-experiment.test.mjs, tests/backend-desktop-model.test.mjs, tests/desktop-boundaries.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DISPATCH: Доставлять два результата занятому O без потери gates — Ожидает
-  - Git Commit: [PENDING] feat: доставлять два результата занятому o без потери gates
+- [DONE] DISPATCH: Доставлять два результата занятому O без потери gates — Завершено
+  - Git Commit: [DONE] feat: доставлять два результата занятому o без потери gates
   - Reference: sdk-busy-recipient / DISPATCH / implementation
-  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/contracts/plugin-communication.mjs, src/execution/plugin/communication-store.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/sdk-busy-experiment.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/workflow/command-activity.mjs, tests/command-activity.test.mjs
+  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/contracts/plugin-communication.mjs, src/execution/plugin/communication-store.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/sdk-busy-experiment.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/workflow/command-activity.mjs, tests/command-activity.test.mjs, src/control/plugin/service.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: POLICY
 - [TODO] PROBE: Измерять занятость и анализировать оба SDK уведомления — Ожидает

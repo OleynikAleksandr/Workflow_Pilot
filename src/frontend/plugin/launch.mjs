@@ -167,20 +167,42 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const verified=workflow?ticket:await call('verify',args,{signal});
     if(verified.superseded||!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
     status('Передаём запрос текущему разговору…','sending');
-    let outcome='unknown',timer;const sdkStarted=clock();
+    let outcome='unknown',timer,leaseTimer,inFlight=true,rejectLease;const sdkStarted=clock();
+    const leaseLost=new Promise((_,reject)=>{rejectLease=reject;});
+    const timeout=verified.sdk_busy?.sdk_timeout_ms===90000?90000:sendTimeoutMs;
+    // This renews the existing panel lease only for this long SDK promise.
+    // It cannot grant a plan, change its generation or replay a send.
+    const renewLease=()=>{
+      if(timeout<=60000||!inFlight||!enabled||disposed||suspended||epoch!==generation)return;
+      leaseTimer=setTimeout(async()=>{
+        try{
+          const renewed=await call('sync',{binding:current,message_supported:!!getMessage()},{signal});
+          if(!inFlight||disposed||epoch!==generation)return;
+          if(renewed.stopped||renewed.permission_generation!==current.permission_generation){
+            rejectLease(Object.assign(Error('lease lost'),{code:'SDK_LEASE_LOST'}));
+            localStop('Разрешение изменилось во время SDK; повторной отправки нет.','unknown');return;
+          }
+          expiresAt=renewed.expires_at;renewLease();
+        }catch{if(inFlight&&epoch===generation){
+          rejectLease(Object.assign(Error('lease lost'),{code:'SDK_LEASE_LOST'}));
+          localStop('Аренда панели не подтверждена; повторной отправки нет.','unknown');
+        }}
+      },20000);
+    };
+    renewLease();
     try {
       // These checks and the SDK invocation have no intervening await.
       const pending=getMessage().send({role:'user',content:[{type:'text',text:
         (workflow?'Адресное сообщение Workflow Pilot. Вызови workflow_communication_read_message с аргументами ':'Для включённого пользователем опыта Workflow Pilot вызови workflow_communication_read_message с аргументами ')+
         JSON.stringify(workflow?{message_id}:{run_id:current.run_id,participant_id:current.participant_id,message_id})+
         '. Не открывай другую панель и не повторяй уведомление. Чтение сообщения — отдельная квитанция.'}],
-        _meta:{'openai/message':{target:'active',send:true}}},{timeout:sendTimeoutMs});
+        _meta:{'openai/message':{target:'active',send:true}}},{timeout});
       record('sdk.invoked',{message_id});
-      const response=await Promise.race([pending,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('timeout'),{code:'SDK_TIMEOUT'})),sendTimeoutMs);})]);
+      const response=await Promise.race([pending,leaseLost,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('timeout'),{code:'SDK_TIMEOUT'})),timeout);})]);
       outcome=response?.isError?'rejected':'accepted';record('sdk.'+outcome,{message_id,operation_ms:clock()-sdkStarted});
     }catch(error){const timeout=error.code==='SDK_TIMEOUT'||error.code===-32001;
       record(timeout?'sdk.timeout':'sdk.error',{message_id,error_code:timeout?'SDK_TIMEOUT':'SDK_ERROR'});}
-    finally{clearTimeout(timer);}
+    finally{inFlight=false;clearTimeout(timer);clearTimeout(leaseTimer);}
     try{await call('report',{...args,outcome});}catch(error){record('report.failed',{message_id,error_code:'MCP_ERROR'});throw error;}
     if(!enabled||disposed||epoch!==generation)return;
     status(outcome==='accepted'?'Хост принял запрос; чтение агентом проверяется отдельно.':

@@ -13,6 +13,10 @@ export function executorPageState(record) {
   const stopped=observed&&!record.controller.pending&&!record.composer.inFlight;
   const blocked=(record?.primaryAutomation?.automation??record?.executor?.automation)?.blocked(project);
   return {stopped,canSend:stopped&&page.editorAvailable&&page.writable&&!page.draftPresent&&!blocked,
+    sdkDocumentReady:!!project&&!!project.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt
+      &&!record.disposed&&!record.loading&&record.ready&&(!project.attempt?.cancelState||project.attempt.cancelState==='none')
+      &&page?.url===project.chatUrl&&page.login==='signed-in'&&!page.connectionError
+      &&!record.controller.pending&&!record.composer.inFlight,
     busy:!!page?.busy,turnId:page?.turnId??null,assistantRevision:page?.assistantRevision??0,
     connectionError:page?.connectionError??null,userTurnId:page?.userTurnId??null,
     manualSendRevision:page?.manualSendRevision??0,
