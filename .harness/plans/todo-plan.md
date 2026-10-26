@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1208,
+  "plan_revision": 1210,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Проверить два уведомления о готовых результатах занятому O через SDK и полный цикл до cleanup/complete, с публикацией лишь после живого GO и возвратом к поведению 0.5.36 при неудаче.",
   "acceptance_criteria": [
     "Эксперимент прекращён по прямому поручению пользователя; достигнутые факты и невыполненные проверки сохранены без объявления GO или публикации."
@@ -832,8 +832,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "PUBLISH",
@@ -892,7 +892,10 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "docs/planning/sdk-messaging.md"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -925,10 +928,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1208
+Revision: 1210
 
 ## Цель
 
@@ -1003,8 +1006,8 @@ Revision: 1208
   - Файлы: docs/planning/sdk-messaging.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Зафиксировать отмену публикации ограниченного опыта — Ожидает
-  - Git Commit: [PENDING] docs: зафиксировать отмену публикации ограниченного опыта
+- [DONE] PUBLISH: Зафиксировать отмену публикации ограниченного опыта — Завершено
+  - Git Commit: [DONE] docs: зафиксировать отмену публикации ограниченного опыта
   - Reference: sdk-busy-recipient / PUBLISH / implementation
   - Файлы: docs/planning/sdk-messaging.md
   - Параллельность: исключительное выполнение
