@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1178,
+  "plan_revision": 1180,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "session-choice-and-delivery",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Устранить повторную блокировку результатов после сохранённого выбора и давать сессии содержательное имя до создания плана.",
   "acceptance_criteria": [
     "EXEC003: нажатие и сохранение завершают выбор; его read освобождает очередь UI-события без ожидания ответа/таймера. Готовность следующего Send проверяется отдельно по существующим адресным событиям и барьерам.",
@@ -608,14 +608,15 @@
         "GitHub v0.5.36 published; tag на sourceCommit, все семь assets size/SHA, remote main совпадает с итоговым HEAD. Live/native ограничения сохранены."
       ],
       "expected_commit_message": "release: опубликовать полный выпуск 0.5.36",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "session-choice-and-delivery",
         "task_id": "PUBLISH",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -651,10 +652,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: session-choice-and-delivery
 Current Task: нет
-Revision: 1178
+Revision: 1180
 
 ## Цель
 
@@ -714,8 +715,8 @@ Revision: 1178
   - Файлы: release-manifest.json, docs/planning/session-choice-release.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать полный выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] release: опубликовать полный выпуск 0.5.36
+- [DONE] PUBLISH: Опубликовать полный выпуск на GitHub — Завершено
+  - Git Commit: [DONE] release: опубликовать полный выпуск 0.5.36
   - Reference: session-choice-and-delivery / PUBLISH / implementation
   - Файлы: release-manifest.json, docs/planning/session-choice-release.md
   - Параллельность: исключительное выполнение
