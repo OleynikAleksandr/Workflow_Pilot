@@ -74,6 +74,7 @@ export class DialogueDelivery {
     return {...executorPageState(record),startupLaunch:startupLaunch(project?.attempt,Date.now(),{
       chatUrl:project?.chatUrl,currentUrl:page?.documentId?page.state?.url:undefined}),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
       observationSeq:page?.seq??0,
+      sdkCommands:record?.sdkBusyCommands,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
   }
   async reconcile(target){
@@ -84,6 +85,7 @@ export class DialogueDelivery {
       if(!await record.composer.observeSnapshot())return null;
       const activity=await readCommandActivity(project.workspace);
       if(this.record(this.project(target.local_session_id))!==record)return null;
+      record.sdkBusyCommands=activity.commands;
       return {...this.observe(target),commandsIdle:!activity.commandActive};
     })(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),2000);timer.unref?.();})]);}
     finally{clearTimeout(timer);}
@@ -110,11 +112,14 @@ export class DialogueDelivery {
         ||this.state(project.workspace,target.scope_id).state!=='running'||!page.sdkDocumentReady||page.manualStopped
         ||page.draftPresent||page.connectionError||!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
       const {commands}=await readCommandActivity(project.workspace),active=commands.filter(command=>command.state!=='completed');
+      const record=this.record?.(project);if(record)record.sdkBusyCommands=commands;
       if(policy.busy_kind==='read-only-command'){
         const probe=policy.probe,command=active[0];
         if(active.length!==1||!probe||command.state!=='running'||!command.processId
           ||command.commandHash!==probe.command_hash||probe.nonce!==policy.nonce
+          ||!Number.isFinite(command.startedAt)||command.startedAt<policy.begun_at
           ||probe.command_id&&command.id!==probe.command_id)return {allowed:false,reason:'commands-active'};
+        probe.command_id??=command.id;
       }else if(active.length)return {allowed:false,reason:'commands-active'};
       return {allowed:true};
     }

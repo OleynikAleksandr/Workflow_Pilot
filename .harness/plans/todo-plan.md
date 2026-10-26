@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1187,
+  "plan_revision": 1189,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -256,8 +256,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "PROBE",
@@ -289,7 +289,10 @@
         "tests/chatgpt-plugin.test.mjs",
         "tests/plugin-communication.test.mjs",
         "src/control/workflow/command-activity.mjs",
-        "tests/command-activity.test.mjs"
+        "tests/command-activity.test.mjs",
+        "scripts/prepare-sdk-busy-experiment.mjs",
+        "src/control/facade.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -333,7 +336,27 @@
         "dependency_task_ids": [
           "DISPATCH"
         ]
-      }
+      },
+      "actual_files": [
+        "scripts/prepare-sdk-busy-experiment.mjs",
+        "scripts/analyze-sdk-busy-experiment.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/command-activity.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/plugin/sdk-busy-probe.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/sdk-busy-analysis.test.mjs",
+        "tests/sdk-busy-experiment.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -722,7 +745,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1187
+Revision: 1189
 
 ## Цель
 
@@ -752,10 +775,10 @@ Revision: 1187
   - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/contracts/plugin-communication.mjs, src/execution/plugin/communication-store.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/sdk-busy-experiment.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/workflow/command-activity.mjs, tests/command-activity.test.mjs, src/control/plugin/service.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: POLICY
-- [TODO] PROBE: Измерять занятость и анализировать оба SDK уведомления — Ожидает
-  - Git Commit: [PENDING] feat: измерять занятость и анализировать оба sdk уведомления
+- [DONE] PROBE: Измерять занятость и анализировать оба SDK уведомления — Завершено
+  - Git Commit: [DONE] feat: измерять занятость и анализировать оба sdk уведомления
   - Reference: sdk-busy-recipient / PROBE / implementation
-  - Файлы: src/execution/plugin/sdk-busy-experiment.mjs, src/execution/plugin/sdk-busy-probe.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/control/plugin/service.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/contracts/backend.mjs, src/contracts/plugin-communication.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tools/codex-app-server-mcp/plugin.py, scripts/analyze-sdk-busy-experiment.mjs, tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, src/control/workflow/command-activity.mjs, tests/command-activity.test.mjs
+  - Файлы: src/execution/plugin/sdk-busy-experiment.mjs, src/execution/plugin/sdk-busy-probe.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/control/plugin/service.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/contracts/backend.mjs, src/contracts/plugin-communication.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tools/codex-app-server-mcp/plugin.py, scripts/analyze-sdk-busy-experiment.mjs, tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, src/control/workflow/command-activity.mjs, tests/command-activity.test.mjs, scripts/prepare-sdk-busy-experiment.mjs, src/control/facade.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: DISPATCH
 - [TODO] PROOF: Проверить полный цикл и отказы на изолированных fixtures — Ожидает

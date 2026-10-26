@@ -7,6 +7,8 @@ import {randomUUID} from 'node:crypto';
 import {sdkBusyProfile} from '../src/contracts/plugin-communication.mjs';
 import {readSdkBusyExperiment,writeSdkBusyExperiment,SDK_BUSY_PROFILE_PATH} from '../src/execution/plugin/sdk-busy-experiment.mjs';
 import {prepareSdkBusyExperiment} from '../scripts/prepare-sdk-busy-experiment.mjs';
+import {makeSdkBusyProbe} from '../src/execution/plugin/sdk-busy-probe.mjs';
+import {execFileSync} from 'node:child_process';
 
 async function fixture(t){
   const directory=await fs.mkdtemp(path.join(os.tmpdir(),'sdk-busy-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));
@@ -59,4 +61,14 @@ test('local preparation requires a named test workspace and unpublished effects,
   const rearmed=await prepareSdkBusyExperiment(options);assert.notEqual(prepared.activation_id,rearmed.activation_id);
   plan.tasks[0].commit_status='DONE';await assert.rejects(prepareSdkBusyExperiment(options),/независимые/);
   await prepareSdkBusyExperiment({...options,off:true});assert.deepEqual(await readSdkBusyExperiment(workspace,expected),{version:1,mode:'off'});
+});
+test('fixed inline probe executes outside ASAR, quotes arguments and writes no workspace files',async t=>{
+  const {workspace}=await fixture(t),python=path.resolve('.harness/runtime/test-python/bin/python');
+  const nonce=randomUUID(),probe=makeSdkBusyProbe({python,nonce,duration_ms:1});
+  const output=execFileSync('/bin/sh',['-c',probe.command],{cwd:workspace,encoding:'utf8'});
+  assert.equal(output,'sdk-busy-probe-start:'+nonce+'\nsdk-busy-probe-end:'+nonce+'\n');
+  assert.deepEqual(await fs.readdir(workspace),[]);assert.match(probe.command,/'-B' '-I' '-S' '-c'/);
+  assert.throws(()=>makeSdkBusyProbe({python,nonce:nonce+'; touch stolen'}),/INVALID/);
+  const windows=makeSdkBusyProbe({python:"C:\\Own ' runtime\\python.exe",nonce,platform:'win32'});
+  assert.match(windows.command,/^& 'C:\\Own '' runtime/);assert.notEqual(windows.command_hash,probe.command_hash);
 });

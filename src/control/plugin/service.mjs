@@ -15,12 +15,13 @@ export function pluginConversationKey(metadata) {
 
 // Both frontends use the same ProjectsService. No profile copies or browser operations.
 export class PluginProjects {
-  constructor({ projects, loadContext, plans=null,migrate=null, communicationStore = null, onChange = () => {}, observe, admit, reconcile, currentMessage, onCommunicationChange, workProgress = null, userChoice = null, choose = null, sdkBusyProfile=async()=>({version:1,mode:'off'}) }) {
+  constructor({ projects, loadContext, plans=null,migrate=null, communicationStore = null, onChange = () => {}, observe, admit, reconcile, currentMessage, onCommunicationChange, workProgress = null, userChoice = null, choose = null, sdkBusyProfile=async()=>({version:1,mode:'off'}),sdkBusyProbe }) {
     Object.assign(this, { projects, loadContext, onChange,plans,sdkBusyProfile });
     this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id),
       verifyTarget:id=>this.participantTarget(id),verifyTerminal:(target,message)=>this.terminalTarget(target,message),
       observe,admit,reconcile,currentMessage,onChange:onCommunicationChange,workProgress,userChoice,choose,
       sdkBusyProfile:target=>this.sdkBusyProfile(target),
+      sdkBusyProbe,
       dialogueKit:plans?{status:(target,id)=>this.dialogueOperation(target,'assignment:dialogue-status',id),
         close:(target,input)=>this.dialogueOperation(target,'assignment:transport',input),
         apply:(target,input)=>this.dialogueOperation(target,'assignment:dialogue',input),migrate}:null});

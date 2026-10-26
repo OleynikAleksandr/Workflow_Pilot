@@ -75,13 +75,19 @@ export class ControlFacade {
   }
   createDeletion(options) { return this.projects.createDeletion(options); }
   createPlugin(options = {}) {
-    return new PluginProjects({ projects:this.projects,plans:this.plans,migrate:(target,input)=>this.#workflow.migrateAssignments(target,input),
+    const plugin=new PluginProjects({ projects:this.projects,plans:this.plans,migrate:(target,input)=>this.#workflow.migrateAssignments(target,input),
       sdkBusyProfile:async target=>{
         const project=this.projects.snapshot().projects.find(project=>project.projectId===target.project_id&&!project.parentWorkspace&&!project.archivedAt);
         if(!project||target.role!=='O'||!target.scope_id)return {version:1,mode:'off'};
-        return this.#execution.sdkBusyExperiment?.(project.workspace,{...target,build_id:COMMUNICATION_BUILD})??{version:1,mode:'off'};
+        const profile=await this.#execution.sdkBusyExperiment?.(project.workspace,{...target,build_id:COMMUNICATION_BUILD})??{version:1,mode:'off'};
+        if(profile.mode==='sdk-busy-burst')this.#execution.watchSdkBusyExperiment?.(project.workspace,()=>{
+          void plugin.communication.workflow.refreshExperiment(target).catch(()=>{});
+        });
+        return profile;
       },
+      sdkBusyProbe:input=>this.#execution.sdkBusyProbe(input),
       loadContext:workspace=>this.plans.loadContext(workspace), ...options });
+    return plugin;
   }
   configureSettings({file,workflowSnapshot}) {
     if(this.#settings)throw new Error('CONTROL_SETTINGS_ALREADY_CONFIGURED');

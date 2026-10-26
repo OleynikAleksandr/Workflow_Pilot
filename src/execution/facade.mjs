@@ -5,6 +5,8 @@ import { BrowserSessions } from './browser/session-runtime.mjs';
 import { startPluginBridge } from './plugin/bridge.mjs';
 import {ProjectCommands} from './runtime/project-commands.mjs';
 import {readSdkBusyExperiment} from './plugin/sdk-busy-experiment.mjs';
+import {makeSdkBusyProbe} from './plugin/sdk-busy-probe.mjs';
+import {ProjectInputWatch} from './files/project-input-watch.mjs';
 export { openCommunicationStore } from './plugin/communication-store.mjs';
 export { isChatGPTChatUrl, isPendingChatGPTConversation } from './browser/chatgpt-experience.mjs';
 export { desktopFiles, exists } from './files/adapter.mjs';
@@ -25,6 +27,7 @@ export { executableCandidateAllowed, nodeExecutableCandidates } from './platform
 export class ExecutionFacade {
   #browser = null;
   #plugin = null;
+  #experimentWatches = new Map();
   constructor({ commands = desktopCommands, files = desktopFiles } = {}) {
     this.commands = commands; this.files = files; this.runtime = null;
   }
@@ -66,6 +69,18 @@ export class ExecutionFacade {
   writeJson(file, value, options) { return this.files.writeJson(file, value, options); }
   canonicalPath(file) { return this.files.canonicalPath(file); }
   sdkBusyExperiment(workspace,expected) { return readSdkBusyExperiment(workspace,expected); }
+  watchSdkBusyExperiment(workspace,onSignal){
+    const old=this.#experimentWatches.get(workspace);if(old){old.onSignal=onSignal;return;}
+    const record={onSignal,watch:null};
+    record.watch=new ProjectInputWatch({workspace,onSignal:()=>record.onSignal(),onError:error=>{if(error)record.onSignal(error);}});
+    this.#experimentWatches.set(workspace,record);
+    record.watch.update(['.harness/runtime/experiments/sdk-busy.json','.harness/runtime/command-activity/']);
+  }
+  async sdkBusyProbe(input){
+    const status=await this.inspectServices(),python=status.runtime_python;
+    if(!python||!await this.files.stat(python).then(stat=>stat.isFile()).catch(()=>false))throw Error('SDK_BUSY_PYTHON_UNAVAILABLE');
+    return makeSdkBusyProbe({...input,python});
+  }
   ensureServices() { return this.services().ensure(); }
   inspectServices() { return this.services().control('status'); }
   startMcpOnly() { return this.services().control('start', { mcpOnly: true }); }
@@ -77,5 +92,6 @@ export class ExecutionFacade {
     this.#plugin=await startPluginBridge(options);
   }
   // Login services survive closing the desktop. Only its own transient workers are disposed.
-  async dispose() { this.#browser?.dispose();await Promise.all([this.#plugin?.close(),this.commands.dispose()]); }
+  async dispose() { this.#browser?.dispose();for(const record of this.#experimentWatches.values())record.watch.close();
+    this.#experimentWatches.clear();await Promise.all([this.#plugin?.close(),this.commands.dispose()]); }
 }

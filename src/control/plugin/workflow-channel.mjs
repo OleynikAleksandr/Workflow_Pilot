@@ -66,7 +66,15 @@ export class WorkflowChannel {
     c.assignment.invalidateAuthorizations(run);
     for(const member of Object.values(run.members)){member.generation=generation;member.stopped=!active;
       if(member.role==='O')member.target.scope_id=target.scope_id;}
-    if(active&&profile?.mode==='sdk-busy-burst'){
+    if(active&&run.sdk_busy_policy?.scope_id!==target.scope_id)
+      run.sdk_busy_policy={scope_id:target.scope_id,mode:profile?.mode??'off'};
+    this.configureExperiment(run,target,profile,generation,active,true);
+    c.event(run,'plan.permission',{scope_id:target.scope_id,permission_generation:generation,phase,active});
+    return this.state(run);
+  }
+  configureExperiment(run,target,profile,generation,active,resume=false){
+    const c=this.c;
+    if(active&&run.sdk_busy_policy?.mode==='sdk-busy-burst'&&profile?.mode==='sdk-busy-burst'){
       const value=sdkBusyProfile(profile,{workspace:profile.workspace,project_id:target.project_id,scope_id:target.scope_id,
         role:target.role,build_id:COMMUNICATION_BUILD});
       // Continue is not a fresh local preparation. In particular, restart may
@@ -78,10 +86,23 @@ export class WorkflowChannel {
         run.sdk_busy={...value,active:true,backend_id:c.backendId,generation,recipient_session_id:target.local_session_id,
           used_case_ids:[...used,...value.cases.map(item=>item.case_id)],cases:value.cases.map(item=>({...item,status:'armed',messages:[],slots:[]}))};
         c.event(run,'experiment.armed',{scope_id:target.scope_id,experiment_id:value.experiment_id,activation_id:value.activation_id});
-      }else if(previous.backend_id===c.backendId){previous.generation=generation;previous.active=true;}
+      }else if(resume&&previous.backend_id===c.backendId){previous.generation=generation;previous.active=true;}
     }else if(run.sdk_busy){run.sdk_busy.active=false;}
-    c.event(run,'plan.permission',{scope_id:target.scope_id,permission_generation:generation,phase,active});
-    return this.state(run);
+  }
+  async refreshExperiment(target){
+    await this.c.ready;const profile=await this.c.sdkBusyProfile(target);
+    await this.reconcile(target);
+    return this.c.mutate('experimentRefresh',{run_id:workflowRunId(target),target,profile});
+  }
+  async refresh(input){
+    const run=this.c.run(input),target=input.target;
+    if(!run.grant||run.grant.scope_id!==target.scope_id||run.grant.boot!==this.c.backendId)return {};
+    this.configureExperiment(run,target,input.profile,run.grant.generation,run.grant.active);
+    for(const member of Object.values(run.members))if(member.target.local_session_id===target.local_session_id){
+      this.observeExperiment(run,member);await this.observed(run,member);
+      this.c.event(run,'experiment.signal',{participant_id:member.id});
+    }
+    return {};
   }
   state(run){return {scope_id:run.grant?.scope_id??null,phase:run.grant?.phase??'not-started',active:run.grant?.active===true};}
   experiment(run,member){
@@ -93,7 +114,7 @@ export class WorkflowChannel {
   experimentCase(run,message){return run.sdk_busy?.cases.find(item=>item.messages.includes(message.message_id));}
   heldExperiment(run,member,message){
     const value=this.experiment(run,member);if(!value||message.kind!=='result'||message.sender_role!=='E')return false;
-    return value.cases.some(item=>['armed','holding'].includes(item.status)&&item.task_ids.includes(message.task_id));
+    return value.cases.some(item=>['armed','holding','waiting-generation','waiting-command'].includes(item.status)&&item.task_ids.includes(message.task_id));
   }
   updateExperiment(run){
     const value=run.sdk_busy;if(!value?.active||value.backend_id!==this.c.backendId)return;
@@ -142,6 +163,65 @@ export class WorkflowChannel {
     }
     return {case_id:item.case_id,nonce:item.nonce,busy_kind:item.busy_kind};
   }
+  async checkpoint(input){
+    check(['begin','resume','final'].includes(input.marker),'INPUT','Неизвестный checkpoint.');
+    const {run,member}=this.c.member(input),value=this.experiment(run,member);
+    check(value,'EXPERIMENT_DISABLED','Свой тестовый случай не вооружён.');
+    const item=value.cases.find(item=>item.case_id===input.case_id);
+    check(item&&!['armed','invalid'].includes(item.status),'EXPERIMENT_CASE','Нужны два проверенных результата.');
+    if(input.marker==='begin'){
+      check(item.busy_kind!=='tool-wait','EXPERIMENT_CASE','Для tool-wait вызовите hold.');
+      if(!item.nonce){
+        this.beginExperiment(input);
+        item.baseline=this.experimentPage(member);item.status=item.busy_kind==='generation'?'waiting-generation':'waiting-command';
+        if(item.busy_kind==='read-only-command'){
+          check(item.preliminary_go,'EXPERIMENT_CASE','Нужен предварительный GO основных случаев.');
+          const probe=await this.c.sdkBusyProbe({nonce:item.nonce,duration_ms:15000});
+          item.probe=probe;
+        }
+      }
+    }else check(input.nonce===item.nonce,'EXPERIMENT_NONCE','Checkpoint принадлежит другой работе.');
+    item.checkpoints??={};
+    if(!item.checkpoints[input.marker]){
+      item.checkpoints[input.marker]=this.c.now();
+      this.c.event(run,'experiment.checkpoint',{participant_id:member.id,experiment_id:value.experiment_id,
+        case_id:item.case_id,marker:input.marker,nonce:item.nonce,busy_kind:item.busy_kind,page:this.experimentPage(member)});
+    }
+    return {case_id:item.case_id,nonce:item.nonce,busy_kind:item.busy_kind,marker:input.marker,
+      ...(item.probe?{probe:item.probe}:{}),instruction:input.marker==='begin'&&item.busy_kind==='generation'
+        ?'Продолжи заранее выбранную содержательную работу в этом же ходе. После неё checkpoint resume с этим nonce; результаты пока не читай.':'Продолжай штатный цикл без повторного SDK.'};
+  }
+  experimentPage(member){
+    const p=this.observe(member.target);return {document_id:p.documentId??null,seq:p.observationSeq??0,
+      assistant_revision:p.assistantRevision??0,turn_id:p.turnId??null,busy:p.busy===true,commands_idle:p.commandsIdle===true};
+  }
+  observeExperiment(run,member){
+    const value=this.experiment(run,member);if(!value)return;
+    const page=this.observe(member.target);
+    for(const item of value.cases){
+      if(item.status==='waiting-generation'&&page.sdkDocumentReady&&page.busy
+        &&page.documentId===item.baseline.document_id&&page.observationSeq>item.baseline.seq
+        &&page.assistantRevision>item.baseline.assistant_revision){
+        item.status='dispatching';this.c.event(run,'experiment.generation_candidate',{participant_id:member.id,
+          case_id:item.case_id,experiment_id:value.experiment_id,nonce:item.nonce,page:this.experimentPage(member)});
+      }
+      if(item.status==='waiting-command'&&this.commandAllowed(item,page)){
+        item.status='dispatching';this.c.event(run,'experiment.command_observed',{participant_id:member.id,
+          case_id:item.case_id,experiment_id:value.experiment_id,nonce:item.nonce,
+          command_hash:item.probe.command_hash,command_id:item.probe.command_id,preliminary_go:item.preliminary_go,page:this.experimentPage(member)});
+      }
+    }
+  }
+  commandAllowed(item,page){
+    if(!Array.isArray(page.sdkCommands))return false;
+    const active=page.sdkCommands.filter(command=>command.state!=='completed');
+    if(item.busy_kind!=='read-only-command')return active.length===0;
+    const command=active[0],probe=item.probe;
+    if(active.length!==1||!probe||command.state!=='running'||!command.processId
+      ||command.commandHash!==probe.command_hash||command.startedAt<item.begun_at
+      ||!Number.isFinite(command.startedAt)||probe.command_id&&probe.command_id!==command.id)return false;
+    probe.command_id??=command.id;return true;
+  }
   experimentPolicy(run,member,message){
     if(!message.sdk_busy)return null;
     const value=this.experiment(run,member),item=this.experimentCase(run,message);
@@ -150,7 +230,8 @@ export class WorkflowChannel {
     let reason=this.c.startup.active(run,member)?'previous-message':item.status!=='dispatching'?'experiment-hold'
       :item.first_claimed_at&&this.c.now()-item.first_claimed_at>120000?'experiment-window-expired'
       :!page.sdkDocumentReady?'recipient-unavailable':page.connectionError?'recipient-connection-error'
-      :page.manualStopped?'manual-stop':page.draftPresent?'recipient-draft':!page.busy?'recipient-not-busy':null;
+      :page.manualStopped?'manual-stop':page.draftPresent?'recipient-draft':!page.busy?'recipient-not-busy'
+      :!this.commandAllowed(item,page)?'commands-active':null;
     // Only the two selected independent results may cross each other unread.
     if(!reason)for(const earlier of run.messages.slice(0,run.messages.indexOf(message))){
       if(earlier.recipient_id!==member.id||communicationMessageComplete(earlier))continue;
@@ -161,7 +242,7 @@ export class WorkflowChannel {
       reason='previous-message';break;
     }
     return {reason,experiment_id:value.experiment_id,case_id:item.case_id,busy_kind:item.busy_kind,
-      bypassBusy:true,probe:item.probe??null,nonce:item.nonce};
+      bypassBusy:true,probe:item.probe??null,nonce:item.nonce,begun_at:item.begun_at};
   }
   claimExperiment(run,member,message){
     const policy=this.experimentPolicy(run,member,message);if(!policy)return;
@@ -330,7 +411,7 @@ export class WorkflowChannel {
     }
     if(!this.transportPermitted(run,member)||this.gatePending(run,member)||!this.observe(member.target).canSend)return null;
     const first=this.first(run,member);
-    if(first&&this.heldExperiment(run,member,first))return null;
+    if(first&&(this.heldExperiment(run,member,first)||this.experimentPolicy(run,member,first)))return null;
     return first?.delivery==='pending'&&!first.read&&first.delivery_mode!=='model-pull'?first:null;
   }
   async admit(target,message,policy){
@@ -372,6 +453,9 @@ export class WorkflowChannel {
       userTurnId:page.userTurnId??null,assistantRevision:page.assistantRevision??0,userMessagesRevision:page.userMessagesRevision??0};
   }
   async observed(run,member) {
+    if(this.experiment(run,member)){
+      await this.reconcile(member.target);this.observeExperiment(run,member);
+    }
     // Retire only saved legacy UI gates whose own delivery is confirmed.
     // Never manufacture reply.observed: the model may still be answering.
     const uiGate=member.deliveryGate&&run.messages.find(m=>m.message_id===member.deliveryGate.message_id);

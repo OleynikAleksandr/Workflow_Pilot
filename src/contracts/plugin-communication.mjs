@@ -15,10 +15,12 @@ export function sdkBusyProfile(value,expected){
     ||!expected.scope_id||expected.role!=='O'||!Array.isArray(value.cases)||!value.cases.length||value.cases.length>16)return reject();
   const seen=new Set();
   for(const item of value.cases){
-    if(!item||Object.keys(item).some(key=>!['case_id','busy_kind','max_notifications','task_ids'].includes(key))
+    if(!item||Object.keys(item).some(key=>!['case_id','busy_kind','max_notifications','task_ids','preliminary_go'].includes(key))
       ||!experimentKey(item.case_id)||seen.has(item.case_id)||!SDK_BUSY_KINDS.includes(item.busy_kind)
       ||item.max_notifications!==2||!Array.isArray(item.task_ids)||item.task_ids.length!==2
-      ||new Set(item.task_ids).size!==2||!item.task_ids.every(experimentKey))return reject();
+      ||new Set(item.task_ids).size!==2||!item.task_ids.every(experimentKey)
+      ||item.busy_kind==='read-only-command'&&!/^[a-f0-9]{64}$/.test(item.preliminary_go??'')
+      ||item.preliminary_go!==undefined&&!/^[a-f0-9]{64}$/.test(item.preliminary_go))return reject();
     seen.add(item.case_id);
   }
   return structuredClone(value);

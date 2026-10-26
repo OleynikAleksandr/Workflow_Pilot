@@ -21,7 +21,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   let clientSequence=0,telemetry=[],flushing=null,flushTimer=null,dropped=0,exported='',exportRun='',serverError=null;
   let refreshing=null,refreshTimer=null;const sampledAt=new Map();
   let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false,workflow=false,recoveryFailures=0,retryTimer=null;
-  let workflowTimer=null,completedScope=null,closed=false,resourceUri='ещё не получен';
+  let workflowTimer=null,completedScope=null,closed=false,resourceUri='ещё не получен',experimentDiagnostic='';
   function watchWorkflow(){
     clearTimeout(workflowTimer);
     // A finished plan keeps its progress view current with a slow read-only status.
@@ -66,7 +66,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     $('refresh').disabled=disposed||busy||enabled||!binding;
     $('export').disabled=disposed||busy||!binding;
     $('run').disabled=$('participant').disabled=!!binding||busy;
-    if(!disposed){$('enable-reason').textContent=reason;ui.diagnostics(`SDK: ${connected?'подключён':'не подключён'}; openai/message: ${getMessage()?'доступен':'не предоставлен'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\nРесурс текущего MCP: ${resourceUri}.\nПривязка: ${binding&&!contextBlocked?'подтверждена':'не подтверждена'}. Ожидание: ${enabled&&loop?'запущено':'остановлено'}.\n${reason}`);}
+    if(!disposed){$('enable-reason').textContent=reason;ui.diagnostics(`SDK: ${connected?'подключён':'не подключён'}; openai/message: ${getMessage()?'доступен':'не предоставлен'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\nРесурс текущего MCP: ${resourceUri}.\nПривязка: ${binding&&!contextBlocked?'подтверждена':'не подтверждена'}. Ожидание: ${enabled&&loop?'запущено':'остановлено'}.\n${reason}${experimentDiagnostic}`);}
     if(resumePending&&!busy&&!recovery&&!stopping&&!suspended&&!disposed){resumePending=false;queueMicrotask(()=>recover());}
   };
   const call=async(name,args={},options={})=>{
@@ -104,9 +104,9 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       if(!disposed)ui.localEvents(telemetry.length,dropped);
     }})().finally(()=>{flushing=null;});return flushing;
   }
-  function record(event_type,fields={}){
+  function record(event_type,fields={},owner=binding){
     const event={event_id:uuid(),event_type,client_sequence:++clientSequence,client_time:new Date().toISOString(),duration_ms:clock()-started,...fields};
-    if(telemetry.length>=64)dropped++;else telemetry.push({event,panelId,binding:binding?{...binding}:null});
+    if(telemetry.length>=64)dropped++;else telemetry.push({event,panelId:owner?.panel_instance_id??panelId,binding:owner?{...owner}:null});
     if(!disposed)ui.localEvents(telemetry.length,dropped);
     if(!flushTimer&&!flushing)flushTimer=setTimeout(()=>void flush(),50);
   }
@@ -142,6 +142,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const current=binding,generation=epoch;
     const value=await call('status',{run_id:current.run_id,participant_id:current.participant_id,view:reset?'full':'panel'});
     if(binding!==current||epoch!==generation||disposed||suspended)return value;
+    experimentDiagnostic=value.sdk_busy?.mode==='sdk-busy-burst'?'\nSDK-опыт: '+value.sdk_busy.experiment_id+'; '+value.sdk_busy.cases.map(item=>item.case_id+': '+item.status+' ('+item.slots+'/2)').join('; '):'';
     if(finishCompleted(value,current,generation))return value;
     if(!disposed){ui.snapshot({...value,expires_at:value.stopped?0:expiresAt});if(value.critical_error){serverError=value.critical_error;localStop('Журнал недоступен. Отправка заблокирована.','error');}}
     if(reset){let cursor=Math.max(0,value.seq-200);ui.feed([],cursor);
@@ -167,7 +168,9 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const verified=workflow?ticket:await call('verify',args,{signal});
     if(verified.superseded||!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
     status('Передаём запрос текущему разговору…','sending');
-    let outcome='unknown',timer,leaseTimer,inFlight=true,rejectLease;const sdkStarted=clock();
+    let outcome='unknown',timer,leaseTimer,inFlight=true,rejectLease,settled=false;const sdkStarted=clock();
+    const correlation={message_id,delivery_attempt_id:ticket.delivery_attempt_id,
+      ...(verified.sdk_busy?{case_id:verified.sdk_busy.case_id}:{})};
     const leaseLost=new Promise((_,reject)=>{rejectLease=reject;});
     const timeout=verified.sdk_busy?.sdk_timeout_ms===90000?90000:sendTimeoutMs;
     // This renews the existing panel lease only for this long SDK promise.
@@ -192,17 +195,20 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     renewLease();
     try {
       // These checks and the SDK invocation have no intervening await.
+      record('sdk.invoked',correlation,current);
       const pending=getMessage().send({role:'user',content:[{type:'text',text:
         (workflow?'Адресное сообщение Workflow Pilot. Вызови workflow_communication_read_message с аргументами ':'Для включённого пользователем опыта Workflow Pilot вызови workflow_communication_read_message с аргументами ')+
         JSON.stringify(workflow?{message_id}:{run_id:current.run_id,participant_id:current.participant_id,message_id})+
         '. Не открывай другую панель и не повторяй уведомление. Чтение сообщения — отдельная квитанция.'}],
         _meta:{'openai/message':{target:'active',send:true}}},{timeout});
-      record('sdk.invoked',{message_id});
+      Promise.resolve(pending).then(response=>{if(settled)record(response?.isError?'sdk.late_rejected':'sdk.late_accepted',
+        {...correlation,operation_ms:clock()-sdkStarted},current);},()=>{if(settled)record('sdk.late_rejected',
+        {...correlation,operation_ms:clock()-sdkStarted,error_code:'SDK_ERROR'},current);});
       const response=await Promise.race([pending,leaseLost,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('timeout'),{code:'SDK_TIMEOUT'})),timeout);})]);
-      outcome=response?.isError?'rejected':'accepted';record('sdk.'+outcome,{message_id,operation_ms:clock()-sdkStarted});
+      outcome=response?.isError?'rejected':'accepted';record('sdk.'+outcome,{...correlation,operation_ms:clock()-sdkStarted},current);
     }catch(error){const timeout=error.code==='SDK_TIMEOUT'||error.code===-32001;
-      record(timeout?'sdk.timeout':'sdk.error',{message_id,error_code:timeout?'SDK_TIMEOUT':'SDK_ERROR'});}
-    finally{inFlight=false;clearTimeout(timer);clearTimeout(leaseTimer);}
+      record(timeout?'sdk.timeout':'sdk.error',{...correlation,error_code:timeout?'SDK_TIMEOUT':'SDK_ERROR'},current);}
+    finally{settled=true;inFlight=false;clearTimeout(timer);clearTimeout(leaseTimer);}
     try{await call('report',{...args,outcome});}catch(error){record('report.failed',{message_id,error_code:'MCP_ERROR'});throw error;}
     if(!enabled||disposed||epoch!==generation)return;
     status(outcome==='accepted'?'Хост принял запрос; чтение агентом проверяется отдельно.':

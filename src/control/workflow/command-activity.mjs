@@ -44,6 +44,7 @@ export async function readCommandActivity(workspace,{isDead=dead,bootId=currentB
     const acknowledged=state==='acknowledged_unknown';
     commands.push({id,digest:hash(raw),state,readOnly,executorPid:record.executor_pid??null,
       commandHash:valid&&/^[a-f0-9]{64}$/.test(record.command_hash??'')?record.command_hash:null,
+      startedAt:valid?record.started_at_ms:null,
       executorInstance:valid?record.executor_instance:null,previousBoot:previousBoot&&knownDead,
       processId:typeof record.process_id==='string'?record.process_id:null,
       cwd:valid&&typeof record.cwd==='string'?record.cwd:workspace,workspace,

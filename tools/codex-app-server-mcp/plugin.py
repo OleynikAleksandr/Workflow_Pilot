@@ -62,11 +62,13 @@ class AssignmentContext(BaseModel):
 class CommunicationEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_id: MessageId
-    event_type: Annotated[str, Field(pattern=r"^(sdk\.(invoked|accepted|rejected|timeout|error)|report\.failed|stop\.(local|failed)|host\.(handshake|context_changed)|visibility\.changed|panel\.(pagehide|dispose|mount|resume)|wait\.error|connection\.restored|rpc\.completed)$")]
+    event_type: Annotated[str, Field(pattern=r"^(sdk\.(invoked|accepted|rejected|timeout|error|late_accepted|late_rejected)|report\.failed|stop\.(local|failed)|host\.(handshake|context_changed)|visibility\.changed|panel\.(pagehide|dispose|mount|resume)|wait\.error|connection\.restored|rpc\.completed)$")]
     client_sequence: Annotated[int, Field(ge=1)]
     client_time: Annotated[str, Field(max_length=40)]
     duration_ms: Annotated[float, Field(ge=0, le=86400000)]
     message_id: MessageId | None = None
+    delivery_attempt_id: MessageId | None = None
+    case_id: Annotated[str | None, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")] = None
     error_code: Annotated[str | None, Field(max_length=80)] = None
     message_supported: bool | None = None
     operation: Annotated[str | None, Field(max_length=32)] = None
@@ -146,6 +148,19 @@ def register_plugin(mcp, state_root: Path):
         """Set the first topic title of this registered Chat during its first substantive user request, before mode selection, Review or plan creation; discussion without a plan is supported. Identity comes from this call's host metadata, never copied IDs or the selected sidebar. Preserves manual/task/scope titles and an already accepted topic. Does not reopen the panel, resend startup, create a model turn, change role, or authorize execution. Report success only from this durable result; a local title is not proof of remote ChatGPT title sync."""
         return result(await asyncio.to_thread(bridge.call, {"action": "sessionTitle", "title": title,
                                                          "metadata": host_metadata(ctx)}))
+
+    @mcp.tool(name="workflow_delivery_experiment_hold", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def experiment_hold(case_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$", description="Case armed locally for this own test conversation.")], ctx: Context,
+                              duration_ms: Annotated[int, Field(ge=1, le=30000, description="Original bounded interval, retained on duplicate calls.")] = 15000) -> CallToolResult:
+        """Measurement only for the locally armed own test O/case with two checked results. Holds this tool asynchronously up to 30 seconds; never enables an experiment or grants execution. Repeating the same case/duration retains its original interval and nonce. Continue the predetermined work after return, then checkpoint resume/final. Do not read selected results before notification. No manual IDs or replay."""
+        return await communication("experimentHold", ctx, case_id=case_id, duration_ms=duration_ms)
+
+    @mcp.tool(name="workflow_delivery_experiment_checkpoint", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def experiment_checkpoint(case_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$", description="Case armed locally; cannot select a different scope.")],
+                                    marker: Annotated[Literal["begin", "resume", "final"], Field(description="Begin the original work or record its resume/final boundary.")], ctx: Context,
+                                    nonce: Annotated[str | None, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Nonce returned by hold/begin; required for resume and final.")] = None) -> CallToolResult:
+        """Record the own armed measurement boundary; cannot enable or rearm it. Begin returns a nonce for the predetermined substantive generation or an exact fixed read-only Python probe. Begin does not prove generation. Resume/final must return that nonce and mark completion of the original work, not SDK acceptance. Run only the returned exact probe with read_only=true and login=false; no changed arguments or extra commands. Regular projects reject this tool."""
+        return await communication("experimentCheckpoint", ctx, case_id=case_id, marker=marker, nonce=nonce)
 
     @mcp.tool(name="workflow_communication_join", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def join(run_id: RunId, role: Annotated[str, Field(pattern=r"^(O|E)$", description="Role O or E; two different conversations are required.")], ctx: Context) -> CallToolResult:

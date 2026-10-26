@@ -23,7 +23,7 @@ const MUTATIONS=['join','bind','enable','stop','send','probe','claim','claimRead
 const diagnostic=e=>e.component==='frontend'||['operation.timing','kit.timing','observer.timing','diagnostic.gap','claim.deferred'].includes(e.event_type);
 const functional=e=>!diagnostic(e)&&!e.event_type.startsWith('wait.');
 const SECRET=/(?:Bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{12,}|(?:authorization|cookie|api[_-]?key|password|(?:access[_-]?)?token)\s*[:=]\s*\S+|https?:\/\/[^\s/:]+:[^\s/@]+@)/i;
-const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','report.failed',
+const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','sdk.late_accepted','sdk.late_rejected','report.failed',
   'stop.local','stop.failed','host.handshake','host.context_changed','visibility.changed','panel.pagehide','panel.dispose','panel.mount','panel.resume',
   'wait.error','connection.restored','rpc.completed']);
 const RPC_OPERATIONS=new Set(['recover','bind','sync','wait','claim','claim_ready','verify','report','status','journal','stop','enable','export','choose']);
@@ -33,8 +33,9 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null,sdkBusyProfile=async()=>({version:1,mode:'off'})}={}) {
-    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose,sdkBusyProfile});
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null,sdkBusyProfile=async()=>({version:1,mode:'off'}),sdkBusyProbe=async()=>{throw Error('SDK_BUSY_PYTHON_UNAVAILABLE');}}={}) {
+    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose,sdkBusyProfile,sdkBusyProbe});
+    this.experimentHolds=new Map();
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
     this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];this.timingDrops=0;
@@ -283,6 +284,45 @@ export class PluginCommunication {
   _turnTimeout(input){return this.workflow.timeout(input);}
   async experimentBegin(input){return this.mutate('experimentBegin',await this.modelInput(input));}
   _experimentBegin(input){return this.workflow.beginExperiment(input);}
+  _experimentRefresh(input){return this.workflow.refresh(input);}
+  async experimentCheckpoint(input){
+    input=await this.modelInput(input);const {member}=this.member(input);
+    await this.workflow.reconcile(member.target);return this.mutate('experimentCheckpoint',input);
+  }
+  _experimentCheckpoint(input){return this.workflow.checkpoint(input);}
+  async experimentHold(input,signal){
+    input=await this.modelInput(input);
+    requireValue(Number.isSafeInteger(input.duration_ms??15000)&&(input.duration_ms??15000)>=1
+      &&(input.duration_ms??15000)<=30000,'INPUT','hold ограничен 30 секундами.');
+    const {member}=this.member(input);await this.workflow.reconcile(member.target);
+    const begin=await this.mutate('experimentHoldStart',{...input,duration_ms:input.duration_ms??15000});
+    if(begin.finished)return begin;
+    const key=input.run_id+':'+input.case_id,old=this.experimentHolds.get(key);if(old)return old.promise;
+    let timer,cancel;const promise=new Promise(resolve=>{cancel=()=>resolve(false);timer=setTimeout(()=>resolve(true),Math.max(0,begin.until-this.now()));})
+      .then(ok=>this.mutate('experimentHoldEnd',{...input,nonce:begin.nonce,ok}))
+      .finally(()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);this.experimentHolds.delete(key);});
+    this.experimentHolds.set(key,{promise,cancel});signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
+    return promise;
+  }
+  _experimentHoldStart(input){
+    const begin=this.workflow.beginExperiment(input),{run,member}=this.member(input),item=this.workflow.experimentCase(run,
+      run.messages.find(message=>message.sdk_busy?.case_id===input.case_id));
+    requireValue(item.busy_kind==='tool-wait','EXPERIMENT_CASE','hold разрешён только для tool-wait.');
+    requireValue(!item.hold||item.hold.duration_ms===input.duration_ms,'EXPERIMENT_CASE','Нельзя заменить интервал hold.');
+    if(!item.hold){item.hold={duration_ms:input.duration_ms,until:this.now()+input.duration_ms};
+      this.event(run,'experiment.hold_started',{participant_id:member.id,case_id:item.case_id,nonce:item.nonce,
+        experiment_id:run.sdk_busy.experiment_id,duration_ms:input.duration_ms,page:this.workflow.experimentPage(member)});}
+    return {...begin,until:item.hold.until,finished:!!item.hold.finished};
+  }
+  _experimentHoldEnd(input){
+    const {run,member}=this.member(input),item=run.sdk_busy?.cases.find(item=>item.case_id===input.case_id);
+    requireValue(item?.nonce===input.nonce,'EXPERIMENT_NONCE','Случай hold изменился.');
+    if(!item.hold.finished){item.hold.finished=true;
+      if(!input.ok)this.workflow.invalidateExperiment(run,run.messages.find(message=>item.messages.includes(message.message_id)),'hold-cancelled');
+      this.event(run,'experiment.hold_finished',{participant_id:member.id,case_id:item.case_id,experiment_id:run.sdk_busy.experiment_id,
+        nonce:item.nonce,ok:input.ok,page:this.workflow.experimentPage(member)});}
+    return {case_id:item.case_id,nonce:item.nonce,finished:true,ok:input.ok};
+  }
   async _observed(input){const run=this.run(input);for(const member of Object.values(run.members))
     if((!input.session_id||member.target.local_session_id===input.session_id)
       &&(!input.message_id||member.deliveryGate?.message_id===input.message_id
@@ -416,6 +456,8 @@ export class PluginCommunication {
       startup:startup?{...startup,launch:this.workflow.observe(member.target)?.startupLaunch??null}:null,
       ...(run.mode==='workflow'?this.choiceOf(run,member):{}),
       ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:this.workflow.livePanel(run,member)}:{}),
+      sdk_busy:run.sdk_busy?{mode:run.sdk_busy.active?'sdk-busy-burst':'off',experiment_id:run.sdk_busy.experiment_id,
+        cases:run.sdk_busy.cases.map(item=>({case_id:item.case_id,busy_kind:item.busy_kind,status:item.status,reason:item.reason??null,slots:item.slots.length}))}:{mode:'off'},
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:expiresAt,
       seq:run.events.length,messages:run.messages.filter(m=>m.recipient_id===member.id||m.sender_id===member.id)
@@ -640,7 +682,9 @@ export class PluginCommunication {
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;
       if(message.kind==='user-choice')message.read_page=structuredClone(this.workflow.observe(member.target));
-      this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id});}
+      this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id,
+        ...(message.sdk_busy?{case_id:message.sdk_busy.case_id,delivery_attempt_id:message.delivery_attempt_id??null,
+          page:this.workflow.experimentPage(member)}:{})});}
     this.event(run,'read.returned',{participant_id:member.id,message_id:message.message_id});
     if(run.mode==='workflow')await this.workflow.observed(run,member);
     const {idempotency_key,fingerprint,read_page,handlingGate,...value}=message;
@@ -668,7 +712,17 @@ export class PluginCommunication {
     }
     if(data.event_type==='host.handshake')Object.assign(safe,{message_supported:data.message_supported===true,
       build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,sdk_versions:SDK_VERSIONS});
-    if(data.message_id){requireValue(run.messages.some(m=>m.message_id===data.message_id&&m.recipient_id===input.participant_id),'INPUT','Неизвестное сообщение события.');safe.message_id=data.message_id;}
+    if(data.message_id){
+      const message=run.messages.find(m=>m.message_id===data.message_id&&m.recipient_id===input.participant_id);
+      requireValue(message,'INPUT','Неизвестное сообщение события.');safe.message_id=data.message_id;
+      if(data.delivery_attempt_id!==undefined){
+        requireValue(data.delivery_attempt_id===message.delivery_attempt_id&&(!data.case_id||data.case_id===message.sdk_busy?.case_id),
+          'INPUT','Не совпадает попытка события SDK.');
+        Object.assign(safe,{delivery_attempt_id:data.delivery_attempt_id,case_id:message.sdk_busy?.case_id??null,
+          experiment_id:message.sdk_busy?.experiment_id??null,assignment_id:message.assignment_id??null,source_commit:message.source_commit??null});
+        if(data.event_type==='sdk.invoked'&&message.sdk_busy?.dispatched)message.sdk_busy.invoked=true;
+      }
+    }
     const signature=JSON.stringify({panel_instance_id:input.panel_instance_id,...safe}),previous=run.clientEvents[data.event_id];
     requireValue(!previous||previous===signature,'CONFLICT','ID события уже использован.');
     if(previous)return {duplicate:true};
@@ -747,6 +801,6 @@ export class PluginCommunication {
         page_from:after,page_through:next,protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
         sdk_versions:SDK_VERSIONS,gaps:this.visibleEvents(run,member,run.events.slice(0,through)).filter(e=>e.event_type==='frontend.gap')
           .map(({seq,panel_instance_id,from,to})=>({seq,panel_instance_id,from,to})),critical_error:this.critical}};}
-  dispose(){this.disposed=true;this.workflow.dispose();for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
+  dispose(){for(const hold of this.experimentHolds.values())hold.cancel();this.disposed=true;this.workflow.dispose();for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
 }
 for(const name of MUTATIONS)PluginCommunication.prototype[name]=function(input){return this.mutate(name,input);};

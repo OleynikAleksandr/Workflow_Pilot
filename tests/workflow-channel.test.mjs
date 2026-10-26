@@ -7,6 +7,8 @@ import {randomUUID,createHash} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
+import {bridge,client} from './fixtures/plugin-host.mjs';
+import {makeSdkBusyProbe} from '../src/execution/plugin/sdk-busy-probe.mjs';
 const meta=id=>({'openai/session':id});
 async function fixture(t,currentMessage,dialogueKit=null,busyProfile=null){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'workflow-channel-')));
@@ -20,7 +22,7 @@ async function fixture(t,currentMessage,dialogueKit=null,busyProfile=null){
   const c=await create();
   const target=(id,role='E')=>{const value={project_id:'p',scope_id:'s',local_session_id:id,origin_session_id:'o',role,
     assignment_id:role==='E'?'a-'+id:null,task_id:role==='E'?'t-'+id:null,...(dialogueKit?{dialogue_version:1}:{})};targets.set(id,value);
-    pages.set(id,{canSend:true,stopped:true,busy:false,commandsIdle:true,observationSeq:1,documentId:'doc-'+id,turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1});return value;};
+    pages.set(id,{canSend:true,stopped:true,busy:false,commandsIdle:true,sdkCommands:[],observationSeq:1,documentId:'doc-'+id,turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1});return value;};
   const o=target('o','O');
   const bind=async(c,target)=>{const invite=await c.reserve(target),member=await c.enroll(invite.enrollment_ticket,meta(target.local_session_id));
     const input={...member,metadata:meta(target.local_session_id),panel_instance_id:randomUUID(),build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
@@ -33,8 +35,10 @@ const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.en
 const burstProfile=()=>({version:1,mode:'sdk-busy-burst',test_workspace:true,experiment_id:'busy-test',activation_id:randomUUID(),
   workspace:'/fixture',project_id:'p',scope_id:'s',recipient_role:'O',build_id:COMMUNICATION_BUILD,
   cases:[{case_id:'two-results',busy_kind:'tool-wait',max_notifications:2,task_ids:['t-left','t-right']}]});
-async function burstFixture(t,{unrelated=false}={}){
-  const profile=burstProfile(),f=await fixture(t,undefined,dialogueKitFixture(),profile);
+async function burstFixture(t,{unrelated=false,busyKind='tool-wait'}={}){
+  const profile=burstProfile();profile.cases[0].busy_kind=busyKind;
+  if(busyKind==='read-only-command')profile.cases[0].preliminary_go='a'.repeat(64);
+  const f=await fixture(t,undefined,dialogueKitFixture(),profile);
   await f.c.workflow.grant(f.o);const binding=await f.bind(f.c,f.o),run=()=>f.c.runs.get(binding.run_id);
   const previous=await f.c.workflow.enqueue(f.o,{key:'previous',kind:'diagnostic',text:'Previous work'});
   await sdk(f,binding,previous.message_id);await f.c.readMessage({metadata:meta('o'),message_id:previous.message_id});
@@ -47,6 +51,61 @@ async function burstFixture(t,{unrelated=false}={}){
   }
   return {...f,profile,binding,run,page,previous,other,results};
 }
+test('measurement hold releases both deliveries while its bounded tool remains outstanding, with one interval',async t=>{
+  const f=await burstFixture(t),input={metadata:meta('o'),case_id:'two-results',duration_ms:80};
+  const held=f.c.experimentHold(input);await new Promise(resolve=>setTimeout(resolve,15));
+  assert.equal(pending(f.c,f.binding),f.results[0].message_id,'hold does not lock the mutation queue');
+  const again=f.c.experimentHold(input);
+  await sdk(f,f.binding,f.results[0].message_id);await sdk(f,f.binding,f.results[1].message_id);
+  assert.deepEqual(await held,await again);
+  assert.equal(f.run().events.filter(event=>event.event_type==='experiment.hold_started').length,1);
+  assert.equal(f.run().events.filter(event=>event.event_type==='experiment.hold_finished').length,1);
+  await assert.rejects(f.c.experimentHold({...input,duration_ms:30001}),{code:'PLUGIN_COMMUNICATION_INPUT'});
+});
+test('real Python MCP and authenticated bridge expose only typed own measurement, without arming a profile',async t=>{
+  const f=await burstFixture(t);await bridge(t,{directory:f.directory,plugin:{communication:f.c}});
+  const mcp=await client(t,f),tools=(await mcp.listTools()).tools;
+  for(const name of ['workflow_delivery_experiment_hold','workflow_delivery_experiment_checkpoint']){
+    const tool=tools.find(tool=>tool.name===name);assert.deepEqual(tool._meta.ui.visibility,['model']);
+    assert.equal(tool.inputSchema.properties.workspace,undefined);assert.equal(tool.inputSchema.properties.participant_id,undefined);
+  }
+  const call=(name,args,metadata=meta('o'))=>mcp.callTool({name:'workflow_delivery_experiment_'+name,arguments:args,_meta:metadata});
+  assert.equal((await call('hold',{case_id:'two-results',duration_ms:30001})).isError,true);
+  assert.equal((await call('hold',{case_id:'two-results',duration_ms:20},meta('left'))).isError,true);
+  const hold=call('hold',{case_id:'two-results',duration_ms:80});
+  await new Promise(resolve=>setTimeout(resolve,20));await sdk(f,f.binding,f.results[0].message_id);await sdk(f,f.binding,f.results[1].message_id);
+  const result=await hold;assert.equal(result.isError,false);assert.ok(result.structuredContent.nonce);
+  const done=await call('checkpoint',{case_id:'two-results',marker:'resume',nonce:result.structuredContent.nonce});assert.equal(done.isError,false);
+  const exported=await f.c.export(f.binding);assert.match(exported.jsonl,/experiment.hold_started/);assert.match(exported.jsonl,/experiment.hold_finished/);
+});
+test('readonly checkpoint pins one fresh command hash and id; a second verified readonly service still blocks it',async t=>{
+  const f=await burstFixture(t,{busyKind:'read-only-command'});
+  f.c.sdkBusyProbe=async input=>makeSdkBusyProbe({...input,python:'/own/runtime/python'});
+  const begin=await f.c.experimentCheckpoint({metadata:meta('o'),case_id:'two-results',marker:'begin'});
+  assert.equal(pending(f.c,f.binding),null);
+  const command={id:'probe',state:'running',readOnly:true,processId:'process',commandHash:begin.probe.command_hash,startedAt:100001};
+  f.page.sdkCommands=[command];await observe(f,'o');assert.equal(pending(f.c,f.binding),f.results[0].message_id);
+  f.page.sdkCommands.push({...command,id:'service'});assert.equal(pending(f.c,f.binding),null);
+  f.page.sdkCommands=[{...command,id:'replacement'}];assert.equal(pending(f.c,f.binding),null,'the observed process cannot be replaced');
+});
+test('generation waits for fresh same-document content and retains exact resume nonce',async t=>{
+  const f=await burstFixture(t,{busyKind:'generation'}),begin=await f.c.experimentCheckpoint({metadata:meta('o'),case_id:'two-results',marker:'begin'});
+  assert.equal(pending(f.c,f.binding),null,'checkpoint itself is not generation evidence');
+  await observe(f,'o');assert.equal(pending(f.c,f.binding),null);
+  f.page.assistantRevision++;await observe(f,'o');assert.equal(pending(f.c,f.binding),f.results[0].message_id);
+  await assert.rejects(f.c.experimentCheckpoint({metadata:meta('o'),case_id:'two-results',marker:'resume',nonce:'wrong'}),{code:'PLUGIN_COMMUNICATION_EXPERIMENT_NONCE'});
+  const resume=await f.c.experimentCheckpoint({metadata:meta('o'),case_id:'two-results',marker:'resume',nonce:begin.nonce});assert.equal(resume.nonce,begin.nonce);
+});
+test('local refresh never upgrades a scope started off, never reuses a case, and any cached active command blocks pending',async t=>{
+  const f=await burstFixture(t);await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});
+  f.page.sdkCommands=[{state:'running',readOnly:true}];assert.equal(pending(f.c,f.binding),null);
+  f.page.sdkCommands=[];assert.equal(pending(f.c,f.binding),f.results[0].message_id);
+  f.profile.mode='off';await f.c.workflow.refreshExperiment(f.o);assert.equal(f.run().sdk_busy.active,false);
+  f.profile.mode='sdk-busy-burst';f.profile.activation_id=randomUUID();
+  await assert.rejects(f.c.workflow.refreshExperiment(f.o),{code:'PLUGIN_COMMUNICATION_EXPERIMENT_CASE'});
+  const off=await fixture(t);await off.c.workflow.grant(off.o);const binding=await off.bind(off.c,off.o),run=off.c.runs.get(binding.run_id);
+  await off.c.mutate('experimentRefresh',{run_id:run.id,target:off.o,profile:burstProfile()});assert.equal(run.sdk_busy,undefined);
+});
 test('busy burst sends two checked results through claim/verify while preserving the previous gate and unread first result',async t=>{
   const f=await burstFixture(t),ids=f.results.map(message=>message.message_id);
   assert.equal(pending(f.c,f.binding),null,'measurement holds only the selected results');
