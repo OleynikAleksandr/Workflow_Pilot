@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1203,
+  "plan_revision": 1205,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -698,8 +698,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "RELEASE",
@@ -762,7 +762,10 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -931,7 +934,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1203
+Revision: 1205
 
 ## Цель
 
@@ -997,8 +1000,8 @@ Revision: 1203
   - Файлы: docs/planning/sdk-busy-recipient.md, docs/planning/sdk-busy-recipient-acceptance.md, docs/planning/sdk-busy-recipient-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-busy-delivery.md, docs/acceptance/sdk-busy-recipient.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/dialogue-timing.md, docs/modules/current-actions.md, docs/modules/project-compatibility.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: POLICY, DISPATCH, PROBE, PROOF, EVIDENCE, VERSION, INSTRUCTIONS
-- [TODO] RELEASE: Собрать проверочный комплект macOS Windows Linux — Ожидает
-  - Git Commit: [PENDING] delivery: собрать проверочный комплект macos windows linux
+- [DONE] RELEASE: Собрать проверочный комплект macOS Windows Linux — Завершено
+  - Git Commit: [DONE] delivery: собрать проверочный комплект macos windows linux
   - Reference: sdk-busy-recipient / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
