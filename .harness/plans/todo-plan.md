@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1205,
+  "plan_revision": 1208,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -12,10 +12,7 @@
   "delivery_status": "IN_PROGRESS",
   "objective": "Проверить два уведомления о готовых результатах занятому O через SDK и полный цикл до cleanup/complete, с публикацией лишь после живого GO и возвратом к поведению 0.5.36 при неудаче.",
   "acceptance_criteria": [
-    "Полный burst 2E->busy O->2 result->read/exact SHA acceptance/integrations->T003/DOCS->terminal receipts->cleanup/complete проверен, прежняя работа сохранена и эффект один.",
-    "Узкий явный test scope/default off, раздельные busy-гейты/lease/UNKNOWN/identity и исправления 0.5.36 сохранены; single-предэтап отсутствует.",
-    "Полные причинные логи и read-only анализатор дают QUEUED_OBSERVED/MID_TURN/SDK_DEFERRED/REJECTED/UNKNOWN/ACCEPTED_UNREAD/INCONCLUSIVE, фикстуры не подменяют ChatGPT.",
-    "После DOCS новый комплект macOS/Windows/Linux и штатная Mac установка, пользовательская live приёмка обязательна до GitHub; при неудаче обратим только опыт и не меняем опубликованную 0.5.36."
+    "Эксперимент прекращён по прямому поручению пользователя; достигнутые факты и невыполненные проверки сохранены без объявления GO или публикации."
   ],
   "approved_scope": {
     "functional_paths": [
@@ -72,7 +69,8 @@
       "docs/modules/dialogue-timing.md",
       "docs/modules/current-actions.md",
       "docs/modules/project-compatibility.md",
-      "docs/modules/release.md"
+      "docs/modules/release.md",
+      "docs/planning/sdk-messaging.md"
     ]
   },
   "baseline_commit": "2b98a5a0745a7f85c103ec9b88ca2dd7d2b1bbe5",
@@ -768,8 +766,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "INSTALL",
@@ -779,26 +777,20 @@
         "RELEASE",
         "DOCS"
       ],
-      "functional_paths": [
-        "release-manifest.json"
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/planning/sdk-messaging.md"
       ],
-      "documentation_paths": [],
-      "verification_ids": [
-        "release-installed"
-      ],
+      "verification_ids": [],
       "id": "INSTALL",
-      "title": "Установить комплект и подтвердить полный живой опыт",
-      "why": "Установка и фактический GO нужны до публикации",
+      "title": "Зафиксировать установку 0.5.37 и остановку экспериментальной приёмки",
+      "why": "26.10.2026 пользователь прямо поручил закрыть текущий эксперимент и создать новый план полного SDK-перехода со сборкой и публикацией. Незавершённые INSTALL/PUBLISH переопределены как фиксация фактов и отмены; живой GO и публикация 0.5.37 не заявляются.",
       "acceptance_criteria": [
-        "Готовый bundle штатным installer доставлен в собственные project/Applications; installed либо verified pending, подпись/manifest/откат проверены без rebuild/sign/остановки службы/закрытия окна агентом.",
-        "Если pending, пользователь переключил службу и подтверждены фактический backend/build/protocol/resource/SDK. release-installed доказывает только установку; задача не DONE до самостоятельного live evidence.",
-        "Пользовательский mode off полный контроль и три валидных полных burst (tool-wait, generation, один hidden/no E visits) плюс read-only-command после предварительного успеха, каждый два real result. Один Start, прежняя работа, read/exact acceptance/integration/T003/DOCS/terminal receipts/cleanup/complete подтверждены.",
-        "Все требуемые burst QUEUED_OBSERVED; полный экспорт/analyzer и GO привязаны к sourceCommit/manifest/build/case IDs, нет UNKNOWN/потерь/дубликатов/вмешательства. Срок120 относится только к доставке. Native Windows/Linux/iPad NOT_RUN.",
-        "NO-GO/INCONCLUSIVE не закрывают INSTALL/PUBLISH как успешные. Возврат по спецификации с планом Kit и сохранением evidence; старый Send не повторяется."
+        "В новой спецификации записаны факты установки, два SDK accepted во время hold и предел доказательства: полный GO не получен; тест остановлен пользователем."
       ],
-      "expected_commit_message": "delivery: установить комплект и подтвердить полный живой опыт",
+      "expected_commit_message": "docs: зафиксировать установку 0.5.37 и остановку экспериментальной приёмки",
       "parallel_safe": false,
-      "task_brief": "Разрешены пока только подготовка и Review; исполнение после отдельного поручения пользователя. Разработка последовательная через Kit без делегирования/моделей/UI control, donor и рабочие профили не менять. Сохранить 0.5.36, отдельные SDK/read/yield/exact-SHA/integration/complete и UNKNOWN без повтора. Установить только ready signed комплект штатным installer. Автоматическую проверку установки и человеческую live приёмку различать. Разработчик анализирует полученные логи, пользователь делает UI и безопасное переключение службы. Не завершать пункт по installer receipt или fixture; необходимые ожидания пользователя сохранять явно. Исходники после сборки не менять.",
+      "task_brief": "В новой спецификации записаны факты установки, два SDK accepted во время hold и предел доказательства: полный GO не получен; тест остановлен пользователем.",
       "context_pack": {
         "documents": [
           {
@@ -835,7 +827,9 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "verification_kind": "installed"
+      "actual_files": [
+        "docs/planning/sdk-messaging.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -849,24 +843,20 @@
         "INSTALL",
         "DOCS"
       ],
-      "functional_paths": [
-        "release-manifest.json"
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/planning/sdk-messaging.md"
       ],
-      "documentation_paths": [],
-      "verification_ids": [
-        "github-release"
-      ],
+      "verification_ids": [],
       "id": "PUBLISH",
-      "title": "Опубликовать проверенный полный выпуск на GitHub",
-      "why": "Условный успешный хвост после живого GO",
+      "title": "Зафиксировать отмену публикации ограниченного опыта",
+      "why": "26.10.2026 пользователь прямо поручил закрыть текущий эксперимент и создать новый план полного SDK-перехода со сборкой и публикацией. Незавершённые INSTALL/PUBLISH переопределены как фиксация фактов и отмены; живой GO и публикация 0.5.37 не заявляются.",
       "acceptance_criteria": [
-        "Точный GO предыдущего пункта проверен, публикация той же проверенной сборки без rebuild/изменения manifest. Default off и область test scope честно описаны, глобального rollout нет.",
-        "Собственный GitHub Release опубликован только после проверки draft, tag на sourceCommit, семь assets size/SHA; remote main после последнего push равен итоговому HEAD.",
-        "При NO-GO/INCONCLUSIVE публикация не выполняется. После всех DONE план READY_FOR_ACCEPTANCE, архив только по прямому принятию пользователя. Native ограничения сохранены."
+        "В новой спецификации записана отмена публикации экспериментальной 0.5.37; GitHub публикация переносится в новый согласуемый план полного SDK. Старые критерии не объявлены пройденными."
       ],
-      "expected_commit_message": "delivery: опубликовать проверенный полный выпуск на github",
+      "expected_commit_message": "docs: зафиксировать отмену публикации ограниченного опыта",
       "parallel_safe": false,
-      "task_brief": "Разрешены пока только подготовка и Review; исполнение после отдельного поручения пользователя. Разработка последовательная через Kit без делегирования/моделей/UI control, donor и рабочие профили не менять. Сохранить 0.5.36, отдельные SDK/read/yield/exact-SHA/integration/complete и UNKNOWN без повтора. Проверить exact live evidence перед любым внешним publish. Draft -> семь assets -> проверка -> публикация последовательно с остановкой при ошибке. Не повторять прежнюю ошибку публикации после провала проверки draft. Проверить финальное состояние GitHub после последнего push; установленную службу не трогать.",
+      "task_brief": "В новой спецификации записана отмена публикации экспериментальной 0.5.37; GitHub публикация переносится в новый согласуемый план полного SDK. Старые критерии не объявлены пройденными.",
       "context_pack": {
         "documents": [
           {
@@ -902,8 +892,7 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      },
-      "verification_kind": "package"
+      }
     }
   ],
   "blocked_reason": null,
@@ -917,7 +906,12 @@
       "text": "26.10.2026 пользователь выбрал полный сценарий вместо single и поручил подготовить спецификацию, to-do и Claude Review. Публикация плана не разрешает реализацию, сборку или переключение службы.",
       "recorded_at": "2026-10-26T09:58:19.007Z"
     },
-    "При выполнении POLICY полный recovery превысил обязательный резерв теста: 157 КБ при пределе 144 КБ. Спецификации и критерии не сокращаются: основной контракт и OVERVIEW передаются полностью, acceptance/delivery читаются по требованию до зависимого действия. Изменяется только повторная доставка read-only контекста внешней sequential-сессии; подготовленные продуктовые назначения не изменяются."
+    "При выполнении POLICY полный recovery превысил обязательный резерв теста: 157 КБ при пределе 144 КБ. Спецификации и критерии не сокращаются: основной контракт и OVERVIEW передаются полностью, acceptance/delivery читаются по требованию до зависимого действия. Изменяется только повторная доставка read-only контекста внешней sequential-сессии; подготовленные продуктовые назначения не изменяются.",
+    {
+      "id": "full-sdk-request",
+      "text": "26.10.2026 пользователь прямо поручил закрыть текущий эксперимент и создать новый план полного SDK-перехода со сборкой и публикацией. Незавершённые INSTALL/PUBLISH переопределены как фиксация фактов и отмены; живой GO и публикация 0.5.37 не заявляются.",
+      "recorded_at": "2026-10-26T13:37:58.019Z"
+    }
   ],
   "scope_title": "Полный SDK-опыт с занятым оркестратором",
   "parallel_allowed": false,
@@ -934,7 +928,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1205
+Revision: 1208
 
 ## Цель
 
@@ -942,10 +936,7 @@ Revision: 1205
 
 ## Критерии приёмки
 
-- Полный burst 2E->busy O->2 result->read/exact SHA acceptance/integrations->T003/DOCS->terminal receipts->cleanup/complete проверен, прежняя работа сохранена и эффект один.
-- Узкий явный test scope/default off, раздельные busy-гейты/lease/UNKNOWN/identity и исправления 0.5.36 сохранены; single-предэтап отсутствует.
-- Полные причинные логи и read-only анализатор дают QUEUED_OBSERVED/MID_TURN/SDK_DEFERRED/REJECTED/UNKNOWN/ACCEPTED_UNREAD/INCONCLUSIVE, фикстуры не подменяют ChatGPT.
-- После DOCS новый комплект macOS/Windows/Linux и штатная Mac установка, пользовательская live приёмка обязательна до GitHub; при неудаче обратим только опыт и не меняем опубликованную 0.5.36.
+- Эксперимент прекращён по прямому поручению пользователя; достигнутые факты и невыполненные проверки сохранены без объявления GO или публикации.
 
 ## Микрозадачи
 
@@ -1006,16 +997,16 @@ Revision: 1205
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить комплект и подтвердить полный живой опыт — Ожидает
-  - Git Commit: [PENDING] delivery: установить комплект и подтвердить полный живой опыт
+- [DONE] INSTALL: Зафиксировать установку 0.5.37 и остановку экспериментальной приёмки — Завершено
+  - Git Commit: [DONE] docs: зафиксировать установку 0.5.37 и остановку экспериментальной приёмки
   - Reference: sdk-busy-recipient / INSTALL / implementation
-  - Файлы: release-manifest.json
+  - Файлы: docs/planning/sdk-messaging.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать проверенный полный выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] delivery: опубликовать проверенный полный выпуск на github
+- [TODO] PUBLISH: Зафиксировать отмену публикации ограниченного опыта — Ожидает
+  - Git Commit: [PENDING] docs: зафиксировать отмену публикации ограниченного опыта
   - Reference: sdk-busy-recipient / PUBLISH / implementation
-  - Файлы: release-manifest.json
+  - Файлы: docs/planning/sdk-messaging.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
 
