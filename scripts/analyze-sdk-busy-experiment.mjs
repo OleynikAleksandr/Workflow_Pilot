@@ -11,6 +11,9 @@ const classes=['QUEUED_OBSERVED','MID_TURN','SDK_DEFERRED','REJECTED','UNKNOWN',
 export function analyzeCase({events,info,work,cycle,complete=true}){
   const issues=[];
   if(!complete||events.some(event=>['frontend.gap','diagnostic.gap'].includes(event.event_type)))issues.push('incomplete-journal');
+  if(events.some(event=>event.event_type==='experiment.invalidated'&&event.case_id===info.case_id))issues.push('case-invalidated');
+  if(events.filter(event=>event.event_type==='plan.permission'&&event.phase==='running'
+    &&(!info.scope_id||event.scope_id===info.scope_id)).length>1)issues.push('repeated-start-or-continue');
   const selected=events.filter(event=>event.event_type==='experiment.fixture_hold'&&event.case_id===info.case_id);
   const ids=[...new Set(selected.map(event=>event.message_id))];
   if(ids.length!==2)issues.push('expected-two-results');
@@ -39,16 +42,18 @@ export function analyzeCase({events,info,work,cycle,complete=true}){
       &&accepted.duration_ms-invoke.duration_ms<=120000;
     // Arrival of buffered telemetry can follow read. The export must contain
     // an explicit transcript boundary tying read to an observed model turn.
-    const endMs=time(end),acceptedMs=Date.parse(accepted?.client_time??''),invokeMs=Date.parse(invoke?.client_time??'');
+    const offset=work?.panel_clock?.offset_ms??0;
+    const endMs=time(end),acceptedMs=Date.parse(accepted?.client_time??'')+offset,invokeMs=Date.parse(invoke?.client_time??'')+offset;
     const clock=work?.panel_clock?.panel_instance_id===invoke?.panel_instance_id&&work?.panel_clock?.verified===true;
     const beforeEnd=clock&&acceptedInWindow&&acceptedMs<endMs&&invokeMs<endMs;
     const sameTurn=read&&turn?.turn_id===work?.original_turn_id;
+    for(const pull of pick('experiment.model_pull'))if(pull.before_intent||!clock||time(pull)<invokeMs)local.push('early-or-unproven-model-pull');
     const nextTurn=read&&turn?.turn_id&&turn.turn_id!==work?.original_turn_id&&turn.evidence_verified===true
       &&read.seq>end?.seq;
     const exact=effect?.effect_count===1&&sha(effect.source_commit)&&effect.source_commit===selected.find(event=>event.message_id===id)?.source_commit
       &&effect.accepted_source_commit===effect.source_commit&&sha(effect.integration_commit)&&effect.git_verified===true;
     if(rejected||report?.outcome==='rejected')classification='REJECTED';
-    else if(pick('sdk.timeout').length||pick('sdk.error').length||report?.outcome==='unknown')classification='UNKNOWN';
+    else if(pick('sdk.timeout').length||pick('sdk.error').length||pick('send.unknown').length||report?.outcome==='unknown')classification='UNKNOWN';
     else if(accepted&&!read)classification='ACCEPTED_UNREAD';
     else if(read&&sameTurn)classification='MID_TURN';
     else if(acceptedInWindow&&clock&&acceptedMs>=endMs)classification='SDK_DEFERRED';
@@ -91,9 +96,9 @@ export function verifyCycleEvidence(raw,events){
     const assignment=raw.assignments.find(item=>item.task_id===task.id),result=assignment?.dialogue?.result,acceptance=assignment?.dialogue?.acceptance;
     if(!assignment||!result||!acceptance)return {verified:false};
     const integration=assignment.integration_commit,merge=commits.get(integration);
-    const matching=raw.git.commits.filter(commit=>commit.task_id===task.id&&reachable.has(commit.sha));
+    const matching=raw.git.commits.filter(commit=>commit.task_id===task.id&&commit.role==='integration'&&reachable.has(commit.sha));
     const ancestry=new Set(),todo=[integration];while(todo.length){const id=todo.pop();if(ancestry.has(id))continue;ancestry.add(id);todo.push(...(commits.get(id)?.parents??[]));}
-    const git_verified=reachable.has(integration)&&ancestry.has(result.source_commit)&&!!merge&&matching.length===1;
+    const git_verified=reachable.has(integration)&&ancestry.has(result.source_commit)&&merge?.role==='integration'&&matching.length===1;
     results.push({message_id:result.message_id,source_commit:result.source_commit,accepted_source_commit:acceptance.source_commit,
       integration_commit:integration,effect_count:matching.length,git_verified});
     tasks.push({id:task.id,commit_status:task.commit_status,integration_commit:integration});
@@ -108,7 +113,16 @@ export function verifyCycleEvidence(raw,events){
 export async function analyzeFolder(directory){
   const root=await fs.realpath(directory),json=async file=>JSON.parse(await readFile(root,file));
   const info=await json('experiment-info.json'),baseline=await json('baseline-info.json'),manifest=await readFile(root,'release-manifest.json');
-  const pages=await json('export-pages.json'),work=await json('work-proof.json');let cycle=await json('cycle-proof.json');
+  let pages;
+  try{pages=await json('export-pages.json');}catch(error){
+    if(error.code!=='ENOENT')throw error;
+    const summary=await json('export-summary.json'),jsonl=(await readFile(root,'communication.jsonl')).toString('utf8');
+    let cursor=0,paginated=summary.complete===true&&Array.isArray(summary.pages)&&summary.pages.length>0;
+    for(const page of summary.pages??[]){if(page.after_seq!==cursor||page.through_seq<cursor)paginated=false;cursor=page.through_seq;}
+    paginated&&=cursor===summary.through_seq;
+    pages=[{summary:{...summary,page_from:0},jsonl,through_seq:summary.through_seq,after_seq:cursor,complete:paginated}];
+  }
+  const work=await json('work-proof.json');let cycle=await json('cycle-proof.json');
   const events=[];let cursor=0,through=pages[0]?.through_seq,complete=Array.isArray(pages)&&pages.length>0;
   for(const page of pages){
     if(page.summary?.page_from!==cursor||page.through_seq!==through||page.summary?.visibility!=='whole-run'
@@ -121,6 +135,11 @@ export async function analyzeFolder(directory){
   const release=JSON.parse(manifest),baselineValid=baseline.version==='0.5.36'&&baseline.sourceCommit==='b24b82b21208622e61ef7ab80e6ce3e5266d0fe8'
     &&baseline.manifest_sha256==='6e32d95e700d1e5cf93fc25a971b979a1261b0a48f0d6e6adb39b5cd4815cd84';
   if(digest(manifest)!==info.manifest_sha256||release.sourceCommit!==info.sourceCommit||!baselineValid)complete=false;
+  if(info.evidence_kind==='live'&&(!info.project_id||!info.scope_id||!info.recipient_session_id
+    ||!/^ui:\/\/workflow-pilot\/panel-[a-f0-9]{64}\.html$/.test(info.resource_uri??'')||info.protocol_version!==5
+    ||!events.some(event=>event.event_type==='experiment.armed'&&event.scope_id===info.scope_id)&&info.mode!=='off'
+    ||pages.some(page=>page.summary?.protocol_version!==info.protocol_version
+      ||['ext_apps','mcp_extensions','mcp'].some(key=>!info.sdk_versions?.[key]||page.summary.sdk_versions?.[key]!==info.sdk_versions[key]))||!info.sdk_versions))complete=false;
   for(const proof of [work,cycle]){
     proof.verified=false;
     if(proof.evidence_file&&proof.evidence_sha256){const bytes=await readFile(root,proof.evidence_file);proof.verified=digest(bytes)===proof.evidence_sha256;
@@ -128,6 +147,14 @@ export async function analyzeFolder(directory){
   }
   work.transcript_verified=work.verified;
   const result=analyzeCase({events,info,work,cycle,complete});
+  if(info.mode==='off'){
+    const cleanControl=complete&&!events.some(event=>event.event_type.startsWith('experiment.')||event.event_type==='send.unknown'
+      ||event.event_type==='send.report'&&event.outcome!=='accepted');
+    return {schema:1,mode:'off',evidence_kind:info.evidence_kind??'unverified',experiment_id:info.experiment_id,
+      build_id:info.build_id,sourceCommit:info.sourceCommit,manifest_sha256:info.manifest_sha256,
+      full_cycle:cleanControl&&result.full_cycle,issues:cleanControl?[]:['control-incomplete-or-experimental'],
+      limitation:'The off control is derived from complete export and verified Kit/Git/terminal records.'};
+  }
   let preliminary_go_verified=false;
   if(info.busy_kind==='read-only-command'){
     const observed=events.find(event=>event.event_type==='experiment.command_observed'&&event.case_id===info.case_id);

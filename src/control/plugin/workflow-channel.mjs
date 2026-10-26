@@ -112,6 +112,12 @@ export class WorkflowChannel {
       &&this.permitted(run,member)?value:null;
   }
   experimentCase(run,message){return run.sdk_busy?.cases.find(item=>item.messages.includes(message.message_id));}
+  selectedExperimentCase(run,member,message){
+    const value=this.experiment(run,member);
+    if(!value||!message||message.kind!=='result'||message.sender_role!=='E'||message.recipient_id!==member.id||message.scope_id!==value.scope_id)return null;
+    return value.cases.find(item=>!['invalid','complete'].includes(item.status)
+      &&(item.messages.includes(message.message_id)||item.status==='armed'&&item.task_ids.includes(message.task_id)))??null;
+  }
   heldExperiment(run,member,message){
     const value=this.experiment(run,member);if(!value||message.kind!=='result'||message.sender_role!=='E')return false;
     return value.cases.some(item=>['armed','holding','waiting-generation','waiting-command'].includes(item.status)&&item.task_ids.includes(message.task_id));
@@ -123,6 +129,7 @@ export class WorkflowChannel {
         const messages=item.task_ids.map(id=>run.messages.findLast(message=>message.scope_id===value.scope_id
           &&message.task_id===id&&message.kind==='result'&&message.sender_role==='E'&&message.dialogue_version===1
           &&message.recipient_session_id===value.recipient_session_id&&!message.superseded&&!message.sdk_busy
+          &&!message.sdk_busy_model_pull&&message.delivery_mode!=='model-pull'
           &&message.kit_receipt?.operation_id&&/^[a-f0-9]{40,64}$/.test(message.source_commit??'')));
         if(messages.some(message=>!message))continue;
         messages.sort((a,b)=>run.messages.indexOf(a)-run.messages.indexOf(b));

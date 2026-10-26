@@ -383,9 +383,25 @@ export class PluginCommunication {
   _startupComplete(input){return this.startup.completed(input);}
   async startupComplete(input){return this.mutate('startupComplete',await this.modelInput(input));}
   async content(input){
-    const binding=await this.modelInput(input),{run}=this.member(binding);
-    return run.messages.some(m=>m.message_id===input.message_id&&m.kind==='startup-context')
-      ?this.mutate('startupPart',binding):this.workflow.content(binding);
+    const binding=await this.modelInput(input),{run,member}=this.member(binding);
+    if(run.messages.some(m=>m.message_id===input.message_id&&m.kind==='startup-context'))return this.mutate('startupPart',binding);
+    const result=await this.workflow.content(binding),selected=run.messages.find(message=>message.message_id===input.message_id);
+    if(!selected?.read&&this.workflow.selectedExperimentCase(run,member,selected))await this.mutate('experimentModelPull',binding);
+    return result;
+  }
+  _experimentModelPull(input){
+    const {run,member}=this.member(input),message=run.messages.find(message=>message.message_id===input.message_id);
+    const item=this.workflow.selectedExperimentCase(run,member,message);
+    if(!item||message.sdk_busy_model_pull)return {};
+    message.sdk_busy_model_pull=true;
+    this.event(run,'experiment.model_pull',{message_id:message.message_id,case_id:item.case_id,
+      experiment_id:run.sdk_busy.experiment_id,delivery_attempt_id:message.delivery_attempt_id??null,
+      before_intent:!message.intent,participant_id:member.id,page:this.workflow.experimentPage(member)});
+    if(!message.intent){
+      item.status='invalid';item.reason='early-model-pull';message.delivery_mode='model-pull';
+      this.event(run,'experiment.invalidated',{case_id:item.case_id,experiment_id:run.sdk_busy.experiment_id,message_id:message.message_id,reason:item.reason});
+    }
+    return {};
   }
   async roster(input){input=await this.modelInput(input);await this.enrollment.validateInput(input);const {run,member}=this.member(input),participants=[];
     for(const candidate of Object.values(run.members))if(candidate.id===member.id||member.role==='O'){
@@ -762,7 +778,8 @@ export class PluginCommunication {
       value.pending_intents=Object.values(run.assignment_intents??{}).filter(i=>i.phase!=='published'
         &&(member.role==='O'||i.sender_id===member.id||i.target.local_session_id===member.target.local_session_id))
         .map(i=>({message_id:i.message_id,assignment_id:i.effect.assignment_id,phase:i.phase,error:i.error??null}));
-      for(const message of value.messages.slice(-30))if(message.context_ref){
+      for(const message of value.messages.slice(-30))if(message.context_ref&&!(
+        !message.read&&this.workflow.selectedExperimentCase(run,member,message))){
         try{const text=this.store?await this.store.readContent(message.context_ref):this.workflow.contents.get(message.context_ref);
           if(typeof text==='string')message.preview=text.slice(0,1600)+(text.length>1600?'…':'');}
         catch{message.preview='Текст временно недоступен; сообщение сохранено.';}

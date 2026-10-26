@@ -54,6 +54,16 @@ test('buffered telemetry does not change causal order; missing pages, clocks, ol
     const f=evidence();edit(f);assert.equal(analyzeCase(f).go,false);
   }
 });
+test('backend UNKNOWN cannot be hidden by accepted telemetry, a late callback or later read reconciliation',()=>{
+  const f=evidence();f.events.push({seq:99,event_type:'send.unknown',message_id:'left'},
+    {seq:100,event_type:'sdk.late_accepted',message_id:'left'});
+  assert.equal(analyzeCase(f).messages[0].classification,'UNKNOWN');assert.equal(analyzeCase(f).go,false);
+  for(const edit of [value=>value.events.push({event_type:'experiment.invalidated',case_id:'case',reason:'changed-result'}),
+    value=>value.events.push({event_type:'experiment.model_pull',message_id:'left',before_intent:true}),
+    value=>value.events.push({event_type:'plan.permission',phase:'running'},{event_type:'plan.permission',phase:'running'})]){
+    const value=evidence();edit(value);assert.equal(analyzeCase(value).classification,'INCONCLUSIVE');assert.equal(analyzeCase(value).go,false);
+  }
+});
 test('aggregate requires live off control, three full primary cases and subsequent readonly case from identical bytes',()=>{
   const common={schema:1,evidence_kind:'live',experiment_id:'experiment',build_id:'build',sourceCommit:'a'.repeat(40),manifest_sha256:'b'.repeat(64)};
   const control={...common,mode:'off',full_cycle:true};
@@ -72,7 +82,8 @@ test('folder analysis validates complete pagination, immutable bytes and actual 
     const source='abcd'[index].repeat(40),integration=String(index+1).repeat(40),message_id=['left','right','third','docs'][index],acceptanceId='accepted-'+id;
     raw.plan.tasks.push({id,commit_status:'DONE'});raw.assignments.push({task_id:id,integration_commit:integration,transport_closed:true,
       dialogue:{result:{message_id,source_commit:source},acceptance:{message_id:acceptanceId,source_commit:source}}});
-    raw.git.commits.push({sha:source,parents:[]},{sha:integration,parents:[source,...(index?[String(index).repeat(40)]:[])],task_id:id});
+    raw.git.commits.push({sha:source,parents:[],role:'implementation',task_id:id},
+      {sha:integration,parents:[source,...(index?[String(index).repeat(40)]:[])],task_id:id,role:'integration'});
     for(const event_type of ['message.read','message.yielded','assignment.transport_closed'])f.events.push({seq:f.events.length+1,event_type,message_id:acceptanceId});
     raw.git.head=integration;
   }
@@ -82,11 +93,22 @@ test('folder analysis validates complete pagination, immutable bytes and actual 
   await write('work-proof.json',{...f.work,evidence_file:'transcript.txt',evidence_sha256:await write('transcript.txt','Fixture original work nonce and observed turn boundaries')});
   const manifest={sourceCommit:'e'.repeat(40)},manifestHash=await write('release-manifest.json',manifest);
   await write('baseline-info.json',{version:'0.5.36',sourceCommit:'b24b82b21208622e61ef7ab80e6ce3e5266d0fe8',manifest_sha256:'6e32d95e700d1e5cf93fc25a971b979a1261b0a48f0d6e6adb39b5cd4815cd84'});
-  await write('experiment-info.json',{...f.info,schema:1,evidence_kind:'fixture',experiment_id:'fixture',build_id:'fixture-build',sourceCommit:manifest.sourceCommit,manifest_sha256:manifestHash});
+  const info={...f.info,schema:1,evidence_kind:'fixture',experiment_id:'fixture',build_id:'fixture-build',sourceCommit:manifest.sourceCommit,manifest_sha256:manifestHash};
+  await write('experiment-info.json',info);
   const page={through_seq:f.events.length,after_seq:f.events.length,complete:true,summary:{page_from:0,visibility:'whole-run',build_id:'fixture-build'},jsonl:f.events.map(event=>JSON.stringify(event)).join('\n')+'\n'};
   await write('export-pages.json',[page]);const result=await analyzeFolder(root);assert.equal(result.go,true);assert.equal(result.full_cycle,true);
   assert.equal(aggregateAnalyses([result,result,result],{mode:'off',full_cycle:true}).go,false);
   page.summary.page_from=1;await write('export-pages.json',[page]);assert.equal((await analyzeFolder(root)).classification,'INCONCLUSIVE');
+  await fs.unlink(path.join(root,'export-pages.json'));
+  const summary={...page.summary,complete:true,through_seq:f.events.length,pages:[{after_seq:0,through_seq:f.events.length}]};
+  await write('export-summary.json',summary);await write('communication.jsonl',page.jsonl);
+  assert.equal((await analyzeFolder(root)).classification,'QUEUED_OBSERVED','the real panel download and captured summary are supported');
+  summary.pages[0].after_seq=1;await write('export-summary.json',summary);assert.equal((await analyzeFolder(root)).go,false);
+  const ordinary=f.events.filter(event=>!event.event_type.startsWith('experiment.')).map((event,index)=>({...event,seq:index+1}));
+  await write('experiment-info.json',{...info,mode:'off'});
+  await write('communication.jsonl',ordinary.map(event=>JSON.stringify(event)).join('\n'));
+  await write('export-summary.json',{...summary,through_seq:ordinary.length,pages:[{after_seq:0,through_seq:ordinary.length}]});
+  const control=await analyzeFolder(root);assert.equal(control.mode,'off');assert.equal(control.full_cycle,true,'off proof is computed, never a supplied success flag');
   raw.git.status_porcelain=' M user.txt';assert.equal(verifyCycleEvidence(raw,f.events).clean_main,false);
   await fs.unlink(path.join(root,'transcript.txt'));await fs.symlink(path.join(root,'kit-git-export.json'),path.join(root,'transcript.txt'));
   await assert.rejects(analyzeFolder(root),/symlink/);

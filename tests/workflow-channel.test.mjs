@@ -35,7 +35,7 @@ const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.en
 const burstProfile=()=>({version:1,mode:'sdk-busy-burst',test_workspace:true,experiment_id:'busy-test',activation_id:randomUUID(),
   workspace:'/fixture',project_id:'p',scope_id:'s',recipient_role:'O',build_id:COMMUNICATION_BUILD,
   cases:[{case_id:'two-results',busy_kind:'tool-wait',max_notifications:2,task_ids:['t-left','t-right']}]});
-async function burstFixture(t,{unrelated=false,busyKind='tool-wait'}={}){
+async function burstFixture(t,{unrelated=false,busyKind='tool-wait',afterFirst}={}){
   const profile=burstProfile();profile.cases[0].busy_kind=busyKind;
   if(busyKind==='read-only-command')profile.cases[0].preliminary_go='a'.repeat(64);
   const f=await fixture(t,undefined,dialogueKitFixture(),profile);
@@ -48,6 +48,7 @@ async function burstFixture(t,{unrelated=false,busyKind='tool-wait'}={}){
   for(const name of ['left','right']){
     await f.bind(f.c,f.target(name));results.push(await f.c.assignmentSend({metadata:meta(name),recipient:'orchestrator',kind:'result',
       body:'Checked '+name,source_commit:(name==='left'?'a':'b').repeat(40),attempt:1,idempotency_key:'result'}));
+    if(name==='left'&&afterFirst)await afterFirst({...f,binding,run,page,results});
   }
   return {...f,profile,binding,run,page,previous,other,results};
 }
@@ -157,6 +158,23 @@ test('model pull of second selected result after first SDK keeps its receipt, in
   assert.equal(f.run().messages.find(message=>message.message_id===f.results[0].message_id).delivery,'accepted');
   assert.equal(f.run().messages.find(message=>message.message_id===f.results[1].message_id).read,true);
   assert.equal(pending(f.c,f.binding),null);assert.equal(f.run().events.filter(event=>event.event_type==='send.intent').length,2,'previous work plus first result only');
+});
+test('explicit context pull before binding the pair invalidates measurement without inventing read or repeating SDK',async t=>{
+  let pulled;
+  const f=await burstFixture(t,{afterFirst:async value=>{
+    const result=value.run().messages.find(message=>message.message_id===value.results[0].message_id);
+    const status=await value.c.status(value.binding);assert.equal(status.messages.find(message=>message.message_id===result.message_id).preview,undefined);
+    pulled=await value.c.content({metadata:meta('o'),message_id:result.message_id,context_ref:result.context_ref,part:0});
+    assert.equal(value.run().sdk_busy.cases[0].status,'invalid');
+  }});
+  assert.match(pulled.text,/Checked left/);assert.equal(f.run().messages.find(message=>message.message_id===f.results[0].message_id).read,false);
+  assert.equal(f.run().messages.find(message=>message.message_id===f.results[0].message_id).delivery_mode,'model-pull');
+  assert.equal(pending(f.c,f.binding),null);assert.equal(f.run().events.filter(event=>event.event_type==='experiment.model_pull').length,1);
+  assert.equal(f.run().events.filter(event=>event.event_type==='send.intent').length,1,'only the original work');
+  f.profile.activation_id=randomUUID();f.profile.cases[0].case_id='fresh-case';await f.c.workflow.refreshExperiment(f.o);
+  assert.equal(f.run().sdk_busy.cases[0].status,'armed','local rearm cannot bind a result whose body was already pulled');
+  await f.c.readMessage({metadata:meta('o'),message_id:f.results[0].message_id});
+  assert.equal(f.run().messages.find(message=>message.message_id===f.results[0].message_id).read,true,'normal explicit reading remains available');
 });
 test('busy burst does not overtake a different unread message or consume a slot while deferred',async t=>{
   const f=await burstFixture(t,{unrelated:true});await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});

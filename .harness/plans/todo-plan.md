@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1192,
+  "plan_revision": 1194,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -467,14 +467,21 @@
         "Семь классов, sourceCommit/manifest/build/case/attempt, full cycle и ограничения live/fixture остаются раздельны; обычный mode off без регрессий."
       ],
       "expected_commit_message": "fix: исключить ложный GO и учесть ранний model-pull",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "EVIDENCE",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "scripts/analyze-sdk-busy-experiment.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/sdk-busy-analysis.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -791,7 +798,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1192
+Revision: 1194
 
 ## Цель
 
@@ -833,8 +840,8 @@ Revision: 1192
   - Файлы: tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: POLICY, DISPATCH, PROBE
-- [TODO] EVIDENCE: Исключить ложный GO и учесть ранний model-pull — Ожидает
-  - Git Commit: [PENDING] fix: исключить ложный GO и учесть ранний model-pull
+- [DONE] EVIDENCE: Исключить ложный GO и учесть ранний model-pull — Завершено
+  - Git Commit: [DONE] fix: исключить ложный GO и учесть ранний model-pull
   - Reference: sdk-busy-recipient / EVIDENCE / implementation
   - Файлы: scripts/analyze-sdk-busy-experiment.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/sdk-busy-analysis.test.mjs, tests/workflow-channel.test.mjs, docs/planning/sdk-busy-recipient.md
   - Параллельность: исключительное выполнение
