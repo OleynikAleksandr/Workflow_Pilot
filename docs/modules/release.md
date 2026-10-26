@@ -1,12 +1,12 @@
 # Единая поставка Workflow Pilot
 
-Версия 0.5.37. Порядок DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Фактические пакет/подпись/установка/публикация подтверждаются manifest и Kit evidence delivery-задач. Приёмку ChatGPT фиксирует INSTALL; native Windows/Linux, VM и clean-install — NOT_RUN. [Приёмка семи исправлений](../acceptance/release-0535-defects.md) и прежняя [D001–D011](../acceptance/release-0534-defects.md) сохраняют свой результат.
+Версия 0.5.38. Порядок DOCS → RELEASE → INSTALL → PUBLISH. macOS arm64, Windows x64 и Ubuntu x64 X11 собираются из одного sourceCommit. Фактические пакет/подпись/установка/публикация подтверждаются manifest и Kit evidence delivery-задач. INSTALL проверяет доставку готового bundle, а живая приёмка ChatGPT проводится отдельно; native Windows/Linux, VM и clean-install — NOT_RUN. [Приёмка семи исправлений](../acceptance/release-0535-defects.md) и прежняя [D001–D011](../acceptance/release-0534-defects.md) сохраняют свой результат.
 
 ## Комплект
 
-0.5.37 добавляет [ограниченный SDK-опыт](sdk-busy-delivery.md), default off. Комплект до живого GO — локальный проверочный. [Матрица и возврат](../acceptance/sdk-busy-recipient.md) требуют OFF, три основных полных burst и точную read-only probe; fixtures/installer не заменяют этот gate. База 0.5.36 сохраняется.
+0.5.38 переводит все рабочие сообщения на [постоянный SDK](sdk-messaging.md) без режимов и скриптов активации. Публикация разрешена поручением пользователя после автоматических проверок и проверки комплектов. [Живая приёмка новой версии](../acceptance/sdk-messaging.md) остаётся NOT_RUN; fixtures/installer не подменяют её. Прежние комплекты, включая 0.5.36, сохраняются.
 
-0.5.37: UI-решение завершается долговечной записью кнопки, его очередь — по read без ожидания конца ответа; следующая отправка использует адресные события и свежий допуск. Добавлено раннее имя своей сессии через MCP. Kit 1.10.2/роли 11, build 0.5.37-communication-5, протокол 5; upgrade с 1.10.1 проверен на выпущенном пакете. [Новая приёмка](../acceptance/session-choice-and-delivery.md) — NOT_RUN; прежняя не переписывается.
+Комплект: Kit 1.10.3, роли 12, build 0.5.38-communication-6, протокол 6. Проверяется upgrade с неизменяемых выпущенных Kit 1.10.1/1.10.2. Старая панель получает явную ошибку версии; переустановка приложения не обновляет открытый iframe хоста.
 
 Выходы: `.harness/runtime/releases/<version>` и `~/Downloads/WorkflowPilot-<version>`. Цели и симлинки проверяются до записи. Без любой платформы полный выпуск запрещён.
 
@@ -56,7 +56,7 @@ Installer не закрывает, не останавливает и не за�
 
 ## Публикация и приёмка
 
-SDK-опыт не публикуется до проверенного живого GO INSTALL, связанного с теми же sourceCommit/manifest/build/cases. UNKNOWN/INCONCLUSIVE не закрывают INSTALL/PUBLISH; условная ветка возврата идёт через Kit с новым DOCS/номером. Пересборка между GO и публикацией меняет предмет проверки и запрещена. Успех не включает burst глобально.
+Публикация постоянного SDK не зависит от старых OFF/burst/GO условий прекращённого опыта. Release notes разделяют автоматические доказательства API/MCP/SDK/Kit/Git и ещё не выполненную живую приёмку. Неизвестный исход и непроверенная сборка не объявляются успехом; исходники после сборки требуют нового согласованного комплекта.
 
 PUBLISH: собственный OleynikAleksandr/Workflow_Pilot, fast-forward main, draft → семь assets → сверка → публикация. Проверяющий script ничего не публикует: сверяет origin, remote main == local HEAD, v<version> == manifest.sourceCommit, draft/prerelease=false и все имена/размеры/digests. Delivery-коммиты могут быть позже sourceCommit; тег остаётся на исходниках сборки.
 

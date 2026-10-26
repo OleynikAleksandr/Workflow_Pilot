@@ -59,7 +59,7 @@ macOS tunnel-client закреплён на v0.0.14, официальный GitH
 
 Secure Tunnel и VPS остаются переключаемыми. Ошибка VPS не ломает Secure Tunnel; переключение на неподготовленный VPS отклоняется. Никаких догадок об общем 17842 или перенастройки сервера.
 
-Плагин использует execution/plugin/bridge.mjs для классифицированных действий MCP-моста и communication-store.mjs для WAL/контекста с fsync/hash. Execution не назначает роли, не читает Kit и не решает, когда продолжать план: это Control. Observer и журнал команд дают ему готовность адресата. Рабочие уведомления отправляет SDK, DOM сохраняет первый bootstrap и прежние маршруты. Корреляция block_id, продолжение и парковка блокировки при паузе принадлежат [Control/Kit](orchestrated-execution.md).
+Плагин использует execution/plugin/bridge.mjs для классифицированных действий MCP-моста и communication-store.mjs для WAL/контекста с fsync/hash. Execution не назначает роли, не читает Kit и не решает, когда продолжать план: это Control. Рабочие сообщения всех ролей отправляет [SDK](sdk-messaging.md) без ожидания свободного чата; до панели применяется короткий URL-bootstrap. Observer и журнал команд подтверждают identity/document и отдельно безопасное terminal/cleanup/complete, а не разрешают очередной Send по окончанию ответа. Корреляция block_id, продолжение и парковка при паузе принадлежат [Control/Kit](orchestrated-execution.md).
 
 ## Проверки и границы
 

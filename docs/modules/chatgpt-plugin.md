@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.37, Kit 1.10.2, протокол панели `5`, build `0.5.37-communication-5`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT. [SDK burst](sdk-busy-delivery.md) — default off.
+Workflow Pilot 0.5.38, Kit 1.10.3, протокол панели `6`, build `0.5.38-communication-6`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT. [Постоянный SDK](sdk-messaging.md) обслуживает все рабочие сообщения без режима включения.
 
 ## Пользовательский путь
 
@@ -8,10 +8,10 @@ Workflow Pilot 0.5.37, Kit 1.10.2, протокол панели `5`, build `0.5
 
 1. Пользователь создаёт новый обычный Chat. [URL-команда с тикетом](chat-only-startup.md) открывает workflow_pilot_panel без DOM-ввода/вложений. Ответ включает первую часть recovery; агент дочитывает остальные и подтверждает SHA в том же ходе. Iframe/SDK и разрешение плана проверяются отдельно.
 2. До окончательного Review/публикации автор сохраняет полные [подготовленные поручения](prepared-tasks.md) всех обычных задач и DOCS: байты, hash, автор/project/scope и semantic digest. Публикация связывает scope с execution_origin_session_id и не запускает работу.
-3. Одна кнопка Start после preflight разрешает scope. Control/ParallelExecution создаёт настоящие назначения/worktree/Chat E; backend механически связывает и авторизует согласованный пакет, доставляя после SDK/bind/конца bootstrap без нового хода O для сочинения. Старые brief-only планы сохраняют поздний prepare O. Backend assignment-start — только прежний контракт.
+3. Одна кнопка Start после preflight разрешает scope. Control/ParallelExecution создаёт настоящие назначения/worktree/Chat E; backend механически связывает и авторизует согласованный пакет, доставляя после SDK/bind и подтверждения принадлежности документа без нового хода O для сочинения. Старые brief-only планы сохраняют поздний prepare O. Backend assignment-start — только прежний контракт.
 4. Поручения, продолжения, вопросы/решения, интеграции, delivery и итог передаются через канал. Пользователь не переносит run/participant, не открывает панели исполнителей, не вызывает join/Enable и не пишет «продолжай» при обычной технической блокировке.
 
-Панель не создаёт второй scheduler. Kit остаётся источником задач, назначений, проверок и DONE; локальный коммит исполнителя требует проверенной интеграции. [Оркестрация](orchestrated-execution.md) определяет волны и итоговую очистку. URL передаёт только приглашение панели. Правила и identity всех ролей читаются через MCP; прежние Review/legacy сохраняют отдельные контракты. [Роли, рабочий API и приёмка результатов](assignment-dialogue.md) определяют dialogue_version=1. Выбранный маршрут `plugin-v1`/`legacy-dom` сохраняется; ошибки канала не переключают его скрыто на DOM.
+Панель не создаёт второй scheduler. Kit остаётся источником задач, назначений, проверок и DONE; локальный коммит исполнителя требует проверенной интеграции. [Оркестрация](orchestrated-execution.md) определяет волны и итоговую очистку. URL передаёт только приглашение панели. Правила и identity всех ролей читаются через MCP; прежние Review/legacy сохраняют отдельные контракты. [Роли, рабочий API и приёмка результатов](assignment-dialogue.md) определяют dialogue_version=1. Рабочий маршрут только `plugin-v1`, включая старые планы. Старые отправки sending/UNKNOWN сохраняют запрет повтора; без доказанной identity возникает предметный отказ подключения, без DOM fallback.
 
 ## Регистрация и адресация
 
@@ -44,13 +44,13 @@ Start/Continue после свежего preflight выдаёт допуск т�
 
 ## Доставка и блокировки
 
-Observer и журнал команд проверяют готовность; claim_ready сохраняет intent до SDK. FIFO назначения требует read/yield/физический конец без user bubble. User-choice освобождает свою очередь по read, следующий Send отдельно проверяет занятость/команды/identity; Start не сбрасывает UNKNOWN. [Контракт](assignment-dialogue-reliability.md#sdk-fifo-и-конец-хода).
+Claim_ready проверяет identity/document/attempt/grant, Stop и UNKNOWN; intent сохраняется до SDK. После accepted следующий pending доступен без busy/read/yield/команд. Тайм-ауты, lease и отдельные terminal receipts — в [едином контракте SDK](sdk-messaging.md).
 
 `pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report не возвращает pending. UNKNOWN и остальные терминальные исходы не повторяются через SDK или DOM. После restart claimed становится unknown. Стартовый контекст имеет [отдельный контракт](orchestrator-startup.md). Рабочий контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
 
 Рабочий model API — workflow_assignment_prepare/dispatch/send/yield/status: черновик O без grant, его отправка после готовности, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Yield.reason явно ограничен awaiting_reply/tasks_sent/result_sent/handled. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 
-[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 11: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
+[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 12: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
 
 ## MCP и SDK
 

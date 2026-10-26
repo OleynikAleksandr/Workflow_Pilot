@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1221,
+  "plan_revision": 1223,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-messaging",
@@ -133,7 +133,7 @@
       {
         "path": "docs/planning/sdk-messaging.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "d837d38bc53df2a829127bc08184487d3cceb209"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -250,7 +250,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-messaging.md",
-            "required": true
+            "required": true,
+            "revision": "d837d38bc53df2a829127bc08184487d3cceb209"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -378,7 +379,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-messaging.md",
-            "required": true
+            "required": true,
+            "revision": "d837d38bc53df2a829127bc08184487d3cceb209"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -449,7 +451,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-messaging.md",
-            "required": true
+            "required": true,
+            "revision": "d837d38bc53df2a829127bc08184487d3cceb209"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -475,8 +478,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-messaging",
         "task_id": "DOCS",
@@ -532,7 +535,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-messaging.md",
-            "required": true
+            "required": true,
+            "revision": "d837d38bc53df2a829127bc08184487d3cceb209"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -541,7 +545,36 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/sdk-busy-recipient.md",
+        "docs/acceptance/sdk-messaging.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/automatic-agent-dialogue-acceptance.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/execution.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-busy-delivery.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/session-titles.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/sdk-messaging.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -576,7 +609,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-messaging.md",
-            "required": true
+            "required": true,
+            "revision": "d837d38bc53df2a829127bc08184487d3cceb209"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -621,7 +655,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-messaging.md",
-            "required": true
+            "required": true,
+            "revision": "d837d38bc53df2a829127bc08184487d3cceb209"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -666,7 +701,8 @@
         "documents": [
           {
             "path": "docs/planning/sdk-messaging.md",
-            "required": true
+            "required": true,
+            "revision": "d837d38bc53df2a829127bc08184487d3cceb209"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -705,7 +741,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-messaging
 Current Task: нет
-Revision: 1221
+Revision: 1223
 
 ## Цель
 
@@ -740,8 +776,8 @@ Revision: 1221
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/kit-1.10.2.tar.gz, tests/fixtures/released-kit/manifest.json, tools/codex-app-server-mcp/plugin.py
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализация всех документов проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализация всех документов проекта
   - Reference: sdk-messaging / DOCS / implementation
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-busy-delivery.md, docs/acceptance/sdk-busy-recipient.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/dialogue-timing.md, docs/modules/current-actions.md, docs/modules/user-choice.md, docs/modules/prepared-tasks.md, docs/modules/project-compatibility.md, docs/modules/release.md, docs/planning/sdk-messaging.md, docs/modules/orchestrated-execution.md, docs/modules/assignment-dialogue.md, docs/modules/plugin-communication-handoff.md, docs/modules/automatic-agent-dialogue-acceptance.md, docs/modules/sdk-messaging.md, docs/acceptance/sdk-messaging.md, docs/modules/workflow-execution.md, docs/modules/execution.md, docs/modules/orchestrator-startup.md, docs/modules/session-titles.md, docs/modules/chat-only-startup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение

@@ -1,6 +1,6 @@
 # Подготовленные поручения до запуска плана
 
-Контракт Workflow Pilot 0.5.36 / Workflow Kit 1.10.2, ролевой протокол 11. Новый orchestrated-план с `dialogue_version:1` имеет `preparation_version:1`: авторское поручение и выбранный контекст каждой обычной задачи и DOCS готовы **до Review и публикации**, а не после нажатия Start. Исполнение разрешает только пользователь. [Рабочий диалог](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
+Контракт Workflow Pilot 0.5.38 / Workflow Kit 1.10.3, ролевой протокол 12. Новый orchestrated-план с `dialogue_version:1` имеет `preparation_version:1`: авторское поручение и выбранный контекст каждой обычной задачи и DOCS готовы **до Review и публикации**, а не после нажатия Start. Исполнение разрешает только пользователь. [Рабочий диалог](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
 
 ## Авторский снимок
 
@@ -46,7 +46,7 @@ Digest использует детерминированную канониза�
 1. ExecutionControl выполняет свежий preflight и разрешает текущий scope/generation. Scheduler создаёт допустимые настоящие assignment/worktree/attempt; подготовленный текст сам не создаёт назначения.
 2. DialogueDelivery вызывает доверенную внутреннюю привязку `assignmentPlanBind`. Проверяются текущие O/E identity и принадлежность, согласованный digest, реальные assignment/attempt и действующий grant. Публичный prepare не может подделать признак плановой подготовки.
 3. Тот же авторский текст и байты переносятся в существующий draft/WAL. Устойчивый ключ включает project/scope/task/preparation_digest/assignment/attempt. Записывается `task.plan_bound`; отдельная авторизация связана с актуальными generation/boot/recipient.
-4. Перед публикацией повторно проверяются договор, разрешение, pause/cancel/revoke, SDK/binding конкретного E, конец bootstrap и отсутствие команд. Intent → идемпотентный Kit → WAL предшествуют SDK. До bind рабочего сообщения E нет. Ни worktree, ни авторизация не означают accepted/read/task:start.
+4. Перед публикацией повторно проверяются договор, разрешение, pause/cancel/revoke, SDK/binding и принадлежность документа конкретного E. Busy/bootstrap turn и активная команда не задерживают доставку SDK; проверка Kit-эффекта и его lock остаётся отдельной. Intent → идемпотентный Kit → WAL предшествуют SDK. До bind рабочего сообщения E нет. Ни worktree, ни авторизация не означают accepted/read/task:start.
 5. Каждый готовый E получает свой пакет независимо от медленного соседа. Обязательного модельного хода O для сочинения или ready-подтверждения нет; уже согласованную выдачу O не дублирует.
 
 После Continue/restart неизменённая плановая подготовка может быть авторизована для текущего назначения без нового хода O, только при свежем пользовательском допуске и прежних проверках. Ручная пауза сама не снимается. Опубликованный пакет не отправляется заново, UNKNOWN остаётся на разборе, закрытый failed/retired intent не возрождается. Повторные callbacks и сбой между intent, Kit и WAL продолжают тот же effect, а не новую выдачу.
