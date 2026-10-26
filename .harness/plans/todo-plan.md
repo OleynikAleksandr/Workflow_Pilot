@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1169,
+  "plan_revision": 1171,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "session-choice-and-delivery",
@@ -402,14 +402,19 @@
         "App 0.5.36, Kit 1.10.2, роль 11, immutable panel build и locks согласованы; обе части Kit и upgrade не ослаблены."
       ],
       "expected_commit_message": "chore: подготовить выпуск 0.5.36",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "session-choice-and-delivery",
         "task_id": "VERSION",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -600,7 +605,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: session-choice-and-delivery
 Current Task: нет
-Revision: 1169
+Revision: 1171
 
 ## Цель
 
@@ -636,8 +641,8 @@ Revision: 1169
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/user-choices.test.mjs, tests/chatgpt-plugin.test.mjs, tests/electron-smoke.mjs, tests/backend-api.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.1.tar.gz
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE, NAME
-- [TODO] VERSION: Подготовить согласованный выпуск 0.5.36 — Ожидает
-  - Git Commit: [PENDING] chore: подготовить выпуск 0.5.36
+- [DONE] VERSION: Подготовить согласованный выпуск 0.5.36 — Завершено
+  - Git Commit: [DONE] chore: подготовить выпуск 0.5.36
   - Reference: session-choice-and-delivery / VERSION / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, docs/planning/session-choice-release.md
   - Параллельность: исключительное выполнение
