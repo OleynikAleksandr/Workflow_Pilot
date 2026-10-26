@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "1.10.2",
+  "version": "1.10.3",
   "initialized_git": true,
   "hook_mechanism": "git",
   "node_runtime": "system",
@@ -182,8 +182,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "fe6a1e233e8096d62c0b5e601bd786c4a82121fd050a77cc99baa449d60a5cc9",
-      "hash": "98f7d8e31ae514853379b9b0b7e19a8d3af780a4abd2608036e85e263671fbc7",
+      "original_hash": "98f7d8e31ae514853379b9b0b7e19a8d3af780a4abd2608036e85e263671fbc7",
+      "hash": "072f9a82c8e8cc7c7c9577188f61788f994f5fd0b867f6d0aa4ae857fdca990c",
       "existed": true
     },
     {
@@ -236,8 +236,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "33c95c393445b56eeb705c0843b4be153d42d8d3e2b007d0077c16add2c3dd07",
-      "hash": "8e08726c5dfac73186ed1250bda3bdf7e1070e2e9222a6daca18e8872cce336c",
+      "original_hash": "8e08726c5dfac73186ed1250bda3bdf7e1070e2e9222a6daca18e8872cce336c",
+      "hash": "05bdfa17c575f1a6c54dae9f3d25037365926dee13813298353fa425bf5f3141",
       "existed": true
     },
     {
@@ -407,7 +407,7 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "4afbb9c6452312a61f0d40d81c8ca51611c24fd474ca370e80a40f1a2f1ac5cd",
+      "original_hash": "5469f044cc32928647f20094cc810c6a490629dbcbc8d971565562c58033b08b",
       "hash": "5469f044cc32928647f20094cc810c6a490629dbcbc8d971565562c58033b08b",
       "existed": true
     },
@@ -533,8 +533,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "904b9466136d842e1066fc117927f1defc367883c6c1b1604b719581c108b12d",
-      "hash": "6d116b582cfcbcc891fef9e1b2d07acc35c677f148abcaee2d78a2a8585f6705",
+      "original_hash": "6d116b582cfcbcc891fef9e1b2d07acc35c677f148abcaee2d78a2a8585f6705",
+      "hash": "8ce6b57b7f714519afe5942aa17af91d2c36c73163f19eee86c4841cff6b03ea",
       "existed": true
     },
     {
@@ -623,7 +623,7 @@
       "external": false,
       "kind": "editable",
       "mode": 420,
-      "original_hash": "4afbb9c6452312a61f0d40d81c8ca51611c24fd474ca370e80a40f1a2f1ac5cd",
+      "original_hash": "5469f044cc32928647f20094cc810c6a490629dbcbc8d971565562c58033b08b",
       "hash": "5469f044cc32928647f20094cc810c6a490629dbcbc8d971565562c58033b08b",
       "existed": true
     },
@@ -642,18 +642,18 @@
       "external": false,
       "kind": "editable",
       "mode": 420,
-      "original_hash": "b455e0d2a8494582a9bbdb319f1e9ab2652f9c0473e6319d5459833f3e3ad7af",
-      "hash": "b455e0d2a8494582a9bbdb319f1e9ab2652f9c0473e6319d5459833f3e3ad7af",
+      "original_hash": "28288e0fb336b424f1a827b4a591d67eb7ed7882c8a44e75c71b2dc80a8f4f9a",
+      "hash": "28288e0fb336b424f1a827b4a591d67eb7ed7882c8a44e75c71b2dc80a8f4f9a",
       "existed": true
     }
   ],
-  "upgraded_from": "1.10.1",
-  "upgraded_at": "2026-10-26T08:55:42.771Z",
+  "upgraded_from": "1.10.2",
+  "upgraded_at": "2026-10-26T15:37:00.642Z",
   "legacy_plan_migration": {
     "model": "single-active-plan",
     "removed_count": 0,
-    "source_commit": "fe790f4fe361b8ca8723a4fb19031dc7a903f7a7",
-    "migrated_at": "2026-10-26T08:55:42.778Z"
+    "source_commit": "cab54346f82f2a4ab24a97e70b4470c417b8b1fe",
+    "migrated_at": "2026-10-26T15:37:00.649Z"
   },
-  "installed_at": "2026-10-26T08:55:42.778Z"
+  "installed_at": "2026-10-26T15:37:00.649Z"
 }
