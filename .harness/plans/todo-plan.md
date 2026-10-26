@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1157,
+  "plan_revision": 1158,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "session-choice-and-delivery",
@@ -76,7 +76,9 @@
       "docs/modules/orchestrator-startup.md",
       "docs/modules/project-compatibility.md",
       "packages/workflow-kit/README.md",
-      "docs/acceptance/session-choice-and-delivery.md"
+      "docs/acceptance/session-choice-and-delivery.md",
+      "docs/planning/session-choice-release.md",
+      "docs/modules/release.md"
     ]
   },
   "baseline_commit": "c79a5af4275efc169dab33547ce48853abc1a4c9",
@@ -330,16 +332,18 @@
         "docs/modules/orchestrator-startup.md",
         "docs/modules/project-compatibility.md",
         "packages/workflow-kit/README.md",
-        "docs/acceptance/session-choice-and-delivery.md"
+        "docs/acceptance/session-choice-and-delivery.md",
+        "docs/planning/session-choice-release.md",
+        "docs/modules/release.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
-      "title": "Актуализировать контракты выбора, названий и приёмки",
+      "title": "Актуализация всех документов проекта",
       "why": "Зафиксировать реализованное, сохранить невыпущенные требования и live pending.",
       "acceptance_criteria": [
-        "Сверены реализация и документы. Без выпуска README/OVERVIEW/действующие модули описывают установленную 0.5.35; невыпущенный контракт остаётся в spec/плане/Git, в модулях только явная ссылка на планируемую работу.",
-        "Playbook session-choice-and-delivery: live NOT_RUN, длительный событийный цикл до settled/complete, early/no-plan naming и ограничение data downgrade после topic; старая приёмка 0.5.35 не переписана.",
-        "Спецификация невыпущенного изменения сохранена, каждый документ ≤28000 UTF-8 байт. Нет заявления о новом релизе, установленной версии или GitHub delivery; DOCS checks:[] не выдаётся за тесты приложения."
+        "Перед выпуском 0.5.36 сверены README/OVERVIEW/действующие контракты реализованных исправлений; новые инструкции и версии согласованы.",
+        "Реализованное из двух временных спецификаций перенесено в модули, спецификации удалены без архивных копий с exact Git blob для required-ссылок. Отложенные требования и живые NOT_RUN сохранены; data downgrade после topic честно описан.",
+        "Каждый документ ≤28000 UTF-8 байт, playbook для новой версии отдельно от старой приёмки. DOCS перед RELEASE; checks:[] не выдаётся за тесты приложения."
       ],
       "expected_commit_message": "docs: актуализировать контракты выбора, названий и приёмки",
       "parallel_safe": false,
@@ -357,7 +361,7 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Только после поручения реализации: сверить CHOICE/NAME/PROOF и документы, добавить playbook NOT_RUN. Без выпуска действующие README/OVERVIEW/modules описывают установленную 0.5.35; новое остаётся в этой спецификации/плане/Git, возможна явно помеченная ссылка. Не объявлять новый tool установленным и data rollback проверенным. Сохранить невыпущенную спецификацию, указать ограничение topic→0.5.35, документы ≤28000 байт. Нет delivery, моделей, UI control, записи в профиль/Test_003/donor."
+      "task_brief": "Пользователь разрешил реализацию и выпуск 0.5.36: сверить CHOICE/NAME/PROOF/VERSION, обновить действующие контракты, перенести реализованное и удалить временные specs с exact Git blob в required-контексте. Сохранить отложенное и живые NOT_RUN. Данные/службу/профиль не менять. Откат bundle не объявлять data rollback после topic. DOCS предшествует production, каждый документ ≤28000 байт UTF-8."
     }
   ],
   "blocked_reason": null,
@@ -374,6 +378,11 @@
       "id": "d79cc0c1-f693-42a2-bcfb-feef66ccce29",
       "text": "26.10.2026 пользователь поручил закрыть текущий завершённый план, подготовить и опубликовать новую спецификацию и to-do по замечаниям 0.5.35. Это согласование объёма, не поручение реализации или delivery.",
       "recorded_at": "2026-10-26T07:03:18.703Z"
+    },
+    {
+      "id": "execute-release-0536",
+      "text": "26.10.2026 пользователь поручил весь план без пауз до нового релиза GitHub; включены macOS/Windows/Linux, штатная установка на Mac без остановки службы. Разработка последовательная без делегирования.",
+      "recorded_at": "2026-10-26T07:08:49.236135+00:00"
     }
   ],
   "scope_title": "Выбор пользователя, раннее имя и продолжение оркестрации",
@@ -391,7 +400,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: session-choice-and-delivery
 Current Task: нет
-Revision: 1157
+Revision: 1158
 
 ## Цель
 
@@ -427,10 +436,10 @@ Revision: 1157
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/user-choices.test.mjs, tests/chatgpt-plugin.test.mjs, tests/electron-smoke.mjs, tests/backend-api.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE, NAME
-- [TODO] DOCS: Актуализировать контракты выбора, названий и приёмки — Ожидает
+- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать контракты выбора, названий и приёмки
   - Reference: session-choice-and-delivery / DOCS / implementation
-  - Файлы: docs/planning/session-choice-and-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/orchestrator-startup.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, docs/acceptance/session-choice-and-delivery.md
+  - Файлы: docs/planning/session-choice-and-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/orchestrator-startup.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, docs/acceptance/session-choice-and-delivery.md, docs/planning/session-choice-release.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE, NAME, PROOF
 
