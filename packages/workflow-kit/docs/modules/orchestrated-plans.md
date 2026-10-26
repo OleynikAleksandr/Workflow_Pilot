@@ -1,6 +1,6 @@
 # План оркестратора
 
-Workflow Kit 1.10.1 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
+Workflow Kit 1.10.2 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
 
 ## План
 
@@ -17,7 +17,7 @@ Workflow Kit 1.10.1 поддерживает `execution_strategy: "orchestrated"
 
 ## Версия рабочего диалога
 
-Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 10. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
+Новый orchestrated scope получает dialogue_version=1 при создании; явный 0 сохраняет legacy. Чтение/extend старого плана не меняют версию. Роль O для нового пустого проекта использует текущий протокол 11. Task.context_pack — рекомендация O для отбора; E автоматически получает только обязательные ограничения и собственное состояние. Задачу/содержательный контекст передаёт O через канал.
 
 Kit хранит grant/attempt/result/acceptance и идемпотентные operation_id через assignment:dialogue. task:start требует grant текущей попытки и plan permission; integration требует acceptance точного result_id/source_commit. Revision создаёт новую попытку до интеграции, сохраняет старые proof и отзывает acceptance. После INTEGRATED нужна новая задача. [Полный контракт](../../../../docs/modules/assignment-dialogue.md).
 
@@ -75,4 +75,4 @@ Plan:permission зеркалирует разрешение backend scope/genera
 
 При существующей записи `plan:create`, `scope:create` и `review:prepare` требуют `execution_origin_session_id` этой сессии, записанный выбор и ту же стратегию, иначе `EXECUTION_MODE_REQUIRED`/`EXECUTION_MODE_MISMATCH` до любой записи, включая `applyConfig`; план с origin всегда требует запись своей сессии (legacy parallel и CLI без origin не затронуты). Выбор попадает в решения пользователя плана. Передача и освобождение владельца, `archive` удаляют запись; recovery показывает запрос и выбор. Kit не отличает вызов приложения от вызова агентом: гарантия — ролевой текст.
 
-Ролевой протокол 10: роли planning (обсуждение, спецификация, запрос режима) и self (sequential-план выполняет сама сессия), правило развилок во всех ролях чатов с пользователем.
+Ролевой протокол 11: роли planning (обсуждение, спецификация, запрос режима) и self (sequential-план выполняет сама сессия), правило развилок во всех ролях чатов с пользователем. Канонический SESSION_TITLE_RULE добавляет первое имя темы до режима/Review/плана только при доступном workflow_session_set_title; обсуждение без плана поддержано. E сохраняет имя задачи; новый bootstrap не выполняется.

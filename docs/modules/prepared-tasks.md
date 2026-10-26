@@ -1,6 +1,6 @@
 # Подготовленные поручения до запуска плана
 
-Контракт Workflow Pilot 0.5.35 / Workflow Kit 1.10.1, ролевой протокол 10. Новый orchestrated-план с `dialogue_version:1` имеет `preparation_version:1`: авторское поручение и выбранный контекст каждой обычной задачи и DOCS готовы **до Review и публикации**, а не после нажатия Start. Исполнение разрешает только пользователь. [Рабочий диалог](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
+Контракт Workflow Pilot 0.5.36 / Workflow Kit 1.10.2, ролевой протокол 11. Новый orchestrated-план с `dialogue_version:1` имеет `preparation_version:1`: авторское поручение и выбранный контекст каждой обычной задачи и DOCS готовы **до Review и публикации**, а не после нажатия Start. Исполнение разрешает только пользователь. [Рабочий диалог](assignment-dialogue.md), [надёжность](assignment-dialogue-reliability.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
 
 ## Авторский снимок
 

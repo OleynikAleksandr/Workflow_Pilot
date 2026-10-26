@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1171,
+  "plan_revision": 1174,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "session-choice-and-delivery",
@@ -87,7 +87,15 @@
       "docs/acceptance/session-choice-and-delivery.md",
       "docs/planning/session-choice-release.md",
       "docs/modules/release.md",
-      "packages/workflow-kit/src/templates/PLAN.md"
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "docs/modules/session-titles.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/prepared-tasks.md",
+      "docs/modules/workflow-execution.md",
+      "docs/modules/orchestrated-execution.md",
+      "docs/modules/chat-only-startup.md",
+      "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md"
     ]
   },
   "baseline_commit": "c79a5af4275efc169dab33547ce48853abc1a4c9",
@@ -97,7 +105,7 @@
       {
         "path": "docs/planning/session-choice-and-delivery.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "5edd7068f6d243e481fd84a214bfa4ef0b8e3e7c"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -107,7 +115,7 @@
       {
         "path": "docs/planning/session-choice-release.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "5edd7068f6d243e481fd84a214bfa4ef0b8e3e7c"
       }
     ],
     "include_last_completed_task": false,
@@ -172,7 +180,8 @@
         "documents": [
           {
             "path": "docs/planning/session-choice-and-delivery.md",
-            "required": true
+            "required": true,
+            "revision": "5edd7068f6d243e481fd84a214bfa4ef0b8e3e7c"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -266,7 +275,8 @@
         "documents": [
           {
             "path": "docs/planning/session-choice-and-delivery.md",
-            "required": true
+            "required": true,
+            "revision": "5edd7068f6d243e481fd84a214bfa4ef0b8e3e7c"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -354,7 +364,8 @@
         "documents": [
           {
             "path": "docs/planning/session-choice-and-delivery.md",
-            "required": true
+            "required": true,
+            "revision": "5edd7068f6d243e481fd84a214bfa4ef0b8e3e7c"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -417,8 +428,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "session-choice-and-delivery",
         "task_id": "DOCS",
@@ -447,7 +458,15 @@
         "docs/acceptance/session-choice-and-delivery.md",
         "docs/planning/session-choice-release.md",
         "docs/modules/release.md",
-        "packages/workflow-kit/src/templates/PLAN.md"
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "docs/modules/session-titles.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/workflow-execution.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/chat-only-startup.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -464,7 +483,8 @@
         "documents": [
           {
             "path": "docs/planning/session-choice-and-delivery.md",
-            "required": true
+            "required": true,
+            "revision": "5edd7068f6d243e481fd84a214bfa4ef0b8e3e7c"
           },
           {
             "path": "docs/architecture/OVERVIEW.md",
@@ -474,7 +494,32 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Пользователь разрешил реализацию и выпуск 0.5.36: сверить CHOICE/NAME/PROOF/VERSION, обновить действующие контракты, перенести реализованное и удалить временные specs с exact Git blob в required-контексте. Сохранить отложенное и живые NOT_RUN. Данные/службу/профиль не менять. Откат bundle не объявлять data rollback после topic. DOCS предшествует production, каждый документ ≤28000 байт UTF-8."
+      "task_brief": "Пользователь разрешил реализацию и выпуск 0.5.36: сверить CHOICE/NAME/PROOF/VERSION, обновить действующие контракты, перенести реализованное и удалить временные specs с exact Git blob в required-контексте. Сохранить отложенное и живые NOT_RUN. Данные/службу/профиль не менять. Откат bundle не объявлять data rollback после topic. DOCS предшествует production, каждый документ ≤28000 байт UTF-8.",
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/session-choice-and-delivery.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/desktop.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/session-titles.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/session-choice-and-delivery.md",
+        "docs/planning/session-choice-release.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "id": "RELEASE",
@@ -605,7 +650,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: session-choice-and-delivery
 Current Task: нет
-Revision: 1171
+Revision: 1174
 
 ## Цель
 
@@ -647,10 +692,10 @@ Revision: 1171
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, docs/planning/session-choice-release.md
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать контракты выбора, названий и приёмки
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать контракты выбора, названий и приёмки
   - Reference: session-choice-and-delivery / DOCS / implementation
-  - Файлы: docs/planning/session-choice-and-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/orchestrator-startup.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, docs/acceptance/session-choice-and-delivery.md, docs/planning/session-choice-release.md, docs/modules/release.md, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: docs/planning/session-choice-and-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/orchestrator-startup.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, docs/acceptance/session-choice-and-delivery.md, docs/planning/session-choice-release.md, docs/modules/release.md, packages/workflow-kit/src/templates/PLAN.md, docs/modules/session-titles.md, docs/modules/assignment-dialogue.md, docs/modules/prepared-tasks.md, docs/modules/workflow-execution.md, docs/modules/orchestrated-execution.md, docs/modules/chat-only-startup.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE, NAME, PROOF, VERSION
 - [TODO] RELEASE: Собрать полный выпуск macOS Windows Linux — Ожидает
