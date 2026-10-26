@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1182,
+  "plan_revision": 1185,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -86,12 +86,12 @@
       },
       {
         "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
         "path": "docs/planning/sdk-busy-recipient-delivery.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
@@ -105,8 +105,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "POLICY",
@@ -151,16 +151,25 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "scripts/prepare-sdk-busy-experiment.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "src/control/facade.mjs",
+        "src/control/plugin/service.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/plugin/sdk-busy-experiment.mjs",
+        "tests/sdk-busy-experiment.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -219,11 +228,11 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -299,11 +308,11 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -371,11 +380,11 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -430,11 +439,11 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -494,11 +503,11 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -548,11 +557,11 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -602,11 +611,11 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -655,11 +664,11 @@
           },
           {
             "path": "docs/planning/sdk-busy-recipient-acceptance.md",
-            "required": true
+            "required": false
           },
           {
             "path": "docs/planning/sdk-busy-recipient-delivery.md",
-            "required": true
+            "required": false
           }
         ],
         "include_last_completed_task": false,
@@ -681,7 +690,8 @@
       "id": "e542cf51-16fd-45df-b477-09dfb4eb7ccd",
       "text": "26.10.2026 пользователь выбрал полный сценарий вместо single и поручил подготовить спецификацию, to-do и Claude Review. Публикация плана не разрешает реализацию, сборку или переключение службы.",
       "recorded_at": "2026-10-26T09:58:19.007Z"
-    }
+    },
+    "При выполнении POLICY полный recovery превысил обязательный резерв теста: 157 КБ при пределе 144 КБ. Спецификации и критерии не сокращаются: основной контракт и OVERVIEW передаются полностью, acceptance/delivery читаются по требованию до зависимого действия. Изменяется только повторная доставка read-only контекста внешней sequential-сессии; подготовленные продуктовые назначения не изменяются."
   ],
   "scope_title": "Полный SDK-опыт с занятым оркестратором",
   "parallel_allowed": false,
@@ -698,7 +708,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1182
+Revision: 1185
 
 ## Цель
 
@@ -716,8 +726,8 @@ Revision: 1182
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Внешняя Codex-сессия готовит последовательную разработку без разрешения делегировать модели; общий транспорт, FIFO, gates и мост пересекаются. Два E относятся к продуктовой живой приёмке и fixtures.
 
-- [TODO] POLICY: Ограничить опыт точным тестовым scope и двумя result — Ожидает
-  - Git Commit: [PENDING] feat: ограничить опыт точным тестовым scope и двумя result
+- [DONE] POLICY: Ограничить опыт точным тестовым scope и двумя result — Завершено
+  - Git Commit: [DONE] feat: ограничить опыт точным тестовым scope и двумя result
   - Reference: sdk-busy-recipient / POLICY / implementation
   - Файлы: src/execution/plugin/sdk-busy-experiment.mjs, scripts/prepare-sdk-busy-experiment.mjs, src/execution/facade.mjs, src/control/facade.mjs, src/backend/desktop-model.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, src/contracts/plugin-communication.mjs, tests/sdk-busy-experiment.test.mjs, tests/backend-desktop-model.test.mjs, tests/desktop-boundaries.test.mjs
   - Параллельность: исключительное выполнение

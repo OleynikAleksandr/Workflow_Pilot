@@ -4,6 +4,7 @@ import { RuntimeError } from '../contracts/errors.mjs';
 import { BrowserSessions } from './browser/session-runtime.mjs';
 import { startPluginBridge } from './plugin/bridge.mjs';
 import {ProjectCommands} from './runtime/project-commands.mjs';
+import {readSdkBusyExperiment} from './plugin/sdk-busy-experiment.mjs';
 export { openCommunicationStore } from './plugin/communication-store.mjs';
 export { isChatGPTChatUrl, isPendingChatGPTConversation } from './browser/chatgpt-experience.mjs';
 export { desktopFiles, exists } from './files/adapter.mjs';
@@ -64,6 +65,7 @@ export class ExecutionFacade {
   readJson(file) { return this.files.readJson(file); }
   writeJson(file, value, options) { return this.files.writeJson(file, value, options); }
   canonicalPath(file) { return this.files.canonicalPath(file); }
+  sdkBusyExperiment(workspace,expected) { return readSdkBusyExperiment(workspace,expected); }
   ensureServices() { return this.services().ensure(); }
   inspectServices() { return this.services().control('status'); }
   startMcpOnly() { return this.services().control('start', { mcpOnly: true }); }

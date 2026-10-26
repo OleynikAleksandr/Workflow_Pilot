@@ -1,4 +1,28 @@
 export const ASSIGNMENT_DIALOGUE_VERSION=1;
+export const SDK_BUSY_KINDS=Object.freeze(['tool-wait','generation','read-only-command']);
+const experimentKey=value=>typeof value==='string'&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value);
+export function sdkBusyProfile(value,expected){
+  const reject=()=>{throw Object.assign(Error('Неверный профиль SDK-опыта или другая identity.'),{code:'SDK_BUSY_PROFILE_INVALID'});};
+  if(!value||typeof value!=='object'||Array.isArray(value))return reject();
+  const fields=['version','mode','experiment_id','activation_id','project_id','workspace','scope_id','recipient_role','build_id','test_workspace','cases'];
+  if(Object.keys(value).some(key=>!fields.includes(key))||value.version!==1)return reject();
+  if(value.mode==='off')return {version:1,mode:'off'};
+  if(value.mode!=='sdk-busy-burst'||value.test_workspace!==true||value.recipient_role!=='O'
+    ||!experimentKey(value.experiment_id)||!experimentKey(value.activation_id)
+    ||!experimentKey(value.project_id)||!experimentKey(value.scope_id)||typeof value.build_id!=='string'||!value.build_id
+    ||!expected||value.workspace!==expected.workspace||value.project_id!==expected.project_id
+    ||value.scope_id!==expected.scope_id||value.build_id!==expected.build_id
+    ||!expected.scope_id||expected.role!=='O'||!Array.isArray(value.cases)||!value.cases.length||value.cases.length>16)return reject();
+  const seen=new Set();
+  for(const item of value.cases){
+    if(!item||Object.keys(item).some(key=>!['case_id','busy_kind','max_notifications','task_ids'].includes(key))
+      ||!experimentKey(item.case_id)||seen.has(item.case_id)||!SDK_BUSY_KINDS.includes(item.busy_kind)
+      ||item.max_notifications!==2||!Array.isArray(item.task_ids)||item.task_ids.length!==2
+      ||new Set(item.task_ids).size!==2||!item.task_ids.every(experimentKey))return reject();
+    seen.add(item.case_id);
+  }
+  return structuredClone(value);
+}
 // A UI notification is settled by its delivery receipt, not by the model's
 // subsequent answer. Other working messages retain their turn/yield contract.
 export function communicationMessageComplete(message) {
