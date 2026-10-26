@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1225,
+  "plan_revision": 1227,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-messaging",
@@ -625,8 +625,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-messaging",
         "task_id": "INSTALL",
@@ -668,7 +668,8 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -744,7 +745,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-messaging
 Current Task: нет
-Revision: 1225
+Revision: 1227
 
 ## Цель
 
@@ -791,8 +792,8 @@ Revision: 1225
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить проверенный готовый macOS комплект — Ожидает
-  - Git Commit: [PENDING] delivery: установить проверенный готовый macos комплект
+- [DONE] INSTALL: Установить проверенный готовый macOS комплект — Завершено
+  - Git Commit: [DONE] delivery: установить проверенный готовый macos комплект
   - Reference: sdk-messaging / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
