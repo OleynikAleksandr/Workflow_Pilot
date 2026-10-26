@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1214,
+  "plan_revision": 1215,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-messaging",
@@ -332,7 +332,9 @@
         "tests/plan-review.test.mjs",
         "tests/project-plan-continuation.test.mjs",
         "tests/user-choice-view.test.mjs",
-        "tests/user-choices.test.mjs"
+        "tests/user-choices.test.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/coordination.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -351,7 +353,8 @@
       "acceptance_criteria": [
         "Связный реальный API/MCP/SDK/Kit/Git fixture проверяет prepared Start, больше двух сообщений и оба направления, busy/active command, параллельные и зависимые E, acceptance exact SHA, DOCS и cleanup/complete; без режима или профильного скрипта.",
         "Две панели, restart/remount/lease loss, UNKNOWN, поздний Promise, Stop/Continue и identity mismatch не дают повтор SDK, ложных квитанций или межпроектного эффекта. Обе части Kit выполнены; Python cache preflight перед package проверками.",
-        "Доказаны только фактически выполненные автоматические свойства; live ChatGPT и native Windows/Linux/iPad отмечены NOT_RUN. Продуктовые дефекты исправляются до DOCS, не маскируются ослаблением assertions. Продуктовое исправление: plan:extend корректирующей задачи до DOCS либо явное task:update области PROOF до изменения src."
+        "Доказаны только фактически выполненные автоматические свойства; live ChatGPT и native Windows/Linux/iPad отмечены NOT_RUN. Продуктовые дефекты исправляются до DOCS, не маскируются ослаблением assertions. Продуктовое исправление: plan:extend корректирующей задачи до DOCS либо явное task:update области PROOF до изменения src.",
+        "Сохранённый UNKNOWN прежнего глобального Review sender блокирует любой новый SDK тому же чату, а не только следующий Review. Проверить отдельную адресную регрессию, не затрагивая соседние чаты."
       ],
       "expected_commit_message": "feat: проверить полный обмен и восстановление на изолированных сценариях",
       "parallel_safe": false,
@@ -649,7 +652,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-messaging
 Current Task: нет
-Revision: 1214
+Revision: 1215
 
 ## Цель
 
@@ -675,7 +678,7 @@ Revision: 1214
 - [TODO] PROOF: Проверить полный обмен и восстановление на изолированных сценариях — Ожидает
   - Git Commit: [PENDING] feat: проверить полный обмен и восстановление на изолированных сценариях
   - Reference: sdk-messaging / PROOF / implementation
-  - Файлы: tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/command-activity.test.mjs, tests/progress.test.mjs, tests/startup-context.test.mjs, tests/migration-compatibility.test.mjs, tests/electron-smoke.mjs, tests/execution-control.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plan-continuation.test.mjs, tests/plan-review.test.mjs, tests/project-plan-continuation.test.mjs, tests/user-choice-view.test.mjs, tests/user-choices.test.mjs
+  - Файлы: tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/command-activity.test.mjs, tests/progress.test.mjs, tests/startup-context.test.mjs, tests/migration-compatibility.test.mjs, tests/electron-smoke.mjs, tests/execution-control.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plan-continuation.test.mjs, tests/plan-review.test.mjs, tests/project-plan-continuation.test.mjs, tests/user-choice-view.test.mjs, tests/user-choices.test.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: SDK
 - [TODO] VERSION: Согласовать новую версию и immutable панель — Ожидает
