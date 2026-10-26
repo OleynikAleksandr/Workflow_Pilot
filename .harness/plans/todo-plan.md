@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1189,
+  "plan_revision": 1191,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -359,8 +359,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-busy-recipient",
         "task_id": "PROOF",
@@ -430,7 +430,13 @@
           "DISPATCH",
           "PROBE"
         ]
-      }
+      },
+      "actual_files": [
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/sdk-busy-analysis.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -745,7 +751,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1189
+Revision: 1191
 
 ## Цель
 
@@ -781,8 +787,8 @@ Revision: 1189
   - Файлы: src/execution/plugin/sdk-busy-experiment.mjs, src/execution/plugin/sdk-busy-probe.mjs, src/execution/plugin/bridge.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, src/control/plugin/service.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/contracts/backend.mjs, src/contracts/plugin-communication.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tools/codex-app-server-mcp/plugin.py, scripts/analyze-sdk-busy-experiment.mjs, tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, src/control/workflow/command-activity.mjs, tests/command-activity.test.mjs, scripts/prepare-sdk-busy-experiment.mjs, src/control/facade.mjs, tests/workflow-channel.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: DISPATCH
-- [TODO] PROOF: Проверить полный цикл и отказы на изолированных fixtures — Ожидает
-  - Git Commit: [PENDING] feat: проверить полный цикл и отказы на изолированных fixtures
+- [DONE] PROOF: Проверить полный цикл и отказы на изолированных fixtures — Завершено
+  - Git Commit: [DONE] feat: проверить полный цикл и отказы на изолированных fixtures
   - Reference: sdk-busy-recipient / PROOF / implementation
   - Файлы: tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs
   - Параллельность: исключительное выполнение

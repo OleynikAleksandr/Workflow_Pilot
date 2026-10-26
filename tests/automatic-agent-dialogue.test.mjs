@@ -16,6 +16,8 @@ test('D001-D011 cycle: prepared plan, Finder metadata, real dirty Start/Continue
   {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,conversation:true,defects:true});});
 test('long preplan choice: early title, runtime event, command watcher, two Review rounds, one Start and full completion',
   {timeout:360000},async t=>{await automaticDialogue(t,{owned:true,preplan:true});});
+test('busy O receives two real checked results through MCP/SDK, preserves old work and completes integrations/dependencies/receipts/cleanup',
+  {timeout:360000},async t=>{await automaticDialogue(t,{owned:true,preplan:true,sdkBusy:true});});
 for(const modeOption of ['sequential','spec'])test('real MCP mode button completes the '+modeOption+' decision before any plan',
   {timeout:30000},async t=>{assert.equal((await automaticDialogue(t,{owned:true,preplan:true,modeOption})).modeOption,modeOption);});
 test('five simultaneous executors receive O-selected tasks and return checked results through real Start/MCP/SDK/Kit',

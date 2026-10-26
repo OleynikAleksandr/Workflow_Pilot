@@ -30,6 +30,9 @@ import {userChoseMode} from './execution-mode.mjs';
 import {readReview,prepareReview,respondReview,publishReview} from '../../packages/workflow-kit/src/lib/plan-review.mjs';
 import {runReview,REVIEW_MODEL} from '../../packages/workflow-kit/src/lib/claude-review.mjs';
 import {BrowserSessions} from '../../src/execution/browser/session-runtime.mjs';
+import {prepareSdkBusyExperiment} from '../../scripts/prepare-sdk-busy-experiment.mjs';
+import {readSdkBusyExperiment} from '../../src/execution/plugin/sdk-busy-experiment.mjs';
+import {COMMUNICATION_BUILD} from '../../src/contracts/backend.mjs';
 
 // Deliberately separate from the happy-path browser fixture. Exercises the
 // real Kit/Git ledger at precise interruption boundaries, using only tmp Git
@@ -147,11 +150,12 @@ export async function interruptionRegression(t){
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,modeOption='orchestrated'}={}){
+export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,modeOption='orchestrated',sdkBusy=false}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
   const drafts=new Map(),preplanEvents=[],delayedReservations=new Set();
+  const busyNotifications=[];
   let releaseChoice,commandBarrier=null,commandEventOnly=false,lateEventOnly=false,clockOffset=0;
   const choiceResponse=new Promise(resolve=>releaseChoice=resolve);
   const rawPage=record=>record.fixtureObservation??record.pageState.current;
@@ -488,8 +492,13 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
           record.bootstrapCount++;record.registration=registered.structuredContent.registration;
           record.ui=await communicationHtml(testPort,c,{hostMetadata:record.metadata,timerMs:ms=>ms===2000?40:ms,
             onMessage:request=>{
-              assert.equal(page.busy,false,'the physical conversation is idle before SDK notification');
               const id=JSON.parse(request.content.find(item=>item.type==='text').text.match(/аргументами (\{[^\n]+?\})\./)[1]).message_id;
+              const selected=[...plugin.communication.runs.values()].flatMap(run=>run.messages).find(message=>message.message_id===id);
+              if(sdkBusy&&!project.assignmentId&&selected?.sdk_busy?.case_id==='full-burst'){
+                assert.equal(page.busy,true,'both notifications reach the busy O through the actual SDK');
+                assert.equal(selected.read,false);busyNotifications.push({request,id});return {};
+              }
+              assert.equal(page.busy,false,'the physical conversation is idle before SDK notification');
               record.sdkPageVersions?.set(id,record.pageState.version);
               page.busy=true;
               if(!owned){page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;page.lastMessageRole='user';}
@@ -554,7 +563,8 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   workflow.attachSessions(live);
   plugin=control.createPlugin({plans,loadContext:(workspace)=>plans.loadContext(workspace),communicationStore:await openCommunicationStore(path.join(directory,'communication')),
     observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
-    userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input)});
+    userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
+    ...(sdkBusy?{sdkBusyProfile:target=>readSdkBusyExperiment(root,{...target,workspace:root,build_id:COMMUNICATION_BUILD})}:{})});
   if(preplan){
     const reserve=plugin.reserveParticipant.bind(plugin);
     plugin.reserveParticipant=async(sessionId,correlation)=>{
@@ -693,11 +703,25 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     }
     await fs.unlink(path.join(root,'user-change.txt'));
   }
+  if(sdkBusy)await prepareSdkBusyExperiment({workspace:root,testWorkspace:true,caseId:'full-burst',experimentId:'isolated-full-cycle'});
   const start=await api.submit('plan.continue',{}),started=await api.wait(start.operationId);
   assert.equal(started.status,'completed',JSON.stringify(started));
   assert.equal(workflow.executionControl.view(root,'dialogue-fixture').state,'running','HTTP API runs the real plan button coordinator');
   let scopedChoice;
-  if(preplan){
+  if(preplan&&sdkBusy){
+    const results=()=>[...plugin.communication.runs.values()].flatMap(run=>run.messages).filter(message=>message.sdk_busy?.case_id==='full-burst');
+    await wait(()=>results().length===2,'both real checked results bound to the measurement');
+    assert.ok(results().every(message=>!message.read&&!message.intent));
+    const hold=await c.callTool({name:'workflow_delivery_experiment_hold',arguments:{case_id:'full-burst',duration_ms:15000},_meta:o.metadata});
+    assert.equal(hold.isError,false,JSON.stringify(hold));
+    await wait(()=>busyNotifications.length===2,'two sequential SDK acceptances during hold');
+    assert.ok(results().every(message=>message.delivery==='accepted'&&!message.read),'SDK acceptance is not model reading');
+    const checkpoint=await c.callTool({name:'workflow_delivery_experiment_checkpoint',arguments:{case_id:'full-burst',marker:'resume',nonce:hold.structuredContent.nonce},_meta:o.metadata});
+    assert.equal(checkpoint.isError,false);releaseChoice();await wait(()=>!rawPage(o).state.busy,'original response completes before result reading');
+    for(const item of busyNotifications){rawPage(o).state.busy=true;reportPage(o);await runAgent(o,item.request);finish(o);}
+    const target=await plugin.participantTarget(origin.sessionId);
+    scopedChoice=await plugin.communication.workflow.enqueue(target,{key:'scope-bound-ui-proof',kind:'user-choice',text:'Сохранённое решение для текущего плана',role:'orchestrator'});
+  }else if(preplan){
     const results=()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
       .filter(m=>m.kind==='result'&&independent.includes(m.task_id));
     await wait(()=>results().length===2,'both checked results queue while the long choice response is busy');
@@ -795,7 +819,15 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     assert.equal(readReview(root).review_events.filter(e=>e.type==='feedback').length,2,'review history survives task cleanup');
     const scoped=run.messages.find(m=>m.message_id===scopedChoice.message_id);
     assert.equal(scoped.scope_id,'dialogue-fixture');assert.equal(scoped.read,true);assert.equal(scoped.reply_observed,false);
-    assert.equal(lateEventOnly&&commandEventOnly,true);assert.equal(preplanEvents.length,3);
+    if(!sdkBusy)assert.equal(lateEventOnly&&commandEventOnly,true);assert.equal(preplanEvents.length,3);
+  }
+  if(sdkBusy){
+    const selected=run.messages.filter(message=>message.sdk_busy?.case_id==='full-burst');
+    assert.equal(selected.length,2);assert.ok(selected.every(message=>message.read&&message.yielded&&message.reply_observed));
+    assert.equal(run.sdk_busy.cases[0].status,'complete');assert.equal(run.sdk_busy.cases[0].slots.length,2);
+    const invocation=run.events.filter(event=>event.event_type==='sdk.invoked'&&selected.some(message=>message.message_id===event.message_id));
+    assert.equal(invocation.length,2);assert.ok(invocation.every(event=>event.delivery_attempt_id));
+    assert.equal(new Set(selected.map(message=>message.source_commit)).size,2);
   }
   return {notifications,preplanEvents,run,root};
 }

@@ -149,6 +149,15 @@ test('reading a held result invalidates its pair without replay or replacing the
   await assert.rejects(f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'}),{code:'PLUGIN_COMMUNICATION_EXPERIMENT_CASE'});
   assert.equal(f.run().events.filter(event=>event.event_type==='send.intent').length,1);
 });
+test('model pull of second selected result after first SDK keeps its receipt, invalidates the pair and consumes no second slot',async t=>{
+  const f=await burstFixture(t);await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});
+  await sdk(f,f.binding,f.results[0].message_id);
+  await f.c.readMessage({metadata:meta('o'),message_id:f.results[1].message_id});
+  assert.equal(f.run().sdk_busy.cases[0].status,'invalid');assert.equal(f.run().sdk_busy.cases[0].slots.length,1);
+  assert.equal(f.run().messages.find(message=>message.message_id===f.results[0].message_id).delivery,'accepted');
+  assert.equal(f.run().messages.find(message=>message.message_id===f.results[1].message_id).read,true);
+  assert.equal(pending(f.c,f.binding),null);assert.equal(f.run().events.filter(event=>event.event_type==='send.intent').length,2,'previous work plus first result only');
+});
 test('busy burst does not overtake a different unread message or consume a slot while deferred',async t=>{
   const f=await burstFixture(t,{unrelated:true});await f.c.experimentBegin({metadata:meta('o'),case_id:'two-results'});
   const id=f.results[0].message_id;
