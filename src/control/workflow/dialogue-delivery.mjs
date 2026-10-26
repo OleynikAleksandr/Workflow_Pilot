@@ -10,7 +10,7 @@ const startupFailure=(code,message)=>Object.assign(new Error(message),{code:'PLU
 const hash=value=>createHash('sha256').update(value).digest('hex');
 // A narrow adapter for the existing scheduler. It owns no assignments or plan.
 export class DialogueDelivery {
-  constructor({store,getPlugin,record,route,state,signals,uiEventCurrent=()=>true,kitPermission=async()=>{}}){Object.assign(this,{store,getPlugin,record,route,state,signals,uiEventCurrent,kitPermission});}
+  constructor({store,getPlugin,record,route,state,signals,legacyUnknown=()=>false,uiEventCurrent=()=>true,kitPermission=async()=>{}}){Object.assign(this,{store,getPlugin,record,route,state,signals,legacyUnknown,uiEventCurrent,kitPermission});}
   async currentMessage(target,message){
     if(message.ui_event)return this.uiEventCurrent(target,message.ui_event);
     if(message.kind==='startup-context'){
@@ -70,7 +70,8 @@ export class DialogueDelivery {
   project(sessionId){const p=this.store.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));return p&&this.store.project(p.workspace,sessionId);}
   observe(target){
     const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState?.current;
-    return {...executorPageState(record),startupLaunch:startupLaunch(project?.attempt,Date.now(),{
+    const physical=executorPageState(record);
+    return {...physical,legacySendUnknown:physical.legacySendUnknown||!!this.legacyUnknown(project),startupLaunch:startupLaunch(project?.attempt,Date.now(),{
       chatUrl:project?.chatUrl,currentUrl:page?.documentId?page.state?.url:undefined}),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
       observationSeq:page?.seq??0,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};

@@ -69,6 +69,7 @@ function watchRecovery(root){
 }
 let reviewCheckpoint=null,automationCheckpoint=null,parallelExecutionBook={};
 const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&liveSessions?.find(project),
+  legacyUnknown:project=>automationSend.unknown(project),
   route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>({...executionControl.view(workspace,scope),sessionId:projectPlanContinuation.state(workspace)?.sessionId}),
   signals:workspace=>executionKit.signals(workspace),
   uiEventCurrent:(target,event)=>{

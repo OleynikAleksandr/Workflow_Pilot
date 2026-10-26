@@ -28,6 +28,7 @@ import {verifyCurrentActionsLayout} from './fixtures/current-actions-layout.mjs'
 import {bridge as pluginFixtureBridge,client as pluginFixtureClient,communicationHtml} from './fixtures/plugin-host.mjs';
 import {saveReview,readReview} from '@webpilot/workflow-kit/lib/review-state';
 import {COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/contracts/backend.mjs';
+import {userChoseMode} from './fixtures/execution-mode.mjs';
 
 let packetLoads = 0;
 let smokeDataDir;
@@ -1535,13 +1536,18 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     await appendAnswer(text);
     await browser.executeJavaScript("document.getElementById('auto-fixture-stop')?.remove()");
   };
-  const expectContinue = async (before, description) => {
-    await waitFor(async () => await countMessages() === before + 1 && !planContinuation.pending
-      && planContinuation.checkpoint?.status === 'sent', description, snapshot);
-    // 0.6.96: the continuation carries the next task of the plan after the exact first line.
-    const continuation = await browser.executeJavaScript('window.fixtureMessages.at(-1).text');
-    assert.match(continuation, /^Продолжай\n\nДанные текущего плана Workflow Kit — следующая задача [^\n]+\nЗадача: \S+ — .+/s);
-    assert.ok(Buffer.byteLength(continuation) <= 4096, 'continuation stays within 4 KB');
+  let continuationPanel;
+  const continuationMessages=()=>[...plugin.communication.runs.values()].flatMap(run=>run.messages)
+    .filter(message=>message.scope_id==='fixture-current-plan'&&message.kind==='continue');
+  const expectContinue = async (count, taskId, description) => {
+    await waitFor(() => continuationMessages().length===count
+      &&continuationMessages().at(-1).delivery==='accepted'&&!planContinuation.pending
+      &&planContinuation.checkpoint?.status==='queued',description,snapshot);
+    assert.equal(continuationPanel.messages.length,count,'one real panel SDK call per semantic task');
+    assert.equal(planContinuation.checkpoint.turnId,'task:'+taskId);
+    assert.match(planContinuation.checkpoint.text,/^Продолжи текущий план Workflow Kit\./);
+    assert.equal(JSON.parse(planContinuation.checkpoint.text.split('Полные данные следующей задачи: ')[1]).id,taskId);
+    assert.equal(await countMessages(),1,'working SDK messages never use the DOM composer');
   };
   const noExtraSend = async before => {
     await Promise.all([planContinuation.planChanged(), planContinuation.planChanged(), planContinuation.recover()]);
@@ -1586,9 +1592,13 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     .map(session => ({ sessionId: session.sessionId, chatUrl: session.chatUrl, title: session.title, titleSource: session.titleSource }));
   const scopeOwner = legacyChats[1], untouchedLegacy = legacyChats[0];
   assert.equal(store.selected().sessionId, scopeOwner.sessionId);
+  await continuePlan(false);
+  userChoseMode(workspace,scopeOwner.sessionId,'sequential');
 
   const definition = {
     scope_id: 'fixture-current-plan', objective: 'Единый current plan smoke', approval_note: 'Изолированный single-active smoke fixture.',
+    execution_strategy:'sequential',execution_origin_session_id:scopeOwner.sessionId,
+    parallel_allowed:false,max_workers:1,execution_reason:'One fixture plan owner executes dependent tasks.',
     acceptance_criteria: ['Fixture завершён'],
     approved_scope: { functional_paths: [], documentation_paths: ['docs/architecture/OVERVIEW.md'], max_functional_files_per_task: 3 },
     tasks: [{ id: 'T001', title: 'Записать общий результат', why: 'Проверить один plan на несколько chats', dependencies: [],
@@ -1608,11 +1618,20 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => fixtureConversationTitles.get(scopeOwnerId) === currentScopeTitle,
     'scope owner title is synchronized to native ChatGPT fixture', snapshot);
   assert.equal(planContinuation.view().enabled, false);
-  await continuePlan(true);
-  assert.equal(planContinuation.view().enabled, true); assert.equal(await countMessages(), 1);
+  const continuationCleanups=[],continuationPort={after:fn=>continuationCleanups.unshift(fn)},continuationDirectory=path.join(dataDir,'continuation-panel-proof');
+  await fs.mkdir(continuationDirectory,{recursive:true});
+  const borrowedContinuation=Object.create(plugin);
+  borrowedContinuation.communication=new Proxy(plugin.communication,{get(target,key){
+    if(key==='dispose')return ()=>{};const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;
+  }});
+  await pluginFixtureBridge(continuationPort,{directory:continuationDirectory,plugin:borrowedContinuation});
+  const continuationClient=await pluginFixtureClient(continuationPort,{directory:continuationDirectory});
+  continuationPanel=await communicationHtml(continuationPort,continuationClient,{hostMetadata:{'openai/session':'smoke-'+scopeOwner.sessionId,'openai/subject':'smoke'}});
+  await sidebar.executeJavaScript('window.webPilot.togglePlanExecution()');
+  await expectContinue(1,'T001','Start sends the next task through SDK while the owner is busy');
+  assert.equal(pageState.current.state.busy,true);
   await endAnswer('Создан текущий план, обычный отчёт без специальной итоговой строки.');
-  await expectContinue(1, '01TestAuto NONE -> ACTIVE -> idle sends exactly one Continue');
-  await noExtraSend(2);
+  await noExtraSend(1);assert.equal(continuationMessages().length,1);
   const loadsBeforeProgress = packetLoads;
   await beginAnswer();
   startTask(workspace, 'T001');
@@ -1621,12 +1640,12 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await fs.appendFile(path.join(workspace, 'docs/architecture/OVERVIEW.md'), '\nSingle active fixture result\n');
   assert.equal(commitTask(workspace, 'T001').ok, true);
   await waitFor(() => snapshot().selected?.planView?.completed === 1, 'Git commit reaches PlanMonitor', snapshot);
-  await noExtraSend(2);
+  await expectContinue(2,'T002','Git completion sends the dependent task before the prior answer ends');
+  assert.equal(pageState.current.state.busy,true);
   await endAnswer('Микрозадача T001 проверена и закоммичена.');
-  await expectContinue(2, 'ordinary microtask report sends the next Continue');
-  await noExtraSend(3);
+  await noExtraSend(1);assert.equal(continuationMessages().length,2);
   assert.equal(packetLoads, loadsBeforeProgress, 'plan progress never sends recovery');
-  await continuePlan(false);
+  await sidebar.executeJavaScript('window.webPilot.togglePlanExecution()');
 
 
   await sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)}, ${JSON.stringify(untouchedLegacy.sessionId)})`);
@@ -1698,145 +1717,39 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
       'actual dispatched invitation completed through fixture host',snapshot);
   };
   for (const target of [currentChat, otherChat]) await completePanelStartup(target);
-  // Sidebar -> IPC -> real composer -> sandboxed observer in Chat and Chat.
-  for (const target of [currentChat, otherChat]) {
-    await continuePlan(false);
-    await sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)}, ${JSON.stringify(target.sessionId)})`);
-    await waitFor(() => store.selected()?.sessionId === target.sessionId && !snapshot().pageLoading
-      && pageState.current?.state.url === target.chatUrl && snapshot().selected?.planView?.completed === 1,
-      'partial plan ready in Chat', snapshot);
-    await waitFor(() => sidebar.executeJavaScript("(()=>{const b=document.getElementById('plan-run-toggle');return !b.disabled&&!b.hidden&&['Начать выполнение плана','Продолжить'].includes(b.textContent);})()"), 'plan button ready', snapshot);
-    const before = await countMessages();
-    await beginAnswer();
-    await sidebar.executeJavaScript("document.getElementById('plan-run-toggle').click()");
-    await waitFor(() => planContinuation.view().phase === 'running', 'ON adopts the busy answer', snapshot);
-    await noExtraSend(before);
-    await endAnswer();
-    await expectContinue(before, 'ordinary answer continues once in Chat');
-    assert.deepEqual(planContinuation.run.completedAtStart, ['T001']);
-    assert.equal(planContinuation.view().continuations, 1);
-    await waitFor(() => sidebar.executeJavaScript("document.getElementById('plan-continuation-message').textContent.includes('Продолжай» №1')"),
-      'confirmed counter visible in sidebar', snapshot);
-    await noExtraSend(before + 1);
-    if (target.sessionId === currentChat.sessionId) {
-      await beginAnswer(); await appendAnswer('Частичный обычный ответ перед Stop.');
-      await trustedClick('#auto-fixture-stop');
-      await waitFor(()=>!pageState.current.state.busy&&pageState.current.state.manualStopRevision>0,'trusted Stop pauses automation',snapshot);
-      await noExtraSend(before+1);
-      assert.ok(pageState.current.state.manualStopRevision > 0);
-      assert.equal(planContinuation.view().enabled, true);
-      await browser.executeJavaScript("(()=>{const e=document.getElementById('prompt-textarea');e.textContent='Продолжаем после Stop';e.dispatchEvent(new Event('input',{bubbles:true}))})()");
-      await trustedClick('[data-testid=send-button]');
-      await waitFor(()=>pageState.current.state.manualSendRevision>0,'new user message after Stop',snapshot);
-      await beginAnswer();await endAnswer();
-      await expectContinue(before+2,'new user turn permits continuation after Stop');
-    } else {
-      await beginAnswer();
-      const draft = 'Мой сохранённый черновик';
-      await browser.executeJavaScript("(()=>{const e=document.getElementById('prompt-textarea');e.textContent=" + JSON.stringify(draft) + ";e.dispatchEvent(new Event('input',{bubbles:true}))})()");
-      const beforeDraft = await countMessages(); await endAnswer();
-      await waitFor(() => planContinuation.view().reason === 'DRAFT_PRESENT', 'draft waits without disabling mode', snapshot);
-      assert.equal(await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent"), draft);
-      await noExtraSend(beforeDraft);
-      assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-run-toggle').textContent"), 'Пауза');
-      await trustedClick('[data-testid=send-button]');
-      await waitFor(() => planContinuation.view().reason === 'USER_MESSAGE_PENDING', 'manual Send waits for new answer', snapshot);
-      assert.equal(await countMessages(), beforeDraft + 1);
-      assert.equal(await browser.executeJavaScript('window.fixtureMessages.at(-1).text'), draft);
-      const doc = pageState.current.documentId; browser.reload();
-      await waitFor(() => pageState.current?.documentId !== doc && planContinuation.view().reason === 'USER_MESSAGE_PENDING',
-        'manual Send remains pending after reload', snapshot);
-      await noExtraSend(beforeDraft + 1);
-      await beginAnswer(); await endAnswer();
-      await expectContinue(beforeDraft + 1, 'new answer resumes after manual draft Send');
-    }
-  }
-  const restartFixture = async (choice, mode = 'busy') => {
-    const answerId = await browser.executeJavaScript("window.fixtureTurns.findLast(turn => turn.role === 'assistant').id");
-    return promisify(execFile)(process.execPath,
-      [path.join(import.meta.dirname, 'plan-continuation-restart-fixture.cjs'), path.join(dataDir, 'settings.json'), choice, planContinuation.checkpoint.key, mode, answerId],
-      { timeout: 20000, env: { ...process.env, ELECTRON_RUN_AS_NODE: '' } });
-  };
-  for (const mode of ['busy', 'sent', 'sending', 'manual']) {
-    const restarted = await restartFixture('on', mode);
-    assert.match(restarted.stdout, /"planContinuationRestart":"on"/);
-    assert.match(restarted.stdout, /"sends":0/);
-  }
-  const beforeRestore = await countMessages();
-  const savedAuto = await savedAutoState();
-  planContinuation.dispose(); planContinuation.restore(savedAuto.planContinuationEnabled, savedAuto.continuationCheckpoint);
-  await planContinuation.recover();
-  await waitFor(() => planContinuation.view().reason === 'USER_MESSAGE_PENDING', 'saved ON restores without a button click', snapshot);
-  await noExtraSend(beforeRestore);
-  const beforeReloadDocument = pageState.current.documentId; browser.reload();
-  await waitFor(() => pageState.current?.documentId !== beforeReloadDocument && planContinuation.view().reason === 'USER_MESSAGE_PENDING',
-    'real reload preserves history', snapshot);
-  await noExtraSend(beforeRestore);
-  // OFF during busy retains the idle pause; ON at idle sends once.
+  // Return to the proven plan owner. Pause/Continue and reload do not resend an
+  // already accepted semantic task, even with a busy answer and a saved draft.
+  await sidebar.executeJavaScript(`window.webPilot.selectSession(${JSON.stringify(workspace)}, ${JSON.stringify(scopeOwner.sessionId)})`);
+  await waitFor(()=>store.selected()?.sessionId===scopeOwner.sessionId&&!snapshot().pageLoading
+    &&pageState.current?.state.url===scopeOwner.chatUrl,'restore the same SDK plan owner',snapshot);
+  const draft='Мой сохранённый черновик';
+  await browser.executeJavaScript("(()=>{const e=document.getElementById('prompt-textarea');e.textContent="+JSON.stringify(draft)+";e.dispatchEvent(new Event('input',{bubbles:true}))})()");
   await beginAnswer();
-  await continuePlan(false);
-  await endAnswer('Проверка завершена при выключенном режиме.');
-  await waitFor(() => !pageState.current.state.busy, 'OFF answer reaches idle', snapshot);
-  await noExtraSend(beforeRestore);
-  await continuePlan(true);
-  await expectContinue(beforeRestore, 'ON at suitable idle sends once');
-  await continuePlan(false);
-  await continuePlan(true);
-  await noExtraSend(beforeRestore + 1);
-  // OFF/ON during busy and former footer words remain ordinary prose.
-  await beginAnswer();
-  await continuePlan(false);
-  await continuePlan(true);
-  await noExtraSend(beforeRestore + 1);
-  await endAnswer('Нужен ваш ответ. Эта строка не является клиентской командой.');
-  await expectContinue(beforeRestore + 1, 'ordinary prose does not control PlanContinuation');
-  await beginAnswer();
-  const stalledRun = planContinuation.run, stalledEpoch = planContinuation.epoch;
-  const beforeWarning = await countMessages(), originalStall = planContinuation.stallMs;
-  try {
-    planContinuation.stallMs = 25; planContinuation.watch(planContinuation.run);
-    await waitFor(() => planContinuation.view().warning === 'STALL_WARNING', 'busy watchdog only warns', snapshot);
-    assert.equal(planContinuation.view().phase, 'running'); assert.equal(planContinuation.run, stalledRun);
-    assert.equal(planContinuation.epoch, stalledEpoch); await noExtraSend(beforeWarning);
-    await waitFor(() => sidebar.executeJavaScript("document.getElementById('plan-continuation-message').textContent.includes('ещё работает')"), 'stall warning in sidebar', snapshot);
-    assert.equal(snapshot().conversationRecovery.phase,'idle');
-    assert.equal(await sidebar.executeJavaScript("document.getElementById('conversation-recovery').hidden"),true,'stall alone never offers recovery');
-    assert.equal(await sidebar.executeJavaScript("document.getElementById('reconnect-chat').hidden"),true);
-    // A long Claude wait keeps Review visible without turning silence into an outage.
-    const reviewWait={...snapshot(),planReview:{enabled:true,supported:true,stage:'RUNNING',indicator:'working',
-      message:'Раунд 1 из 4. Claude проверяет документы.'}};
-    sidebar.send('pilot:state-changed',reviewWait);
-    await waitFor(()=>sidebar.executeJavaScript("document.getElementById('plan-review-text').textContent.includes('Claude проверяет')"),'review diagnostic available',snapshot);
-    assert.equal(await sidebar.executeJavaScript("document.getElementById('plan-review-indicator').dataset.state"),'working');
-    assert.equal(await sidebar.executeJavaScript("document.getElementById('conversation-recovery').hidden"),true,'review wait is not a connection error');
-    sidebar.send('pilot:state-changed',snapshot());
-    planContinuation.stallMs = originalStall; await appendAnswer('Продолжаю проверку');
-    await waitFor(() => planContinuation.view().warning === null && pageState.current?.state.busy, 'busy progress clears warning', snapshot);
-  } finally { planContinuation.stallMs = originalStall; }
+  await sidebar.executeJavaScript('window.webPilot.togglePlanExecution()');
+  await waitFor(()=>planContinuation.view().enabled,'Continue restores permission during busy reply',snapshot);
+  await planContinuation.reconcile();
+  assert.equal(continuationMessages().length,2);assert.equal(continuationPanel.messages.length,2);
+  assert.equal(await browser.executeJavaScript("document.getElementById('prompt-textarea').textContent"),draft);
   await endAnswer();
-  await expectContinue(beforeWarning, 'normal answer after watchdog continues');
-  assert.equal(planContinuation.run, stalledRun);
-  // Connection recovery resumes from its natural event without OFF/ON.
-  await beginAnswer(); const beforeError = await countMessages();
-  await browser.executeJavaScript("(()=>{const e=document.createElement('div');e.id='auto-fixture-error';e.setAttribute('role','alert');e.textContent='Resume stream unavailable';document.body.append(e)})()");
-  await waitFor(() => planContinuation.view().reason === 'CONNECTION_ERROR', 'connection alert blocks dispatch', snapshot);
-  await endAnswer(); await noExtraSend(beforeError);
-  await browser.executeJavaScript("document.getElementById('auto-fixture-error').remove()");
-  await expectContinue(beforeError, 'connection recovery reconsiders the idle pause');
-  // PlanMonitor completion and busy->idle race cannot produce a final Send.
+  const savedAuto=await savedAutoState();
+  planContinuation.dispose();planContinuation.restore(savedAuto.planContinuationEnabled,savedAuto.continuationCheckpoint);
+  await planContinuation.recover();
+  assert.equal(continuationMessages().length,2,'restoring the saved task intent never repeats SDK');
+  const beforeReloadDocument=pageState.current.documentId;browser.reload();
+  await waitFor(()=>pageState.current?.documentId!==beforeReloadDocument&&!snapshot().pageLoading,'reload restores owner document',snapshot);
+  await planContinuation.recover();assert.equal(continuationMessages().length,2);
+  // Actual Kit completion, while the page is busy, does not create a final Send.
   await beginAnswer();
-  withSessionPlan(workspace, { sessionId: legacyChats[0].sessionId }, () => startTask(workspace, 'T002'));
+  withSessionPlan(workspace,{sessionId:scopeOwner.sessionId},()=>startTask(workspace,'T002'));
   await fs.appendFile(path.join(workspace,'docs/architecture/OVERVIEW.md'),'\nSmoke task T002 complete.\n');
-  assert.equal(withSessionPlan(workspace, { sessionId: legacyChats[1].sessionId }, () => commitTask(workspace, 'T002')).ok, true);
-  await waitFor(() => snapshot().selected?.planView?.state === 'awaiting-acceptance', 'single current plan completed', snapshot);
-  const beforeFinal = await countMessages(); await endAnswer();
-  await waitFor(() => planContinuation.view().phase === 'complete', 'all ordinary tasks DONE sends no Continue', snapshot);
-  await noExtraSend(beforeFinal);
-  await continuePlan(false);
-  await continuePlan(true);
-  await waitFor(() => planContinuation.view().phase === 'complete', 'ON completed plan stays complete', snapshot);
-  await noExtraSend(beforeFinal);
-  await fs.writeFile(path.join(dataDir, 'plan-continuation-completed.png'), (await sidebar.capturePage()).toPNG());
+  assert.equal(withSessionPlan(workspace,{sessionId:scopeOwner.sessionId},()=>commitTask(workspace,'T002')).ok,true);
+  await waitFor(()=>snapshot().selected?.planView?.state==='awaiting-acceptance','single current plan completed',snapshot);
+  await waitFor(()=>planContinuation.view().phase==='complete','all tasks DONE sends no Continue',snapshot);
+  await endAnswer();
+  assert.equal(continuationMessages().length,2);assert.equal(continuationPanel.messages.length,2);
+  assert.deepEqual(continuationPanel.errors,[]);
+  for(const cleanup of continuationCleanups)await cleanup();
+  await fs.writeFile(path.join(dataDir,'plan-continuation-completed.png'),(await sidebar.capturePage()).toPNG());
 
 
   for (const legacy of legacyChats) {
@@ -1863,8 +1776,6 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await continuePlan(false);
   const savedOff = await savedAutoState();
   assert.equal(savedOff.planContinuationEnabled, false);
-  const restartedOff = await restartFixture('off');
-  assert.match(restartedOff.stdout, /"planContinuationRestart":"off"/);
   planContinuation.dispose(); planContinuation.restore(savedOff.planContinuationEnabled, savedOff.continuationCheckpoint);
   await planContinuation.recover();
   assert.equal(planContinuation.view().enabled, false, 'disabled choice remains off after reconstruction');
@@ -2038,8 +1949,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   const result = { legacyParallelScenario: 'retired-panel-startup', panelStartupCompleted: true, ordinaryManualSend: true, urlQueryBootstrap: true, boundedReconnect: true, largeAutomaticSend: true, fullVersionBadge: true, septemberDOM: true, reverseScroll: true, directFirstChat: true, unsupportedOptionsRejected: true, startupLoginEntrypoint: true, uninterruptedFirstRequest: true, firstRequestNetworkTrace: true, duplicateStartupBlocked: true, earlyFirstLoadDiagnostics: true, guidedFirstRun: true, firstRunScreenshots: [path.join(dataDir, "startup-account.png"), path.join(dataDir, "startup-login.png"), path.join(dataDir, "startup-components.png")], fastSavedNavigation: true, lastNavigationWins: true, readinessBeforeOrAfterLoad: true, backgroundFailureRetry: true, liveChatColors: true, composerBackground: true, streamingAssistantColor: true, chatColorsPersistence: true, chatColorsReset: true, colorScreenshots, projectDoctor: true, doctorBackup: true, doctorOpen: true, doctorRefresh: true, doctorNewSession: true, doctorScreenshots, newestSessionFirst: true, projectSelectsNewest: true, threeSessionViewport: true, sessionScrollPreserved: true, visibleSessionScrollbar: true, nativeProjectsDisclosure: true, treePopover: true, treeScreenshots, singleActivePlanSessions: true, checkoutPlanAcrossOldChats: true, checkoutRecoveryShared: true, noPreparedPlanUi: true,
     singleActivePlanScreenshot,unsupportedRedirectRejected:true, mode: 'isolated-fixture', electron: process.versions.electron, chromium: process.versions.chrome,
     views: window.contentView.children.length, secureRemote: true, sidebarIpc: true, archiveRestore: true, archiveRestart: true, deleteCancel: true, localDeletion: true, cloudChatPreserved: true, workspaceCreation: true, workspaceValidation: true, cancelPreservesSession: true, startupMessages: 4, canonicalPacketLoads: packetLoads, recoveryCache: true, operationProgress: true, progressScreenshot: path.join(dataDir, 'progress-ui.png'),
-    tokenCounterRemoved: true, projectRename: true, sessionRename: true, sessionScopedTitleSync: true, restartKeepsSession: true, newChatCreatesSession: true, sessionTree: true, selectsEarlierSession: true, compactWorkspaceDetails: true, projectPathClipboard: true, sessionPlans: true, singleCurrentPlan: true, clientPlanContinuation: true, planContinuation01TestAuto: true,
-    planContinuationFreshProcessModes: ['busy', 'sent', 'sending', 'manual', 'off'], planContinuationReloadNoDuplicate: true, chatOnly: true, noAcceptanceButton: true, chromiumDiagnostics: true, contextWindowIndicatorRemoved: true, resizableSidebar: true, separateArchiveWindow: true, archiveMultiSelect: true, archiveForgetKeepsFolder: true, archiveRecoveryAfterInterrupt: true, replacementFolderProtected: true, orphanSettingsConfirmed: true, orphanUnknownRefused: true, shellTheme: true, nativeTitlebarTheme: nativeTheme.shouldUseDarkColors, toolCallFilter: true, microphonePermission: true, geolocationPermission: true, cameraPermission: false, fullContextBytes: Buffer.byteLength(fixtureContext), liveChatGPT: false, agentToolsRequired: false };
+    tokenCounterRemoved: true, projectRename: true, sessionRename: true, sessionScopedTitleSync: true, restartKeepsSession: true, newChatCreatesSession: true, sessionTree: true, selectsEarlierSession: true, compactWorkspaceDetails: true, projectPathClipboard: true, sessionPlans: true, singleCurrentPlan: true, clientPlanContinuation: true,
+    sdkContinuationWhileBusy: true, sdkDependentTaskBeforeReplyEnds: true, sdkDraftPreserved: true, planContinuationReloadNoDuplicate: true, chatOnly: true, noAcceptanceButton: true, chromiumDiagnostics: true, contextWindowIndicatorRemoved: true, resizableSidebar: true, separateArchiveWindow: true, archiveMultiSelect: true, archiveForgetKeepsFolder: true, archiveRecoveryAfterInterrupt: true, replacementFolderProtected: true, orphanSettingsConfirmed: true, orphanUnknownRefused: true, shellTheme: true, nativeTitlebarTheme: nativeTheme.shouldUseDarkColors, toolCallFilter: true, microphonePermission: true, geolocationPermission: true, cameraPermission: false, fullContextBytes: Buffer.byteLength(fixtureContext), liveChatGPT: false, agentToolsRequired: false };
   await fs.writeFile(path.join(dataDir, 'smoke-result.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 }

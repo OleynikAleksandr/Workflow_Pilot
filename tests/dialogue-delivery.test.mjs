@@ -3,11 +3,32 @@ import assert from 'node:assert/strict';
 import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
 import {ParallelKit} from '../src/control/workflow/parallel-kit.mjs';
 import {PluginProjects} from '../src/control/plugin/service.mjs';
+import {AutomationSendState} from '../src/control/workflow/automation-send-state.mjs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {createFixture,planFixture} from '../packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs';
 import {readPlan} from '../packages/workflow-kit/src/lib/plan.mjs';
+
+test('legacy Review UNKNOWN blocks every new SDK kind for its exact chat, while an independent busy chat receives messages',async()=>{
+  const projects=['old','independent'].map(sessionId=>({workspace:'/main',projectId:'project',scopeId:'new-scope',
+    sessionId,chatUrl:'https://chatgpt.com/c/'+sessionId}));
+  const automation=new AutomationSendState(),p=projects[0];
+  const owner=JSON.stringify([p.workspace,p.sessionId,p.chatUrl]);
+  automation.restore({entries:[{key:JSON.stringify([owner,'old-review-turn']),status:'sending',kind:'review',scopeId:'old-scope'}]});
+  const records=new Map(projects.map(project=>[project.sessionId,{project:()=>project,ready:true,controller:{pending:true},composer:{inFlight:true},
+    pageState:{current:{documentId:'doc-'+project.sessionId,seq:3,state:{url:project.chatUrl,login:'signed-in',busy:true,
+      draftPresent:true,lastMessageRole:'user',editorAvailable:false,writable:false}}}}]));
+  const delivery=new DialogueDelivery({store:{},record:project=>records.get(project.sessionId),route:()=> 'plugin-v1',
+    state:()=>({state:'running'}),legacyUnknown:project=>automation.unknown(project)});
+  delivery.project=id=>projects.find(p=>p.sessionId===id);
+  for(const kind of ['task','result','decision','continue','integration','finalization','diagnostic','review','user-choice']){
+    assert.equal((await delivery.admit({local_session_id:'old',scope_id:'new-scope'},{kind})).allowed,false,kind);
+    assert.equal((await delivery.admit({local_session_id:'independent',scope_id:'new-scope'},{kind})).allowed,true,kind);
+  }
+  assert.equal(delivery.observe({local_session_id:'old'}).legacySendUnknown,true);
+  assert.equal(automation.entries.values().next().value.status,'sending','a new scope never rewrites the old unknown effect');
+});
 
 test('bootstrap preparation uses a new immutable message key when upgraded instructions change',async()=>{
   const sent=[],project={role:'executor',workspace:'/child',parentWorkspace:'/main',parentScopeId:'scope',

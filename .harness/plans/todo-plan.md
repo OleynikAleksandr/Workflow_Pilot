@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1215,
+  "plan_revision": 1217,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-messaging",
@@ -298,8 +298,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-messaging",
         "task_id": "PROOF",
@@ -372,7 +372,13 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/electron-smoke.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -652,7 +658,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-messaging
 Current Task: нет
-Revision: 1215
+Revision: 1217
 
 ## Цель
 
@@ -675,8 +681,8 @@ Revision: 1215
   - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, src/control/plugin/startup-context.mjs, src/control/facade.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/control/workflow/coordination.mjs, src/control/workflow/command-activity.mjs, src/contracts/plugin-communication.mjs, src/contracts/backend.mjs, src/contracts/dialogue-view.mjs, src/execution/facade.mjs, src/execution/plugin/bridge.mjs, src/execution/plugin/communication-store.mjs, src/execution/plugin/sdk-busy-experiment.mjs, src/execution/plugin/sdk-busy-probe.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, scripts/prepare-sdk-busy-experiment.mjs, scripts/analyze-sdk-busy-experiment.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/command-activity.test.mjs, tests/progress.test.mjs, tests/startup-context.test.mjs, tests/migration-compatibility.test.mjs, tests/electron-smoke.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-control.mjs, src/control/workflow/execution-projection.mjs, src/control/workflow/user-choices.mjs, src/control/workflow/plan-continuation.mjs, src/control/workflow/project-plan-continuation.mjs, src/control/workflow/project-session-plan-continuation.mjs, src/control/workflow/review-continuation.mjs, src/control/workflow/plan-review.mjs, src/frontend/desktop/ui/current-actions.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, tests/execution-control.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plan-continuation.test.mjs, tests/plan-review.test.mjs, tests/project-plan-continuation.test.mjs, tests/user-choice-view.test.mjs, tests/user-choices.test.mjs, src/control/context/context-session.mjs, src/control/workflow/automation-send-state.mjs, tests/automation-send-state.test.mjs, tests/backend-api.test.mjs, tests/backend-browser-lifecycle.test.mjs, tests/panel-dialogue-view.test.mjs, tests/parallel-finalization.test.mjs, docs/planning/sdk-messaging.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] PROOF: Проверить полный обмен и восстановление на изолированных сценариях — Ожидает
-  - Git Commit: [PENDING] feat: проверить полный обмен и восстановление на изолированных сценариях
+- [DONE] PROOF: Проверить полный обмен и восстановление на изолированных сценариях — Завершено
+  - Git Commit: [DONE] feat: проверить полный обмен и восстановление на изолированных сценариях
   - Reference: sdk-messaging / PROOF / implementation
   - Файлы: tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/command-activity.test.mjs, tests/progress.test.mjs, tests/startup-context.test.mjs, tests/migration-compatibility.test.mjs, tests/electron-smoke.mjs, tests/execution-control.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plan-continuation.test.mjs, tests/plan-review.test.mjs, tests/project-plan-continuation.test.mjs, tests/user-choice-view.test.mjs, tests/user-choices.test.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs
   - Параллельность: исключительное выполнение
