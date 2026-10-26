@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1191,
+  "plan_revision": 1192,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-busy-recipient",
@@ -80,11 +80,6 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/sdk-busy-recipient.md",
-        "required": true,
-        "revision": "WORKTREE"
-      },
-      {
         "path": "docs/planning/sdk-busy-recipient-acceptance.md",
         "required": false,
         "revision": "WORKTREE"
@@ -96,6 +91,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/sdk-busy-recipient.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -439,6 +439,44 @@
       ]
     },
     {
+      "id": "EVIDENCE",
+      "title": "Исключить ложный GO и учесть ранний model-pull",
+      "why": "Сверка экспортов в PROOF выявила неучтённый backend UNKNOWN и чтение контекста без read_message; это исправление доказательности существующего согласованного опыта.",
+      "dependencies": [
+        "PROOF"
+      ],
+      "functional_paths": [
+        "scripts/analyze-sdk-busy-experiment.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/sdk-busy-analysis.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/sdk-busy-recipient.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Backend send.unknown сохраняет UNKNOWN при позднем sdk.accepted/read; invalidated и повторное разрешение плана не превращаются в QUEUED_OBSERVED/GO.",
+        "Явное чтение контекста выбранного result до уведомления допускается штатно, но измерение логирует model-pull и аннулирует явно раннюю пару; статусы не раскрывают unread selected body через preview. Действует и до получения второго result, без поддельных read или повторного Send.",
+        "Анализатор принимает реальный JSONL с полным captured export summary, сохраняет пагинацию/идентичность/часы; mode off контроль получается из тех же независимых Kit/Git/terminal proofs, а не ручного флага.",
+        "Семь классов, sourceCommit/manifest/build/case/attempt, full cycle и ограничения live/fixture остаются раздельны; обычный mode off без регрессий."
+      ],
+      "expected_commit_message": "fix: исключить ложный GO и учесть ранний model-pull",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "sdk-busy-recipient",
+        "task_id": "EVIDENCE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -447,7 +485,8 @@
         "role": "implementation"
       },
       "dependencies": [
-        "PROOF"
+        "PROOF",
+        "EVIDENCE"
       ],
       "functional_paths": [
         "package.json",
@@ -508,6 +547,7 @@
         "DISPATCH",
         "PROBE",
         "PROOF",
+        "EVIDENCE",
         "VERSION"
       ],
       "functional_paths": [],
@@ -751,7 +791,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-busy-recipient
 Current Task: нет
-Revision: 1191
+Revision: 1192
 
 ## Цель
 
@@ -793,18 +833,24 @@ Revision: 1191
   - Файлы: tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: POLICY, DISPATCH, PROBE
+- [TODO] EVIDENCE: Исключить ложный GO и учесть ранний model-pull — Ожидает
+  - Git Commit: [PENDING] fix: исключить ложный GO и учесть ранний model-pull
+  - Reference: sdk-busy-recipient / EVIDENCE / implementation
+  - Файлы: scripts/analyze-sdk-busy-experiment.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/sdk-busy-analysis.test.mjs, tests/workflow-channel.test.mjs, docs/planning/sdk-busy-recipient.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: PROOF
 - [TODO] VERSION: Согласовать версию проверочной сборки — Ожидает
   - Git Commit: [PENDING] feat: согласовать версию проверочной сборки
   - Reference: sdk-busy-recipient / VERSION / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs
   - Параллельность: исключительное выполнение
-  - Зависимости: PROOF
+  - Зависимости: PROOF, EVIDENCE
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализация всех документов проекта
   - Reference: sdk-busy-recipient / DOCS / implementation
   - Файлы: docs/planning/sdk-busy-recipient.md, docs/planning/sdk-busy-recipient-acceptance.md, docs/planning/sdk-busy-recipient-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-busy-delivery.md, docs/acceptance/sdk-busy-recipient.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/dialogue-timing.md, docs/modules/current-actions.md, docs/modules/project-compatibility.md, docs/modules/release.md
   - Параллельность: исключительное выполнение
-  - Зависимости: POLICY, DISPATCH, PROBE, PROOF, VERSION
+  - Зависимости: POLICY, DISPATCH, PROBE, PROOF, EVIDENCE, VERSION
 - [TODO] RELEASE: Собрать проверочный комплект macOS Windows Linux — Ожидает
   - Git Commit: [PENDING] delivery: собрать проверочный комплект macos windows linux
   - Reference: sdk-busy-recipient / RELEASE / implementation
@@ -826,9 +872,9 @@ Revision: 1191
 
 ## Context Pack For This Cycle
 
-- docs/planning/sdk-busy-recipient.md
 - docs/planning/sdk-busy-recipient-acceptance.md
 - docs/planning/sdk-busy-recipient-delivery.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/sdk-busy-recipient.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
