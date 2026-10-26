@@ -1,5 +1,10 @@
 // Authorization belongs to a project and its current scope. Session ledgers
 // survive OFF/restart, but never grant permission to another project or plan.
+function unresolvedContinuation(checkpoint){
+  const entries=Array.isArray(checkpoint?.entries)?checkpoint.entries:checkpoint?[checkpoint]:[];
+  const unresolved=entries.filter(entry=>entry.status==='sending');
+  return unresolved.length?{version:3,entries:structuredClone(unresolved),cycles:[]}:null;
+}
 export class ProjectPlanContinuation {
   constructor({saved={},onChange=()=>{},identity=null,ownsSession=()=>true}={}) {
     this.book={};this.onChange=onChange;this.identity=identity;this.ownsSession=ownsSession;
@@ -42,7 +47,12 @@ export class ProjectPlanContinuation {
       this.book[workspace]={projectId:this.identity?.(workspace)??null,scopeId,enabled:inherited,
         sessionId:inherited?recipient:null,offReason:null,planRevision:revision,
         previousScopeId:(old?.scopeId||old?.previousScopeId)??null,sessions:Object.fromEntries(Object.entries(old?.sessions??{})
-          .filter(([,entry])=>entry.automationCheckpoint).map(([id,entry])=>[id,{automationCheckpoint:entry.automationCheckpoint}]))};
+          .flatMap(([id,entry])=>{
+            const continuationCheckpoint=unresolvedContinuation(entry.continuationCheckpoint);
+            return entry.automationCheckpoint||continuationCheckpoint?[[id,{
+              ...(entry.automationCheckpoint?{automationCheckpoint:entry.automationCheckpoint}:{}),
+              ...(continuationCheckpoint?{continuationCheckpoint}:{})}]]:[];
+          }))};
       this.onChange(workspace);
     }
     const state=this.state(workspace);

@@ -4,7 +4,7 @@ import { PlanMonitor } from './plan-monitor.mjs';
 
 // The same controller runs for visible and hidden main chats. Its sender,
 // watcher, checkpoint and current plan always address its own saved identity.
-export function configureProjectPlanContinuation(record,{store,authorization,inspectPlan,onChange,log=()=>{}}) {
+export function configureProjectPlanContinuation(record,{store,authorization,dialogue,inspectPlan,onChange,log=()=>{}}) {
   if(record.primaryAutomation||!record.identity||record.identity.assignmentId)return record.primaryAutomation;
   let monitor,flow;
   const selected=()=>{
@@ -20,11 +20,15 @@ export function configureProjectPlanContinuation(record,{store,authorization,ins
     {complete:true,confirmed:true,planRevision:project.planRevision});};
   flow=new PlanContinuation({selected,inspectPlan,log,onChange,onComplete:complete,
     available:()=>{const p=selected();return !!p&&!p.archivedAt&&!p.sessionArchivedAt&&!record.disposed&&!record.paused&&record.ready&&!record.loading
-      &&!record.composer.inFlight&&!record.controller.pending&&permitted(p)&&!!monitor?.view(record.project())&&!monitor.error
+      &&permitted(p)&&!!monitor?.view(record.project())&&!monitor.error
       &&!['parallel','orchestrated'].includes(p.planExecution?.execution_strategy)&&['delivered','stale','manual-session'].includes(record.controller.state.phase);},
     saveCheckpoint:checkpoint=>save({continuationCheckpoint:checkpoint}),
-    send:(text,canContinue,onBeforeSend)=>automation.send({selected:selected(),page:flow.page,kind:'plan',ready:canContinue,
-      perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})})});
+    durableQueue:true,
+    send:async(text,canContinue,onBeforeSend,meta)=>{
+      if(!canContinue()||!await onBeforeSend())return {state:'cancelled'};
+      if(automation.blocked(selected()))return {state:'unknown'};
+      return dialogue.send(record.project(),text,'continue',meta);
+    }});
   let savedScope;
   const update=()=>{
     const p=selected();if(!p)return;

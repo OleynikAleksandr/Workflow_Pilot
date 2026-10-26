@@ -15,13 +15,13 @@ function toolError(value){
   const detail=candidates.find(e=>typeof e?.code==='string'&&/^PLUGIN_[A-Z_]+$/.test(e.code));
   return Object.assign(new Error(detail?.message??value?.message??'MCP отклонил запрос.'),{code:detail?.code??'MCP_ERROR'});
 }
-export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=10000}) {
+export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=90000}) {
   const ui=mountPanel({document}),$=ui.$,clock=()=>document.defaultView.performance.now(),started=clock();let panelId=uuid();
   let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false,stopping=false,loop=null,expiry=null,expiresAt=0;
   let clientSequence=0,telemetry=[],flushing=null,flushTimer=null,dropped=0,exported='',exportRun='',serverError=null;
   let refreshing=null,refreshTimer=null;const sampledAt=new Map();
   let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false,workflow=false,recoveryFailures=0,retryTimer=null;
-  let workflowTimer=null,completedScope=null,closed=false,resourceUri='ещё не получен',experimentDiagnostic='';
+  let workflowTimer=null,completedScope=null,closed=false,resourceUri='ещё не получен';
   function watchWorkflow(){
     clearTimeout(workflowTimer);
     // A finished plan keeps its progress view current with a slow read-only status.
@@ -66,7 +66,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     $('refresh').disabled=disposed||busy||enabled||!binding;
     $('export').disabled=disposed||busy||!binding;
     $('run').disabled=$('participant').disabled=!!binding||busy;
-    if(!disposed){$('enable-reason').textContent=reason;ui.diagnostics(`SDK: ${connected?'подключён':'не подключён'}; openai/message: ${getMessage()?'доступен':'не предоставлен'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\nРесурс текущего MCP: ${resourceUri}.\nПривязка: ${binding&&!contextBlocked?'подтверждена':'не подтверждена'}. Ожидание: ${enabled&&loop?'запущено':'остановлено'}.\n${reason}${experimentDiagnostic}`);}
+    if(!disposed){$('enable-reason').textContent=reason;ui.diagnostics(`SDK: ${connected?'подключён':'не подключён'}; openai/message: ${getMessage()?'доступен':'не предоставлен'}.\nПанель ${BUILD}, протокол ${PROTOCOL}.\nРесурс текущего MCP: ${resourceUri}.\nПривязка: ${binding&&!contextBlocked?'подтверждена':'не подтверждена'}. Ожидание: ${enabled&&loop?'запущено':'остановлено'}.\n${reason}`);}
     if(resumePending&&!busy&&!recovery&&!stopping&&!suspended&&!disposed){resumePending=false;queueMicrotask(()=>recover());}
   };
   const call=async(name,args={},options={})=>{
@@ -142,7 +142,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const current=binding,generation=epoch;
     const value=await call('status',{run_id:current.run_id,participant_id:current.participant_id,view:reset?'full':'panel'});
     if(binding!==current||epoch!==generation||disposed||suspended)return value;
-    experimentDiagnostic=value.sdk_busy?.mode==='sdk-busy-burst'?'\nSDK-опыт: '+value.sdk_busy.experiment_id+'; '+value.sdk_busy.cases.map(item=>item.case_id+': '+item.status+' ('+item.slots+'/2)').join('; '):'';
+
     if(finishCompleted(value,current,generation))return value;
     if(!disposed){ui.snapshot({...value,expires_at:value.stopped?0:expiresAt});if(value.critical_error){serverError=value.critical_error;localStop('Журнал недоступен. Отправка заблокирована.','error');}}
     if(reset){let cursor=Math.max(0,value.seq-200);ui.feed([],cursor);
@@ -169,10 +169,9 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     if(verified.superseded||!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
     status('Передаём запрос текущему разговору…','sending');
     let outcome='unknown',timer,leaseTimer,inFlight=true,rejectLease,settled=false;const sdkStarted=clock();
-    const correlation={message_id,delivery_attempt_id:ticket.delivery_attempt_id,
-      ...(verified.sdk_busy?{case_id:verified.sdk_busy.case_id}:{})};
+    const correlation={message_id,delivery_attempt_id:ticket.delivery_attempt_id};
     const leaseLost=new Promise((_,reject)=>{rejectLease=reject;});
-    const timeout=verified.sdk_busy?.sdk_timeout_ms===90000?90000:sendTimeoutMs;
+    const timeout=verified.sdk_timeout_ms??sendTimeoutMs;
     // This renews the existing panel lease only for this long SDK promise.
     // It cannot grant a plan, change its generation or replay a send.
     const renewLease=()=>{

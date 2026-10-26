@@ -27,7 +27,7 @@ function fixture(t) {
     openWorker:async a=>{calls.opened.push(a);pages.set(a.id,{stopped:false});return {sessionId:'session-'+a.id};},
     workerState:a=>pages.get(a.id)??{stopped:false},mainState:()=>({stopped:true,canSend:true}),
     save:async data=>calls.saved.push(data),uuid:()=>String(++sequence),now:()=>sequence,
-    sendCorrection:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.corrections.push(text);return {state:'sent'};}});
+    sendCorrection:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.corrections.push(text);return {state:'queued',message_id:'correction-'+calls.corrections.length};}});
   t.after(()=>runtime.dispose());
   const finish=id=>{const a=state.assignments.find(x=>x.parent_task_id===id);a.status='READY_FOR_INTEGRATION';a.source_commit='source-'+id;pages.set(a.id,{stopped:true});return a;};
   const grant=async()=>{const previous=runtime.enabled;runtime.setEnabled(true);runtime.observe('/main');await runtime.signal('/main');runtime.setEnabled(previous);};
@@ -56,10 +56,9 @@ test('ON group is bounded, duplicate events do not clone worktrees or chats, OFF
   assert.equal(f.calls.created.at(-1).base,'base-merge');
 });
 
-test('ON waits for main readiness and OFF prevents subsequent assignment',async t=>{
+test('ON can create assignments during an O answer; OFF prevents subsequent assignment',async t=>{
   const f=fixture(t);f.runtime.mainState=()=>({stopped:false});f.runtime.observe('/main');f.runtime.setEnabled(true);
-  await f.runtime.signal('/main');assert.equal(f.calls.created.length,0);
-  assert.equal(f.runtime.view('/main').error.code,'MAIN_CHAT_NOT_READY');
+  await f.runtime.signal('/main');assert.equal(f.calls.created.length,2);
   f.runtime.mainState=()=>({stopped:true});await f.runtime.signal('/main');
   assert.deepEqual(f.calls.created.map(x=>x.task),['A','B']);
   f.runtime.setEnabled(false);f.finish('A');await f.runtime.signal('/main');assert.equal(f.calls.created.length,2);
@@ -117,21 +116,21 @@ test('conflict keeps main exclusive and explicit correction is delivered once; U
   await f.runtime.signal('/main');assert.equal(f.runtime.view('/main').phase,'integration');
   await f.runtime.correct('/main');await f.runtime.correct('/main');
   assert.equal(f.calls.corrections.length,1);assert.match(f.calls.corrections[0],/integration:continue --id integration-wp-1/);
-  f.state.integration.operation_id='integration-wp-2';f.runtime.sendCorrection=async()=>({state:'unknown'});
+  f.state.integration.operation_id='integration-wp-2';f.runtime.sendCorrection=async()=>({state:'queued',message_id:'unknown-correction'});
+  f.runtime.deliveryReceipt=()=>({delivery:'unknown'});
   await f.runtime.correct('/main');assert.equal((await f.runtime.correct('/main')).reason,'CORRECTION_ALREADY_REQUESTED');
   assert.equal(f.calls.created.length,2);
 });
 
-test('admitted correction permits its own composer operation while a new busy page still cancels it',async t=>{
+test('correction delivery remains SDK-only while the recipient becomes busy',async t=>{
   const f=fixture(t);let sending=false,busy=false;
   f.state.integration={status:'CONFLICT',operation_id:'integration-one'};
   f.runtime.mainState=()=>({stopped:!sending&&!busy,canSend:!sending&&!busy,canContinueSend:!busy});
   f.runtime.sendCorrection=async(_origin,_text,ready,before)=>{
     sending=true;assert.equal(ready(),true);assert.equal(await before(),true);
-    busy=true;assert.equal(ready(),false);return {state:'cancelled'};
+    busy=true;assert.equal(ready(),true);return {state:'queued',message_id:'correction'};
   };
-  assert.equal((await f.runtime.correct('/main')).state,'cancelled');
-  assert.equal(f.runtime.view('/main').correctionStatus,null);
+  assert.equal((await f.runtime.correct('/main')).state,'queued');
 });
 
 test('explicit correction waits for the running reconciliation instead of racing its published conflict',async t=>{
@@ -141,7 +140,7 @@ test('explicit correction waits for the running reconciliation instead of racing
   const reconciliation=f.runtime.signal('/main');await new Promise(resolve=>setImmediate(resolve));
   const correction=f.runtime.correct('/main');await f.runtime.signal('/main');
   assert.equal(f.calls.corrections.length,0);release();await reconciliation;
-  assert.equal((await correction).state,'sent');assert.equal(f.calls.corrections.length,1);
+  assert.equal((await correction).state,'queued');assert.equal(f.calls.corrections.length,1);
 });
 
 test('assigned startup provides an MCP invitation and recovery but never starts the task during bootstrap',()=>{
@@ -213,14 +212,15 @@ test('PlanContinuation requests a conflict correction once, waits for readiness 
   f.state.integration={status:'CONFLICT',operation_id:'integration-auto',task_id:'A',conflicts:['src/A.mjs']};
   await f.runtime.signal('/main');assert.equal(f.calls.corrections.length,0);
   f.runtime.mainState=()=>({stopped:true,canSend:false});f.runtime.setEnabled(true);
-  await f.runtime.signal('/main');assert.equal(f.calls.corrections.length,0,'draft blocks correction');
+  await f.runtime.signal('/main');assert.equal(f.calls.corrections.length,1,'a draft does not block SDK');
   f.runtime.mainState=()=>({stopped:true,canSend:true});f.state.commandActive=true;
-  await f.runtime.signal('/main');assert.equal(f.calls.corrections.length,0,'command blocks correction');
+  await f.runtime.signal('/main');assert.equal(f.calls.corrections.length,1,'one durable correction, independent of active commands');
   f.state.commandActive=false;await f.runtime.signal('/main');
   assert.equal(f.calls.corrections.length,1);
   await Promise.all([f.runtime.signal('/main'),f.runtime.signal('/main')]);assert.equal(f.calls.corrections.length,1);
   f.state.integration.operation_id='integration-unknown';let attempts=0;
-  f.runtime.sendCorrection=async()=>{attempts++;return {state:'unknown'};};
+  f.runtime.sendCorrection=async()=>{attempts++;return {state:'queued',message_id:'unknown-correction'};};
+  f.runtime.deliveryReceipt=()=>({delivery:'unknown'});
   await f.runtime.signal('/main');await f.runtime.signal('/main');assert.equal(attempts,1);
 });
 
@@ -232,14 +232,15 @@ test('a failed launch is visible and never sent as a code correction',async t=>{
   await assert.rejects(f.runtime.correct('/main'),{code:'INTEGRATION_CHECK_START_FAILED'});
 });
 
-test('a genuine test failure is corrected automatically, but OFF before Send cancels permission',async t=>{
+test('a permission loss while enqueueing retains the same durable intent for a later Continue',async t=>{
   const f=fixture(t);await f.grant();f.runtime.setEnabled(true);
   f.state.integration={status:'CHECKS_FAILED',operation_id:'test-failed',error:JSON.stringify({details:{result:{status:'FAILED',exit_code:1}}})};
-  f.runtime.sendCorrection=async(_origin,text,ready,before)=>{
-    assert.match(text,/Причина проверки/);f.runtime.setEnabled(false);
-    assert.equal(ready(),false);assert.equal(await before(),false);return {state:'cancelled'};
+  const keys=[];f.runtime.sendCorrection=async(_origin,text,_ready,_before,meta)=>{
+    keys.push(meta.key);assert.match(text,/Причина проверки/);f.runtime.setEnabled(false);throw Error('permission revoked');
   };
-  await f.runtime.signal('/main');assert.equal(f.runtime.view('/main').correctionStatus,null);
+  await f.runtime.signal('/main');assert.equal(keys.length,1);
+  f.runtime.sendCorrection=async(_o,_t,_r,_b,meta)=>{keys.push(meta.key);return {state:'queued',message_id:'once'};};
+  f.runtime.setEnabled(true);await f.runtime.signal('/main');assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);
 });
 
 test('recreated project with the same scope discards another project ledger and starts fresh',async t=>{
@@ -270,7 +271,8 @@ function orchestratedFixture(t) {
   const control={state:'running',settled:[]},page={documentId:'doc',stopped:true,canSend:true,lastMessageRole:'assistant',
     userMessagesRevision:0,assistantRevision:0,manualSendRevision:0};
   const pages=new Map(),calls={created:[],merged:[],sent:[],saved:[],corrections:[],workers:[],pauses:[]};let sequence=0;
-  const replies={correction:{state:'sent'},worker:{state:'sent'}};
+  const replies={correction:{state:'accepted'},worker:{state:'accepted'}},receipts=new Map();
+  const enqueue=(outcome='accepted')=>{const id='sdk-'+(++sequence);receipts.set(id,{delivery:outcome,revision:page.assistantRevision});return {state:'queued',message_id:id};};
   const kit={read:async()=>structuredClone(state),
     create:async(workspace,plan,task,id)=>{calls.created.push(task.id);
       const a={id,worktree:'/trees/'+id,parent_task_id:task.id,parent_scope_id:plan.scope_id,parent_root:workspace,status:'READY'};
@@ -285,10 +287,11 @@ function orchestratedFixture(t) {
     openWorker:async a=>{pages.set(a.id,{stopped:false});return {sessionId:'session-'+a.id};},
     workerState:a=>pages.get(a.id)??{stopped:false},mainState:()=>({...page}),
     save:async data=>{book=structuredClone(data);calls.saved.push(data);},uuid:()=>String(++sequence),now:()=>sequence,
-    sendCorrection:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.corrections.push(text);return replies.correction;},
-    sendWorker:async(assignment,_entry,text,ready)=>{assert.ok(ready());calls.workers.push({id:assignment.id,text});return replies.worker;},
+    deliveryReceipt:id=>{const r=receipts.get(id);return r&&{delivery:r.delivery,reply_observed:r.delivery==='accepted'&&page.assistantRevision>r.revision};},
+    sendCorrection:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.corrections.push(text);return enqueue(replies.correction.state);},
+    sendWorker:async(assignment,_entry,text,ready)=>{assert.ok(ready());calls.workers.push({id:assignment.id,text});return enqueue(replies.worker.state);},
     onPause:(_w,_s,reason,message)=>{calls.pauses.push({reason,message});if(['running','pausing'].includes(control.state))control.state='pausing';},
-    sendFinalization:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.sent.push(text);return {state:'sent'};}});
+    sendFinalization:async(_origin,text,ready,before)=>{assert.ok(ready());assert.ok(await before());calls.sent.push(text);return enqueue();}});
   let runtime=create();runtime.observe('/main');
   t.after(()=>runtime.dispose());
   const signal=()=>runtime.signal('/main');
@@ -442,7 +445,7 @@ test('orchestrated signals: escalation pauses once; unknown outcomes pause and a
   // An unknown forward pauses with reason unknown and is not resent.
   f.replies.correction={state:'unknown'};
   f.state.signals.push({id:'b2',kind:'task-blocked',scope_id:'scope',task_id:'S1',assignment_id:f.state.assignments[0].id,reason:'Stuck'});
-  await f.signal();
+  await f.signal();await f.signal();
   assert.equal(f.calls.pauses.at(-1).reason,'unknown');assert.equal(f.calls.corrections.length,1);
   f.control.state='running';await f.signal();assert.equal(f.calls.corrections.length,1);
   // An unknown merge pauses the plan as well.

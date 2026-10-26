@@ -69,10 +69,11 @@ test('backend host keeps a hidden offscreen page independent of its viewers',()=
 
 function backendFixture(t,root,{recoverCrashed=false}={}) {
   const electron=fakeElectron(),host=hostOf(electron),sources=new Map(),sends=[];
-  let respond=()=>({state:'sent'});
+  let respond=()=>({state:'queued',message_id:'fixture-sdk'});
   const workspace=path.join(root,'project');
   const project={workspace,projectId:'fixture',sessionId:'chat-a',chatUrl:'https://chatgpt.com/c/fixture-a',scopeId:'scope-a'};
   const plan={...project,inspectedSessionId:'chat-a',scopeStatus:'ACTIVE',confirmed:true,planRevision:1,
+    nextTask:{id:'T002',title:'Second'},
     planView:{tasks:[{id:'T001',status:'done'},{id:'T002',status:'pending'},{id:'T003',status:'pending'}]}};
   const store={project:(w,id)=>w===workspace&&(!id||id==='chat-a')?project:null,selected:()=>project,
     inspect:async()=>structuredClone(plan),recordAgentTime:async()=>{},updateSession:async(_w,_id,patch)=>Object.assign(project,patch),
@@ -103,7 +104,9 @@ function backendFixture(t,root,{recoverCrashed=false}={}) {
       const cancel=record.controller.cancel.bind(record.controller),reset=record.recovery.reset.bind(record.recovery);
       record.controller.cancel=()=>{counts.cancel++;return cancel();};
       record.recovery.reset=()=>{counts.reset++;return reset();};
-      configureProjectPlanContinuation(record,{store,authorization:auth,inspectPlan:async()=>structuredClone(plan),onChange:()=>{}});
+      configureProjectPlanContinuation(record,{store,authorization:auth,dialogue:{send:async(_project,text,kind)=>{
+        assert.equal(kind,'continue');sends.push(text);return respond();
+      }},inspectPlan:async()=>structuredClone(plan),onChange:()=>{}});
     }});
   const pages=createBackendPages({sessions,store,host,setup:{ready:async()=>({ready:true})}});
   t.after(()=>sessions.dispose());
@@ -131,11 +134,11 @@ test('fixture chain continues without viewers; detach and reconnect never reload
   f.observe(record,1,{turnId:'a1'});
   await until(()=>f.sends.length===1,'first continuation');
   f.observe(record,2,{turnId:'a1',busy:true,lastMessageRole:'user'});
-  f.plan.planView.tasks[1].status='done';f.plan.planRevision=2;
+  f.plan.planView.tasks[1].status='done';f.plan.planRevision=2;f.plan.nextTask={id:'T003',title:'Third'};
   record.primaryAutomation.changed();await settle();
   f.observe(record,3,{turnId:'b2'});
   await until(()=>f.sends.length===2,'second continuation');
-  assert.deepEqual(f.sends,['Продолжай','Продолжай']);
+  assert.equal(f.sends.length,2);assert.match(f.sends[0],/T002/);assert.match(f.sends[1],/T003/);
   assert.equal(f.pages.list()[0].viewers,0);
   // Reconnect addresses the same page and identity; it is not a new selection.
   const again=f.pages.attachViewer(key);
@@ -171,7 +174,7 @@ test('page crash is distinct from detach and an unknown Send is not repeated aft
   assert.equal(accepted.accepted,true,'the reopened document is observed');
   await settle(80);
   assert.equal(record.primaryAutomation.flow.view().reason,'SEND_UNKNOWN');
-  assert.deepEqual(f.sends,['Продолжай'],'UNKNOWN is never resent');
+  assert.equal(f.sends.length,1,'UNKNOWN is never resent');
 });
 
 test('a page whose renderer died is reloaded at its own address, keeps readiness and never resends',async t=>{
@@ -192,7 +195,7 @@ test('a page whose renderer died is reloaded at its own address, keeps readiness
   f.setResult(()=>({state:'sent'}));
   f.observe(record,1,{turnId:'r1'},'fixture-document-2');
   await settle(80);
-  assert.deepEqual(f.sends,['Продолжай'],'UNKNOWN is never resent after recovery');
+  assert.equal(f.sends.length,1,'UNKNOWN is never resent after recovery');
   // Recovery is bounded: three reloads per window, then the page stays closed.
   for(let i=0;i<3;i++){contents.emit('render-process-gone',{},{reason:'crashed',exitCode:1});await settle(30);}
   assert.equal(contents.reloads,3);

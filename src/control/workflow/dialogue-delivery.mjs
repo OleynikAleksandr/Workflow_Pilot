@@ -1,7 +1,6 @@
 import {createHash} from 'node:crypto';
 import {readCommandActivity} from './command-activity.mjs';
 import {executorPageState} from './executor-session.mjs';
-import {AUTOMATIC_DIALOGUE_ENABLED} from '../../contracts/backend.mjs';
 import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 import {startupLaunch} from '../../contracts/startup-view.mjs';
 import {normalizeChatUrl} from '../../contracts/browser.mjs';
@@ -70,11 +69,10 @@ export class DialogueDelivery {
   owned(project){return !!project&&this.store.project(project.parentWorkspace??project.workspace)?.planExecution?.dialogue_version===1;}
   project(sessionId){const p=this.store.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));return p&&this.store.project(p.workspace,sessionId);}
   observe(target){
-    const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState.current;
+    const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState?.current;
     return {...executorPageState(record),startupLaunch:startupLaunch(project?.attempt,Date.now(),{
       chatUrl:project?.chatUrl,currentUrl:page?.documentId?page.state?.url:undefined}),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
       observationSeq:page?.seq??0,
-      sdkCommands:record?.sdkBusyCommands,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
   }
   async reconcile(target){
@@ -85,51 +83,24 @@ export class DialogueDelivery {
       if(!await record.composer.observeSnapshot())return null;
       const activity=await readCommandActivity(project.workspace);
       if(this.record(this.project(target.local_session_id))!==record)return null;
-      record.sdkBusyCommands=activity.commands;
       return {...this.observe(target),commandsIdle:!activity.commandActive};
     })(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),2000);timer.unref?.();})]);}
     finally{clearTimeout(timer);}
   }
-  async admit(target,message,policy){
+  async admit(target,message){
     await this.record?.(this.project(target.local_session_id))?.navigationTail;
     await this.store.whenIdle?.();
     const project=this.project(target.local_session_id);
-    if(project?.attempt?.cancelState&&project.attempt.cancelState!=='none')
-      return {allowed:false,reason:'admission-denied'};
-    if(message?.kind==='startup-context'){
-      if(!project||project.attempt?.state!=='sent'||project.attempt.requestId!==message.request_id
-        ||!this.observe(target).canSend||!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
-      return (await readCommandActivity(project.workspace)).commandActive?{allowed:false,reason:'commands-active'}:{allowed:true};
-    }
-    // The user's own choice is admitted without the plan permission; physical checks stay.
-    if(message?.kind==='user-choice'){
-      if(!project||!this.observe(target).canSend)return {allowed:false,reason:'admission-denied'};
-      return (await readCommandActivity(project.workspace)).commandActive?{allowed:false,reason:'commands-active'}:{allowed:true};
-    }
-    if(policy?.bypassBusy){
-      const page=this.observe(target);
-      if(!project||!this.uses(project)||!this.owned(project)||target.role!=='O'||message.kind!=='result'||message.sender_role!=='E'
-        ||this.state(project.workspace,target.scope_id).state!=='running'||!page.sdkDocumentReady||page.manualStopped
-        ||page.draftPresent||page.connectionError||!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
-      const {commands}=await readCommandActivity(project.workspace),active=commands.filter(command=>command.state!=='completed');
-      const record=this.record?.(project);if(record)record.sdkBusyCommands=commands;
-      if(policy.busy_kind==='read-only-command'){
-        const probe=policy.probe,command=active[0];
-        if(active.length!==1||!probe||command.state!=='running'||!command.processId
-          ||command.commandHash!==probe.command_hash||probe.nonce!==policy.nonce
-          ||!Number.isFinite(command.startedAt)||command.startedAt<policy.begun_at
-          ||probe.command_id&&command.id!==probe.command_id)return {allowed:false,reason:'commands-active'};
-        probe.command_id??=command.id;
-      }else if(active.length)return {allowed:false,reason:'commands-active'};
-      return {allowed:true};
-    }
-    if(!this.uses(project)||!(this.owned(project)?['running']:['running','pausing']).includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)
-      ||!this.observe(target).canSend)return {allowed:false,reason:'admission-denied'};
-    return (await readCommandActivity(project.workspace)).commandActive
-      ?{allowed:false,reason:'commands-active'}:{allowed:true};
+    if(!project||project.attempt?.cancelState&&project.attempt.cancelState!=='none')return {allowed:false,reason:'recipient-unavailable'};
+    const page=this.observe(target);
+    if(page.legacySendUnknown||page.manualStopped||!page.sdkDocumentReady||page.connectionError
+      ||project.attempt?.cancelState&&project.attempt.cancelState!=='none')return {allowed:false,reason:'recipient-unavailable'};
+    if(!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
+    if(message?.kind==='startup-context')return {allowed:project.attempt?.state==='sent'&&project.attempt.requestId===message.request_id};
+    if(['user-choice','review'].includes(message?.kind))return {allowed:true};
+    return {allowed:this.uses(project)&&['running'].includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)};
   }
   async prepareBootstrap(project,correlation){
-    if(!AUTOMATIC_DIALOGUE_ENABLED)throw Object.assign(Error('Канал стартового контекста отключён.'),{code:'STARTUP_CHANNEL_REQUIRED'});
     const ticket=await this.getPlugin().reserveParticipant(project.sessionId,correlation);
     if(project.role==='executor'&&this.owned(project)){
       const target=await this.getPlugin().participantTarget?.(project.sessionId);
@@ -162,6 +133,10 @@ export class DialogueDelivery {
     if(this.route(workspace,scope)!=='plugin-v1')return;
     if(!canContinue())return;
     const communication=this.getPlugin()?.communication;
+    if(!communication){
+      if(phase!=='running')return;
+      throw Object.assign(Error('Подключите панель Workflow Pilot в чате этого плана.'),{code:'PLUGIN_PLAN_IDENTITY'});
+    }
     const existing=[...(communication?.runs.values()??[])].find(run=>run.mode==='workflow'&&run.project_id===this.store.project(workspace)?.projectId);
     const expectedGeneration=existing?.grant?.generation??0;
     if(this.store.project(workspace)?.planExecution?.dialogue_version===1)
@@ -170,7 +145,9 @@ export class DialogueDelivery {
       &&run.grant?.scope_id===scope&&run.grant.phase===phase&&run.grant.boot===communication.backendId);
     if(settled)return communication.workflow.state(settled);
     const project=this.store.project(workspace),origin=project?.planExecution?.execution_origin_session_id
-      ??this.store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions.find(s=>s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId;
+      ??this.store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions.find(s=>s.orchestratorScopeId===scope&&!s.archivedAt)?.sessionId
+      ??this.state(workspace,scope).sessionId
+      ??(project?.planExecution?.execution_strategy==='sequential'?project.sessionId:null);
     const target=await this.getPlugin().participantTarget(origin);
     if(!target||target.scope_id!==scope)throw Object.assign(Error('Оркестратор опубликованного плана не подтверждён.'),{code:'PLUGIN_PLAN_IDENTITY'});
     try{return await this.getPlugin().communication.workflow.grant(target,phase==='not-started'?'paused':phase,{canContinue,expectedGeneration});}
@@ -195,7 +172,7 @@ export class DialogueDelivery {
       const plugin=this.getPlugin(),worker=await plugin.participantTarget(project.sessionId);
       const agreed=worker&&await plugin.communication.assignment.bindPrepared(worker);
       const progress=plugin.communication.workflow.progress(project.sessionId);
-      if(!progress?.sdk||!progress.permitted||!this.observe({local_session_id:project.sessionId}).stopped)return;
+      if(!progress?.sdk||!progress.permitted)return;
       const origin=this.project(project.executionOriginSessionId),target=await plugin.participantTarget(origin?.sessionId);
       if(!target)return;
       const state=await plugin.communication.assignment.state(target,project.assignmentId),attempt=state.dialogue?.attempt??1;

@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 export const CONTINUE_TEXT = 'Продолжай';
 export const CONTINUE_MESSAGE_BYTES = 4096;
 const CUT = '… [обрезано]';
@@ -31,12 +32,13 @@ export function continueMessage(task) {
 const key = p => p && JSON.stringify([p.workspace, p.sessionId, p.scopeId, p.chatUrl]);
 const conversationKey = p => p && JSON.stringify([p.workspace, p.sessionId, p.chatUrl]);
 const finished = p => p?.planView?.tasks?.length > 0 && p.planView.tasks.every(t => t.status === 'done');
-// The ledger of answered pauses is persisted on every pause; only recent entries matter, because a
-// conversation's current pause is always its latest. The newest entries of each conversation are kept.
+// Keep recent task intents plus every unresolved legacy send. Trimming history
+// must never turn an uncertain effect into permission to send again.
 export const LEDGER_PER_CONVERSATION = 20, LEDGER_TOTAL = 400;
 export function pruneLedger(entries) {
   const kept = [], perConversation = new Map();
   for (const [id, entry] of [...entries.entries()].reverse()) {
+    if(entry.status==='sending'){kept.push([id,entry]);continue;}
     const count = (perConversation.get(entry.key) ?? 0) + 1;
     perConversation.set(entry.key, count);
     if (count <= LEDGER_PER_CONVERSATION && kept.length < LEDGER_TOTAL) kept.push([id, entry]);
@@ -61,26 +63,18 @@ export class PlanContinuation {
     warning: this.run?.stallWarning ? 'STALL_WARNING' : null,
     continuations: this.continuationOwner === key(this.selected()) ? this.continuations : 0 }; }
   get checkpoint() { return [...this.checkpoints.values()].findLast(entry => entry.key === key(this.selected())) ?? null; }
+  unknown() {
+    const selected=this.selected();if(!selected?.chatUrl)return false;
+    return [...this.checkpoints.values()].some(entry=>{
+      if(entry.status!=='sending')return false;
+      try{const [workspace,sessionId,,chatUrl]=JSON.parse(entry.key);
+        return workspace===selected.workspace&&sessionId===selected.sessionId&&chatUrl===selected.chatUrl;
+      }catch{return true;}
+    });
+  }
   checkpointState(entries = this.checkpoints) {
     return entries.size || this.cycles.size ? { version: 3, entries: [...entries.values()],
       cycles: [...this.cycles.values()] } : null;
-  }
-  observeCycle(p) {
-    const owner = conversationKey(this.selected());
-    if (!owner || p.url !== this.selected()?.chatUrl || (!p.busy && !p.lastMessageRole)) return;
-    let cycle = this.cycles.get(owner);
-    if (!cycle) {
-      const legacy = [...this.checkpoints.values()].some(entry => entry.key === key(this.selected()));
-      cycle = { key: owner, generation: 0, busy: false, legacy };
-    }
-    if (p.busy && !cycle.busy) cycle = { ...cycle, generation: cycle.generation + 1, busy: true };
-    else if (!p.busy && p.lastMessageRole === 'assistant') cycle = { ...cycle, busy: false };
-    if (JSON.stringify(cycle) !== JSON.stringify(this.cycles.get(owner))) {
-      this.cycles.set(owner, cycle); this.cyclesDirty = true;
-    }
-  }
-  pauseIdentity(p = this.page) {
-    return p?.turnId || 'cycle:' + (this.cycles.get(conversationKey(this.selected()))?.generation ?? 0);
   }
   async writeCheckpoint(owner, checkpoint, replacingTurnId = checkpoint?.turnId) {
     const next = new Map(this.checkpoints);
@@ -131,18 +125,6 @@ export class PlanContinuation {
   }
   clearTimer() { if (this.timer !== null) this.cancel(this.timer); this.timer = null; }
   clearWatchdog() { if (this.watchdog !== null) this.cancel(this.watchdog); this.watchdog = null; }
-  watch(run) {
-    this.clearWatchdog();
-    if (run.stallWarning) { run.stallWarning = false; this.log('progress-resumed', { reason: 'STALL_WARNING' }); }
-    this.watchdog = this.schedule(() => {
-      this.watchdog = null;
-      if (this.run !== run || !this.enabled || !this.page?.busy) return;
-      run.stallWarning = true;
-      this.log('progress-timeout', { reason: 'STALL_WARNING' });
-      this.set('running', 'Агент ещё работает. Давно не было новых данных; ждём завершения ответа.', true, 'STALL_WARNING');
-    }, this.stallMs);
-    this.watchdog?.unref?.();
-  }
   wait(reason, message) {
     this.clearWatchdog();
     if (this.run) this.run.stallWarning = false;
@@ -168,33 +150,16 @@ export class PlanContinuation {
     void this.reconcile();
   }
   observe(event) {
-    const previous = this.page;
-    if (event.reset) {
-      this.page = null; this.epoch++; this.clearTimer(); this.clearWatchdog(); this.run = null;
-      void this.reconcile(); return;
+    const previous=this.page;
+    if(event.reset){this.page=null;this.epoch++;this.run=null;void this.reconcile();return;}
+    this.page={...event.state,documentId:event.documentId??previous?.documentId};
+    if(previous?.documentId===this.page.documentId
+      &&(this.page.manualStopRevision??0)>(previous.manualStopRevision??0)){
+      this.manualWaiting={key:conversationKey(this.selected()),stopped:true};
     }
-    this.page = { ...event.state, documentId: event.documentId ?? previous?.documentId };
-    this.selectionChanged();
-    const p = this.page;
-    if (previous?.documentId === p.documentId && (p.manualSendRevision ?? 0) > (previous.manualSendRevision ?? 0)) {
-      this.manualWaiting = { key: conversationKey(this.selected()), turnId: this.pauseIdentity(previous) };
-    }
-    this.observeCycle(p);
-    if (this.run && (this.run.key !== key(this.selected()) || this.run.documentId !== p.documentId)) {
-      this.epoch++; this.clearWatchdog(); this.run = null;
-    }
-    if (p.busy) {
-      this.clearTimer();
-      if (this.run && (this.run.lastActivityRevision !== p.assistantRevision || !previous?.busy)) {
-        this.run.lastActivityRevision = p.assistantRevision; this.watch(this.run);
-      }
-    } else if (this.enabled && previous && (previous.busy || previous.turnId !== p.turnId) && this.timer === null) {
-      this.clearWatchdog();
-      if (this.run) this.run.stallWarning = false;
-      this.timer = this.schedule(() => { this.timer = null; void this.reconcile(); }, this.settleMs);
-      this.timer?.unref?.();
-    }
-    void this.reconcile();
+    if(previous?.documentId===this.page.documentId
+      &&(this.page.manualSendRevision??0)>(previous.manualSendRevision??0))this.manualWaiting=null;
+    this.selectionChanged();void this.reconcile();
   }
   // One serialized event-driven pass. No interval and no scheduled Git reads.
   reconcile() {
@@ -215,119 +180,50 @@ export class PlanContinuation {
   }
   async reconcileOnce() {
     this.selectionChanged();
-    if (this.page) this.observeCycle(this.page);
-    if (this.cyclesDirty) {
-      this.cyclesDirty = false;
-      try { await this.saveCheckpoint(this.checkpointState()); }
-      catch { this.cyclesDirty = true; return this.wait('SEND_CHECKPOINT_ERROR', 'Не удалось сохранить состояние ответа.'); }
-    }
-    const selected = this.selected(), p = this.page, owner = key(selected), epoch = this.epoch;
-    if (!selected?.chatUrl || selected.sessionArchivedAt || !p || p.url !== selected.chatUrl)
-      return this.wait('PAGE_NOT_READY', 'Ждём выбранный разговор.');
-    if (!this.available()) return this.wait('PAGE_NOT_READY', 'Ждём готовности страницы.');
-    if (p.connectionError) return this.wait('CONNECTION_ERROR', 'Ждём восстановления связи с ChatGPT.');
-    if (!this.run) this.run = { key: owner, documentId: p.documentId, lastActivityRevision: p.assistantRevision };
-    const run = this.run;
-    if (p.busy) {
-      if (this.watchdog === null && !run.stallWarning) this.watch(run);
-      return this.set('running', run.stallWarning ? 'Агент ещё работает. Давно не было новых данных; ждём завершения ответа.'
-        : 'Выполнение плана запущено. Агент работает.', true, run.stallWarning ? 'STALL_WARNING' : null);
-    }
-    if (this.timer !== null) return;
-    if (!p.editorAvailable || !p.writable) return this.wait('PAGE_NOT_READY', 'Ждём готовности поля ввода.');
-    if (p.draftPresent) return this.wait('DRAFT_PRESENT', 'Ждём вашего сообщения. Черновик сохранён.');
-    if (!p.lastMessageRole)
-      return this.wait('HISTORY_NOT_READY', 'Ждём загрузки сообщений разговора.');
-    if (p.lastMessageRole === 'user')
-      return this.wait('USER_MESSAGE_PENDING', 'Ваше сообщение отправлено. Ждём ответ.');
-    if (this.manualWaiting?.key === conversationKey(selected)) {
-      if (this.pauseIdentity(p) === this.manualWaiting.turnId)
-        return this.wait('USER_MESSAGE_PENDING', 'Ваше сообщение отправлено. Ждём ответ.');
-      this.manualWaiting = null;
-    }
-    if (!selected.scopeId) return this.wait('PLAN_UNAVAILABLE', 'Ждём незавершённый текущий план.');
-    const observedPause = this.pauseIdentity(p);
-    const currentContext = () => this.enabled && !this.closed && epoch === this.epoch && key(this.selected()) === owner
-      && this.page?.documentId === p.documentId && this.page?.url === selected.chatUrl;
-    const ready = () => currentContext() && !this.page.busy && !this.page.connectionError
-      && this.page.editorAvailable && this.page.writable && this.page.lastMessageRole !== 'user'
-      && this.pauseIdentity() === observedPause
-      && (this.page.turnId ?? '') === (p.turnId ?? '')
-      && (this.page.userTurnId ?? '') === (p.userTurnId ?? '')
-      && (this.page.manualInputRevision ?? 0) === (p.manualInputRevision ?? 0)
-      && (this.page.manualSendRevision ?? 0) === (p.manualSendRevision ?? 0)
-      && (this.page.manualStopRevision ?? 0) === (p.manualStopRevision ?? 0);
-    this.set('checking', 'Проверяем текущий план…', true);
+    const selected=this.selected(),p=this.page,owner=key(selected),epoch=this.epoch;
+    if(!selected?.chatUrl||selected.sessionArchivedAt||!p||p.url!==selected.chatUrl||!this.available())
+      return this.wait('PAGE_NOT_READY','Ждём подключения разговора.');
+    if(p.connectionError)return this.wait('CONNECTION_ERROR','Ждём восстановления связи с ChatGPT.');
+    if(this.manualWaiting?.stopped)return this.pause('Отправка остановлена пользователем.','MANUAL_STOP');
+    // Legacy DOM effects are never retried as a new SDK message.
+    if(this.unknown())
+      return this.pause('Исход прежней отправки неизвестен. Повтор не отправляется.','SEND_UNKNOWN');
+    if(!selected.scopeId)return this.wait('PLAN_UNAVAILABLE','Ждём опубликованный план.');
+    const current=()=>this.enabled&&!this.closed&&epoch===this.epoch&&key(this.selected())===owner
+      &&this.page?.documentId===p.documentId&&this.page?.url===selected.chatUrl
+      &&!this.page.connectionError&&!this.manualWaiting?.stopped&&this.available();
     let plan;
-    try { plan = await this.inspectPlan(selected); }
-    catch { if (currentContext()) this.wait('PLAN_READ_ERROR', 'Ждём возможности прочитать план.'); return; }
-    if (!ready() || !this.available() || this.page.draftPresent) return;
-    if (!plan.confirmed) return this.wait('PLAN_CHANGED_OR_TRANSACTION', 'Ждём завершения Git-операции.');
-    if (plan.scopeId !== selected.scopeId) return this.wait('PLAN_CHANGED_OR_TRANSACTION', 'Ждём актуальный текущий план.');
-    if (finished(plan)) return this.complete();
-    if (plan.scopeStatus !== 'ACTIVE' || !plan.planView?.tasks?.length)
-      return this.wait('PLAN_UNAVAILABLE', 'Ждём незавершённый активный план.');
-    run.completedAtStart ??= plan.planView.tasks.filter(t => t.status === 'done').map(t => t.id);
-    // A persisted busy cycle distinguishes completed replies even when the page
-    // replaces a fixed-size DOM window with no native message IDs.
-    const previousCheckpoint = this.checkpoint;
-    const pauseId = this.pauseIdentity(p);
-    const cycle = this.cycles.get(conversationKey(selected));
-    if (!p.turnId && cycle?.legacy && cycle.generation === 0)
-      return this.wait('LEGACY_PAUSE_UNKNOWN', 'Старая пауза не имеет надёжного ID. Ждём следующий ответ.');
-    const consumed = this.checkpoints.get(JSON.stringify([owner, pauseId]))
-      ?? [...this.checkpoints.values()].findLast(entry => entry.key === owner
-        && entry.generation === cycle?.generation && (!p.turnId || entry.turnId.startsWith('cycle:')));
-    if (consumed&&!(this.durableQueue&&consumed.status==='queuing'))
-      return this.set(consumed.status === 'sending' ? 'paused' : 'running',
-        consumed.status === 'sending' ? 'Исход отправки для этой паузы неизвестен. Повтор не отправляется.'
-          : '«Продолжай» уже отправлено. Ждём ответ.', consumed.status === 'sent',
-        consumed.status === 'sending' ? 'SEND_UNKNOWN' : 'PAUSE_CONSUMED');
-    if (this.continuationOwner !== owner) { this.continuationOwner = owner; this.continuations = 0; }
-    const checkpoint = consumed??{ key: owner, turnId: pauseId, status: this.durableQueue?'queuing':'sending', generation: cycle?.generation ?? 0,
-      ...(this.durableQueue?{text:'Продолжи ту же начатую задачу Workflow Kit.\nПолные данные задачи: '+JSON.stringify(plan.nextTask)}:{}) };
-    this.log('pause', { turnId: p.turnId || '', identitySource: p.turnId ? 'native' : 'cycle', generation: cycle?.generation ?? 0 });
-    this.set('sending', 'Отправляем «Продолжай»…', true);
-    let sendInvoked = false, delivered = false, knownUnsent = false;
-    try {
-      await this.writeCheckpoint(owner, checkpoint);
-      let result = { state: 'cancelled' };
-      if (ready() && this.available() && !this.page.draftPresent) {
-        sendInvoked = true;
-        result = await this.send(checkpoint.text??continueMessage(plan.nextTask), ready, async () => {
-          const latest = await this.inspectPlan(selected);
-          if (!ready()) return false;
-          if (!latest.confirmed || latest.scopeId !== selected.scopeId || latest.scopeStatus !== 'ACTIVE') {
-            this.wait('PLAN_CHANGED_OR_TRANSACTION', 'Ждём актуальный подтверждённый план.'); return false;
-          }
-          // The text already in the field names a task: it is sent only while that task is still the next one.
-          if ((latest.nextTask?.id ?? null) !== (plan.nextTask?.id ?? null)) {
-            this.wait('PLAN_CHANGED_OR_TRANSACTION', 'Ждём актуальный текущий план.'); return false;
-          }
-          if (finished(latest)) { this.complete(); return false; }
-          return !!latest.planView?.tasks?.length;
-        },{key:'continue:'+selected.assignmentId+':'+pauseId});
-      }
-      if (['sent','queued'].includes(result.state)) {
-        delivered = true;
-        if (key(this.selected()) === owner) { this.continuations++; this.log('send', { kind: 'continue', continuations: this.continuations }); }
-        await this.writeCheckpoint(owner, { ...checkpoint, status: result.state });
-        if (currentContext()) this.set('running', 'Автоматически отправлено «Продолжай». Ждём ответ.', true);
-      } else if (result.state === 'unknown') {
-        if (currentContext()) this.pause('Исход отправки неизвестен. Для этой паузы повтор не отправляется.', 'SEND_UNKNOWN');
-      } else {
-        knownUnsent = true;
-        await this.writeCheckpoint(owner, previousCheckpoint, checkpoint.turnId);
-        if (currentContext() && this.state.phase === 'sending') this.wait(
-          result.reason === 'DRAFT_PRESENT' ? 'DRAFT_PRESENT' : 'SEND_NOT_SENT',
-          result.reason === 'DRAFT_PRESENT' ? 'Ждём вашего сообщения. Черновик сохранён.' : 'Продолжение не отправлено. Ждём следующего события.');
-      }
-    } catch {
-      if (delivered) this.checkpoints.set(JSON.stringify([owner, pauseId]), { ...checkpoint, status: this.durableQueue?'queued':'sent' });
-      else if (!sendInvoked || knownUnsent) this.checkpoints.delete(JSON.stringify([owner, pauseId]));
-      if (currentContext()) this.wait(delivered ? 'SEND_CHECKPOINT_ERROR' : 'SEND_ERROR',
-        delivered ? '«Продолжай» отправлено. Не удалось сохранить подтверждение; повтор для этой паузы исключён.'
-          : 'Ошибка отправки. Ждём следующего события; неизвестный Send не повторяется.');
+    try{plan=await this.inspectPlan(selected);}catch{return this.wait('PLAN_READ_ERROR','Не удалось прочитать план.');}
+    if(!current())return;
+    if(!plan.confirmed||plan.scopeId!==selected.scopeId)return this.wait('PLAN_CHANGED_OR_TRANSACTION','Ждём подтверждённое состояние плана.');
+    if(finished(plan))return this.complete();
+    if(plan.scopeStatus!=='ACTIVE'||!plan.nextTask?.id)return this.wait('PLAN_UNAVAILABLE','Нет следующего поручения.');
+    const taskId=plan.nextTask.id,turnId='task:'+taskId,id=JSON.stringify([owner,turnId]);
+    const old=this.checkpoints.get(id);
+    if(old&&old.status!=='queuing')return this.set('running','Поручение передано в канал.',true);
+    const checkpoint=old??{key:owner,turnId,status:'queuing',text:'Продолжи текущий план Workflow Kit.\nПолные данные следующей задачи: '+JSON.stringify(plan.nextTask)};
+    const before=async()=>{
+      const latest=await this.inspectPlan(selected);
+      return current()&&latest.confirmed&&latest.scopeId===selected.scopeId
+        &&latest.scopeStatus==='ACTIVE'&&latest.nextTask?.id===taskId&&!finished(latest);
+    };
+    try{
+      await this.writeCheckpoint(owner,checkpoint);
+      if(!current()||!await before())return;
+      this.set('sending','Передаём поручение через SDK…',true);
+      const result=await this.send(checkpoint.text,current,before,{
+        key:'continue:'+createHash('sha256').update(JSON.stringify([owner,taskId])).digest('hex')});
+      if(['queued','sent'].includes(result.state)){
+        await this.writeCheckpoint(owner,{...checkpoint,status:'queued'});
+        this.continuationOwner=owner;this.continuations++;
+        if(current())this.set('running','Поручение сохранено для передачи через SDK.',true);
+      }else if(result.state==='unknown'){
+        await this.writeCheckpoint(owner,{...checkpoint,status:'sending'});
+        if(current())this.pause('Исход отправки неизвестен. Повтор не отправляется.','SEND_UNKNOWN');
+      }else if(current())this.wait('SEND_NOT_SENT','Поручение пока не передано.');
+    }catch{
+      // The same durable key resumes queue insertion; it never repeats an SDK effect.
+      if(current())this.wait('SEND_ERROR','Не удалось подтвердить сохранение поручения.');
     }
   }
   dispose() {

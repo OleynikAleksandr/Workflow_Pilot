@@ -7,7 +7,7 @@ import {executorStatus} from '../src/control/workflow/execution-projection.mjs';
 import {currentPlanTasks,planActivity,activityClock,assignmentStage} from '../src/contracts/dialogue-view.mjs';
 import {buildWorkProgress,stageKind} from '../src/contracts/work-progress.mjs';
 
-test('the main panel explains an older choice gate, then normal result transfer, receipt and manual Stop',async t=>{
+test('the main panel ignores old busy gates and distinguishes transfer, receipt and manual Stop',async t=>{
   const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));
   t.after(()=>dom.window.close());const ui=mountPanel({document:dom.window.document});
   const incoming={message_id:'result-two',kind:'result',task_id:'T002',read:false,delivery:'pending'};
@@ -18,10 +18,10 @@ test('the main panel explains an older choice gate, then normal result transfer,
     const value=buildWorkProgress({now:[item]});ui.progress(value);return {activity,value};
   };
   let value=render({incoming,blocker});
-  assert.match(dom.window.document.getElementById('progress-now').textContent,/завершает обработку вашего выбора/);
+  assert.match(dom.window.document.getElementById('progress-now').textContent,/Результат · T002 готов · передаём/);
   assert.equal(dom.window.document.querySelectorAll('#progress-now .wp-row.warn').length,0);
   value=render({incoming,blocker:{...blocker,reason:'commands-active'}});
-  assert.match(value.activity.label,/завершения команды/);assert.equal(value.value.primary.kind,'act');
+  assert.match(value.activity.label,/Результат · T002 готов · передаём/);assert.equal(value.value.primary.kind,'act');
   value=render({incoming,blocker:{...blocker,reason:'manual-stop'}});
   assert.equal(value.value.primary.kind,'warn');assert.match(value.activity.reason,/откройте его чат/);
   assert.equal(dom.window.document.querySelectorAll('#progress-now .wp-row.warn').length,1);
@@ -47,13 +47,13 @@ test('preparation delivery names its real recipient and anchors the same message
   assert.match(stage.label,/Восстанавливаем соединение с оркестратором/);assert.doesNotMatch(stage.label,/SDK первого исполнителя/);
   assert.equal(stage.recipient,'O');
   const accepted=planActivity({...input,channel:{sdk:false,incoming:{...incoming,delivery:'accepted',delivery_at:'2026-10-25T09:00:10Z'}}});
-  assert.equal(accepted.phase,'waiting-read');assert.match(accepted.label,/Ожидаем, когда оркестратор получит сообщение/);
+  assert.equal(accepted.phase,'waiting-read');assert.match(accepted.label,/Сообщение принято ChatGPT/);
   assert.doesNotMatch(accepted.label,/ещё не доставлен/);
   const clock=()=>activityClock({now:()=>0,wallNow:()=>Date.parse('2026-10-25T09:00:20Z')});
   assert.equal(clock()('p',stage).elapsedMs,20000);assert.equal(clock()('p',stage).elapsedMs,20000);
   assert.equal(clock()('p',accepted).elapsedMs,10000,'accepted waits start at the host receipt, not at creation');
   input.channel.incoming={...incoming,kind:'task',service_action:null,recipient_role:'E',delivery:'accepted'};
-  assert.match(planActivity(input).label,/Ожидаем, когда исполнитель · T001 получит сообщение/);
+  assert.match(planActivity(input).label,/Сообщение принято ChatGPT · T001/);
   input.channel.incoming={...incoming,read:true,read_at:'2026-10-25T09:00:15Z'};
   assert.equal(clock()('p',planActivity(input)).elapsedMs,5000,'processing time excludes the preceding delivery queue');
   input.channel.incoming.handled=true;input.channel.incoming.handled_at='2026-10-25T09:00:18Z';
@@ -67,7 +67,7 @@ test('observable plan stages separate transport, processing, integration, cleanu
   assert.equal(planActivity({...input,channel:{incoming:{kind:'result',task_id:'T001',read:true}}}).phase,'result');
   assert.doesNotMatch(planActivity({...input,channel:{incoming:{kind:'result',read:true}}}).label,/проверка|тест/i);
   assert.equal(planActivity({...input,channel:{incoming:{kind:'result',read:false,delivery:'accepted'}}}).phase,'waiting-read');
-  assert.match(planActivity({...input,channel:{incoming:{kind:'result',read:false,reason:'previous-turn'}}}).reason,/предыдущий ответ/);
+  assert.equal(planActivity({...input,channel:{incoming:{kind:'result',read:false,reason:'previous-turn'}}}).reason,'');
   assert.equal(planActivity({...input,channel:{incoming:{kind:'recovery',read:true}}}).phase,'prepare');
   assert.equal(planActivity({...input,channel:{incoming:{kind:'finalization',read:true}}}).phase,'final');
   assert.equal(planActivity({...input,channel:{incoming:{kind:'finalization',read:true,handled:true}}}).phase,'turn-end');

@@ -78,7 +78,7 @@ test('ordinary chats receive complete panel recovery for every plan strategy wit
 
 test('executor startup is addressed separately and gates work until its own all-parts receipt',async t=>{
   const e={...target,local_session_id:'e',role:'E',scope_id:'scope',assignment_id:'a',task_id:'T001'};
-  const c=new PluginCommunication({resolveTarget:id=>id==='e'?e:target,observe:()=>({canSend:true}),admit:async()=>true});t.after(()=>c.dispose());
+  const c=new PluginCommunication({resolveTarget:id=>id==='e'?e:target,observe:()=>({sdkDocumentReady:true,canSend:true}),admit:async()=>true});t.after(()=>c.dispose());
   const invitation=await c.reserve(e);await c.startup.stage(e,{request_id:'e-start',text:'Правила назначения'});
   const joined=await c.enroll(invitation.enrollment_ticket,metadata),run=c.runs.get(joined.run_id),member=run.members[joined.participant_id];
   const m=c.startup.message(run,'e');
@@ -92,7 +92,7 @@ async function fixture(t,{delivery_mode='sdk-notification',correlated=false}={})
   let valid=true,current=true,canSend=true,admitted=true;
   const create=async()=>{
     const c=new PluginCommunication({store:await openCommunicationStore(directory),resolveTarget:()=>valid?target:null,
-      observe:()=>({canSend,stopped:canSend,busy:!canSend}),admit:async()=>admitted,currentMessage:async()=>current,waitMs:10});
+      observe:()=>({sdkDocumentReady:canSend,canSend,stopped:canSend,busy:!canSend}),admit:async()=>admitted,currentMessage:async()=>current,waitMs:10});
     instances.push(c);await c.ready;return c;
   };
   const correlation={request_id:'request-1',...(correlated?{attempt_generation:'generation-one'}:{})};

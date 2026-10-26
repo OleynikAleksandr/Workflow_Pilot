@@ -126,7 +126,7 @@ test('client performs allowed project/session/settings/plan operations under the
   await assert.rejects(client.run('projects.open',{workspace:path.join(root,'unknown')}),error=>error.code==='PROJECT_NOT_REGISTERED');
   await assert.rejects(client.run('projects.delete',{workspace:project.workspace}),error=>error.code==='BACKEND_OPERATION_NOT_AVAILABLE');
   // PlanContinuation goes through the same Kit-verified coordination as the old IPC.
-  assert.equal(typeof (await client.run('plan.continue',{})).planContinuation,'boolean');
+  await assert.rejects(client.run('plan.continue',{}),{code:'PLUGIN_PLAN_IDENTITY'},'a plan without its SDK participant cannot start');
   assert.equal((await client.run('plan.stop',{})).planContinuation,false);
   // A newer writer invalidates the older lease generation.
   const other=clientOf(backend);await other.connect();

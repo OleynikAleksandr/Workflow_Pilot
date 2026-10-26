@@ -972,7 +972,7 @@ test('App Server MCP answers a stale session id without initialize after a resta
     'workflow_communication_read_context',
     'workflow_communication_read_message', 'workflow_communication_recover', 'workflow_communication_report', 'workflow_communication_send_message',
     'workflow_communication_status', 'workflow_communication_stop', 'workflow_communication_sync', 'workflow_communication_telemetry', 'workflow_communication_telemetry_batch', 'workflow_communication_verify', 'workflow_communication_wait',
-    'workflow_connect_project', 'workflow_delivery_experiment_checkpoint', 'workflow_delivery_experiment_hold', 'workflow_open_project', 'workflow_pilot_panel', 'workflow_session_set_title', 'workflow_startup_complete',
+    'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel', 'workflow_session_set_title', 'workflow_startup_complete',
     'write_stdin',
   ]);
   for (const tool of tools) {
@@ -1181,7 +1181,7 @@ print(json.dumps(out, ensure_ascii=False))
     'workflow_communication_read_context',
     'workflow_communication_read_message', 'workflow_communication_recover', 'workflow_communication_report', 'workflow_communication_send_message',
     'workflow_communication_status', 'workflow_communication_stop', 'workflow_communication_sync', 'workflow_communication_telemetry', 'workflow_communication_telemetry_batch', 'workflow_communication_verify', 'workflow_communication_wait',
-    'workflow_connect_project', 'workflow_delivery_experiment_checkpoint', 'workflow_delivery_experiment_hold', 'workflow_open_project', 'workflow_pilot_panel', 'workflow_session_set_title', 'workflow_startup_complete',
+    'workflow_connect_project', 'workflow_open_project', 'workflow_pilot_panel', 'workflow_session_set_title', 'workflow_startup_complete',
     'write_stdin']);
 });
 

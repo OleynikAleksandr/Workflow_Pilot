@@ -15,12 +15,13 @@ export function executorPageState(record) {
   return {stopped,canSend:stopped&&page.editorAvailable&&page.writable&&!page.draftPresent&&!blocked,
     sdkDocumentReady:!!project&&!!project.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt
       &&!record.disposed&&!record.loading&&record.ready&&(!project.attempt?.cancelState||project.attempt.cancelState==='none')
-      &&page?.url===project.chatUrl&&page.login==='signed-in'&&!page.connectionError
-      &&!record.controller.pending&&!record.composer.inFlight,
+      &&page?.url===project.chatUrl&&page.login==='signed-in'&&!page.connectionError,
     busy:!!page?.busy,turnId:page?.turnId??null,assistantRevision:page?.assistantRevision??0,
     connectionError:page?.connectionError??null,userTurnId:page?.userTurnId??null,
     manualSendRevision:page?.manualSendRevision??0,
     manualStopped:!!blocked,
+    legacySendUnknown:!!(record?.primaryAutomation?.automation??record?.executor?.automation)?.unknown(project)
+      ||!!(record?.primaryAutomation?.flow??record?.executor?.flow)?.unknown(),
     pauseKey:record?.primaryAutomation?.automation.key(project,page)??page?.turnId??null,
     // Composer owns its inFlight flag and inserted draft during an admitted send.
     canContinueSend:observed&&page.editorAvailable&&page.writable&&!blocked};
@@ -41,17 +42,21 @@ export function configureExecutor(record,{store,inspectPlan,enabled,onChange,sig
   automation.restore(checkpoint.automationCheckpoint);
   const flow=new PlanContinuation({selected,inspectPlan:async project=>{
     const plan=await inspectPlan(project);
-    return {...plan,confirmed:plan.confirmed&&!dialogue?.owned?.(record.project())&&(!dialogue||plan.nextTask?.started&&!plan.blocked)&&plan.scopeId==='assignment-'+saved.assignmentId
+    // SDK task/decision messages already carry the executor's continuation.
+    // task:start is not a second task intent and must not enqueue a duplicate.
+    return {...plan,confirmed:plan.confirmed&&!dialogue&&plan.scopeId==='assignment-'+saved.assignmentId
       &&plan.planView?.tasks?.length===1&&plan.planView.tasks[0].id===saved.taskId
       &&(!plan.nextTask||plan.nextTask.id===saved.taskId)};
   },
     available:()=>!!record.project()&&!record.disposed&&!record.paused&&record.ready&&!record.loading&&!record.composer.inFlight
-      &&!record.controller.pending&&(!dialogue||!dialogue.reserved(record.project()))&&['delivered','stale','manual-session'].includes(record.controller.state.phase),
+      &&!record.controller.pending&&['delivered','stale','manual-session'].includes(record.controller.state.phase),
     saveCheckpoint:continuationCheckpoint=>store.saveExecutorAutomation(saved.workspace,saved.sessionId,{continuationCheckpoint}),
     durableQueue:!!dialogue,
-    onChange,log,send:(text,canContinue,onBeforeSend,meta)=>dialogue?dialogue.send(record.project(),text,'continue',meta):automation.send({selected:selected(),page:flow.page,
-      ready:canContinue,perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,
-        waitForAcknowledgement:false,cleanupOnCancel:true})})});
+    onChange,log,send:async(text,canContinue,onBeforeSend,meta)=>{
+      if(!canContinue()||!await onBeforeSend())return {state:'cancelled'};
+      if(automation.blocked(selected()))return {state:'unknown'};
+      return dialogue.send(record.project(),text,'continue',meta);
+    }});
   monitor=new PlanMonitor({selected:record.project,inspect:(workspace,id)=>store.inspect(workspace,id),
     onChange:()=>{void flow.planChanged();signal();onChange();},
     onInputsChanged:()=>{record.controller.projectChanged();signal();},
@@ -61,8 +66,7 @@ export function configureExecutor(record,{store,inspectPlan,enabled,onChange,sig
   activityWatch.update(['.harness/runtime/command-activity/']);
   record.executor={flow,monitor,clock,automation,
     // The orchestrator's answer reaches this executor through the same guarded send as its continuations.
-    deliver:(text,canContinue,onBeforeSend)=>automation.send({selected:selected(),page:flow.page,kind:'message',ready:canContinue,
-      perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})}),
+    deliver:(text,_ready,_before,meta)=>dialogue.send(record.project(),text,'decision',meta),
     observe:event=>{
     clock.observe(record.integrated?'done':event.reset||event.state?.connectionError?'unknown':event.state?.busy?'working':'waiting');
     automation.observe(selected(),event);flow.observe(event);

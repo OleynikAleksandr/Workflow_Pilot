@@ -25,14 +25,11 @@ export function assignmentStage({phase,status,dialogue,block,channel,physical}={
 }
 
 const waits={
-  'previous-turn':'Оркестратор завершает предыдущий ответ.',
-  'previous-message':'Сначала обрабатывается предыдущее сообщение.',
-  'recipient-busy':'Получатель ещё отвечает.',
+  'previous-message':'Предыдущая передача ещё не подтверждена.',
   'recipient-unavailable':'Восстанавливаем соединение с чатом получателя.',
-  'admission-denied':'Передача продолжится, когда назначение будет готово.',
-  'commands-active':'Ожидаем завершение команды.',
-  'recipient-draft':'У получателя открыт черновик.',
-  'manual-stop':'Ход остановлен вручную.',
+  'recipient-connection-error':'Соединение с получателем прервано.',
+  'admission-denied':'Проверяем разрешение и актуальность поручения.',
+  'manual-stop':'Отправка остановлена вручную.',
 };
 
 // Only observed facts. A read receipt is not evidence that tests started.
@@ -48,22 +45,16 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     ['UNKNOWN','CONFLICT','CHECKS_FAILED'].includes(execution.integration.status)?'Интеграция требует исправления.':'Ожидаем результат операции Kit.','Workflow Kit');
   const incoming=channel?.incoming,task=incoming?.task_id?' · '+incoming.task_id:'';
   const blocker=channel?.blocker;
-  if(blocker&&(blocker.message_id!==incoming?.message_id||blocker.reason==='manual-stop'||['unknown','rejected'].includes(blocker.delivery))){
-    const held=blocker.kind==='user-choice'?'вашего выбора':'предыдущего сообщения';
+  if(blocker&&(blocker.reason==='manual-stop'||['claimed','unknown','rejected'].includes(blocker.delivery))){
     const reason=blocker.reason;
     const current=(phase,label,detail)=>({...stage(phase,label,detail,'Канал связи'),recipient:'O',
       priority:phase==='attention'?0:1,key:'blocked-by:'+blocker.message_id+':'+reason,startedAt:blocker.created_at});
-    if(['unknown','rejected'].includes(blocker.delivery))return current('attention',blocker.read?'Завершение ответа требует проверки':'Отправка требует проверки',
-      (blocker.read?'Оркестратор получил сообщение, но завершение ответа неизвестно. ':'Исход предыдущей отправки неизвестен. ')+
-      'Проверьте чат оркестратора. Автоматически повторять отправку нельзя.');
+    if(['unknown','rejected'].includes(blocker.delivery))return current('attention','Отправка требует проверки',
+      (blocker.delivery==='rejected'?'ChatGPT отклонил отправку. ':'Подтверждение отправки не получено. ')+
+      (blocker.read?'Получатель прочитал сообщение; повтор не требуется. ':'Проверьте чат получателя. Автоматически повторять отправку нельзя.'));
     if(reason==='manual-stop')return current('attention','Ответ оркестратора остановлен вручную',
       'Чтобы передать следующие результаты, откройте его чат и продолжите работу.');
-    if(reason==='commands-active')return current('command','Ожидаем завершения команды оркестратора',
-      'После неё передача результатов продолжится автоматически.');
-    if(reason==='recipient-busy')return current('processing','Оркестратор завершает обработку '+held,
-      'Следующие результаты ждут окончания этого ответа.');
-    return current('turn-end','Ожидаем завершения обработки '+held,
-      'Проверяем состояние чата оркестратора перед передачей следующих результатов.');
+    return current('delivery','Передаём сообщение','Ожидаем подтверждение ChatGPT.');
   }
   if(incoming){
     const preparation=incoming.kind==='ready'||incoming.kind==='recovery'&&['prepare',undefined].includes(incoming.service_action);
@@ -73,13 +64,11 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     if(!incoming.read&&['unknown','rejected'].includes(incoming.delivery))return current('attention','Доставка требует проверки'+task,
       'Проверьте чат получателя. Автоматически повторять отправку нельзя.','Канал связи');
     if(!incoming.read){
-      if(incoming.kind==='result'&&physical?.busy)return current('waiting',
-        'Результат'+task+' готов · ожидаем освобождения чата '+(recipient==='O'?'оркестратора':'исполнителя'),
-        'Передадим результат после текущего ответа.','Канал связи');
-      if(['manual-stop','recipient-draft'].includes(incoming.reason))return current('attention',
-        incoming.reason==='manual-stop'?'Чат получателя остановлен вручную':'В чате получателя открыт черновик',
-        incoming.reason==='manual-stop'?'Откройте чат получателя и продолжите работу.':'Отправьте или уберите черновик в чате получателя, чтобы продолжить передачу.','Канал связи');
-      const label=incoming.delivery==='accepted'?'Ожидаем, когда '+(recipient==='O'?'оркестратор':'исполнитель'+task)+' получит сообщение'
+      if(incoming.reason==='send-unknown')return current('attention','Исход прежней отправки неизвестен',
+        'Проверьте чат получателя. Автоматического повтора нет.','Канал связи');
+      if(incoming.reason==='manual-stop')return current('attention','Отправка остановлена вручную',
+        'Продолжите работу в чате получателя.','Канал связи');
+      const label=incoming.delivery==='accepted'?'Сообщение принято ChatGPT'+task
         :preparation&&recipient==='O'
         ?channel.sdk===false?'Восстанавливаем соединение с оркестратором'
           :'Передаём запрос подготовки'+task+' оркестратору'
@@ -87,7 +76,7 @@ export function planActivity({run={},execution={},channel,physical}={}) {
       return current(incoming.delivery==='accepted'?'waiting-read':'delivery',label,waits[incoming.reason]??'','Канал связи');
     }
     if(incoming.handled)return current('turn-end',incoming.kind==='finalization'?'Завершается итоговый ответ':'Ожидаем завершение ответа'+task,
-      'Следующие сообщения будут переданы после окончания ответа.');
+      'Получатель подтвердил обработку сообщения.');
     if(incoming.kind==='result')return current('result','Получил результат'+task+' · ожидаем решение');
     if(incoming.kind==='finalization')return current('final','Готовит итоговый ответ');
     if(preparation)return current('prepare','Готовит поручение'+task);

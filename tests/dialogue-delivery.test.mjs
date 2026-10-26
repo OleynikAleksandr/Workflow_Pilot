@@ -187,15 +187,15 @@ test('a user choice is admitted without plan permission but keeps the physical c
   try{
     let canSend=true;
     const delivery=new DialogueDelivery({store:{project:()=>({workspace,sessionId:'d'})},route:()=>null,state:()=>({state:'not-started'})});
-    delivery.project=()=>({workspace,sessionId:'d'});delivery.observe=()=>({canSend});
+    delivery.project=()=>({workspace,sessionId:'d'});delivery.observe=()=>({canSend,sdkDocumentReady:true,manualStopped:!canSend});
     const target={local_session_id:'d',role:'S',scope_id:null};
     assert.deepEqual(await delivery.admit(target,{kind:'user-choice'}),{allowed:true});
     assert.equal((await delivery.admit(target,{kind:'continue'})).allowed,false,'ordinary work still needs the running plan');
     canSend=false;
-    assert.equal((await delivery.admit(target,{kind:'user-choice'})).allowed,false,'a busy or drafted chat waits');
+    assert.equal((await delivery.admit(target,{kind:'user-choice'})).allowed,false,'manual Stop still blocks');
   }finally{await fs.rm(workspace,{recursive:true,force:true});}
 });
-test('busy-result admission inspects protected commands that ordinary commandActive intentionally ignores',async t=>{
+test('SDK admission remains independent of protected commands',async t=>{
   const workspace=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'busy-admission-')));
   t.after(()=>fs.rm(workspace,{recursive:true,force:true}));
   const project={workspace,sessionId:'o',planExecution:{dialogue_version:1}},target={local_session_id:'o',role:'O',scope_id:'s'};
@@ -207,11 +207,11 @@ test('busy-result admission inspects protected commands that ordinary commandAct
   const hash='c'.repeat(64),file=path.join(directory,'probe.json');
   await fs.writeFile(file,JSON.stringify({version:2,id:'probe',workspace,cwd:workspace,executor_instance:'fixture',executor_pid:process.pid,
     started_at_ms:Date.now(),process_id:'process',state:'running',read_only_verified:true,sandbox_policy:'readOnly',command_hash:hash}));
-  assert.deepEqual(await delivery.admit(target,message,policy),{allowed:false,reason:'commands-active'});
+  assert.deepEqual(await delivery.admit(target,message,policy),{allowed:true});
   const probePolicy={bypassBusy:true,busy_kind:'read-only-command',nonce:'exact',
     probe:{command_hash:hash,nonce:'exact',command_id:'probe'}};
   assert.deepEqual(await delivery.admit(target,message,probePolicy),{allowed:true});
   await fs.writeFile(path.join(directory,'second.json'),JSON.stringify({...JSON.parse(await fs.readFile(file,'utf8')),
     id:'second',command_hash:'d'.repeat(64)}));
-  assert.equal((await delivery.admit(target,message,probePolicy)).allowed,false,'an additional record is never ignored');
+  assert.equal((await delivery.admit(target,message,probePolicy)).allowed,true,'active commands do not schedule SDK delivery');
 });

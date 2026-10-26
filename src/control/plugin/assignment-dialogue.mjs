@@ -142,8 +142,8 @@ export class AssignmentDialogue {
   }
   async ready(target){
     const progress=this.c.workflow.progress(target.local_session_id),physical=await this.c.workflow.reconcile(target);
-    check(progress?.sdk&&progress.permitted&&physical?.stopped&&!physical.busy&&physical.commandsIdle===true,
-      'CHANNEL_NOT_READY','Отправка ждёт текущего SDK, привязки и конца bootstrap. Явно авторизованное поручение отправится автоматически; обычный черновик требует dispatch. Завершите ход без опроса модели.');
+    check(progress?.sdk&&progress.permitted&&physical?.sdkDocumentReady&&!physical.manualStopped&&!physical.connectionError,
+      'CHANNEL_NOT_READY','Отправка ждёт текущего SDK и подтверждённой привязки. Явно авторизованное поручение отправится автоматически; обычный черновик требует dispatch. Завершите ход без опроса модели.');
   }
   // Backend-only binding. The actual O member and Kit's checked author snapshot
   // replace neither host identity nor a public model authorization endpoint.
@@ -443,7 +443,7 @@ export class AssignmentDialogue {
     }
     for(const message of messages)if(!message.yielded){message.yielded={reason:input.reason,at:c.now(),backend_id:c.backendId,page:structuredClone(c.workflow.observe(member.target))};
       if(message.intent&&['claimed','unknown'].includes(message.delivery)){
-        message.delivery='accepted';message.resolved_by_read=true;
+        message.resolved_by_read=true;
         c.event(run,'send.resolved',{message_id:message.message_id,evidence:'recipient-read-yield'});
       }
       c.event(run,'message.yielded',{message_id:message.message_id,participant_id:member.id,reason:input.reason});}

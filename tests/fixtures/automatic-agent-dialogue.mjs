@@ -30,8 +30,6 @@ import {userChoseMode} from './execution-mode.mjs';
 import {readReview,prepareReview,respondReview,publishReview} from '../../packages/workflow-kit/src/lib/plan-review.mjs';
 import {runReview,REVIEW_MODEL} from '../../packages/workflow-kit/src/lib/claude-review.mjs';
 import {BrowserSessions} from '../../src/execution/browser/session-runtime.mjs';
-import {prepareSdkBusyExperiment} from '../../scripts/prepare-sdk-busy-experiment.mjs';
-import {readSdkBusyExperiment} from '../../src/execution/plugin/sdk-busy-experiment.mjs';
 import {COMMUNICATION_BUILD} from '../../src/contracts/backend.mjs';
 
 // Deliberately separate from the happy-path browser fixture. Exercises the
@@ -150,14 +148,15 @@ export async function interruptionRegression(t){
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,modeOption='orchestrated',sdkBusy=false}={}){
+export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,modeOption='orchestrated'}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
   const drafts=new Map(),preplanEvents=[],delayedReservations=new Set();
   const busyNotifications=[];
-  let releaseChoice,commandBarrier=null,commandEventOnly=false,lateEventOnly=false,clockOffset=0;
+  let releaseChoice,releaseWorkers,commandBarrier=null,clockOffset=0;
   const choiceResponse=new Promise(resolve=>releaseChoice=resolve);
+  const workerResponse=new Promise(resolve=>releaseWorkers=resolve);
   const rawPage=record=>record.fixtureObservation??record.pageState.current;
   const fast=owned&&batchResults,modelCalls=[];
   let leaseRecovered=false;
@@ -206,6 +205,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
     };
     const message=await call('read_message',args);
+    if(record.completedMessages?.has(message.message_id))return;
     record.handledMessage=message;
     if(message.kind==='startup-context'){
       for(let part=0,total=1;part<total;part++){
@@ -246,6 +246,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       const send=payload=>call('assignment_send',{attempt:message.attempt??1,in_reply_to:message.assignment_id?message.message_id:undefined,
         idempotency_key:message.kind+':'+message.message_id,...payload});
       const completeWork=async()=>{
+        if(preplan&&independent.includes(project.taskId))await workerResponse;
         if(!readPlan(project.workspace).current_task_id)await plans.call(project.workspace,'task:start',[project.taskId]);
         if(project.taskId==='DOCS')await fs.rm(path.join(project.workspace,'docs/planning/dialogue.md'));
         else await fs.writeFile(path.join(project.workspace,taskFile[project.taskId]),'# worker-'+project.taskId+' attempt '+message.attempt+'\n');
@@ -363,7 +364,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
           const sibling=()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
             .find(m=>m.kind==='result'&&independent.includes(m.task_id)&&m.message_id!==message.message_id);
           await wait(()=>sibling(),'second result queued while O handles first');
-          assert.equal(sibling().delivery,'pending');
+          assert.ok(['pending','claimed','accepted'].includes(sibling().delivery),'SDK may already have accepted the second notification');
           const other=await call('read_message',{message_id:sibling().message_id});
           results.push(other);handled.push(other.message_id);
           notifications.push({...other,sessionId:project.sessionId,directRead:true});
@@ -379,7 +380,13 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
           }else{
             await send({recipient:target.recipient_ref,kind:'acceptance',result_id:result.message_id,source_commit:result.source_commit,
               in_reply_to:result.message_id,idempotency_key:'accept:'+result.message_id,body:'Exact diff and checks accepted'});
-            await plans.call(root,'integration:start',[],{id:result.assignment_id,source_commit:result.source_commit});
+            // The simulated agent obeys the Kit refusal contract: WORKFLOW_LOCKED
+            // has no effect. Retry that command after assignment setup releases
+            // the lock; SDK reception itself has already happened.
+            await wait(async()=>{
+              try{await plans.call(root,'integration:start',[],{id:result.assignment_id,source_commit:result.source_commit});return true;}
+              catch(error){if(error.code==='WORKFLOW_LOCKED')return false;throw error;}
+            },'Kit integration after concurrent assignment setup',30000);
             if(batchResults&&result.task_id==='DOCS'){
               const cleanup=await plans.call(root,'assignment:cleanup');
               assert.equal(cleanup.only_main,false);
@@ -414,7 +421,8 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
           assert.ok(cleanup.only_main||cleanup.pending.length>0,'early finalization keeps real pending receipts');
         }else assert.match(text,/Очистка всех назначений подтверждена/);
       }else throw Error('Unexpected owned dialogue: '+message.kind);
-      await call('assignment_yield',{message_ids:handled,reason:'handled'});return;
+      await call('assignment_yield',{message_ids:handled,reason:'handled'});
+      record.completedMessages??=new Set();for(const id of handled)record.completedMessages.add(id);return;
     }
     if(project.assignmentId){
       if(message.kind==='assignment-start'){
@@ -494,25 +502,17 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
             onMessage:request=>{
               const id=JSON.parse(request.content.find(item=>item.type==='text').text.match(/аргументами (\{[^\n]+?\})\./)[1]).message_id;
               const selected=[...plugin.communication.runs.values()].flatMap(run=>run.messages).find(message=>message.message_id===id);
-              if(sdkBusy&&!project.assignmentId&&selected?.sdk_busy?.case_id==='full-burst'){
-                assert.equal(page.busy,true,'both notifications reach the busy O through the actual SDK');
-                assert.equal(selected.read,false);busyNotifications.push({request,id});return {};
-              }
-              assert.equal(page.busy,false,'the physical conversation is idle before SDK notification');
+              if(page.busy)busyNotifications.push({request,id,role:project.assignmentId?'E':'O'});
               record.sdkPageVersions?.set(id,record.pageState.version);
-              page.busy=true;
-              if(!owned){page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;page.lastMessageRole='user';}
-              if(!preplan)record.pageState.current.seq++;reportPage(record);
-              const job=runAgent(record,request).catch(error).finally(async()=>{
-                const handled=record.handledMessage;
-                if(preplan&&!project.assignmentId&&handled?.kind==='result'&&independent.includes(handled.task_id)&&!commandBarrier){
-                  commandBarrier={version:2,id:'proof-command',workspace:root,executor_instance:'isolated-proof',
-                    executor_pid:process.pid,started_at_ms:Date.now(),state:'running'};
-                  await fs.mkdir(path.dirname(commandFile),{recursive:true});
-                  await fs.writeFile(commandFile,JSON.stringify(commandBarrier));
-                }
-                jobs.delete(job);finish(record);
-              });jobs.add(job);
+              // The simulated host owns processing order. SDK acceptance is immediate,
+              // including while this recipient is in a tool, command or user conversation.
+              const job=(record.hostTail??Promise.resolve()).then(async()=>{
+                page.busy=true;
+                if(!owned){page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;page.lastMessageRole='user';}
+                if(!preplan)record.pageState.current.seq++;reportPage(record);
+                try{await runAgent(record,request);}finally{finish(record);}
+              }).catch(error).finally(()=>jobs.delete(job));
+              record.hostTail=job;jobs.add(job);
               return {}; // Host acceptance precedes the model's asynchronous work.
             }});
           page.url='https://chatgpt.com/c/'+project.sessionId;page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;
@@ -563,8 +563,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   workflow.attachSessions(live);
   plugin=control.createPlugin({plans,loadContext:(workspace)=>plans.loadContext(workspace),communicationStore:await openCommunicationStore(path.join(directory,'communication')),
     observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
-    userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
-    ...(sdkBusy?{sdkBusyProfile:target=>readSdkBusyExperiment(root,{...target,workspace:root,build_id:COMMUNICATION_BUILD})}:{})});
+    userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input)});
   if(preplan){
     const reserve=plugin.reserveParticipant.bind(plugin);
     plugin.reserveParticipant=async(sessionId,correlation)=>{
@@ -578,7 +577,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   await plugin.communication.ready;plugin.communication.waitMs=preplan?25000:40;
   if(preplan){const now=plugin.communication.now;plugin.communication.now=()=>now()+clockOffset;}
   t.after(async()=>{
-    closed=true;releaseChoice();workflow.execution.dispose();workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
+    closed=true;releaseChoice();releaseWorkers();workflow.execution.dispose();workflow.planMonitor.close();workflow.planReview.dispose();workflow.reviewContinuation.dispose();
     for(const record of records.values())live.release(record);
     await Promise.allSettled([...jobs]);for(const fn of cleanups)await fn();
     plugin.communication.dispose();await plugin.communication.tail;await store.whenIdle();
@@ -703,41 +702,23 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     }
     await fs.unlink(path.join(root,'user-change.txt'));
   }
-  if(sdkBusy)await prepareSdkBusyExperiment({workspace:root,testWorkspace:true,caseId:'full-burst',experimentId:'isolated-full-cycle'});
   const start=await api.submit('plan.continue',{}),started=await api.wait(start.operationId);
   assert.equal(started.status,'completed',JSON.stringify(started));
   assert.equal(workflow.executionControl.view(root,'dialogue-fixture').state,'running','HTTP API runs the real plan button coordinator');
   let scopedChoice;
-  if(preplan&&sdkBusy){
-    const results=()=>[...plugin.communication.runs.values()].flatMap(run=>run.messages).filter(message=>message.sdk_busy?.case_id==='full-burst');
-    await wait(()=>results().length===2,'both real checked results bound to the measurement');
-    assert.ok(results().every(message=>!message.read&&!message.intent));
-    const hold=await c.callTool({name:'workflow_delivery_experiment_hold',arguments:{case_id:'full-burst',duration_ms:15000},_meta:o.metadata});
-    assert.equal(hold.isError,false,JSON.stringify(hold));
-    await wait(()=>busyNotifications.length===2,'two sequential SDK acceptances during hold');
-    assert.ok(results().every(message=>message.delivery==='accepted'&&!message.read),'SDK acceptance is not model reading');
-    const checkpoint=await c.callTool({name:'workflow_delivery_experiment_checkpoint',arguments:{case_id:'full-burst',marker:'resume',nonce:hold.structuredContent.nonce},_meta:o.metadata});
-    assert.equal(checkpoint.isError,false);releaseChoice();await wait(()=>!rawPage(o).state.busy,'original response completes before result reading');
-    for(const item of busyNotifications){rawPage(o).state.busy=true;reportPage(o);await runAgent(o,item.request);finish(o);}
-    const target=await plugin.participantTarget(origin.sessionId);
-    scopedChoice=await plugin.communication.workflow.enqueue(target,{key:'scope-bound-ui-proof',kind:'user-choice',text:'Сохранённое решение для текущего плана',role:'orchestrator'});
-  }else if(preplan){
+  if(preplan){
+    await wait(()=>notifications.filter(n=>n.kind==='task'&&independent.includes(n.task_id)).length===2,'both workers connected before independent main command');
+    commandBarrier={version:2,id:'proof-command',workspace:root,executor_instance:'isolated-proof',
+      executor_pid:process.pid,started_at_ms:Date.now(),state:'running'};
+    await fs.mkdir(path.dirname(commandFile),{recursive:true});await fs.writeFile(commandFile,JSON.stringify(commandBarrier));
+    releaseWorkers();
     const results=()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
       .filter(m=>m.kind==='result'&&independent.includes(m.task_id));
-    await wait(()=>results().length===2,'both checked results queue while the long choice response is busy');
-    assert.ok(results().every(m=>m.delivery==='pending'&&!m.read&&!m.intent));
-    const before=o.pageState.version;releaseChoice();
-    await wait(()=>results().some(m=>m.read),'one late runtime event delivers the first result');
-    const firstResult=results().find(m=>m.read);
-    assert.equal(o.sdkPageVersions.get(firstResult.message_id),before+1,'one changed observation suffices; no second idle event');
-    lateEventOnly=true;
-    await wait(()=>commandBarrier&&!o.pageState.current.state.busy,'first result handled; a local command alone holds the second');
-    assert.equal(results().filter(m=>m.read).length,1);
-    const version=o.pageState.version,secondResult=results().find(m=>!m.read);
+    await wait(()=>results().length===2&&results().every(m=>m.delivery==='accepted'),'both SDK results accepted during original busy turn and active command');
+    assert.ok(results().every(m=>!m.read),'host has not started queued processing');
+    assert.ok(results().every(m=>busyNotifications.some(n=>n.id===m.message_id)));
     await fs.writeFile(commandFile,JSON.stringify({...commandBarrier,state:'completed',exit_code:0}));
-    await wait(()=>results().every(m=>m.read),'command file watcher delivers the second result without a page event');
-    assert.equal(o.sdkPageVersions.get(secondResult.message_id),version,'command completion needs no new observer state');
-    commandEventOnly=true;
+    releaseChoice();await wait(()=>results().every(m=>m.read),'host processes its accepted queue after original turn');
     const target=await plugin.participantTarget(origin.sessionId);
     scopedChoice=await plugin.communication.workflow.enqueue(target,{key:'scope-bound-ui-proof',kind:'user-choice',
       text:'Сохранённое решение для текущего плана',role:'orchestrator'});
@@ -819,15 +800,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     assert.equal(readReview(root).review_events.filter(e=>e.type==='feedback').length,2,'review history survives task cleanup');
     const scoped=run.messages.find(m=>m.message_id===scopedChoice.message_id);
     assert.equal(scoped.scope_id,'dialogue-fixture');assert.equal(scoped.read,true);assert.equal(scoped.reply_observed,false);
-    if(!sdkBusy)assert.equal(lateEventOnly&&commandEventOnly,true);assert.equal(preplanEvents.length,3);
-  }
-  if(sdkBusy){
-    const selected=run.messages.filter(message=>message.sdk_busy?.case_id==='full-burst');
-    assert.equal(selected.length,2);assert.ok(selected.every(message=>message.read&&message.yielded&&message.reply_observed));
-    assert.equal(run.sdk_busy.cases[0].status,'complete');assert.equal(run.sdk_busy.cases[0].slots.length,2);
-    const invocation=run.events.filter(event=>event.event_type==='sdk.invoked'&&selected.some(message=>message.message_id===event.message_id));
-    assert.equal(invocation.length,2);assert.ok(invocation.every(event=>event.delivery_attempt_id));
-    assert.equal(new Set(selected.map(message=>message.source_commit)).size,2);
+    assert.equal(preplanEvents.length,3);
   }
   return {notifications,preplanEvents,run,root};
 }

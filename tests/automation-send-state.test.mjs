@@ -15,6 +15,9 @@ test('F15: the sending reservation is saved before dispatch and survives restart
  const restored=new AutomationSendState();restored.restore(checkpoint);
  assert.equal((await send(restored,'turn',async()=>{dispatched++;return {state:'sent'};})).reason,'PAUSE_CONSUMED');
  assert.equal(dispatched,1);
+ assert.equal(restored.unknown(selected),true);
+ assert.equal(restored.unknown({...selected,scopeId:'next'}),true,'a new scope cannot erase an uncertain SDK/DOM effect');
+ assert.equal(restored.unknown({...selected,sessionId:'other'}),false);
 });
 
 test('F15: a failed reservation checkpoint never enters the composer and is retryable',async()=>{

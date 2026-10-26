@@ -126,7 +126,7 @@ test('pre-plan orchestrator receives all startup context through actual MCP and 
   const f=await fixture(t),comm=f.plugin.communication;
   const target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};
   comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?target:null;
-  comm.workflow.observe=()=>({canSend:true,stopped:true});comm.workflow.admission=async()=>true;
+  comm.workflow.observe=()=>({sdkDocumentReady:true,canSend:true,stopped:true});comm.workflow.admission=async()=>true;
   const invite=await comm.reserve(target),text='Контекст 🪟 '.repeat(3500);
   const staged=await comm.startup.stage(target,{request_id:'sdk-request',text,delivery_mode:'sdk-notification'});
   await bridge(t,f);const c=await client(t,f);
@@ -187,7 +187,7 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   const binding={...comm.enrollment.publicMember([...comm.runs.values()][0],member),metadata:{'openai/session':'e'},
     panel_instance_id:randomUUID(),build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
   await comm.bind({...binding,message_supported:true});await comm.sync({...binding,message_supported:true});
-  comm.workflow.reconcile=async()=>({stopped:true,busy:false,commandsIdle:true});
+  comm.workflow.reconcile=async()=>({sdkDocumentReady:true,stopped:true,busy:false,commandsIdle:true});
   await comm.assignment.reconcile('fixture','scope');
   const result=await call('o','workflow_assignment_dispatch',{draft_id:draft.structuredContent.draft_id});
   assert.equal(result.isError,false,JSON.stringify(result));assert.equal(effects.length,1);assert.equal(effects[0].target.role,'O');
@@ -364,13 +364,13 @@ test('lost automatic bind response is recovered with bounded reads and no model 
   assert.equal(ui.messages.length,0);assert.equal(ui.$('enable').hidden,true);
 });
 
-test('real SDK working channel starts automatically, reads full context and waits for the completed reply',async t=>{
+test('real SDK working channel queues the next message during busy generation and reads full context',async t=>{
   const f=await fixture(t),comm=f.plugin.communication;
   const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
   const e={...o,local_session_id:'worker',role:'E',assignment_id:'assignment',task_id:'T001'};
   comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?o:id==='worker'?e:null;
-  const page={canSend:false,stopped:false,busy:true,documentId:'doc',turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1};
-  comm.workflow.observe=()=>page;comm.workflow.admission=async()=>page.canSend;comm.waitMs=30;
+  const page={sdkDocumentReady:false,canSend:false,stopped:false,busy:true,documentId:'doc',turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1};
+  comm.workflow.observe=()=>page;comm.workflow.admission=async()=>page.sdkDocumentReady;comm.waitMs=30;
   const invitation=await comm.reserve(e);await bridge(t,f);const c=await client(t,f);
   await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata});
   const contexts=[];
@@ -388,12 +388,10 @@ test('real SDK working channel starts automatically, reads full context and wait
   const text='Рабочее поручение — полный контекст ✓\n'.repeat(500);
   await comm.workflow.enqueue(e,{key:'first',kind:'assignment-start',text});
   await comm.workflow.enqueue(e,{key:'second',kind:'continue',text:'Второе поручение'});
-  await delay(100);assert.equal(ui.messages.length,0,'bootstrap still busy');
-  Object.assign(page,{canSend:true,stopped:true,busy:false});comm.observeSession('worker');
-  await eventually(()=>contexts.length===1);assert.equal(contexts[0],text);
-  await delay(80);assert.equal(ui.messages.length,1,'SDK/read alone cannot release the next turn');
-  Object.assign(page,{turnId:'a1',userTurnId:'u1',assistantRevision:2,userMessagesRevision:2});comm.observeSession('worker');
-  await eventually(()=>contexts.length===2);assert.equal(contexts[1],'Второе поручение');
+  await delay(100);assert.equal(ui.messages.length,0,'bootstrap document is not ready');
+  page.sdkDocumentReady=true;comm.observeSession('worker');
+  await eventually(()=>contexts.length===2);assert.equal(contexts[0],text);assert.equal(contexts[1],'Второе поручение');
+  assert.equal(page.busy,true);assert.equal(page.canSend,false);
   assert.equal(ui.calls.includes('workflow_communication_enable'),false);
   assert.equal(ui.calls.includes('workflow_communication_join'),false);assert.equal(ui.maxWaits,1);
   assert.equal(ui.calls.includes('workflow_communication_claim_ready'),true);
@@ -407,14 +405,7 @@ test('new immutable panel renews a long-ticket lease while SDK is pending; a pau
     const f=await fixture(t),comm=f.plugin.communication;
     const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
     comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=()=>o;
-    comm.workflow.observe=()=>({canSend:true,stopped:true,busy:false});comm.workflow.admission=async()=>true;comm.waitMs=30;
-    // This renderer contract fixture supplies the optional reserved ticket.
-    // Genuine two-result admission and the 89-second backend attempt are
-    // independently exercised by workflow-channel and the full-cycle fixture.
-    const verify=comm._verify.bind(comm);comm._verify=async(...args)=>{
-      const ticket=await verify(...args);comm.attempt(args[0],false).message.sdk_busy={case_id:'renderer-lease'};
-      return {...ticket,sdk_busy:{case_id:'renderer-lease',sdk_timeout_ms:90000}};
-    };
+    comm.workflow.observe=()=>({sdkDocumentReady:true,canSend:true,stopped:true,busy:false});comm.workflow.admission=async()=>true;comm.waitMs=30;
     const invite=await comm.reserve(o);await bridge(t,f);const c=await client(t,f);
     const registration=await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
     assert.equal(registration.isError,false);await comm.workflow.grant(o);
@@ -447,7 +438,7 @@ test('workflow wait resynchronizes O after Continue even when the host loses STO
     const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
     comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=()=>o;
     let ready=false,changed=false,continued=false,reads=0;
-    comm.workflow.observe=()=>({canSend:ready,stopped:true,busy:false});comm.workflow.admission=async()=>ready;comm.waitMs=20;
+    comm.workflow.observe=()=>({sdkDocumentReady:ready,canSend:ready,stopped:true,busy:false});comm.workflow.admission=async()=>ready;comm.waitMs=20;
     const invite=await comm.reserve(o);await bridge(t,f);const c=await client(t,f);
     await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invite.enrollment_ticket},_meta:metadata});
     await comm.workflow.grant(o);
@@ -498,7 +489,7 @@ for(const shape of ['structured','rpc','stripped'])test('working panel settles c
   const f=await fixture(t),comm=f.plugin.communication;
   const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
   comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=()=>o;
-  comm.workflow.observe=()=>({canSend:true,stopped:true,busy:false,commandsIdle:true});
+  comm.workflow.observe=()=>({sdkDocumentReady:true,canSend:true,stopped:true,busy:false,commandsIdle:true});
   comm.waitMs=30;
   const invitation=await comm.reserve(o);await bridge(t,f);const c=await client(t,f);
   await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata});
@@ -536,7 +527,7 @@ test('closing a finished plan detaches the waiting panel into a final state with
   const f=await fixture(t),comm=f.plugin.communication;
   const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
   let current=o;comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=()=>current;
-  comm.workflow.observe=()=>({canSend:true,stopped:true,busy:false,commandsIdle:true});comm.waitMs=30;
+  comm.workflow.observe=()=>({sdkDocumentReady:true,canSend:true,stopped:true,busy:false,commandsIdle:true});comm.waitMs=30;
   // The plan is done; its deferred cleanup is still shown as a wait.
   comm.workProgress=()=>({version:1,title:'План',phase:'Завершение',busy:false,done:2,total:2,self:'O',tasks:[],history:[],attention:null,
     now:[{actor:'T002',name:'T002',text:'очистка ждёт конца хода исполнителя',kind:'wait',elapsedMs:1000}]});
@@ -806,7 +797,7 @@ test('real SDK: missing Send response becomes unknown; a rejection is distinct, 
   for(const outcome of ['unknown','rejected'])await t.test(outcome,async t=>{
     const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
     const joined=await modelTool(c,metadata,'join',{run_id:'sdk-'+outcome,role:'O'});
-    const ui=await communicationHtml(t,c,{timerMs:ms=>ms===10000?80:ms,onMessage:async()=>outcome==='unknown'?{drop:true}:{isError:true}});
+    const ui=await communicationHtml(t,c,{timerMs:ms=>ms===90000?80:ms,onMessage:async()=>outcome==='unknown'?{drop:true}:{isError:true}});
     await bindAndEnable(ui,joined);await modelTool(c,metadata,'probe',{run_id:joined.run_id,participant_id:joined.participant_id,delay_ms:25});
     await eventually(async()=>(await f.plugin.communication.status({...joined,metadata})).messages[0]?.delivery===outcome);
     await delay(100);assert.equal(ui.messages.length,1);

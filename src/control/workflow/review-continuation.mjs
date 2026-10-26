@@ -18,7 +18,7 @@ export function reviewContinueMessage(workspace,s) {
 export class ReviewContinuation {
   constructor({selected,client,send,available,saveCheckpoint,onChange=()=>{},status=reviewStatus,acknowledge=acknowledgeReview,...timing}) {
     Object.assign(this,{selected,client,status,acknowledge});this.stops=new Map();this.signature='';this.persistenceError=false;
-    this.flow=new PlanContinuation({...timing,selected:()=>this.selection(),available:()=>available()&&!this.stops.has(owner(selected()))&&!this.persistenceError,
+    this.flow=new PlanContinuation({...timing,durableQueue:true,selected:()=>this.selection(),available:()=>available()&&!this.stops.has(owner(selected()))&&!this.persistenceError,
       inspectPlan:async()=>this.inspect(),saveCheckpoint:async checkpoint=>{
         await saveCheckpoint({...checkpoint,version:3,entries:checkpoint?.entries??[],cycles:checkpoint?.cycles??[],reviewStops:[...this.stops.values()]});
       },onChange,
@@ -33,8 +33,10 @@ export class ReviewContinuation {
           if(!current() || !same(this.status(p.workspace)))return false;
           return await before() && current() && same(this.status(p.workspace));
         };
-        const result=await send(reviewContinueMessage(p.workspace,s),current,beforeSend,this.flow);
-        if(result.state==='sent' && s.stage==='NEEDS_USER'){
+        const result=await send(reviewContinueMessage(p.workspace,s),current,beforeSend,this.flow,{
+          key:'review:'+s.run_id+':'+s.generation,ui_event:{type:'review-continuation',run_id:s.run_id,
+            generation:s.generation,recipient_session_id:p.sessionId}});
+        if(['sent','queued'].includes(result.state) && s.stage==='NEEDS_USER'){
           this.acknowledge(p.workspace,s.run_id);this.client.refresh();
         }
         return result;

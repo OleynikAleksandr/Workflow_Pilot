@@ -79,7 +79,8 @@ test('orchestrated plan runs end to end: waves, pause, block and escalation, del
     executionSnapshot: { parallel_allowed: true, max_workers: 2 } };
   const control = new ExecutionControl({ identity: () => plan.project_id });
   const page = { documentId: 'doc', stopped: true, canSend: true, lastMessageRole: 'assistant', userMessagesRevision: 0, assistantRevision: 0, manualSendRevision: 0 };
-  const workers = new Map(), sent = [], corrections = [], toWorkers = [];
+  const workers = new Map(), sent = [], corrections = [], toWorkers = [],receipts=new Map();
+  const enqueue=()=>{const id='sdk-'+(receipts.size+1);receipts.set(id,page.assistantRevision);return {state:'queued',message_id:id};};
   let book = {};
   const runtime = new ParallelExecution({ kit, book, origin: (_w, id) => id === 'orchestrator' ? origin : null, orchestrator: () => 'orchestrator',
     isEnabled: (w, s) => ['running', 'pausing'].includes(control.view(w, s).state), isIssuing: (w, s) => control.issuing(w, s),
@@ -88,9 +89,10 @@ test('orchestrated plan runs end to end: waves, pause, block and escalation, del
     openWorker: async assignment => { workers.set(assignment.id, { assignment, stopped: false }); return { sessionId: 'session-' + assignment.id }; },
     workerState: assignment => ({ stopped: workers.get(assignment.id)?.stopped ?? false, canSend: true }), mainState: () => ({ ...page }),
     save: async data => { book = structuredClone(data); },
-    sendCorrection: async (_origin, text) => { corrections.push(text); return { state: 'sent' }; },
-    sendWorker: async (assignment, _entry, text) => { toWorkers.push({ id: assignment.id, text }); return { state: 'sent' }; },
-    sendFinalization: async (_origin, text, ready, before) => { assert.ok(ready()); assert.ok(await before()); sent.push(text); return { state: 'sent' }; } });
+    deliveryReceipt:id=>({delivery:'accepted',reply_observed:receipts.has(id)&&page.assistantRevision>receipts.get(id)}),
+    sendCorrection: async (_origin, text) => { corrections.push(text); return enqueue(); },
+    sendWorker: async (assignment, _entry, text) => { toWorkers.push({ id: assignment.id, text }); return enqueue(); },
+    sendFinalization: async (_origin, text, ready, before) => { assert.ok(ready()); assert.ok(await before()); sent.push(text); return enqueue(); } });
   t.after(() => runtime.dispose());
   runtime.observe(root);
   const signal = () => runtime.signal(root);

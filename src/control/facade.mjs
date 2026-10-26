@@ -10,7 +10,6 @@ import { TunnelClipboard } from './startup/tunnel-clipboard.mjs';
 import { createProjectLifecycle } from './projects/lifecycle.mjs';
 import { SettingsService } from './settings/service.mjs';
 import { PluginProjects } from './plugin/service.mjs';
-import {COMMUNICATION_BUILD} from '../contracts/backend.mjs';
 export { startupPlatformOptions, startupSupported } from './startup/platform.mjs';
 export { publicVpsState, publicRuntimeState } from './startup/public-state.mjs';
 export { DEFAULT_PARALLEL_SETTINGS, validateParallelSettings } from './workflow/parallel-settings.mjs';
@@ -76,16 +75,6 @@ export class ControlFacade {
   createDeletion(options) { return this.projects.createDeletion(options); }
   createPlugin(options = {}) {
     const plugin=new PluginProjects({ projects:this.projects,plans:this.plans,migrate:(target,input)=>this.#workflow.migrateAssignments(target,input),
-      sdkBusyProfile:async target=>{
-        const project=this.projects.snapshot().projects.find(project=>project.projectId===target.project_id&&!project.parentWorkspace&&!project.archivedAt);
-        if(!project||target.role!=='O'||!target.scope_id)return {version:1,mode:'off'};
-        const profile=await this.#execution.sdkBusyExperiment?.(project.workspace,{...target,build_id:COMMUNICATION_BUILD})??{version:1,mode:'off'};
-        if(profile.mode==='sdk-busy-burst')this.#execution.watchSdkBusyExperiment?.(project.workspace,()=>{
-          void plugin.communication.workflow.refreshExperiment(target).catch(()=>{});
-        });
-        return profile;
-      },
-      sdkBusyProbe:input=>this.#execution.sdkBusyProbe(input),
       loadContext:workspace=>this.plans.loadContext(workspace), ...options });
     return plugin;
   }

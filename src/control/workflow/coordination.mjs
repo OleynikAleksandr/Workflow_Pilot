@@ -16,7 +16,6 @@ import { configureExecutor, executorPageState } from './executor-session.mjs';
 import { ProjectInputWatch, ChildCommandWatches, CHATGPT_CHAT_ENTRYPOINT } from '../../execution/facade.mjs';
 import { removeProjectSettings, belongsToProject } from '../projects/project-state-cleanup.mjs';
 import { unsentExecutor } from '../sessions/workspace-session.mjs';
-import { AUTOMATIC_DIALOGUE_ENABLED } from '../../contracts/backend.mjs';
 import {DialogueDelivery} from './dialogue-delivery.mjs';
 import { UserChoices, collectChoiceFacts } from './user-choices.mjs';
 import { readExecutionMode, chooseExecutionMode } from '@webpilot/workflow-kit/lib/execution-mode';
@@ -70,11 +69,19 @@ function watchRecovery(root){
 }
 let reviewCheckpoint=null,automationCheckpoint=null,parallelExecutionBook={};
 const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&liveSessions?.find(project),
-  route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>executionControl.view(workspace,scope),
+  route:(workspace,scope)=>executionControl.route(workspace,scope),state:(workspace,scope)=>({...executionControl.view(workspace,scope),sessionId:projectPlanContinuation.state(workspace)?.sessionId}),
   signals:workspace=>executionKit.signals(workspace),
   uiEventCurrent:(target,event)=>{
     const project=dialogue.project(target.local_session_id);
-    return !!project&&planReview.currentPreference(project.parentWorkspace??project.workspace,event,target.local_session_id);
+    if(!project)return false;
+    const workspace=project.parentWorkspace??project.workspace;
+    if(event.type==='review-continuation'){
+      const state=readReview(workspace);
+      return state.enabled&&state.run_id===event.run_id&&state.generation===event.generation
+        &&state.recipient_session_id===target.local_session_id
+        &&['PREPARED','AUTHOR_PENDING','AGREED','NEEDS_USER'].includes(state.stage);
+    }
+    return planReview.currentPreference(workspace,event,target.local_session_id);
   },
   kitPermission:(workspace,input)=>sessionPlans.call(workspace,'plan:permission',[],input)});
 let permissionTail=Promise.resolve();
@@ -129,10 +136,11 @@ const planMonitor = new PlanMonitor({ selected: () => store.selected(),
 const automationSend = new AutomationSendState({save:async checkpoint=>{
   automationCheckpoint=checkpoint;await saveSettings({automationCheckpoint});
 }});
-function sendAutomation(text,canContinue,onBeforeSend,flow) {
-  const sender=liveSessions.visible?.primaryAutomation?.automation??automationSend;
-  return sender.send({selected:flow.selected(),page:flow.page,ready:canContinue,kind:flow===planContinuation?'plan':'review',
-    perform:()=>getController().composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})});
+async function sendAutomation(text,canContinue,onBeforeSend,flow,meta) {
+  if(!canContinue()||!await onBeforeSend())return {state:'cancelled'};
+  if(automationSend.unknown(flow.selected()))return {state:'unknown'};
+  if(automationSend.blocked(flow.selected()))return {state:'cancelled'};
+  return dialogue.send(store.project(flow.selected().workspace,flow.selected().sessionId),text,'review',meta);
 }
 const emptyPlanContinuation=new PlanContinuation({selected:()=>null,inspectPlan:async()=>({}),send:async()=>({})});
 const planContinuation=new Proxy({}, {
@@ -140,7 +148,7 @@ const planContinuation=new Proxy({}, {
   set:(_target,key,value)=>{(liveSessions.visible?.primaryAutomation?.flow??emptyPlanContinuation)[key]=value;return true;}
 });
 function configurePrimary(record) {
-  return configureProjectPlanContinuation(record,{store,authorization:projectPlanContinuation,
+  return configureProjectPlanContinuation(record,{store,authorization:projectPlanContinuation,dialogue,
     inspectPlan:selected=>readPlanContinuationState(selected,workspaceSetup.environment),onChange:()=>publish(),
     log:(event,fields)=>record.diagnostics?.log.record('plan-continuation',event,fields)});
 }
@@ -239,7 +247,7 @@ async function restoreExecutionPage(project,assignment=null) {
   if(unsent)project=await store.resetUnsentExecutor(project.workspace,project.sessionId);
   const record=liveSessions.ensure(project);
   if(assignment)configureExecutor(record,{store,enabled:executorEnabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
-    dialogue:dialogue.uses(project)?dialogue:null,
+    dialogue,
     inspectPlan:selected=>readPlanContinuationState(selected,workspaceSetup.environment),onChange:()=>publish(),
     signal:()=>{void execution.signal(project.parentWorkspace);},
     log:(event,fields)=>record.diagnostics?.log.record('plan-continuation',event,fields)});
@@ -268,9 +276,8 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
     ?executionControl.block(workspace,scope,issue??{code:'EXECUTION_BLOCKED',message},{busy:true})
     :executionControl.pause(workspace,scope,reason,message??null),
   sendWorker:(assignment,entry,text,ready,before,meta)=>{
-    const project=store.project(assignment.worktree,entry?.sessionId),record=liveRecord(project);
-    if(dialogue.uses(project))return dialogue.send(project,text,'decision',meta);
-    return record?.executor?record.executor.deliver(text,ready,before):Promise.resolve({state:'cancelled',reason:'PAGE_NOT_READY'});
+    const project=store.project(assignment.worktree,entry?.sessionId);
+    return dialogue.send(project,text,'decision',meta);
   },
   orchestrator:storedOrchestrator,
   origin:(workspace,id)=>store.project(workspace,id),
@@ -318,14 +325,14 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   },
   mainState:origin=>{
     const record=liveRecord(origin),page=record?.pageState.current;
-    return {...executorPageState(record),...(dialogue.reserved(origin)?{stopped:false,canSend:false}:{}),documentId:page?.documentId??null,
+    return {...executorPageState(record),documentId:page?.documentId??null,
       lastMessageRole:page?.state?.lastMessageRole??null,
       userMessagesRevision:page?.state?.userMessagesRevision??null,
       manualInputRevision:page?.state?.manualInputRevision??0,
       manualStopRevision:page?.state?.manualStopRevision??0};
   },
   workerState:(assignment,entry)=>{const project=store.project(assignment.worktree,entry?.sessionId);return {
-    ...executorPageState(liveRecord(project)),...(dialogue.reserved(project)?{stopped:false,canSend:false}:{} )};},
+    ...executorPageState(liveRecord(project))};},
   restoreOrigin:origin=>restoreExecutionPage(origin),
   restoreWorker:async(assignment,origin,entry,recovery)=>{
     if(!assignment.worktree)return null;
@@ -345,7 +352,7 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   openWorker:async(assignment,origin)=>{
     const project=await store.ensureExecutor(assignment,origin),record=liveSessions.ensure(project);
     configureExecutor(record,{store,enabled:executorEnabled(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId),
-      dialogue:dialogue.uses(project)?dialogue:null,
+      dialogue,
       inspectPlan:selected=>readPlanContinuationState(selected,workspaceSetup.environment),onChange:()=>publish(),
       signal:()=>{void execution.signal(origin.workspace);},
       log:(event,fields)=>record.diagnostics?.log.record('plan-continuation',event,fields)});
@@ -358,11 +365,7 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   sendDiagnostic:(origin,text,canContinue,onBeforeSend,meta)=>sendExecutionMessage(origin,text,canContinue,onBeforeSend,'diagnostic',meta),
   sendFinalization:(origin,text,canContinue,onBeforeSend,meta)=>sendExecutionMessage(origin,text,canContinue,onBeforeSend,'finalization',meta)});
 function sendExecutionMessage(origin,text,canContinue,onBeforeSend,kind,meta) {
-  if(dialogue.uses(origin))return dialogue.send(origin,text,kind,meta);
-  const record=liveRecord(origin),sender=record?.primaryAutomation?.automation;
-  if(!sender)return Promise.resolve({state:'cancelled',reason:'PAGE_NOT_READY'});
-  return sender.send({selected:origin,page:record.pageState.current?.state,kind,ready:canContinue,
-    perform:()=>record.composer.sendUserMessage({text,canContinue,onBeforeSend,waitForAcknowledgement:false,cleanupOnCancel:true})});
+  return dialogue.send(origin,text,kind,meta);
 }
 // The button command: verified against the published plan, never against a chat's guess.
 // The one plan button: start, pause and continue. running: undefined toggles, a boolean sets.
@@ -381,7 +384,7 @@ async function setPlanExecution(running,chosen=null) {
   if(reviewBlocksExecution(readReview(workspace),info.scopeId))
     throw Object.assign(new Error('План ещё не согласован в Review.'),{code:'PLAN_NOT_APPROVED'});
   if(info.planExecution?.execution_strategy==='orchestrated') {
-    executionControl.selectRoute(workspace,info.scopeId,AUTOMATIC_DIALOGUE_ENABLED&&getPlugin()?'plugin-v1':'legacy-dom');
+    executionControl.selectRoute(workspace,info.scopeId,'plugin-v1');
     const {state}=executionControl.view(workspace,info.scopeId);
     const initialEntry=executionControl.entry(workspace,info.scopeId);
     if(running!==false&&state!=='running'&&state!=='pausing'&&state!=='complete'){
@@ -427,6 +430,8 @@ async function setPlanExecution(running,chosen=null) {
   }
   // A plan of the former model: the same button drives its continuation engine; pause is immediate.
   const want=running??!projectPlanContinuation.enabled(workspace,info.scopeId);
+  executionControl.selectRoute(workspace,info.scopeId,'plugin-v1');
+  await queuePermission(()=>dialogue.permission(workspace,info.scopeId,want?'running':'paused'));
   await continuePlan(want);
   if(want&&executionControl.view(workspace,info.scopeId).state!=='running')executionControl.toggle(workspace,info.scopeId);
   if(!want)executionControl.stop(workspace,info.scopeId);

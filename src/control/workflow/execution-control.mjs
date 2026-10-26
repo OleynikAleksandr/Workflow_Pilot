@@ -14,8 +14,10 @@ export class ExecutionControl {
       if (!absolute(workspace) || !entry || !validScope(entry.scopeId) || !EXECUTION_STATES.includes(entry.state)) continue;
       if (entry.reason != null && !PAUSE_REASONS.includes(entry.reason)) continue;
       this.book[workspace] = { projectId: typeof entry.projectId === 'string' ? entry.projectId : null, scopeId: entry.scopeId,
-        route:entry.route==='plugin-v1'?'plugin-v1':'legacy-dom',
-        state: entry.state, reason: entry.reason ?? null, message: typeof entry.message === 'string' ? entry.message.slice(0, 1000) : null,
+        route:'plugin-v1',
+        state: entry.route!=='plugin-v1'&&['running','pausing'].includes(entry.state)?'paused':entry.state,
+        reason:entry.route!=='plugin-v1'&&['running','pausing'].includes(entry.state)?'restart':entry.reason??null,
+        message:entry.route!=='plugin-v1'&&['running','pausing'].includes(entry.state)?'Канал обновлён. Нажмите «Продолжить».':typeof entry.message==='string'?entry.message.slice(0,1000):null,
         updatedAt: Number.isFinite(entry.updatedAt) ? entry.updatedAt : 0,
         ...(entry.issue?.code&&typeof entry.issue.message==='string'?{issue:structuredClone(entry.issue)}:{}) };
     }
@@ -27,7 +29,7 @@ export class ExecutionControl {
   }}
   route(workspace,scopeId){return this.entry(workspace,scopeId)?.route??null;}
   selectRoute(workspace,scopeId,route) {
-    if(!['plugin-v1','legacy-dom'].includes(route))throw fail('PLAN_EXECUTION_INVALID','Неизвестный маршрут выполнения.');
+    if(route!=='plugin-v1')throw fail('PLAN_EXECUTION_INVALID','Неизвестный маршрут выполнения.');
     if(this.entry(workspace,scopeId))return this.route(workspace,scopeId);
     this.write(workspace,scopeId,'not-started',null,null,route,false);
     return route;
@@ -48,7 +50,7 @@ export class ExecutionControl {
   enabled(workspace, scopeId) { return this.view(workspace, scopeId).state === 'running'; }
   // Executors keep their normal continuations during pausing; only new tasks wait.
   issuing(workspace, scopeId) { return this.enabled(workspace, scopeId); }
-  write(workspace, scopeId, state, reason = null, message = null, route = 'legacy-dom', notify = true, issue = null) {
+  write(workspace, scopeId, state, reason = null, message = null, route = 'plugin-v1', notify = true, issue = null) {
     if (!absolute(workspace) || !validScope(scopeId)) throw fail('PLAN_EXECUTION_INVALID', 'Нужен проект и опубликованный план.');
     const old = this.entry(workspace, scopeId);
     if (old && old.state === state && old.reason === reason && old.message === message&&JSON.stringify(old.issue??null)===JSON.stringify(issue)) return old;

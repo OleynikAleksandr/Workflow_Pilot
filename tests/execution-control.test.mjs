@@ -3,21 +3,15 @@ import assert from 'node:assert/strict';
 import { ExecutionControl } from '../src/control/workflow/execution-control.mjs';
 
 const W = '/projects/main', SCOPE = 'orchestrated-scope';
-test('backend restart revokes only the plan channel and one Continue restores the pinned route',()=>{
+test('all restored routes require Continue and legacy routes migrate to SDK',()=>{
   const value=new ExecutionControl();value.selectRoute(W,SCOPE,'plugin-v1');value.toggle(W,SCOPE);
-  value.selectRoute('/legacy',SCOPE,'legacy-dom');value.toggle('/legacy',SCOPE);
-  const restored=new ExecutionControl({saved:value.snapshot()});restored.revokeAfterRestart();
-  assert.equal(restored.view(W,SCOPE).state,'paused');assert.equal(restored.view(W,SCOPE).reason,'restart');
-  assert.equal(restored.view('/legacy',SCOPE).state,'running');assert.equal(restored.toggle(W,SCOPE).state,'running');
-  assert.equal(restored.route(W,SCOPE),'plugin-v1');
-});
-test('the working transport is pinned per plan and old saved plans retain DOM',()=>{
-  const c=new ExecutionControl();assert.equal(c.selectRoute(W,SCOPE,'plugin-v1'),'plugin-v1');c.toggle(W,SCOPE);
-  assert.equal(c.selectRoute(W,SCOPE,'legacy-dom'),'plugin-v1');
-  const restored=new ExecutionControl({saved:c.snapshot()});assert.equal(restored.route(W,SCOPE),'plugin-v1');
-  const old=new ExecutionControl({saved:{[W]:{scopeId:SCOPE,state:'running'}}});
-  assert.equal(old.selectRoute(W,SCOPE,'plugin-v1'),'legacy-dom');
-  assert.equal(restored.selectRoute(W,'next-scope','legacy-dom'),'legacy-dom');
+  const saved=value.snapshot();saved['/legacy']={scopeId:SCOPE,state:'running',route:'legacy-dom'};
+  const restored=new ExecutionControl({saved});restored.revokeAfterRestart();
+  for(const workspace of [W,'/legacy']){
+    assert.equal(restored.view(workspace,SCOPE).state,'paused');assert.equal(restored.route(workspace,SCOPE),'plugin-v1');
+    assert.equal(restored.toggle(workspace,SCOPE).state,'running');
+  }
+  assert.throws(()=>restored.selectRoute(W,'next','legacy-dom'),{code:'PLAN_EXECUTION_INVALID'});
 });
 function control(projectId = 'project-1') {
   const changes = [];
@@ -118,7 +112,8 @@ test('button command: only a published orchestrated plan starts, the state is sa
   const create = () => {
     const control = new ControlFacade({ storageFile: path.join(root, 'profile/sessions.json'), execution: {} });
     control.configureProjects({});
-    const workflow = control.configureWorkflow({ getController: () => null, available: () => false, contextAvailable: () => false,
+    const workflow = control.configureWorkflow({getPlugin:()=>({participantTarget:async id=>({role:'O',local_session_id:id,scope_id:SCOPE,project_id:'main-id'}),
+      communication:{backendId:'fixture',runs:new Map(),workflow:{grant:async()=>({})}}}), getController: () => null, available: () => false, contextAvailable: () => false,
       onChange: () => {}, report: () => {}, save: async () => {},inspectExecution:async()=>{
         inspectionStarted?.();if(inspectGate)await inspectGate;return preflight;
       } });
@@ -166,7 +161,7 @@ test('button command: only a published orchestrated plan starts, the state is sa
   assert.equal(saved.executionControl[main.workspace].state, 'running');
   await control.projects.whenIdle();
   const second = create();await second.control.projects.load();const restarted = second.workflow;restarted.restore(saved);
-  assert.equal(restarted.executionControl.view(main.workspace, SCOPE).state, 'running');
+  assert.equal(restarted.executionControl.view(main.workspace, SCOPE).state, 'paused');
   await restarted.holdProjectsForRecovery([main.workspace]);
   assert.equal(restarted.executionControl.view(main.workspace,SCOPE).state,'paused');
   assert.equal(restarted.executorEnabled(main.workspace,SCOPE),false);

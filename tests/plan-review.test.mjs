@@ -119,7 +119,7 @@ test('explicit session ID through normal prepare and simulated Claude round rout
   assert.equal(sent.length,0,'stale client state from another checkout never routes');
   selected={...original,sessionId:'foreign-chat'};observe({});flow.update();await drain();
   assert.equal(sent.length,0,'another chat never receives continuation');
-  selected=original;observe({draftPresent:true});flow.update();await drain();assert.equal(sent.length,0);
+  selected=original;observe({draftPresent:true});flow.update();await drain();assert.equal(sent.length,1,'SDK preserves draft and delivers');
   observe({draftPresent:false});await drain();
   assert.equal(sent.length,1);assert.equal(sent[0].sessionId,recipient.recipient_session_id);
   assert.match(sent[0].message,/AUTHOR_PENDING/);
@@ -131,8 +131,8 @@ test('explicit session ID through normal prepare and simulated Claude round rout
   };
   await restart();assert.equal(sent.length,1,'restart does not duplicate a delivered continuation');
   resultState='unknown';observe({busy:true});observe({busy:false,turnId:'next-pause'});await drain();
-  assert.equal(sent.length,2);
-  await restart();assert.equal(sent.length,2,'restart never repeats UNKNOWN');
+  assert.equal(sent.length,1,'another answer is not another review event');
+  await restart();assert.equal(sent.length,1,'same review generation is not repeated');
   assert.equal(readReview(root).recipient_session_id,recipient.recipient_session_id);
 });
 
@@ -276,7 +276,7 @@ test('Review continuation at NONE targets its recipient, asks once and respects 
   const observe=patch=>{Object.assign(page,patch);flow.observe({state:{...page},documentId:'doc'});};
   const drain=async()=>{await new Promise(r=>setTimeout(r,10));await flow.flow.reconcile();};
   try {
-    observe({});flow.update();await drain();assert.equal(sent.length,0);
+    observe({});flow.update();await drain();assert.equal(sent.length,1);
     observe({draftPresent:false});await drain();assert.equal(sent.length,1);assert.match(sent[0],/не разрешение выполнения задач/);
     client.state={...client.state,stage:'NEEDS_USER',generation:2,round:4};flow.update();observe({turnId:'b'});await drain();
     assert.equal(sent.length,2);assert.match(sent[1],/спроси, что делать/);
@@ -284,7 +284,7 @@ test('Review continuation at NONE targets its recipient, asks once and respects 
     client.state={...client.state,stage:'PREPARED',generation:4,notification_handled:false};flow.update();
     observe({busy:true,turnId:'d'});observe({busy:false,manualStopRevision:1});await drain();assert.equal(sent.length,2);
     assert.equal(saved.reviewStops.length,1);
-    observe({manualSendRevision:1,userTurnId:'u2',lastMessageRole:'user'});await drain();assert.equal(sent.length,2);
+    observe({manualSendRevision:1,userTurnId:'u2',lastMessageRole:'user'});await drain();assert.equal(sent.length,3,'SDK does not wait for the user answer');
     observe({busy:true});observe({busy:false,turnId:'e',lastMessageRole:'assistant'});await drain();assert.equal(sent.length,3);
     selected.sessionId='other';flow.update();observe({turnId:'f'});await drain();assert.equal(sent.length,3,'wrong recipient does not receive a review');
   } finally {flow.dispose();}

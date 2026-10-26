@@ -27,7 +27,8 @@ test('restart preserves only the same unfinished scope and independent per-chat 
  assert.equal(b.checkpoint('/a','one','other').continuationCheckpoint.status,'sent');
  assert.deepEqual(b.checkpoint('/b','one','chat'),{});
  b.sync('/a','next',{confirmed:true,planRevision:2});b.saveCheckpoint('/a','one','chat',{continuationCheckpoint:{status:'stale'}});
- assert.deepEqual(b.checkpoint('/a','next','chat'),{});
+ assert.deepEqual(b.checkpoint('/a','next','chat').continuationCheckpoint.entries,[{status:'sending'}]);
+ assert.deepEqual(b.checkpoint('/a','next','other'),{});
 });
 
 test('two main chats continue independently while hidden; completion and OFF affect only their project',async t=>{
@@ -40,12 +41,12 @@ test('two main chats continue independently while hidden; completion and OFF aff
   const workspace=path.join(root,name);await fs.mkdir(workspace);
   const project={workspace,projectId:name,sessionId:name,chatUrl:'https://chatgpt.com/c/'+name,scopeId:'scope-'+name};
   projects.set(workspace,project);plans.set(workspace,{...project,inspectedSessionId:name,scopeStatus:'ACTIVE',confirmed:true,planRevision:1,
-    planView:{tasks:[{id:'T001',status:'pending'}]}});
+    nextTask:{id:'T001',title:'Task'},planView:{tasks:[{id:'T001',status:'pending'}]}});
   const record={identity:{workspace,sessionId:name},project:()=>project,ready:true,loading:false,cleanups:[],
     controller:{pending:false,state:{phase:'delivered'},projectChanged:()=>{}},composer:{inFlight:false,sendUserMessage:async({canContinue,onBeforeSend})=>{
       if(!canContinue()||!await onBeforeSend())return {state:'cancelled'};sends.push(name);return {state:'sent'};}}};
   auth.set(workspace,project.scopeId,true,name);
-  configureProjectPlanContinuation(record,{store:{inspect:async w=>structuredClone(plans.get(w))},authorization:auth,
+  configureProjectPlanContinuation(record,{dialogue:{send:async()=>{sends.push(name);return {state:'queued'};}},store:{inspect:async w=>structuredClone(plans.get(w))},authorization:auth,
     inspectPlan:async p=>structuredClone(plans.get(p.workspace)),onChange:()=>{}});records.push(record);
   t.after(()=>record.cleanups.forEach(fn=>fn()));
  }
@@ -97,6 +98,16 @@ test('legacy permission migrates only with its original registered chat',()=>{
  const saved={'/a':{scopeId:'scope',enabled:true,sessionId:'old',sessions:{}}};
  const a=new ProjectPlanContinuation({saved,identity:()=> 'new',ownsSession:()=>false});assert.equal(a.enabled('/a','scope'),false);
  const b=new ProjectPlanContinuation({saved,identity:()=> 'same',ownsSession:()=>true});assert.equal(b.enabled('/a','scope'),true);assert.equal(b.state('/a').projectId,'same');
+});
+test('new scope preserves unresolved continuation effects without inheriting permission or completed intents',()=>{
+ const a=new ProjectPlanContinuation();a.set('/a','old',true,'chat');
+ const unknown={key:JSON.stringify(['/a','chat','old','https://chatgpt.com/c/abcdefgh']),turnId:'pause',status:'sending'};
+ a.saveCheckpoint('/a','old','chat',{continuationCheckpoint:{version:3,entries:[unknown,{...unknown,turnId:'done',status:'sent'}]}});
+ a.sync('/a','new',{confirmed:true,planRevision:2});
+ assert.equal(a.enabled('/a','new'),false);
+ assert.deepEqual(a.checkpoint('/a','new','chat').continuationCheckpoint.entries,[unknown]);
+ const restored=new ProjectPlanContinuation({saved:a.snapshot()});restored.set('/a','new',true,'chat');
+ assert.deepEqual(restored.checkpoint('/a','new','chat').continuationCheckpoint.entries,[unknown]);
 });
 
 test('A01-A05: awaitingPlan survives stale NONE, read errors and restart; only confirmed higher revision binds once to published origin',()=>{
@@ -166,7 +177,7 @@ test('A01/A02/A04/A06: two main monitors in one project send only from plan orig
       sends.push(id);return {state:'sent'};
     }}};
   records.push(record);
-  configureProjectPlanContinuation(record,{authorization:auth,store:{inspect:async(_workspace,sessionId)=>{
+  configureProjectPlanContinuation(record,{dialogue:{send:async()=>{sends.push(id);return {state:'queued'};}},authorization:auth,store:{inspect:async(_workspace,sessionId)=>{
     if(failA&&sessionId==='a')throw Error('PLAN_READ_FAILED');
     return {...structuredClone(staleA&&sessionId==='a'?{
       ...state,scopeId:null,confirmed:false,scopeStatus:'NONE',planRevision:0,planView:{tasks:[]}}:state),inspectedSessionId:sessionId};
@@ -182,7 +193,7 @@ test('A01/A02/A04/A06: two main monitors in one project send only from plan orig
  // The non-origin chat reports stale NONE while the published plan names b.
  Object.assign(state,{scopeId:'first',scopeStatus:'ACTIVE',confirmed:true,planRevision:3,
   planExecution:{execution_strategy:'sequential',execution_origin_session_id:'b'},
-  planView:{tasks:[{id:'T001',status:'pending'}]}});
+  nextTask:{id:'T001',title:'Task'},planView:{tasks:[{id:'T001',status:'pending'}]}});
  staleA=true;await records[0].primaryAutomation.monitor.tick();
  await records[1].primaryAutomation.monitor.tick();await settle();
  assert.equal(auth.enabled(root,'first'),true);assert.equal(auth.state(root).sessionId,'b');

@@ -21,6 +21,10 @@ export class AutomationSendState {
       this.stopSave=this.persist().then(()=>{this.persistenceError=false;},()=>{this.persistenceError=true;});
   }
   blocked(selected){return this.persistenceError||!!this.cycles.get(owner(selected))?.stop;}
+  unknown(selected){const current=owner(selected);return !!current&&[...this.entries.values()].some(entry=>{
+    if(entry.status!=='sending')return false;
+    try{return JSON.parse(entry.key)[0]===current;}catch{return true;}
+  });}
   key(selected,page){const k=owner(selected);return k && JSON.stringify([k,page?.turnId || 'cycle:'+(this.cycles.get(k)?.generation??0)]);}
   async persist(){
     while(this.entries.size>400)this.entries.delete(this.entries.keys().next().value);
