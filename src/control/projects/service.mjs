@@ -29,6 +29,7 @@ export class ProjectsService {
   setProjectDisplayName(...args) { return this.#store.setProjectDisplayName(...args); }
   renameSession(...args) { return this.#store.renameSession(...args); }
   setSessionTitle(...args) { return this.#store.setSessionTitle(...args); }
+  setSessionTopic(...args) { return this.#store.setSessionTopic(...args); }
   applyScopeTitle(...args) { return this.#store.applyScopeTitle(...args); }
   recordAgentTime(...args) { return this.#store.recordAgentTime(...args); }
   updateSession(...args) { return this.#store.updateSession(...args); }

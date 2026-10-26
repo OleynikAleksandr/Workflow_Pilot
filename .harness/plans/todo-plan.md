@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1162,
+  "plan_revision": 1166,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "session-choice-and-delivery",
@@ -46,7 +46,6 @@
       "src/control/sessions/workspace-session.mjs",
       "src/control/plugin/startup-context.mjs",
       "packages/workflow-kit/src/lib/role-protocol.mjs",
-      "packages/workflow-kit/src/templates/PLAN.md",
       "src/contracts/backend.mjs",
       "package-lock.json",
       "packages/workflow-kit/package.json",
@@ -64,7 +63,10 @@
       "tests/backend-api.test.mjs",
       "package.json",
       "release-manifest.json",
-      "src/contracts/plugin-communication.mjs"
+      "src/contracts/plugin-communication.mjs",
+      "tests/fixtures/released-session-schema-0535.json",
+      "tests/fixtures/plugin-host.mjs",
+      "tests/context-session.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/session-choice-and-delivery.md",
@@ -81,7 +83,8 @@
       "packages/workflow-kit/README.md",
       "docs/acceptance/session-choice-and-delivery.md",
       "docs/planning/session-choice-release.md",
-      "docs/modules/release.md"
+      "docs/modules/release.md",
+      "packages/workflow-kit/src/templates/PLAN.md"
     ]
   },
   "baseline_commit": "c79a5af4275efc169dab33547ce48853abc1a4c9",
@@ -192,8 +195,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "session-choice-and-delivery",
         "task_id": "NAME",
@@ -211,7 +214,6 @@
         "src/backend/desktop-model.mjs",
         "src/control/plugin/startup-context.mjs",
         "packages/workflow-kit/src/lib/role-protocol.mjs",
-        "packages/workflow-kit/src/templates/PLAN.md",
         "src/contracts/backend.mjs",
         "package-lock.json",
         "packages/workflow-kit/package.json",
@@ -225,9 +227,14 @@
         "tests/migration-compatibility.test.mjs",
         "src/control/context/context-session.mjs",
         "src/execution/facade.mjs",
-        "packages/workflow-kit/src/lib/installer.mjs"
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "tests/fixtures/released-session-schema-0535.json",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/context-session.test.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "packages/workflow-kit/src/templates/PLAN.md"
+      ],
       "verification_ids": [
         "unit-all",
         "electron-smoke",
@@ -266,7 +273,30 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Подготовка 26.10.2026: реализация допускается только после отдельного поручения пользователя. Работать через Kit без делегирования, моделей, UI control, рабочего профиля и Test_003; donor заморожен. По NAME001 добавить один узкий MCP-вызов через существующий мост. Идентичность только свежая host metadata/registration/participantTarget. Переиспользовать ProjectsService/WorkspaceStore и title sync; topic отдельный от manual. Инструкция агенту именовать тему в первом содержательном ходе до mode-request/Review/плана; без извлечения произвольного текста DOM и без нового хода. Проверить реальные schema/discovery/startup инструкции, чтение старых записей и exact-session SSE. Перед проверками Kit с production-пакетом безопасно проверить Python caches; Python -B. Маршрут — отдельный sessionTitle callback bridge → backend → PluginProjects, не communication.*. Исходники Kit 1.10.2/role 11 с upgrade, приложение/BUILD 0.5.35. Topic несовместим со старым validator: тест и честное ограничение обратного data rollback, без пользовательского профиля."
+      "task_brief": "Подготовка 26.10.2026: реализация допускается только после отдельного поручения пользователя. Работать через Kit без делегирования, моделей, UI control, рабочего профиля и Test_003; donor заморожен. По NAME001 добавить один узкий MCP-вызов через существующий мост. Идентичность только свежая host metadata/registration/participantTarget. Переиспользовать ProjectsService/WorkspaceStore и title sync; topic отдельный от manual. Инструкция агенту именовать тему в первом содержательном ходе до mode-request/Review/плана; без извлечения произвольного текста DOM и без нового хода. Проверить реальные schema/discovery/startup инструкции, чтение старых записей и exact-session SSE. Перед проверками Kit с production-пакетом безопасно проверить Python caches; Python -B. Маршрут — отдельный sessionTitle callback bridge → backend → PluginProjects, не communication.*. Исходники Kit 1.10.2/role 11 с upgrade, приложение/BUILD 0.5.35. Topic несовместим со старым validator: тест и честное ограничение обратного data rollback, без пользовательского профиля.",
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/projects/service.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/execution/plugin/bridge.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/fixtures/released-session-schema-0535.json",
+        "tests/workspace-session.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -398,7 +428,8 @@
         "packages/workflow-kit/README.md",
         "docs/acceptance/session-choice-and-delivery.md",
         "docs/planning/session-choice-release.md",
-        "docs/modules/release.md"
+        "docs/modules/release.md",
+        "packages/workflow-kit/src/templates/PLAN.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -556,7 +587,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: session-choice-and-delivery
 Current Task: нет
-Revision: 1162
+Revision: 1166
 
 ## Цель
 
@@ -580,10 +611,10 @@ Revision: 1162
   - Файлы: src/control/workflow/user-choices.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/communication.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/contracts/user-choice.mjs, src/contracts/dialogue-view.mjs, src/contracts/work-progress.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/user-choices.test.mjs, tests/user-choice-view.test.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/work-progress.test.mjs, tests/backend-desktop-model.test.mjs, tests/electron-smoke.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/plugin-communication.mjs, tests/fixtures/automatic-agent-dialogue.mjs, docs/planning/session-choice-release.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] NAME: Давать сессии содержательное имя до создания плана — Ожидает
-  - Git Commit: [PENDING] fix: давать сессии содержательное имя до создания плана
+- [DONE] NAME: Давать сессии содержательное имя до создания плана — Завершено
+  - Git Commit: [DONE] fix: давать сессии содержательное имя до создания плана
   - Reference: session-choice-and-delivery / NAME / implementation
-  - Файлы: tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/control/plugin/service.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/backend/desktop-model.mjs, src/control/plugin/startup-context.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/templates/PLAN.md, src/contracts/backend.mjs, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, tests/workspace-session.test.mjs, tests/chatgpt-title.test.mjs, tests/plugin-enrollment.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs, src/control/context/context-session.mjs, src/execution/facade.mjs, packages/workflow-kit/src/lib/installer.mjs
+  - Файлы: tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/control/plugin/service.mjs, src/control/projects/service.mjs, src/control/sessions/workspace-session.mjs, src/backend/desktop-model.mjs, src/control/plugin/startup-context.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, src/contracts/backend.mjs, package-lock.json, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, tests/workspace-session.test.mjs, tests/chatgpt-title.test.mjs, tests/plugin-enrollment.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs, src/control/context/context-session.mjs, src/execution/facade.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/fixtures/released-session-schema-0535.json, tests/fixtures/plugin-host.mjs, tests/context-session.test.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE
 - [TODO] PROOF: Проверить длительный цикл двух исполнителей после выбора — Ожидает
@@ -601,7 +632,7 @@ Revision: 1162
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать контракты выбора, названий и приёмки
   - Reference: session-choice-and-delivery / DOCS / implementation
-  - Файлы: docs/planning/session-choice-and-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/orchestrator-startup.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, docs/acceptance/session-choice-and-delivery.md, docs/planning/session-choice-release.md, docs/modules/release.md
+  - Файлы: docs/planning/session-choice-and-delivery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/orchestrator-startup.md, docs/modules/project-compatibility.md, packages/workflow-kit/README.md, docs/acceptance/session-choice-and-delivery.md, docs/planning/session-choice-release.md, docs/modules/release.md, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHOICE, NAME, PROOF, VERSION
 - [TODO] RELEASE: Собрать полный выпуск macOS Windows Linux — Ожидает

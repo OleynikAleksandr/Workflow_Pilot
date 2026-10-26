@@ -260,7 +260,7 @@ const activeOrchestrator = (project, session) => session.role === 'orchestrator'
   && session.orchestratorScopeId === project.scopeId && activeScope(project.scopeStatus);
 const invalid = () => new WorkspaceError('SESSIONS_INVALID', 'Формат сохранённых проектов не поддерживается. Исходный файл сохранён.');
 const sessionFields = ['planId', 'originSessionId', 'legacyPlanId', 'lastNamedScopeId', 'sessionId', 'experience', 'chatUrl', 'manualStart', 'preparationPaused', 'attempt', 'receipt', 'title', 'titleSource', 'createdAt', 'lastOpenedAt', 'archivedAt', 'executionSnapshot', 'external'];
-const explicitTitleSources = new Set(['manual', 'scope']);
+const explicitTitleSources = new Set(['manual', 'scope', 'topic']);
 
 function localName(value, { empty = 'Нужно непустое название.', code = 'TITLE_INVALID' } = {}) {
   if (typeof value !== 'string') throw new WorkspaceError(code, empty);
@@ -318,7 +318,7 @@ function validate(data) {
     workspaces.push(p.workspace);
     for (const s of p.sessions) {
       if (!s || typeof s.sessionId !== 'string' || !s.sessionId || typeof s.title !== 'string'
-          || (s.titleSource !== undefined && s.titleSource !== null && !['page', 'manual', 'scope'].includes(s.titleSource))
+          || (s.titleSource !== undefined && s.titleSource !== null && !['page', 'manual', 'scope', 'topic'].includes(s.titleSource))
           || Object.hasOwn(s, 'experience') || Object.hasOwn(s, 'availability')
           || !Number.isFinite(s.createdAt) || !Number.isFinite(s.lastOpenedAt)
           || (s.archivedAt !== null && (!Number.isFinite(s.archivedAt) || s.archivedAt <= 0))
@@ -922,6 +922,21 @@ export class WorkspaceSessions {
       if (!title || explicitTitleSources.has(session.titleSource)) return false;
       if (session.title === title && session.titleSource === 'page') return false;
       session.title = title; session.titleSource = 'page'; return true;
+    });
+  }
+
+  setSessionTopic(workspace,sessionId,value,projectId) {
+    return this.mutate(data=>{
+      const {project,session}=this.activeRecord(workspace,sessionId,data,{background:true});
+      if(project.projectId!==projectId||session.assignmentId||session.role==='executor'
+        ||session.attempt?.cancelState&&session.attempt.cancelState!=='none')
+        throw new WorkspaceError('PLUGIN_SESSION_TITLE_TARGET','Сессия для названия больше не подтверждена.');
+      const title=sessionName(value);
+      const result=(changed,reason)=>({title:session.title,titleSource:session.titleSource,changed,...(reason?{reason}:{})});
+      if(explicitTitleSources.has(session.titleSource))return result(false,
+        session.titleSource==='topic'?'already-named':session.titleSource);
+      session.title=title;session.titleSource='topic';
+      return result(true);
     });
   }
 

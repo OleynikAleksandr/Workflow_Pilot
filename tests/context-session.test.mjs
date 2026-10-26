@@ -123,6 +123,8 @@ test('the line for an external client names the folder, AGENTS.md and the recove
 test('the startup role follows the session table and Kit 1.9.8 leaves the mode to the user', () => {
   const packet = { facts: {}, parts: [] };
   const text = orchestratorStartupContext({ name: 'P', workspace: '/p', sessionId: 's1', role: 'planning', modeSupported: true, scopeStatus: 'NONE' }, packet);
+  assert.match(text,/workflow_session_set_title/);
+  assert.match(text,/до выбора режима, Review и создания плана/);
   assert.match(text, /Роль сессии: планирование/);
   assert.match(text, /выбирает пользователь: когда спецификация готова, вызови plan:mode-request/);
   assert.doesNotMatch(text, /объясни выбранный способ/);

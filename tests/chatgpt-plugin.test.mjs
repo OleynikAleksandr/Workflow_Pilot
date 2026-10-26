@@ -63,6 +63,35 @@ async function fixture(t){
 }
 
 const communicationTools=['bind','claim','claim_ready','enable','export','join','journal','participants','probe','read_context','read_message','recover','report','send_message','status','stop','sync','telemetry','telemetry_batch','verify','wait'];
+test('real MCP sets an early topic only for its registered host, without a plan or extra startup',async t=>{
+  const f=await fixture(t),project=f.store.snapshot().projects[0],session=project.sessions[0];
+  const planFile=path.join(project.workspace,'.harness/plans/todo-plan.md');
+  await fs.writeFile(planFile,'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify({schema_version:1,
+    project_id:project.projectId,project_name:project.name,plan_revision:1,scope_id:null,execution_scope_status:'NONE',
+    delivery_status:'IN_PROGRESS',current_task_id:null,tasks:[]})+'\n```\n<!-- workflow-state:end -->');
+  await f.store.select(project.workspace); // Refresh the actual roster after the on-disk plan change.
+  const invite=await f.plugin.reserveParticipant(session.sessionId);
+  await f.plugin.communication.enroll(invite.enrollment_ticket,metadata);
+  await f.store.select(f.store.snapshot().projects[1].workspace);
+  await bridge(t,f);const c=await client(t,f),tools=(await c.listTools()).tools;
+  const tool=tools.find(x=>x.name==='workflow_session_set_title');assert.ok(tool);
+  assert.deepEqual(Object.keys(tool.inputSchema.properties),['title']);
+  assert.equal(tool._meta.ui.visibility.includes('model'),true);
+  const call=(title,meta=metadata)=>c.callTool({name:tool.name,arguments:{title},_meta:meta});
+  const before=await fs.readFile(planFile,'utf8'),reply=await call('  Разбор   идеи 🪟  ');
+  assert.equal(reply.isError,false);assert.deepEqual(reply.structuredContent,{title:'Разбор идеи 🪟',titleSource:'topic',changed:true});
+  assert.equal(f.store.project(project.workspace,session.sessionId).title,'Разбор идеи 🪟');
+  assert.equal(f.store.selected().workspace,f.store.snapshot().projects[1].workspace);
+  assert.equal((await call('Another topic')).structuredContent.reason,'already-named');
+  assert.equal((await call('Foreign',{'openai/session':'foreign'})).isError,true);
+  assert.equal((await call(' ')).structuredContent.error.code,'PLUGIN_SESSION_TITLE_INVALID');
+  await assert.rejects(f.plugin.sessionTitle({title:'Override',metadata,sessionId:'other'}),{code:'PLUGIN_SESSION_TITLE_INPUT'});
+  assert.equal(await fs.readFile(planFile,'utf8'),before,'naming does not create or change a plan');
+  await f.store.renameSession(project.workspace,session.sessionId,'Моё имя');
+  assert.equal((await call('Agent name')).structuredContent.reason,'manual');
+  await f.store.setArchived(project.workspace,true);
+  assert.equal((await call('Removed target')).isError,true);
+});
 test('startup panel returns first context in the same MCP turn without iframe readiness or a second SDK wakeup',async t=>{
   const f=await fixture(t),comm=f.plugin.communication;
   const target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};

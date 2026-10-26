@@ -109,6 +109,24 @@ export class PluginProjects {
     if(!target)throw fail('PLUGIN_PARTICIPANT_UNAVAILABLE','Нет действующего назначения или оркестратора для этой сессии.');
     return this.communication.reserve(target,correlation);
   }
+  async sessionTitle(input={}) {
+    if(Object.keys(input).some(key=>!['action','metadata','title'].includes(key)))
+      throw fail('PLUGIN_SESSION_TITLE_INPUT','Название принимает только title текущего разговора.');
+    const binding=await this.communication.modelInput({metadata:input.metadata});
+    await this.communication.enrollment.validateInput(binding);
+    const {member}=this.communication.member(binding),target=await this.participantTarget(member.target.local_session_id);
+    if(!target||target.role==='E'||target.assignment_id)
+      throw fail('PLUGIN_SESSION_TITLE_TARGET','Название темы доступно только своей обычной сессии Chat.');
+    const project=this.projects.snapshot().projects.find(p=>p.projectId===target.project_id
+      &&p.sessions.some(s=>s.sessionId===target.local_session_id));
+    if(!project)throw fail('PLUGIN_SESSION_TITLE_TARGET','Сессия для названия не найдена.');
+    let result;
+    try{result=await this.projects.setSessionTopic(project.workspace,target.local_session_id,input.title,target.project_id);}
+    catch(error){if(error.code==='TITLE_INVALID')throw fail('PLUGIN_SESSION_TITLE_INVALID',error.message);throw error;}
+    if(!result)throw fail('PLUGIN_SESSION_TITLE_SAVE','Сохранение названия не подтверждено.');
+    if(result.changed)this.onChange({sessionTitle:{sessionId:target.local_session_id}});
+    return result;
+  }
   async panel({enrollment_ticket,metadata}={}) {
     await this.communication.ready;
     const registration=enrollment_ticket?await this.communication.enroll(enrollment_ticket,metadata):null;

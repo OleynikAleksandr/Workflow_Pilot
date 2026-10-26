@@ -10,7 +10,7 @@ const root=path.resolve(import.meta.dirname,'../..');
 const metadata={'openai/session':'conversation-fixture','openai/subject':'user-fixture'};
 async function bridge(t,f){
   const b=await startPluginBridge({directory:f.directory,panel:input=>f.plugin.panel(input),list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
-    communication:f.plugin.communication});
+    sessionTitle:input=>f.plugin.sessionTitle(input),communication:f.plugin.communication});
   t.after(()=>b.close());
   return JSON.parse(await fs.readFile(path.join(f.directory,'plugin-bridge.json'),'utf8'));
 }

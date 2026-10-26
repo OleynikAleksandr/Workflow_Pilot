@@ -554,6 +554,29 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await browser.executeJavaScript("document.title='Первый разговор проекта'");
   await waitFor(() => snapshot().projects[0].sessions[0].title === 'Первый разговор проекта', 'conversation title', snapshot);
   const first = store.selected();
+  const titleCleanups=[],titlePort={after:fn=>titleCleanups.unshift(fn)},titleDirectory=path.join(dataDir,'topic-title-proof');
+  await fs.mkdir(titleDirectory,{recursive:true});
+  try{
+    const borrowed=Object.create(plugin);
+    borrowed.communication=new Proxy(plugin.communication,{get(target,key){
+      if(key==='dispose')return ()=>{};
+      const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;
+    }});
+    await pluginFixtureBridge(titlePort,{directory:titleDirectory,plugin:borrowed});
+    const titleClient=await pluginFixtureClient(titlePort,{directory:titleDirectory});
+    const topic='Обсуждение контрольного проекта';
+    const named=await titleClient.callTool({name:'workflow_session_set_title',arguments:{title:topic},
+      _meta:{'openai/session':'smoke-'+first.sessionId,'openai/subject':'smoke'}});
+    assert.equal(named.isError,false);assert.equal(named.structuredContent.titleSource,'topic');
+    await waitFor(()=>store.selected().title===topic,'early topic via real MCP',snapshot);
+    await waitFor(async()=>await sidebar.executeJavaScript(`document.querySelector(${JSON.stringify(`[data-session-id="${first.sessionId}"] .session-copy strong`)})?.textContent.includes(${JSON.stringify(topic)})`),
+      'early topic rendered in native sidebar',snapshot);
+    await waitFor(()=>fixtureConversationTitles.get(new URL(first.chatUrl).pathname.split('/').at(-1))===topic,
+      'topic sync uses the existing ChatGPT title adapter',snapshot);
+    await browser.executeJavaScript("document.title='Открытие панели Workflow Pilot'");
+    await new Promise(resolve=>setTimeout(resolve,30));assert.equal(store.selected().title,topic,'late startup title cannot replace the topic');
+    assert.equal(store.selected().scopeStatus,'NONE','a topic does not require a plan');
+  }finally{for(const clean of titleCleanups)await clean();}
   assert.equal(await sidebar.executeJavaScript('["open-current-actions","current-actions-dialog","plan-choice"].every(id=>!document.getElementById(id))'),true);
   assert.ok(window.contentView.children.some(view=>view.webContents===getLive().browser),'the native ChatGPT view stays attached');
   assert.ok(first.chatUrl.startsWith('https://chatgpt.com/c/'));

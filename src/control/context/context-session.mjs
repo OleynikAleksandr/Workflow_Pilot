@@ -3,6 +3,7 @@ import { normalizeChatUrl } from '../sessions/workspace-session.mjs';
 import { CONTEXT_PROTOCOL, validateContextPacket } from '../../contracts/context.mjs';
 import { isChatGPTChatUrl, isPendingChatGPTConversation, CHATGPT_CHAT_ENTRYPOINT } from '../../execution/facade.mjs';
 import { validateParallelSettings } from '../workflow/parallel-settings.mjs';
+import {SESSION_TITLE_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 // The roles of the session table in docs/planning/user-choice-and-plan-modes.md.
 export const SESSION_ROLE_LABELS = Object.freeze({ planning: 'планирование', self: 'выполняет план сам', orchestrator: 'оркестратор', discussion: 'обсуждение', executor: 'исполнитель' });
@@ -55,6 +56,7 @@ export function orchestratorStartupContext(project,packet,toolRules=[]){
     'Стартовый пакет сессии Workflow Pilot.',
     `Проект: ${project.name}. Workspace: ${JSON.stringify(project.workspace)}. Session ID: ${project.sessionId}.`,
     sessionExecutionMessage(project),
+    ...(!project.assignmentId?[SESSION_TITLE_RULE]:[]),
     `Роль сессии: ${SESSION_ROLE_LABELS[project.role]??project.role??'обычный чат'}. Канал контекста не назначает оркестратора и не даёт права управления чужим планом.`,
     ...(project.assignmentId?[`Назначение: ${project.assignmentId}; задача: ${project.taskId}; основной checkout: ${JSON.stringify(project.parentWorkspace)}. После подтверждения пакета заверши bootstrap и жди отдельное рабочее поручение. Не выполняй task:start, не опрашивай очередь. При dialogue_version 1 задачу и выбранный контекст присылает оркестратор; вопросы и результат отправляй ему по рабочему каналу.`]:[]),
     'При review:prepare передай recipient_session_id: '+JSON.stringify(project.sessionId)+'. Это получатель продолжения, не владелец плана.',

@@ -5,6 +5,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {Script} from 'node:vm';
+import {validateParallelSettings} from '../src/control/workflow/parallel-settings.mjs';
 import { WorkspaceSessions, unsentExecutor, readWorkspace, normalizeChatUrl, activeSessionsNewestFirst } from '../src/control/sessions/workspace-session.mjs';
 import { sessionExecutionMessage } from '../src/control/context/context-session.mjs';
 
@@ -471,6 +473,57 @@ test('session titles remain chat metadata independent of the current project pla
   assert.equal(reopenedSecond.title, 'Ручное имя второй сессии');
   assert.equal(reopenedSecond.scopeId, 'fixture-scope');
   assert.deepEqual(reopenedSecond.planView, reopenedFirst.planView);
+});
+
+test('a topic is durable exact-session metadata and yields only to manual or scope titles',async t=>{
+  const {project,store}=await fixture(t),first=await store.select(await project('Topic'));
+  const second=await store.newSession(first.workspace);
+  const saved=await store.setSessionTopic(first.workspace,first.sessionId,'  Смысл   разговора  ',first.projectId);
+  assert.deepEqual(saved,{title:'Смысл разговора',titleSource:'topic',changed:true});
+  assert.equal(store.selected().sessionId,second.sessionId,'background naming never changes selection');
+  await assert.rejects(store.setSessionTitle(first.workspace,first.sessionId,'Technical startup'),{code:'SESSION_CHANGED'});
+  assert.equal((await store.setSessionTopic(first.workspace,first.sessionId,'Late other topic',first.projectId)).reason,'already-named');
+  const restored=new WorkspaceSessions(store.file);await restored.load();
+  assert.equal(restored.project(first.workspace,first.sessionId).title,'Смысл разговора');
+  await store.selectSession(first.workspace,first.sessionId);
+  assert.equal(await store.setSessionTitle(first.workspace,first.sessionId,'Technical startup'),false);
+  await store.applyScopeTitle(first.workspace,first.sessionId,{scopeId:'new-scope',scopeTitle:'Название плана',scopeStatus:'ACTIVE'});
+  assert.equal((await store.setSessionTopic(first.workspace,first.sessionId,'Ignored',first.projectId)).reason,'scope');
+  await store.renameSession(first.workspace,first.sessionId,'Ручное имя');
+  assert.equal((await store.setSessionTopic(first.workspace,first.sessionId,'Ignored',first.projectId)).reason,'manual');
+  await assert.rejects(store.setSessionTopic(first.workspace,first.sessionId,' ',first.projectId),{code:'TITLE_INVALID'});
+  await assert.rejects(store.setSessionTopic(first.workspace,first.sessionId,'Wrong owner','foreign'),{code:'PLUGIN_SESSION_TITLE_TARGET'});
+});
+
+test('topic save failures and queued manual/archive changes cannot invent a successful rename',async t=>{
+  const {project,store}=await fixture(t),p=await store.select(await project('Topic failure'));
+  const save=store.save;store.save=async()=>{throw Error('fixture write failed');};
+  await assert.rejects(store.setSessionTopic(p.workspace,p.sessionId,'Topic',p.projectId),/write failed/);
+  assert.equal(store.project(p.workspace,p.sessionId).titleSource,null);store.save=save;
+  const [manual,topic]=await Promise.all([store.renameSession(p.workspace,p.sessionId,'My name'),
+    store.setSessionTopic(p.workspace,p.sessionId,'Late topic',p.projectId)]);
+  assert.equal(manual,true);assert.equal(topic.reason,'manual');
+  await store.setArchived(p.workspace,true);
+  await assert.rejects(store.setSessionTopic(p.workspace,p.sessionId,'Archived',p.projectId),{code:'PROJECT_ARCHIVED'});
+});
+
+test('the released 0.5.35 schema reads old data but rejects a topic; new storage reads both',async t=>{
+  const {project,store}=await fixture(t),p=await store.select(await project('Schema compatibility'));
+  const historical=JSON.parse(await fs.readFile(new URL('./fixtures/released-session-schema-0535.json',import.meta.url),'utf8'));
+  assert.equal(historical.sourceCommit,'916ab9c3d43ee0cb7664cf7bcd09e39344ef6725');
+  assert.equal(createHash('sha256').update(historical.validator).digest('hex'),historical.sha256);
+  const oldValidate=new Script('('+historical.validator+')').runInNewContext({path,normalizeChatUrl,validateParallelSettings,
+    SESSION_ROLES:['discussion','planning','self','orchestrator','executor'],
+    invalid:()=>Object.assign(Error('Released schema rejects this store'),{code:'SESSIONS_INVALID'})});
+  const before=await fs.readFile(store.file,'utf8');
+  assert.doesNotThrow(()=>oldValidate(JSON.parse(before)));
+  const named=await store.setSessionTopic(p.workspace,p.sessionId,'🪟'.repeat(100),p.projectId);
+  assert.equal(Buffer.byteLength(named.title),200);assert.equal(Array.from(named.title).length,50);
+  const after=await fs.readFile(store.file,'utf8');
+  assert.throws(()=>oldValidate(JSON.parse(after)),{code:'SESSIONS_INVALID'});
+  assert.equal(await fs.readFile(store.file,'utf8'),after,'a failed old read never rewrites the profile');
+  const restored=new WorkspaceSessions(store.file);await restored.load();
+  assert.equal(restored.project(p.workspace,p.sessionId).title,named.title);
 });
 
 test('scope naming belongs to one session, while newly created sessions may inherit the active scope', async t => {

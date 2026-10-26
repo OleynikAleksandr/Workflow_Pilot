@@ -654,7 +654,7 @@ function rememberScopeTitle() {
 
 function selectedTitleCandidate() {
   const selected = store.selected();
-  if (!selected?.chatUrl || !selected.title || !['manual', 'scope'].includes(selected.titleSource)) return null;
+  if (!selected?.chatUrl || !selected.title || !['manual', 'scope', 'topic'].includes(selected.titleSource)) return null;
   return { workspace: selected.workspace, sessionId: selected.sessionId, chatUrl: selected.chatUrl, title: selected.title };
 }
 
@@ -1658,7 +1658,11 @@ async function start() {
       load:()=>({runs:[],issues:[{error_code:error.code?.startsWith('PLUGIN_COMMUNICATION_')?error.code:'PLUGIN_COMMUNICATION_STORE_OPEN'}]}),
       append:async()=>{throw error;},
     }));
-    plugin=control.createPlugin({onChange:()=>publish(),communicationStore,workProgress:workProgressFor,
+    plugin=control.createPlugin({onChange:change=>{
+      publish();
+      if(change?.sessionTitle&&change.sessionTitle.sessionId===store.selected()?.sessionId)
+        void syncSelectedSessionTitle({force:true,reason:'topic-title-changed'});
+    },communicationStore,workProgress:workProgressFor,
       userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
       observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
@@ -1673,7 +1677,7 @@ async function start() {
   if(plugin&&!smoke&&(!offline||pluginDirectory)) {
     await executionServices.attachPlugin({directory:pluginDirectory??runtimeFolder,panel:input=>plugin.panel(input),list:()=>plugin.list(),
       communication:plugin.communication,
-      open:id=>plugin.open(id),connect:input=>plugin.connect(input)})
+      open:id=>plugin.open(id),connect:input=>plugin.connect(input),sessionTitle:input=>plugin.sessionTitle(input)})
       .catch(()=>{startupError={code:'PLUGIN_BRIDGE_UNAVAILABLE',message:'Не удалось включить подключение панели ChatGPT. Проверьте, не открыта ли другая копия Workflow Pilot.'};});
   }
   await openWindow();

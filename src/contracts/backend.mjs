@@ -48,7 +48,7 @@ export const BACKEND_OPERATIONS = Object.freeze({
 // Enabled only when working notifications use the channel (T003).
 export const AUTOMATIC_DIALOGUE_ENABLED = true;
 export const PLUGIN_ACTION_CLASS = Object.freeze({
-  panel: 'ui-mutation', list: 'read', open: 'read', connect: 'ui-mutation',
+  panel: 'ui-mutation', list: 'read', open: 'read', connect: 'ui-mutation', sessionTitle:'ui-mutation',
   'communication.join':'ui-mutation', 'communication.bind':'ui-mutation',
   'communication.enable':'ui-mutation', 'communication.stop':'ui-mutation',
   'communication.send':'ui-mutation', 'communication.read':'ui-mutation', 'communication.probe':'ui-mutation',

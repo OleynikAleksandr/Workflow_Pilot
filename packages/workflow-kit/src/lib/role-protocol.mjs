@@ -1,5 +1,6 @@
 // Canonical role text: full recovery and addressed channel reads use the same version.
-export const ROLE_PROTOCOL_VERSION=10;
+export const ROLE_PROTOCOL_VERSION=11;
+export const SESSION_TITLE_RULE='ИМЯ СЕССИИ: если доступен workflow_session_set_title, в ходе ответа на первую содержательную задачу пользователя один раз задай короткую тему на его языке, как только она определена, до выбора режима, Review и создания плана. Обсуждение без плана тоже получает имя. Команда открытия панели не является темой. Вызов относится только к текущему разговору, сохраняет ручное имя и не разрешает реализацию; не копируй ID, не открывай панель и startup повторно. Без этого tool не выдумывай успешное переименование.';
 export const USER_EVENT_RULE='Решения пользователя из интерфейса приходят адресными сервисными событиями. Review ON/OFF сообщает актуальную настройку и её версию: перед подготовкой и публикацией сверяй ./scripts/workflow review:status, даже если стартовый контекст содержал другое значение. Это не смена роли, не разрешение реализации или Start. Для такого события task:start и workflow_assignment_yield не требуются: прочитай контекст, учти решение и заверши ответ. Не повторяй уже выполненные действия и неизвестную отправку.';
 // Every chat that talks to the user offers its forks the same way; executors answer to their orchestrator.
 export const CHOICE_RULE='РАЗВИЛКИ: когда дальнейший ход зависит от решения пользователя, не решай за него. Предложи 2–3 варианта: первым — рекомендуемый с пометкой «(рекомендую)», у каждого — название и одна строка: что будет и чего это стоит. Если доступны кнопки выбора, покажи варианты ими, иначе нумерованным списком. Пользователь может ответить своими словами. Не предлагай выбор, когда решение очевидно или уже принято.\n'+USER_EVENT_RULE;
@@ -50,8 +51,9 @@ export const DIALOGUE_ORCHESTRATOR_RULES=[
 export function roleText(role,dialogueVersion=0){
   const reasons='\nworkflow_assignment_yield.reason: awaiting_reply — ожидание ответа/ready; tasks_sent — поручения отправлены; result_sent — результат отправлен; handled — прочая обработка. Выбирай только эти значения.';
   if(dialogueVersion===1&&role==='executor')return DIALOGUE_EXECUTOR_RULES+reasons;
-  if(dialogueVersion===1&&role==='orchestrator')return DIALOGUE_ORCHESTRATOR_RULES+reasons;
-  return ROLE_TEXT[role];
+  if(dialogueVersion===1&&role==='orchestrator')return DIALOGUE_ORCHESTRATOR_RULES+reasons+'\n'+SESSION_TITLE_RULE;
+  const text=ROLE_TEXT[role];
+  return text&&role!=='executor'?text+'\n'+SESSION_TITLE_RULE:text;
 }
 export function roleUpdate(role,dialogueVersion=0){
   return 'Актуальные ролевые инструкции Workflow Kit, версия '+ROLE_PROTOCOL_VERSION+'. Они заменяют прежний ролевой текст этого разговора, не повторяют recovery и не запускают задачу заново.\n'+roleText(role,dialogueVersion);

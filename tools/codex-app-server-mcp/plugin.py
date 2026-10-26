@@ -141,6 +141,12 @@ def register_plugin(mcp, state_root: Path):
         # Catalogue URI belongs to this immutable MCP snapshot, not to a replayed iframe.
         return result({**data, "panel_resource_uri": ui_uri})
 
+    @mcp.tool(name="workflow_session_set_title", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def session_title(title: Annotated[str, Field(min_length=1, max_length=4096, description="First meaningful topic of this conversation, in the user's language. The backend normalizes to 80 Unicode characters and 200 UTF-8 bytes.")], ctx: Context) -> CallToolResult:
+        """Set the first topic title of this registered Chat during its first substantive user request, before mode selection, Review or plan creation; discussion without a plan is supported. Identity comes from this call's host metadata, never copied IDs or the selected sidebar. Preserves manual/task/scope titles and an already accepted topic. Does not reopen the panel, resend startup, create a model turn, change role, or authorize execution. Report success only from this durable result; a local title is not proof of remote ChatGPT title sync."""
+        return result(await asyncio.to_thread(bridge.call, {"action": "sessionTitle", "title": title,
+                                                         "metadata": host_metadata(ctx)}))
+
     @mcp.tool(name="workflow_communication_join", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def join(run_id: RunId, role: Annotated[str, Field(pattern=r"^(O|E)$", description="Role O or E; two different conversations are required.")], ctx: Context) -> CallToolResult:
         """Legacy experiment only: join an O/E run. Working plans reject join and register automatically through workflow_pilot_panel with their bootstrap invitation. No delivery or model turn is started."""
