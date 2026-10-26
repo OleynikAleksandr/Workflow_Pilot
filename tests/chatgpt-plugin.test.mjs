@@ -165,6 +165,16 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   assert.match(catalogue.find(x=>x.name==='workflow_assignment_send').description,/sends result after checked commit/);
   assert.equal(catalogue.find(x=>x.name==='workflow_assignment_prepare').inputSchema.properties.dispatch_when_ready.default,false);
   assert.equal(catalogue.find(x=>x.name==='workflow_assignment_dispatch').inputSchema.properties.when_ready.default,false);
+  const dispatchDescription=catalogue.find(x=>x.name==='workflow_assignment_dispatch').description;
+  assert.match(dispatchDescription,/verified document identity/);
+  assert.match(dispatchDescription,/Busy responses and active commands do not delay SDK delivery/);
+  const yieldDescription=catalogue.find(x=>x.name==='workflow_assignment_yield').description;
+  assert.match(yieldDescription,/only for terminal receipts, cleanup and plan completion/);
+  assert.match(yieldDescription,/never to delay the next SDK message/);
+  for(const description of [dispatchDescription,yieldDescription]){
+    assert.match(description,/ChatGPT controls processing order/);
+    assert.doesNotMatch(description,/physical bootstrap completion|before another SDK wakeup/);
+  }
   assert.deepEqual(catalogue.find(x=>x.name==='workflow_assignment_yield').inputSchema.properties.reason.enum,
     ['awaiting_reply','tasks_sent','result_sent','handled']);
   const call=(who,name,args={})=>c.callTool({name,arguments:args,_meta:{'openai/session':who}});

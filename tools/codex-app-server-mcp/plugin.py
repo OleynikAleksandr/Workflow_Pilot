@@ -224,13 +224,13 @@ def register_plugin(mcp, state_root: Path):
     @mcp.tool(name="workflow_assignment_dispatch", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def assignment_dispatch(draft_id: MessageId, ctx: Context,
                                   when_ready: Annotated[bool, Field(description="Explicitly authorize delivery when ready in this generation; use for reauthorization after pause/restart.")] = False) -> CallToolResult:
-        """Orchestrator explicitly authorizes its saved exact task. Validates assignment, attempt and requirements again. when_ready=true persists authorization until ready without another model turn; false requires current binding, SDK and physical bootstrap completion now. Pause/restart invalidates unconsumed authorization. Repeated calls return the same receipt, never repeat UNKNOWN."""
+        """Orchestrator explicitly authorizes its saved exact task. Validates assignment, attempt and requirements again. when_ready=true persists authorization until ready without another model turn; false requires current binding, SDK and verified document identity now. Busy responses and active commands do not delay SDK delivery; ChatGPT controls processing order. Pause/restart invalidates unconsumed authorization. Repeated calls return the same receipt, never repeat UNKNOWN."""
         return await communication("assignmentDispatch", ctx, draft_id=draft_id, when_ready=when_ready)
 
     @mcp.tool(name="workflow_assignment_yield", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def assignment_yield(message_ids: Annotated[list[MessageId], Field(min_length=1, max_length=32, description="Read incoming messages processed during this turn.")],
                                reason: Annotated[Literal["awaiting_reply", "tasks_sent", "result_sent", "handled"], Field(description="awaiting_reply: waiting (including channel ready); tasks_sent: tasks sent; result_sent: result sent; handled: other processing. Never task completion proof.")], ctx: Context) -> CallToolResult:
-        """Acknowledge processing of read incoming messages, then finish the turn. This is not DONE, acceptance or proof that generation stopped. Backend additionally observes physical completion before another SDK wakeup. No model polling or user Continue is needed for an ordinary reply."""
+        """Acknowledge processing of read incoming messages, then finish the turn. This is not DONE, acceptance or proof that generation stopped. Backend observes physical completion only for terminal receipts, cleanup and plan completion, never to delay the next SDK message. ChatGPT controls processing order. No model polling or user Continue is needed for an ordinary reply."""
         return await communication("assignmentYield", ctx, message_ids=message_ids, reason=reason)
 
     @mcp.tool(name="workflow_assignment_status", annotations=READ, meta={"ui": {"visibility": ["model"]}})

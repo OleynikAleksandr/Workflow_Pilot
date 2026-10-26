@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1218,
+  "plan_revision": 1220,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-messaging",
@@ -386,8 +386,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-messaging",
         "task_id": "VERSION",
@@ -448,7 +448,21 @@
         ],
         "include_last_completed_task": false,
         "dependency_task_ids": []
-      }
+      },
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/contracts/backend.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/released-kit/kit-1.10.2.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -671,7 +685,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-messaging
 Current Task: нет
-Revision: 1218
+Revision: 1220
 
 ## Цель
 
@@ -700,8 +714,8 @@ Revision: 1218
   - Файлы: tests/sdk-busy-experiment.test.mjs, tests/sdk-busy-analysis.test.mjs, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/dialogue-delivery.test.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/command-activity.test.mjs, tests/progress.test.mjs, tests/startup-context.test.mjs, tests/migration-compatibility.test.mjs, tests/electron-smoke.mjs, tests/execution-control.test.mjs, tests/orchestrated-execution.test.mjs, tests/parallel-execution-recovery.test.mjs, tests/parallel-execution-ui.test.mjs, tests/parallel-execution.test.mjs, tests/plan-continuation.test.mjs, tests/plan-review.test.mjs, tests/project-plan-continuation.test.mjs, tests/user-choice-view.test.mjs, tests/user-choices.test.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: SDK
-- [TODO] VERSION: Согласовать новую версию и immutable панель — Ожидает
-  - Git Commit: [PENDING] feat: согласовать новую версию и immutable панель
+- [DONE] VERSION: Согласовать новую версию и immutable панель — Завершено
+  - Git Commit: [DONE] feat: согласовать новую версию и immutable панель
   - Reference: sdk-messaging / VERSION / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, scripts/stage-chatgpt-plugin.mjs, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/migration-compatibility.test.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/kit-1.10.2.tar.gz, tests/fixtures/released-kit/manifest.json, tools/codex-app-server-mcp/plugin.py
   - Параллельность: исключительное выполнение

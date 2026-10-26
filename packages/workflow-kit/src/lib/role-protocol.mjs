@@ -1,5 +1,5 @@
 // Canonical role text: full recovery and addressed channel reads use the same version.
-export const ROLE_PROTOCOL_VERSION=11;
+export const ROLE_PROTOCOL_VERSION=12;
 export const SESSION_TITLE_RULE='ИМЯ СЕССИИ: если доступен workflow_session_set_title, в ходе ответа на первую содержательную задачу пользователя один раз задай короткую тему на его языке, как только она определена, до выбора режима, Review и создания плана. Обсуждение без плана тоже получает имя. Команда открытия панели не является темой. Вызов относится только к текущему разговору, сохраняет ручное имя и не разрешает реализацию; не копируй ID, не открывай панель и startup повторно. Без этого tool не выдумывай успешное переименование.';
 export const USER_EVENT_RULE='Решения пользователя из интерфейса приходят адресными сервисными событиями. Review ON/OFF сообщает актуальную настройку и её версию: перед подготовкой и публикацией сверяй ./scripts/workflow review:status, даже если стартовый контекст содержал другое значение. Это не смена роли, не разрешение реализации или Start. Для такого события task:start и workflow_assignment_yield не требуются: прочитай контекст, учти решение и заверши ответ. Не повторяй уже выполненные действия и неизвестную отправку.';
 // Every chat that talks to the user offers its forks the same way; executors answer to their orchestrator.
