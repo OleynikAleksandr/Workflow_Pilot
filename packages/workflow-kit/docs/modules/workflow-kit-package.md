@@ -1,6 +1,6 @@
 # Workflow Kit — контракт пакета
 
-`@webpilot/workflow-kit` 1.10.4 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
+`@webpilot/workflow-kit` 1.10.5 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
 
 ## Код
 - `index.mjs` — `VERSION`, `WorkflowError`, `getRuntimeRoot()`, `currentPlanView`, `sessionPlanView`, пространства `actions`, `plan`, `sessionPlans`, `recovery`, `installer`. Exports: `.`, `./cli`, `./install`, `./lib/*`, `./schemas/*`, `./templates/*`, `./examples/*`, `./WORKFLOW.md`; bin `workflow`. Экспорты и lib-подпути сохраняются: их импортируют потребители.
@@ -31,7 +31,7 @@
 - `project:rename --name` — имя в плане, recovery и путях hooks manifest одним коммитом kit-update; без активной задачи (`TASK_ACTIVE`), ≤ 100 символов (`PROJECT_NAME`); повтор без изменений — без коммита; папку не переименовывает.
 - `repair --dry-run` → `repair_id` → `--apply` (завершить/повторить транзакцию, восстановить проекцию, отложить DOCS) или `--cancel` (отменить неподтверждённую подготовку). Журнал вручную не удалять.
 
-Подготовка новых orchestrated-планов, prepared_task, проверка автора/байтов/digest и совместимость brief-only — [контракт](../../../../docs/modules/prepared-tasks.md). Ролевые правила 10 одинаковы в PLAN/recovery/MCP.
+Подготовка новых orchestrated-планов, prepared_task, проверка автора/байтов/digest и совместимость brief-only — [контракт](../../../../docs/modules/prepared-tasks.md). Ролевые правила 14 одинаковы в PLAN/recovery/MCP.
 
 ### Опциональный Review
 `lib/plan-review`/`lib/claude-review`: prepare/run/respond/status/acknowledge/resolve/cancel/publish, gate новых планов при ON, cleanup на task:start. Один `.harness/runtime/plan-review/state.json`, по умолчанию OFF. Долгий процесс — вне operation.lock. Prepare требует адресата/manual, каждый успешный отзыв — позиции respond; публикация проверяет пару/согласие либо resolve. Решения — в spec и user_decisions; recovery не включает отзывы.

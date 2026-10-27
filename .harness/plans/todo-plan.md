@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1286,
+  "plan_revision": 1288,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -90,7 +90,7 @@
       {
         "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
       }
     ],
     "include_last_completed_task": false,
@@ -146,7 +146,8 @@
         "documents": [
           {
             "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
-            "required": true
+            "required": true,
+            "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
           }
         ],
         "include_last_completed_task": false,
@@ -219,7 +220,8 @@
         "documents": [
           {
             "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
-            "required": true
+            "required": true,
+            "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
           }
         ],
         "include_last_completed_task": false,
@@ -276,7 +278,8 @@
         "documents": [
           {
             "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
-            "required": true
+            "required": true,
+            "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
           }
         ],
         "include_last_completed_task": false,
@@ -341,7 +344,8 @@
         "documents": [
           {
             "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
-            "required": true
+            "required": true,
+            "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
           }
         ],
         "include_last_completed_task": false,
@@ -401,8 +405,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "DOCS",
@@ -450,7 +454,8 @@
         "documents": [
           {
             "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
-            "required": true
+            "required": true,
+            "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
           }
         ],
         "include_last_completed_task": false,
@@ -461,7 +466,23 @@
           "VERIFY"
         ]
       },
-      "task_brief": "Актуализация документов согласованного объёма. Перенести результат в действующие контракты до production build. Требования: Обновлены только относящиеся контракты и версии; непроверенный финальный инцидент не выдаётся за исправление. Временная spec перенесена и удалена с точной Git blob ссылкой; каждый документ в бюджете 28000 байт. Адресные проверки и pending live/native отмечены; DOCS завершена до production build. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: схема и состав документационного коммита."
+      "task_brief": "Актуализация документов согласованного объёма. Перенести результат в действующие контракты до production build. Требования: Обновлены только относящиеся контракты и версии; непроверенный финальный инцидент не выдаётся за исправление. Временная spec перенесена и удалена с точной Git blob ссылкой; каждый документ в бюджете 28000 байт. Адресные проверки и pending live/native отмечены; DOCS завершена до production build. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: схема и состав документационного коммита.",
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/sdk-messaging.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/desktop.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/user-choice.md",
+        "docs/planning/incoming-obligations-and-sdk-recovery.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -494,7 +515,8 @@
         "documents": [
           {
             "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
-            "required": true
+            "required": true,
+            "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
           }
         ],
         "include_last_completed_task": false,
@@ -537,7 +559,8 @@
         "documents": [
           {
             "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
-            "required": true
+            "required": true,
+            "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
           }
         ],
         "include_last_completed_task": false,
@@ -581,7 +604,8 @@
         "documents": [
           {
             "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
-            "required": true
+            "required": true,
+            "revision": "268ce0595f79910dbbfb3e15b15324db464a93d1"
           }
         ],
         "include_last_completed_task": false,
@@ -619,7 +643,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1286
+Revision: 1288
 
 ## Цель
 
@@ -667,8 +691,8 @@ Revision: 1286
   - Файлы: src/frontend/plugin/launch.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/incoming-obligations-and-sdk-recovery.md
   - Параллельность: исключительное выполнение
   - Зависимости: VERIFY
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализация документов согласованного объёма
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализация документов согласованного объёма
   - Reference: incoming-obligations-and-sdk-recovery / DOCS / implementation
   - Файлы: docs/planning/incoming-obligations-and-sdk-recovery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/acceptance/sdk-messaging.md, docs/modules/project-compatibility.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
