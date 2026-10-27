@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1266,
+  "plan_revision": 1268,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "attention-and-closed-plan",
@@ -450,8 +450,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "attention-and-closed-plan",
         "task_id": "INSTALL",
@@ -492,7 +492,8 @@
           "DOCS"
         ]
       },
-      "task_brief": "Установить готовый выпуск на этот Mac. Поставить проверенное готовое приложение без пересборки и остановки службы. Требования: Штатный installer проверяет Applications и checkout, версии/manifest/подпись и rollback. При работающей службе verified pending, без stop/restart; установленное и ожидающее состояния честно различены. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: release-installed."
+      "task_brief": "Установить готовый выпуск на этот Mac. Поставить проверенное готовое приложение без пересборки и остановки службы. Требования: Штатный installer проверяет Applications и checkout, версии/manifest/подпись и rollback. При работающей службе verified pending, без stop/restart; установленное и ожидающее состояния честно различены. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: release-installed.",
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -562,7 +563,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: attention-and-closed-plan
 Current Task: нет
-Revision: 1266
+Revision: 1268
 
 ## Цель
 
@@ -609,8 +610,8 @@ Revision: 1266
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить готовый выпуск на этот Mac — Ожидает
-  - Git Commit: [PENDING] delivery: установить готовый выпуск на этот mac
+- [DONE] INSTALL: Установить готовый выпуск на этот Mac — Завершено
+  - Git Commit: [DONE] delivery: установить готовый выпуск на этот mac
   - Reference: attention-and-closed-plan / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
