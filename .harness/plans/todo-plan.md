@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1292,
+  "plan_revision": 1294,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Не терять принятые входящие поручения при Review и SDK сбое; освобождать закрытую карточку; выпустить три ОС, установить Mac и опубликовать GitHub.",
   "acceptance_criteria": [
     "Все неотменённые входящие сохраняют обязательство результата, Review не обрывает исходный запрос.",
@@ -577,8 +577,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "PUBLISH",
@@ -619,7 +619,8 @@
         ]
       },
       "task_brief": "Опубликовать выпуск на GitHub. Публичная доставка и проверка remote main. Требования: Tag равен sourceCommit, семь публичных assets проверены по SHA/size, remote main и итоговый push подтверждены. Новая живая проверка и native Windows/Linux не объявляются пройденными; план остаётся READY_FOR_ACCEPTANCE до приёмки. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: github-release.",
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -644,10 +645,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1292
+Revision: 1294
 
 ## Цель
 
@@ -713,8 +714,8 @@ Revision: 1292
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] delivery: опубликовать выпуск на github
+- [DONE] PUBLISH: Опубликовать выпуск на GitHub — Завершено
+  - Git Commit: [DONE] delivery: опубликовать выпуск на github
   - Reference: incoming-obligations-and-sdk-recovery / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
