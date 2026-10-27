@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1249,
+  "plan_revision": 1251,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Устранить остановку SDK доставки после ошибки и смешение разных workspace, выпустить и установить новый комплект трёх ОС.",
   "acceptance_criteria": [
     "Временное исключение SDK не останавливает весь диалог, повторов эффектов нет.",
@@ -544,8 +544,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-recovery-identity",
         "task_id": "PUBLISH",
@@ -571,7 +571,8 @@
       ],
       "expected_commit_message": "delivery: опубликовать выпуск на github",
       "task_brief": "Опубликовать выпуск на GitHub. GitHub tag на sourceCommit, полный набор assets проверен, опубликован release; итоговый push подтверждён. Live ограничения честно указаны. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -593,10 +594,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1249
+Revision: 1251
 
 ## Цель
 
@@ -655,8 +656,8 @@ Revision: 1249
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] delivery: опубликовать выпуск на github
+- [DONE] PUBLISH: Опубликовать выпуск на GitHub — Завершено
+  - Git Commit: [DONE] delivery: опубликовать выпуск на github
   - Reference: sdk-recovery-identity / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
