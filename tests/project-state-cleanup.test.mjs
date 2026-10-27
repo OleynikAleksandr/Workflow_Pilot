@@ -5,6 +5,14 @@ import path from 'node:path';
 import os from 'node:os';
 import {belongsToProject,removeProjectSettings,purgeProjectStateFiles,queueProjectStatePurge} from '../src/control/projects/project-state-cleanup.mjs';
 
+test('choice cleanup uses workspace and session identities, including a replacement at the same path',()=>{
+  const old={workspace:'/same',workspaceId:'old',projectId:'p',session_id:'s-old'};
+  const next={...old,workspaceId:'new',session_id:'s-new'};
+  const settings={userChoices:{records:[old,next],history:[old,next],keys:[['s-old\nmode',{}],['s-new\nmode',{}]],manual:[['s-old',1],['s-new',2]]}};
+  const clean=removeProjectSettings(settings,[{workspace:'/same',workspaceId:'old',projectId:'p',sessionIds:['s-old']}]);
+  assert.deepEqual(clean.userChoices,{records:[next],history:[next],keys:[['s-new\nmode',{}]],manual:[['s-new',2]]});
+});
+
 test('project cleanup removes exact nested delivery owners, preserves neighbours and does not change input',()=>{
   const ids=[{workspace:'/projects/a',projectId:'id-a',sessionIds:['session-a']}];
   const deleted={key:JSON.stringify([JSON.stringify(['/projects/a','session-a','url']),'turn']),status:'sending'};

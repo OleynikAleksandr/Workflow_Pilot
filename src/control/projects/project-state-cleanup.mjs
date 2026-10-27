@@ -5,7 +5,7 @@ import path from 'node:path';
 export function belongsToProject(value, identities) {
   // A Git worktree may share its parent's project_id. Its workspace and
   // session IDs, not project_id in isolation, establish the deletion owner.
-  const tokens=new Set(identities.flatMap(p=>[p.workspace,...(p.sessionIds??[])]).filter(Boolean));
+  const tokens=new Set(identities.flatMap(p=>[p.workspace,p.workspaceId,...(p.sessionIds??[])]).filter(Boolean));
   const matches=value=>{
     if(typeof value==='string') {
       if(tokens.has(value))return true;
@@ -14,6 +14,7 @@ export function belongsToProject(value, identities) {
     if(Array.isArray(value))return value.some(matches);
     if(value&&typeof value==='object') {
       const owner=identities.find(p=>p.workspace===value.workspace);
+      if(owner&&value.workspaceId&&owner.workspaceId&&value.workspaceId!==owner.workspaceId)return false;
       if(owner&&value.projectId&&owner.projectId&&value.projectId!==owner.projectId)
         return false; // replacement at the same path is not the deleted project.
       return Object.entries(value).some(([k,v])=>matches(k)||matches(v));
@@ -25,10 +26,14 @@ export function belongsToProject(value, identities) {
 
 export function removeProjectSettings(settings, identities) {
   const result=structuredClone(settings);
+  const sessions=new Set(identities.flatMap(p=>p.sessionIds??[]));
+  filterChoices(result,entry=>!identities.some(p=>(entry.workspaceId?p.workspaceId===entry.workspaceId:sessions.has(entry.session_id))
+    &&(!entry.projectId||!p.projectId||entry.projectId===p.projectId)),id=>!sessions.has(id));
   for(const field of ['projectPlanContinuation','parallelExecutionBook','executionControl'])if(result[field])
     result[field]=Object.fromEntries(Object.entries(result[field]).filter(([key,value])=>{
       const workspace=field==='parallelExecutionBook'?value?.workspace:key;
       const owner=identities.find(p=>p.workspace===workspace);
+      if(owner&&value?.workspaceId&&owner.workspaceId&&value.workspaceId!==owner.workspaceId)return true;
       if(owner&&value?.projectId&&owner.projectId&&value.projectId!==owner.projectId)return true;
       return !belongsToProject([key,value],identities);
     }));
@@ -38,13 +43,23 @@ export function removeProjectSettings(settings, identities) {
   return result;
 }
 
+function filterChoices(settings,keep,keepSession) {
+  const choices=settings.userChoices;if(!choices)return;
+  for(const field of ['records','history'])if(Array.isArray(choices[field]))choices[field]=choices[field].filter(keep);
+  for(const field of ['keys','manual'])if(Array.isArray(choices[field]))choices[field]=choices[field].filter(([key])=>keepSession(key.split('\n')[0]));
+}
+
 export function pruneOrphanProjectSettings(settings, projects) {
   const live=new Map(projects.map(p=>[p.workspace,p]));
   const missing=[...new Set([...Object.keys(settings.projectPlanContinuation??{}),...Object.keys(settings.executionControl??{}),...Object.values(settings.parallelExecutionBook??{}).map(v=>v.workspace)].filter(w=>w&&!live.has(w)))];
   const result=removeProjectSettings(settings,missing.map(workspace=>({workspace})));
+  const owners=new Map(projects.flatMap(p=>p.sessions.map(s=>[s.sessionId,p])));
+  filterChoices(result,entry=>{const p=owners.get(entry.session_id);return !!p&&(!entry.projectId||entry.projectId===p.projectId)
+    &&(!entry.workspaceId||entry.workspaceId===p.workspaceId);},id=>owners.has(id));
   for(const field of ['projectPlanContinuation','executionControl'])
     for(const [workspace,value] of Object.entries(result[field]??{}))
-      if(value.projectId&&value.projectId!==live.get(workspace)?.projectId)delete result[field][workspace];
+      if(value.projectId&&value.projectId!==live.get(workspace)?.projectId
+        ||value.workspaceId&&value.workspaceId!==live.get(workspace)?.workspaceId)delete result[field][workspace];
   for(const [key,value] of Object.entries(result.parallelExecutionBook??{}))
     if(value.projectId&&value.projectId!==live.get(value.workspace)?.projectId)delete result.parallelExecutionBook[key];
   const owner=value=>{

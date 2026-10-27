@@ -335,9 +335,10 @@ export class AssignmentDialogue {
     this.c.event(run,'message.intent_deferred',{message_id:intent.message_id,code:input.code,retry:input.retry});
     return {phase:intent.phase};
   }
-  async reconcile(projectId,scopeId){
+  async reconcile(projectId,scopeId,owner){
     await this.c.tail;
-    for(const run of this.c.runs.values())if(!run.removed&&run.project_id===projectId&&run.grant?.scope_id===scopeId){
+    for(const run of this.c.runs.values())if(!run.removed&&run.project_id===projectId&&run.grant?.scope_id===scopeId
+      &&(!owner||owner.sessions.some(s=>s.sessionId===run.origin_session_id))){
       for(const intent of Object.values(run.assignment_intents??{}))if(['authorized','prepared','deferred'].includes(intent.phase)){
         try{await this.complete(run.id,intent.message_id);}catch(error){
           if(run.removed||intent.phase==='retired')continue;

@@ -72,7 +72,7 @@ test('removed checkout terminal proof is narrow and requires parent identity and
   const message={kind:'acceptance',assignment_id:'a',scope_id:'s',message_id:'m',attempt:1,source_commit:'a'.repeat(40),read:true,yielded:{}};
   const child={workspace:'/worker',sessions:[{sessionId:'e',role:'executor',assignmentId:'a',taskId:'T001',
     parentProjectId:'p',parentScopeId:'s',parentWorkspace:'/main',executionOriginSessionId:'o'}]};
-  const projects={snapshot:()=>({projects:[{workspace:'/main',projectId:'p',sessions:[]},child]})};
+  const projects={snapshot:()=>({projects:[{workspace:'/main',projectId:'p',sessions:[{sessionId:'o'}]},child]})};
   const plugin=new PluginProjects({projects,loadContext:async()=>null});
   const state={phase:'INTEGRATED',scope_id:'s',task_id:'T001',worktree:'/worker',
     cleanup:{status:'DONE',commands_idle:true},dialogue:{acceptance:message}};

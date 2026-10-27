@@ -89,6 +89,7 @@ export class PluginCommunication {
       if(old)this.runs.set(input.run_id,structuredClone(old));
       const offset=old?.events.length??0;
       try {
+        if(old)this.enrollment.migrateRun(this.runs.get(input.run_id));
         if(old)this.expire(this.runs.get(input.run_id));
         const result=await this['_'+name](input),run=this.runs.get(input.run_id);
         if(name==='observed')this.observedDenials.delete(input.run_id+':'+input.message_id);
@@ -271,9 +272,12 @@ export class PluginCommunication {
     for(const waiter of this.waiters.values())if(this.runs.get(waiter.runId)?.project_id===projectId)waiter.wake('event');
   }
   // Dialogue messages of one plan for the progress history; bodies stay in the chats.
-  planMessages(projectId,scopeId){
+  planMessages(projectId,scopeId,owner){
     const result=[];
-    for(const run of this.runs.values())if(run.mode==='workflow'&&run.project_id===projectId)
+    if(!owner)return result;
+    for(const run of this.runs.values())if(run.mode==='workflow'&&!run.removed&&run.project_id===projectId
+      &&owner.sessions.some(s=>s.sessionId===run.origin_session_id)
+      &&Object.values(run.members).every(m=>!m.target.origin_workspace_id||m.target.origin_workspace_id===owner.workspaceId))
       for(const m of run.messages)if(m.scope_id===scopeId)result.push({message_id:m.message_id,kind:m.kind,sender_role:m.sender_role,
         task_id:m.task_id??null,created_at:m.created_at,superseded:!!m.superseded,source_commit:m.source_commit??null});
     return result;

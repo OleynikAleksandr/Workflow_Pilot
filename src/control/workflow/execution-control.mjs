@@ -7,13 +7,14 @@ const absolute = workspace => typeof workspace === 'string' && (workspace.starts
 const validScope = scopeId => typeof scopeId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(scopeId);
 
 export class ExecutionControl {
-  constructor({ saved = {}, identity = null, now = Date.now, onChange = () => {} } = {}) {
-    Object.assign(this, { identity, now, onChange });
+  constructor({ saved = {}, identity = null, workspaceIdentity = null, now = Date.now, onChange = () => {} } = {}) {
+    Object.assign(this, { identity, workspaceIdentity, now, onChange });
     this.book = {};
     for (const [workspace, entry] of Object.entries(saved ?? {})) {
       if (!absolute(workspace) || !entry || !validScope(entry.scopeId) || !EXECUTION_STATES.includes(entry.state)) continue;
       if (entry.reason != null && !PAUSE_REASONS.includes(entry.reason)) continue;
       this.book[workspace] = { projectId: typeof entry.projectId === 'string' ? entry.projectId : null, scopeId: entry.scopeId,
+        ...(entry.workspaceId?{workspaceId:entry.workspaceId}:{}),
         route:'plugin-v1',
         state: entry.route!=='plugin-v1'&&['running','pausing'].includes(entry.state)?'paused':entry.state,
         reason:entry.route!=='plugin-v1'&&['running','pausing'].includes(entry.state)?'restart':entry.reason??null,
@@ -40,6 +41,7 @@ export class ExecutionControl {
     if (!entry || entry.scopeId !== scopeId) return null;
     const projectId = this.identity?.(workspace);
     if (this.identity && entry.projectId && entry.projectId !== projectId) return null;
+    if (entry.workspaceId && this.workspaceIdentity && entry.workspaceId!==this.workspaceIdentity(workspace))return null;
     return entry;
   }
   view(workspace, scopeId) {
@@ -55,6 +57,7 @@ export class ExecutionControl {
     const old = this.entry(workspace, scopeId);
     if (old && old.state === state && old.reason === reason && old.message === message&&JSON.stringify(old.issue??null)===JSON.stringify(issue)) return old;
     this.book[workspace] = { projectId: this.identity?.(workspace) ?? null, scopeId, route:old?.route??route,state, reason, message, updatedAt: this.now(),
+      ...(this.workspaceIdentity?.(workspace)?{workspaceId:this.workspaceIdentity(workspace)}:{}),
       ...(issue?{issue:structuredClone(issue)}:{}) };
     if(notify)this.onChange(workspace);
     return this.book[workspace];

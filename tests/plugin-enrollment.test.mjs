@@ -6,6 +6,7 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {PluginCommunication} from '../src/control/plugin/communication.mjs';
 import {localParticipantTarget} from '../src/control/plugin/enrollment.mjs';
+import {PluginProjects} from '../src/control/plugin/service.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 
 const metadata=id=>({'openai/session':'private-'+id,'openai/subject':'private-user'});
@@ -21,6 +22,29 @@ async function fixture(t) {
 }
 
 const correlatedOwner=(scope,correlation)=>({project_id:scope.project_id,local_session_id:scope.local_session_id,...correlation});
+test('same named working copies with a common project ID have distinct plugin recipients and histories',async t=>{
+  const copies=['one','two'].map(id=>({projectId:'shared',workspaceId:id,name:'Same',workspace:'/copies/'+id,archivedAt:null,
+    sessions:[{sessionId:id,role:'planning',archivedAt:null}]}));
+  const projects={snapshot:()=>({projects:copies}),project:w=>copies.find(p=>p.workspace===w),
+    inspect:async w=>({projectId:copies.find(p=>p.workspace===w).projectId})};
+  const plugin=new PluginProjects({projects});t.after(()=>plugin.communication.dispose());
+  assert.deepEqual(plugin.list().projects.map(p=>p.id),['one','two']);
+  assert.throws(()=>plugin.project('shared'),{code:'PLUGIN_PROJECT_UNAVAILABLE'});
+  assert.equal((await plugin.open('two')).sessions[0].id,'two');
+  const target=await plugin.participantTarget('two');assert.equal(target.workspace_id,'two');
+  const invite=await plugin.communication.reserve(target);await plugin.communication.enroll(invite.enrollment_ticket,metadata('two'));
+  const c=plugin.communication,run=c.runs.get(invite.run_id);
+  run.messages.push({message_id:'m',scope_id:'scope',kind:'result'});
+  assert.equal(c.planMessages('shared','scope',copies[0]).length,0);
+  assert.equal(c.planMessages('shared','scope',copies[1]).length,1);
+  run.removed=true;assert.equal(c.planMessages('shared','scope',copies[1]).length,0);
+});
+test('an existing session binding cannot be used with another workspace identity',async t=>{
+  const f=await fixture(t),scope={...target('own'),workspace_id:'copy-one',origin_workspace_id:'root-one'};
+  f.targets.set('own',scope);const invite=await f.comm.reserve(scope);
+  f.targets.set('own',{...scope,workspace_id:'copy-two'});
+  await assert.rejects(f.comm.enroll(invite.enrollment_ticket,metadata('own')),{code:'PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED'});
+});
 test('correlated invitation revocation survives restart, rejects the same identity and cannot resume stage',async t=>{
   const f=await fixture(t),scope=target('cancelled');f.targets.set('cancelled',scope);
   const correlation={request_id:'request-cancelled',attempt_generation:'generation-one'},owner=correlatedOwner(scope,correlation);

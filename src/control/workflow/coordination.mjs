@@ -117,6 +117,7 @@ const applyExecutionControl=workspace=>{
 };
 // The run/pause button of orchestrated plans; legacy plans keep ProjectPlanContinuation.
 const executionControl=new ExecutionControl({identity:workspace=>store.snapshot().projects.find(p=>p.workspace===workspace)?.projectId,
+  workspaceIdentity:workspace=>store.project(workspace)?.workspaceId,
   onChange:workspace=>{void syncPermission(workspace).then(()=>{applyExecutionControl(workspace);return execution.signal(workspace);}).catch(report);
     void saveSettings().catch(report);publish();}});
 const planMonitor = new PlanMonitor({ selected: () => store.selected(),
@@ -209,7 +210,9 @@ const reviewContinuation=new ReviewContinuation({selected:()=>store.selected(),c
   saveCheckpoint:async checkpoint=>{reviewCheckpoint=checkpoint;await saveSettings({reviewCheckpoint});}});
 const executionKit=new ParallelKit({plans:sessionPlans,setup:workspaceSetup,onTiming:(workspace,id,span)=>{
   const communication=getPlugin()?.communication,project=store.project(workspace);
-  const run=[...(communication?.runs.values()??[])].find(r=>r.project_id===project?.projectId&&!r.removed);
+  const sessions=store.snapshot().projects.find(p=>p.workspace===workspace)?.sessions??[];
+  const run=[...(communication?.runs.values()??[])].find(r=>r.project_id===project?.projectId&&!r.removed
+    &&sessions.some(s=>s.sessionId===r.origin_session_id));
   if(run)communication.recordKitTiming({project_id:run.project_id,scope_id:run.grant?.scope_id,assignment_id:id},span);
 }});
 // The parallel queue has the authoritative Kit confirmation; per-chat plan
@@ -260,7 +263,8 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   queuedRoute:(workspace,scope)=>executionControl.route(workspace,scope)==='plugin-v1',
   deliveryReceipt:id=>dialogue.receipt(id),
   channelSettled:(workspace,scope)=>dialogue.settled(workspace,scope),
-  reconcileChannel:(workspace,scope)=>getPlugin()?.communication.assignment.reconcile(store.project(workspace)?.projectId,scope),
+  reconcileChannel:(workspace,scope)=>getPlugin()?.communication.assignment.reconcile(store.project(workspace)?.projectId,scope,
+    store.snapshot().projects.find(p=>p.workspace===workspace)),
   restoreIntegrated:(workspace,assignment,entry)=>dialogue.reserved(store.project(assignment.worktree,entry?.sessionId)),
   physicalWorkerState:(assignment,entry)=>executorPageState(liveRecord(store.project(assignment.worktree,entry?.sessionId))),
   physicalMainState:origin=>executorPageState(liveRecord(origin)),
@@ -522,7 +526,9 @@ const executionPort=Object.freeze({
 });
 return Object.freeze({
   async migrateAssignments(target,input){
-    const project=store.snapshot().projects.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt);
+    const project=store.snapshot().projects.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt
+      &&p.sessions.some(s=>s.sessionId===target.origin_session_id)
+      &&(!target.origin_workspace_id||p.workspaceId===target.origin_workspace_id));
     if(!project||target.role!=='O'||executionControl.view(project.workspace,target.scope_id).state!=='paused')
       throw Object.assign(Error('Переход доступен оркестратору своего плана после общей паузы.'),{code:'DIALOGUE_MIGRATION_PAUSE'});
     await execution.suspend(project.workspace);
@@ -574,7 +580,8 @@ return Object.freeze({
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),
   communicationChanged:(runId,events=[])=>{
     const run=getPlugin()?.communication.runs.get(runId);if(!run)return;
-    const parent=store.snapshot().projects.find(p=>p.projectId===run.project_id&&!p.parentWorkspace);
+    const parent=store.snapshot().projects.find(p=>p.projectId===run.project_id&&!p.parentWorkspace
+      &&p.sessions.some(s=>s.sessionId===run.origin_session_id));
     if(!parent)return;
     if(run.grant?.reason==='manual'&&!run.grant.active)executionControl.stop(parent.workspace,run.grant.scope_id);
     const uncertain=run.messages.find(m=>m.scope_id===run.grant?.scope_id&&['unknown','rejected'].includes(m.delivery));
@@ -615,7 +622,7 @@ return Object.freeze({
   executorEnabled:(workspace,scope)=>executorEnabled(workspace,scope),
   executionControl:Object.freeze({view:(...args)=>executionControl.view(...args),enabled:(...args)=>executionControl.enabled(...args),
     snapshot:()=>executionControl.snapshot()}),setPlanExecution,
-  userChoices:Object.freeze({view:sessionId=>userChoices.view(sessionId),history:workspace=>userChoices.workspaceHistory(workspace),
+  userChoices:Object.freeze({view:sessionId=>userChoices.view(sessionId),history:owner=>userChoices.workspaceHistory(owner),
     choose:input=>input?.option_id==='reopen'?userChoices.reopen(input):userChoices.choose(input),forget:sessionId=>userChoices.forget(sessionId),
     reconcile:()=>scheduleChoices()}),
   // The user confirmed archiving a project with an active plan: execution pauses now; Kit is untouched.

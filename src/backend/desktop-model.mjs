@@ -462,12 +462,12 @@ function workProgressView(workspace,fresh=null) {
   if(unknown.length)warn('Исход команды неизвестен',unknown[0].reason??'Завершение команды не подтверждено.',{kind:'command-issues'});
   // History: finished dialogue messages of the plan from the durable communication journal.
   // The user's choices of this project: offered, chosen, declined or retired cards.
-  for(const entry of workflow.userChoices.history(workspace)){
+  for(const entry of workflow.userChoices.history({...project,sessions})){
     const at=Date.parse(entry.at);if(Number.isFinite(at))history.push({id:entry.id,at,actor:entry.actor??'APP',text:entry.text,kind:entry.kind==='warn'?'warn':'done'});
   }
   if(scope){
     const titles=Object.fromEntries(source.map(t=>[t.id,t.title]));
-    for(const message of plugin?.communication.planMessages(project.projectId,scope)??[]){
+    for(const message of plugin?.communication.planMessages(project.projectId,scope,{...project,sessions})??[]){
       const event=messageEvent(message,{titles});if(event)history.push(event);
     }
   }
@@ -483,7 +483,9 @@ function workProgressView(workspace,fresh=null) {
 }
 // The plugin panel of any plan participant receives the progress of its project.
 function workProgressFor(target) {
-  const project=store.snapshot().projects.find(p=>p.projectId===target?.project_id&&!p.parentWorkspace&&!p.archivedAt);
+  const project=store.snapshot().projects.find(p=>p.projectId===target?.project_id&&!p.parentWorkspace&&!p.archivedAt
+    &&p.sessions.some(s=>s.sessionId===target.origin_session_id)
+    &&(!target.origin_workspace_id||p.workspaceId===target.origin_workspace_id));
   const value=project&&workProgressView(project.workspace);
   // The panel names its own chat by the session role, not by the channel role.
   const session=target?.role==='E'?null:project?.sessions.find(s=>s.sessionId===target?.local_session_id);

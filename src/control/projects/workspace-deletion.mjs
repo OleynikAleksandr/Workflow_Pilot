@@ -146,7 +146,7 @@ export class WorkspaceDeletion {
     const project = this.record(workspace);
     const stat = await this.guard(workspace);
     const related=await this.related(project),sessionIds=project.sessions.map(s=>s.sessionId);
-    if (!stat) return { workspace, projectId: project.projectId, name: project.name, sessionCount: project.sessions.length, missing: true, bytes: 0, files: 0, fingerprint: 'missing', identity: null, related, sessionIds };
+    if (!stat) return { workspace, workspaceId:project.workspaceId, projectId: project.projectId, name: project.name, sessionCount: project.sessions.length, missing: true, bytes: 0, files: 0, fingerprint: 'missing', identity: null, related, sessionIds };
     const info = await this.projectIdentity(workspace);
     if (info.projectId !== project.projectId) fail('PROJECT_REPLACED', 'В этой папке теперь другой проект. Удаление остановлено.');
     const hash = createHash('sha256'); let bytes = 0, files = 0;
@@ -158,7 +158,7 @@ export class WorkspaceDeletion {
       else { files++; bytes += Number(item.size); }
     };
     await visit(workspace, '');
-    return { workspace, projectId: project.projectId, name: project.name, sessionCount: project.sessions.length, missing: false, bytes, files, fingerprint: hash.digest('hex'), identity: identity(stat), related, sessionIds };
+    return { workspace, workspaceId:project.workspaceId, projectId: project.projectId, name: project.name, sessionCount: project.sessions.length, missing: false, bytes, files, fingerprint: hash.digest('hex'), identity: identity(stat), related, sessionIds };
   }
   async preview(workspace) {
     if (this.isPending(workspace)) fail('DELETE_PENDING', 'Завершите ранее подтверждённое удаление кнопкой «Повторить очистку».');
@@ -173,7 +173,7 @@ export class WorkspaceDeletion {
     if (confirmation !== expected.name) fail('DELETE_CONFIRMATION', 'Введите точное имя проекта для подтверждения.');
     this.clear();
     const current = await this.inspect(expected.workspace);
-    if (current.projectId !== expected.projectId || JSON.stringify(current.identity)!==JSON.stringify(expected.identity)
+    if (current.workspaceId!==expected.workspaceId || current.projectId !== expected.projectId || JSON.stringify(current.identity)!==JSON.stringify(expected.identity)
         || JSON.stringify(current.sessionIds)!==JSON.stringify(expected.sessionIds) || JSON.stringify(current.related)!==JSON.stringify(expected.related))
       fail('DELETE_PREVIEW_CHANGED', 'Проект изменился после проверки. Откройте подтверждение заново.');
     const id = randomUUID();
@@ -189,7 +189,7 @@ export class WorkspaceDeletion {
     const related=this.store.snapshot().projects.filter(p=>ownedExecutor(p,project)).map(p=>({
       workspace:p.workspace,projectId:p.projectId,parentProjectId:project.projectId,
       id:p.sessions.find(s=>s.assignmentId)?.assignmentId,sessionIds:p.sessions.map(s=>s.sessionId)}));
-    const job={id,mode:'forget',workspace,projectId:project.projectId,name:project.name,
+    const job={id,mode:'forget',workspace,workspaceId:project.workspaceId,projectId:project.projectId,name:project.name,
       sessionIds:project.sessions.map(s=>s.sessionId),related,missing:true,identity:null,
       quarantine:path.join(path.dirname(workspace),'.workflow-pilot-delete-'+id),stage:'confirmed'};
     if(!validJournal(job,id+'.json'))fail('DELETE_WORKTREE_CHANGED','Принадлежность локальных записей исполнителей не подтверждена.');
@@ -205,7 +205,7 @@ export class WorkspaceDeletion {
   async reconcileSettledChildren(job,record) {
     if(!record||job.stage!=='confirmed')return;
     record=this.store.snapshot().projects.find(p=>p.workspace===job.workspace);
-    if(!record||record.projectId!==job.projectId)fail('DELETE_RECORD_CHANGED','Запись проекта изменилась во время остановки.');
+    if(!record||record.projectId!==job.projectId||job.workspaceId&&record.workspaceId!==job.workspaceId)fail('DELETE_RECORD_CHANGED','Запись проекта изменилась во время остановки.');
     // A command admitted before the stop can finish creating its worktree.
     // Discover it only after the scheduler has quiesced and persist its exact
     // ownership before any additional cleanup. Replaced targets remain protected.
@@ -337,6 +337,8 @@ export class WorkspaceDeletion {
     return expected;
   }
   async finish(job) {
+    const before=this.store.project(job.workspace);
+    if(before&&job.workspaceId&&before.workspaceId!==job.workspaceId)fail('DELETE_RECORD_CHANGED','Идентификатор workspace изменился.');
     await this.beforeFinish(structuredClone(job));
     const record = this.store.project(job.workspace);
     if (record && (!record.archivedAt || record.projectId !== job.projectId)) fail('DELETE_RECORD_CHANGED', 'Запись проекта изменилась. Автоматическая очистка остановлена.');
@@ -401,7 +403,7 @@ export class WorkspaceDeletion {
     return this.finishMetadata(job);
   }
   async finishMetadata(job) {
-    const identities=[{workspace:job.workspace,projectId:job.projectId,sessionIds:job.sessionIds??[]},...(job.related??[])];
+    const identities=[{workspace:job.workspace,workspaceId:job.workspaceId,projectId:job.projectId,sessionIds:job.sessionIds??[]},...(job.related??[])];
     await this.cleanup(job);
     await this.purgeState(path.dirname(this.store.file),identities);
     for(const item of identities)await this.purgeCopies(item.workspace,item.projectId);

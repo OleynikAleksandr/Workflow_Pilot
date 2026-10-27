@@ -10,7 +10,8 @@ export const workspaceGit=async(workspace,args)=>(await executeGit('git',['--no-
 
 // A path alone is not ownership: legacy records need the assignment's committed parent identity.
 export const ownedExecutor = (child,parent) => !!parent && !!child.parentProjectId
-  && child.parentProjectId===parent.projectId && child.parentWorkspace===parent.workspace;
+  && child.parentProjectId===parent.projectId && child.parentWorkspace===parent.workspace
+  && (!child.parentWorkspaceId || child.parentWorkspaceId===parent.workspaceId);
 export async function assignmentOwnership(parent,workspace,id,git=workspaceGit,inspect=readWorkspace) {
   try {
     if(!parent||!path.isAbsolute(workspace)||!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(id))return null;
@@ -295,11 +296,12 @@ const validAgentTime = value => typeof value === 'object' && !Array.isArray(valu
   && validDuration(value.totalMs) && validDuration(value.lastMs) && value.lastMs <= value.totalMs;
 
 function validate(data) {
-  if (data?.schemaVersion !== 8 || !Array.isArray(data.projects)) throw invalid();
-  const urls = [], ids = [], workspaces = [];
+  if (data?.schemaVersion !== 9 || !Array.isArray(data.projects)) throw invalid();
+  const urls = [], ids = [], workspaces = [], workspaceIds = [];
   for (const p of data.projects) {
     if (!p || typeof p.workspace !== 'string' || !path.isAbsolute(p.workspace)
         || typeof p.projectId !== 'string' || !p.projectId || typeof p.name !== 'string'
+        || typeof p.workspaceId !== 'string' || !/^[a-f0-9-]{36}$/i.test(p.workspaceId)
         || (p.displayName !== undefined && p.displayName !== null && (typeof p.displayName !== 'string' || !p.displayName.trim()))
         || (p.lastNamedScopeId !== undefined && p.lastNamedScopeId !== null && (typeof p.lastNamedScopeId !== 'string' || !p.lastNamedScopeId))
         || !Array.isArray(p.sessions) || !p.sessions.length || typeof p.expanded !== 'boolean'
@@ -316,6 +318,7 @@ function validate(data) {
         throw invalid();
     }
     workspaces.push(p.workspace);
+    workspaceIds.push(p.workspaceId);
     for (const s of p.sessions) {
       if (!s || typeof s.sessionId !== 'string' || !s.sessionId || typeof s.title !== 'string'
           || (s.titleSource !== undefined && s.titleSource !== null && !['page', 'manual', 'scope', 'topic'].includes(s.titleSource))
@@ -352,11 +355,14 @@ function validate(data) {
       if (s.chatUrl) urls.push(s.chatUrl);
     }
   }
-  for (const values of [urls, ids, workspaces]) if (new Set(values).size !== values.length) throw invalid();
+  for (const values of [urls, ids, workspaces, workspaceIds]) if (new Set(values).size !== values.length) throw invalid();
   return data;
 }
 
 function migrate(data) {
+  if (data?.schemaVersion === 8 && Array.isArray(data.projects)) {
+    return {...data,schemaVersion:9,projects:data.projects.map(p=>({...p,workspaceId:randomUUID()}))};
+  }
   if (data?.schemaVersion === 1 && Array.isArray(data.projects)) {
     data = { schemaVersion: 2, selectedWorkspace: data.selectedWorkspace, projects: data.projects.map(p => {
       if (!p || typeof p.sessionId !== 'string') throw invalid();
@@ -396,7 +402,7 @@ function migrate(data) {
     return { ...info, sessions };
   }) };
   if (![6, 7].includes(data?.schemaVersion) || !Array.isArray(data.projects)) throw invalid();
-  return { ...data, schemaVersion: 8, projects: data.projects.map(project => ({ ...project,
+  return migrate({ ...data, schemaVersion: 8, projects: data.projects.map(project => ({ ...project,
     sessions: project.sessions.map(session => {
       if (session.experience !== undefined && session.experience !== 'chat'
           || session.availability !== undefined && session.availability !== 'active') throw invalid();
@@ -406,7 +412,7 @@ function migrate(data) {
         record.attempt = attempt;
       }
       return record;
-    }) })) };
+    }) })) });
 
 }
 
@@ -497,7 +503,7 @@ export class WorkspaceSessions {
     this.saveTail = Promise.resolve();
     this.mutationTail = Promise.resolve();
     this.selectionGeneration = 0;
-    this.data = { schemaVersion: 8, selectedWorkspace: null, projects: [] };
+    this.data = { schemaVersion: 9, selectedWorkspace: null, projects: [] };
   }
 
   async load() {
@@ -511,7 +517,7 @@ export class WorkspaceSessions {
     }
     let parsed;
     try { parsed = JSON.parse(text); } catch { throw invalid(); }
-    const legacy = [1, 2, 3, 4, 5, 6, 7].includes(parsed.schemaVersion);
+    const legacy = [1, 2, 3, 4, 5, 6, 7, 8].includes(parsed.schemaVersion);
     const data = validate(legacy ? migrate(parsed) : parsed);
     if (legacy) {
       try { await fs.writeFile(this.file + `.v${parsed.schemaVersion}-backup`, text, { mode: 0o600, flag: 'wx' }); }
@@ -546,6 +552,7 @@ export class WorkspaceSessions {
         if(confirmed){child.parentProjectId=parent.projectId;for(const s of child.sessions)s.parentProjectId=parent.projectId;ownershipChanged=true;}
       }
       const state=confirmed?'confirmed':'recovery';
+      if(confirmed&&!child.parentWorkspaceId){child.parentWorkspaceId=parent.workspaceId;ownershipChanged=true;}
       if(child.ownershipState!==state){child.ownershipState=state;ownershipChanged=true;}
     }
     if (!data.projects.some(p => p.workspace === data.selectedWorkspace && p.archivedAt === null
@@ -647,7 +654,7 @@ export class WorkspaceSessions {
         const session = this.createSession();
         const role = newSessionRole(info);
         if (role) session.role = role;
-        project = { ...info, selectedSessionId: session.sessionId, sessions: [session], expanded: true, archivedAt: null };
+        project = { ...info, workspaceId: randomUUID(), selectedSessionId: session.sessionId, sessions: [session], expanded: true, archivedAt: null };
         data.projects.unshift(project);
       } else Object.assign(project, info);
       if (latest) {
@@ -840,7 +847,7 @@ export class WorkspaceSessions {
       Object.assign(session,{role:'executor',assignmentId:assignment.id,taskId:assignment.parent_task_id,parentWorkspace:origin.workspace,parentProjectId:parent.projectId,
         parentScopeId:assignment.parent_scope_id,executionOriginSessionId:origin.sessionId,
         title:sessionName(assignment.parent_task_id+' — '+assignment.title),titleSource:'manual'});
-      project={...info,parentWorkspace:origin.workspace,parentProjectId:parent.projectId,ownershipState:'confirmed',parentScopeId:assignment.parent_scope_id,
+      project={...info,workspaceId:randomUUID(),parentWorkspaceId:parent.workspaceId,parentWorkspace:origin.workspace,parentProjectId:parent.projectId,ownershipState:'confirmed',parentScopeId:assignment.parent_scope_id,
         selectedSessionId:session.sessionId,sessions:[session],expanded:false,archivedAt:null};
       data.projects.push(project);return currentView(project);
     });
@@ -1068,9 +1075,10 @@ export class WorkspaceSessions {
     return this.mutate(data=>{
       const project=data.projects.find(p=>p.workspace===workspace);
       if(project&&(!project.archivedAt||project.projectId!==projectId))throw new WorkspaceError('DELETE_RECORD_CHANGED','Запись удаляемого проекта изменилась.');
+      const owner=project??{workspace,projectId};
       // Every executor record of the deleted project goes too, also one whose worktree was not found.
-      const removed=new Set(data.projects.filter(p=>p.workspace===workspace||ownedExecutor(p,{workspace,projectId})||related.some(r=>r.workspace===p.workspace
-        &&r.projectId===p.projectId&&r.parentProjectId===projectId&&(ownedExecutor(p,{workspace,projectId})
+      const removed=new Set(data.projects.filter(p=>p.workspace===workspace||ownedExecutor(p,owner)||related.some(r=>r.workspace===p.workspace
+        &&r.projectId===p.projectId&&r.parentProjectId===projectId&&(ownedExecutor(p,owner)
           ||r.legacyVerified&&!p.parentProjectId&&p.parentWorkspace===workspace))).map(p=>p.workspace));
       data.projects=data.projects.filter(p=>!removed.has(p.workspace));
       if(removed.has(data.selectedWorkspace))data.selectedWorkspace=null;

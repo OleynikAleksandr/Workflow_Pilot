@@ -2,6 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ExecutionControl } from '../src/control/workflow/execution-control.mjs';
 
+test('reusing a path with the same Kit project does not reuse a workspace execution grant',()=>{
+  let workspaceId='first';const options={identity:()=> 'project',workspaceIdentity:()=>workspaceId};
+  const control=new ExecutionControl(options);control.toggle('/same','scope');
+  const saved=control.snapshot();workspaceId='second';
+  const restored=new ExecutionControl({...options,saved});
+  assert.equal(restored.view('/same','scope').state,'not-started');
+  assert.equal(control.enabled('/same','scope'),false);
+});
+
 const W = '/projects/main', SCOPE = 'orchestrated-scope';
 test('all restored routes require Continue and legacy routes migrate to SDK',()=>{
   const value=new ExecutionControl();value.selectRoute(W,SCOPE,'plugin-v1');value.toggle(W,SCOPE);

@@ -21,6 +21,13 @@ function fixture(initial = []) {
   return { choices, acts, delivered, receipts, page, set: value => { facts = value; }, tick: ms => { now += ms; } };
 }
 const refused = { session_id: 'o', workspace: '/w', kind: 'refused', key: 'refused:s:x', data: { message: 'Kit отказал в назначении T001: STACK', task_id: 'T001' }, role: 'orchestrator' };
+test('choice history cannot follow names, reused paths or a conflicting workspace identity',()=>{
+  const f=fixture([]),owner={workspace:'/w',workspaceId:'new',projectId:'p',sessions:[{sessionId:'o'}]};
+  f.choices.history=[{workspace:'/w',session_id:'old'},{workspace:'/w',session_id:'o',workspaceId:'old'},
+    {workspace:'/renamed',session_id:'o',workspaceId:'new',projectId:'p'},{workspace:'/w',session_id:'o'}];
+  assert.equal(f.choices.workspaceHistory(owner).length,2,'exact live legacy session allowed; old incarnation excluded');
+  f.choices.forget('o');assert.equal(f.choices.history.length,1);
+});
 test('each of the three mode buttons completes the decision at durable save, before delivery',async()=>{
   const fact={session_id:'o',workspace:'/w',kind:'mode',key:'mode:1',data:{recommended:'orchestrated',reason:'fixture'},role:'planning'};
   for(const option of choiceOptions('mode',fact.data).options){
@@ -47,7 +54,7 @@ test('a chosen receipt waits for durable save; failure restores offered options 
   assert.equal(saved.state,'chosen');f.receipts.set('m1',{delivery:'accepted'});f.choices.reconcile();assert.equal(f.choices.view('o').state,'chosen');
   assert.equal(f.choices.pending('o'),false,'a saved decision does not wait for the model response');
   f.receipts.set('m1',{read:true});assert.equal(f.choices.view('o'),null,'read retires the current confirmation without waiting for the model turn');
-  f.choices.reconcile();const ids=f.choices.workspaceHistory('/w').map(e=>e.id);assert.equal(new Set(ids).size,ids.length);
+  f.choices.reconcile();const ids=f.choices.workspaceHistory({sessions:[{sessionId:'o'}]}).map(e=>e.id);assert.equal(new Set(ids).size,ids.length);
   const count=ids.length;f.choices.reconcile();assert.equal(f.choices.history.length,count,'receipt replay creates no history duplicate');
 });
 

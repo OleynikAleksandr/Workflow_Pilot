@@ -12,6 +12,19 @@ import { sessionExecutionMessage } from '../src/control/context/context-session.
 
 const directoryLink = (target, link) => fs.symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir');
 
+test('workspace identity survives restart and migration but not removal and reuse of the same path',async t=>{
+  const {project,store}=await fixture(t),first=await store.select(await project('Identity')),root=first.workspace;
+  assert.match(first.workspaceId,/^[a-f0-9-]{36}$/);
+  const saved=store.snapshot();saved.schemaVersion=8;delete saved.projects[0].workspaceId;
+  await fs.writeFile(store.file,JSON.stringify(saved));
+  const migrated=new WorkspaceSessions(store.file);await migrated.load();const id=migrated.project(root).workspaceId;
+  assert.ok(id);assert.equal(migrated.project(root).sessionId,first.sessionId);
+  const again=new WorkspaceSessions(store.file);await again.load();assert.equal(again.project(root).workspaceId,id);
+  await again.setArchived(root,true);await again.forgetDeletedProject(root,first.projectId);
+  const replacement=await again.select(root);assert.notEqual(replacement.workspaceId,id);assert.notEqual(replacement.sessionId,first.sessionId);
+  assert.equal(replacement.projectId,first.projectId,'same Kit repository still has its project identity');
+});
+
 test('new workspace reveals selected session and retains preparation cancellation after restart',async t=>{
   const {project,store}=await fixture(t),root=await project('Start');const selected=await store.select(root);
   assert.equal(store.snapshot().projects[0].expanded,true);
@@ -516,7 +529,9 @@ test('the released 0.5.35 schema reads old data but rejects a topic; new storage
     SESSION_ROLES:['discussion','planning','self','orchestrator','executor'],
     invalid:()=>Object.assign(Error('Released schema rejects this store'),{code:'SESSIONS_INVALID'})});
   const before=await fs.readFile(store.file,'utf8');
-  assert.doesNotThrow(()=>oldValidate(JSON.parse(before)));
+  const legacy=JSON.parse(before);legacy.schemaVersion=8;delete legacy.projects[0].workspaceId;
+  assert.doesNotThrow(()=>oldValidate(legacy));
+  assert.throws(()=>oldValidate(JSON.parse(before)),{code:'SESSIONS_INVALID'},'old releases cannot downgrade workspace identity');
   const named=await store.setSessionTopic(p.workspace,p.sessionId,'🪟'.repeat(100),p.projectId);
   assert.equal(Buffer.byteLength(named.title),200);assert.equal(Array.from(named.title).length,50);
   const after=await fs.readFile(store.file,'utf8');
@@ -615,7 +630,7 @@ test('Chat schema upgrade preserves identity and startup receipts without mode f
   session.attempt={requestId:'r',attemptGeneration:'g',state:'sent',sendStartedAtMs:1,modeViolation:false,contextRef:{message_id:'m'},enrollmentRef:{run_id:'run',ticket_hash:'a'.repeat(64)}};
   const original=JSON.stringify(raw);await fs.writeFile(store.file,original);
   const next=new WorkspaceSessions(store.file);await next.load();
-  assert.equal(next.snapshot().schemaVersion,8);const saved=next.project(chat.workspace,chat.sessionId);
+  assert.equal(next.snapshot().schemaVersion,9);const saved=next.project(chat.workspace,chat.sessionId);
   assert.equal(saved.sessionId,chat.sessionId);assert.equal(saved.attempt.requestId,'r');assert.equal(saved.attempt.contextRef.message_id,'m');
   assert.deepEqual(saved.attempt.enrollmentRef,session.attempt.enrollmentRef);
   assert.equal(Object.hasOwn(saved,'experience'),false);assert.equal(Object.hasOwn(saved,'availability'),false);assert.equal(Object.hasOwn(saved.attempt,'modeViolation'),false);
@@ -646,7 +661,7 @@ test('session archive switches selection, blocks the last active session, restor
   await store.setSessionArchived(first.workspace, third.sessionId, true);
   await assert.rejects(store.setSessionArchived(first.workspace, first.sessionId, true), { code: 'SESSION_LAST_ACTIVE' });
   const restarted = new WorkspaceSessions(store.file); await restarted.load();
-  assert.equal(restarted.snapshot().schemaVersion, 8);
+  assert.equal(restarted.snapshot().schemaVersion, 9);
   assert.equal(restarted.snapshot().projects[0].sessions.filter(session => session.archivedAt === null).length, 1);
 });
 
@@ -729,7 +744,7 @@ test('legacy storage migrates intact with an exclusive backup and is not migrate
   const text = JSON.stringify(legacy);
   await fs.writeFile(store.file, text);
   const restored = new WorkspaceSessions(store.file); await restored.load();
-  assert.equal(restored.snapshot().schemaVersion, 8);
+  assert.equal(restored.snapshot().schemaVersion, 9);
   assert.equal(restored.snapshot().projects[0].sessions.length, 1);
   assert.equal(restored.selected().attempt.text, 'Точный старый текст');
   assert.equal(restored.selected().chatUrl, legacy.projects[0].chatUrl);
@@ -799,7 +814,7 @@ test('version two history migrates with an exact backup and preserves unknown mo
   const old = store.snapshot(); old.schemaVersion = 2; delete old.projects[0].archivedAt;
   const original = JSON.stringify(old); await fs.writeFile(store.file, original);
   const next = new WorkspaceSessions(store.file); await next.load();
-  assert.equal(next.snapshot().schemaVersion, 8); assert.equal(next.selected().archivedAt, null);
+  assert.equal(next.snapshot().schemaVersion, 9); assert.equal(next.selected().archivedAt, null);
   assert.deepEqual(next.snapshot().projects[0].sessions, old.projects[0].sessions.map(session => ({ ...session, archivedAt: null })));
   assert.equal(await fs.readFile(store.file + '.v2-backup', 'utf8'), original);
 });

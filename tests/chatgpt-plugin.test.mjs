@@ -924,7 +924,8 @@ test('private bridge rejects browser origins, unauthenticated and oversized requ
   assert.equal((await send({action:'list'},{...headers,Origin:'https://example.com'})).status,403);
   assert.equal((await send({action:'list',padding:'x'.repeat(17000)},headers)).status,413);
   assert.equal((await send({action:'exec'},headers)).status,400);
-  assert.equal((await (await send({action:'open',projectId:'Первый'},headers)).json()).project.id,'Первый');
+  const opened=(await (await send({action:'open',projectId:'Первый'},headers)).json()).project;
+  assert.equal(opened.projectId,'Первый');assert.equal(opened.id,opened.workspaceId);
   assert.equal((await fs.stat(path.join(f.directory,'plugin-bridge.json'))).mode&0o777,0o600);
   await assert.rejects(startPluginBridge({directory:f.directory}),/already running/);
 });
@@ -971,7 +972,8 @@ test('real MCP lists extension metadata, serves bundled UI, binds using host met
   const manual=await c.callTool({name:'workflow_connect_project',arguments:{project_id:'Первый'},_meta:metadata});
   assert.equal(manual.structuredContent.sessionId,connected.structuredContent.sessionId,'ordinary chat can connect without a panel request');
   const focused=await c.callTool({name:'workflow_open_project',arguments:{project_id:'Первый'}});
-  assert.equal(focused.isError,false);assert.equal(focused.structuredContent.project.id,'Первый');
+  assert.equal(focused.isError,false);assert.equal(focused.structuredContent.project.projectId,'Первый');
+  assert.equal(focused.structuredContent.project.id,focused.structuredContent.project.workspaceId);
   assert.ok(focused.structuredContent.sessions.some(s=>s.id===connected.structuredContent.sessionId));
   const absent=await c.callTool({name:'workflow_open_project',arguments:{project_id:'missing'}});
   assert.equal(absent.isError,true);assert.equal(absent.structuredContent.error.code,'PLUGIN_PROJECT_UNAVAILABLE');
@@ -1020,7 +1022,8 @@ test('backend owns the plugin bridge: MCP lists projects with no frontend and re
   assert.equal(panel.isError,false,JSON.stringify(panel.structuredContent));
   assert.equal(panel.structuredContent.projects,undefined);assert.equal(panel.structuredContent.communication.build_id,COMMUNICATION_BUILD);
   const opened=await c.callTool({name:'workflow_open_project',arguments:{project_id:'backend-project'}});
-  assert.equal(opened.isError,false);assert.equal(opened.structuredContent.project.id,'backend-project');
+  assert.equal(opened.isError,false);assert.equal(opened.structuredContent.project.projectId,'backend-project');
+  assert.equal(opened.structuredContent.project.id,opened.structuredContent.project.workspaceId);
   backend.kill('SIGKILL');await new Promise(resolve=>backend.once('exit',resolve));
   const lost=await c.callTool({name:'workflow_pilot_panel',arguments:{}});
   assert.equal(lost.isError,true);assert.equal(lost.structuredContent.error.code,'PLUGIN_DESKTOP_UNAVAILABLE');

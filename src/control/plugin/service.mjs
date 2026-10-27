@@ -36,7 +36,9 @@ export class PluginProjects {
       ||session.executionOriginSessionId!==target.origin_session_id)return false;
     const origin=await this.participantTarget(target.origin_session_id);
     if(origin?.role!=='O'||origin.project_id!==target.project_id||origin.scope_id!==target.scope_id)return false;
-    const parent=all.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt);
+    const parent=all.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt
+      &&p.sessions.some(s=>s.sessionId===target.origin_session_id)
+      &&(!target.origin_workspace_id||p.workspaceId===target.origin_workspace_id));
     if(!parent||session.parentWorkspace!==parent.workspace)return false;
     const state=await this.dialogueOperation(origin,'assignment:dialogue-status',target.assignment_id);
     return state.phase==='INTEGRATED'&&state.scope_id===target.scope_id&&state.task_id===target.task_id
@@ -45,7 +47,8 @@ export class PluginProjects {
   }
   async dialogueOperation(target,command,input){
     const fresh=await this.participantTarget(target.local_session_id);
-    if(!fresh||fresh.role!==target.role||fresh.scope_id!==target.scope_id||fresh.assignment_id!==target.assignment_id)
+    if(!fresh||fresh.role!==target.role||fresh.scope_id!==target.scope_id||fresh.assignment_id!==target.assignment_id
+      ||target.workspace_id&&fresh.workspace_id!==target.workspace_id)
       throw fail('PLUGIN_COMMUNICATION_ASSIGNMENT_CHANGED','Назначение автора изменилось.');
     const project=this.projects.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===target.local_session_id));
     if(!project)throw fail('PLUGIN_COMMUNICATION_PROJECT_REMOVED','Проект удалён.');
@@ -90,7 +93,9 @@ export class PluginProjects {
     // when a navigation event and an incoming tool call arrive together.
     await this.projects.whenIdle?.();
     const target=localParticipantTarget(this.projects,sessionId);if(!target)return null;
-    const parent=this.projects.snapshot().projects.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt);
+    const parent=this.projects.snapshot().projects.find(p=>p.projectId===target.project_id&&!p.parentWorkspace&&!p.archivedAt
+      &&p.sessions.some(s=>s.sessionId===target.origin_session_id)
+      &&(!target.origin_workspace_id||p.workspaceId===target.origin_workspace_id));
     if(!parent)return null;
     const info=await this.projects.inspect(parent.workspace,target.origin_session_id);
     if(info.projectId!==parent.projectId)return null;
@@ -150,30 +155,32 @@ export class PluginProjects {
   }
   list() {
     return { projects: this.projects.snapshot().projects.filter(p => !p.archivedAt && !p.parentWorkspace)
-      .map(p => ({ id: p.projectId, name: p.displayName || p.name,
+      .map(p => ({ id: p.workspaceId??p.projectId, projectId:p.projectId, workspaceId:p.workspaceId??null, name: p.displayName || p.name,
         sessions: p.sessions.filter(s => !s.archivedAt).map(s => ({ id: s.sessionId, title: s.title || 'Новая сессия',
           external: s.external?.provider === 'chatgpt-plugin' })) })) };
   }
   project(id) {
     if (!key(id)) throw fail('PLUGIN_PROJECT_REQUIRED', 'Выберите проект из списка.');
-    const matches = this.projects.snapshot().projects.filter(p => p.projectId === id && !p.archivedAt && !p.parentWorkspace);
+    const all=this.projects.snapshot().projects.filter(p=>!p.archivedAt&&!p.parentWorkspace);
+    const exact=all.filter(p=>p.workspaceId===id);
+    const matches=exact.length?exact:all.filter(p=>p.projectId===id);
     if (matches.length !== 1) throw fail('PLUGIN_PROJECT_UNAVAILABLE', 'Проект недоступен. Обновите список проектов.');
     return matches[0];
   }
   async open(projectId) {
     const p = this.project(projectId), info = await this.projects.inspect(p.workspace);
     if (info.projectId !== p.projectId) throw fail('PROJECT_REPLACED', 'В этой папке теперь другой проект.');
-    return { project: { id: p.projectId, name: p.displayName || p.name },
-      sessions: this.list().projects.find(v => v.id === p.projectId).sessions };
+    return { project: { id: p.workspaceId??p.projectId, projectId:p.projectId, workspaceId:p.workspaceId??null, name: p.displayName || p.name },
+      sessions: this.list().projects.find(v => v.id === (p.workspaceId??p.projectId)).sessions };
   }
   async connect({ projectId, requestId, metadata }) {
     if (!/^[0-9a-f-]{36}$/i.test(requestId ?? '')) throw fail('PLUGIN_REQUEST_INVALID', 'Некорректный идентификатор подключения.');
     const conversationKey = pluginConversationKey(metadata), p = this.project(projectId);
     const packet = validateContextPacket(await this.loadContext(p.workspace), p.workspace);
     if (packet.facts.project_id !== p.projectId) throw fail('PROJECT_REPLACED', 'Контекст принадлежит другому проекту.');
-    const session = await this.projects.connectExternal(p.workspace, { projectId, requestId, conversationKey });
+    const session = await this.projects.connectExternal(p.workspace, { projectId:p.projectId, requestId, conversationKey });
     this.onChange();
-    return { project: { id: p.projectId, name: p.displayName || p.name }, sessionId: session.sessionId,
+    return { project: { id: p.workspaceId??p.projectId, projectId:p.projectId, workspaceId:p.workspaceId??null, name: p.displayName || p.name }, sessionId: session.sessionId,
       workspace: p.workspace, context: packet.context, contextSha256: packet.context_sha256,
       contextBytes: packet.context_bytes, contextSignature: packet.signature,
       instructions: 'Контекст проекта получен через Workflow Pilot. Прочитайте его целиком до работы. Продолжайте в этом разговоре. Не создавайте другой диалог и не запускайте встроенный браузер. Правила и текущий план находятся в recovery.' };

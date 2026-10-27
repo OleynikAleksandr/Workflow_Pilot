@@ -9,7 +9,8 @@ const ownsAttempt = (invitation,owner) => invitation.target.project_id===owner.p
   &&(invitation.attempt_generation??null)===(owner.attempt_generation??null);
 const FIELDS=['project_id','local_session_id','origin_session_id','role','assignment_id','task_id','scope_id'];
 const same = (a,b) => !!a && !!b && FIELDS.every(key=>key==='scope_id'&&a.role==='O'&&(a[key]==null||b[key]==null)
-  ||(a[key]??null)===(b[key]??null));
+  ||(a[key]??null)===(b[key]??null))
+  && ['workspace_id','origin_workspace_id'].every(key=>!b[key] || a[key]===b[key]);
 export const workflowRunId = target => 'work:'+hash(JSON.stringify([target.project_id,target.origin_session_id]));
 
 // A ticket authorizes only the first binding of a backend-selected local session.
@@ -36,6 +37,17 @@ export class ParticipantEnrollment {
     const current=this.resolveTarget?.(target.local_session_id);
     check(same(current,target),'ASSIGNMENT_CHANGED','Назначение или проект изменились. Ожидайте актуальный стартовый контекст Workflow Pilot.');
     return current;
+  }
+  // Upgrade only an exact, still-owned session; never infer ownership from a path.
+  migrateRun(run) {
+    if(run.mode!=='workflow'||run.removed)return;
+    for(const saved of [...Object.values(run.members).map(m=>m.target),...Object.values(run.enrollments??{}).map(i=>i.target)]){
+      if(!saved||saved.workspace_id)continue;
+      const current=this.resolveTarget?.(saved.local_session_id);
+      if(!same(current,saved)||!current.workspace_id)continue;
+      Object.assign(saved,{workspace_id:current.workspace_id,origin_workspace_id:current.origin_workspace_id});
+      this.communication.event(run,'identity.workspace_bound',{local_session_id:saved.local_session_id,workspace_id:saved.workspace_id});
+    }
   }
   reserve(target,correlation={}) {
     this.current(target);
@@ -144,6 +156,7 @@ export class ParticipantEnrollment {
   publicMember(run,member) {
     return {run_id:run.id,participant_id:member.id,role:member.role,mode:'workflow',
       project_id:member.target.project_id,local_session_id:member.target.local_session_id,
+      ...(member.target.workspace_id?{workspace_id:member.target.workspace_id,origin_workspace_id:member.target.origin_workspace_id}:{}),
       assignment_id:member.target.assignment_id??null,task_id:member.target.task_id??null,scope_id:member.target.scope_id??null};
   }
 }
@@ -161,9 +174,11 @@ export function localParticipantTarget(projects,sessionId) {
     const parent=all.find(p=>p.workspace===session.parentWorkspace&&!p.archivedAt&&!p.parentWorkspace);
     const origin=parent?.sessions.find(s=>s.sessionId===session.executionOriginSessionId&&!s.archivedAt&&s.role==='orchestrator');
     if(!origin||parent.projectId!==session.parentProjectId||parent.scopeId!==session.parentScopeId
+      ||project.parentWorkspaceId&&project.parentWorkspaceId!==parent.workspaceId
       ||parent.planExecution?.execution_origin_session_id!==origin.sessionId
       ||project.ownershipState!=='confirmed'||!session.assignmentId||!session.taskId)return null;
     return {project_id:parent.projectId,local_session_id:sessionId,origin_session_id:origin.sessionId,role:'E',
+      ...(project.workspaceId?{workspace_id:project.workspaceId,origin_workspace_id:parent.workspaceId}:{}),
       scope_id:session.parentScopeId,assignment_id:session.assignmentId,task_id:session.taskId,
       ...(parent.planExecution?.dialogue_version===1?{dialogue_version:1}:{})};
   }
@@ -172,8 +187,10 @@ export function localParticipantTarget(projects,sessionId) {
   // A planning session keeps the plan-owner channel through its mode choice: one run, one target role.
   if(!['orchestrator','planning','self'].includes(session.role)||published&&project.planExecution?.execution_origin_session_id!==sessionId)
     return {project_id:project.projectId,local_session_id:sessionId,origin_session_id:sessionId,role:'S',
+      ...(project.workspaceId?{workspace_id:project.workspaceId,origin_workspace_id:project.workspaceId}:{}),
       scope_id:project.scopeId??null,assignment_id:null,task_id:null};
   return {project_id:project.projectId,local_session_id:sessionId,origin_session_id:sessionId,role:'O',
+    ...(project.workspaceId?{workspace_id:project.workspaceId,origin_workspace_id:project.workspaceId}:{}),
     // Publication and persisted role reconciliation are separate operations.
     // The fresh plan's exact origin is authoritative during that interval.
     scope_id:published?project.scopeId:session.orchestratorScopeId??null,assignment_id:null,task_id:null,

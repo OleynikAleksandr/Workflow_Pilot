@@ -126,9 +126,11 @@ test('a legacy profile migrates in place with an exact rollback backup; a foreig
   const withoutOpenTimes=value=>JSON.parse(JSON.stringify(value,(key,item)=>key==='lastOpenedAt'?undefined:item));
   const stores=name=>JSON.parse(name in before?before[name].toString():'{}');
   const after=JSON.parse(fs.readFileSync(path.join(root,'workspaces.json'),'utf8'));
-  const expected=stores('workspaces.json');expected.schemaVersion=8;
+  const expected=stores('workspaces.json');expected.schemaVersion=9;
+  for(const p of expected.projects){const actual=after.projects.find(a=>a.projectId===p.projectId);
+    assert.match(actual.workspaceId,/^[a-f0-9-]{36}$/);p.workspaceId=actual.workspaceId;}
   for(const p of expected.projects)for(const s of p.sessions){delete s.experience;delete s.availability;}
-  assert.equal(after.schemaVersion,8);assert.deepEqual(withoutOpenTimes(after),withoutOpenTimes(expected));
+  assert.equal(after.schemaVersion,9);assert.deepEqual(withoutOpenTimes(after),withoutOpenTimes(expected));
   assert.deepEqual(fs.readFileSync(path.join(root,'workspaces.json.v6-backup')),before['workspaces.json']);
   assert.deepEqual(fs.readFileSync(path.join(root,'settings.json')),before['settings.json'],'settings are not rewritten');
   // An earlier release holding the profile lock: the client explains it and starts nothing else.

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1231,
+  "plan_revision": 1234,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -69,7 +69,11 @@
       "tests/workflow-kit-upgrade.test.mjs",
       "tests/fixtures/released-kit/manifest.json",
       "tests/panel-resource-upgrade.test.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "tests/backend-upgrade.test.mjs",
+      "tests/dialogue-delivery.test.mjs",
+      "src/control/workflow/execution-control.mjs",
+      "tests/execution-control.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/sdk-recovery-identity.md",
@@ -110,8 +114,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-recovery-identity",
         "task_id": "IDENTITY",
@@ -134,7 +138,12 @@
         "src/control/plugin/service.mjs",
         "tests/plugin-communication.test.mjs",
         "tests/chatgpt-plugin.test.mjs",
-        "tests/backend-desktop-model.test.mjs"
+        "tests/backend-desktop-model.test.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "tests/execution-control.test.mjs",
+        "src/control/plugin/assignment-dialogue.mjs"
       ],
       "documentation_paths": [
         "docs/planning/sdk-recovery-identity.md"
@@ -149,11 +158,33 @@
       "verification_kind": "code",
       "acceptance_criteria": [
         "Отдельный сохраняемый workspaceId, projectId и sessionId; имена/пути не авторизация. Миграция и новые worktree сохраняют нужную идентичность.",
-        "История/choices/cleanup/API/binding сверяют конкретное владение; повтор пути не наследует старые события/разрешения. Legacy только по доказанной живой сессии."
+        "История/choices/cleanup/API/binding сверяют конкретное владение; повтор пути не наследует старые события/разрешения. Legacy только по доказанной живой сессии.",
+        "Разрешение выполнения и адресная проекция проверяют workspaceId; общий projectId двух копий не выбирает чужой канал."
       ],
       "expected_commit_message": "fix: изолировать проекты workspace и историю по устойчивым id",
       "task_brief": "Изолировать проекты workspace и историю по устойчивым ID. Отдельный сохраняемый workspaceId, projectId и sessionId; имена/пути не авторизация. Миграция и новые worktree сохраняют нужную идентичность. История/choices/cleanup/API/binding сверяют конкретное владение; повтор пути не наследует старые события/разрешения. Legacy только по доказанной живой сессии. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/enrollment.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/projects/project-state-cleanup.mjs",
+        "src/control/projects/workspace-deletion.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-control.mjs",
+        "src/control/workflow/user-choices.mjs",
+        "tests/backend-upgrade.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/execution-control.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/project-state-cleanup.test.mjs",
+        "tests/user-choices.test.mjs",
+        "tests/workspace-session.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -457,7 +488,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1231
+Revision: 1234
 
 ## Цель
 
@@ -474,10 +505,10 @@ Revision: 1231
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Внешняя последовательная Codex-разработка. Пользователь запретил модельное делегирование; общий транспорт и identity пересекаются. Продуктовые назначения не создаются.
 
-- [TODO] IDENTITY: Изолировать проекты workspace и историю по устойчивым ID — Ожидает
-  - Git Commit: [PENDING] fix: изолировать проекты workspace и историю по устойчивым id
+- [DONE] IDENTITY: Изолировать проекты workspace и историю по устойчивым ID — Завершено
+  - Git Commit: [DONE] fix: изолировать проекты workspace и историю по устойчивым id
   - Reference: sdk-recovery-identity / IDENTITY / implementation
-  - Файлы: src/control/sessions/workspace-session.mjs, src/control/projects/project-state-cleanup.mjs, src/control/projects/workspace-deletion.mjs, src/control/workflow/user-choices.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/control/plugin/enrollment.mjs, tests/workspace-session.test.mjs, tests/user-choices.test.mjs, tests/project-state-cleanup.test.mjs, tests/plugin-enrollment.test.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, docs/planning/sdk-recovery-identity.md
+  - Файлы: src/control/sessions/workspace-session.mjs, src/control/projects/project-state-cleanup.mjs, src/control/projects/workspace-deletion.mjs, src/control/workflow/user-choices.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/control/plugin/enrollment.mjs, tests/workspace-session.test.mjs, tests/user-choices.test.mjs, tests/project-state-cleanup.test.mjs, tests/plugin-enrollment.test.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/backend-upgrade.test.mjs, tests/dialogue-delivery.test.mjs, src/control/workflow/execution-control.mjs, tests/execution-control.test.mjs, src/control/plugin/assignment-dialogue.mjs, docs/planning/sdk-recovery-identity.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DELIVERY: Восстанавливать SDK уведомления без вечной блокировки и повторных эффектов — Ожидает

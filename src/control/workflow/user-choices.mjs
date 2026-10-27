@@ -21,7 +21,7 @@ export function collectChoiceFacts({ manual = new Map(), projects, project, exec
     const sessions = listed.sessions.filter(s => !s.archivedAt && !s.external && !s.assignmentId);
     const live = id => !!id && sessions.some(s => s.sessionId === id);
     const planOwner = info.planExecution?.execution_origin_session_id ?? sessions.find(s => s.orchestratorScopeId === scope)?.sessionId ?? legacyOwner(workspace);
-    const add = (session_id, kind, key, data = {}) => facts.push({ session_id, workspace, kind, key, data,
+    const add = (session_id, kind, key, data = {}) => facts.push({ session_id, workspace, projectId:listed.projectId, workspaceId:listed.workspaceId, kind, key, data,
       role: sessionRole(sessions.find(s => s.sessionId === session_id)) });
     if (active && scope) {
       const view = execution(workspace, scope);
@@ -71,7 +71,8 @@ export class UserChoices {
   // History lines read «Пользователь → Оркестратор · выбор: «…»» in the window and the panel.
   log(record, kind, text, actor = 'APP') {
     record.history_sequence=(record.history_sequence??0)+1;
-    this.history.push({ id:'choice:'+record.choice_id+':'+record.history_sequence,at: new Date(this.now()).toISOString(), workspace: record.workspace, session_id: record.session_id, kind, text, actor });
+    this.history.push({ id:'choice:'+record.choice_id+':'+record.history_sequence,at: new Date(this.now()).toISOString(), workspace: record.workspace,
+      projectId:record.projectId,workspaceId:record.workspaceId,session_id: record.session_id, kind, text, actor });
     if (this.history.length > HISTORY_LIMIT) this.history.splice(0, this.history.length - HISTORY_LIMIT);
   }
   // A cause may be offered when it was never shown, was superseded, or was declined and the
@@ -112,6 +113,7 @@ export class UserChoices {
       if (current && (OPEN.includes(current.state)||this.saving.has(current.choice_id))) continue;
       const { question, reason, options } = choiceOptions(fact.kind, fact.data);
       const record = { choice_id: this.id(), generation: 1, session_id: fact.session_id, workspace: fact.workspace, kind: fact.kind,
+        projectId:fact.projectId,workspaceId:fact.workspaceId,
         key: fact.key, data: fact.data ?? {}, role: fact.role ?? null, question, reason: reason ?? null, options, state: 'offered',
         created_at: new Date(this.now()).toISOString() };
       this.records.set(fact.session_id, record);
@@ -204,11 +206,13 @@ export class UserChoices {
   view(sessionId) { const record = this.records.get(sessionId),value=choiceView(record,this.delivery(record));
     return value&&this.saving.has(record.choice_id)?{...value,state:'saving',chosen:null}:value; }
   pending(sessionId) { const record = this.records.get(sessionId); return !!record && (OPEN.includes(record.state)||this.saving.has(record.choice_id)); }
-  workspaceHistory(workspace) { return this.history.filter(entry => entry.workspace === workspace); }
+  workspaceHistory(owner) { return this.history.filter(entry => owner?.sessions?.some(s=>s.sessionId===entry.session_id)
+    &&(!entry.projectId||entry.projectId===owner.projectId)&&(!entry.workspaceId||entry.workspaceId===owner.workspaceId)); }
   forget(sessionId) {
     const removed = this.records.delete(sessionId);
     for (const key of [...this.keys.keys()]) if (key.startsWith(sessionId + '\n')) this.keys.delete(key);
     this.manual.delete(sessionId); this.pages.delete(sessionId);
-    if (removed) this.onChange();
+    const length=this.history.length;this.history=this.history.filter(e=>e.session_id!==sessionId);
+    if (removed||length!==this.history.length) this.onChange();
   }
 }
