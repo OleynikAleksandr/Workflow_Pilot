@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1243,
+  "plan_revision": 1245,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -112,7 +112,7 @@
       {
         "path": "docs/planning/sdk-recovery-identity.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "b5b372ba795a7ef5a0ec6b97c7bc79e39a80d0c7"
       },
       {
         "path": "docs/modules/sdk-messaging.md",
@@ -400,8 +400,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-recovery-identity",
         "task_id": "DOCS",
@@ -451,7 +451,34 @@
       ],
       "expected_commit_message": "docs: актуализировать действующие контракты",
       "task_brief": "Актуализировать действующие контракты. Документы описывают новый контракт, ограничение retry и идентичность; спецификация перенесена в модули, live pending явно. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/sdk-messaging.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue-reliability.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/backend.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/control.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/plugin-communication-handoff.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/session-titles.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/workflow-execution.md",
+        "docs/planning/sdk-recovery-identity.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -565,7 +592,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1243
+Revision: 1245
 
 ## Цель
 
@@ -606,8 +633,8 @@ Revision: 1243
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/installer.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, tests/fixtures/released-kit/kit-1.10.3.tar.gz
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать действующие контракты
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать действующие контракты
   - Reference: sdk-recovery-identity / DOCS / implementation
   - Файлы: docs/planning/sdk-recovery-identity.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/project-lifecycle.md, docs/acceptance/sdk-messaging.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/plugin-communication-handoff.md, docs/modules/orchestrated-execution.md, docs/modules/assignment-dialogue.md, docs/modules/dialogue-timing.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/control.md, docs/modules/workflow-execution.md, docs/modules/current-actions.md, docs/modules/prepared-tasks.md, docs/modules/session-titles.md, docs/modules/orchestrator-startup.md, docs/modules/chat-only-startup.md, docs/modules/backend.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение

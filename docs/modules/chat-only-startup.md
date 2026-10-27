@@ -14,13 +14,13 @@ DOM не вводит и не отправляет первое сообщени
 
 ### Единственный Chat и хранилище
 
-WorkspaceSessions schema 8 не хранит у новых сессий `experience`/`availability`, у попыток — `modeConfirmed`/`modeViolation`. API/preload создания сессий не принимает выбор режима. DOM и PageState не возвращают experience, нет select-experience/expectedExperience, waiting-experience и режимных удержаний проектов, назначений и восстановления.
+WorkspaceSessions schema 9 не хранит у новых сессий `experience`/`availability`, у попыток — `modeConfirmed`/`modeViolation`. API/preload создания сессий не принимает выбор режима. DOM и PageState не возвращают experience, нет select-experience/expectedExperience, waiting-experience и режимных удержаний проектов, назначений и восстановления.
 
 Обновление поддерживаемых Chat-записей v1–v7 сохраняет локальные ID, chatUrl, request/generation, приглашение/контекст, receipts, роли, время, назначения и журналы. До перезаписи остаётся точная `.vN-backup` копия. Устаревшие режимные поля удаляются, их флаги не предоставляют и не запрещают полномочия. Явно неподдерживаемые значения отклоняются общей `SESSIONS_INVALID` с сохранением исходного файла: их просмотра, конвертации в Chat и специального режима совместимости нет. Установка не очищает пользовательский профиль или данные.
 
 Разрешённые внешние адреса: HTTPS `chatgpt.com` без credentials и чужого порта; корень, поддерживаемые `/c/<id>` и `/g/<id>/c/<id>`. Любой query `surface` и неподдерживаемые пути отклоняются общей проверкой URL. `WEB:`/`local-chatgpt:` распознаются отдельно как непостоянные адреса. В runtime нет классификатора Work. Публичные имена файлов chatgpt-experience остаются для внешних импортов, содержат URL helpers без режима.
 
-Технические `workflow`, `worktree`, `workProgress` и namespace run_id `work:` — устойчивые сущности, не режим ChatGPT. Kit 1.10.3 сохраняет выбор sequential/orchestrated и прежние назначения; устаревшее поле session_experience не разрешает другой режим ChatGPT. Поставляемый runtime формируется из packages/workflow-kit; установленный Kit меняет только installer.
+Технические `workflow`, `worktree`, `workProgress` и namespace run_id `work:` — устойчивые сущности, не режим ChatGPT. Kit 1.10.4 сохраняет выбор sequential/orchestrated и прежние назначения; устаревшее поле session_experience не разрешает другой режим ChatGPT. Поставляемый runtime формируется из packages/workflow-kit; установленный Kit меняет только installer.
 
 ### Четыре разных идентификатора
 

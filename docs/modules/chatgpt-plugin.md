@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.38, Kit 1.10.3, протокол панели `6`, build `0.5.38-communication-6`. Ресурс — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`. Константы находятся в contracts/backend; staging сверяет package и подставляет их в HTML. [Приёмка A–D](automatic-agent-dialogue-acceptance.md) пока NOT_RUN: fixtures не доказывают автономность настоящего ChatGPT. [Постоянный SDK](sdk-messaging.md) обслуживает все рабочие сообщения без режима включения.
+Workflow Pilot 0.5.39 / Kit 1.10.4, протокол панели 7, build `0.5.39-communication-7`. URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK-контракт](sdk-messaging.md), [автоматические доказательства и живая приёмка](../acceptance/sdk-messaging.md).
 
 ## Пользовательский путь
 
@@ -44,13 +44,13 @@ Start/Continue после свежего preflight выдаёт допуск т�
 
 ## Доставка и блокировки
 
-Claim_ready проверяет identity/document/attempt/grant, Stop и UNKNOWN; intent сохраняется до SDK. После accepted следующий pending доступен без busy/read/yield/команд. Тайм-ауты, lease и отдельные terminal receipts — в [едином контракте SDK](sdk-messaging.md).
+Claim_ready проверяет identity/document/attempt/grant, Stop и непроверенный legacy UNKNOWN; intent сохраняется до SDK. После accepted следующий pending доступен без busy/read/yield/команд. Тайм-ауты, lease и отдельные terminal receipts — в [едином контракте SDK](sdk-messaging.md).
 
-`pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report не возвращает pending. UNKNOWN и остальные терминальные исходы не повторяются через SDK или DOM. После restart claimed становится unknown. Стартовый контекст имеет [отдельный контракт](orchestrator-startup.md). Рабочий контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
+`pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report и restart сохраняют unknown попытки. notification_version=1 допускает до трёх уведомлений того же message_id; новые сообщения не удерживаются прошлым отказом, read прекращает повторы. Legacy Send не повторяется. Стартовый контекст имеет [отдельный контракт](orchestrator-startup.md). Рабочий контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
 
 Рабочий model API — workflow_assignment_prepare/dispatch/send/yield/status: черновик O без grant, его отправка после готовности, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Yield.reason явно ограничен awaiting_reply/tasks_sent/result_sent/handled. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 
-[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 12: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
+[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 13: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
 
 ## MCP и SDK
 
