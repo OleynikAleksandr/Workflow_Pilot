@@ -459,15 +459,16 @@ function render(state) {
   }
   const parallel=selected?.planExecution?.execution_strategy==='parallel'||(!!selected?.assignmentId&&!planExecutor);
   const orchestrated=state.orchestratorPlan;
+  const closed=orchestrated?.current===false||!orchestrated&&selected?.planView?.state==='closed';
   const run = state.planRun;
   const runLabels = { 'not-started': 'Начать выполнение плана', running: 'Пауза', pausing: 'Пауза…', paused: 'Продолжить' };
-  $('plan-run-toggle').hidden = !run || run.state === 'complete' || run.complete;
+  $('plan-run-toggle').hidden = closed || !run || run.state === 'complete' || run.complete;
   $('plan-run-toggle').textContent = runLabels[run?.state] ?? '';
   $('plan-run-toggle').dataset.state = run?.state ?? '';
   // A held project keeps the button: pressing it runs the standard Kit recheck.
   $('plan-run-toggle').disabled = actionPending || run?.state === 'pausing' || !!run?.issue&&run.reason!=='blocked';
   // Why the plan is held; the stage, the problem block and the acceptance hint say the rest.
-  const runReason = run?.issue ? run.reason==='blocked'?'Выполнение приостановлено. '+run.issue.message:run.issue.message??'Оркестратор плана не определён. Назначьте его в меню сессии.'
+  const runReason = closed?'':run?.issue ? run.reason==='blocked'?'Выполнение приостановлено. '+run.issue.message:run.issue.message??'Оркестратор плана не определён. Назначьте его в меню сессии.'
     : run?.reason === 'recovery' ? 'Автопродолжение отключено после восстановления Kit (не ручная пауза). '+(run.message??'')
     : run?.reason === 'escalation' ? 'Выполнение на паузе: оркестратор передал проблему. ' + (run.message ?? '')
     : run?.reason === 'refused' ? 'Выполнение на паузе. ' + (run.message ?? '') + ' Исправьте причину и нажмите «Продолжить».'
@@ -488,7 +489,7 @@ function render(state) {
   $('plan-review-indicator').dataset.state=reviewIndicator;
   $('plan-review-indicator').textContent=({success:'✓',attention:'!',waiting:'·'})[reviewIndicator]??'';
   // One plan button and no PlanContinuation switch: a running plan of the former model only reports its progress here.
-  const formerRun = !!run && !orchestrated && !parallel && run.state === 'running';
+  const formerRun = !closed && !!run && !orchestrated && !parallel && run.state === 'running';
   const autoMessage = formerRun ? auto.message : '';
   const autoSent = formerRun && auto.continuations > 0 ? `Автоматически отправлено «Продолжай» №${auto.continuations}.` : '';
   $('plan-continuation-message').hidden = !autoMessage && !autoSent;
@@ -497,7 +498,7 @@ function render(state) {
   // A legacy parallel executor keeps its own plan of the main checkout.
   // Before the first projection arrives the card draws the plan views it already has.
   const sourceTasks=orchestrated?orchestrated.tasks:(selected?.planExecution?.execution_strategy==='parallel'?execution.planView:selected?.planView)?.tasks??[];
-  const tasks=(orchestrated?.current===false?null:work?.tasks)??sourceTasks.map(task=>({...task,mode:task.executionLabel??null,elapsedMs:task.stageTime?.elapsedMs??null,
+  const tasks=closed?[]:work?.tasks??sourceTasks.map(task=>({...task,mode:task.executionLabel??null,elapsedMs:task.stageTime?.elapsedMs??null,
     label:task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]}));
   const kitAcceptance=orchestrated?.deliveryStatus==='READY_FOR_ACCEPTANCE'&&orchestrated?.tasks?.length>0&&orchestrated.tasks.every(task=>task.status==='done');
   const planState=orchestrated?(orchestrated.current===false?'closed':kitAcceptance||run?.state==='complete'?'awaiting-acceptance'
@@ -507,20 +508,19 @@ function render(state) {
     blocked:'Нужно внимание','not-created':'План ещё не создан'};
   if (selected) {
     const objective=orchestrated?orchestrated.objective:selected.assignmentId?execution.objective:selected.scopeId?selected.objective:'';
-    $('plan-title').textContent=(orchestrated?.current===false?objective:work?.title||objective)||(orchestrated?'План оркестратора':'');
-    $('plan-title').title=objective||'';
+    $('plan-title').textContent=closed?'':(work?.title||objective)||(orchestrated?'План оркестратора':'');
+    $('plan-title').title=closed?'':objective||'';
     $('plan-title').hidden=!$('plan-title').textContent;
     $('plan-phase-text').textContent=stateLabels[planState]??stateLabels['not-created'];
     $('plan-phase-spinner').hidden=true;
-    const closed=orchestrated?.current===false;
-    const total=(closed?null:work?.total)??tasks.length,done=(closed?null:work?.done)??tasks.filter(t=>t.status==='done').length;
-    $('plan-progress').hidden=!total;
+    const total=closed?0:work?.total??tasks.length,done=closed?0:work?.done??tasks.filter(t=>t.status==='done').length;
+    $('plan-progress').hidden=closed||!total;
     $('plan-bar-fill').style.width=(total?Math.round(done/total*100):0)+'%';
-    $('plan-status').textContent=`в main ${done} из ${total}`;
+    $('plan-status').textContent=closed?'':`в main ${done} из ${total}`;
     $('plan-status').dataset.state=planState;
     const acceptance=work?.phase==='Ждёт приёмки'||planState==='awaiting-acceptance';
     $('plan-note').hidden=planState!=='closed'&&!acceptance;
-    $('plan-note').textContent=planState==='closed'?(orchestrated?.detailsUnavailable?'План закрыт. Подробности завершённого плана сейчас недоступны.':'Проект готов к следующему новому плану.')
+    $('plan-note').textContent=planState==='closed'?'Проект готов к следующему новому плану.'
       :acceptance?'Все задачи зафиксированы Kit; ожидается ваша приёмка. Сообщите '+(orchestrated?'оркестратору':'агенту плана')+': «Принимаю результат, закрой план». Архив проекта не заменяет приёмку.':'';
     // The problem block: only when the user must act or work really stopped.
     const planReason = planState==='closed'?'':selected.planReadError?.message ?? selected.planView?.blockedReason ?? orchestrated?.error ?? '';
@@ -530,6 +530,7 @@ function render(state) {
     $('plan-attention-title').textContent='';$('plan-attention-text').textContent='';
     $('plan-attention-action').hidden=true;$('plan-attention-action').onclick=null;
     const list=$('plan-tasks'),scrollTop=list.scrollTop;
+    list.hidden=closed;
     list.replaceChildren(...tasks.map(task => {
       const item = document.createElement('li'); item.className = 'plan-task'; item.dataset.status = task.status==='attention'?'current':task.status;
       const mark = document.createElement('span'); mark.className = 'plan-task-state'; mark.setAttribute('role', 'img');

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1279,
+  "plan_revision": 1281,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -239,8 +239,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "CLOSED",
@@ -284,7 +284,11 @@
           "SDK"
         ]
       },
-      "task_brief": "Освобождать карточку после закрытия плана. Показывать готовность нового обсуждения без старого списка и прогресса. Требования: После current=false/NONE только нейтральные План закрыт и готовность нового плана; старые title/задачи/счётчик/прогресс/действия скрыты. Review и имя сессии сохранены, новый план автоматически не создаётся. История Git и безопасный целый parser не удаляются. Новый план, SSE/restart/loading/error и поздний cache response не возвращают закрытый список; чужой workspace не подменяет карточку. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: closed-card-targeted."
+      "task_brief": "Освобождать карточку после закрытия плана. Показывать готовность нового обсуждения без старого списка и прогресса. Требования: После current=false/NONE только нейтральные План закрыт и готовность нового плана; старые title/задачи/счётчик/прогресс/действия скрыты. Review и имя сессии сохранены, новый план автоматически не создаётся. История Git и безопасный целый parser не удаляются. Новый план, SSE/restart/loading/error и поздний cache response не возвращают закрытый список; чужой workspace не подменяет карточку. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: closed-card-targeted.",
+      "actual_files": [
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/sidebar.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -565,7 +569,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1279
+Revision: 1281
 
 ## Цель
 
@@ -595,8 +599,8 @@ Revision: 1279
   - Файлы: src/contracts/plugin-communication.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/execution/plugin/communication-store.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/contracts/dialogue-view.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/chatgpt-plugin.test.mjs, tests/dialogue-delivery.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: INPUTS
-- [TODO] CLOSED: Освобождать карточку после закрытия плана — Ожидает
-  - Git Commit: [PENDING] fix: освобождать карточку после закрытия плана
+- [DONE] CLOSED: Освобождать карточку после закрытия плана — Завершено
+  - Git Commit: [DONE] fix: освобождать карточку после закрытия плана
   - Reference: incoming-obligations-and-sdk-recovery / CLOSED / implementation
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/workflow-plan.test.mjs, tests/backend-desktop-model.test.mjs
   - Параллельность: исключительное выполнение

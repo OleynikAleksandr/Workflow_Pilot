@@ -8,18 +8,27 @@ import {paletteCss,spinnerCss,PALETTE,shellBackground} from '../src/contracts/pa
 import {choiceCardCss,renderChoiceCard,choiceOptions} from '../src/contracts/user-choice.mjs';
 import {roleActor,participantName} from '../src/contracts/work-progress.mjs';
 import {mountCurrentActions,currentActionsCss} from '../src/frontend/desktop/ui/current-actions.mjs';
-test('closed plan uses verified history over an empty current scope and a safe unavailable notice',async t=>{
+test('closed plan clears the active card while keeping the session and Review ready for the next plan',async t=>{
   const f=await fixture(t),$=id=>f.document.getElementById(id);
   const closed={current:false,scopeId:'old',objective:'Завершённый контроль',tasks:['T001','T002','T003','DOCS'].map(id=>({id,title:id,status:'done'}))};
   const state={...f.state,selected:{...f.state.selected,role:'orchestrator',scopeId:null,planReadError:{message:'private JSON exception'}},
-    orchestratorPlan:closed,planRun:null,workProgress:{title:'Новый разговор',tasks:[],total:0,done:0,now:[],history:[]}};
+    orchestratorPlan:closed,planRun:{state:'running',issue:{message:'Old issue'}},workProgress:{title:'Новый разговор',tasks:closed.tasks,total:4,done:4,now:[],history:[]}};
   f.emit(state);
-  assert.equal($('plan-phase-text').textContent,'План закрыт');assert.equal($('plan-title').textContent,closed.objective);
-  assert.equal($('plan-status').textContent,'в main 4 из 4');assert.equal($('plan-tasks').children.length,4);
+  assert.equal($('plan-phase-text').textContent,'План закрыт');assert.equal($('plan-title').textContent,'');
+  assert.equal($('plan-status').textContent,'');assert.equal($('plan-tasks').children.length,0);
+  assert.equal($('plan-progress').hidden,true);assert.equal($('plan-tasks').hidden,true);
+  assert.equal($('plan-run-toggle').hidden,true);assert.equal($('plan-run-message').hidden,true);
+  assert.equal($('review-preference').hidden,false);
   assert.equal($('plan-reason').hidden,true);assert.equal($('plan-attention').hidden,true);
   f.emit({...state,orchestratorPlan:{...closed,tasks:[],detailsUnavailable:true,diagnostic:{code:'CLOSED_PLAN_READ_FAILED'}}});
-  assert.match($('plan-note').textContent,/План закрыт.*Подробности.*недоступны/);
+  assert.equal($('plan-note').textContent,'Проект готов к следующему новому плану.');
   assert.equal($('plan-tasks').children.length,0);assert.doesNotMatch($('plan-card').textContent,/private JSON/);
+  const task={id:'NEW',title:'Новое поручение',status:'pending'};
+  f.emit({...state,orchestratorPlan:{current:true,scopeId:'new',objective:'Новый план',tasks:[task]},
+    planRun:{state:'not-started'},workProgress:{title:'Новый план',tasks:[task],total:1,done:0,now:[],history:[]}});
+  assert.equal($('plan-tasks').hidden,false);assert.equal($('plan-tasks').children.length,1);
+  assert.equal($('plan-title').textContent,'Новый план');assert.equal($('plan-status').textContent,'в main 0 из 1');
+  assert.doesNotMatch($('plan-card').textContent,/T001|T002|T003|DOCS|Завершённый контроль/);
 });
 
 test('normal panel startup is not written under the session; only a startup problem is, with the project menu',async t=>{
