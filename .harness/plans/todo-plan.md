@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1283,
+  "plan_revision": 1284,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -83,12 +83,12 @@
   "context_pack": {
     "documents": [
       {
-        "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
+        "path": "docs/architecture/OVERVIEW.md",
         "required": true,
         "revision": "WORKTREE"
       },
       {
-        "path": "docs/architecture/OVERVIEW.md",
+        "path": "docs/planning/incoming-obligations-and-sdk-recovery.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -363,6 +363,40 @@
       ]
     },
     {
+      "id": "SDK-REPORT",
+      "title": "Восстановить квитанцию SDK после потери ответа",
+      "why": "Адресная проверка обнаружила оставшийся случай transport/report из согласованной спецификации; локальный Stop не должен блокировать сохранённый результат.",
+      "dependencies": [
+        "VERIFY"
+      ],
+      "functional_paths": [
+        "src/frontend/plugin/launch.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/incoming-obligations-and-sdk-recovery.md"
+      ],
+      "verification_ids": [
+        "chatgpt-plugin",
+        "panel-resource-targeted"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "После потери ответа report рабочая панель проверяет восстановление и повторяет только квитанцию исходного message_id/attempt; SDK вызов и эффекты задачи не повторяются.",
+        "Stop, смена поколения, постоянные отказы и legacy UNKNOWN сохраняют запрет обхода; потерянный отчёт accepted/read не создаёт дубликат.",
+        "Реальный MCP/SDK fixture проверяет потерю report на третьем отказе и accepted/read; только адресные проверки, staged immutable panel."
+      ],
+      "expected_commit_message": "fix: восстановить квитанцию sdk после потери ответа",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "incoming-obligations-and-sdk-recovery",
+        "task_id": "SDK-REPORT",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
       "implementation_status": "TODO",
       "commit_status": "PENDING",
       "commit_ref": {
@@ -374,7 +408,8 @@
         "INPUTS",
         "SDK",
         "CLOSED",
-        "VERIFY"
+        "VERIFY",
+        "SDK-REPORT"
       ],
       "functional_paths": [],
       "documentation_paths": [
@@ -580,7 +615,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1283
+Revision: 1284
 
 ## Цель
 
@@ -622,12 +657,18 @@ Revision: 1283
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-kit-upgrade.test.mjs, tests/panel-resource-upgrade.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/released-kit/kit-1.10.4.tar.gz, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: CLOSED
+- [TODO] SDK-REPORT: Восстановить квитанцию SDK после потери ответа — Ожидает
+  - Git Commit: [PENDING] fix: восстановить квитанцию sdk после потери ответа
+  - Reference: incoming-obligations-and-sdk-recovery / SDK-REPORT / implementation
+  - Файлы: src/frontend/plugin/launch.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/incoming-obligations-and-sdk-recovery.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: VERIFY
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализация документов согласованного объёма
   - Reference: incoming-obligations-and-sdk-recovery / DOCS / implementation
   - Файлы: docs/planning/incoming-obligations-and-sdk-recovery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/acceptance/sdk-messaging.md, docs/modules/project-compatibility.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
-  - Зависимости: INPUTS, SDK, CLOSED, VERIFY
+  - Зависимости: INPUTS, SDK, CLOSED, VERIFY, SDK-REPORT
 - [TODO] RELEASE: Собрать macOS Windows Linux — Ожидает
   - Git Commit: [PENDING] delivery: собрать macos windows linux
   - Reference: incoming-obligations-and-sdk-recovery / RELEASE / implementation
@@ -649,7 +690,7 @@ Revision: 1283
 
 ## Context Pack For This Cycle
 
-- docs/planning/incoming-obligations-and-sdk-recovery.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/incoming-obligations-and-sdk-recovery.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
