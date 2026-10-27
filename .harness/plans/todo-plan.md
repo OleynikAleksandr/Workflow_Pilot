@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1247,
+  "plan_revision": 1249,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -513,8 +513,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-recovery-identity",
         "task_id": "INSTALL",
@@ -540,7 +540,8 @@
       ],
       "expected_commit_message": "delivery: установить готовый macos комплект",
       "task_brief": "Установить готовый macOS комплект. Штатная установка готового подписанного bundle в /Applications и checkout, либо проверенный pending; rollback, версия и manifest проверены, служба не остановлена. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -595,7 +596,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1247
+Revision: 1249
 
 ## Цель
 
@@ -648,8 +649,8 @@ Revision: 1247
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить готовый macOS комплект — Ожидает
-  - Git Commit: [PENDING] delivery: установить готовый macos комплект
+- [DONE] INSTALL: Установить готовый macOS комплект — Завершено
+  - Git Commit: [DONE] delivery: установить готовый macos комплект
   - Reference: sdk-recovery-identity / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
