@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1239,
+  "plan_revision": 1240,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -74,7 +74,8 @@
       "tests/dialogue-delivery.test.mjs",
       "src/control/workflow/execution-control.mjs",
       "tests/execution-control.test.mjs",
-      "src/contracts/work-progress.mjs"
+      "src/contracts/work-progress.mjs",
+      "tests/fixtures/released-kit/kit-1.10.3.tar.gz"
     ],
     "documentation_paths": [
       "docs/planning/sdk-recovery-identity.md",
@@ -351,7 +352,8 @@
         "tests/workflow-kit-upgrade.test.mjs",
         "tests/fixtures/released-kit/manifest.json",
         "tests/codex-app-server-mcp.test.mjs",
-        "tests/panel-resource-upgrade.test.mjs"
+        "tests/panel-resource-upgrade.test.mjs",
+        "tests/fixtures/released-kit/kit-1.10.3.tar.gz"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -523,7 +525,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1239
+Revision: 1240
 
 ## Цель
 
@@ -561,7 +563,7 @@ Revision: 1239
 - [TODO] VERSION: Согласовать версии выпуска панели и Kit — Ожидает
   - Git Commit: [PENDING] fix: согласовать версии выпуска панели и kit
   - Reference: sdk-recovery-identity / VERSION / implementation
-  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/installer.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/installer.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, tests/fixtures/released-kit/kit-1.10.3.tar.gz
   - Параллельность: исключительное выполнение
   - Зависимости: PROOF
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
