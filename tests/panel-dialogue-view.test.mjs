@@ -7,14 +7,24 @@ import {executorStatus} from '../src/control/workflow/execution-projection.mjs';
 import {currentPlanTasks,planActivity,activityClock,assignmentStage} from '../src/contracts/dialogue-view.mjs';
 import {buildWorkProgress,stageKind} from '../src/contracts/work-progress.mjs';
 import {executionIssue} from '../src/contracts/dialogue-view.mjs';
+test('an offered choice owns the single orange emphasis while another executor stays visible',async t=>{
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));
+  t.after(()=>dom.window.close());const ui=mountPanel({document:dom.window.document});
+  ui.choice({choice_id:'one',state:'offered',question:'Как продолжить?',options:[{id:'yes',label:'Продолжить',description:'Выбранный путь'}]});
+  ui.progress(buildWorkProgress({attention:{title:'Доставка требует действия',text:'Прочитайте входящие в чате'},
+    now:[{actor:'O',text:'ждёт вашего выбора',kind:'warn',choiceId:'one'}, {actor:'T002',text:'Работает',kind:'act'}]}));
+  assert.equal(dom.window.document.querySelectorAll('#progress-now .wp-row.warn').length,0);
+  assert.match(dom.window.document.getElementById('progress-now').textContent,/Работает/);
+});
 test('only a required user action is orange; readiness and agent decisions are neutral in the real panel',async t=>{
   const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));
   t.after(()=>dom.window.close());const ui=mountPanel({document:dom.window.document});
   const render=error=>{const stage=planActivity({run:{state:'running'},execution:{error}});
     ui.progress(buildWorkProgress({now:[{actor:'APP',text:stage.label,reason:stage.reason,kind:stageKind(stage.phase),elapsedMs:3600000},
       {actor:'T002',text:'Работает',kind:'act'}]}));return stage;};
-  const stage=render({code:'READINESS_BUSY',message:'operation active'});
+  const stage=render({code:'READINESS_BUSY',message:'Ожидается операция. Повторите проверку.'});
   assert.match(stage.label,/Ожидаем завершения операции/);
+  assert.doesNotMatch(dom.window.document.getElementById('progress-now').textContent,/Повторите проверку/);
   assert.equal(dom.window.document.querySelectorAll('.wp-row.warn').length,0);
   assert.match(dom.window.document.getElementById('progress-now').textContent,/Работает/);
   const dirty=render({code:'MAIN_DIRTY',message:'user edits'});

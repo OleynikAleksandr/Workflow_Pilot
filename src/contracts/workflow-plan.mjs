@@ -23,8 +23,8 @@ export class ClosedPlanCache {
   read(target) {
     const key=JSON.stringify([target.workspaceId,target.projectId,target.scopeId,target.sessionId,target.commit]);
     const old=this.entries.get(key);
-    if(old&&(!old.value?.detailsUnavailable||this.now()-old.at<this.retryMs))return old.value;
-    const entry={value:null,at:this.now()};this.entries.set(key,entry);
+    if(old&&(!old.value?.detailsUnavailable||old.attempts>=2||this.now()-old.at<this.retryMs))return old.value;
+    const entry={value:null,at:this.now(),attempts:(old?.attempts??0)+1};this.entries.set(key,entry);
     while(this.entries.size>128)this.entries.delete(this.entries.keys().next().value);
     const current=()=>this.entries.get(key)===entry&&this.isCurrent(target);
     void Promise.resolve().then(()=>this.load(target)).then(text=>{
@@ -47,4 +47,5 @@ export class ClosedPlanCache {
     return null;
   }
   clear(){this.entries.clear();}
+  retryUnavailable(){for(const [key,entry] of this.entries)if(entry.value?.detailsUnavailable)this.entries.delete(key);}
 }

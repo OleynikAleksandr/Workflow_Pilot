@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1258,
+  "plan_revision": 1262,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "attention-and-closed-plan",
@@ -56,7 +56,8 @@
       "resources/workspace-setup-worker.mjs",
       "tests/workspace-setup.test.mjs",
       "tests/parallel-finalization.test.mjs",
-      "tests/work-progress-scenario.test.mjs"
+      "tests/work-progress-scenario.test.mjs",
+      "tests/fixtures/current-actions-layout.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -251,8 +252,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "attention-and-closed-plan",
         "task_id": "VERIFY",
@@ -272,7 +273,13 @@
         "tests/backend-desktop-model.test.mjs",
         "tests/sidebar.test.mjs",
         "tests/progress.test.mjs",
-        "tests/panel-dialogue-view.test.mjs"
+        "tests/panel-dialogue-view.test.mjs",
+        "src/contracts/workflow-plan.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/frontend/desktop/ui/current-actions.mjs",
+        "tests/workflow-plan.test.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "tests/fixtures/current-actions-layout.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -289,7 +296,10 @@
       "acceptance_criteria": [
         "Полный путь backend→панель/sidebar проверен для краткого и длительного ожидания, настоящего действия, закрытия и перезагрузки; нет ложного оранжевого и повторных действий.",
         "Новая свободная возрастающая версия app и immutable panel; несовместимый DTO повышает protocol. Kit/role меняются лишь при изменении их контракта с отдельной upgrade проверкой.",
-        "Автоматические fixtures не выдаются за живую ChatGPT или native Windows/Linux приёмку."
+        "Автоматические fixtures не выдаются за живую ChatGPT или native Windows/Linux приёмку.",
+        "Не более двух фоновых чтений недоступного исторического блока; новый явный выбор сессии допускает повтор без бесконечного polling. Загрузка истории не теряет известное закрытие.",
+        "При активном пользовательском выборе другая карточка внимания не дублирует оранжевый акцент; остальные рабочие задачи видны нейтрально.",
+        "Нейтральное READINESS_BUSY не выводит технический призыв «Повторите проверку»; исходная ошибка доступна диагностике."
       ],
       "expected_commit_message": "fix: проверить сценарии и согласовать версии выпуска",
       "parallel_safe": false,
@@ -305,7 +315,20 @@
           "CLOSED"
         ]
       },
-      "task_brief": "Проверить сценарии и согласовать версии выпуска. Закрепить пользовательский путь и негативные случаи; обновить app/panel и при необходимости protocol. Требования: Полный путь backend→панель/sidebar проверен для краткого и длительного ожидания, настоящего действия, закрытия и перезагрузки; нет ложного оранжевого и повторных действий. Новая свободная возрастающая версия app и immutable panel; несовместимый DTO повышает protocol. Kit/role меняются лишь при изменении их контракта с отдельной upgrade проверкой. Автоматические fixtures не выдаются за живую ChatGPT или native Windows/Linux приёмку. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: unit-all, architecture, electron-smoke, kit-check, kit-assignments."
+      "task_brief": "Проверить сценарии и согласовать версии выпуска. Закрепить пользовательский путь и негативные случаи; обновить app/panel и при необходимости protocol. Требования: Полный путь backend→панель/sidebar проверен для краткого и длительного ожидания, настоящего действия, закрытия и перезагрузки; нет ложного оранжевого и повторных действий. Новая свободная возрастающая версия app и immutable panel; несовместимый DTO повышает protocol. Kit/role меняются лишь при изменении их контракта с отдельной upgrade проверкой. Автоматические fixtures не выдаются за живую ChatGPT или native Windows/Linux приёмку. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: unit-all, architecture, electron-smoke, kit-check, kit-assignments.",
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/contracts/workflow-plan.mjs",
+        "src/frontend/desktop/ui/current-actions.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/current-actions-layout.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/workflow-plan.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -516,7 +539,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: attention-and-closed-plan
 Current Task: нет
-Revision: 1258
+Revision: 1262
 
 ## Цель
 
@@ -545,10 +568,10 @@ Revision: 1258
   - Файлы: src/contracts/workflow-plan.mjs, src/backend/desktop-model.mjs, src/control/sessions/session-plans.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/plan-continuation-state.mjs, src/control/projects/workspace-deletion.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/workflow-plan.test.mjs, tests/backend-desktop-model.test.mjs, tests/session-plans.test.mjs, tests/workspace-session.test.mjs, tests/workspace-deletion.test.mjs, tests/sidebar.test.mjs, resources/workspace-setup-worker.mjs, tests/workspace-setup.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: ATTENTION
-- [TODO] VERIFY: Проверить сценарии и согласовать версии выпуска — Ожидает
-  - Git Commit: [PENDING] fix: проверить сценарии и согласовать версии выпуска
+- [DONE] VERIFY: Проверить сценарии и согласовать версии выпуска — Завершено
+  - Git Commit: [DONE] fix: проверить сценарии и согласовать версии выпуска
   - Reference: attention-and-closed-plan / VERIFY / implementation
-  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/electron-smoke.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/electron-smoke.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs, src/contracts/workflow-plan.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/workflow-plan.test.mjs, src/contracts/dialogue-view.mjs, tests/fixtures/current-actions-layout.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CLOSED
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает

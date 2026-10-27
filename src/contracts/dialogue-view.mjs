@@ -3,7 +3,7 @@
 export function executionIssue(error) {
   const code=error?.code;
   if(['READINESS_BUSY','PROJECT_RECOVERY_REQUIRED','CONCURRENT_CHANGE','READINESS_CHANGED'].includes(code))
-    return {phase:'waiting',label:'Ожидаем завершения операции проекта',reason:error?.message??''};
+    return {phase:'waiting',label:'Ожидаем завершения операции проекта',reason:''};
   if(code==='MAIN_DIRTY')return {phase:'attention',label:'В main есть незакоммиченные изменения',
     reason:error.message,userAction:'Сохраните или зафиксируйте свои изменения в main, затем нажмите «Продолжить».'};
   if(['LOGIN_REQUIRED','AUTH_REQUIRED','SIGNED_OUT'].includes(code))return {phase:'attention',label:'Нужен вход в ChatGPT',

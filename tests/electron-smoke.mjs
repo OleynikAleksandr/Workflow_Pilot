@@ -33,6 +33,8 @@ import {userChoseMode} from './fixtures/execution-mode.mjs';
 let packetLoads = 0;
 let smokeDataDir;
 let fixtureBootstrap=null;
+let fixtureBootstrapStage='idle';
+const fixturePending=new Map();let fixtureOperation=0;
 let fixtureUnsupportedRedirect=false;
 const fixtureConversationTitles = new Map();
 let fixtureTitleAuthFailures = 0;
@@ -201,7 +203,7 @@ async function waitFor(predicate, description, snapshot) {
   }
   const timedOutState = snapshot?.();
   if (smokeDataDir) await fs.writeFile(path.join(smokeDataDir, 'timeout.json'), JSON.stringify({ description, state: timedOutState }, null, 2));
-  throw new Error(`SMOKE_TIMEOUT: ${description}; context=${JSON.stringify(timedOutState?.context)}; waiting for: ${description}`);
+  throw new Error(`SMOKE_TIMEOUT: ${description}; phase=${timedOutState?.context?.phase}; bootstrap=${fixtureBootstrapStage}; pending=${JSON.stringify([...fixturePending.values()])}`);
 }
 
 async function verifyUninterruptedRequest(dataDir) {
@@ -260,7 +262,14 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     if(text)process.stderr.write('[sidebar fixture] '+text+'\n');
   });
   await verifyCurrentActionsLayout(dataDir);
+  // Trace only fixture operations, without adding an await or changing their returned Promise.
+  const trace=(object,key)=>{const original=object[key].bind(object);object[key]=(...args)=>{
+    const id=++fixtureOperation,promise=original(...args);fixturePending.set(id,key==='mutate'?'mutate:'+args[0]:key);
+    promise.then(()=>fixturePending.delete(id),()=>fixturePending.delete(id));return promise;
+  };};
+  trace(plugin.communication,'mutate');trace(plugin.communication,'modelInput');trace(plugin,'participantTarget');
   fixtureBootstrap=async text=>{
+    fixtureBootstrapStage='opening-panel';
     assert.match(text,/^Открой панель Workflow Pilot:/);assert.doesNotMatch(text,/Раздел 1:|wp-request-/);
     const ticket=JSON.parse(text.match(/workflow_pilot_panel с аргументами (\{"enrollment_ticket":"[a-f0-9]{64}"\})/)[1]).enrollment_ticket;
     const hash=createHash('sha256').update(ticket).digest('hex');
@@ -270,10 +279,14 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     const record=liveSessions.find(raw);
     const metadata={'openai/session':'smoke-'+raw.sessionId,'openai/subject':'smoke'};
     const first=(await plugin.panel({enrollment_ticket:ticket,metadata})).startup_context;
+    fixtureBootstrapStage='panel-returned';
     assert.ok(first,'the first response includes startup context');
-    for(let part=1;part<first.total;part++)await plugin.communication.content({metadata,message_id:first.message_id,context_ref:first.context_ref,part});
+    for(let part=1;part<first.total;part++){fixtureBootstrapStage='reading-part-'+part;
+      await plugin.communication.content({metadata,message_id:first.message_id,context_ref:first.context_ref,part});}
+    fixtureBootstrapStage='confirming-context';
     assert.equal((await plugin.communication.startupComplete({metadata,message_id:first.message_id,context_sha256:first.context_ref})).complete,true);
     liveSessions.tick(record);
+    fixtureBootstrapStage='complete';
   };
   const savedAutoState=async()=>{const settings=JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8'));
     const p=store.selected(),state=settings.projectPlanContinuation?.[p?.parentWorkspace??p?.workspace];

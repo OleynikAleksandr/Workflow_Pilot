@@ -279,7 +279,7 @@ function orchestratorPlanView(saved) {
   const current=project.scopeId===scope&&orchestratedPlanActive(project);
   const source=current?{objective:project.objective,tasks:currentPlanTasks(project,execution.view(workspace))}
     :orchestrator?.closedPlanCommit?closedPlan(project,orchestrator):null;
-  if(!source)return {scopeId:scope,objective:'',tasks:[],loading:true};
+  if(!source)return {scopeId:scope,objective:'',tasks:[],current,loading:true};
   const executors=executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope);
   const planned=new Map((project.planView?.tasks??[]).map(task=>[task.id,task]));
   const tasks=source.tasks.map(task=>({...task,delivery:task.delivery??planned.get(task.id)?.delivery??false}));
@@ -947,6 +947,7 @@ async function openConnectedSession(input, sessionId = null, options = {}) {
   if (retired) return openConnectedSession(retired.workspace, retired.sessionId, options);
   const { latest = false, resume = false, refresh = false } = options;
   const explicitSession = sessionId !== null;
+  if(explicitSession||refresh)closedPlans.retryUnavailable();
   const generation = nextNavigation();
   const current = () => navigationCurrent(generation);
   if (!current()) return null;

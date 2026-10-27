@@ -47,9 +47,10 @@ export function mountCurrentActions({document,now,events,count,announce,onAction
   return {render(value,{choice=null}={}){
     const primary=value?.primary??value?.now?.[0]??null;
     const covered=primary?.choiceId&&primary.choiceId===choice?.choice_id;
+    const choosing=choice?.state==='offered';
     const others=(value?.now??[]).filter(item=>!((covered||primary?.kind==='warn')&&item.kind==='warn')&&item!==primary&&(!item.key||item.key!==primary?.key)
       &&item.actor!==primary?.actor&&['act','warn'].includes(item.kind)&&(!item.choiceId||item.choiceId!==choice?.choice_id));
-    current=[...(!covered&&primary?[primary]:[]),...others];clockAt=view.performance.now();
+    current=[...(!covered&&primary&&!(choosing&&primary.kind==='warn')?[primary]:[]),...others.filter(i=>!choosing||i.kind!=='warn')];clockAt=view.performance.now();
     const semantic=JSON.stringify([current.map(({elapsedMs,...item})=>item),!!choice,!!value?.closed]);
     if(semantic!==signature){signature=semantic;
       const rows=current.map((item,index)=>{const row=make('div','wp-row'+(item.kind==='act'?'':' '+item.kind)

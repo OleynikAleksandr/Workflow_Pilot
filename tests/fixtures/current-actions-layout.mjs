@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {BrowserWindow} from 'electron';
+import {executionIssue} from '../../src/contracts/dialogue-view.mjs';
+import {buildWorkProgress,stageKind} from '../../src/contracts/work-progress.mjs';
 
 // Real Chromium layout, isolated hidden window; no ChatGPT, SDK or model calls.
 export async function verifyCurrentActionsLayout(dataDir){
@@ -37,6 +39,13 @@ export async function verifyCurrentActionsLayout(dataDir){
         reason:'Проверяем доступный выбор',options:[{id:'go',label:'Оркестрация с исполнителями',detail:'Длинная инструкция '.repeat(15),recommended:true}]});})()`);
       assert.equal(await window.webContents.executeJavaScript('document.documentElement.scrollWidth<=innerWidth+1'),true);
       await window.webContents.executeJavaScript('layoutPanel.choice(null)');
+      for(const code of ['READINESS_BUSY','MAIN_DIRTY','UNKNOWN_FAILURE']){
+        const issue=executionIssue({code,message:'Проверяем причину'});
+        const item={actor:'APP',text:issue.label,reason:issue.userAction??issue.reason,kind:stageKind(issue.phase),elapsedMs:3600000};
+        const value=buildWorkProgress({now:[item,{actor:'T002',text:'Выполняет задачу',kind:'act'}]});
+        const count=await window.webContents.executeJavaScript(`(()=>{layoutPanel.progress(${JSON.stringify(value)});return document.querySelectorAll('#progress-now .wp-row.warn').length;})()`);
+        assert.equal(count,code==='MAIN_DIRTY'?1:0,'user action classification in real Chromium: '+code);
+      }
     }
     return {scenarios:12,screenshots};
   }finally{window.destroy();}

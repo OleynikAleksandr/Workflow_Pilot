@@ -36,6 +36,11 @@ test('closed cache isolates identities, ignores late replies and retries unavail
     assert.equal(c.read(target).detailsUnavailable,true);assert.deepEqual(c.read(target).tasks,[]);
   }
 });
+test('unavailable closed history has a finite refresh budget; explicit navigation can retry it',async()=>{
+  let calls=0,now=0;const cache=new ClosedPlanCache({load:async()=>{calls++;throw Error('Git unavailable');},isCurrent:()=>true,changed:()=>{},now:()=>now});
+  for(let i=0;i<20;i++){now+=3000;cache.read(target);await flush();}
+  assert.equal(calls,2);cache.retryUnavailable();cache.read(target);await flush();assert.equal(calls,3);
+});
 
 test('real Kit archive with fenced task briefs projects its exact parent as four completed tasks', {timeout:120000},async t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'wp-closed-plan-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
