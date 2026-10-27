@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1290,
+  "plan_revision": 1292,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -531,8 +531,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "INSTALL",
@@ -573,7 +573,8 @@
         ]
       },
       "task_brief": "Установить выпуск на этот Mac. Поставить готовый комплект с rollback без остановки службы. Требования: Applications и checkout штатным installer: версии/manifest/подпись/rollback; без пересборки и переподписи. При BACKEND_RUNNING verified pending; не закрывать/не перезапускать приложение и backend, не менять donor. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: release-installed.",
-      "verification_kind": "installed"
+      "verification_kind": "installed",
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -646,7 +647,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1290
+Revision: 1292
 
 ## Цель
 
@@ -706,8 +707,8 @@ Revision: 1290
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить выпуск на этот Mac — Ожидает
-  - Git Commit: [PENDING] delivery: установить выпуск на этот mac
+- [DONE] INSTALL: Установить выпуск на этот Mac — Завершено
+  - Git Commit: [DONE] delivery: установить выпуск на этот mac
   - Reference: incoming-obligations-and-sdk-recovery / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
