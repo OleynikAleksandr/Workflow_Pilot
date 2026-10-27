@@ -92,6 +92,85 @@ test('nonretryable SDK errors, Stop and legacy unknown effects cannot be replaye
   await f.c.workflow.grant(f.o);b=await f.sync(f.c,b);
   f.pages.get('o').legacySendUnknown=true;assert.equal(pending(f.c,b),null);
 });
+async function failNotification(f,b,id,error={code:-32000,name:'McpError',message:'unclassified host failure'}){
+  const attempt=await f.c.claimReady({...b,message_id:id});
+  await f.c.report({...b,...attempt,outcome:'unknown',error});f.advance(5000);
+}
+async function restoredConnection(f,b){
+  const start=await f.c.sync({...b,message_supported:true,recover_notifications:true});
+  assert.ok(start.notification_recovery_id);
+  await f.c.wait({...b,after_seq:0});
+  await f.c.sync({...b,message_supported:true,recovery_id:start.notification_recovery_id});
+  return start.notification_recovery_id;
+}
+test('exhausted SDK notification resumes on a verified connection receipt without waiting for the recipient',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);const b=await f.bind(f.c,f.o),msg=await queue(f.c,f.o);
+  for(let i=0;i<3;i++)await failNotification(f,b,msg.message_id);
+  assert.equal(pending(f.c,b),null);
+  f.pages.get('o').busy=true;f.pages.get('o').canSend=false;
+  const receipt=await restoredConnection(f,b);
+  assert.equal(pending(f.c,b),msg.message_id);
+  assert.equal(f.c.workflow.progress('o').incoming.recovery.limit,6);
+  await f.c.sync({...b,message_supported:true,recovery_id:receipt});
+  await sdk(f,b,msg.message_id);await f.c.readMessage({metadata:meta('o'),message_id:msg.message_id});
+  const run=f.c.runs.get(b.run_id),m=run.messages[0];
+  assert.equal(m.notification_attempts.length,4);assert.equal(m.delivery,'accepted');assert.equal(m.read,true);
+  assert.ok(m.notification_attempts.slice(0,3).every(a=>a.outcome==='unknown'&&a.error.code==='-32000'));
+  assert.equal(run.events.filter(e=>e.event_type==='notification.connection_recovered').length,1);
+  assert.equal(run.messages.length,1);assert.equal(pending(f.c,b),null);
+});
+test('restoration received during an in-flight SDK call survives its later failure',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);const b=await f.bind(f.c,f.o),msg=await queue(f.c,f.o);
+  await failNotification(f,b,msg.message_id);
+  const attempt=await f.c.claimReady({...b,message_id:msg.message_id});
+  await restoredConnection(f,b);
+  assert.equal(pending(f.c,b),null,'the running call still owns the recipient lane');
+  assert.equal(f.c.runs.get(b.run_id).messages[0].notification_recovery,undefined);
+  await f.c.report({...b,...attempt,outcome:'unknown',error:{code:-32000}});f.advance(5000);
+  assert.equal(f.c.workflow.progress('o').incoming.recovery.limit,6);
+  assert.equal(pending(f.c,b),msg.message_id);
+});
+test('six-attempt lifetime budget survives further reconnections, remount and restart',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind(f.c,f.o);const msg=await queue(f.c,f.o);
+  for(let i=0;i<3;i++)await failNotification(f,b,msg.message_id);
+  await restoredConnection(f,b);
+  for(let i=0;i<3;i++)await failNotification(f,b,msg.message_id);
+  await restoredConnection(f,b);assert.equal(pending(f.c,b),null);
+  b=await f.bind(f.c,f.o);assert.equal(pending(f.c,b),null,'remount alone grants no additional attempts');
+  f.c.dispose();await f.c.tail;f.c=await f.create();b=await f.bind(f.c,f.o);
+  await f.c.workflow.grant(f.o);b=await f.sync(f.c,b);
+  await restoredConnection(f,b);
+  assert.equal(pending(f.c,b),null);
+  const m=f.c.runs.get(b.run_id).messages[0];assert.equal(m.notification_attempts.length,6);
+  assert.equal(f.c.workflow.progress('o').incoming.recovery.exhausted,true);
+});
+test('recovery receipts require their own wait, panel and document; status and telemetry cannot rearm',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);const b=await f.bind(f.c,f.o),msg=await queue(f.c,f.o);
+  for(let i=0;i<3;i++)await failNotification(f,b,msg.message_id);
+  await f.c.status(b);await f.c.sync({...b,message_supported:true});assert.equal(pending(f.c,b),null);
+  const start=await f.c.sync({...b,message_supported:true,recover_notifications:true});
+  await assert.rejects(f.c.sync({...b,message_supported:true,recovery_id:start.notification_recovery_id}),{code:'PLUGIN_COMMUNICATION_RECOVERY_STALE'});
+  const other=await f.bind(f.c,f.o);
+  await f.c.wait({...other,after_seq:0});
+  await assert.rejects(f.c.sync({...other,message_supported:true,recovery_id:start.notification_recovery_id}),{code:'PLUGIN_COMMUNICATION_RECOVERY_STALE'});
+  f.pages.get('o').documentId='different';await f.c.wait({...b,after_seq:0});
+  await assert.rejects(f.c.sync({...b,message_supported:true,recovery_id:start.notification_recovery_id}),{code:'PLUGIN_COMMUNICATION_RECOVERY_STALE'});
+  assert.equal(f.c.runs.get(b.run_id).messages[0].notification_recovery,undefined);
+});
+test('nonretryable, read, cancelled and future notifications never inherit a restored incident',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);const b=await f.bind(f.c,f.o);
+  const permanent=await queue(f.c,f.o,'permanent');await failNotification(f,b,permanent.message_id,{code:-32602,name:'McpError',message:'invalid params'});
+  const read=await queue(f.c,f.o,'read');await failNotification(f,b,read.message_id);
+  await f.c.readMessage({metadata:meta('o'),message_id:read.message_id});
+  const cancelled=await queue(f.c,f.o,'cancelled');await failNotification(f,b,cancelled.message_id);
+  f.c.runs.get(b.run_id).messages.find(m=>m.message_id===cancelled.message_id).cancelled=true;
+  await restoredConnection(f,b);
+  const future=await queue(f.c,f.o,'future');await failNotification(f,b,future.message_id);
+  assert.ok(f.c.runs.get(b.run_id).messages.every(m=>!m.notification_recovery));
+  await f.c.workflow.grant(f.o,'paused');
+  const stopped=await f.c.sync({...b,message_supported:true,recover_notifications:true});
+  assert.equal(stopped.stopped,true);assert.equal(stopped.notification_recovery_id,undefined);
+});
 test('handled message replay returns no executable payload and no duplicate Kit effect',async t=>{
   const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);
   await f.bind(f.c,f.o);await f.bind(f.c,e);

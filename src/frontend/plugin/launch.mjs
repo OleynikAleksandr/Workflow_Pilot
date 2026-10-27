@@ -227,12 +227,26 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     while(current()){
       let update;
       try{
-        update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});}
+        update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});
+        if(failures&&workflow){
+          const currentBinding=binding;
+          const synced=await call('sync',{binding:currentBinding,message_supported:!!getMessage(),recover_notifications:true},{signal:controller.signal});
+          if(!current()||binding!==currentBinding)return;
+          binding={...currentBinding,permission_generation:synced.permission_generation};expiresAt=synced.expires_at;
+          if(synced.notification_recovery_id){
+            update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});
+            const confirmed=await call('sync',{binding,message_supported:!!getMessage(),recovery_id:synced.notification_recovery_id},{signal:controller.signal});
+            if(!current())return;
+            if(confirmed.stopped){localStop('Связь плана приостановлена. Ожидаем «Продолжить».');return;}
+          }
+        }
+      }
       catch(error){
         if(!current())return;
         if(closePlan(error))return;
         if(!workflow&&error.code==='PLUGIN_COMMUNICATION_STOPPED'){localStop('Разрешение связи отозвано.','waiting');return;}
         if(terminal(error.code)&&error.code!=='PLUGIN_COMMUNICATION_STOPPED'){localStop(error.message,'error');return;}
+        record('wait.error',{error_code:error.code??'MCP_ERROR'});
         // Some hosts omit structured tool errors. A fresh read-only snapshot
         // can still prove complete; an unavailable snapshot proves nothing.
         if(workflow)try{
@@ -253,7 +267,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
           }
         }catch{/* Network recovery below never repeats Send. */}
         if(!current())return;
-        record('wait.error',{error_code:error.code??'MCP_ERROR'});status('Восстанавливаем ожидание сообщений. Отправленные запросы не повторяются.','error');failures++;
+        status('Восстанавливаем ожидание сообщений. Сохранённые поручения остаются в работе.','waiting');failures++;
         await new Promise(resolve=>{const finish=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',finish);resolve();};
           const timer=setTimeout(finish,Math.min(5000,250*2**Math.min(failures-1,5)));controller.signal.addEventListener('abort',finish,{once:true});if(controller.signal.aborted)finish();});
         continue;

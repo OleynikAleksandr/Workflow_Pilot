@@ -1,13 +1,15 @@
 export const ASSIGNMENT_DIALOGUE_VERSION=1;
 export const NOTIFICATION_LIMIT=3;
+export const RESTORED_NOTIFICATION_LIMIT=6;
 export function notificationRecovery(message,now=Date.now()) {
   const attempts=message.notification_attempts;
   if(message.notification_version!==1||!Array.isArray(attempts))return null;
   const last=attempts.at(-1),failed=['unknown','rejected'].includes(message.delivery);
   if(!failed)return null;
-  const exhausted=failed&&!message.read&&!message.superseded&&!message.cancelled&&(attempts.length>=NOTIFICATION_LIMIT||last?.error?.retryable===false);
-  const due=(last?.ended_at??message.claimed_at??now)+(attempts.length<2?2000:5000);
-  return {attempts:attempts.length,limit:NOTIFICATION_LIMIT,exhausted,
+  const limit=message.notification_recovery?.incident_id?RESTORED_NOTIFICATION_LIMIT:NOTIFICATION_LIMIT;
+  const exhausted=failed&&!message.read&&!message.superseded&&!message.cancelled&&(attempts.length>=limit||last?.error?.retryable===false);
+  const due=(last?.ended_at??message.claimed_at??now)+(attempts.length%NOTIFICATION_LIMIT<2?2000:5000);
+  return {attempts:attempts.length,limit,exhausted,
     retrying:failed&&!exhausted&&!message.read&&!message.superseded&&!message.cancelled,
     due_at:due,error:last?.error??null};
 }

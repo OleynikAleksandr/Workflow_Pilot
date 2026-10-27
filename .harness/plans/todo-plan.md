@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1277,
+  "plan_revision": 1279,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -172,8 +172,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "SDK",
@@ -227,7 +227,16 @@
           "INPUTS"
         ]
       },
-      "task_brief": "Восстанавливать SDK уведомление после разрыва соединения. Исключить молчаливое застревание сохранённого результата при исчерпанном бюджете до восстановления связи. Требования: Повторяется только совместимое SDK уведомление того же message_id: три начальные попытки и один цикл до трёх по подтверждённому lost/restored, максимум шесть; состояние долговечно. Проверенный сигнал связан с адресным сбоем и новым sync/wait; повтор status/remount/restart и дубликат сигнала лимит не сбрасывают. Оба порядка сигнала/ошибки покрыты. Один in-flight на получателя, независимость соседей, read/already_handled, поздние исходы, identity/scope/grant/Stop и legacy UNKNOWN сохраняются. Нормальная доставка не ждёт занятость модели и чужие квитанции. Нет новой кнопки/панели/таймерного диспетчера/DOM Send. Постоянный отказ не скрыт, accepted/read не выдумываются; исходная причина -32000 не объявляется установленной без новых доказательств. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: sdk-recovery-targeted."
+      "task_brief": "Восстанавливать SDK уведомление после разрыва соединения. Исключить молчаливое застревание сохранённого результата при исчерпанном бюджете до восстановления связи. Требования: Повторяется только совместимое SDK уведомление того же message_id: три начальные попытки и один цикл до трёх по подтверждённому lost/restored, максимум шесть; состояние долговечно. Проверенный сигнал связан с адресным сбоем и новым sync/wait; повтор status/remount/restart и дубликат сигнала лимит не сбрасывают. Оба порядка сигнала/ошибки покрыты. Один in-flight на получателя, независимость соседей, read/already_handled, поздние исходы, identity/scope/grant/Stop и legacy UNKNOWN сохраняются. Нормальная доставка не ждёт занятость модели и чужие квитанции. Нет новой кнопки/панели/таймерного диспетчера/DOM Send. Постоянный отказ не скрыт, accepted/read не выдумываются; исходная причина -32000 не объявляется установленной без новых доказательств. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: sdk-recovery-targeted.",
+      "actual_files": [
+        "src/contracts/plugin-communication.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -556,7 +565,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1277
+Revision: 1279
 
 ## Цель
 
@@ -580,8 +589,8 @@ Revision: 1277
   - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/package.json, package-lock.json, src/control/workflow/plan-review.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, tools/codex-app-server-mcp/plugin.py, tests/role-protocol.test.mjs, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, src/control/plugin/assignment-dialogue.mjs, tests/chatgpt-plugin.test.mjs, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] SDK: Восстанавливать SDK уведомление после разрыва соединения — Ожидает
-  - Git Commit: [PENDING] fix: восстанавливать sdk уведомление после разрыва соединения
+- [DONE] SDK: Восстанавливать SDK уведомление после разрыва соединения — Завершено
+  - Git Commit: [DONE] fix: восстанавливать sdk уведомление после разрыва соединения
   - Reference: incoming-obligations-and-sdk-recovery / SDK / implementation
   - Файлы: src/contracts/plugin-communication.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/execution/plugin/communication-store.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/contracts/dialogue-view.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, tests/workflow-channel.test.mjs, tests/plugin-communication.test.mjs, tests/plugin-communication-store.test.mjs, tests/chatgpt-plugin.test.mjs, tests/dialogue-delivery.test.mjs
   - Параллельность: исключительное выполнение

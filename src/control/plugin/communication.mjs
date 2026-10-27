@@ -245,8 +245,8 @@ export class PluginCommunication {
   assignmentYield(input){return this.assignment.yield(input);}
   assignmentMigrate(input){return this.assignment.migrate(input);}
   _assignmentMigrated(input){return this.assignment.migrated(input);}
-  _sync(input){
-    const value=this.workflow.sync(input),{run,member}=this.member(input);
+  async _sync(input){
+    const value=await this.workflow.sync(input),{run,member}=this.member(input);
     return run.mode==='workflow'&&value&&typeof value==='object'?{...value,work_progress:this.progressOf(member)}:value;
   }
   // The project-wide progress projection, the same for O, E and S; raw messages keep their own visibility.
@@ -403,6 +403,7 @@ export class PluginCommunication {
     const previous=this.panels.get(input.panel_instance_id);
     requireValue(!previous || previous.runId===run.id && previous.memberId===member.id,'BINDING','Панель уже связана с другим участником.');
     if(!previous)this.panels.set(input.panel_instance_id,{runId:run.id,memberId:member.id,identity:member.identity,generation:0,expiresAt:0});
+    this.panels.get(input.panel_instance_id).id=input.panel_instance_id;
     this.panels.get(input.panel_instance_id).messageSupported=input.message_supported===true;
     if(run.mode==='workflow'){const panel=this.panels.get(input.panel_instance_id);panel.generation=member.generation;panel.expiresAt=this.now()+60000;}
     this.event(run,'binding.confirmed',{participant_id:member.id,panel_instance_id:input.panel_instance_id});
@@ -559,15 +560,15 @@ export class PluginCommunication {
     }finally{this.waiters.delete(key);}
   }
   _waitStart(input) {
-    const {run,panel}=this.allowed(input);
+    const {run,member,panel}=this.allowed(input);
     // Only an already valid lease in this generation can be renewed by wait.
     // Reconnection and expired leases still require explicit sync.
     if(run.mode==='workflow')panel.expiresAt=this.now()+60000;
+    if(run.mode==='workflow')this.workflow.connectionWaited(member,panel);
     requireValue(Number.isSafeInteger(input.after_seq)&&input.after_seq>=0&&input.after_seq<=run.events.length,'CURSOR','Некорректный курсор журнала.');
     const value=this.waitResult(input);
     if(value.message_id||run.events.slice(input.after_seq).some(e=>this.wakes(run,input.participant_id,e)))return {immediate:true};
     if(run.mode!=='workflow')this.event(run,'wait.started',{participant_id:input.participant_id,panel_instance_id:input.panel_instance_id});
-    const member=run.members[input.participant_id];
     return {seq:run.events.length,expires_at:Math.min(panel.expiresAt,this.now()+(run.mode==='workflow'?this.workflow.retryDelay(run,member):Infinity))};
   }
   _waitEnd(input) {
@@ -653,6 +654,7 @@ export class PluginCommunication {
     this.closeNotification(message,input.outcome,input.error);
     this.event(run,'send.report',{message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id,outcome:input.outcome,
       ...(input.error?{sdk_error:sdkDiagnostic(input.error,input.error.stage)}:{})});
+    if(run.mode==='workflow')await this.workflow.restoreNotifications(run,run.members[message.recipient_id]);
     if(run.mode==='workflow')await this.workflow.observed(run,run.members[message.recipient_id]);
     return {delivery:message.delivery,read:message.read,...(message.notification_version===1?{recovery:notificationRecovery(message,this.now())}:{})};
   }

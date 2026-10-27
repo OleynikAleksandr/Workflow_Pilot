@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {workflowRunId} from './enrollment.mjs';
-import {communicationMessageComplete,notificationRecovery} from '../../contracts/plugin-communication.mjs';
+import {communicationMessageComplete,notificationRecovery,NOTIFICATION_LIMIT} from '../../contracts/plugin-communication.mjs';
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const fail=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
@@ -156,12 +156,62 @@ export class WorkflowChannel {
     for(const message of run.messages)if(message.recipient_session_id===member.target.local_session_id&&!message.recipient_id)
       message.recipient_id=member.id;
   }
-  sync(input) {
+  async sync(input) {
     const c=this.c,{run,member,panel}=c.panel(input);
     check(run.mode==='workflow','MODE','Эта операция относится к рабочему плану.');
     panel.messageSupported=input.message_supported===true;
     panel.generation=member.generation;panel.expiresAt=c.now()+LEASE_MS;
-    return c._status(input);
+    check(input.recover_notifications===undefined||typeof input.recover_notifications==='boolean','INPUT','Некорректное начало восстановления.');
+    check(input.recovery_id===undefined||typeof input.recovery_id==='string'&&/^[a-f0-9-]{36}$/i.test(input.recovery_id),'INPUT','Некорректная квитанция восстановления.');
+    check(!(input.recover_notifications&&input.recovery_id),'INPUT','Начало и подтверждение восстановления — разные шаги.');
+    let incident=this.connectionIncident(member,panel);
+    if(input.recover_notifications===true&&this.transportPermitted(run,member)&&!this.panelIssue(run,member,panel)){
+      const page=this.observe(member.target);
+      if(page?.sdkDocumentReady&&page.documentId&&!this.physicalBlock(member.target)){
+        if(!incident||incident.restored_at){
+          incident=member.notification_connection={id:c.makeId(),panel_id:panel.id,generation:member.generation,
+            document_id:page.documentId,waited:false,messages:run.messages.filter(m=>m.recipient_id===member.id
+              &&m.notification_version===1&&!m.read&&m.notification_attempts?.length).map(m=>m.message_id)};
+          c.event(run,'notification.connection_lost',{participant_id:member.id,incident_id:incident.id});
+        }
+      }
+    }
+    if(input.recovery_id){
+      check(incident?.id===input.recovery_id&&incident.waited,'RECOVERY_STALE','Нет подтверждённого восстановления этого подключения.');
+      if(this.transportPermitted(run,member)&&!this.panelIssue(run,member,panel)&&!this.physicalBlock(member.target)){
+        if(!incident.restored_at){incident.restored_at=c.now();
+          c.event(run,'notification.connection_restored',{participant_id:member.id,incident_id:incident.id});}
+        await this.restoreNotifications(run,member);
+      }
+    }
+    return {...c._status(input),...(input.recover_notifications&&incident?{notification_recovery_id:incident.id}:{})};
+  }
+  // Reconnect is evidence for a finite notification retry, never a new grant.
+  connectionIncident(member,panel){
+    const incident=member.notification_connection,page=this.observe(member.target);
+    return incident&&panel&&incident.panel_id===panel.id&&incident.generation===member.generation
+      &&incident.document_id===page?.documentId&&page?.sdkDocumentReady===true?incident:null;
+  }
+  connectionWaited(member,panel){
+    const incident=this.connectionIncident(member,panel);
+    if(incident&&!incident.restored_at)incident.waited=true;
+  }
+  async restoreNotifications(run,member){
+    const incident=member.notification_connection;
+    if(!incident?.restored_at)return;
+    const panel=this.c.panels.get(incident.panel_id);
+    if(!this.connectionIncident(member,panel)||this.panelIssue(run,member,panel)||this.physicalBlock(member.target))return;
+    for(const message of run.messages){
+      const attempts=message.notification_attempts,last=attempts?.at(-1);
+      if(message.recipient_id!==member.id||message.notification_version!==1||message.notification_recovery
+        ||message.read||message.superseded||message.cancelled||message.reply_observed
+        ||!['unknown','rejected'].includes(message.delivery)||!attempts?.length||attempts.length>NOTIFICATION_LIMIT
+        ||last.error?.retryable===false||!incident.messages?.includes(message.message_id)
+        ||!this.messagePermitted(run,member,message)||!await this.currentMessage(member.target,message))continue;
+      message.notification_recovery={incident_id:incident.id,at:this.c.now()};
+      this.c.event(run,'notification.connection_recovered',{message_id:message.message_id,participant_id:member.id,
+        incident_id:incident.id,attempts:attempts.length});
+    }
   }
   stop(input) {
     const c=this.c,{run,member,panel}=c.panel(input);

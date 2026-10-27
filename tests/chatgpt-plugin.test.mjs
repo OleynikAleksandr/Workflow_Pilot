@@ -685,6 +685,34 @@ test('real SDK recovery: JSON-RPC rejection, isError, timeout and late host resp
     });
   });
 
+test('real SDK restores a three-failure result after transport recovery without a user reminder',{timeout:20000},async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;let shift=0,calls=0,lost=false;
+  comm.now=()=>Date.now()+shift;comm.waitMs=20;
+  const o={project_id:'restored-result',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
+  comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?o:null;
+  comm.workflow.observe=()=>({sdkDocumentReady:true,busy:true,canSend:false,documentId:'doc'});comm.workflow.admission=async()=>true;
+  const invite=await comm.reserve(o);await comm.enroll(invite.enrollment_ticket,metadata);await comm.workflow.grant(o);
+  const msg=await comm.workflow.enqueue(o,{kind:'result',key:'result:T003',text:'Checked result T003'});
+  await bridge(t,f);const c=await client(t,f);
+  const ui=await communicationHtml(t,c,{onMessage:async request=>{
+    calls++;
+    if(calls<=3)return {rpcError:{code:-32000,message:'unclassified SDK error token=SECRET'}};
+    await modelTool(c,metadata,'read_message',notificationArgs(request));return {};
+  },toolReply:async(request,result)=>{
+    if(request.name==='workflow_communication_report')shift+=6000;
+    if(request.name==='workflow_communication_wait'&&calls===3&&!lost){lost=true;return {transportError:true};}
+    return result;
+  }});
+  const saved=()=>[...comm.runs.values()].flatMap(r=>r.messages).find(m=>m.message_id===msg.message_id);
+  await eventually(()=>saved()?.read&&saved()?.delivery==='accepted',12000);
+  assert.equal(lost,true);assert.equal(calls,4);assert.equal(saved().notification_attempts.length,4);
+  assert.ok(saved().notification_attempts.slice(0,3).every(a=>a.outcome==='unknown'&&a.error.code==='-32000'));
+  assert.ok(saved().notification_recovery.incident_id);
+  assert.equal(ui.calls.includes('workflow_communication_enable'),false);assert.equal(ui.maxWaits,1);
+  assert.equal([...comm.runs.values()].flatMap(r=>r.messages).length,1);
+  assert.doesNotMatch(JSON.stringify(saved().notification_attempts),/SECRET/);assert.deepEqual(ui.errors,[]);
+});
+
 test('real SDK: historical tool results cannot cancel restoration or stop an enabled panel',async t=>{
   const oldResult={communication:{build_id:'0.5.3-communication-1',protocol_version:COMMUNICATION_PROTOCOL}};
   const cases=[

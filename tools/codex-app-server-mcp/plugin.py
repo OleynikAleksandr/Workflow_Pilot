@@ -302,9 +302,12 @@ def register_plugin(mcp, state_root: Path):
         return await communication("recover", ctx)
 
     @mcp.tool(name="workflow_communication_sync", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
-    async def sync(binding: Binding, message_supported: Annotated[bool, Field(description="True only while the current SDK exposes openai/message.")], ctx: Context) -> CallToolResult:
-        """App-only renew SDK presence and read existing plan permission. Never grants permission: Start/Continue controls it. No model turn, no thirty-minute limit on an active plan."""
-        return await communication("sync", ctx, binding=binding, message_supported=message_supported)
+    async def sync(binding: Binding, message_supported: Annotated[bool, Field(description="True only while the current SDK exposes openai/message.")], ctx: Context,
+                   recover_notifications: Annotated[bool, Field(description="Begin a bounded recovery only after this panel's failed transport wait.")] = False,
+                   recovery_id: Annotated[MessageId | None, Field(description="Backend-issued recovery receipt, confirmed only after a fresh successful wait.")] = None) -> CallToolResult:
+        """App-only renew SDK presence and read existing plan permission. Never grants permission: Start/Continue controls it. A failed transport may begin recovery, wait successfully and confirm its backend-issued receipt; ordinary sync/remount never resets notification limits. No model turn, no thirty-minute limit on an active plan."""
+        return await communication("sync", ctx, binding=binding, message_supported=message_supported,
+                                   recover_notifications=recover_notifications, **({"recovery_id": recovery_id} if recovery_id is not None else {}))
 
     @mcp.tool(name="workflow_communication_enable", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def enable(binding: Binding, message_supported: Annotated[bool, Field(description="The real SDK exposes experimental openai/message on this host.")], ctx: Context) -> CallToolResult:
