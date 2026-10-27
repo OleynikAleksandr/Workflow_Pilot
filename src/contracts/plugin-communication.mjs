@@ -1,12 +1,37 @@
 export const ASSIGNMENT_DIALOGUE_VERSION=1;
+export const NOTIFICATION_LIMIT=3;
+export function notificationRecovery(message,now=Date.now()) {
+  const attempts=message.notification_attempts;
+  if(message.notification_version!==1||!Array.isArray(attempts))return null;
+  const last=attempts.at(-1),failed=['unknown','rejected'].includes(message.delivery);
+  if(!failed)return null;
+  const exhausted=failed&&!message.read&&!message.superseded&&!message.cancelled&&(attempts.length>=NOTIFICATION_LIMIT||last?.error?.retryable===false);
+  const due=(last?.ended_at??message.claimed_at??now)+(attempts.length<2?2000:5000);
+  return {attempts:attempts.length,limit:NOTIFICATION_LIMIT,exhausted,
+    retrying:failed&&!exhausted&&!message.read&&!message.superseded&&!message.cancelled,
+    due_at:due,error:last?.error??null};
+}
+// Never log arbitrary exception text: hosts may include prompts, tokens or URLs.
+// Preserve the structured code and a known diagnostic category instead.
+export function sdkDiagnostic(error,stage='response') {
+  const code=Number.isSafeInteger(error?.code)?String(error.code):/^(?:[A-Z][A-Z0-9_]{0,63}|-?\d{1,8})$/.test(error?.code??'')?error.code:'SDK_ERROR';
+  const name=['Error','TypeError','ZodError','McpError','AbortError','TimeoutError'].includes(error?.name)?error.name:'Error';
+  const known=[['method not found','SDK method not found'],['invalid params','Invalid SDK parameters'],['not supported','SDK operation not supported'],
+    ['permission denied','SDK permission denied'],['timed out','SDK response timed out'],['timeout','SDK response timed out'],['network','SDK network failure'],['disconnected','SDK disconnected']];
+  const text=String(error?.message??'').toLowerCase();
+  const message=known.find(([fragment])=>text.includes(fragment))?.[1]??'SDK request failed; untrusted exception text omitted';
+  return {stage:['invocation','response','timeout','lease','restart'].includes(stage)?stage:'response',name,code,message,
+    retryable:!['-32601','-32602','SDK_LEASE_LOST','UNSUPPORTED','PERMISSION_DENIED'].includes(code)&&name!=='ZodError'};
+}
 // A UI notification is settled by its delivery receipt, not by the model's
 // subsequent answer. Other working messages retain their turn/yield contract.
 export function communicationMessageComplete(message) {
   if(!message)return false;
   if(message.startup_complete)return true;
-  if(message.intent&&['claimed','unknown','rejected'].includes(message.delivery))return false;
+  if(message.notification_version!==1&&message.intent&&['claimed','unknown','rejected'].includes(message.delivery))return false;
   if(['user-choice','review'].includes(message.kind))return !!(message.superseded&&!message.intent
-    ||(message.read||message.superseded_read)&&(!message.intent||message.delivery==='accepted'));
+    ||message.read||message.superseded_read);
+  if(message.intent&&['claimed','unknown','rejected'].includes(message.delivery)&&!message.resolved_by_read)return false;
   return !!(message.reply_observed||message.superseded);
 }
 export const ASSIGNMENT_KINDS=Object.freeze(['task','context_request','context','question','clarification','decision','result','revision_request','acceptance']);

@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {workflowRunId} from './enrollment.mjs';
-import {communicationMessageComplete} from '../../contracts/plugin-communication.mjs';
+import {communicationMessageComplete,notificationRecovery} from '../../contracts/plugin-communication.mjs';
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const fail=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
@@ -81,7 +81,7 @@ export class WorkflowChannel {
     const c=this.c,target=c.enrollment.resolveTarget?.(sessionId);
     if(!target||c.removedSessions.has(sessionId))return null;
     const run=c.runs.get(workflowRunId(target));if(run?.removed)return null;
-    const member=Object.values(run?.members??{}).find(m=>['project_id','local_session_id','origin_session_id','role','scope_id','assignment_id','task_id']
+    const member=Object.values(run?.members??{}).find(m=>['project_id','local_session_id','origin_session_id','role','scope_id','assignment_id','task_id','workspace_id','origin_workspace_id']
       .every(key=>(m.target[key]??null)===(target[key]??null)));
     const sdk=!!member&&this.livePanel(run,member);
     const initial=run?.messages.findLast(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
@@ -89,15 +89,18 @@ export class WorkflowChannel {
     const dialogue=run?.messages.filter(m=>m.assignment_id===target.assignment_id&&m.scope_id===target.scope_id&&!m.superseded)??[];
     const question=dialogue.findLast(m=>m.blocking&&m.kind==='question');
     const blocked=!!question&&!dialogue.some(m=>m.kind==='decision'&&m.resume&&m.block_id===question.block_id);
-    const incoming=run?.messages.find(m=>m.recipient_session_id===sessionId&&['unknown','rejected'].includes(m.delivery))
+    const failed=run?.messages.find(m=>m.recipient_session_id===sessionId&&!m.read&&!m.superseded&&!m.cancelled&&['unknown','rejected'].includes(m.delivery));
+    const incoming=failed
       ??(member&&this.first(run,member))
       ??run?.messages.find(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id&&!communicationMessageComplete(m));
     const readAt=incoming&&run.events.findLast(e=>e.event_type==='message.read'&&e.message_id===incoming.message_id)?.server_time;
     const acceptedAt=incoming&&run.events.findLast(e=>e.event_type==='send.report'&&e.message_id===incoming.message_id&&e.outcome==='accepted')?.server_time;
-    const gated=member&&this.first(run,member);
+    const gated=(member&&this.first(run,member))??failed;
+    const recovery=gated&&notificationRecovery(gated,c.now());
     const blocker=gated&&['claimed','unknown','rejected'].includes(gated.delivery)?{
       message_id:gated.message_id,kind:gated.kind,scope_id:gated.scope_id??null,task_id:gated.task_id??null,
       read:!!(gated.read||gated.superseded_read),delivery:gated.delivery,
+      ...(recovery?{recovery}:{}),
       reason:gated.delivery==='claimed'?'sdk-pending':'send-'+gated.delivery,created_at:gated.created_at}:null;
     const result=target.role==='E'&&run?.messages.findLast(m=>m.assignment_id===target.assignment_id
       &&m.scope_id===target.scope_id&&m.kind==='result'&&m.sender_role==='E'&&!m.superseded);
@@ -113,9 +116,9 @@ export class WorkflowChannel {
         sender_role:incoming.sender_role,recipient_role:member?.role??target.role,read:!!incoming.read,
         service_action:incoming.idempotency_key?.startsWith('prepare:')?'prepare'
           :incoming.idempotency_key?.startsWith('parked:')?'parked':incoming.idempotency_key?.startsWith('authorize:')?'authorize':null,
-        handled:!!incoming.yielded,delivery:incoming.delivery,reason:incoming.claim_wait_reason??null}}:{}),
+        handled:!!incoming.yielded,delivery:incoming.delivery,recovery:notificationRecovery(incoming,c.now()),reason:incoming.claim_wait_reason??null}}:{}),
       ...(draft?{draft:{phase:draft.phase}}:{}),
-      initial:initial?{message_id:initial.message_id,delivery:initial.delivery,read:initial.read,handled:!!initial.yielded,physical_complete:!!initial.reply_observed}:null};
+      initial:initial?{message_id:initial.message_id,delivery:initial.delivery,read:initial.read,recovery:notificationRecovery(initial,c.now()),handled:!!initial.yielded,physical_complete:!!initial.reply_observed}:null};
   }
   permitted(run,member) {
     return ['O','E'].includes(member.role)&&run.grant?.active===true&&run.grant.boot===this.c.backendId&&!member.stopped
@@ -131,10 +134,22 @@ export class WorkflowChannel {
   first(run,member){
     // Only a still-running or uncertain SDK effect occupies the transport lane.
     // Accepted/read/yield/assistant state never schedules a later notification.
-    return run.messages.find(m=>m.recipient_id===member.id&&['claimed','unknown','rejected'].includes(m.delivery))
+    return run.messages.find(m=>m.recipient_id===member.id&&(m.delivery==='claimed'
+        ||['unknown','rejected'].includes(m.delivery)&&m.notification_version!==1))
       ??run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read&&!m.superseded&&m.delivery_mode!=='model-pull'
         &&this.messagePermitted(run,member,m)
-        &&(['startup-context','user-choice','review'].includes(m.kind)||m.scope_id===run.grant?.scope_id));
+        &&(['startup-context','user-choice','review'].includes(m.kind)||m.scope_id===run.grant?.scope_id))
+      ??run.messages.find(m=>m.recipient_id===member.id&&this.retryEligible(run,member,m));
+  }
+  retryEligible(run,member,message){
+    const r=notificationRecovery(message,this.c.now());
+    return r?.retrying&&r.due_at<=this.c.now()&&this.messagePermitted(run,member,message)
+      &&(['user-choice','review'].includes(message.kind)||message.scope_id===run.grant?.scope_id);
+  }
+  retryDelay(run,member){
+    const delays=run.messages.filter(m=>m.recipient_id===member.id&&this.messagePermitted(run,member,m))
+      .map(m=>notificationRecovery(m,this.c.now())).filter(r=>r?.retrying&&r.due_at>this.c.now()).map(r=>r.due_at-this.c.now());
+    return delays.length?Math.min(...delays):Infinity;
   }
   attach(run,member) {
     if(run.grant){member.generation=run.grant.generation;member.stopped=!run.grant.active;}
@@ -208,6 +223,7 @@ export class WorkflowChannel {
     return this.receipt(message);
   }
   receipt(message){return {message_id:message.message_id,delivery:message.delivery,read:message.read,reply_observed:message.reply_observed===true,
+    notification_version:message.notification_version??null,recovery:notificationRecovery(message,this.c.now()),
     ...(message.dialogue_version===1?{operation_id:message.kit_receipt?.operation_id,assignment_id:message.assignment_id,attempt:message.attempt,
       handled:!!message.yielded,result:message.kit_receipt?.result??null,acceptance:message.kit_receipt?.acceptance??null,
       block_id:message.block_id??null,problem_id:message.problem_id??null,repair_attempt:message.repair_attempt??null,
@@ -215,7 +231,7 @@ export class WorkflowChannel {
   pending(run,member) {
     if(!this.transportPermitted(run,member)||this.physicalBlock(member.target))return null;
     const first=this.first(run,member);
-    return first?.delivery==='pending'?first:null;
+    return first&&(first.delivery==='pending'||this.retryEligible(run,member,first))?first:null;
   }
   async admit(target,message){
     const result=await this.admission(target,message);

@@ -59,6 +59,15 @@ class AssignmentContext(BaseModel):
     commit: Annotated[str | None, Field(pattern=r"^(?:[a-f0-9]{40}|[a-f0-9]{64})$", description="Source revision when applicable.")] = None
 
 
+class SDKDiagnostic(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    stage: Annotated[str, Field(pattern=r"^(invocation|response|timeout|lease|restart)$")]
+    name: Annotated[str, Field(max_length=32)]
+    code: Annotated[str, Field(max_length=64)]
+    message: Annotated[str, Field(max_length=160)]
+    retryable: bool
+
+
 class CommunicationEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_id: MessageId
@@ -69,6 +78,7 @@ class CommunicationEvent(BaseModel):
     message_id: MessageId | None = None
     delivery_attempt_id: MessageId | None = None
     error_code: Annotated[str | None, Field(max_length=80)] = None
+    sdk_error: SDKDiagnostic | None = None
     message_supported: bool | None = None
     operation: Annotated[str | None, Field(max_length=32)] = None
     operation_ms: Annotated[float | None, Field(ge=0, le=86400000)] = None
@@ -167,7 +177,7 @@ def register_plugin(mcp, state_root: Path):
     async def read_message(message_id: MessageId, ctx: Context,
                            run_id: Annotated[str | None, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$", description="Legacy run only; omit for automatically registered working plans.")] = None,
                            participant_id: Annotated[str | None, Field(max_length=128, description="Legacy participant only; working plans derive it from host identity.")] = None) -> CallToolResult:
-        """Read an addressed message, current instructions and record receipt. Review ON/OFF is a versioned UI decision: verify current review:status before prepare/publication, preserve the current role; it grants neither task:start nor plan Start and needs no assignment yield. Finish the response after handling it. Startup model-pull returns the first numbered context part directly; read remaining parts and confirm workflow_startup_complete in this same turn. Small service messages include complete inline_context with digest and recipient_ref: use them directly without another context/participants read. Otherwise read all referenced context parts. Apply explicit role updates without replaying completed work. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
+        """Read an addressed message, current instructions and record receipt. Read pending_incoming explicitly in this turn. already_handled means do not repeat its effect; unfinished work resumes from canonical Kit state. Repeated notifications have the same message_id. Review ON/OFF is a versioned UI decision: verify current review:status before prepare/publication, preserve the current role; it grants neither task:start nor plan Start and needs no assignment yield. Finish the response after handling it. Startup model-pull returns the first numbered context part directly; read remaining parts and confirm workflow_startup_complete in this same turn. Small service messages include complete inline_context with digest and recipient_ref: use them directly without another context/participants read. Otherwise read all referenced context parts. Apply explicit role updates without replaying completed work. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
         return await communication("readMessage", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id)
 
     @mcp.tool(name="workflow_communication_read_context", annotations=READ, meta={"ui": {"visibility": ["model"]}})
@@ -178,7 +188,7 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_participants", annotations=READ, meta={"ui": {"visibility": ["model"]}})
     async def participants(ctx: Context) -> CallToolResult:
-        """Read current plan participants and assignment recipient_ref/attempt from verified host identity. O sees its executors; E addresses orchestrator. block is Kit state; parked requires a current stopped page and idle local commands. Check parked for every affected E before shared environment repair; otherwise yield and await service recovery. No copied IDs. Legacy capability errors require safe migration."""
+        """Read pending_incoming for this exact recipient, including UI decisions before a plan. Read current plan participants and assignment recipient_ref/attempt from verified host identity. O sees its executors; E addresses orchestrator. block is Kit state; parked requires a current stopped page and idle local commands. Check parked for every affected E before shared environment repair; otherwise yield and await service recovery. No copied IDs. Legacy capability errors require safe migration."""
         return await communication("roster", ctx)
 
     @mcp.tool(name="workflow_startup_complete", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
@@ -326,7 +336,7 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_claim_ready", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def claim_ready(binding: Binding, message_id: MessageId, ctx: Context) -> CallToolResult:
-        """App-only atomic consume-once claim and final identity/permission/admission check, with durable one-shot send intent. Call SDK immediately after a valid response. Lost/unknown response must never be retried. Legacy claim and verify remain available."""
+        """App-only atomic claim and final identity/permission/admission check. One SDK invocation per returned attempt. Only the backend may authorize up to three notifications of the same durable message_id; never repeat a claim or a task effect yourself. Legacy unknown sends remain blocked."""
         return await communication("claimReady", ctx, binding=binding, message_id=message_id)
 
     @mcp.tool(name="workflow_communication_verify", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
@@ -336,9 +346,10 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_report", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
     async def report(binding: Binding, message_id: MessageId, delivery_attempt_id: MessageId,
-                     outcome: Annotated[str, Field(pattern=r"^(accepted|rejected|unknown)$", description="Observed host outcome; acceptance is not a read receipt.")], ctx: Context) -> CallToolResult:
-        """App-only record an SDK outcome without retrying delivery. Unknown is terminal for this attempt. A late report never revokes an existing read receipt."""
-        return await communication("report", ctx, binding=binding, message_id=message_id, delivery_attempt_id=delivery_attempt_id, outcome=outcome)
+                     outcome: Annotated[str, Field(pattern=r"^(accepted|rejected|unknown)$", description="Observed host outcome; acceptance is not a read receipt.")], ctx: Context,
+                     error: Annotated[SDKDiagnostic | None, Field(description="Sanitized SDK stage/type/code/category only; no raw exception, message content, URL or credentials. Backend validates again.")] = None) -> CallToolResult:
+        """App-only record one notification attempt. Unknown stays in history; backend may authorize at most three notifications of the same stored message. No repeated task or effect. Late outcomes never overwrite a newer attempt or read receipt."""
+        return await communication("report", ctx, binding=binding, message_id=message_id, delivery_attempt_id=delivery_attempt_id, outcome=outcome, error=error.model_dump() if error else None)
 
     @mcp.resource(ui_uri, name="workflow_pilot_projects", title="Workflow Pilot",
                   mime_type="text/html;profile=mcp-app",

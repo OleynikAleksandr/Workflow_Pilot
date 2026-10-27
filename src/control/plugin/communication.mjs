@@ -3,8 +3,8 @@ import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
-import {ASSIGNMENT_DIALOGUE_VERSION} from '../../contracts/plugin-communication.mjs';
-import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
+import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic} from '../../contracts/plugin-communication.mjs';
+import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE,NOTIFICATION_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
 export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
@@ -56,7 +56,7 @@ export class PluginCommunication {
       this.assignment.invalidateAuthorizations(run);
       for(const member of Object.values(run.members)){member.stopped=true;member.generation++;}
       for(const message of run.messages) {
-        if(message.delivery==='claimed'){message.delivery='unknown';this.event(run,'send.unknown',{message_id:message.message_id});}
+        if(message.delivery==='claimed'){message.delivery='unknown';this.closeNotification(message,'unknown',{code:'SDK_TIMEOUT'},'restart');this.event(run,'send.unknown',{message_id:message.message_id});}
         if(message.kind==='probe'&&message.delivery==='pending'){message.delivery='rejected';this.event(run,'probe.cancelled',{message_id:message.message_id});}
       }
       for(const probe of Object.values(run.probes??{}))this.event(run,'probe.cancelled',{participant_id:probe.memberId});
@@ -89,7 +89,7 @@ export class PluginCommunication {
       if(old)this.runs.set(input.run_id,structuredClone(old));
       const offset=old?.events.length??0;
       try {
-        if(old)this.enrollment.migrateRun(this.runs.get(input.run_id));
+        if(old){const run=this.runs.get(input.run_id);this.enrollment.migrateRun(run);this.prepareNotifications(run);}
         if(old)this.expire(this.runs.get(input.run_id));
         const result=await this['_'+name](input),run=this.runs.get(input.run_id);
         if(name==='observed')this.observedDenials.delete(input.run_id+':'+input.message_id);
@@ -350,7 +350,7 @@ export class PluginCommunication {
   async roster(input){input=await this.modelInput(input);await this.enrollment.validateInput(input);const {run,member}=this.member(input),participants=[];
     for(const candidate of Object.values(run.members))if(candidate.id===member.id||member.role==='O'){
       try{await this.enrollment.validate(candidate.target);participants.push(this.enrollment.publicMember(run,candidate));}catch{}
-    }return {participants,permission:this.workflow.state(run),
+    }return {participants,permission:this.workflow.state(run),pending_incoming:await this.pendingIncoming(run,member),
       ...(this.assignment.kit?{assignments:await this.assignment.roster(run,member)}:{})};
   }
   panel(input) {
@@ -457,13 +457,34 @@ export class PluginCommunication {
   expire(run) {
     if(run.mode==='workflow'){
       for(const message of run.messages)if(message.delivery==='claimed'&&this.now()-message.claimed_at>120000){
-        message.delivery='unknown';this.event(run,'send.unknown',{message_id:message.message_id});
+        message.delivery='unknown';this.closeNotification(message,'unknown',{code:'SDK_TIMEOUT'},'timeout');this.event(run,'send.unknown',{message_id:message.message_id});
       }return;
     }
     for(const member of Object.values(run.members))if(!member.stopped&&this.deadline(run,member)<=this.now()){
       member.stopped=true;member.generation++;this.cancelProbes(run,member);
       this.event(run,'permission.expired',{participant_id:member.id,permission_generation:member.generation});
     }
+  }
+  prepareNotifications(run){
+    if(run.mode!=='workflow'||run.removed)return;
+    for(const message of run.messages){
+      if(message.notification_version||message.kind==='startup-context'||!/^[a-f0-9]{64}$/.test(message.context_ref??'')
+        ||!message.idempotency_key||!message.recipient_session_id
+        ||message.intent&&!message.delivery_attempt_id)continue;
+      const member=run.members[message.recipient_id];if(!member||member.target?.local_session_id!==message.recipient_session_id)continue;
+      try{this.enrollment.current(member.target);}catch{continue;}
+      message.notification_version=1;
+      message.notification_attempts=message.delivery_attempt_id?[{id:message.delivery_attempt_id,panel_id:message.panel_instance_id,
+        generation:message.permission_generation,started_at:message.claimed_at??this.now(),intent:!!message.intent,outcome:message.delivery,
+        ...(message.delivery!=='claimed'?{ended_at:this.now()}:{}),migrated:true}]:[];
+      this.event(run,'notification.upgraded',{message_id:message.message_id});
+    }
+  }
+  closeNotification(message,outcome,error=null,stage='response'){
+    const attempt=message.notification_attempts?.at(-1);if(!attempt)return;
+    if(attempt.ended_at!==undefined)return;
+    attempt.outcome=outcome;attempt.ended_at=this.now();
+    if(error)attempt.error=sdkDiagnostic(error,error.stage??stage);
   }
   _send(input) {
     const {run,member}=this.member(input),recipient=Object.values(run.members).find(m=>m.id===input.recipient_id);
@@ -544,7 +565,8 @@ export class PluginCommunication {
     const value=this.waitResult(input);
     if(value.message_id||run.events.slice(input.after_seq).some(e=>this.wakes(run,input.participant_id,e)))return {immediate:true};
     if(run.mode!=='workflow')this.event(run,'wait.started',{participant_id:input.participant_id,panel_instance_id:input.panel_instance_id});
-    return {seq:run.events.length,expires_at:panel.expiresAt};
+    const member=run.members[input.participant_id];
+    return {seq:run.events.length,expires_at:Math.min(panel.expiresAt,this.now()+(run.mode==='workflow'?this.workflow.retryDelay(run,member):Infinity))};
   }
   _waitEnd(input) {
     const {run,member}=this.panel(input);
@@ -560,7 +582,7 @@ export class PluginCommunication {
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
     requireValue(!message?.cancelled,'STARTUP_CANCELLED','Стартовый пакет отменён.');
-    requireValue(message && message.recipient_id===member.id && message.delivery==='pending' && !message.read
+    requireValue(message && message.recipient_id===member.id && (message.delivery==='pending'||run.mode==='workflow'&&this.workflow.retryEligible(run,member,message)) && !message.read
       && message.delivery_mode!=='model-pull','CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
     if(run.mode==='workflow'&&await this.workflow.superseded(run,member,message))return {deferred:true,superseded:true};
     const reason=run.mode==='workflow'?await this.workflow.claimBlockReason(run,member,message):null;
@@ -573,6 +595,11 @@ export class PluginCommunication {
     message.delivery='claimed';message.delivery_attempt_id=this.makeId();message.panel_instance_id=input.panel_instance_id;
     if(run.mode==='workflow')message.claimed_at=this.now();
     message.permission_generation=member.generation;
+    if(message.notification_version===1){
+      message.intent=false;
+      message.notification_attempts.push({id:message.delivery_attempt_id,panel_id:input.panel_instance_id,
+        generation:member.generation,started_at:this.now(),outcome:'claimed',intent:false});
+    }
     this.event(run,'claim.granted',{participant_id:member.id,message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
     return {message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id};
   }
@@ -602,19 +629,30 @@ export class PluginCommunication {
       this.workflow.begin(run,member,message);
     }
     message.intent=true;
+    if(message.notification_version===1)message.notification_attempts.at(-1).intent=true;
     this.event(run,'binding.verified',{participant_id:member.id,message_id:message.message_id,conversation_key:member.identity});
     this.event(run,'send.intent',{participant_id:member.id,message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id});
     return {message_id:message.message_id,permission_generation:member.generation,expires_at:this.panels.get(input.panel_instance_id).expiresAt,
       sdk_timeout_ms:90000};
   }
   async _report(input) {
+    const context=this.panel(input),stored=context.run.messages.find(m=>m.message_id===input.message_id&&m.recipient_id===context.member.id);
+    const historic=stored?.notification_attempts?.find(a=>a.id===input.delivery_attempt_id&&a.panel_id===input.panel_instance_id);
+    if(historic&&stored.delivery_attempt_id!==historic.id){
+      requireValue(historic.intent&&['accepted','rejected','unknown'].includes(input.outcome),'INPUT','Некорректный поздний исход.');
+      if(!historic.late_outcome){historic.late_outcome=input.outcome;historic.late_at=this.now();
+        this.event(context.run,'send.late_report',{message_id:stored.message_id,delivery_attempt_id:historic.id,outcome:input.outcome});}
+      return {delivery:stored.delivery,read:stored.read,late:true};
+    }
     const {run,message}=this.attempt(input,false);
     requireValue(['accepted','rejected','unknown'].includes(input.outcome) && message.intent,'INPUT','Некорректный результат отправки.');
     requireValue(message.delivery==='claimed'||message.delivery===input.outcome||message.resolved_by_read,'CONFLICT','Результат доставки уже записан.');
     if(message.delivery==='claimed'||!message.resolved_by_read)message.delivery=input.outcome;
-    this.event(run,'send.report',{message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id,outcome:input.outcome});
+    this.closeNotification(message,input.outcome,input.error);
+    this.event(run,'send.report',{message_id:message.message_id,delivery_attempt_id:message.delivery_attempt_id,outcome:input.outcome,
+      ...(input.error?{sdk_error:sdkDiagnostic(input.error,input.error.stage)}:{})});
     if(run.mode==='workflow')await this.workflow.observed(run,run.members[message.recipient_id]);
-    return {delivery:message.delivery,read:message.read};
+    return {delivery:message.delivery,read:message.read,...(message.notification_version===1?{recovery:notificationRecovery(message,this.now())}:{})};
   }
   async _read(input) {
     const {run,member}=this.member(input),message=run.messages.find(m=>m.message_id===input.message_id);
@@ -634,12 +672,25 @@ export class PluginCommunication {
       this.event(run,'message.read',{participant_id:member.id,message_id:message.message_id,
         delivery_attempt_id:message.delivery_attempt_id??null});}
     this.event(run,'read.returned',{participant_id:member.id,message_id:message.message_id});
+    if(message.notification_version===1&&message.intent&&['unknown','rejected'].includes(message.delivery))message.resolved_by_read=true;
     if(run.mode==='workflow')await this.workflow.observed(run,member);
-    const {idempotency_key,fingerprint,read_page,handlingGate,...value}=message;
-    return {...structuredClone(value),...(run.mode==='workflow'?{role_protocol:ROLE_PROTOCOL_VERSION,
-      instructions:(message.ui_event?USER_EVENT_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
+    const pending_incoming=await this.pendingIncoming(run,member);
+    if(message.yielded)return {message_id:message.message_id,already_handled:true,pending_incoming,
+      instructions:'Это сообщение уже обработано. Не повторяйте команды, task:start, result или интеграцию. Прочитайте pending_incoming, если есть новые входящие.'};
+    const {idempotency_key,fingerprint,read_page,handlingGate,notification_attempts,...value}=message;
+    return {...structuredClone(value),...(run.mode==='workflow'?{pending_incoming,role_protocol:ROLE_PROTOCOL_VERSION,
+      instructions:(message.ui_event?USER_EVENT_RULE+'\n'+NOTIFICATION_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
         :roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0))
         +'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
+  }
+  async pendingIncoming(run,member){
+    const pending=[];
+    if(run.mode==='workflow')for(const m of run.messages){
+      if(m.recipient_id===member.id&&!m.read&&!m.superseded&&!m.cancelled&&m.kind!=='startup-context'
+        &&await this.workflow.currentMessage(member.target,m))pending.push({message_id:m.message_id,kind:m.kind});
+      if(pending.length>=32)break;
+    }
+    return pending;
   }
   _telemetry(input) {
     const {run}=this.panel(input),data=input.event;
@@ -664,12 +715,13 @@ export class PluginCommunication {
       const message=run.messages.find(m=>m.message_id===data.message_id&&m.recipient_id===input.participant_id);
       requireValue(message,'INPUT','Неизвестное сообщение события.');safe.message_id=data.message_id;
       if(data.delivery_attempt_id!==undefined){
-        requireValue(data.delivery_attempt_id===message.delivery_attempt_id,
+        requireValue(data.delivery_attempt_id===message.delivery_attempt_id||message.notification_attempts?.some(a=>a.id===data.delivery_attempt_id&&a.panel_id===input.panel_instance_id),
           'INPUT','Не совпадает попытка события SDK.');
         Object.assign(safe,{delivery_attempt_id:data.delivery_attempt_id,
           assignment_id:message.assignment_id??null,source_commit:message.source_commit??null});
       }
     }
+    if(data.sdk_error)safe.sdk_error=sdkDiagnostic(data.sdk_error,data.sdk_error.stage);
     const signature=JSON.stringify({panel_instance_id:input.panel_instance_id,...safe}),previous=run.clientEvents[data.event_id];
     requireValue(!previous||previous===signature,'CONFLICT','ID события уже использован.');
     if(previous)return {duplicate:true};

@@ -1,4 +1,5 @@
 import {mountPanel} from './panel.mjs';
+import {sdkDiagnostic} from '../../contracts/plugin-communication.mjs';
 import {COMMUNICATION_PROTOCOL as PROTOCOL,COMMUNICATION_BUILD as BUILD,communicationVersionMessage} from '../../contracts/backend.mjs';
 const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|ASSIGNMENT_CHANGED|VERSION|STOPPED|STORE_|CLOSED|LIMIT)/.test(code??'');
 const detached=code=>/^PLUGIN_COMMUNICATION_(ASSIGNMENT_CHANGED|PROJECT_REMOVED)$/.test(code??'');
@@ -168,7 +169,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const verified=workflow?ticket:await call('verify',args,{signal});
     if(verified.superseded||!enabled||disposed||epoch!==generation||verified.expires_at<=Date.now()||!getMessage())return;
     status('Передаём запрос текущему разговору…','sending');
-    let outcome='unknown',timer,leaseTimer,inFlight=true,rejectLease,settled=false;const sdkStarted=clock();
+    let outcome='unknown',diagnostic=null,stage='invocation',timer,leaseTimer,inFlight=true,rejectLease,settled=false;const sdkStarted=clock();
     const correlation={message_id,delivery_attempt_id:ticket.delivery_attempt_id};
     const leaseLost=new Promise((_,reject)=>{rejectLease=reject;});
     const timeout=verified.sdk_timeout_ms??sendTimeoutMs;
@@ -200,17 +201,24 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         JSON.stringify(workflow?{message_id}:{run_id:current.run_id,participant_id:current.participant_id,message_id})+
         '. Не открывай другую панель и не повторяй уведомление. Чтение сообщения — отдельная квитанция.'}],
         _meta:{'openai/message':{target:'active',send:true}}},{timeout});
+      stage='response';
       Promise.resolve(pending).then(response=>{if(settled)record(response?.isError?'sdk.late_rejected':'sdk.late_accepted',
-        {...correlation,operation_ms:clock()-sdkStarted},current);},()=>{if(settled)record('sdk.late_rejected',
-        {...correlation,operation_ms:clock()-sdkStarted,error_code:'SDK_ERROR'},current);});
+        {...correlation,operation_ms:clock()-sdkStarted,...(response?.isError?{sdk_error:sdkDiagnostic(response.error??{code:'HOST_REJECTED'})}:{})},current);},error=>{if(settled)record('sdk.late_rejected',
+        {...correlation,operation_ms:clock()-sdkStarted,error_code:'SDK_ERROR',sdk_error:sdkDiagnostic(error)},current);});
       const response=await Promise.race([pending,leaseLost,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('timeout'),{code:'SDK_TIMEOUT'})),timeout);})]);
-      outcome=response?.isError?'rejected':'accepted';record('sdk.'+outcome,{...correlation,operation_ms:clock()-sdkStarted},current);
+      outcome=response?.isError?'rejected':'accepted';
+      if(response?.isError)diagnostic=sdkDiagnostic(response.error??{code:'HOST_REJECTED'},'response');
+      record('sdk.'+outcome,{...correlation,operation_ms:clock()-sdkStarted,...(diagnostic?{sdk_error:diagnostic}:{})},current);
     }catch(error){const timeout=error.code==='SDK_TIMEOUT'||error.code===-32001;
-      record(timeout?'sdk.timeout':'sdk.error',{...correlation,error_code:timeout?'SDK_TIMEOUT':'SDK_ERROR'},current);}
+      diagnostic=sdkDiagnostic(error,timeout?'timeout':error.code==='SDK_LEASE_LOST'?'lease':stage);
+      record(timeout?'sdk.timeout':'sdk.error',{...correlation,error_code:timeout?'SDK_TIMEOUT':'SDK_ERROR',sdk_error:diagnostic},current);}
     finally{settled=true;inFlight=false;clearTimeout(timer);clearTimeout(leaseTimer);}
-    try{await call('report',{...args,outcome});}catch(error){record('report.failed',{message_id,error_code:'MCP_ERROR'});throw error;}
+    let reported;
+    try{reported=await call('report',{...args,outcome,...(diagnostic?{error:diagnostic}:{})});}catch(error){record('report.failed',{message_id,error_code:'MCP_ERROR'});throw error;}
     if(!enabled||disposed||epoch!==generation)return;
-    status(outcome==='accepted'?'Хост принял запрос; чтение агентом проверяется отдельно.':
+    status(reported?.recovery?.retrying?'Восстанавливаем доставку уведомления. Ваше решение сохранено.':
+      reported?.recovery?.exhausted?'Не удалось уведомить агента: '+(diagnostic?.code??'SDK_ERROR')+'. Откройте чат и попросите прочитать входящие Workflow Pilot.':
+      outcome==='accepted'?'Хост принял запрос; чтение агентом проверяется отдельно.':
       outcome==='rejected'?'Хост отклонил запрос. Повтора нет.':'Исход отправки неизвестен. Повтора нет.',outcome==='unknown'?'unknown':'waiting');
   }
   async function listen(generation){

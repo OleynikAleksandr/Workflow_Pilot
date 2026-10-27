@@ -413,7 +413,7 @@ export class AssignmentDialogue {
     const binding=await this.input(input);await this.c.enrollment.validateInput(binding);
     const {run,member}=this.c.member(binding);
     const pending=Object.values(run.assignment_intents??{}).filter(i=>i.sender_id===member.id&&i.phase!=='published');
-    return {permission:this.c.workflow.state(run),assignments:await this.roster(run,member),
+    return {permission:this.c.workflow.state(run),assignments:await this.roster(run,member),pending_incoming:await this.c.pendingIncoming(run,member),
       pending_intents:pending.map(i=>({message_id:i.message_id,draft_id:i.effect.kind==='task'?i.message_id:undefined,
         assignment_id:i.effect.assignment_id,attempt:i.effect.attempt,operation_id:i.operation_id,phase:i.phase,error:i.error??null})),
       messages:run.messages.filter(m=>(m.sender_id===member.id||m.recipient_id===member.id)&&m.scope_id===run.grant?.scope_id)

@@ -165,7 +165,7 @@ export class ParallelExecution {
       if(entry.status!=='queued')continue;
       const receipt=this.deliveryReceipt(entry.message_id);
       if(receipt?.reply_observed){entry.status='reply-observed';await this.persist();}
-      else if(['unknown','rejected'].includes(receipt?.delivery)){
+      else if(receipt?.notification_version!==1&&['unknown','rejected'].includes(receipt?.delivery)){
         entry.status='unknown';await this.persist();this.onPause(workspace,state.plan.scope_id,'unknown','Доставка рабочего поручения '+receipt.delivery+'. Автоматического повтора нет.');
       }
     }

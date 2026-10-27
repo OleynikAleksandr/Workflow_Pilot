@@ -1,4 +1,10 @@
 // A view of facts, never a transition or an execution permission.
+export function notificationActivity(recovery){
+  if(recovery?.retrying)return {phase:'delivery',label:'Восстанавливаем доставку уведомления',reason:'Сообщение сохранено. Повторное поручение не создаётся.'};
+  if(recovery?.exhausted)return {phase:'attention',label:'Не удалось уведомить агента',
+    reason:`SDK: ${recovery.error?.code??'нет подтверждения'}. Попыток: ${recovery.attempts} из ${recovery.limit}. Откройте чат и попросите прочитать входящие Workflow Pilot.`};
+  return null;
+}
 export function currentPlanTasks(project,execution) {
   return (project?.planExecution?.execution_strategy==='orchestrated'&&execution?.scopeId===project.scopeId
     ?execution.planView?.tasks:null)??project?.planView?.tasks??[];
@@ -11,6 +17,7 @@ export function assignmentStage({phase,status,dialogue,block,channel,physical}={
   if(channel&&!channel.registered)return {phase:'starting',label:'Ожидаем регистрацию исполнителя'};
   if(channel&&!channel.sdk)return {phase:'starting',label:'Ожидаем подключение SDK и привязку панели'};
   if(channel&&!channel.permitted)return {phase:'waiting',label:'Связь плана приостановлена'};
+  const recovery=notificationActivity(channel?.incoming?.recovery);if(recovery)return recovery;
   if(block||channel?.blocked)return {phase:'question',label:'Вопрос оркестратору · ожидаем решение'};
   if(dialogue?.acceptance)return {phase:'accepted',label:'Результат принят оркестратором · ожидаем интеграцию'};
   if(dialogue?.result)return {phase:'review',label:channel?.result?.read
@@ -49,6 +56,8 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     const reason=blocker.reason;
     const current=(phase,label,detail)=>({...stage(phase,label,detail,'Канал связи'),recipient:'O',
       priority:phase==='attention'?0:1,key:'blocked-by:'+blocker.message_id+':'+reason,startedAt:blocker.created_at});
+    const recovery=notificationActivity(blocker.recovery);
+    if(recovery)return current(recovery.phase,recovery.label,recovery.reason);
     if(['unknown','rejected'].includes(blocker.delivery))return current('attention','Отправка требует проверки',
       (blocker.delivery==='rejected'?'ChatGPT отклонил отправку. ':'Подтверждение отправки не получено. ')+
       (blocker.read?'Получатель прочитал сообщение; повтор не требуется. ':'Проверьте чат получателя. Автоматически повторять отправку нельзя.'));
@@ -61,6 +70,8 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     const recipient=incoming.recipient_role??'O',to=recipient==='O'?'оркестратору':'исполнителю'+task;
     const current=(...args)=>({...stage(...args),recipient,key:'message:'+(incoming.message_id??incoming.kind)+':'+args[0],
       startedAt:(incoming.handled?incoming.handled_at:incoming.read?incoming.read_at:incoming.delivery==='accepted'?incoming.delivery_at:incoming.created_at)??null});
+    const recovery=!incoming.read&&notificationActivity(incoming.recovery);
+    if(recovery)return current(recovery.phase,recovery.label+task,recovery.reason,'Канал связи');
     if(!incoming.read&&['unknown','rejected'].includes(incoming.delivery))return current('attention','Доставка требует проверки'+task,
       'Проверьте чат получателя. Автоматически повторять отправку нельзя.','Канал связи');
     if(!incoming.read){

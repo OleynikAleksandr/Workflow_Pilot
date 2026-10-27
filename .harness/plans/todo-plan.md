@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1234,
+  "plan_revision": 1236,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -187,8 +187,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-recovery-identity",
         "task_id": "DELIVERY",
@@ -244,7 +244,24 @@
       ],
       "expected_commit_message": "fix: восстанавливать sdk уведомления без вечной блокировки и повторных эффектов",
       "task_brief": "Восстанавливать SDK уведомления без вечной блокировки и повторных эффектов. Ошибки отдельных SDK attempts не блокируют новые сообщения; до трёх попыток уведомления сохранённого message_id, без busy gates и повторного поручения. Идемпотентные реальные эффекты, read/handled отдельно; pending входящие и актуальные UI решения доступны адресату, UNKNOWN история не стирается. Stop/identity/grant/legacy неизвестный эффект не обходятся. Очищенная диагностика исходного исключения; до плана и после него видна фактическая стадия и конкретная ошибка. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -488,7 +505,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1234
+Revision: 1236
 
 ## Цель
 
@@ -511,8 +528,8 @@ Revision: 1234
   - Файлы: src/control/sessions/workspace-session.mjs, src/control/projects/project-state-cleanup.mjs, src/control/projects/workspace-deletion.mjs, src/control/workflow/user-choices.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, src/control/plugin/enrollment.mjs, tests/workspace-session.test.mjs, tests/user-choices.test.mjs, tests/project-state-cleanup.test.mjs, tests/plugin-enrollment.test.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/backend-upgrade.test.mjs, tests/dialogue-delivery.test.mjs, src/control/workflow/execution-control.mjs, tests/execution-control.test.mjs, src/control/plugin/assignment-dialogue.mjs, docs/planning/sdk-recovery-identity.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DELIVERY: Восстанавливать SDK уведомления без вечной блокировки и повторных эффектов — Ожидает
-  - Git Commit: [PENDING] fix: восстанавливать sdk уведомления без вечной блокировки и повторных эффектов
+- [DONE] DELIVERY: Восстанавливать SDK уведомления без вечной блокировки и повторных эффектов — Завершено
+  - Git Commit: [DONE] fix: восстанавливать sdk уведомления без вечной блокировки и повторных эффектов
   - Reference: sdk-recovery-identity / DELIVERY / implementation
   - Файлы: src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/contracts/plugin-communication.mjs, src/contracts/user-choice.mjs, src/control/workflow/user-choices.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, src/frontend/desktop/ui/current-actions.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, tools/codex-app-server-mcp/plugin.py, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/user-choice-view.test.mjs, tests/progress.test.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-projection.mjs, tests/parallel-execution.test.mjs, tests/panel-dialogue-view.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, tests/codex-app-server-mcp.test.mjs, docs/planning/sdk-recovery-identity.md
   - Параллельность: исключительное выполнение

@@ -34,6 +34,16 @@ function fixture(t) {
   return {runtime,state,kit,calls,origin,pages,finish,grant};
 }
 
+test('a failed SDK notification leaves the plan running and its original outbox entry intact',async t=>{
+  const f=fixture(t),paused=[];f.runtime.onPause=(...args)=>paused.push(args);
+  f.runtime.deliveryReceipt=()=>({delivery:'unknown',notification_version:1});
+  const entry={status:'queued',message_id:'stable'},ledger={delivery:{one:entry}};
+  await f.runtime.reconcileMessages('/main',f.state,f.origin,ledger,()=>true);
+  assert.equal(entry.status,'queued');assert.equal(entry.message_id,'stable');assert.deepEqual(paused,[]);
+  f.runtime.deliveryReceipt=()=>({delivery:'unknown'});
+  await f.runtime.reconcileMessages('/main',f.state,f.origin,ledger,()=>true);
+  assert.equal(entry.status,'unknown');assert.equal(paused.length,1,'legacy effect remains protected');
+});
 test('origin is exact immutable session metadata; unknown/OFF/mismatched policy fails closed',()=>{
   const plan={execution_strategy:'parallel',execution_origin_session_id:'author',parallel_allowed:true,max_workers:2};
   const origin={sessionId:'author',executionSnapshot:{parallel_allowed:true,max_workers:2}};

@@ -6,7 +6,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
   pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
-import {currentPlanTasks,planActivity,activityClock} from '../contracts/dialogue-view.mjs';
+import {currentPlanTasks,planActivity,activityClock,notificationActivity} from '../contracts/dialogue-view.mjs';
 import {startupContextState,startupView} from '../contracts/startup-view.mjs';
 import {roleActor,participantName,buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity,reviewHistoryEvents} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
@@ -345,6 +345,18 @@ function workProgressView(workspace,fresh=null) {
   const offered=choices.filter(item=>item.choice.state==='offered');
   const choiceCovers=kind=>offered.some(item=>item.choice.kind===kind);
   const warn=(title,text,action=null)=>{attention??={title,text,action};};
+  const transportIssues=new Set();
+  for(const session of sessions){
+    const channel=plugin?.communication.workflow.progress(session.sessionId);
+    const issue=notificationActivity(channel?.incoming?.recovery);
+    if(!issue)continue;
+    transportIssues.add(session.sessionId);
+    const action={kind:'open-session',workspace,sessionId:session.sessionId,label:'Открыть чат'};
+    if(issue.phase==='attention')warn(issue.label,issue.reason,action);
+    if(!run?.activity||session.sessionId!==project.planExecution?.execution_origin_session_id)
+      now.push({actor:'APP',text:issue.label,reason:issue.reason,stage:issue.phase,
+        key:'notification:'+channel.incoming.message_id,kind:issue.phase==='attention'?'warn':'wait',elapsedMs:null,action});
+  }
   // Startup of orchestrator and discussion chats is shown here, not under the session card.
   const starting=new Set();
   for(const session of sessions){
@@ -379,6 +391,7 @@ function workProgressView(workspace,fresh=null) {
     const needed=choice.state==='offered',saved=choice.state==='chosen',saving=choice.state==='saving';
     if(choice.chosen?.uncertain)warn('Исход выбранного действия требует проверки',choice.chosen.error,
       {kind:'open-session',workspace,sessionId:session.sessionId,label:'Открыть чат сессии'});
+    if(saved&&transportIssues.has(session.sessionId))continue;
     now.push({actor:saving?'APP':roleActor(session.role),text:needed?'ждёт вашего выбора':saving?'Сохраняем ваш выбор':saved?'Ваш выбор сохранён · передаём решение агенту':'Результат ожидает вашей проверки',
       name:saved||saving?'':undefined,stage:needed?'choice':saving?'choice-saving':saved?'choice-saved':'choice-postponed',choiceId:choice.choice_id,
       key:'choice:'+choice.choice_id+':'+choice.generation,kind:needed?'warn':saving?'act':'wait',elapsedMs:null,
@@ -387,7 +400,7 @@ function workProgressView(workspace,fresh=null) {
   if(reviewWork&&!choiceCovers('review'))now.push(reviewWork);
   // Answers of the orchestrator before a plan and of discussion chats come from their page state.
   for(const session of sessions){
-    if(session.closedPlanCommit||starting.has(session.sessionId)||!['orchestrator','planning','self','discussion'].includes(session.role))continue;
+    if(session.closedPlanCommit||transportIssues.has(session.sessionId)||starting.has(session.sessionId)||!['orchestrator','planning','self','discussion'].includes(session.role))continue;
     // A session that may plan reports waiting; a discussion chat only its own answers.
     const orchestrator=session.role!=='discussion';
     if(session.role==='orchestrator'&&(scope||session.orchestratorScopeId)||session.role==='self'&&scope)continue;

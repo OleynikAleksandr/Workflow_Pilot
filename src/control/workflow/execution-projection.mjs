@@ -1,4 +1,4 @@
-import {assignmentStage} from '../../contracts/dialogue-view.mjs';
+import {assignmentStage,notificationActivity} from '../../contracts/dialogue-view.mjs';
 export function integrationProblem(operation) {
   if (operation?.status !== 'CHECKS_FAILED') return null;
   let failure;
@@ -62,7 +62,8 @@ export function executorStatus(assignment,record,integration,{channel=null}={}) 
   if(page.login==='signed-out')return {phase:'waiting',label:'Нужен вход в ChatGPT'};
   if(assignment?.dialogue_version===1)return assignmentStage({...assignment,channel,physical:page});
   if(channel&&!['READY_FOR_INTEGRATION','INTEGRATED'].includes(assignment?.status)) {
-    if(['unknown','rejected','superseded'].includes(channel.initial?.delivery))return {phase:'attention',label:'Рабочее уведомление: '+channel.initial.delivery+' · автоматического повтора нет'};
+    const recovery=notificationActivity(channel.initial?.recovery);if(recovery)return recovery;
+    if(!channel.initial?.read&&['unknown','rejected','superseded'].includes(channel.initial?.delivery))return {phase:'attention',label:'Рабочее уведомление: '+channel.initial.delivery+' · автоматического повтора нет'};
     if(!channel.registered)return {phase:'starting',label:'Ожидаем регистрацию исполнителя'};
     if(!channel.sdk)return {phase:'starting',label:'Ожидаем подключение SDK и привязку панели'};
     if(!channel.permitted)return {phase:'waiting',label:'Связь плана приостановлена'};

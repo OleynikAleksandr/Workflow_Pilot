@@ -6,6 +6,14 @@ import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 import {executorStatus} from '../src/control/workflow/execution-projection.mjs';
 import {currentPlanTasks,planActivity,activityClock,assignmentStage} from '../src/contracts/dialogue-view.mjs';
 import {buildWorkProgress,stageKind} from '../src/contracts/work-progress.mjs';
+test('SDK recovery is neutral, exhaustion is actionable and does not claim lost work',()=>{
+  const incoming={message_id:'one',kind:'review',read:false,delivery:'unknown',recovery:{retrying:true,attempts:1,limit:3}};
+  let result=planActivity({run:{state:'running'},channel:{incoming}});
+  assert.equal(result.phase,'delivery');assert.match(result.label,/Восстанавливаем/);
+  incoming.recovery={retrying:false,exhausted:true,attempts:3,limit:3,error:{code:'SDK_TIMEOUT'}};
+  result=planActivity({run:{state:'running'},channel:{incoming}});
+  assert.equal(result.phase,'attention');assert.match(result.reason,/SDK_TIMEOUT/);assert.match(result.reason,/3 из 3/);
+});
 
 test('the main panel ignores old busy gates and distinguishes transfer, receipt and manual Stop',async t=>{
   const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));

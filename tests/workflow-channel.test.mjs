@@ -30,6 +30,67 @@ async function fixture(t,currentMessage,dialogueKit=null){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+test('Review SDK failure does not hold a saved choice; reading that choice exposes the unread Review',async t=>{
+  const f=await fixture(t),b=await f.bind(f.c,f.o);
+  const review=await f.c.workflow.enqueue(f.o,{key:'review-on',kind:'review',text:'Review ON'});
+  const first=await f.c.claimReady({...b,message_id:review.message_id});
+  await f.c.report({...b,...first,outcome:'unknown',error:{code:-32603,name:'McpError',message:'network https://secret/?token=hidden'}});
+  const choice=await f.c.workflow.enqueue(f.o,{key:'choice-once',kind:'user-choice',text:'Orchestrated'});
+  assert.equal(pending(f.c,b),choice.message_id);
+  await sdk(f,b,choice.message_id);
+  const read=await f.c.readMessage({metadata:meta('o'),message_id:choice.message_id});
+  assert.deepEqual(read.pending_incoming,[{message_id:review.message_id,kind:'review'}]);
+  await f.c.readMessage({metadata:meta('o'),message_id:review.message_id});f.advance(6000);
+  assert.equal(pending(f.c,b),null);
+  const run=f.c.runs.get(b.run_id),attempt=run.messages[0].notification_attempts[0];
+  assert.equal(attempt.outcome,'unknown');assert.equal(attempt.error.code,'-32603');
+  assert.doesNotMatch(JSON.stringify(attempt),/hidden|https/);
+  assert.equal((await f.c.workflow.enqueue(f.o,{key:'choice-once',kind:'user-choice',text:'Orchestrated'})).message_id,choice.message_id);
+  assert.equal(run.messages.length,2);
+});
+test('notification retries preserve the budget across restart, serialize two panels and retain late outcomes',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind(f.c,f.o);
+  const queued=await queue(f.c,f.o),first=await sdk(f,b,queued.message_id,'unknown');
+  assert.equal(pending(f.c,b),null);f.advance(2000);assert.equal(pending(f.c,b),queued.message_id);
+  const second=await f.c.claimReady({...b,message_id:queued.message_id});
+  const other=await f.bind(f.c,f.o);
+  await assert.rejects(f.c.claimReady({...other,message_id:queued.message_id}),{code:'PLUGIN_COMMUNICATION_CLAIM_DENIED'});
+  await f.c.report({...first,outcome:'accepted'});
+  let message=f.c.runs.get(b.run_id).messages[0];assert.equal(message.delivery,'claimed');
+  assert.equal(message.notification_attempts[0].outcome,'unknown');assert.equal(message.notification_attempts[0].late_outcome,'accepted');
+  await f.c.report({...b,...second,outcome:'unknown'});
+  f.c.dispose();await f.c.tail;f.c=await f.create();b=await f.bind(f.c,f.o);f.advance(5000);
+  assert.equal(pending(f.c,b),null,'restart never grants work');
+  await f.c.workflow.grant(f.o);b=await f.sync(f.c,b);assert.equal(pending(f.c,b),queued.message_id);
+  await sdk(f,b,queued.message_id,'unknown');f.advance(100000);b=await f.sync(f.c,b);
+  assert.equal(pending(f.c,b),null);
+  message=f.c.runs.get(b.run_id).messages[0];assert.equal(message.notification_attempts.length,3);
+  assert.equal(f.c.workflow.progress('o').incoming.recovery.exhausted,true);
+  const fresh=await queue(f.c,f.o,'fresh');assert.equal(pending(f.c,b),fresh.message_id);
+  const inbox=await f.c.roster({metadata:meta('o')});assert.ok(inbox.pending_incoming.some(m=>m.message_id===queued.message_id));
+});
+test('nonretryable SDK errors, Stop and legacy unknown effects cannot be replayed',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind(f.c,f.o);
+  const msg=await queue(f.c,f.o),a=await f.c.claimReady({...b,message_id:msg.message_id});
+  await f.c.report({...b,...a,outcome:'rejected',error:{code:-32602,name:'McpError',message:'invalid params'}});
+  f.advance(10000);assert.equal(pending(f.c,b),null);assert.equal(f.c.workflow.progress('o').incoming.recovery.exhausted,true);
+  const next=await queue(f.c,f.o,'temporary');await sdk(f,b,next.message_id,'unknown');
+  await f.c.stop({...b,scope:'participant'});f.advance(5000);b=await f.sync(f.c,b);assert.equal(pending(f.c,b),null);
+  await f.c.workflow.grant(f.o);b=await f.sync(f.c,b);
+  f.pages.get('o').legacySendUnknown=true;assert.equal(pending(f.c,b),null);
+});
+test('handled message replay returns no executable payload and no duplicate Kit effect',async t=>{
+  const kit=dialogueKitFixture(),f=await fixture(t,undefined,kit),e=f.target('e');await f.c.workflow.grant(f.o);
+  await f.bind(f.c,f.o);await f.bind(f.c,e);
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const sent=await f.c.assignmentSend({metadata:meta('o'),recipient,kind:'task',attempt:1,body:'Do once',idempotency_key:'once'});
+  await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
+  await f.c.assignmentYield({metadata:meta('e'),message_ids:[sent.message_id],reason:'handled'});
+  const replay=await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
+  assert.equal(replay.already_handled,true);assert.equal(replay.context_ref,undefined);
+  assert.equal((await f.c.assignmentSend({metadata:meta('o'),recipient,kind:'task',attempt:1,body:'Do once',idempotency_key:'once'})).message_id,sent.message_id);
+  assert.equal(kit.calls,1);
+});
 test('a pending older intent cannot bypass an in-flight UI event when Continue restores the grant',async t=>{
   const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind(f.c,f.o);
   const old=await queue(f.c,f.o,'older');await f.c.workflow.grant(f.o,'paused');b=await f.sync(f.c,b);
@@ -470,10 +531,10 @@ test('startup progress reads current assignment and live SDK separately without 
   const b=await f.bind(f.c,e),first=await queue(f.c,e);const run=f.c.runs.get(b.run_id),seq=run.events.length;
   assert.deepEqual(f.c.workflow.progress('e'),{registered:true,sdk:true,permitted:true,generation:b.permission_generation,blocked:false,
     incoming:{message_id:first.message_id,created_at:run.messages.find(m=>m.message_id===first.message_id).created_at,delivery_at:null,read_at:null,handled_at:null,
-      kind:'assignment-start',task_id:e.task_id,sender_role:'backend',recipient_role:'E',service_action:null,read:false,handled:false,delivery:'pending',reason:null},
-    initial:{message_id:first.message_id,delivery:'pending',read:false,handled:false,physical_complete:false}});
+      kind:'assignment-start',task_id:e.task_id,sender_role:'backend',recipient_role:'E',service_action:null,read:false,handled:false,delivery:'pending',recovery:null,reason:null},
+    initial:{message_id:first.message_id,delivery:'pending',read:false,recovery:null,handled:false,physical_complete:false}});
   assert.equal(run.events.length,seq,'projection creates no telemetry or grants');
-  await delivered(f,b,first.message_id);assert.deepEqual(f.c.workflow.progress('e').initial,{message_id:first.message_id,delivery:'accepted',read:true,handled:false,physical_complete:true});
+  await delivered(f,b,first.message_id);assert.deepEqual(f.c.workflow.progress('e').initial,{message_id:first.message_id,delivery:'accepted',read:true,recovery:null,handled:false,physical_complete:true});
   f.advance(60001);assert.equal(f.c.workflow.progress('e').sdk,false);
   await f.sync(f.c,b);assert.equal(f.c.workflow.progress('e').sdk,true);
   await f.c.workflow.grant(f.o,'paused');assert.equal(f.c.workflow.progress('e').sdk,false,'old generation is not a current SDK lease');
@@ -650,7 +711,7 @@ test('UNKNOWN retains its outcome after read/yield and a late callback, while an
   await f.c.assignmentYield({metadata:meta('o'),message_ids:[result.message_id],reason:'handled'});
   await f.c.report({...args,outcome:'unknown'});
   const next=await queue(f.c,f.o,'next'),other=await queue(f.c,f.targets.get('e'),'independent');
-  assert.equal(pending(f.c,o),null);assert.equal(pending(f.c,e),other.message_id);await sdk(f,e,other.message_id);
+  assert.equal(pending(f.c,o),next.message_id);assert.equal(pending(f.c,e),other.message_id);await sdk(f,e,other.message_id);
   const run=f.c.runs.get(o.run_id),message=run.messages.find(m=>m.message_id===result.message_id);
   assert.equal(message.delivery,'unknown');assert.equal(message.read,true);assert.equal(message.resolved_by_read,true);
   assert.equal(run.messages.find(m=>m.message_id===next.message_id).intent,undefined);
@@ -913,7 +974,7 @@ test('Review preference supersedes only unsent versions and keeps one notificati
   assert.equal(run.messages.find(m=>m.message_id===off.message_id).delivery,'accepted');
 });
 
-test('an obsolete accepted policy event ends its response; an UNKNOWN event never authorizes the next send',async t=>{
+test('an obsolete SDK policy notification never blocks the current version or fabricates read',async t=>{
   for(const outcome of ['accepted','unknown']){
     let current='on';const f=await fixture(t,(_target,m)=>!m.ui_event||m.ui_event.id===current),b=await f.bind(f.c,f.o);
     const send=(id,enabled,revision)=>f.c.workflow.enqueue(f.o,{key:'review-policy:'+id,kind:'user-choice',text:id,
@@ -924,7 +985,7 @@ test('an obsolete accepted policy event ends its response; an UNKNOWN event neve
     assert.doesNotMatch(read.instructions,/вызовите workflow_assignment_yield/);
     const page=f.pages.get('o');page.assistantRevision++;
     await observe(f,'o');f.advance(600);await observe(f,'o');
-    assert.equal(pending(f.c,b),outcome==='accepted'?off.message_id:null,outcome);
+    assert.equal(pending(f.c,b),off.message_id,outcome);
     assert.equal(f.c.runs.get(b.run_id).events.filter(e=>e.event_type==='send.intent').length,1);
   }
 });

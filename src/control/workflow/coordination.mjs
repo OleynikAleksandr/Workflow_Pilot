@@ -584,7 +584,7 @@ return Object.freeze({
       &&p.sessions.some(s=>s.sessionId===run.origin_session_id));
     if(!parent)return;
     if(run.grant?.reason==='manual'&&!run.grant.active)executionControl.stop(parent.workspace,run.grant.scope_id);
-    const uncertain=run.messages.find(m=>m.scope_id===run.grant?.scope_id&&['unknown','rejected'].includes(m.delivery));
+    const uncertain=run.messages.find(m=>m.scope_id===run.grant?.scope_id&&m.notification_version!==1&&['unknown','rejected'].includes(m.delivery));
     if(uncertain&&['running','pausing'].includes(executionControl.view(parent.workspace,run.grant.scope_id).state)){
       executionControl.write(parent.workspace,run.grant.scope_id,'paused','unknown','Доставка '+uncertain.message_id+' — '+uncertain.delivery+'. Автоматического повтора нет.');
     }
