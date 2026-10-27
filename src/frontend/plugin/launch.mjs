@@ -160,6 +160,19 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         .finally(()=>{refreshing=null;});
     },500);
   }
+  async function restoreConnection(generation,signal){
+    const current=binding,active=()=>enabled&&!disposed&&epoch===generation;
+    const synced=await call('sync',{binding:current,message_supported:!!getMessage(),recover_notifications:true},{signal});
+    if(!active()||binding!==current)return null;
+    binding={...current,permission_generation:synced.permission_generation};expiresAt=synced.expires_at;
+    if(synced.stopped){localStop('Связь плана приостановлена. Ожидаем «Продолжить».');return null;}
+    if(!synced.notification_recovery_id)return {};
+    const update=await call('wait',{binding,after_seq:seq},{signal});
+    const confirmed=await call('sync',{binding,message_supported:!!getMessage(),recovery_id:synced.notification_recovery_id},{signal});
+    if(!active())return null;
+    if(confirmed.stopped){localStop('Связь плана приостановлена. Ожидаем «Продолжить».');return null;}
+    return {update,restored:true};
+  }
   async function deliver(message_id,generation,signal){
     const current={...binding};
     const ticket=await call(workflow?'claim_ready':'claim',{binding:current,message_id},{signal});
@@ -214,7 +227,16 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       record(timeout?'sdk.timeout':'sdk.error',{...correlation,error_code:timeout?'SDK_TIMEOUT':'SDK_ERROR',sdk_error:diagnostic},current);}
     finally{settled=true;inFlight=false;clearTimeout(timer);clearTimeout(leaseTimer);}
     let reported;
-    try{reported=await call('report',{...args,outcome,...(diagnostic?{error:diagnostic}:{})});}catch(error){record('report.failed',{message_id,error_code:'MCP_ERROR'});throw error;}
+    const report={...args,outcome,...(diagnostic?{error:diagnostic}:{})};
+    try{reported=await call('report',report);}catch(error){
+      record('report.failed',{message_id,error_code:error.code??'MCP_ERROR'});
+      if(!workflow||error.code!=='MCP_ERROR')throw error;
+      const restored=await restoreConnection(generation,signal);
+      if(!enabled||disposed||epoch!==generation)return;
+      if(!restored?.restored||binding.permission_generation!==current.permission_generation)throw error;
+      // Repeat only this idempotent receipt, never the SDK invocation.
+      reported=await call('report',{...report,binding:{...binding}});
+    }
     if(!enabled||disposed||epoch!==generation)return;
     status(reported?.recovery?.retrying?'Восстанавливаем доставку уведомления. Ваше решение сохранено.':
       reported?.recovery?.exhausted?'Не удалось уведомить агента: '+(diagnostic?.code??'SDK_ERROR')+'. Откройте чат и попросите прочитать входящие Workflow Pilot.':
@@ -229,16 +251,9 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       try{
         update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});
         if(failures&&workflow){
-          const currentBinding=binding;
-          const synced=await call('sync',{binding:currentBinding,message_supported:!!getMessage(),recover_notifications:true},{signal:controller.signal});
-          if(!current()||binding!==currentBinding)return;
-          binding={...currentBinding,permission_generation:synced.permission_generation};expiresAt=synced.expires_at;
-          if(synced.notification_recovery_id){
-            update=await call('wait',{binding,after_seq:seq},{signal:controller.signal});
-            const confirmed=await call('sync',{binding,message_supported:!!getMessage(),recovery_id:synced.notification_recovery_id},{signal:controller.signal});
-            if(!current())return;
-            if(confirmed.stopped){localStop('Связь плана приостановлена. Ожидаем «Продолжить».');return;}
-          }
+          const restored=await restoreConnection(generation,controller.signal);
+          if(!current()||!restored)return;
+          if(restored.update)update=restored.update;
         }
       }
       catch(error){

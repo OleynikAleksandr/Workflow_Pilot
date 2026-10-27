@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1284,
+  "plan_revision": 1286,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -387,14 +387,18 @@
         "Реальный MCP/SDK fixture проверяет потерю report на третьем отказе и accepted/read; только адресные проверки, staged immutable panel."
       ],
       "expected_commit_message": "fix: восстановить квитанцию sdk после потери ответа",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "SDK-REPORT",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/frontend/plugin/launch.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -615,7 +619,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1284
+Revision: 1286
 
 ## Цель
 
@@ -657,8 +661,8 @@ Revision: 1284
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-kit-upgrade.test.mjs, tests/panel-resource-upgrade.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/released-kit/kit-1.10.4.tar.gz, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение
   - Зависимости: CLOSED
-- [TODO] SDK-REPORT: Восстановить квитанцию SDK после потери ответа — Ожидает
-  - Git Commit: [PENDING] fix: восстановить квитанцию sdk после потери ответа
+- [DONE] SDK-REPORT: Восстановить квитанцию SDK после потери ответа — Завершено
+  - Git Commit: [DONE] fix: восстановить квитанцию sdk после потери ответа
   - Reference: incoming-obligations-and-sdk-recovery / SDK-REPORT / implementation
   - Файлы: src/frontend/plugin/launch.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/incoming-obligations-and-sdk-recovery.md
   - Параллельность: исключительное выполнение
