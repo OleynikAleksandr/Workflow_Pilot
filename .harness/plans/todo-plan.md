@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1236,
+  "plan_revision": 1237,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -73,7 +73,8 @@
       "tests/backend-upgrade.test.mjs",
       "tests/dialogue-delivery.test.mjs",
       "src/control/workflow/execution-control.mjs",
-      "tests/execution-control.test.mjs"
+      "tests/execution-control.test.mjs",
+      "src/contracts/work-progress.mjs"
     ],
     "documentation_paths": [
       "docs/planning/sdk-recovery-identity.md",
@@ -283,7 +284,11 @@
         "tests/electron-smoke.mjs",
         "tests/migration-compatibility.test.mjs",
         "tests/fixtures/plugin-host.mjs",
-        "tests/fixtures/plugin-server.py"
+        "tests/fixtures/plugin-server.py",
+        "src/control/plugin/communication.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/work-progress.mjs",
+        "tests/progress.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -302,7 +307,8 @@
       "verification_kind": "code",
       "acceptance_criteria": [
         "Полный цикл и injected SDK отказ Review→выбор; lost response/late/read/restart/две панели/Stop и три результата без двойных эффектов.",
-        "Изоляция одинаковых имён/повторного пути/общего projectId worktree проверена. Живой ChatGPT не объявляется PASS. Продуктовые исправления в PROOF требуют task:update области до правок."
+        "Изоляция одинаковых имён/повторного пути/общего projectId worktree проверена. Живой ChatGPT не объявляется PASS. Продуктовые исправления в PROOF требуют task:update области до правок.",
+        "История SDK попыток доступна до плана и после него, не выдаёт сохранение уведомления за прочтение; исправления проекции проверяются вместе с инъекцией отказа полного цикла."
       ],
       "expected_commit_message": "fix: проверить восстановление и полный жизненный цикл",
       "task_brief": "Проверить восстановление и полный жизненный цикл. Полный цикл и injected SDK отказ Review→выбор; lost response/late/read/restart/две панели/Stop и три результата без двойных эффектов. Изоляция одинаковых имён/повторного пути/общего projectId worktree проверена. Живой ChatGPT не объявляется PASS. Продуктовые исправления в PROOF требуют task:update области до правок. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
@@ -505,7 +511,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1236
+Revision: 1237
 
 ## Цель
 
@@ -537,7 +543,7 @@ Revision: 1236
 - [TODO] PROOF: Проверить восстановление и полный жизненный цикл — Ожидает
   - Git Commit: [PENDING] fix: проверить восстановление и полный жизненный цикл
   - Reference: sdk-recovery-identity / PROOF / implementation
-  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/plugin-server.py
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/plugin-server.py, src/control/plugin/communication.mjs, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, tests/progress.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: DELIVERY
 - [TODO] VERSION: Согласовать версии выпуска панели и Kit — Ожидает
