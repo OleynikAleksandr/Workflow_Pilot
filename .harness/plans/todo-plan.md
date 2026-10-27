@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1268,
+  "plan_revision": 1270,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "attention-and-closed-plan",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Устранить ложные пользовательские тревоги и ошибку отображения закрытого плана; выпустить три ОС, установить Mac и опубликовать GitHub.",
   "acceptance_criteria": [
     "Внутренние ожидания нейтральны; оранжевое только для необходимого пользовательского действия с инструкцией, без дубликатов.",
@@ -496,8 +496,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "attention-and-closed-plan",
         "task_id": "PUBLISH",
@@ -538,7 +538,8 @@
           "DOCS"
         ]
       },
-      "task_brief": "Опубликовать полный выпуск на GitHub. Проверить публичный release и доставку всех assets. Требования: Tag соответствует sourceCommit, полный комплект проверен по SHA/size; GitHub release опубликован, remote main и итоговый push подтверждены. Живая приёмка новой версии и native Windows/Linux не объявляются выполненными без факта. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: github-release."
+      "task_brief": "Опубликовать полный выпуск на GitHub. Проверить публичный release и доставку всех assets. Требования: Tag соответствует sourceCommit, полный комплект проверен по SHA/size; GitHub release опубликован, remote main и итоговый push подтверждены. Живая приёмка новой версии и native Windows/Linux не объявляются выполненными без факта. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: github-release.",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -560,10 +561,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: attention-and-closed-plan
 Current Task: нет
-Revision: 1268
+Revision: 1270
 
 ## Цель
 
@@ -616,8 +617,8 @@ Revision: 1268
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать полный выпуск на GitHub — Ожидает
-  - Git Commit: [PENDING] delivery: опубликовать полный выпуск на github
+- [DONE] PUBLISH: Опубликовать полный выпуск на GitHub — Завершено
+  - Git Commit: [DONE] delivery: опубликовать полный выпуск на github
   - Reference: attention-and-closed-plan / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
