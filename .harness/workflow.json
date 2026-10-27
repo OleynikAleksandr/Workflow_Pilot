@@ -415,6 +415,64 @@
         "tests/automatic-agent-dialogue.test.mjs"
       ],
       "evidence": "Exactly one isolated joint MCP/SDK/Kit case; not all automatic dialogues."
+    },
+    {
+      "id": "intake-mcp-contract",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-name-pattern=^actual MCP exposes working send/status/yield and transfers selected UTF-8 context through the private bridge$",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "evidence": "Exact changed MCP catalogue/send/status/yield contract only."
+    },
+    {
+      "id": "kit-package-targeted",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "packages/workflow-kit/scripts/check-package.mjs"
+      ],
+      "evidence": "Changed Kit version and package consistency; MCP cache preflight before running."
+    },
+    {
+      "id": "kit-review-targeted",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "packages/workflow-kit/scripts/check-plan-review-fixture.mjs"
+      ],
+      "evidence": "Changed PLAN and Review contract only."
+    },
+    {
+      "id": "kit-roles-targeted",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "packages/workflow-kit/scripts/check-orchestrated-execution-fixture.mjs"
+      ],
+      "evidence": "Actual changed orchestrator/executor recovery only."
+    },
+    {
+      "id": "panel-resource-targeted",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/panel-resource-upgrade.test.mjs"
+      ],
+      "evidence": "Immutable panel upgrade; run stage:chatgpt-plugin before commit."
     }
   ],
   "budget": {
