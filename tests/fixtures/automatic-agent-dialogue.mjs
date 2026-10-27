@@ -24,7 +24,7 @@ import {commitTask} from '../../packages/workflow-kit/src/lib/transaction.mjs';
 import {startIntegration,integrationStatus} from '../../packages/workflow-kit/src/lib/task-integration.mjs';
 import {validate} from '../../packages/workflow-kit/src/lib/validate.mjs';
 import {readAssignment} from '../../packages/workflow-kit/src/lib/assignment-contract.mjs';
-import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
+import {ROLE_PROTOCOL_VERSION,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 import {communicationMessageComplete} from '../../src/contracts/plugin-communication.mjs';
 import {userChoseMode} from './execution-mode.mjs';
 import {readReview,prepareReview,respondReview,publishReview} from '../../packages/workflow-kit/src/lib/plan-review.mjs';
@@ -148,13 +148,13 @@ export async function interruptionRegression(t){
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,notificationFault=false,modeOption='orchestrated'}={}){
+export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,notificationFault=false,notificationRestore=false,modeOption='orchestrated'}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
   const drafts=new Map(),preplanEvents=[],delayedReservations=new Set();
   const busyNotifications=[];
-  let failedNotification=null;
+  let failedNotification=null,restoredResult=null,restoredFailures=0,transportFailure=false;
   let releaseChoice,releaseWorkers,commandBarrier=null,clockOffset=0;
   const choiceResponse=new Promise(resolve=>releaseChoice=resolve);
   const workerResponse=new Promise(resolve=>releaseWorkers=resolve);
@@ -224,6 +224,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     const project=record.project();
     if(preplan&&message.kind==='user-choice'){
       preplanEvents.push({...message,text,sessionId:project.sessionId});
+      if(notificationRestore)assert.ok(message.instructions.includes(INCOMING_WORK_RULE));
       assert.equal(readPlan(root).execution_scope_status,message.scope_id?'ACTIVE':'NONE');
       assert.equal(readPlan(root).current_task_id,null,'a UI decision never grants implementation');
       assert.match(message.instructions,/task:start/);
@@ -500,9 +501,19 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
           }
           record.bootstrapCount++;record.registration=registered.structuredContent.registration;
           record.ui=await communicationHtml(testPort,c,{hostMetadata:record.metadata,timerMs:ms=>ms===2000?40:ms,
+            toolReply:async(request,result)=>{
+              if(notificationRestore&&request.name==='workflow_communication_report'&&request.arguments.message_id===restoredResult
+                &&request.arguments.outcome==='unknown')clockOffset+=6000;
+              if(notificationRestore&&!project.assignmentId&&request.name==='workflow_communication_wait'&&restoredFailures===3&&!transportFailure){
+                transportFailure=true;return {transportError:true};
+              }return result;
+            },
             onMessage:request=>{
               const id=JSON.parse(request.content.find(item=>item.type==='text').text.match(/аргументами (\{[^\n]+?\})\./)[1]).message_id;
               const selected=[...plugin.communication.runs.values()].flatMap(run=>run.messages).find(message=>message.message_id===id);
+              if(notificationRestore&&selected?.kind==='result'&&selected.task_id==='T003'&&restoredFailures<3){
+                restoredResult=id;restoredFailures++;return {rpcError:{code:-32000,message:'host failure; secret=fixture-only'}};
+              }
               if(notificationFault&&selected?.kind==='result'&&!failedNotification){
                 failedNotification=id;return {rpcError:{code:-32603,message:'network failure; secret=fixture-only'}};
               }
@@ -737,6 +748,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     return state.state==='complete';
   },'plan completion',workers===5?270000:180000);
   assert.equal(readPlan(root).delivery_status,'READY_FOR_ACCEPTANCE');
+
   const taskCount=workers+(batchResults?1:2);
   assert.deepEqual(readPlan(root).tasks.map(task=>task.commit_status),Array(taskCount).fill('DONE'));
   assert.equal(records.size,taskCount+1,'one O and one E for each task including DOCS');
@@ -769,6 +781,15 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   }else{assert.equal(notifications.filter(n=>n.kind==='question').length,1);assert.equal(notifications.filter(n=>n.kind==='decision').length,1);}
   assert.equal((await plans.call(root,'assignment:cleanup')).only_main,true);
   const run=[...plugin.communication.runs.values()][0];assert.equal(run.grant.phase,'complete');assert.equal(run.grant.active,false);
+  if(notificationRestore){
+    const recovered=run.messages.find(m=>m.message_id===restoredResult);
+    assert.equal(transportFailure,true);assert.equal(restoredFailures,3);
+    assert.equal(recovered.notification_attempts.length,4);assert.ok(recovered.notification_recovery.incident_id);
+    assert.ok(recovered.notification_attempts.slice(0,3).every(a=>a.outcome==='unknown'&&a.error.code==='-32000'));
+    assert.equal(recovered.read,true);assert.equal(recovered.reply_observed,true);
+    assert.equal(notifications.filter(m=>m.message_id===restoredResult).length,1);
+    assert.doesNotMatch(JSON.stringify(recovered.notification_attempts),/secret=fixture/);
+  }
   if(notificationFault){
     assert.ok(failedNotification,'a real renderer SDK invocation was rejected');
     const recovered=run.messages.find(m=>m.message_id===failedNotification);

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1281,
+  "plan_revision": 1283,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -291,8 +291,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "VERIFY",
@@ -349,7 +349,18 @@
           "CLOSED"
         ]
       },
-      "task_brief": "Проверить совместный сценарий и версии. Одно адресное совместное доказательство вместо всей suite. Требования: Один выбранный real MCP/SDK/Kit fixture: исходный вход и Review, ошибки -32000, восстановление и обработка результата без дубликата, зависимая работа и закрытие. Следующие свободные версии app/immutable panel и Kit/role согласованы, protocol по совместимости DTO; upgrade не повторяет действия. Только выбранные модульные проверки; полный набор не объявлять пройденным. Живая ChatGPT и native Windows/Linux остаются NOT_RUN. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: intake-sdk-scenario, kit-upgrade, architecture, chatgpt-plugin. До commit выполнить stage:chatgpt-plugin для актуального immutable HTML и cache preflight MCP перед check-package. Проверить fixture Kit 1.10.4 из sourceCommit v0.5.40. Выполнить также kit-package-targeted, kit-review-targeted, kit-roles-targeted, panel-resource-targeted."
+      "task_brief": "Проверить совместный сценарий и версии. Одно адресное совместное доказательство вместо всей suite. Требования: Один выбранный real MCP/SDK/Kit fixture: исходный вход и Review, ошибки -32000, восстановление и обработка результата без дубликата, зависимая работа и закрытие. Следующие свободные версии app/immutable panel и Kit/role согласованы, protocol по совместимости DTO; upgrade не повторяет действия. Только выбранные модульные проверки; полный набор не объявлять пройденным. Живая ChatGPT и native Windows/Linux остаются NOT_RUN. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: intake-sdk-scenario, kit-upgrade, architecture, chatgpt-plugin. До commit выполнить stage:chatgpt-plugin для актуального immutable HTML и cache preflight MCP перед check-package. Проверить fixture Kit 1.10.4 из sourceCommit v0.5.40. Выполнить также kit-package-targeted, kit-review-targeted, kit-roles-targeted, panel-resource-targeted.",
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/released-kit/README.md",
+        "tests/fixtures/released-kit/kit-1.10.4.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -569,7 +580,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1281
+Revision: 1283
 
 ## Цель
 
@@ -605,8 +616,8 @@ Revision: 1281
   - Файлы: src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/ui/index.html, src/backend/desktop-model.mjs, tests/sidebar.test.mjs, tests/workflow-plan.test.mjs, tests/backend-desktop-model.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: SDK
-- [TODO] VERIFY: Проверить совместный сценарий и версии — Ожидает
-  - Git Commit: [PENDING] fix: проверить совместный сценарий и версии
+- [DONE] VERIFY: Проверить совместный сценарий и версии — Завершено
+  - Git Commit: [DONE] fix: проверить совместный сценарий и версии
   - Reference: incoming-obligations-and-sdk-recovery / VERIFY / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-kit-upgrade.test.mjs, tests/panel-resource-upgrade.test.mjs, tests/chatgpt-plugin.test.mjs, tests/fixtures/released-kit/kit-1.10.4.tar.gz, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/README.md
   - Параллельность: исключительное выполнение

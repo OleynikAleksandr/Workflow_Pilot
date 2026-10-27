@@ -16,6 +16,17 @@ test('D001-D011 cycle: prepared plan, Finder metadata, real dirty Start/Continue
   {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,conversation:true,defects:true});});
 test('busy SDK queue: early title, active command, two Review rounds, one Start and full completion',
   {timeout:360000},async t=>{await automaticDialogue(t,{owned:true,preplan:true});});
+test('incoming obligations and restored SDK delivery',{timeout:360000},async t=>{
+  const {root,run}=await automaticDialogue(t,{owned:true,preplan:true,notificationRestore:true});
+  assert.equal(run.grant.phase,'complete');
+  const archive=JSON.parse(execFileSync(process.execPath,[path.join(root,'scripts/workflow.mjs'),'archive',
+    '--scope','dialogue-fixture','--approval-note','Isolated fixture accepts the completed plan.'],{cwd:root,encoding:'utf8'}));
+  assert.equal(archive.ok,true);
+  const source=await fs.readFile(path.join(root,'.harness/plans/todo-plan.md'),'utf8');
+  const state=source.split('<!-- workflow-state:begin -->')[1].split('<!-- workflow-state:end -->')[0];
+  const plan=JSON.parse(state.slice(state.indexOf('```json')+7,state.lastIndexOf('```')));
+  assert.equal(plan.execution_scope_status,'NONE');assert.equal(plan.tasks.length,0);
+});
 for(const modeOption of ['sequential','spec'])test('real MCP mode button completes the '+modeOption+' decision before any plan',
   {timeout:30000},async t=>{assert.equal((await automaticDialogue(t,{owned:true,preplan:true,modeOption})).modeOption,modeOption);});
 test('five simultaneous executors survive a renderer SDK failure and complete results, integration, DOCS and cleanup',
