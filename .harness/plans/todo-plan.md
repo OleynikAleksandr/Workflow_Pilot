@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1264,
+  "plan_revision": 1266,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "attention-and-closed-plan",
@@ -404,8 +404,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "attention-and-closed-plan",
         "task_id": "RELEASE",
@@ -444,7 +444,10 @@
           "DOCS"
         ]
       },
-      "task_brief": "Собрать macOS Windows и Linux. Получить полный проверенный комплект из одного sourceCommit. Требования: Cache preflight без симлинков перед каждой production/package сборкой, Python без bytecode. Три ОС из одного sourceCommit после DOCS, семь assets, SHA/size/composition и подпись macOS проверены. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: three-platform-release."
+      "task_brief": "Собрать macOS Windows и Linux. Получить полный проверенный комплект из одного sourceCommit. Требования: Cache preflight без симлинков перед каждой production/package сборкой, Python без bytecode. Три ОС из одного sourceCommit после DOCS, семь assets, SHA/size/composition и подпись macOS проверены. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: three-platform-release.",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -559,7 +562,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: attention-and-closed-plan
 Current Task: нет
-Revision: 1264
+Revision: 1266
 
 ## Цель
 
@@ -600,8 +603,8 @@ Revision: 1264
   - Файлы: docs/planning/attention-and-closed-plan.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/project-lifecycle.md, docs/modules/release.md, docs/modules/orchestrated-execution.md, docs/modules/user-choice.md, docs/modules/sdk-messaging.md
   - Параллельность: исключительное выполнение
   - Зависимости: ATTENTION, CLOSED, VERIFY
-- [TODO] RELEASE: Собрать macOS Windows и Linux — Ожидает
-  - Git Commit: [PENDING] delivery: собрать macos windows и linux
+- [DONE] RELEASE: Собрать macOS Windows и Linux — Завершено
+  - Git Commit: [DONE] delivery: собрать macos windows и linux
   - Reference: attention-and-closed-plan / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
