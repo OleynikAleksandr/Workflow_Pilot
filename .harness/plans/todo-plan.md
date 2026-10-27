@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1245,
+  "plan_revision": 1247,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -481,8 +481,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-recovery-identity",
         "task_id": "RELEASE",
@@ -507,7 +507,10 @@
       ],
       "expected_commit_message": "delivery: собрать выпуск macos windows linux",
       "task_brief": "Собрать выпуск macOS Windows Linux. После DOCS три ОС из одного sourceCommit, семь assets, SHA/size/composition/macOS подпись; cache preflight выполнен. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -592,7 +595,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1245
+Revision: 1247
 
 ## Цель
 
@@ -639,8 +642,8 @@ Revision: 1245
   - Файлы: docs/planning/sdk-recovery-identity.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/project-lifecycle.md, docs/acceptance/sdk-messaging.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/plugin-communication-handoff.md, docs/modules/orchestrated-execution.md, docs/modules/assignment-dialogue.md, docs/modules/dialogue-timing.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/control.md, docs/modules/workflow-execution.md, docs/modules/current-actions.md, docs/modules/prepared-tasks.md, docs/modules/session-titles.md, docs/modules/orchestrator-startup.md, docs/modules/chat-only-startup.md, docs/modules/backend.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение
   - Зависимости: IDENTITY, DELIVERY, PROOF, VERSION
-- [TODO] RELEASE: Собрать выпуск macOS Windows Linux — Ожидает
-  - Git Commit: [PENDING] delivery: собрать выпуск macos windows linux
+- [DONE] RELEASE: Собрать выпуск macOS Windows Linux — Завершено
+  - Git Commit: [DONE] delivery: собрать выпуск macos windows linux
   - Reference: sdk-recovery-identity / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
