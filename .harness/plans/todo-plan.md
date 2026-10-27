@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1240,
+  "plan_revision": 1242,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -328,8 +328,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-recovery-identity",
         "task_id": "VERSION",
@@ -371,7 +371,19 @@
       ],
       "expected_commit_message": "fix: согласовать версии выпуска панели и kit",
       "task_brief": "Согласовать версии выпуска панели и Kit. Новая свободная версия и immutable panel, новый согласованный протокол и Kit/role при изменённом контракте; upgrade с 1.10.3 и старого store сохраняет планы. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/contracts/backend.mjs",
+        "tests/fixtures/released-kit/kit-1.10.3.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -525,7 +537,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1240
+Revision: 1242
 
 ## Цель
 
@@ -560,8 +572,8 @@ Revision: 1240
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/plugin-server.py, src/control/plugin/communication.mjs, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, tests/progress.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: DELIVERY
-- [TODO] VERSION: Согласовать версии выпуска панели и Kit — Ожидает
-  - Git Commit: [PENDING] fix: согласовать версии выпуска панели и kit
+- [DONE] VERSION: Согласовать версии выпуска панели и Kit — Завершено
+  - Git Commit: [DONE] fix: согласовать версии выпуска панели и kit
   - Reference: sdk-recovery-identity / VERSION / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, packages/workflow-kit/package.json, packages/workflow-kit/package-lock.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/installer.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, tests/fixtures/released-kit/kit-1.10.3.tar.gz
   - Параллельность: исключительное выполнение
