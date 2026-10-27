@@ -355,6 +355,66 @@
       ],
       "timeout_ms": 180000,
       "evidence": "Настоящий Electron, автоматическое скачивание/установка официального расширения, local HTTPS q с document_start marker, offline restart; без реальных сообщений и рабочих профилей."
+    },
+    {
+      "id": "intake-instructions",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 240000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-concurrency=4",
+        "tests/role-protocol.test.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ],
+      "evidence": "Only canonical roles, Review and addressed read instructions; no full application suite."
+    },
+    {
+      "id": "sdk-recovery-targeted",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 240000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-concurrency=4",
+        "tests/workflow-channel.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tests/plugin-communication-store.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/dialogue-delivery.test.mjs"
+      ],
+      "evidence": "Only SDK bridge, WAL, recipient eligibility, reconnect and notification failure paths."
+    },
+    {
+      "id": "closed-card-targeted",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 240000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-concurrency=4",
+        "tests/sidebar.test.mjs",
+        "tests/workflow-plan.test.mjs",
+        "tests/backend-desktop-model.test.mjs"
+      ],
+      "evidence": "Closed renderer, current/history projection and safe historical parser."
+    },
+    {
+      "id": "intake-sdk-scenario",
+      "kind": "test",
+      "required": false,
+      "timeout_ms": 600000,
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-name-pattern=^incoming obligations and restored SDK delivery$",
+        "tests/automatic-agent-dialogue.test.mjs"
+      ],
+      "evidence": "Exactly one isolated joint MCP/SDK/Kit case; not all automatic dialogues."
     }
   ],
   "budget": {
