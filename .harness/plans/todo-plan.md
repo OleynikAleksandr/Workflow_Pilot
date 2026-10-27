@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1262,
+  "plan_revision": 1264,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "attention-and-closed-plan",
@@ -80,7 +80,7 @@
       {
         "path": "docs/planning/attention-and-closed-plan.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "1d8c73289212df334bce8de3e196355386051bc1"
       },
       {
         "path": "docs/modules/current-actions.md",
@@ -155,7 +155,8 @@
         "documents": [
           {
             "path": "docs/planning/attention-and-closed-plan.md",
-            "required": true
+            "required": true,
+            "revision": "1d8c73289212df334bce8de3e196355386051bc1"
           }
         ],
         "include_last_completed_task": false,
@@ -229,7 +230,8 @@
         "documents": [
           {
             "path": "docs/planning/attention-and-closed-plan.md",
-            "required": true
+            "required": true,
+            "revision": "1d8c73289212df334bce8de3e196355386051bc1"
           }
         ],
         "include_last_completed_task": false,
@@ -307,7 +309,8 @@
         "documents": [
           {
             "path": "docs/planning/attention-and-closed-plan.md",
-            "required": true
+            "required": true,
+            "revision": "1d8c73289212df334bce8de3e196355386051bc1"
           }
         ],
         "include_last_completed_task": false,
@@ -331,8 +334,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "attention-and-closed-plan",
         "task_id": "DOCS",
@@ -374,7 +377,8 @@
         "documents": [
           {
             "path": "docs/planning/attention-and-closed-plan.md",
-            "required": true
+            "required": true,
+            "revision": "1d8c73289212df334bce8de3e196355386051bc1"
           }
         ],
         "include_last_completed_task": false,
@@ -384,7 +388,20 @@
           "VERIFY"
         ]
       },
-      "task_brief": "Актуализировать действующие документы. Перенести выпущенный контракт в модули, сохранить свидетельства живой приёмки предыдущего выпуска. Требования: Действующие документы согласованы с результатом и новой версией, прежние противоречивые правила внимания устранены. Временная spec удалена после переноса с точной Git blob ссылкой; каждый документ в бюджете 28000 байт. DOCS завершена до любой production сборки; pending live/native явно обозначены. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: схема и состав документационного коммита. Согласовать orchestrated-execution, user-choice и sdk-messaging с единым правилом пользовательского внимания."
+      "task_brief": "Актуализировать действующие документы. Перенести выпущенный контракт в модули, сохранить свидетельства живой приёмки предыдущего выпуска. Требования: Действующие документы согласованы с результатом и новой версией, прежние противоречивые правила внимания устранены. Временная spec удалена после переноса с точной Git blob ссылкой; каждый документ в бюджете 28000 байт. DOCS завершена до любой production сборки; pending live/native явно обозначены. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: схема и состав документационного коммита. Согласовать orchestrated-execution, user-choice и sdk-messaging с единым правилом пользовательского внимания.",
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/desktop.md",
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/user-choice.md",
+        "docs/planning/attention-and-closed-plan.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -418,7 +435,8 @@
         "documents": [
           {
             "path": "docs/planning/attention-and-closed-plan.md",
-            "required": true
+            "required": true,
+            "revision": "1d8c73289212df334bce8de3e196355386051bc1"
           }
         ],
         "include_last_completed_task": false,
@@ -461,7 +479,8 @@
         "documents": [
           {
             "path": "docs/planning/attention-and-closed-plan.md",
-            "required": true
+            "required": true,
+            "revision": "1d8c73289212df334bce8de3e196355386051bc1"
           }
         ],
         "include_last_completed_task": false,
@@ -505,7 +524,8 @@
         "documents": [
           {
             "path": "docs/planning/attention-and-closed-plan.md",
-            "required": true
+            "required": true,
+            "revision": "1d8c73289212df334bce8de3e196355386051bc1"
           }
         ],
         "include_last_completed_task": false,
@@ -539,7 +559,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: attention-and-closed-plan
 Current Task: нет
-Revision: 1262
+Revision: 1264
 
 ## Цель
 
@@ -574,8 +594,8 @@ Revision: 1262
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, tests/electron-smoke.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/sidebar.test.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs, src/contracts/workflow-plan.mjs, src/backend/desktop-model.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/workflow-plan.test.mjs, src/contracts/dialogue-view.mjs, tests/fixtures/current-actions-layout.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CLOSED
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать действующие документы
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать действующие документы
   - Reference: attention-and-closed-plan / DOCS / implementation
   - Файлы: docs/planning/attention-and-closed-plan.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/chatgpt-plugin.md, docs/modules/project-lifecycle.md, docs/modules/release.md, docs/modules/orchestrated-execution.md, docs/modules/user-choice.md, docs/modules/sdk-messaging.md
   - Параллельность: исключительное выполнение

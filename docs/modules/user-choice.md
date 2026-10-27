@@ -89,3 +89,5 @@ Read/SDK accepted не смешиваются. История имеет уст�
 ## Проверки
 
 `tests/user-choices.test.mjs`, `tests/user-choice-view.test.mjs`, `tests/workflow-channel.test.mjs` (выбор без разрешения плана), `tests/dialogue-delivery.test.mjs`, `tests/project-input-watch.test.mjs`, `tests/session-roles.test.mjs`, `tests/planning-owner.test.mjs`, `tests/context-session.test.mjs`, `tests/sidebar.test.mjs`; Kit — `check-plan-review-fixture.mjs` и `check-carryover-fixture.mjs`. Живая приёмка Е1–Е5 и обоих режимов — у пользователя.
+
+В 0.5.40 pending выбор пользователя получает один оранжевый акцент в основной панели. Наличие другого технического ожидания не дублирует рамку в now/sidebar; сохранённый выбор не предлагается повторно. Нейтральные READINESS_BUSY, решение O и cleanup не являются запросом выбора. Настоящие требования действия содержат причину и конкретную инструкцию. [Контракт](current-actions.md#подтверждённое-действие-пользователя).

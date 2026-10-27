@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.5.39 / Kit 1.10.4, протокол панели 7, build `0.5.39-communication-7`. URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK-контракт](sdk-messaging.md), [автоматические доказательства и живая приёмка](../acceptance/sdk-messaging.md).
+Workflow Pilot 0.5.40 / Kit 1.10.4, протокол панели 7, build `0.5.40-communication-7`. URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK-контракт](sdk-messaging.md), [автоматические доказательства и живая приёмка](../acceptance/sdk-messaging.md).
 
 ## Пользовательский путь
 
@@ -118,3 +118,4 @@ WAL в собственном `plugin-communication`: legacy schema 1, workflow 
 `check-plugin-resource.mjs` сверяет package/backend, метки HTML, видимый build и compiled script при staging и в готовом пакете. Fixtures настоящего MCP/SDK проверяют старый кэш → новый каталог → автоматическую привязку O без join/ID/Enable, неизменность снимка и отдельные изменения HTML/CSS/JS. Это не живая приёмка хоста.
 
 Staging перед start/test/smoke/build собирает автономный HTML с лицензиями; Runtime.syncSource доставляет весь tools-комплект. DOCS предшествует общей сборке трёх ОС из одного commit и штатной установке ([поставка](release.md)). Автоматические проверки: настоящий SDK/HTML/Python MCP/Control/Kit/Git в изоляции, O и E в Chat, без моделей и рабочих профилей. [Матрица](chatgpt-plugin-acceptance.md) отделяет эту проверку от живой приёмки.
+
