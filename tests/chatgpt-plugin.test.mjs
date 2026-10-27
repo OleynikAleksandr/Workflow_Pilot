@@ -645,6 +645,41 @@ async function bindAndEnable(ui,model){
   ui.$('enable').click();await eventually(()=>ui.calls.includes('workflow_communication_wait'));
 }
 const notificationArgs=request=>JSON.parse(request.content[0].text.match(/аргументами (\{[^}]+\})/)[1]);
+test('real SDK recovery: JSON-RPC rejection, isError, timeout and late host response preserve one addressed message',
+  {timeout:40000},async t=>{
+    for(const fault of ['rpc','isError','timeout','late'])await t.test(fault,async t=>{
+      const f=await fixture(t),comm=f.plugin.communication;
+      const target={project_id:'recovery-fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};
+      comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?target:null;
+      comm.workflow.observe=()=>({sdkDocumentReady:true,busy:true,canSend:false,documentId:'doc'});comm.workflow.admission=async()=>true;
+      const invite=await comm.reserve(target);await comm.enroll(invite.enrollment_ticket,metadata);
+      const message=await comm.workflow.enqueue(target,{kind:'review',key:'one-review',text:'Review ON'});
+      await bridge(t,f);const c=await client(t,f);let calls=0,lateReply=false;
+      const ui=await communicationHtml(t,c,{timerMs:ms=>ms===90000?80:ms,onMessage:async request=>{
+        if(++calls===1){
+          if(fault==='rpc')return {rpcError:{code:-32603,message:'network failure token=SECRET'}};
+          if(fault==='isError')return {isError:true};
+          if(fault==='timeout')return {drop:true};
+          await delay(180);lateReply=true;return {};
+        }
+        await modelTool(c,metadata,'read_message',notificationArgs(request));return {};
+      }});
+      const saved=()=>[...comm.runs.values()].flatMap(r=>r.messages).find(m=>m.message_id===message.message_id);
+      await eventually(()=>saved()?.read,12000);
+      await eventually(()=>saved()?.delivery==='accepted',12000);
+      assert.equal(calls,2);assert.equal(saved().notification_attempts.length,2);
+      assert.ok(['unknown','rejected'].includes(saved().notification_attempts[0].outcome));
+      if(fault==='rpc')assert.equal(saved().notification_attempts[0].error.code,'-32603');
+      if(fault==='late'){
+        assert.equal(lateReply,true,'the host replied after the real SDK had timed out');
+        assert.equal(saved().notification_attempts[0].outcome,'unknown','late host response cannot rewrite the expired attempt');
+        assert.notEqual(saved().notification_attempts[0].id,saved().notification_attempts[1].id);
+      }
+      assert.doesNotMatch(JSON.stringify(saved().notification_attempts),/SECRET/);
+      assert.equal([...comm.runs.values()].flatMap(r=>r.messages).length,1);
+      assert.equal(ui.calls.includes('workflow_communication_enable'),false);assert.deepEqual(ui.errors,[]);
+    });
+  });
 
 test('real SDK: historical tool results cannot cancel restoration or stop an enabled panel',async t=>{
   const oldResult={communication:{build_id:'0.5.3-communication-1',protocol_version:COMMUNICATION_PROTOCOL}};

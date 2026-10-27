@@ -133,7 +133,8 @@ export async function createRuntime({ browser, session, dataDir }) {
       return Response.redirect('https://chatgpt.com/c/fixture-work-redirect',302);
     if(url.hostname==='chatgpt.com'&&url.pathname==='/fixture-bootstrap'&&request.method==='POST'){
       try{assert.ok(fixtureBootstrap);await fixtureBootstrap((await request.json()).text);return Response.json({ok:true});}
-      catch(error){return Response.json({error:{code:error.code,message:error.message}});}
+      catch(error){process.stderr.write('[isolated bootstrap failure] '+JSON.stringify({code:error.code,message:error.message,stack:error.stack})+'\n');
+        return Response.json({error:{code:error.code,message:error.message}});}
     }
     if (url.hostname === 'chatgpt.com' && url.pathname === '/fixture-clipboard' && request.method === 'POST') {
       clipboard.writeText(await request.text());

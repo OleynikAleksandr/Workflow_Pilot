@@ -30,6 +30,18 @@ async function fixture(t,currentMessage,dialogueKit=null){
   return {c,o,target,targets,pages,admission,bind,sync,create,directory,advance:ms=>now+=ms};
 }
 const queue=(c,target,key='start',text='Начни задачу')=>c.workflow.enqueue(target,{key,kind:'assignment-start',text});
+test('notification history is available before publication only to the exact live workspace owner',async t=>{
+  const f=await fixture(t);Object.assign(f.o,{workspace_id:'workspace-one',origin_workspace_id:'workspace-one'});
+  const b=await f.bind(f.c,f.o);
+  const target={...f.o,scope_id:null};Object.assign(f.o,target);
+  const message=await f.c.workflow.enqueue(f.o,{key:'review-history',kind:'review',text:'Review ON'});
+  await sdk(f,b,message.message_id,'unknown');
+  const owner={workspaceId:'workspace-one',sessions:[{sessionId:'o'}]};
+  const history=f.c.planMessages('p',null,owner);assert.equal(history.length,1);assert.equal(history[0].notification_attempts.length,1);
+  assert.equal(f.c.planMessages('p',null,{...owner,workspaceId:'workspace-two'}).length,0);
+  assert.equal(f.c.planMessages('p',null,{...owner,sessions:[{sessionId:'replacement'}]}).length,0);
+  assert.doesNotMatch(JSON.stringify(history),/Review ON|context_ref|panel_id/);
+});
 test('Review SDK failure does not hold a saved choice; reading that choice exposes the unread Review',async t=>{
   const f=await fixture(t),b=await f.bind(f.c,f.o);
   const review=await f.c.workflow.enqueue(f.o,{key:'review-on',kind:'review',text:'Review ON'});

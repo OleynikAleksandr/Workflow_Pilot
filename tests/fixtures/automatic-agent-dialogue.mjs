@@ -148,12 +148,13 @@ export async function interruptionRegression(t){
 
 // Physical service lifecycle commands, ChatGPT/model and composer are simulated.
 // Runtime coordination, HTTP API/MCP, SDK, scheduler, persistence and Kit/Git are real.
-export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,modeOption='orchestrated'}={}){
+export async function automaticDialogue(t,{owned=false,conversation=false,workers=2,batchResults=false,defects=false,preplan=false,notificationFault=false,modeOption='orchestrated'}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-dialogue-e2e-')));
   const cleanups=[],testPort={after:fn=>cleanups.unshift(fn)},errors=[],records=new Map(),jobs=new Set(),notifications=[];
   let workflow,plugin,c,runtime,closed=false,sharedRepair=null,sharedRepairs=0,earlyCleanup=false,setupLockChecked=false,docsOverlap=false,finalOverlap=false;
   const drafts=new Map(),preplanEvents=[],delayedReservations=new Set();
   const busyNotifications=[];
+  let failedNotification=null;
   let releaseChoice,releaseWorkers,commandBarrier=null,clockOffset=0;
   const choiceResponse=new Promise(resolve=>releaseChoice=resolve);
   const workerResponse=new Promise(resolve=>releaseWorkers=resolve);
@@ -502,6 +503,9 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
             onMessage:request=>{
               const id=JSON.parse(request.content.find(item=>item.type==='text').text.match(/аргументами (\{[^\n]+?\})\./)[1]).message_id;
               const selected=[...plugin.communication.runs.values()].flatMap(run=>run.messages).find(message=>message.message_id===id);
+              if(notificationFault&&selected?.kind==='result'&&!failedNotification){
+                failedNotification=id;return {rpcError:{code:-32603,message:'network failure; secret=fixture-only'}};
+              }
               if(page.busy)busyNotifications.push({request,id,role:project.assignmentId?'E':'O'});
               record.sdkPageVersions?.set(id,record.pageState.version);
               // The simulated host owns processing order. SDK acceptance is immediate,
@@ -765,6 +769,17 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   }else{assert.equal(notifications.filter(n=>n.kind==='question').length,1);assert.equal(notifications.filter(n=>n.kind==='decision').length,1);}
   assert.equal((await plans.call(root,'assignment:cleanup')).only_main,true);
   const run=[...plugin.communication.runs.values()][0];assert.equal(run.grant.phase,'complete');assert.equal(run.grant.active,false);
+  if(notificationFault){
+    assert.ok(failedNotification,'a real renderer SDK invocation was rejected');
+    const recovered=run.messages.find(m=>m.message_id===failedNotification);
+    assert.equal(recovered.read,true);assert.equal(recovered.reply_observed,true);
+    assert.equal(recovered.notification_attempts[0].outcome,'unknown');
+    assert.equal(recovered.notification_attempts[0].error.code,'-32603');
+    assert.ok(recovered.notification_attempts.length<=3);
+    assert.equal(run.messages.filter(m=>m.message_id===failedNotification).length,1);
+    assert.doesNotMatch(JSON.stringify(recovered.notification_attempts),/secret=fixture/);
+    assert.equal(notifications.filter(n=>n.message_id===failedNotification).length,1,'one model handling and one integration');
+  }
   if(fast){
     await wait(()=>o.ui.dom.window.document.body.textContent.includes('Ожидание сообщений остановлено'),'panel observes durable complete');
     const count=()=>o.ui.calls.filter(n=>['workflow_communication_wait','workflow_communication_sync'].includes(n)).length;

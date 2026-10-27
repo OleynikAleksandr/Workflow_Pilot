@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1237,
+  "plan_revision": 1239,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -265,8 +265,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "sdk-recovery-identity",
         "task_id": "PROOF",
@@ -312,7 +312,19 @@
       ],
       "expected_commit_message": "fix: проверить восстановление и полный жизненный цикл",
       "task_brief": "Проверить восстановление и полный жизненный цикл. Полный цикл и injected SDK отказ Review→выбор; lost response/late/read/restart/две панели/Stop и три результата без двойных эффектов. Изоляция одинаковых имён/повторного пути/общего projectId worktree проверена. Живой ChatGPT не объявляется PASS. Продуктовые исправления в PROOF требуют task:update области до правок. Соблюдать полную согласованную спецификацию docs/planning/sdk-recovery-identity.md. Рабочие профили и donor не менять. Разработка последовательная в текущем checkout без модельного делегирования.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/work-progress.mjs",
+        "src/control/plugin/communication.mjs",
+        "tests/automatic-agent-dialogue.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/progress.test.mjs",
+        "tests/workflow-channel.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -511,7 +523,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1237
+Revision: 1239
 
 ## Цель
 
@@ -540,8 +552,8 @@ Revision: 1237
   - Файлы: src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/contracts/plugin-communication.mjs, src/contracts/user-choice.mjs, src/control/workflow/user-choices.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, src/frontend/desktop/ui/current-actions.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, tools/codex-app-server-mcp/plugin.py, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/plugin-communication.test.mjs, tests/user-choice-view.test.mjs, tests/progress.test.mjs, src/control/workflow/coordination.mjs, src/control/workflow/parallel-execution.mjs, src/control/workflow/execution-projection.mjs, tests/parallel-execution.test.mjs, tests/panel-dialogue-view.test.mjs, tests/startup-context.test.mjs, tests/backend-desktop-model.test.mjs, tests/codex-app-server-mcp.test.mjs, docs/planning/sdk-recovery-identity.md
   - Параллельность: исключительное выполнение
   - Зависимости: IDENTITY
-- [TODO] PROOF: Проверить восстановление и полный жизненный цикл — Ожидает
-  - Git Commit: [PENDING] fix: проверить восстановление и полный жизненный цикл
+- [DONE] PROOF: Проверить восстановление и полный жизненный цикл — Завершено
+  - Git Commit: [DONE] fix: проверить восстановление и полный жизненный цикл
   - Reference: sdk-recovery-identity / PROOF / implementation
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/workflow-channel.test.mjs, tests/chatgpt-plugin.test.mjs, tests/backend-desktop-model.test.mjs, tests/electron-smoke.mjs, tests/migration-compatibility.test.mjs, tests/fixtures/plugin-host.mjs, tests/fixtures/plugin-server.py, src/control/plugin/communication.mjs, src/backend/desktop-model.mjs, src/contracts/work-progress.mjs, tests/progress.test.mjs
   - Параллельность: исключительное выполнение

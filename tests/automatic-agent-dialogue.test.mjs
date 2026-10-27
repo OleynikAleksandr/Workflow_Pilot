@@ -18,8 +18,8 @@ test('busy SDK queue: early title, active command, two Review rounds, one Start 
   {timeout:360000},async t=>{await automaticDialogue(t,{owned:true,preplan:true});});
 for(const modeOption of ['sequential','spec'])test('real MCP mode button completes the '+modeOption+' decision before any plan',
   {timeout:30000},async t=>{assert.equal((await automaticDialogue(t,{owned:true,preplan:true,modeOption})).modeOption,modeOption);});
-test('five simultaneous executors receive O-selected tasks and return checked results through real Start/MCP/SDK/Kit',
-  {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,workers:5});});
+test('five simultaneous executors survive a renderer SDK failure and complete results, integration, DOCS and cleanup',
+  {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,workers:5,notificationFault:true});});
 test('authorized fast cycle: inline preparation, no ready turn, two results, overlapping DOCS and finalization',
   {timeout:300000},async t=>{await automaticDialogue(t,{owned:true,batchResults:true});});
 

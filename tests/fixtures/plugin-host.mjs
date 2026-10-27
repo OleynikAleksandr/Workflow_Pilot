@@ -23,7 +23,7 @@ async function client(t,f,{sourceDir=path.join(root,'tools/codex-app-server-mcp'
   try{await c.connect(transport);}catch(error){throw new Error(error.message+'\n'+stderr);}
   return c;
 }
-async function eventually(check){for(let i=0;i<200;i++){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
+async function eventually(check,timeoutMs=2000){const until=Date.now()+timeoutMs;while(Date.now()<until){if(await check())return;await delay(10);}assert.ok(await check(),'async UI completed');}
 
 async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=true,onMessage=async()=>{},theme='light',toolReply=async(_request,result)=>result,timerMs=ms=>ms,initialToolResult,handshake=Promise.resolve(),resourceCache=new Map()}={}) {
   const tool=(await c.listTools()).tools.find(tool=>tool.name==='workflow_pilot_panel');
@@ -59,7 +59,8 @@ async function communicationHtml(t,c,{hostMetadata=metadata,messageSupported=tru
             else deliver({jsonrpc:'2.0',id:request.id,result});
           }else if(request.method==='ui/message'){
             messages.push(request.params);const result=await onMessage(request.params);
-            if(!result?.drop)deliver({jsonrpc:'2.0',id:request.id,result:result??{}});
+            if(result?.rpcError)deliver({jsonrpc:'2.0',id:request.id,error:result.rpcError});
+            else if(!result?.drop)deliver({jsonrpc:'2.0',id:request.id,result:result??{}});
           }
         }catch(e){errors.push(e.message);deliver({jsonrpc:'2.0',id:request.id,error:{code:-32000,message:'Fixture failed'}});}
       };

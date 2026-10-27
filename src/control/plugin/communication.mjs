@@ -278,8 +278,10 @@ export class PluginCommunication {
     for(const run of this.runs.values())if(run.mode==='workflow'&&!run.removed&&run.project_id===projectId
       &&owner.sessions.some(s=>s.sessionId===run.origin_session_id)
       &&Object.values(run.members).every(m=>!m.target.origin_workspace_id||m.target.origin_workspace_id===owner.workspaceId))
-      for(const m of run.messages)if(m.scope_id===scopeId)result.push({message_id:m.message_id,kind:m.kind,sender_role:m.sender_role,
-        task_id:m.task_id??null,created_at:m.created_at,superseded:!!m.superseded,source_commit:m.source_commit??null});
+      for(const m of run.messages)if(m.scope_id===scopeId||m.scope_id==null)result.push({message_id:m.message_id,kind:m.kind,sender_role:m.sender_role,
+        task_id:m.task_id??null,created_at:m.created_at,superseded:!!m.superseded,source_commit:m.source_commit??null,
+        delivery:m.delivery,read:!!m.read,notification_attempts:(m.notification_attempts??[]).map(a=>({id:a.id,ended_at:a.ended_at,
+          outcome:a.outcome,error_code:a.error?.code??null,late_outcome:a.late_outcome??null}))});
     return result;
   }
   _turnTimeout(input){return this.workflow.timeout(input);}

@@ -102,6 +102,12 @@ export function messageRecipient(message) {
   return message.sender_role==='E'?'O':message.task_id&&message.sender_role!=='E'&&message.kind!=='finalization'?message.task_id:'O';
 }
 // A finished message as one history line: «Оркестратор → T002 задание «Сводка чисел»».
+export function notificationEvents(message){
+  return (message.notification_attempts??[]).filter(a=>Number.isFinite(a.ended_at)).map((attempt,index)=>({
+    id:message.message_id+':sdk:'+attempt.id,at:attempt.ended_at,actor:'APP',kind:attempt.outcome==='accepted'?'done':'wait',
+    text:attempt.outcome==='accepted'?`ChatGPT принял уведомление · попытка ${index+1}`:
+      `Уведомление не подтверждено · попытка ${index+1}${attempt.error_code?' · '+attempt.error_code:''}`}));
+}
 export function messageEvent(message,{titles={}}={}) {
   if(!message||message.superseded||SERVICE_KINDS.has(message.kind))return null;
   const at=Date.parse(message.created_at);if(!Number.isFinite(at))return null;
@@ -112,7 +118,7 @@ export function messageEvent(message,{titles={}}={}) {
   else if(['result','acceptance'].includes(message.kind)&&message.source_commit)detail=' · коммит '+String(message.source_commit).slice(0,7);
   else if(message.preview_text)detail=': '+short(message.preview_text);
   const text=message.kind==='acceptance'?'принял '+(message.task_id??'результат')+detail:'→ '+to+' '+word+detail;
-  return {at,actor,text,kind:'done',id:message.message_id??null};
+  return {at,actor,text:message.read===false?'Сохранено: '+text:text,kind:message.read===false?'wait':'done',id:message.message_id??null};
 }
 
 // The session role as a participant of the progress: orchestrator O, planning P, own sequential plan SELF, discussion S.

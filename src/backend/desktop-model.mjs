@@ -8,7 +8,7 @@ import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntime
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock,notificationActivity} from '../contracts/dialogue-view.mjs';
 import {startupContextState,startupView} from '../contracts/startup-view.mjs';
-import {roleActor,participantName,buildWorkProgress,commitProgressLabel,messageEvent,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity,reviewHistoryEvents} from '../contracts/work-progress.mjs';
+import {roleActor,participantName,buildWorkProgress,commitProgressLabel,messageEvent,notificationEvents,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity,reviewHistoryEvents} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
 
@@ -478,10 +478,11 @@ function workProgressView(workspace,fresh=null) {
   for(const entry of workflow.userChoices.history({...project,sessions})){
     const at=Date.parse(entry.at);if(Number.isFinite(at))history.push({id:entry.id,at,actor:entry.actor??'APP',text:entry.text,kind:entry.kind==='warn'?'warn':'done'});
   }
-  if(scope){
+  {
     const titles=Object.fromEntries(source.map(t=>[t.id,t.title]));
     for(const message of plugin?.communication.planMessages(project.projectId,scope,{...project,sessions})??[]){
-      const event=messageEvent(message,{titles});if(event)history.push(event);
+      const event=scope&&messageEvent(message,{titles});if(event)history.push(event);
+      history.push(...notificationEvents(message));
     }
   }
   const done=tasks.filter(t=>t.status==='done').length,allDone=tasks.length>0&&done===tasks.length;

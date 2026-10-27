@@ -2,6 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { operationLabel, createProgress } from '../src/frontend/desktop/ui/progress.mjs';
+import {notificationEvents,messageEvent} from '../src/contracts/work-progress.mjs';
+test('notification history distinguishes failed attempts, host acceptance and an unread payload',()=>{
+  const message={message_id:'m',kind:'result',created_at:new Date(1000).toISOString(),sender_role:'E',read:false,
+    notification_attempts:[{id:'a',ended_at:1100,outcome:'unknown',error_code:'SDK_ERROR'},
+      {id:'b',ended_at:3100,outcome:'accepted'}]};
+  const events=notificationEvents(message);
+  assert.deepEqual(events.map(e=>e.id),['m:sdk:a','m:sdk:b']);
+  assert.equal(events[0].kind,'wait');assert.match(events[0].text,/не подтверждено/);
+  assert.match(events[1].text,/ChatGPT принял уведомление/);assert.doesNotMatch(events[1].text,/прочитал|обработал/);
+  assert.equal(messageEvent(message).kind,'wait');assert.match(messageEvent(message).text,/Сохранено:/);
+});
 test('operations show stages; idle, errors and user input waits never spin',()=>{
   for(const phase of ['preparing','loading-context','preparing-message','sending']) {
     assert.ok(operationLabel({context:{phase}}));
