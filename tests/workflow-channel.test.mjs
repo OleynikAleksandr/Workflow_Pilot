@@ -6,7 +6,7 @@ import path from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
-import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
+import {ROLE_PROTOCOL_VERSION,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 import {bridge,client} from './fixtures/plugin-host.mjs';
 const meta=id=>({'openai/session':id});
 async function fixture(t,currentMessage,dialogueKit=null){
@@ -51,6 +51,7 @@ test('Review SDK failure does not hold a saved choice; reading that choice expos
   assert.equal(pending(f.c,b),choice.message_id);
   await sdk(f,b,choice.message_id);
   const read=await f.c.readMessage({metadata:meta('o'),message_id:choice.message_id});
+  assert.ok(read.instructions.includes(INCOMING_WORK_RULE));
   assert.deepEqual(read.pending_incoming,[{message_id:review.message_id,kind:'review'}]);
   await f.c.readMessage({metadata:meta('o'),message_id:review.message_id});f.advance(6000);
   assert.equal(pending(f.c,b),null);
@@ -977,6 +978,8 @@ test('Review preference supersedes only unsent versions and keeps one notificati
   const read=await f.c.read({...b,message_id:off.message_id});
   assert.doesNotMatch(read.instructions,/РОЛЬ:/,'a policy event never downgrades an orchestrator to planning');
   assert.match(read.instructions,/не разрешение реализации/);
+  assert.ok(read.instructions.includes(INCOMING_WORK_RULE));
+  assert.doesNotMatch(read.instructions,/учти решение и заверши ответ/);
   const published={...target,scope_id:'s',dialogue_version:1};f.targets.set('o',published);await f.c.workflow.grant(published);
   f.c.dispose();await f.c.tail;const restored=await f.create();
   assert.equal((await enqueue(restored,'off',false,2,published)).message_id,off.message_id,'semantic identity survives a changed plan envelope');

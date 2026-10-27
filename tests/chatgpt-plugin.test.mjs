@@ -169,6 +169,10 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   assert.match(dispatchDescription,/verified document identity/);
   assert.match(dispatchDescription,/Busy responses and active commands do not delay SDK delivery/);
   const yieldDescription=catalogue.find(x=>x.name==='workflow_assignment_yield').description;
+  const readDescription=catalogue.find(x=>x.name==='workflow_communication_read_message').description;
+  assert.match(readDescription,/new input does not cancel earlier requests/);
+  assert.doesNotMatch(readDescription,/Finish the response after handling it/);
+  assert.match(yieldDescription,/do not drop an earlier request/);
   assert.match(yieldDescription,/only for terminal receipts, cleanup and plan completion/);
   assert.match(yieldDescription,/never to delay the next SDK message/);
   for(const description of [dispatchDescription,yieldDescription]){

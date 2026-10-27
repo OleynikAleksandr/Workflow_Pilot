@@ -1,9 +1,10 @@
 import {createHash} from 'node:crypto';
+import {INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 import {workflowRunId} from './enrollment.mjs';
 
 const hash=text=>createHash('sha256').update(text).digest('hex');
 const check=(ok,code,message)=>{if(!ok)throw Object.assign(Error(message),{code:'PLUGIN_COMMUNICATION_'+code});};
-export const STARTUP_INSTRUCTIONS='Это полный стартовый контекст сессии, не поручение реализации. Продолжай в этом же ходе. Прочитай текст включённой части (part); повторно её запрашивать не нужно. Все остальные части получи через workflow_communication_read_context с этим message_id/context_ref, part от 0 до total-1; независимые части можно запросить параллельно. Если текст части не включён, прочитай все части. После полного чтения вызови workflow_startup_complete с message_id и context_sha256=context_ref. Не подтверждай неполный пакет. Затем кратко подтверди восстановление проекта и заверши ход. Не вызывай assignment_yield, task:start или ожидание очереди; запуск плана разрешает пользователь.';
+export const STARTUP_INSTRUCTIONS='Это полный стартовый контекст сессии, не поручение реализации. Продолжай в этом же ходе. Прочитай текст включённой части (part); повторно её запрашивать не нужно. Все остальные части получи через workflow_communication_read_context с этим message_id/context_ref, part от 0 до total-1; независимые части можно запросить параллельно. Если текст части не включён, прочитай все части. После полного чтения вызови workflow_startup_complete с message_id и context_sha256=context_ref. Не подтверждай неполный пакет. Затем кратко подтверди восстановление проекта и заверши ход. Не вызывай assignment_yield, task:start или ожидание очереди; запуск плана разрешает пользователь.\n'+INCOMING_WORK_RULE+'\nBootstrap не разрешает начинать задачу; ожидай отдельного рабочего поручения.';
 export function contextParts(text,limit=12000){
   const parts=[];let part='',bytes=0;
   for(const char of text){const size=Buffer.byteLength(char);if(bytes+size>limit){parts.push(part);part='';bytes=0;}part+=char;bytes+=size;}
@@ -117,6 +118,6 @@ export class StartupContext {
     if(!m.startup_complete){m.startup_complete=true;m.startup_completed_at=new Date(this.c.now()).toISOString();
       if(member.deliveryGate?.message_id===m.message_id)delete member.deliveryGate;
       this.c.event(run,'startup.complete',{message_id:m.message_id,participant_id:member.id,total_parts:m.total_parts});}
-    return {...this.view(m),instructions:'Контекст полностью получен и подтверждён. Кратко сообщите о восстановлении проекта. Выполнение плана не разрешено этим подтверждением.'};
+    return {...this.view(m),instructions:'Контекст полностью получен и подтверждён. Кратко сообщите о восстановлении проекта. Выполнение плана не разрешено этим подтверждением.\n'+INCOMING_WORK_RULE};
   }
 }

@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {ASSIGNMENT_DIALOGUE_VERSION,assignmentPayload,assignmentCheck as check} from '../../contracts/plugin-communication.mjs';
+import {INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 import {workflowRunId} from './enrollment.mjs';
 
 const hash=value=>createHash('sha256').update(value).digest('hex');
@@ -448,6 +449,6 @@ export class AssignmentDialogue {
         c.event(run,'send.resolved',{message_id:message.message_id,evidence:'recipient-read-yield'});
       }
       c.event(run,'message.yielded',{message_id:message.message_id,participant_id:member.id,reason:input.reason});}
-    return {handled:messages.map(m=>m.message_id),physical_completion:false,instructions:'Завершите ответ. Это квитанция обработки, не DONE и не подтверждение физической остановки.'};
+    return {handled:messages.map(m=>m.message_id),physical_completion:false,instructions:INCOMING_WORK_RULE+'\nЭто квитанция обработки, не DONE и не подтверждение физической остановки. Завершите ответ после всей уже доступной разрешённой работы текущего поручения.'};
   }
 }

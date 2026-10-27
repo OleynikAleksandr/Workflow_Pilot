@@ -4,7 +4,7 @@ import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
 import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic} from '../../contracts/plugin-communication.mjs';
-import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE,NOTIFICATION_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
+import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE,NOTIFICATION_RULE,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
 export {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../../contracts/backend.mjs';
@@ -665,7 +665,7 @@ export class PluginCommunication {
       this.event(run,'message.obsolete_read',{participant_id:member.id,message_id:message.message_id});
       await this.workflow.observed(run,member);
       return {message_id:message.message_id,superseded:true,
-        instructions:message.kind==='user-choice'?USER_EVENT_RULE+'\nЭто событие заменено новым решением. Прочитайте актуальный review:status; прежнее решение не применяйте.'
+        instructions:message.kind==='user-choice'?USER_EVENT_RULE+'\n'+INCOMING_WORK_RULE+'\nЭто событие заменено новым решением. Прочитайте актуальный review:status; прежнее решение не применяйте.'
           :'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Для диалога версии 1 вызовите workflow_assignment_yield с reason=handled для этого уведомления, затем завершите ход.'};
     }
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
@@ -678,10 +678,10 @@ export class PluginCommunication {
     if(run.mode==='workflow')await this.workflow.observed(run,member);
     const pending_incoming=await this.pendingIncoming(run,member);
     if(message.yielded)return {message_id:message.message_id,already_handled:true,pending_incoming,
-      instructions:'Это сообщение уже обработано. Не повторяйте команды, task:start, result или интеграцию. Прочитайте pending_incoming, если есть новые входящие.'};
+      instructions:'Это сообщение уже обработано. Не повторяйте команды, task:start, result или интеграцию. Прочитайте pending_incoming, если есть новые входящие.\n'+INCOMING_WORK_RULE};
     const {idempotency_key,fingerprint,read_page,handlingGate,notification_attempts,...value}=message;
     return {...structuredClone(value),...(run.mode==='workflow'?{pending_incoming,role_protocol:ROLE_PROTOCOL_VERSION,
-      instructions:(message.ui_event?USER_EVENT_RULE+'\n'+NOTIFICATION_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
+      instructions:(message.ui_event?USER_EVENT_RULE+'\n'+NOTIFICATION_RULE+'\n'+INCOMING_WORK_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
         :roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0))
         +'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
   }

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1275,
+  "plan_revision": 1277,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -20,7 +20,6 @@
   "approved_scope": {
     "functional_paths": [
       "packages/workflow-kit/src/lib/role-protocol.mjs",
-      "packages/workflow-kit/src/templates/PLAN.md",
       "packages/workflow-kit/package.json",
       "package-lock.json",
       "src/control/workflow/plan-review.mjs",
@@ -32,7 +31,6 @@
       "tests/workflow-channel.test.mjs",
       "packages/workflow-kit/src/lib/common.mjs",
       "packages/workflow-kit/src/lib/installer.mjs",
-      "packages/workflow-kit/src/WORKFLOW.md",
       "src/control/plugin/assignment-dialogue.mjs",
       "src/contracts/plugin-communication.mjs",
       "src/control/plugin/workflow-channel.mjs",
@@ -75,11 +73,13 @@
       "packages/workflow-kit/docs/modules/orchestrated-plans.md",
       "docs/acceptance/sdk-messaging.md",
       "docs/modules/project-compatibility.md",
-      "tests/fixtures/released-kit/README.md"
+      "tests/fixtures/released-kit/README.md",
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "packages/workflow-kit/src/WORKFLOW.md"
     ]
   },
   "baseline_commit": "a19412ac108be465926ffb057495d39558826296",
-  "current_task_id": "INPUTS",
+  "current_task_id": null,
   "context_pack": {
     "documents": [
       {
@@ -98,8 +98,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "IN_PROGRESS",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "INPUTS",
@@ -108,7 +108,6 @@
       "dependencies": [],
       "functional_paths": [
         "packages/workflow-kit/src/lib/role-protocol.mjs",
-        "packages/workflow-kit/src/templates/PLAN.md",
         "packages/workflow-kit/package.json",
         "package-lock.json",
         "src/control/workflow/plan-review.mjs",
@@ -120,10 +119,13 @@
         "tests/workflow-channel.test.mjs",
         "packages/workflow-kit/src/lib/common.mjs",
         "packages/workflow-kit/src/lib/installer.mjs",
-        "packages/workflow-kit/src/WORKFLOW.md",
-        "src/control/plugin/assignment-dialogue.mjs"
+        "src/control/plugin/assignment-dialogue.mjs",
+        "tests/chatgpt-plugin.test.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/WORKFLOW.md"
+      ],
       "verification_ids": [
         "intake-instructions",
         "intake-mcp-contract"
@@ -150,7 +152,24 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Сохранять обязательства по всем входящим поручениям. Единое короткое правило для пользователя, исполнителей и приложения; Review не обрывает исходное задание. Требования: Каноническое правило действует для всех принятых неотменённых входящих O/E/S; новый вход не отменяет прежний, порядок выбирает агент в рамках зависимостей. Review учитывается без прекращения доступной работы и пользовательского Продолжай; task:start/yield ради настройки не требуются. Recovery, адресные инструкции, startup/PLAN/MCP согласованы; bootstrap, Stop, Start и ограничения полномочий сохранены. Kit и role protocol обновлены штатно; managed файлы только installer. Не строить вторую книгу запросов и не читать их через DOM. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: intake-instructions. Сохранить одну задачу S на ход, согласовать WORKFLOW/self/assignment yield. Повысить common.VERSION и upgradeFrom 1.10.4. server.py не менять. Дополнительно intake-mcp-contract."
+      "task_brief": "Сохранять обязательства по всем входящим поручениям. Единое короткое правило для пользователя, исполнителей и приложения; Review не обрывает исходное задание. Требования: Каноническое правило действует для всех принятых неотменённых входящих O/E/S; новый вход не отменяет прежний, порядок выбирает агент в рамках зависимостей. Review учитывается без прекращения доступной работы и пользовательского Продолжай; task:start/yield ради настройки не требуются. Recovery, адресные инструкции, startup/PLAN/MCP согласованы; bootstrap, Stop, Start и ограничения полномочий сохранены. Kit и role protocol обновлены штатно; managed файлы только installer. Не строить вторую книгу запросов и не читать их через DOM. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: intake-instructions. Сохранить одну задачу S на ход, согласовать WORKFLOW/self/assignment yield. Повысить common.VERSION и upgradeFrom 1.10.4. server.py не менять. Дополнительно intake-mcp-contract.",
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/workflow/plan-review.mjs",
+        "tests/role-protocol.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -349,7 +368,9 @@
         "packages/workflow-kit/docs/modules/orchestrated-plans.md",
         "docs/acceptance/sdk-messaging.md",
         "docs/modules/project-compatibility.md",
-        "tests/fixtures/released-kit/README.md"
+        "tests/fixtures/released-kit/README.md",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "packages/workflow-kit/src/WORKFLOW.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -534,8 +555,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
-Current Task: INPUTS
-Revision: 1275
+Current Task: нет
+Revision: 1277
 
 ## Цель
 
@@ -553,10 +574,10 @@ Revision: 1275
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Внешняя разработка Codex в текущем checkout, пересекающиеся source/контракты; модельное делегирование запрещено. Claude Review отдельно разрешён.
 
-- [IN_PROGRESS] INPUTS: Сохранять обязательства по всем входящим поручениям — В работе
-  - Git Commit: [PENDING] fix: сохранять обязательства по всем входящим поручениям
+- [DONE] INPUTS: Сохранять обязательства по всем входящим поручениям — Завершено
+  - Git Commit: [DONE] fix: сохранять обязательства по всем входящим поручениям
   - Reference: incoming-obligations-and-sdk-recovery / INPUTS / implementation
-  - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/package.json, package-lock.json, src/control/workflow/plan-review.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, tools/codex-app-server-mcp/plugin.py, tests/role-protocol.test.mjs, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/WORKFLOW.md, src/control/plugin/assignment-dialogue.mjs
+  - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/package.json, package-lock.json, src/control/workflow/plan-review.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, tools/codex-app-server-mcp/plugin.py, tests/role-protocol.test.mjs, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, src/control/plugin/assignment-dialogue.mjs, tests/chatgpt-plugin.test.mjs, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] SDK: Восстанавливать SDK уведомление после разрыва соединения — Ожидает
@@ -580,7 +601,7 @@ Revision: 1275
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализация документов согласованного объёма
   - Reference: incoming-obligations-and-sdk-recovery / DOCS / implementation
-  - Файлы: docs/planning/incoming-obligations-and-sdk-recovery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/acceptance/sdk-messaging.md, docs/modules/project-compatibility.md, tests/fixtures/released-kit/README.md
+  - Файлы: docs/planning/incoming-obligations-and-sdk-recovery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/acceptance/sdk-messaging.md, docs/modules/project-compatibility.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
   - Зависимости: INPUTS, SDK, CLOSED, VERIFY
 - [TODO] RELEASE: Собрать macOS Windows Linux — Ожидает

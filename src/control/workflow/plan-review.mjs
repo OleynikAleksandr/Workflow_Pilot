@@ -1,13 +1,13 @@
 import { desktopFiles as fs } from '../../execution/facade.mjs';
 import { safePath } from '@webpilot/workflow-kit/lib/common';
 import { reviewStatus, readReview, setReviewEnabled } from '@webpilot/workflow-kit/lib/plan-review';
-import {USER_EVENT_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
+import {USER_EVENT_RULE,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 export const reviewPreferenceMessage=p=>[
   'Пользователь изменил Review: '+(p.enabled?'ON':'OFF')+'; версия решения '+p.revision+'.',
   p.enabled?'До публикации спецификация и ToDo Plan должны пройти согласование Claude через Workflow Kit.'
     :'До публикации нового плана разрешён обычный путь без рецензирования; уже опубликованный план не меняется.',
-  USER_EVENT_RULE,
+  USER_EVENT_RULE,INCOMING_WORK_RULE,
 ].join('\n');
 
 const messages={IDLE:'',PREPARED:'Документы готовы к ревью.',RUNNING:'Claude проверяет документы.',
