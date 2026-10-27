@@ -451,19 +451,17 @@ test('published plan keeps its button and progress; current operation and timers
   assert.equal(orchestratorRow().querySelector('.wp-spin'),null);
 });
 
-test('problem block names the cause and one action; the acceptance hint and Review stay in the pinned foot',async t=>{
+test('sidebar does not duplicate panel attention; acceptance and Review remain available',async t=>{
   const f=await fixture(t),base=f.state,$=id=>f.document.getElementById(id);
   const work={version:1,title:'План',phase:'Нужно внимание',busy:false,done:2,total:4,
     tasks:[{id:'T003',title:'Совместный пример',status:'attention',label:'Активность сейчас не наблюдается',mode:'Последовательно',elapsedMs:720000,
       target:{workspace:'/demo-T003',sessionId:'e3'}}],now:[],history:[],
     attention:{title:'T003 молчит',text:'Активность сейчас не наблюдается',action:{kind:'open-session',workspace:'/demo-T003',sessionId:'e3',label:'Открыть чат T003'}}};
   f.emit({...base,selected:{...base.selected,scopeId:'scope'},planRun:{state:'running',complete:false},planReview:{enabled:true,supported:true,message:''},workProgress:work});
-  assert.equal($('plan-attention').hidden,false);
-  assert.equal($('plan-attention-title').textContent,'T003 молчит');
-  assert.equal($('plan-attention-action').textContent,'Открыть чат T003');
-  assert.equal(f.document.querySelector('.plan-task[data-status=attention] .plan-task-state').textContent,'!');
-  $('plan-attention-action').click();await f.settle();
-  assert.deepEqual(f.calls.at(-1),['selectSession','/demo-T003','e3']);
+  assert.equal($('plan-attention').hidden,true);
+  assert.equal($('plan-attention').getAttribute('role'),null);
+  assert.equal($('plan-attention-title').textContent,'');
+  assert.equal(f.document.querySelector('.plan-task[data-status=attention]'),null);
   assert.equal($('plan-review-toggle').getAttribute('aria-pressed'),'true');
   const hint=$('plan-review-toggle').title;assert.match(hint,/Ревью нового плана/);
   assert.equal($('plan-review-toggle').disabled,false);

@@ -1,4 +1,4 @@
-import {assignmentStage,notificationActivity} from '../../contracts/dialogue-view.mjs';
+import {assignmentStage,notificationActivity,executionIssue} from '../../contracts/dialogue-view.mjs';
 export function integrationProblem(operation) {
   if (operation?.status !== 'CHECKS_FAILED') return null;
   let failure;
@@ -40,14 +40,14 @@ export function executorStatus(assignment,record,integration,{channel=null}={}) 
   if(assignment?.status==='INTEGRATED')return {phase:'done',label:'Завершено · интеграция проверена'};
   if(integration?.assignment_id&&integration.assignment_id===assignment?.id&&integration.status!=='IDLE')
     return ['CONFLICT','CHECKS_FAILED','UNKNOWN'].includes(integration.status)
-      ?{phase:'attention',label:integrationProblem(integration)?.message??(integration.status==='UNKNOWN'?'Исход слияния неизвестен':'Нужно исправление в main')}
+      ?{phase:'stopped',label:integrationProblem(integration)?.message??(integration.status==='UNKNOWN'?'Исход слияния неизвестен':'Нужно исправление в main')}
       :{phase:'merging',label:'Интегрируется'};
-  if(record?.error)return {phase:'attention',label:record.error.message};
-  if(record?.controller?.state?.error)return {phase:'attention',label:record.controller.state.error.message+' Повторите сверку или откройте чат.'};
-  if(assignment?.error)return {phase:'attention',label:assignment.error.message};
+  if(record?.error)return executionIssue(record.error);
+  if(record?.controller?.state?.error)return executionIssue(record.controller.state.error);
+  if(assignment?.error)return executionIssue(assignment.error);
   if(assignment?.status==='NEEDS_SETUP')return {phase:'setup',label:'Нужна подготовка worktree'};
   if(assignment?.status==='UNKNOWN')return {phase:'unknown',label:'Состояние требует сверки'};
-  if(assignment?.status==='REFUSED')return {phase:'attention',label:'Kit отказал в назначении'};
+  if(assignment?.status==='REFUSED')return {phase:'stopped',label:'Kit отказал в назначении'};
   if(assignment?.commandActive){const command=assignment.commands?.find(c=>c.blocksIntegration);return {phase:'command',
     label:command?command.reason+' · '+command.id:'Команда ещё не подтверждена как завершённая'};}
   const bootstrap=record?.controller?.state?.phase;
@@ -59,7 +59,7 @@ export function executorStatus(assignment,record,integration,{channel=null}={}) 
   const page=record?.pageState.current?.state;
   if(!record||record.disposed||!page||record.loading)return {phase:'unknown',label:'Активность сейчас не наблюдается'};
   if(page.connectionError)return {phase:'unknown',label:'Нет подтверждённой связи с чатом'};
-  if(page.login==='signed-out')return {phase:'waiting',label:'Нужен вход в ChatGPT'};
+  if(page.login==='signed-out')return executionIssue({code:'SIGNED_OUT',message:'Сессия ChatGPT вышла из аккаунта.'});
   if(assignment?.dialogue_version===1)return assignmentStage({...assignment,channel,physical:page});
   if(channel&&!['READY_FOR_INTEGRATION','INTEGRATED'].includes(assignment?.status)) {
     const recovery=notificationActivity(channel.initial?.recovery);if(recovery)return recovery;

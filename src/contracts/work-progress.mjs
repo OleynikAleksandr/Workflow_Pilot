@@ -22,13 +22,13 @@ export const PLAN_READY_TEXT='ждёт вашей проверки и запус
 
 export function reviewActivity(review,now=Date.now()){
   if(review?.error)return {actor:'APP',name:'',stage:'plan-review',text:'Не удалось проверить состояние рецензирования',
-    reason:review.error,kind:'warn',elapsedMs:null,key:'review-read-error:'+review.error};
+    reason:review.error,kind:'wait',elapsedMs:null,key:'review-read-error:'+review.error};
   if(!review?.enabled||['IDLE','PUBLISHED','CANCELLED'].includes(review.stage))return null;
   const words={RUNNING:'Рецензирование плана · Claude · раунд '+review.round,
     PREPARED:'Ожидаем начала рецензирования',AUTHOR_PENDING:(review.authorName??'Агент')+' рассматривает замечания рецензента',
     AGREED:'План согласован · ожидаем публикацию',PUBLISHING:'Публикуется согласованный план',
     NEEDS_USER:'Рецензирование ждёт решения пользователя',STALE:'Рецензирование требует актуализации документов'};
-  const started=Date.parse(review.startedAt??''),kind=review.indicator==='attention'?'warn'
+  const started=Date.parse(review.startedAt??''),kind=review.stage==='NEEDS_USER'?'warn'
     :['RUNNING','PUBLISHING','AUTHOR_PENDING'].includes(review.stage)?'act':'wait';
   return {actor:'REVIEW',name:'',stage:'plan-review',text:words[review.stage]??'Проверяем состояние рецензирования',kind,
     reason:kind==='warn'?review.message??'':null,elapsedMs:Number.isFinite(started)&&review.stage==='RUNNING'?Math.max(0,now-started):null,
@@ -82,7 +82,7 @@ export const commitProgressLabel=progress=>'Kit проверяет коммит 
 
 // Stage phases of assignmentStage/executorStatus/executorDispatchStage and planActivity by kind.
 const WAIT_PHASES=new Set(['waiting','waiting-task','waiting-channel','question','review','report','accepted','ready','setup',
-  'paused','complete','turn-end','waiting-read','result']);
+  'paused','complete','turn-end','waiting-read','result','stopped','unknown']);
 const WARN_PHASES=new Set(['attention']);
 export function stageKind(phase,{busy=false}={}) {
   if(WARN_PHASES.has(phase))return 'warn';

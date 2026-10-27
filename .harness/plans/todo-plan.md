@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1254,
+  "plan_revision": 1256,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "attention-and-closed-plan",
@@ -54,7 +54,9 @@
       "tests/parallel-execution-ui.test.mjs",
       "src/frontend/desktop/ui/index.html",
       "resources/workspace-setup-worker.mjs",
-      "tests/workspace-setup.test.mjs"
+      "tests/workspace-setup.test.mjs",
+      "tests/parallel-finalization.test.mjs",
+      "tests/work-progress-scenario.test.mjs"
     ],
     "documentation_paths": [
       "README.md",
@@ -100,8 +102,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "attention-and-closed-plan",
         "task_id": "ATTENTION",
@@ -126,7 +128,9 @@
         "src/control/workflow/parallel-execution.mjs",
         "tests/parallel-execution.test.mjs",
         "tests/parallel-execution-ui.test.mjs",
-        "src/frontend/desktop/ui/index.html"
+        "src/frontend/desktop/ui/index.html",
+        "tests/parallel-finalization.test.mjs",
+        "tests/work-progress-scenario.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -156,7 +160,23 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "task_brief": "Показывать тревогу только при необходимом действии пользователя. Отделить внутреннее ожидание, решение агента и настоящий пользовательский шаг без изменения транспортной очереди. Требования: READINESS_BUSY, ожидание O/cleanup и автоматическое восстановление нейтральны; время и технический error сами не создают тревогу. Оранжевая карточка только для подтверждённого действия пользователя с причиной и исполнимой инструкцией; реальные отказы не скрыты. Одна карточка в основной панели; now/sidebar не дублируют тревогу; Review и штатные кнопки сохранены. SDK очередь, grant, Stop, read/acceptance и жизненный цикл не изменены. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: unit-all, architecture. Классификация источника attention в parallel-execution, разметка index.html и регрессии его проекции входят в область; техническую блокировку не снимать."
+      "task_brief": "Показывать тревогу только при необходимом действии пользователя. Отделить внутреннее ожидание, решение агента и настоящий пользовательский шаг без изменения транспортной очереди. Требования: READINESS_BUSY, ожидание O/cleanup и автоматическое восстановление нейтральны; время и технический error сами не создают тревогу. Оранжевая карточка только для подтверждённого действия пользователя с причиной и исполнимой инструкцией; реальные отказы не скрыты. Одна карточка в основной панели; now/sidebar не дублируют тревогу; Review и штатные кнопки сохранены. SDK очередь, grant, Stop, read/acceptance и жизненный цикл не изменены. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: unit-all, architecture. Классификация источника attention в parallel-execution, разметка index.html и регрессии его проекции входят в область; техническую блокировку не снимать.",
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/contracts/work-progress.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/control/workflow/parallel-execution.mjs",
+        "src/frontend/desktop/ui/current-actions.mjs",
+        "src/frontend/desktop/ui/index.html",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/parallel-execution-ui.test.mjs",
+        "tests/parallel-execution.test.mjs",
+        "tests/parallel-finalization.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/work-progress-scenario.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -484,7 +504,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: attention-and-closed-plan
 Current Task: нет
-Revision: 1254
+Revision: 1256
 
 ## Цель
 
@@ -501,10 +521,10 @@ Revision: 1254
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Внешняя разработка Codex в текущем checkout. Общие backend/UI проекции пересекаются; модельное делегирование запрещено. Claude Review отдельно разрешён.
 
-- [TODO] ATTENTION: Показывать тревогу только при необходимом действии пользователя — Ожидает
-  - Git Commit: [PENDING] fix: показывать тревогу только при необходимом действии пользователя
+- [DONE] ATTENTION: Показывать тревогу только при необходимом действии пользователя — Завершено
+  - Git Commit: [DONE] fix: показывать тревогу только при необходимом действии пользователя
   - Reference: attention-and-closed-plan / ATTENTION / implementation
-  - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/backend/desktop-model.mjs, src/control/workflow/execution-projection.mjs, src/control/projects/workspace-readiness.mjs, src/frontend/desktop/ui/current-actions.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/sidebar.test.mjs, tests/user-choice-view.test.mjs, tests/workspace-readiness.test.mjs, src/control/workflow/parallel-execution.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-ui.test.mjs, src/frontend/desktop/ui/index.html
+  - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/backend/desktop-model.mjs, src/control/workflow/execution-projection.mjs, src/control/projects/workspace-readiness.mjs, src/frontend/desktop/ui/current-actions.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/sidebar.test.mjs, tests/user-choice-view.test.mjs, tests/workspace-readiness.test.mjs, src/control/workflow/parallel-execution.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-ui.test.mjs, src/frontend/desktop/ui/index.html, tests/parallel-finalization.test.mjs, tests/work-progress-scenario.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] CLOSED: Корректно читать и показывать завершённый план — Ожидает

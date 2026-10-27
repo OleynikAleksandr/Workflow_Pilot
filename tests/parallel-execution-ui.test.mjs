@@ -43,7 +43,7 @@ test('status distinguishes observed work, unknown, source readiness and verified
   assert.equal(executorStatus({status:'RUNNING'},record).label,'Пауза · задача не завершена');
   assert.equal(executorStatus({status:'INTEGRATED'},record).phase,'done');
   assert.equal(executorStatus({id:'a',status:'READY_FOR_INTEGRATION'},record,{assignment_id:'a',status:'CHECKING'}).phase,'merging');
-  assert.equal(executorStatus({id:'a'},record,{assignment_id:'a',status:'CONFLICT'}).phase,'attention');
+  assert.equal(executorStatus({id:'a'},record,{assignment_id:'a',status:'CONFLICT'}).phase,'stopped');
   assert.equal(executorStatus({status:'RUNNING'},null).phase,'unknown');
 });
 

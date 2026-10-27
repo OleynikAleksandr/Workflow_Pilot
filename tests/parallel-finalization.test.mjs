@@ -148,7 +148,8 @@ test('F15: failed pre-Send final checkpoint stays pending and never invokes comp
  const f=fixture(t);let called=0;f.runtime.save=async()=>{throw Error('disk full');};
  f.runtime.sendFinalization=async()=>{called++;return {state:'sent'};};
  await f.runtime.signal('/main'); // Scoped identity must be persisted before the final intent can exist.
- assert.equal(called,0);assert.equal(f.runtime.view('/main').phase,'attention');
+ assert.equal(called,0);assert.equal(f.runtime.view('/main').phase,'stopped');
+ assert.match(f.runtime.view('/main').error.message,/disk full/,'the real refusal remains visible in diagnostics');
 });
 test('a lost queue acknowledgement retries only the same durable SDK intent',async t=>{
  const f=fixture(t),keys=[];let fail=true;

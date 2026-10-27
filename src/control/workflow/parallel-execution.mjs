@@ -4,6 +4,7 @@ import { parallelTasksCompatible, isDeliveryTask } from '@webpilot/workflow-kit/
 import { validateParallelSettings } from './parallel-settings.mjs';
 import { integrationProblem, projectExecutionPlan } from './execution-projection.mjs';
 import { kitRefusal, refusalText } from './parallel-kit.mjs';
+import {executionIssue} from '../../contracts/dialogue-view.mjs';
 
 const fail=(code,message)=>Object.assign(new Error(message),{code});
 const UNKNOWN_CODES=['INTEGRATION_UNKNOWN','ASSIGNMENT_UNKNOWN'];
@@ -225,7 +226,7 @@ export class ParallelExecution {
       do {queue.again=false;const recover=queue.recovery;queue.recovery=false;
         try {await this.reconcile(workspace,recover);}
         catch(error){
-          this.publish(workspace,{phase:'attention',error:issue(error)});
+          this.publish(workspace,{phase:executionIssue(error).phase,error:issue(error)});
           // An unknown outcome of an orchestrated plan pauses it; nothing is retried.
           if(UNKNOWN_CODES.includes(error.code)&&this.view(workspace).strategy==='orchestrated')
             this.onPause(workspace,this.view(workspace).scopeId,'unknown',issue(error).message);
@@ -411,7 +412,7 @@ export class ParallelExecution {
           parent_task_id:task.id,title:task.title},origin);
         entry.sessionId=session.sessionId;entry.phase='running';await this.persist();
       }catch(error){
-        entry.error=issue(error);entry.phase='attention';await this.persist();
+        entry.error=issue(error);entry.phase=executionIssue(error).phase;await this.persist();
         if(!kitRefusal(error))throw error;
         // A definite refusal pauses with its cause; the pause still settles below. Kit 1.9.7 refuses
         // before any effect, so the identity is dropped and Continue creates the assignment anew.
@@ -423,7 +424,7 @@ export class ParallelExecution {
     }
     const latest=await this.kit.read(workspace);
     this.settle(workspace,latest.plan,latest.assignments,latest);
-    this.publish(workspace,{phase:recoveryError?'attention':'waiting',planView:projectExecutionPlan(latest.plan,[...latest.assignments,...assignments.filter(a=>a.status==='UNKNOWN'&&!latest.assignments.some(b=>b.id===a.id))],latest.integration),assignments:latest.assignments.map(a=>({...a,
+    this.publish(workspace,{phase:recoveryError?executionIssue(recoveryError).phase:'waiting',planView:projectExecutionPlan(latest.plan,[...latest.assignments,...assignments.filter(a=>a.status==='UNKNOWN'&&!latest.assignments.some(b=>b.id===a.id))],latest.integration),assignments:latest.assignments.map(a=>({...a,
       ...(assignments.find(b=>b.id===a.id)?.error?{error:assignments.find(b=>b.id===a.id).error}:{})}))
       .concat(assignments.filter(a=>a.status==='UNKNOWN'&&!latest.assignments.some(b=>b.id===a.id))),error:recoveryError});
   }

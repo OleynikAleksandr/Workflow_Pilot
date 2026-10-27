@@ -6,6 +6,24 @@ import {mountPanel} from '../src/frontend/plugin/panel.mjs';
 import {executorStatus} from '../src/control/workflow/execution-projection.mjs';
 import {currentPlanTasks,planActivity,activityClock,assignmentStage} from '../src/contracts/dialogue-view.mjs';
 import {buildWorkProgress,stageKind} from '../src/contracts/work-progress.mjs';
+import {executionIssue} from '../src/contracts/dialogue-view.mjs';
+test('only a required user action is orange; readiness and agent decisions are neutral in the real panel',async t=>{
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));
+  t.after(()=>dom.window.close());const ui=mountPanel({document:dom.window.document});
+  const render=error=>{const stage=planActivity({run:{state:'running'},execution:{error}});
+    ui.progress(buildWorkProgress({now:[{actor:'APP',text:stage.label,reason:stage.reason,kind:stageKind(stage.phase),elapsedMs:3600000},
+      {actor:'T002',text:'Работает',kind:'act'}]}));return stage;};
+  const stage=render({code:'READINESS_BUSY',message:'operation active'});
+  assert.match(stage.label,/Ожидаем завершения операции/);
+  assert.equal(dom.window.document.querySelectorAll('.wp-row.warn').length,0);
+  assert.match(dom.window.document.getElementById('progress-now').textContent,/Работает/);
+  const dirty=render({code:'MAIN_DIRTY',message:'user edits'});
+  assert.equal(dirty.phase,'attention');assert.match(dirty.userAction,/Продолжить/);
+  assert.equal(dom.window.document.querySelectorAll('.wp-row.warn').length,1);
+  render({code:'UNEXPECTED',message:'No safe recovery known'});
+  assert.equal(dom.window.document.querySelectorAll('.wp-row.warn').length,0);
+  assert.equal(executionIssue({code:'UNEXPECTED'}).phase,'stopped');
+});
 test('SDK recovery is neutral, exhaustion is actionable and does not claim lost work',()=>{
   const incoming={message_id:'one',kind:'review',read:false,delivery:'unknown',recovery:{retrying:true,attempts:1,limit:3}};
   let result=planActivity({run:{state:'running'},channel:{incoming}});

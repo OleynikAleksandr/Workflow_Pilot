@@ -100,17 +100,17 @@ test('the shared projection puts the current operation in one area and only the 
       assert.equal($('plan-status').textContent,'в main '+value.done+' из '+value.total,name);
       assert.ok(p('progress-phase').textContent.endsWith('в main '+value.done+' из '+value.total),name);
     }else assert.equal($('plan-progress').hidden,true,name);
-    assert.deepEqual([...sidebar.document.querySelectorAll('.plan-task')].map(row=>row.dataset.status),value.tasks.map(task=>task.status),name);
-    assert.deepEqual([...sidebar.document.querySelectorAll('.plan-task-stage')].map(node=>node.firstChild.textContent),value.tasks.map(task=>({done:'Интегрирована',current:'В работе',attention:'Ожидает решения',pending:'Не начата'})[task.status]),name);
+    assert.deepEqual([...sidebar.document.querySelectorAll('.plan-task')].map(row=>row.dataset.status),value.tasks.map(task=>task.status==='attention'?'current':task.status),name);
+    assert.deepEqual([...sidebar.document.querySelectorAll('.plan-task-stage')].map(node=>node.firstChild.textContent),value.tasks.map(task=>({done:'Интегрирована',current:'В работе',attention:'Ожидает',pending:'Не начата'})[task.status]),name);
     // Every current action is a row of the panel, problems first, then actions, then waits.
     const rows=[...p('progress-now').children].filter(row=>!/Сейчас ничего/.test(row.textContent));
-    const expected=[value.primary,...value.now.filter(item=>item!==value.primary&&item.actor!==value.primary?.actor&&['act','warn'].includes(item.kind)&&item.key!==value.primary?.key)].filter(Boolean);
+    const expected=[value.primary,...value.now.filter(item=>!(value.primary?.kind==='warn'&&item.kind==='warn')&&item!==value.primary&&item.actor!==value.primary?.actor&&['act','warn'].includes(item.kind)&&item.key!==value.primary?.key)].filter(Boolean);
     assert.deepEqual(rows.map(row=>row.querySelector('.wp-spin')?'act':row.classList.contains('warn')?'warn':'wait'),expected.map(item=>item.kind),name);
     assert.equal($('current-now'),null,name+': no duplicated current area in sidebar');
     assert.equal(p('progress-history-count').textContent,eventCount(value.history.length),name);
     if(name==='План готов')assert.match(p('progress-now').textContent,/План ждёт вашей проверки и запуска\. Нажмите «Начать выполнение плана» слева/,'a ready plan is a wait for the user, not an empty list');
     // The problem block appears only with a problem; the foot stays pinned.
-    assert.equal($('plan-attention').hidden,!value.attention,name);
+    assert.equal($('plan-attention').hidden,true,name+': attention belongs to the panel');
     assert.equal($('plan-card').contains($('plan-review-toggle')),false,name);
   }
   // A spinner (*) only while someone acts: an answering orchestrator spins, a deferred cleanup waits.
@@ -145,5 +145,5 @@ test('a large plan keeps the stage, the run button, the problem and Review out o
   assert.match(css,/#plan-card>\.plan-tasks\{[^}]*overflow-y:auto/);
   assert.match(css,/#plan-card\{[^}]*flex-direction:column[^}]*min-height:0/);
   assert.match(css,/#plan-card>\*\{flex:0 0 auto\}/);
-  assert.equal($('plan-attention').hidden,false);assert.equal($('plan-attention-title').textContent,'T036 молчит');
+  assert.equal($('plan-attention').hidden,true);assert.equal($('plan-attention-title').textContent,'');
 });

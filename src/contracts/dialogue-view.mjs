@@ -1,7 +1,19 @@
 // A view of facts, never a transition or an execution permission.
+// A technical error is not evidence that the user can resolve it.
+export function executionIssue(error) {
+  const code=error?.code;
+  if(['READINESS_BUSY','PROJECT_RECOVERY_REQUIRED','CONCURRENT_CHANGE','READINESS_CHANGED'].includes(code))
+    return {phase:'waiting',label:'Ожидаем завершения операции проекта',reason:error?.message??''};
+  if(code==='MAIN_DIRTY')return {phase:'attention',label:'В main есть незакоммиченные изменения',
+    reason:error.message,userAction:'Сохраните или зафиксируйте свои изменения в main, затем нажмите «Продолжить».'};
+  if(['LOGIN_REQUIRED','AUTH_REQUIRED','SIGNED_OUT'].includes(code))return {phase:'attention',label:'Нужен вход в ChatGPT',
+    reason:error.message,userAction:'Войдите в свой аккаунт ChatGPT в указанной сессии.'};
+  return {phase:'stopped',label:'Работа остановлена',reason:error?.message??'Причина уточняется; подробности доступны в диагностике.'};
+}
 export function notificationActivity(recovery){
   if(recovery?.retrying)return {phase:'delivery',label:'Восстанавливаем доставку уведомления',reason:'Сообщение сохранено. Повторное поручение не создаётся.'};
   if(recovery?.exhausted)return {phase:'attention',label:'Не удалось уведомить агента',
+    userAction:'Откройте чат и попросите прочитать входящие Workflow Pilot.',
     reason:`SDK: ${recovery.error?.code??'нет подтверждения'}. Попыток: ${recovery.attempts} из ${recovery.limit}. Откройте чат и попросите прочитать входящие Workflow Pilot.`};
   return null;
 }
@@ -43,7 +55,7 @@ const waits={
 export function planActivity({run={},execution={},channel,physical}={}) {
   const stage=(phase,label,reason='',actor='Оркестратор')=>({phase,label,reason,actor});
   if(run.state==='complete')return stage('complete','Выполнение завершено — ожидается ваша приёмка','','План');
-  if(run.issue||execution.error)return stage('attention','Требуется внимание',execution.error?.message??run.issue?.message??'Оркестратор плана не определён.','План');
+  if(run.issue||execution.error)return {...executionIssue(execution.error??run.issue),actor:'План'};
   if(['paused','pausing'].includes(run.state))return stage('paused',run.state==='pausing'?'Выполнение приостанавливается':'Выполнение на паузе',run.message??'Новые назначения и отправки приостановлены.','План');
   if(run.state==='not-started')return stage('ready','План готов к запуску','','План');
   const command=(execution.commands??[]).find(c=>c.blocksIntegration||c.state==='running');

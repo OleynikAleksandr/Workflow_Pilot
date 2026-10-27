@@ -47,7 +47,7 @@ export function mountCurrentActions({document,now,events,count,announce,onAction
   return {render(value,{choice=null}={}){
     const primary=value?.primary??value?.now?.[0]??null;
     const covered=primary?.choiceId&&primary.choiceId===choice?.choice_id;
-    const others=(value?.now??[]).filter(item=>item!==primary&&(!item.key||item.key!==primary?.key)
+    const others=(value?.now??[]).filter(item=>!((covered||primary?.kind==='warn')&&item.kind==='warn')&&item!==primary&&(!item.key||item.key!==primary?.key)
       &&item.actor!==primary?.actor&&['act','warn'].includes(item.kind)&&(!item.choiceId||item.choiceId!==choice?.choice_id));
     current=[...(!covered&&primary?[primary]:[]),...others];clockAt=view.performance.now();
     const semantic=JSON.stringify([current.map(({elapsedMs,...item})=>item),!!choice,!!value?.closed]);

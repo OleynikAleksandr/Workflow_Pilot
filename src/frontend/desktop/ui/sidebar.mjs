@@ -524,28 +524,24 @@ function render(state) {
     // The problem block: only when the user must act or work really stopped.
     const planReason = selected.planReadError?.message ?? selected.planView?.blockedReason ?? orchestrated?.error ?? '';
     $('plan-reason').hidden = !planReason; $('plan-reason').textContent = planReason;
-    const attention=work?.attention;
-    $('plan-attention-title').textContent=attention?.title??(planReason?'План недоступен':commandIssues.childElementCount?'Исход команды неизвестен':'');
-    $('plan-attention-text').textContent=attention?.text??'';
-    const issue=attention?.action;
-    $('plan-attention-action').hidden=!issue||!['open-session'].includes(issue.kind);
-    $('plan-attention-action').textContent=issue?.label??'Открыть чат';
-    $('plan-attention-action').onclick=issue?.kind==='open-session'?()=>action('selectSession',issue.workspace,issue.sessionId):null;
-    $('plan-attention').hidden=!attention&&!planReason&&!commandIssues.childElementCount;
+    // The actionable card lives in the Workflow Pilot panel. The plan tree is navigation.
+    $('plan-attention').hidden=true;
+    $('plan-attention-title').textContent='';$('plan-attention-text').textContent='';
+    $('plan-attention-action').hidden=true;$('plan-attention-action').onclick=null;
     const list=$('plan-tasks'),scrollTop=list.scrollTop;
     list.replaceChildren(...tasks.map(task => {
-      const item = document.createElement('li'); item.className = 'plan-task'; item.dataset.status = task.status;
+      const item = document.createElement('li'); item.className = 'plan-task'; item.dataset.status = task.status==='attention'?'current':task.status;
       const mark = document.createElement('span'); mark.className = 'plan-task-state'; mark.setAttribute('role', 'img');
       // The mark alone means nothing to a screen reader: its status is spoken as text.
-      mark.setAttribute('aria-label', ({done:'влита в main',current:'выполняется',attention:'нужно внимание'})[task.status]??'не начата');
+      mark.setAttribute('aria-label', ({done:'влита в main',current:'выполняется',attention:'ожидает'})[task.status]??'не начата');
       if(task.status==='current'){const spin=document.createElement('span');spin.className='wp-spin';mark.append(spin);}
-      else mark.textContent = ({done:'✓',attention:'!'})[task.status]??'○';
+      else mark.textContent = ({done:'✓'})[task.status]??'○';
       const body = document.createElement('div'), head=document.createElement('span'), title = document.createElement('strong');
       head.className='plan-task-title';
       const id=document.createElement('span');id.className='plan-task-id';id.textContent=task.id;
       title.textContent = task.title;head.append(id,title);
       const line=document.createElement('small');line.className='plan-task-line';
-      const status=document.createElement('span');status.className='plan-task-stage';status.textContent=({done:'Интегрирована',current:'В работе',attention:'Ожидает решения',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
+      const status=document.createElement('span');status.className='plan-task-stage';status.textContent=({done:'Интегрирована',current:'В работе',attention:'Ожидает',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
       if(task.status!=='done'&&task.mode){const mode=document.createElement('span');mode.className='plan-task-mode';mode.textContent=' · '+task.mode;status.append(mode);}
       line.append(status);
       body.append(head,line);

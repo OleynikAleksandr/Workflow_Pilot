@@ -44,6 +44,17 @@ test('a failed SDK notification leaves the plan running and its original outbox 
   await f.runtime.reconcileMessages('/main',f.state,f.origin,ledger,()=>true);
   assert.equal(entry.status,'unknown');assert.equal(paused.length,1,'legacy effect remains protected');
 });
+test('readiness contention stays a technical wait and clears on the next real signal',async t=>{
+  const f=fixture(t),read=f.kit.read;let blocked=true;
+  f.kit.read=async(...args)=>{if(blocked)throw Object.assign(new Error('transaction active'),{code:'READINESS_BUSY'});return read(...args);};
+  await f.runtime.signal('/main');
+  assert.equal(f.runtime.view('/main').phase,'waiting');
+  assert.equal(f.runtime.view('/main').error.code,'READINESS_BUSY');
+  assert.equal(f.calls.created.length,0,'readiness refusal never authorizes work');
+  blocked=false;f.runtime.setEnabled(true);await f.runtime.signal('/main');f.runtime.setEnabled(false);
+  assert.equal(f.runtime.view('/main').error,null);
+  assert.deepEqual(f.calls.created.map(c=>c.task),['A','B']);
+});
 test('origin is exact immutable session metadata; unknown/OFF/mismatched policy fails closed',()=>{
   const plan={execution_strategy:'parallel',execution_origin_session_id:'author',parallel_allowed:true,max_workers:2};
   const origin={sessionId:'author',executionSnapshot:{parallel_allowed:true,max_workers:2}};

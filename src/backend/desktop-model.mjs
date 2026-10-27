@@ -6,7 +6,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
   pruneOrphanProjectSettings, validateParallelSettings, projectExecutors, plannedExecution, orchestratedPlanActive } from '../control/facade.mjs';
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
-import {currentPlanTasks,planActivity,activityClock,notificationActivity} from '../contracts/dialogue-view.mjs';
+import {currentPlanTasks,planActivity,activityClock,notificationActivity,executionIssue} from '../contracts/dialogue-view.mjs';
 import {startupContextState,startupView} from '../contracts/startup-view.mjs';
 import {roleActor,participantName,buildWorkProgress,commitProgressLabel,messageEvent,notificationEvents,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity,reviewHistoryEvents} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
@@ -263,7 +263,7 @@ function orchestratorState(workspace,session) {
   const run=workflow.executionControl.view(workspace,session.orchestratorScopeId),view=execution.view(workspace);
   const tasks=currentPlanTasks(project,view),done=tasks.filter(task=>task.status==='done').length,total=tasks.length;
   const cleanup=(view.assignments??[]).filter(a=>a.status==='INTEGRATED'&&a.cleanup?.status==='PENDING').length;
-  const attention=project.orchestrationIssue||view.error||run.reason==='escalation'||run.reason==='unknown'||run.reason==='refused';
+  const attention=executionIssue(project.orchestrationIssue??view.error??run.issue).userAction;
   const label=run.state==='running'&&total>0&&done===total?'Завершается':orchestratorLabels[run.state];
   return {state:attention?'attention':run.state,label:(attention?'Требует внимания':label)+' · '+done+'/'+total,cleanup,progress:total?done+'/'+total:null};
 }
@@ -344,7 +344,14 @@ function workProgressView(workspace,fresh=null) {
   const choices=sessions.map(session=>({session,choice:workflow.userChoices.view(session.sessionId)})).filter(item=>item.choice);
   const offered=choices.filter(item=>item.choice.state==='offered');
   const choiceCovers=kind=>offered.some(item=>item.choice.kind===kind);
-  const warn=(title,text,action=null)=>{attention??={title,text,action};};
+  const warn=(title,text,action=null,instruction=null)=>{
+    if(instruction)attention??={title,text:text?.includes(instruction)?text:[text,instruction].filter(Boolean).join(' '),action};
+    else now.push({actor:'APP',text:title,reason:text,kind:'wait',elapsedMs:null});
+  };
+  const reportIssue=(error,title='Работа остановлена',action=null)=>{
+    const issue=executionIssue(error);
+    warn(issue.phase==='waiting'?issue.label:title,issue.reason,action,issue.userAction);
+  };
   const transportIssues=new Set();
   for(const session of sessions){
     const channel=plugin?.communication.workflow.progress(session.sessionId);
@@ -352,10 +359,10 @@ function workProgressView(workspace,fresh=null) {
     if(!issue)continue;
     transportIssues.add(session.sessionId);
     const action={kind:'open-session',workspace,sessionId:session.sessionId,label:'Открыть чат'};
-    if(issue.phase==='attention')warn(issue.label,issue.reason,action);
+    if(issue.phase==='attention')warn(issue.label,issue.reason,action,issue.reason);
     if(!run?.activity||session.sessionId!==project.planExecution?.execution_origin_session_id)
       now.push({actor:'APP',text:issue.label,reason:issue.reason,stage:issue.phase,
-        key:'notification:'+channel.incoming.message_id,kind:issue.phase==='attention'?'warn':'wait',elapsedMs:null,action});
+        key:'notification:'+channel.incoming.message_id,kind:'wait',elapsedMs:null});
   }
   // Startup of orchestrator and discussion chats is shown here, not under the session card.
   const starting=new Set();
@@ -377,8 +384,8 @@ function workProgressView(workspace,fresh=null) {
     starting.add(session.sessionId);
     const presentation=startupView(context.startup);
     if(context.error||context.launch?.address==='lost'||context.launch?.address==='conflict'||progress?.error||['rejected','unknown'].includes(progress?.delivery)){
-      warn(presentation.title,presentation.detail,{kind:'open-session',workspace,sessionId:session.sessionId,label:'Открыть чат сессии'});
-      now.push({actor,text:presentation.title,reason:presentation.detail,stage:'startup',kind:'warn',elapsedMs:null});continue;
+      reportIssue(context.error??progress?.error??{message:presentation.detail},presentation.title,{kind:'open-session',workspace,sessionId:session.sessionId,label:'Открыть чат сессии'});
+      continue;
     }
     const text=progress?.complete?'Адрес чата сохранён · текущая страница проверяется':presentation.title;
     const elapsedMs=observeActivity(JSON.stringify([project.projectId,session.sessionId,'startup']),{phase:presentation.phase,label:'',reason:''}).elapsedMs;
@@ -423,8 +430,7 @@ function workProgressView(workspace,fresh=null) {
   const source=orchestrated?orchestratorPlanView({workspace})?.tasks??[]:project.planView?.tasks??[];
   const tasks=scope?source.map(task=>{
     const kit=task.status==='done'?null:kitLabel(task.id),own=executors.find(e=>e.taskId===task.id);
-    const silent=own&&task.status!=='done'&&stageKind(own.phase)==='wait'&&(own.stageTime?.elapsedMs??0)>WORK_SILENCE_MS;
-    const status=task.status==='done'?'done':task.status==='pending'?'pending':own&&(own.phase==='attention'||silent)?'attention':'current';
+    const status=task.status==='done'?'done':task.status==='pending'?'pending':'current';
     const label=kit?.label??task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]??'Состояние не подтверждено';
     return {id:task.id,title:task.title,status,label,mode:task.executionLabel??null,target:task.target??null,timers:own?.time??null,
       elapsedMs:status==='current'||status==='attention'?kit?.elapsedMs??task.stageTime?.elapsedMs??null:null};
@@ -437,27 +443,23 @@ function workProgressView(workspace,fresh=null) {
     const reason={'terminal-receipt-pending':'очистка ждёт конца хода исполнителя','executor-command-active':'очистка ждёт завершения команды исполнителя'}[assignment.cleanup.reason]
       ??'очистка ждёт подтверждения';
     const elapsedMs=observeActivity(JSON.stringify([project.projectId,assignment.id,'cleanup']),{phase:'cleanup',label:reason,reason:''}).elapsedMs;
-    const stuck=elapsedMs>WORK_SILENCE_MS;
-    now.push({actor:taskId??'KIT',text:reason,kind:stuck?'warn':'wait',elapsedMs});
-    if(stuck)warn('Очистка '+(taskId??'назначения')+' не завершена','Откройте чат исполнителя: подтверждение конца его хода завершит очистку.',
-      own?.workspace&&own.sessionId?{kind:'open-session',workspace:own.workspace,sessionId:own.sessionId,label:'Открыть чат '+taskId}:null);
+    now.push({actor:taskId??'KIT',text:reason,kind:'wait',elapsedMs});
   }
   if(run?.activity&&!['ready'].includes(run.activity.phase)&&!cleanups.length&&!(run.reason==='refused'&&choiceCovers('refused'))){
     const activity=run.activity,actor=({'Workflow Kit':'KIT','План':'PLAN','Канал связи':'APP','Приложение':'APP'})[activity.actor]??'O';
     const origin=project.planExecution?.execution_origin_session_id;
-    now.push({actor,text:activity.label,reason:activity.reason,stage:activity.phase,recipient:activity.recipient,
-      key:activity.key,priority:activity.priority,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs,
-      action:activity.phase==='attention'&&sessions.some(s=>s.sessionId===origin)
-        ?{kind:'open-session',workspace,sessionId:origin,label:'Открыть чат оркестратора'}:null});
+    if(activity.phase==='attention')warn(activity.label,activity.reason,null,activity.userAction??activity.reason);
+    else now.push({actor,text:activity.label,reason:activity.reason,stage:activity.phase,recipient:activity.recipient,
+      key:activity.key,priority:activity.priority,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs});
   }
   for(const task of tasks.filter(t=>['current','attention'].includes(t.status))){
     const own=executors.find(e=>e.taskId===task.id),kit=kitLabel(task.id);
     if(kit)now.push({actor:task.id,text:kit.label,kind:'act',elapsedMs:kit.elapsedMs});
     else if(own){
-      const silent=task.status==='attention'&&own.phase!=='attention';
+      const silent=stageKind(own.phase)==='wait'&&(own.stageTime?.elapsedMs??0)>WORK_SILENCE_MS;
       now.push({actor:task.id,text:silent?'нет новых событий '+Math.round((own.stageTime?.elapsedMs??0)/60000)+' мин · '+own.label:own.label,
-        kind:task.status==='attention'?'warn':stageKind(own.phase,{busy:own.phase==='working'}),elapsedMs:own.stageTime?.elapsedMs??0});
-      if(task.status==='attention')warn(task.id+(silent?' молчит':' требует внимания'),own.label,own.workspace&&own.sessionId?{kind:'open-session',workspace:own.workspace,sessionId:own.sessionId,label:'Открыть чат '+task.id}:null);
+        reason:own.reason,kind:own.phase==='attention'?'wait':stageKind(own.phase,{busy:own.phase==='working'}),elapsedMs:own.stageTime?.elapsedMs??0});
+      if(own.userAction)warn(task.id+' требует вашего действия',own.label,own.workspace&&own.sessionId?{kind:'open-session',workspace:own.workspace,sessionId:own.sessionId,label:'Открыть чат '+task.id}:null,own.userAction);
     }else if(!orchestrated&&task.status==='current')now.push({actor:task.id,text:task.label,kind:run?.state==='running'?'act':'wait',elapsedMs:0});
   }
   // A published plan waits for the user; the agent may or may not say so in its answer.
@@ -468,9 +470,9 @@ function workProgressView(workspace,fresh=null) {
   if(!orchestrated&&view.kitProgress&&!tasks.some(t=>t.id===view.kitProgress.taskId))
     now.push({actor:'KIT',text:commitProgressLabel(view.kitProgress),kind:'act',elapsedMs:Date.now()-view.kitProgress.checkStartedAt});
   if(project.orchestrationIssue)warn('Нужно внимание',project.orchestrationIssue.message??'Оркестратор плана не определён.');
-  if(view.scopeId===scope&&view.error&&!(run?.reason==='refused'&&choiceCovers('refused')))warn('Нужно внимание',view.error.message);
+  if(view.scopeId===scope&&view.error&&!(run?.reason==='refused'&&choiceCovers('refused')))reportIssue(view.error);
   if(['escalation','unknown','refused','blocked'].includes(run?.reason)&&!(run.reason==='refused'&&choiceCovers('refused')))
-    warn(run.reason==='unknown'?'Исход операции неизвестен':run.reason==='refused'?'Kit отказал в назначении':run.reason==='blocked'?'Выполнение приостановлено':'Оркестратор передал проблему',run.issue?.message??run.message??'');
+    reportIssue(run.issue??{message:run.message},run.reason==='unknown'?'Исход операции неизвестен':run.reason==='refused'?'Kit отказал в назначении':run.reason==='blocked'?'Выполнение приостановлено':'Оркестратор передал проблему');
   const unknown=(view.commands??[]).filter(c=>c.state==='unknown');
   if(unknown.length)warn('Исход команды неизвестен',unknown[0].reason??'Завершение команды не подтверждено.',{kind:'command-issues'});
   // History: finished dialogue messages of the plan from the durable communication journal.
