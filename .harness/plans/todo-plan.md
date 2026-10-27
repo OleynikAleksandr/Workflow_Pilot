@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1274,
+  "plan_revision": 1275,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -79,7 +79,7 @@
     ]
   },
   "baseline_commit": "a19412ac108be465926ffb057495d39558826296",
-  "current_task_id": null,
+  "current_task_id": "INPUTS",
   "context_pack": {
     "documents": [
       {
@@ -98,7 +98,7 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
+      "implementation_status": "IN_PROGRESS",
       "commit_status": "PENDING",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -534,8 +534,8 @@
 Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
-Current Task: нет
-Revision: 1274
+Current Task: INPUTS
+Revision: 1275
 
 ## Цель
 
@@ -553,7 +553,7 @@ Revision: 1274
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Внешняя разработка Codex в текущем checkout, пересекающиеся source/контракты; модельное делегирование запрещено. Claude Review отдельно разрешён.
 
-- [TODO] INPUTS: Сохранять обязательства по всем входящим поручениям — Ожидает
+- [IN_PROGRESS] INPUTS: Сохранять обязательства по всем входящим поручениям — В работе
   - Git Commit: [PENDING] fix: сохранять обязательства по всем входящим поручениям
   - Reference: incoming-obligations-and-sdk-recovery / INPUTS / implementation
   - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/package.json, package-lock.json, src/control/workflow/plan-review.mjs, src/control/plugin/communication.mjs, src/control/plugin/startup-context.mjs, tools/codex-app-server-mcp/plugin.py, tests/role-protocol.test.mjs, tests/plan-review.test.mjs, tests/workflow-channel.test.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/WORKFLOW.md, src/control/plugin/assignment-dialogue.mjs
