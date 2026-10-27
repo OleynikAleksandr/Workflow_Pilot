@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1288,
+  "plan_revision": 1290,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "incoming-obligations-and-sdk-recovery",
@@ -485,8 +485,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "incoming-obligations-and-sdk-recovery",
         "task_id": "RELEASE",
@@ -525,7 +525,10 @@
         ]
       },
       "task_brief": "Собрать macOS Windows Linux. Проверенный полный комплект из одного sourceCommit. Требования: Перед каждой production/package проверкой cache preflight без симлинков, Python без bytecode. Три ОС после DOCS, семь assets, общий sourceCommit, manifest/SHA/size/composition/macOS подпись подтверждены. Полностью соблюдать docs/planning/incoming-obligations-and-sdk-recovery.md и AGENTS.md. Никаких несогласованных UX/режимов/очередей. Donor, пользовательский 002_Test и рабочий профиль не менять. Проверки только назначенные: three-platform-release.",
-      "verification_kind": "package"
+      "verification_kind": "package",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -643,7 +646,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: incoming-obligations-and-sdk-recovery
 Current Task: нет
-Revision: 1288
+Revision: 1290
 
 ## Цель
 
@@ -697,8 +700,8 @@ Revision: 1288
   - Файлы: docs/planning/incoming-obligations-and-sdk-recovery.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/current-actions.md, docs/modules/desktop.md, docs/modules/project-lifecycle.md, docs/modules/chatgpt-plugin.md, docs/modules/release.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/acceptance/sdk-messaging.md, docs/modules/project-compatibility.md, tests/fixtures/released-kit/README.md, packages/workflow-kit/src/templates/PLAN.md, packages/workflow-kit/src/WORKFLOW.md
   - Параллельность: исключительное выполнение
   - Зависимости: INPUTS, SDK, CLOSED, VERIFY, SDK-REPORT
-- [TODO] RELEASE: Собрать macOS Windows Linux — Ожидает
-  - Git Commit: [PENDING] delivery: собрать macos windows linux
+- [DONE] RELEASE: Собрать macOS Windows Linux — Завершено
+  - Git Commit: [DONE] delivery: собрать macos windows linux
   - Reference: incoming-obligations-and-sdk-recovery / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
