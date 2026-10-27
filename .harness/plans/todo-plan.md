@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1242,
+  "plan_revision": 1243,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "sdk-recovery-identity",
@@ -88,7 +88,21 @@
       "docs/modules/chatgpt-plugin.md",
       "docs/modules/assignment-dialogue-reliability.md",
       "docs/modules/plugin-communication-handoff.md",
-      "docs/modules/orchestrated-execution.md"
+      "docs/modules/orchestrated-execution.md",
+      "docs/modules/assignment-dialogue.md",
+      "docs/modules/dialogue-timing.md",
+      "docs/modules/release.md",
+      "docs/modules/project-compatibility.md",
+      "docs/modules/control.md",
+      "docs/modules/workflow-execution.md",
+      "docs/modules/current-actions.md",
+      "docs/modules/prepared-tasks.md",
+      "docs/modules/session-titles.md",
+      "docs/modules/orchestrator-startup.md",
+      "docs/modules/chat-only-startup.md",
+      "docs/modules/backend.md",
+      "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md"
     ]
   },
   "baseline_commit": "7305405db34c9aaf54880029774a238efd2859c5",
@@ -411,7 +425,21 @@
         "docs/modules/chatgpt-plugin.md",
         "docs/modules/assignment-dialogue-reliability.md",
         "docs/modules/plugin-communication-handoff.md",
-        "docs/modules/orchestrated-execution.md"
+        "docs/modules/orchestrated-execution.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/release.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/control.md",
+        "docs/modules/workflow-execution.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/session-titles.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/backend.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -537,7 +565,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: sdk-recovery-identity
 Current Task: нет
-Revision: 1242
+Revision: 1243
 
 ## Цель
 
@@ -581,7 +609,7 @@ Revision: 1242
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать действующие контракты
   - Reference: sdk-recovery-identity / DOCS / implementation
-  - Файлы: docs/planning/sdk-recovery-identity.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/project-lifecycle.md, docs/acceptance/sdk-messaging.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/plugin-communication-handoff.md, docs/modules/orchestrated-execution.md
+  - Файлы: docs/planning/sdk-recovery-identity.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/user-choice.md, docs/modules/project-lifecycle.md, docs/acceptance/sdk-messaging.md, docs/modules/chatgpt-plugin.md, docs/modules/assignment-dialogue-reliability.md, docs/modules/plugin-communication-handoff.md, docs/modules/orchestrated-execution.md, docs/modules/assignment-dialogue.md, docs/modules/dialogue-timing.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/control.md, docs/modules/workflow-execution.md, docs/modules/current-actions.md, docs/modules/prepared-tasks.md, docs/modules/session-titles.md, docs/modules/orchestrator-startup.md, docs/modules/chat-only-startup.md, docs/modules/backend.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение
   - Зависимости: IDENTITY, DELIVERY, PROOF, VERSION
 - [TODO] RELEASE: Собрать выпуск macOS Windows Linux — Ожидает
