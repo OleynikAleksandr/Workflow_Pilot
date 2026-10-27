@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "1.10.3",
+  "version": "1.10.4",
   "initialized_git": true,
   "hook_mechanism": "git",
   "node_runtime": "system",
@@ -182,8 +182,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "98f7d8e31ae514853379b9b0b7e19a8d3af780a4abd2608036e85e263671fbc7",
-      "hash": "072f9a82c8e8cc7c7c9577188f61788f994f5fd0b867f6d0aa4ae857fdca990c",
+      "original_hash": "072f9a82c8e8cc7c7c9577188f61788f994f5fd0b867f6d0aa4ae857fdca990c",
+      "hash": "0414c5ee9c5e7dd71febc721cc2635884fd6c3143028f624a266cd8bb688675c",
       "existed": true
     },
     {
@@ -236,8 +236,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "8e08726c5dfac73186ed1250bda3bdf7e1070e2e9222a6daca18e8872cce336c",
-      "hash": "05bdfa17c575f1a6c54dae9f3d25037365926dee13813298353fa425bf5f3141",
+      "original_hash": "05bdfa17c575f1a6c54dae9f3d25037365926dee13813298353fa425bf5f3141",
+      "hash": "faf8c70c8a0df61eb706c015b14f8b077b3b65bd4d43b914ab9b2437bbf53930",
       "existed": true
     },
     {
@@ -533,8 +533,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "6d116b582cfcbcc891fef9e1b2d07acc35c677f148abcaee2d78a2a8585f6705",
-      "hash": "8ce6b57b7f714519afe5942aa17af91d2c36c73163f19eee86c4841cff6b03ea",
+      "original_hash": "8ce6b57b7f714519afe5942aa17af91d2c36c73163f19eee86c4841cff6b03ea",
+      "hash": "7777d1897a7cc6c59462b52f2f1038e1c96cf4a73bc461ca641a78542099c41e",
       "existed": true
     },
     {
@@ -647,13 +647,13 @@
       "existed": true
     }
   ],
-  "upgraded_from": "1.10.2",
-  "upgraded_at": "2026-10-26T15:37:00.642Z",
+  "upgraded_from": "1.10.3",
+  "upgraded_at": "2026-10-27T08:46:47.244Z",
   "legacy_plan_migration": {
     "model": "single-active-plan",
     "removed_count": 0,
-    "source_commit": "cab54346f82f2a4ab24a97e70b4470c417b8b1fe",
-    "migrated_at": "2026-10-26T15:37:00.649Z"
+    "source_commit": "f35b6ce9ede62ecf6bd823ceb037f49e30ab935a",
+    "migrated_at": "2026-10-27T08:46:47.251Z"
   },
-  "installed_at": "2026-10-26T15:37:00.649Z"
+  "installed_at": "2026-10-27T08:46:47.251Z"
 }
