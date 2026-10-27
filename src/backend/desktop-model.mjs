@@ -11,6 +11,7 @@ import {startupContextState,startupView} from '../contracts/startup-view.mjs';
 import {roleActor,participantName,buildWorkProgress,commitProgressLabel,messageEvent,notificationEvents,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity,reviewHistoryEvents} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
+import {ClosedPlanCache} from '../contracts/workflow-plan.mjs';
 
 // Kit proof, independent of current chat UI. A READY_FOR_INTEGRATION child
 // source is a checked commit; main DONE persists after worktree cleanup.
@@ -227,19 +228,15 @@ function archiveSnapshot() {
 }
 function publishArchive() { surface.publishArchive(archiveSnapshot()); }
 // Tasks of a closed orchestrated plan come from its plan before the closing commit; loaded once, off the event loop.
-const closedPlans=new Map();
-function closedPlan(workspace,commit) {
-  const key=workspace+'\n'+commit,cached=closedPlans.get(key);
-  if(cached)return cached.plan??null;
-  closedPlans.set(key,{plan:null});
-  void workflow.executionKit.git(workspace,['show',commit+'^:.harness/plans/todo-plan.md']).then(text=>{
-    const plan=JSON.parse(text.match(/<!-- workflow-state:begin -->\s*```json\s*([\s\S]*?)```/)?.[1]??'');
-    closedPlans.set(key,{plan:{scopeId:plan.scope_id,objective:plan.objective??'',strategy:plan.execution_strategy,
-      tasks:plan.tasks.map(task=>({id:task.id,title:task.title,status:'done',executionLabel:plannedExecution(task,plan.execution_strategy),
-        delivery:['package','installed'].includes(task.verification_kind)}))}});
-    publish();
-  }).catch(error=>{closedPlans.set(key,{plan:{error:error.message,tasks:[]}});publish();});
-  return null;
+const closedPlans=new ClosedPlanCache({
+  load:target=>workflow.executionKit.git(target.workspace,['show',target.commit+'^:.harness/plans/todo-plan.md']),
+  isCurrent:target=>{const p=store.snapshot().projects.find(p=>p.workspace===target.workspace);return p?.projectId===target.projectId&&p.workspaceId===target.workspaceId&&!p.archivedAt
+    &&p.sessions?.some(s=>s.sessionId===target.sessionId&&!s.archivedAt&&s.orchestratorScopeId===target.scopeId&&s.closedPlanCommit===target.commit);},
+  changed:()=>publish(),
+});
+function closedPlan(project,session) {
+  return closedPlans.read({workspace:project.workspace,workspaceId:project.workspaceId,projectId:project.projectId,
+    scopeId:session.orchestratorScopeId,sessionId:session.sessionId,commit:session.closedPlanCommit});
 }
 const orchestratorLabels={'not-started':'Готов к запуску',running:'Выполняется',pausing:'Пауза…',paused:'Пауза',complete:'Выполнено'};
 function executorViews(projects,workspace) {
@@ -281,14 +278,14 @@ function orchestratorPlanView(saved) {
   if(saved.parentWorkspace&&!orchestrator)return null;
   const current=project.scopeId===scope&&orchestratedPlanActive(project);
   const source=current?{objective:project.objective,tasks:currentPlanTasks(project,execution.view(workspace))}
-    :orchestrator?.closedPlanCommit?closedPlan(workspace,orchestrator.closedPlanCommit):null;
+    :orchestrator?.closedPlanCommit?closedPlan(project,orchestrator):null;
   if(!source)return {scopeId:scope,objective:'',tasks:[],loading:true};
   const executors=executorViews(store.snapshot().projects,workspace).filter(e=>e.parentScopeId===scope);
   const planned=new Map((project.planView?.tasks??[]).map(task=>[task.id,task]));
   const tasks=source.tasks.map(task=>({...task,delivery:task.delivery??planned.get(task.id)?.delivery??false}));
   const currentExecution=execution.view(workspace),hasExecution=currentExecution.scopeId===scope;
   const assignments=hasExecution?currentExecution.assignments??[]:[];
-  return {scopeId:scope,objective:source.objective,current,error:source.error??null,
+  return {scopeId:scope,objective:source.objective,current,error:null,detailsUnavailable:!!source.detailsUnavailable,diagnostic:source.diagnostic??null,
     ...(current?{evidence:{...taskEvidence(tasks,assignments),...(hasExecution?{}:{received:null})},deliveryStatus:project.deliveryStatus}:{}),
     tasks:source.tasks.map(task=>{
       const own=executors.filter(e=>e.taskId===task.id).sort((a,b)=>(b.createdAt??0)-(a.createdAt??0))[0];
@@ -296,7 +293,7 @@ function orchestratorPlanView(saved) {
       const target=['pending','done'].includes(task.status)?null:delivery?orchestrator&&{workspace,sessionId:orchestrator.sessionId}
         :own&&{workspace:own.workspace,sessionId:own.sessionId};
       const docs=task.id==='DOCS'||/^DOCS-\d+$/.test(task.id);
-      return {...task,...(docs?{docsChecksHint:'DOCS checks:[] в Kit — проверки приложения не запускаются этим коммитом.'}:{}),
+      return {...task,executionLabel:task.executionLabel??plannedExecution(task,source.strategy),...(docs?{docsChecksHint:'DOCS checks:[] в Kit — проверки приложения не запускаются этим коммитом.'}:{}),
         label:own&&task.status!=='done'?own.label:task.label,time:own?.time??null,
         stageTime:task.status!=='done'?own?.stageTime??null:null,target:target??null};
     })};
@@ -354,6 +351,7 @@ function workProgressView(workspace,fresh=null) {
   };
   const transportIssues=new Set();
   for(const session of sessions){
+    if(session.closedPlanCommit)continue;
     const channel=plugin?.communication.workflow.progress(session.sessionId);
     const issue=notificationActivity(channel?.incoming?.recovery);
     if(!issue)continue;
@@ -1571,6 +1569,7 @@ function windowFocused() { void planMonitor.refresh(); planReview.refresh(); obs
 function dispose() {
   if (closed) return;
   closed = true;
+  closedPlans.clear();
   ++navigationId; desktopIpc.dispose(); startupClipboard?.dispose(); startupClipboard = null; startupFlow?.dispose(); startupFlow = null;
   planContinuation.dispose(); execution.dispose(); workflow.closeRecovery(); conversationRecovery?.reset(); controller?.cancel(); planMonitor.close();
   reviewContinuation.dispose(); planReview.dispose();

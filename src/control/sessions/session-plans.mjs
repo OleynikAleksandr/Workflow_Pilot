@@ -3,6 +3,7 @@ import path from 'node:path';
 import { executeFile as execute, desktopFiles } from '../../execution/facade.mjs';
 import { randomUUID } from 'node:crypto';
 import { WorkspaceSetup } from '../projects/workspace-setup.mjs';
+import {parseWorkflowPlan} from '../../contracts/workflow-plan.mjs';
 
 export class SessionPlans {
   constructor({ setup = new WorkspaceSetup(), run = execute, files = desktopFiles, onWorkerStart = () => {} } = {}) {
@@ -56,9 +57,8 @@ export class SessionPlans {
     } catch (error) {
       if (error.code !== 'SESSION_REQUIRED') throw error;
       const text = await this.files.readText(path.join(workspace, '.harness/plans/todo-plan.md'));
-      const raw = text.match(/<!-- workflow-state:begin -->\s*```json\s*([\s\S]*?)```/)?.[1];
       let plan;
-      try { plan = JSON.parse(raw ?? ''); } catch { throw fail('WORKFLOW_PLAN_INVALID', 'Не удалось прочитать current plan для совместимости со старым Workflow Kit.'); }
+      try { plan = parseWorkflowPlan(text); } catch { throw fail('WORKFLOW_PLAN_INVALID', 'Не удалось прочитать current plan для совместимости со старым Workflow Kit.'); }
       const sessionId = plan.owner_session_id ?? null;
       if (!sessionId) throw error;
       return this.call(workspace, 'recover', ['--session', sessionId, ...(plan.scope_id ? ['--plan', plan.scope_id] : []), '--format', 'packet']);

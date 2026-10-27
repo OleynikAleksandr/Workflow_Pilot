@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1256,
+  "plan_revision": 1258,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "attention-and-closed-plan",
@@ -179,8 +179,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "attention-and-closed-plan",
         "task_id": "CLOSED",
@@ -236,7 +236,19 @@
           "ATTENTION"
         ]
       },
-      "task_brief": "Корректно читать и показывать завершённый план. Устранить преждевременный обрыв JSON на Markdown fences и безопасно проецировать архивное состояние. Требования: Разбирается целый однозначный блок с внутренними fences/экранированием, повреждённый JSON не принимается. Все уязвимые потребители исправлены без нарушения границ слоёв. Изолированный Git archive fixture подтверждает закрытие, название и реальные статусы четырёх задач; исключение из 001_Test воспроизводится до исправления. Кэш принадлежит project/workspace/scope/commit; поздние ответы чужого workspace отвергаются. Ошибка чтения не отменяет закрытие, безопасная диагностика отделена от нейтрального UI. Недоступный Git и восстановление, новый план, restart и неверная схема покрыты. Изменения Kit/installer при необходимости требуют расширить область/проверки до правок. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: unit-all, architecture. Исправить также fallback SESSION_REQUIRED в resources/workspace-setup-worker.mjs с tests/workspace-setup.test.mjs; worker не импортирует src."
+      "task_brief": "Корректно читать и показывать завершённый план. Устранить преждевременный обрыв JSON на Markdown fences и безопасно проецировать архивное состояние. Требования: Разбирается целый однозначный блок с внутренними fences/экранированием, повреждённый JSON не принимается. Все уязвимые потребители исправлены без нарушения границ слоёв. Изолированный Git archive fixture подтверждает закрытие, название и реальные статусы четырёх задач; исключение из 001_Test воспроизводится до исправления. Кэш принадлежит project/workspace/scope/commit; поздние ответы чужого workspace отвергаются. Ошибка чтения не отменяет закрытие, безопасная диагностика отделена от нейтрального UI. Недоступный Git и восстановление, новый план, restart и неверная схема покрыты. Изменения Kit/installer при необходимости требуют расширить область/проверки до правок. Полностью соблюдать docs/planning/attention-and-closed-plan.md и постоянные ограничения AGENTS.md. Не изменять donor, рабочий профиль и пользовательский 001_Test. Проверки: unit-all, architecture. Исправить также fallback SESSION_REQUIRED в resources/workspace-setup-worker.mjs с tests/workspace-setup.test.mjs; worker не импортирует src.",
+      "actual_files": [
+        "resources/workspace-setup-worker.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/workflow-plan.mjs",
+        "src/control/projects/workspace-deletion.mjs",
+        "src/control/sessions/session-plans.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/session-plans.test.mjs",
+        "tests/sidebar.test.mjs",
+        "tests/workflow-plan.test.mjs",
+        "tests/workspace-setup.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -504,7 +516,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: attention-and-closed-plan
 Current Task: нет
-Revision: 1256
+Revision: 1258
 
 ## Цель
 
@@ -527,8 +539,8 @@ Revision: 1256
   - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/backend/desktop-model.mjs, src/control/workflow/execution-projection.mjs, src/control/projects/workspace-readiness.mjs, src/frontend/desktop/ui/current-actions.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/plugin/panel.mjs, tests/progress.test.mjs, tests/panel-dialogue-view.test.mjs, tests/backend-desktop-model.test.mjs, tests/sidebar.test.mjs, tests/user-choice-view.test.mjs, tests/workspace-readiness.test.mjs, src/control/workflow/parallel-execution.mjs, tests/parallel-execution.test.mjs, tests/parallel-execution-ui.test.mjs, src/frontend/desktop/ui/index.html, tests/parallel-finalization.test.mjs, tests/work-progress-scenario.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] CLOSED: Корректно читать и показывать завершённый план — Ожидает
-  - Git Commit: [PENDING] fix: корректно читать и показывать завершённый план
+- [DONE] CLOSED: Корректно читать и показывать завершённый план — Завершено
+  - Git Commit: [DONE] fix: корректно читать и показывать завершённый план
   - Reference: attention-and-closed-plan / CLOSED / implementation
   - Файлы: src/contracts/workflow-plan.mjs, src/backend/desktop-model.mjs, src/control/sessions/session-plans.mjs, src/control/sessions/workspace-session.mjs, src/control/workflow/plan-continuation-state.mjs, src/control/projects/workspace-deletion.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/workflow-plan.test.mjs, tests/backend-desktop-model.test.mjs, tests/session-plans.test.mjs, tests/workspace-session.test.mjs, tests/workspace-deletion.test.mjs, tests/sidebar.test.mjs, resources/workspace-setup-worker.mjs, tests/workspace-setup.test.mjs
   - Параллельность: исключительное выполнение

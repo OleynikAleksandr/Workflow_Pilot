@@ -11,6 +11,7 @@ import { VERSION } from '@webpilot/workflow-kit/lib/common';
 import { fileURLToPath } from 'node:url';
 import { sessionPlanView } from '@webpilot/workflow-kit/lib/session-plans';
 import { inspectProject as inspectDoctor } from '../resources/project-doctor/core.mjs';
+import {recoverCurrentPlan} from '../resources/workspace-setup-worker.mjs';
 const environment = { ...process.env, GIT_AUTHOR_NAME: 'Web Pilot Test', GIT_AUTHOR_EMAIL: 'test@example.invalid', GIT_COMMITTER_NAME: 'Web Pilot Test', GIT_COMMITTER_EMAIL: 'test@example.invalid' };
 for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_PREFIX']) delete environment[key];
 async function fixture(t) {
@@ -40,6 +41,14 @@ test('real readiness key tracks NONE planning and repeated edits to an already d
 });
 function git(cwd, ...args) { return execFileSync('git', args, { cwd, env: environment, encoding: 'utf8' }).trim(); }
 const sha = value => createHash('sha256').update(value).digest('hex');
+test('setup worker legacy recovery reads its owner past fenced task instructions',async t=>{
+  const {parent}=await fixture(t);await fs.mkdir(path.join(parent,'scripts'),{recursive:true});
+  await fs.mkdir(path.join(parent,'.harness/plans'),{recursive:true});
+  const plan={owner_session_id:'legacy-owner',scope_id:'legacy-scope',tasks:[{task_brief:'```json\n{"текст":"пример"}\n```'}]};
+  await fs.writeFile(path.join(parent,'.harness/plans/todo-plan.md'),'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify(plan)+'\n```\n<!-- workflow-state:end -->\n');
+  await fs.writeFile(path.join(parent,'scripts/workflow.mjs'),`const args=process.argv.slice(2);if(!args.includes('--session')){console.log(JSON.stringify({ok:false,code:'SESSION_REQUIRED'}));process.exitCode=1;}else console.log(JSON.stringify({ok:true,session:args[args.indexOf('--session')+1],scope:args[args.indexOf('--plan')+1]}));`);
+  const result=recoverCurrentPlan(parent);assert.equal(result.session,'legacy-owner');assert.equal(result.scope,'legacy-scope');
+});
 
 test('Node candidates are centralized for macOS and Windows', () => {
   assert.deepEqual(nodeExecutableCandidates({ platform: 'darwin', environment: {}, execPath: '/usr/bin/node', electron: true }), [

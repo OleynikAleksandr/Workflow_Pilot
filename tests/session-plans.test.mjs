@@ -9,6 +9,13 @@ import { sessionPlanView, selectPlan, withSessionPlan, ownedPlanPath } from '@we
 import { WorkspaceSetup } from '../src/control/projects/workspace-setup.mjs';
 import { SessionPlans } from '../src/control/sessions/session-plans.mjs';
 import { kitRefusal } from '../src/control/workflow/parallel-kit.mjs';
+test('legacy loadContext keeps the whole plan when a task contains fenced examples',async()=>{
+  const plan={schema_version:1,project_id:'p',scope_id:'s',owner_session_id:'owner',tasks:[{id:'T1',task_brief:'```js\nconsole.log("текст")\n```'}]};
+  const calls=[];const plans=new SessionPlans({setup:{node:async()=>'/node',environment:{}},
+    files:{readText:async()=>'<!-- workflow-state:begin -->\n```json\n'+JSON.stringify(plan)+'\n```\n<!-- workflow-state:end -->'},
+    run:async(_node,args)=>{calls.push(args);return {stdout:JSON.stringify(calls.length===1?{ok:false,code:'SESSION_REQUIRED'}:{ok:true})};}});
+  assert.equal((await plans.loadContext('/main')).ok,true);assert.ok(calls[1].includes('owner'));assert.ok(calls[1].includes('s'));
+});
 
 test('inspection re-reads a concurrently removed transaction but never repeats a mutation or corrupt JSON',async()=>{
   const missing={ok:false,code:'INVALID_JSON',message:'Не удалось прочитать JSON: /main/.git/workflow-kit/transaction.json',details:{reason:'ENOENT: no such file'}};

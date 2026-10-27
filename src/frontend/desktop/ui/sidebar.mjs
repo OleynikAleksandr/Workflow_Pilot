@@ -497,7 +497,7 @@ function render(state) {
   // A legacy parallel executor keeps its own plan of the main checkout.
   // Before the first projection arrives the card draws the plan views it already has.
   const sourceTasks=orchestrated?orchestrated.tasks:(selected?.planExecution?.execution_strategy==='parallel'?execution.planView:selected?.planView)?.tasks??[];
-  const tasks=work?.tasks??sourceTasks.map(task=>({...task,mode:task.executionLabel??null,elapsedMs:task.stageTime?.elapsedMs??null,
+  const tasks=(orchestrated?.current===false?null:work?.tasks)??sourceTasks.map(task=>({...task,mode:task.executionLabel??null,elapsedMs:task.stageTime?.elapsedMs??null,
     label:task.label??({done:'Выполнена',current:'В работе',pending:'Не начата'})[task.status]}));
   const kitAcceptance=orchestrated?.deliveryStatus==='READY_FOR_ACCEPTANCE'&&orchestrated?.tasks?.length>0&&orchestrated.tasks.every(task=>task.status==='done');
   const planState=orchestrated?(orchestrated.current===false?'closed':kitAcceptance||run?.state==='complete'?'awaiting-acceptance'
@@ -507,22 +507,23 @@ function render(state) {
     blocked:'Нужно внимание','not-created':'План ещё не создан'};
   if (selected) {
     const objective=orchestrated?orchestrated.objective:selected.assignmentId?execution.objective:selected.scopeId?selected.objective:'';
-    $('plan-title').textContent=work?.title||objective||(orchestrated?'План оркестратора':'');
+    $('plan-title').textContent=(orchestrated?.current===false?objective:work?.title||objective)||(orchestrated?'План оркестратора':'');
     $('plan-title').title=objective||'';
     $('plan-title').hidden=!$('plan-title').textContent;
     $('plan-phase-text').textContent=stateLabels[planState]??stateLabels['not-created'];
     $('plan-phase-spinner').hidden=true;
-    const total=work?.total??tasks.length,done=work?.done??tasks.filter(t=>t.status==='done').length;
+    const closed=orchestrated?.current===false;
+    const total=(closed?null:work?.total)??tasks.length,done=(closed?null:work?.done)??tasks.filter(t=>t.status==='done').length;
     $('plan-progress').hidden=!total;
     $('plan-bar-fill').style.width=(total?Math.round(done/total*100):0)+'%';
     $('plan-status').textContent=`в main ${done} из ${total}`;
     $('plan-status').dataset.state=planState;
     const acceptance=work?.phase==='Ждёт приёмки'||planState==='awaiting-acceptance';
     $('plan-note').hidden=planState!=='closed'&&!acceptance;
-    $('plan-note').textContent=planState==='closed'?'Проект готов к следующему новому плану.'
+    $('plan-note').textContent=planState==='closed'?(orchestrated?.detailsUnavailable?'План закрыт. Подробности завершённого плана сейчас недоступны.':'Проект готов к следующему новому плану.')
       :acceptance?'Все задачи зафиксированы Kit; ожидается ваша приёмка. Сообщите '+(orchestrated?'оркестратору':'агенту плана')+': «Принимаю результат, закрой план». Архив проекта не заменяет приёмку.':'';
     // The problem block: only when the user must act or work really stopped.
-    const planReason = selected.planReadError?.message ?? selected.planView?.blockedReason ?? orchestrated?.error ?? '';
+    const planReason = planState==='closed'?'':selected.planReadError?.message ?? selected.planView?.blockedReason ?? orchestrated?.error ?? '';
     $('plan-reason').hidden = !planReason; $('plan-reason').textContent = planReason;
     // The actionable card lives in the Workflow Pilot panel. The plan tree is navigation.
     $('plan-attention').hidden=true;

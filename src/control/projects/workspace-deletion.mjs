@@ -4,6 +4,7 @@ import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { WorkspaceError, assignmentOwnership, ownedExecutor, workspaceGit } from '../sessions/workspace-session.mjs';
 import { purgeProjectStateFiles } from './project-state-cleanup.mjs';
+import {parseWorkflowPlan} from '../../contracts/workflow-plan.mjs';
 
 const fail = (code, message) => { throw new WorkspaceError(code, message); };
 const within = (child, parent) => child === parent || child.startsWith(parent + path.sep);
@@ -132,7 +133,7 @@ export class WorkspaceDeletion {
   }
   async projectIdentity(workspace) {
     const parse=text=>{
-      const plan=JSON.parse(text.match(/<!-- workflow-state:begin -->\s*```json\s*([\s\S]*?)```/)?.[1]??'');
+      const plan=parseWorkflowPlan(text);
       if(typeof plan.project_id!=='string'||!plan.project_id)throw Error('identity missing');
       return {projectId:plan.project_id};
     };

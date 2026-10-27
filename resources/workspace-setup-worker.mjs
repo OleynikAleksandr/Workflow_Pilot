@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import { inspectWithDiagnostics, install, upgradeFrom } from './workflow-kit/lib/installer.mjs';
 import { inspectionInputs } from './workflow-kit/lib/inspection-inputs.mjs';
 import { check, hash, json, MANIFEST, VERSION, errorResult } from './workflow-kit/lib/common.mjs';
@@ -23,7 +24,7 @@ function localHistoryDefaults(workspace) {
   return { 'git-name': configured('user.name') || 'Web Pilot',
     'git-email': configured('user.email') || 'web-pilot@localhost' };
 }
-function recoverCurrentPlan(root) {
+export function recoverCurrentPlan(root) {
   const workflow = path.join(root, 'scripts/workflow.mjs');
   const execute = args => run(process.execPath, [workflow, 'recover', ...args, '--format', 'json'], root, { allowFailure: true });
   const parse = result => {
@@ -34,7 +35,10 @@ function recoverCurrentPlan(root) {
     let plan;
     try {
       const text = fs.readFileSync(path.join(root, '.harness/plans/todo-plan.md'), 'utf8');
-      plan = JSON.parse(text.match(/<!-- workflow-state:begin -->\s*```json\s*([\s\S]*?)```/)?.[1] ?? '');
+      const begin=[...text.matchAll(/^<!-- workflow-state:begin -->\r?$/gm)],end=[...text.matchAll(/^<!-- workflow-state:end -->\r?$/gm)];
+      if(begin.length!==1||end.length!==1||begin[0].index>=end[0].index)throw Error('Invalid plan markers');
+      const block=text.slice(begin[0].index+begin[0][0].length,end[0].index).trim();
+      plan = JSON.parse(/^```json\r?\n([\s\S]*)\r?\n```$/.exec(block)?.[1] ?? '');
     } catch {}
     if (plan?.owner_session_id) {
       result = execute(['--session', plan.owner_session_id, ...(plan.scope_id ? ['--plan', plan.scope_id] : [])]);
@@ -124,7 +128,7 @@ function inspectProject(opts) {
   }
   return result;
 }
-try {
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))try {
   const input = JSON.parse(fs.readFileSync(0, 'utf8'));
   const opts = options(input);
   let result;
