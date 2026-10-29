@@ -473,6 +473,76 @@
         "tests/panel-resource-upgrade.test.mjs"
       ],
       "evidence": "Immutable panel upgrade; run stage:chatgpt-plugin before commit."
+    },
+    {
+      "id": "delivery-ownership",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-concurrency=4",
+        "tests/plugin-delivery-ownership.test.mjs"
+      ],
+      "timeout_ms": 240000,
+      "evidence": "Тест создаётся задачей OWNER: аттестованный владелец и наблюдатели одной identity, поколение только для новых claim, report попытки в полёте, несколько кадров, нет владельца, Stop/выбор наблюдателя, restart; без моделей и рабочих профилей."
+    },
+    {
+      "id": "panel-frame-attestation",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/panel-frame-attestation.test.mjs"
+      ],
+      "timeout_ms": 600000,
+      "evidence": "Тест создаётся задачей ATTEST: настоящий Electron, локальный HTTPS-хост, вложенные кадры разных origin; найден только свой кадр своей страницы, DOM основной страницы не читается. Доступность кадра в настоящем ChatGPT проверяет пользователь."
+    },
+    {
+      "id": "conversation-freshness",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-concurrency=4",
+        "tests/conversation-freshness.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/page-state.test.mjs",
+        "tests/chatgpt-dom.test.mjs"
+      ],
+      "timeout_ms": 300000,
+      "evidence": "Тест conversation-freshness создаётся задачей FRESH: безопасная перезагрузка, перенос подтверждения хода, ход на другом клиенте, ветвление; бюджет/UNKNOWN/q не меняются."
+    },
+    {
+      "id": "shared-conversation-compat",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/shared-conversation-compat.test.mjs",
+        "tests/migration-compatibility.test.mjs"
+      ],
+      "timeout_ms": 240000,
+      "evidence": "Тест создаётся задачей COMPAT: журнал 0.6.0 читается валидатором 0.5.41 из фиксированной копии; старый iframe протокола 8 получает отказ версии."
+    },
+    {
+      "id": "delivery-ui-targeted",
+      "required": false,
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "--test-concurrency=4",
+        "tests/work-progress.test.mjs",
+        "tests/work-progress-scenario.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/sidebar.test.mjs"
+      ],
+      "timeout_ms": 300000,
+      "evidence": "Проекции и вид панели/текущих действий: владелец/наблюдатель, нейтральные ожидания, оранжевые конфликты без дублей в sidebar."
     }
   ],
   "budget": {
