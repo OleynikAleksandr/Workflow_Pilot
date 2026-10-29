@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1298,
+  "plan_revision": 1299,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -709,67 +709,8 @@
         "COMPAT"
       ],
       "functional_paths": [
-        "package.json",
-        "package-lock.json",
-        "src/contracts/backend.mjs",
-        "src/contracts/plugin-communication.mjs",
-        "tools/codex-app-server-mcp/plugin.py",
-        "tests/chatgpt-plugin.test.mjs",
-        "tests/codex-app-server-mcp.test.mjs",
-        "tests/panel-resource-upgrade.test.mjs",
-        "src/execution/browser/panel-frame-attestation.mjs",
-        "src/execution/browser/backend-host.mjs",
-        "src/execution/browser/session-runtime.mjs",
-        "src/execution/facade.mjs",
-        "src/frontend/plugin/launch.mjs",
-        "tests/panel-frame-attestation.test.mjs",
-        "tests/fixtures/panel-frame-host.mjs",
-        "src/control/plugin/delivery-ownership.mjs",
-        "src/control/plugin/communication.mjs",
-        "src/control/plugin/workflow-channel.mjs",
-        "src/control/workflow/dialogue-delivery.mjs",
-        "src/backend/bootstrap.mjs",
-        "src/backend/desktop-model.mjs",
-        "tests/plugin-delivery-ownership.test.mjs",
-        "tests/plugin-communication.test.mjs",
-        "tests/workflow-channel.test.mjs",
-        "tests/dialogue-delivery.test.mjs",
-        "tests/fixtures/automatic-agent-dialogue.mjs",
         "tests/automatic-agent-dialogue.test.mjs",
-        "src/control/plugin/service.mjs",
-        "src/control/workflow/coordination.mjs",
-        "tests/startup-context.test.mjs",
-        "tests/plugin-enrollment.test.mjs",
-        "tests/plugin-communication-store.test.mjs",
-        "tests/electron-smoke.mjs",
-        "tests/backend-end-to-end.test.mjs",
-        "src/frontend/plugin/panel.mjs",
-        "src/contracts/dialogue-view.mjs",
-        "tests/panel-dialogue-view.test.mjs",
-        "src/control/plugin/conversation-freshness.mjs",
-        "src/control/workflow/executor-session.mjs",
-        "tests/conversation-freshness.test.mjs",
-        "tests/session-runtime.test.mjs",
-        "src/control/plugin/assignment-dialogue.mjs",
-        "src/execution/browser/chatgpt-dom.mjs",
-        "src/execution/browser/chatgpt-page-observer.mjs",
-        "src/execution/browser/page-state.mjs",
-        "tests/page-state.test.mjs",
-        "tests/chatgpt-dom.test.mjs",
-        "src/control/workflow/plan-continuation.mjs",
-        "src/execution/plugin/bridge.mjs",
-        "src/backend/diagnostics.mjs",
-        "tests/backend-diagnostics.test.mjs",
-        "src/contracts/work-progress.mjs",
-        "src/control/workflow/execution-projection.mjs",
-        "src/frontend/desktop/ui/current-actions.mjs",
-        "tests/work-progress.test.mjs",
-        "tests/work-progress-scenario.test.mjs",
-        "tests/sidebar.test.mjs",
-        "tests/shared-conversation-compat.test.mjs",
-        "tests/fixtures/released-communication-0.5.41/communication-store.mjs",
-        "tests/migration-compatibility.test.mjs",
-        "src/execution/plugin/communication-store.mjs"
+        "tests/fixtures/automatic-agent-dialogue.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -791,7 +732,7 @@
       "title": "Полная регрессия выпуска",
       "why": "Подтвердить, что существующие функции сохранены до DOCS и сборки.",
       "acceptance_criteria": [
-        "Все назначенные проверки PASS без ослабления assertions; найденные регрессии исправлены в этой задаче с адресными тестами.",
+        "Все назначенные проверки PASS без ослабления assertions; найденные регрессии исправлены в этой задаче с адресными тестами. Исправления допускаются в модулях, уже затронутых задачами этого плана; commit сохраняет фактический состав.",
         "Kit не менялся; если изменения Kit потребовались — добавлены kit-check и kit-assignments."
       ],
       "expected_commit_message": "test: регрессия выпуска 0.6.0",
@@ -1051,7 +992,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1298
+Revision: 1299
 
 ## Цель
 
@@ -1132,7 +1073,7 @@ Revision: 1298
 - [TODO] VERIFY: Полная регрессия выпуска — Ожидает
   - Git Commit: [PENDING] test: регрессия выпуска 0.6.0
   - Reference: shared-conversation-mac / VERIFY / implementation
-  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/plugin-communication.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, src/execution/browser/panel-frame-attestation.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/session-runtime.mjs, src/execution/facade.mjs, src/frontend/plugin/launch.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs, src/control/plugin/delivery-ownership.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/bootstrap.mjs, src/backend/desktop-model.mjs, tests/plugin-delivery-ownership.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, tests/startup-context.test.mjs, tests/plugin-enrollment.test.mjs, tests/plugin-communication-store.test.mjs, tests/electron-smoke.mjs, tests/backend-end-to-end.test.mjs, src/frontend/plugin/panel.mjs, src/contracts/dialogue-view.mjs, tests/panel-dialogue-view.test.mjs, src/control/plugin/conversation-freshness.mjs, src/control/workflow/executor-session.mjs, tests/conversation-freshness.test.mjs, tests/session-runtime.test.mjs, src/control/plugin/assignment-dialogue.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, tests/page-state.test.mjs, tests/chatgpt-dom.test.mjs, src/control/workflow/plan-continuation.mjs, src/execution/plugin/bridge.mjs, src/backend/diagnostics.mjs, tests/backend-diagnostics.test.mjs, src/contracts/work-progress.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/current-actions.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/sidebar.test.mjs, tests/shared-conversation-compat.test.mjs, tests/fixtures/released-communication-0.5.41/communication-store.mjs, tests/migration-compatibility.test.mjs, src/execution/plugin/communication-store.mjs
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: COMPAT
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
