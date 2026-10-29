@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1297,
+  "plan_revision": 1298,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -119,7 +119,7 @@
       },
       {
         "path": "docs/planning/shared-backend-mobile-followup.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       }
     ],
@@ -161,7 +161,7 @@
         "iframe протокола 8 получает существующий отказ версии с обеими версиями; поведение доставки пока не меняется."
       ],
       "expected_commit_message": "feat: контракт протокола 9 и версия 0.6.0",
-      "task_brief": "Контракт протокола 9 и версия 0.6.0. Зафиксировать поля владельца доставки и коды ошибок до поведения; старый iframe отклоняется явно. Требования: Версия приложения 0.6.0, COMMUNICATION_PROTOCOL=9, COMMUNICATION_BUILD 0.6.0-communication-9 согласованы в package/backend/HTML staging. Ответы bind/sync/wait/status допускают delivery_role owner|observer и delivery_owner_generation; новый код PLUGIN_COMMUNICATION_DELIVERY_OBSERVER описан; описания инструментов не расширяют полномочий. iframe протокола 8 получает существующий отказ версии с обеими версиями; поведение доставки пока не меняется. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: chatgpt-plugin, executor-channel, panel-resource-targeted.",
+      "task_brief": "Контракт протокола 9 и версия 0.6.0. Зафиксировать поля владельца доставки и коды ошибок до поведения; старый iframe отклоняется явно. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: chatgpt-plugin, executor-channel, panel-resource-targeted.",
       "context_pack": {
         "documents": [
           {
@@ -216,7 +216,7 @@
         "Тест: два recover в одном кадре → тот же кадр аттестован; кадр без значения или с чужим build не учитывается."
       ],
       "expected_commit_message": "feat: аттестовать кадр панели серверной страницы",
-      "task_brief": "Аттестация собственного кадра панели в Execution. Backend должен сам доказать, что экземпляр панели смонтирован в его серверной странице. Требования: Панель при mount создаёт неизменяемый на время жизни кадра frame_instance_id и публикует globalThis.__workflowPilotPanel {frame_instance_id, build_id, protocol_version}; bind передаёт frame_instance_id вместе с текущим panel_instance_id (он меняется при повторном recover, launch.mjs:328). Execution перечисляет подкадры только собственного webContents серверной страницы (framesInSubtree), выполняет постоянный read-only скрипт чтения этого значения и возвращает экземпляры, связанные с browserSessionId/incarnation/documentId; главный кадр chatgpt.com и DOM ChatGPT не читаются и не меняются. Кадр другого webContents, устаревшего документа или с невалидным значением не учитывается; reload сбрасывает результат; Execution не импортирует Control/Frontend. Тест: два recover в одном кадре → тот же кадр аттестован; кадр без значения или с чужим build не учитывается. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: panel-frame-attestation, native-startup-theme, architecture, chatgpt-plugin, panel-resource-targeted.",
+      "task_brief": "Аттестация собственного кадра панели в Execution. Backend должен сам доказать, что экземпляр панели смонтирован в его серверной странице. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: panel-frame-attestation, native-startup-theme, architecture, chatgpt-plugin, panel-resource-targeted.",
       "context_pack": {
         "documents": [
           {
@@ -287,7 +287,7 @@
         "Владение связано с аттестованным кадром: новый panel_instance_id того же кадра (повторный recover) сохраняет владельца без нового поколения; порт аттестации передаётся в Control через PluginProjects/coordination без прямого импорта Execution."
       ],
       "expected_commit_message": "feat: единственный владелец доставки",
-      "task_brief": "Единственный владелец доставки участника. Только аттестованная серверная панель выполняет автоматическую доставку; панели других клиентов — наблюдатели. Требования: Владелец — аттестованный экземпляр серверной страницы участника; при нескольких аттестованных в документе — последний смонтированный; заявления клиента не учитываются. Наблюдатель не claim/claim_ready/verify (DELIVERY_OBSERVER без записи попытки и без расхода бюджета), не создаёт/не подтверждает recovery-инциденты, не продлевает аренду доставки; выбор и Stop scope=participant ему доступны. Поколение владельца влияет только на новые claim; report попытки в полёте принимается как раньше; бюджет 3+3 (максимум 6), legacy UNKNOWN, Stop, grant и identity не ослаблены. Нет владельца — нейтральное ожидание owner-unavailable, не отказ и не UNKNOWN; существующие fixtures получают аттестацию своих панелей, assertions не ослаблены. Владение связано с аттестованным кадром: новый panel_instance_id того же кадра (повторный recover) сохраняет владельца без нового поколения; порт аттестации передаётся в Control через PluginProjects/coordination без прямого импорта Execution. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: delivery-ownership, sdk-recovery-targeted, intake-sdk-scenario, prepared-flow-cycle, architecture, orchestrator-startup.",
+      "task_brief": "Единственный владелец доставки участника. Только аттестованная серверная панель выполняет автоматическую доставку; панели других клиентов — наблюдатели. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: delivery-ownership, sdk-recovery-targeted, intake-sdk-scenario, prepared-flow-cycle, architecture, orchestrator-startup.",
       "context_pack": {
         "documents": [
           {
@@ -339,7 +339,7 @@
         "Смена роли (owner↔observer) при новом ответе backend применяется без перезагрузки и без повторной отправки."
       ],
       "expected_commit_message": "feat: режим наблюдателя панели",
-      "task_brief": "Режим наблюдателя в панели. Панель на другом клиенте показывает работу и принимает явные действия человека без отправки SDK. Требования: По delivery_role observer цикл доставки не запускается и message.send не вызывается; status/wait-состояние, история, выбор и явный Stop работают. Наблюдатель видит подпись «Доставку выполняет служба Workflow Pilot»; владелец — прежний вид; один HTML, новых кнопок нет. Смена роли (owner↔observer) при новом ответе backend применяется без перезагрузки и без повторной отправки. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: chatgpt-plugin, panel-resource-targeted, delivery-ui-targeted.",
+      "task_brief": "Режим наблюдателя в панели. Панель на другом клиенте показывает работу и принимает явные действия человека без отправки SDK. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: chatgpt-plugin, panel-resource-targeted, delivery-ui-targeted.",
       "context_pack": {
         "documents": [
           {
@@ -403,7 +403,7 @@
         "Fixture: перезагрузка Control → доставка → простой дольше FRESH_DOCUMENT_MS без yield → следующий claim даёт freshness-reload."
       ],
       "expected_commit_message": "feat: свежесть серверной страницы перед доставкой",
-      "task_brief": "Свежесть серверной страницы перед отправкой. Служба отправляет только из документа, отражающего актуальный разговор после ходов на других клиентах. Требования: Перед claim (кроме startup-context) нужен busy, либо первичное наблюдение документа и аттестация панели не старше FRESH_DOCUMENT_MS (20 с), либо это первый claim в документе, только что перезагруженном Control ради свежести, без признаков чужого хода; после первого claim действует только busy/возраст. Иначе claim.deferred freshness-reload без попытки и расхода бюджета, затем безопасная перезагрузка и повторная аттестация; время загрузки и монтирования в окно свежести не входит. safeReload открывает только канонический chatUrl без q; запрещён при composer.inFlight, SDK в полёте, навигации старта, недавнем ручном вводе во встроенном окне; непустой черновик — freshness-conflict draft-present без очистки. Перезагрузка не меняет attempt, ticket, UNKNOWN, бюджет, Stop и допуск; не чаще одного раза на FRESH_DOCUMENT_MS; правило «после accepted следующий pending сразу» сохраняется для свежего документа. Подряд не более 3 перезагрузок ради свежести без успешного claim, затем оранжевая причина «Серверная страница не готова к доставке»; fixture с монтированием панели дольше FRESH_DOCUMENT_MS доставляет без цикла. safeReload запрещён, пока у участника открыта базовая линия подтверждения (handlingGate/yielded.page без reply_observed), — нейтральная причина «ожидаем подтверждение конца хода»; REBASE снимает этот запрет только при возможности переноса. Fixture: перезагрузка Control → доставка → простой дольше FRESH_DOCUMENT_MS без yield → следующий claim даёт freshness-reload. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: conversation-freshness, startup-recovery, sdk-recovery-targeted, intake-sdk-scenario, prepared-flow-cycle, architecture.",
+      "task_brief": "Свежесть серверной страницы перед отправкой. Служба отправляет только из документа, отражающего актуальный разговор после ходов на других клиентах. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: conversation-freshness, startup-recovery, sdk-recovery-targeted, intake-sdk-scenario, prepared-flow-cycle, architecture.",
       "context_pack": {
         "documents": [
           {
@@ -459,7 +459,7 @@
         "Запрет FRESH на перезагрузку при открытой базовой линии снимается только когда перенос возможен (нативные отпечатки)."
       ],
       "expected_commit_message": "feat: перенос подтверждения хода после перезагрузки",
-      "task_brief": "Перенос подтверждения хода на новый документ. Перезагрузка и ход на другом клиенте не должны оставлять обработанное сообщение без reply_observed. Требования: После перезагрузки, выполненной Control, и восстановления renderer незакрытая базовая линия переносится на новый документ: двойное наблюдение (≥2 с) stopped/!busy/commandsIdle/canSend/lastMessageRole=assistant с нативными отпечатками → reply_observed; событие freshness.rebased. Без нативных отпечатков перенос не выполняется, а перезагрузка при незакрытом подтверждении запрещена с нейтральной причиной «ожидаем подтверждение конца хода». yield (read без yield не закрывает gate) без busy/роста assistantRevision серверной страницы 15 с запускает безопасную перезагрузку; пока gate открыт и новый документ не показал конец хода, перезагрузка повторяется с интервалом 20, 40, 80 с … до 5 минут; fixtures «ход на другом клиенте» и «перезагрузка во время ещё идущего чужого хода» доходят до acceptance и следующего шага без вмешательства; ветка после restart backend сохранена. Запрет FRESH на перезагрузку при открытой базовой линии снимается только когда перенос возможен (нативные отпечатки). Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: conversation-freshness, intake-sdk-scenario, prepared-flow-cycle, sdk-recovery-targeted.",
+      "task_brief": "Перенос подтверждения хода на новый документ. Перезагрузка и ход на другом клиенте не должны оставлять обработанное сообщение без reply_observed. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: conversation-freshness, intake-sdk-scenario, prepared-flow-cycle, sdk-recovery-targeted.",
       "context_pack": {
         "documents": [
           {
@@ -517,7 +517,7 @@
         "«Продолжить» после свежего наблюдения документа снимает конфликт запомненного хода; multiple на том же ходе больше не поднимает конфликт, на более новом ходе — поднимает; unknown не блокирует и журналируется."
       ],
       "expected_commit_message": "feat: обнаружить ветвление разговора",
-      "task_brief": "Обнаружение ветвления разговора. Ветвь после серверной доставки должна быть видна и останавливать доставку участнику до решения пользователя. Требования: Observer сообщает turnVariant последнего пользовательского хода single|multiple|unknown; публичные DOM-экспорты сохранены, DOM не меняется. multiple после reply_observed доставленного службой сообщения → freshness-conflict branch с запомненным нативным отпечатком хода: план ставится на «Паузу» штатной программной паузой executionControl.pause через coordination.mjs (как при unknown), кнопка показывает «Продолжить», оранжевая причина с инструкцией выбрать ветку; outbox текущих ходов сохраняется, UNKNOWN/история сохранены, повторной отправки нет. «Продолжить» после свежего наблюдения документа снимает конфликт запомненного хода; multiple на том же ходе больше не поднимает конфликт, на более новом ходе — поднимает; unknown не блокирует и журналируется. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: conversation-freshness, startup-recovery, intake-sdk-scenario, plan-review-ui.",
+      "task_brief": "Обнаружение ветвления разговора. Ветвь после серверной доставки должна быть видна и останавливать доставку участнику до решения пользователя. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: conversation-freshness, startup-recovery, intake-sdk-scenario, plan-review-ui.",
       "context_pack": {
         "documents": [
           {
@@ -571,7 +571,7 @@
         "Python-проверки выполняются без bytecode (PYTHONDONTWRITEBYTECODE=1 или -B)."
       ],
       "expected_commit_message": "feat: диагностика identity клиентов",
-      "task_brief": "Диагностика identity клиентов. Живая проверка должна различать кандидатов причины нештатности второго клиента без раскрытия данных. Требования: Для вызовов панели и модели журналируются только имена ключей _meta хоста и префикс 8 символов identityHash с источником, panel_instance_id и delivery_role; значения metadata, тексты, q/ticket и секреты не сохраняются. Отказ BINDING в инструменте модели пишет identity.unmatched в backend-events.jsonl без WAL; экспорт O дополнительно включает identity.* записи текущего boot за интервал времени своего run (только префиксы, имена ключей, источник, время); тест: несовпавшая identity модели → запись видна в экспорте O. Python-проверки выполняются без bytecode (PYTHONDONTWRITEBYTECODE=1 или -B). Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: executor-channel, delivery-ownership, sdk-recovery-targeted.",
+      "task_brief": "Диагностика identity клиентов. Живая проверка должна различать кандидатов причины нештатности второго клиента без раскрытия данных. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: executor-channel, delivery-ownership, sdk-recovery-targeted.",
       "context_pack": {
         "documents": [
           {
@@ -627,7 +627,7 @@
         "Sidebar не дублирует ленту и причины; новых кнопок, режимов и панелей нет; закрытая карточка без изменений."
       ],
       "expected_commit_message": "feat: состояния серверной доставки в интерфейсе",
-      "task_brief": "Состояния доставки в текущих действиях. Пользователь видит, кто доставляет и что требует его действия, без новых кнопок и дублей. Требования: Нейтральные причины owner-unavailable, freshness-reload, «ожидаем подтверждение конца хода»; оранжевые freshness-conflict draft-present, branch (с паузой плана) и «Серверная страница не готова к доставке» с выполнимой инструкцией. Sidebar не дублирует ленту и причины; новых кнопок, режимов и панелей нет; закрытая карточка без изменений. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: delivery-ui-targeted, chatgpt-plugin, closed-card-targeted.",
+      "task_brief": "Состояния доставки в текущих действиях. Пользователь видит, кто доставляет и что требует его действия, без новых кнопок и дублей. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: delivery-ui-targeted, chatgpt-plugin, closed-card-targeted.",
       "context_pack": {
         "documents": [
           {
@@ -678,7 +678,7 @@
         "Пауза → установка → обновление коннектора → workflow_pilot_panel → Продолжить и обратный путь проверены fixture-сценарием до уровня протокола."
       ],
       "expected_commit_message": "test: совместимость и откат протокола 9",
-      "task_brief": "Совместимость, миграция и откат на 0.5.41. Откат должен быть настоящим: данные 0.6.0 читаются версией 0.5.41, переход на протокол 9 описан. Требования: Фиксированная копия хранилища/валидатора communication из c7cc8be читает и восстанавливает WAL, записанный 0.6.0 с событиями delivery/freshness/identity и новыми полями, без отказа и потери сообщений/UNKNOWN. Схемы WAL, WorkspaceSessions, Kit, devices и журнала операций не изменены; если обнаружена несовместимость — она исправляется в этой задаче, а не скрывается. Пауза → установка → обновление коннектора → workflow_pilot_panel → Продолжить и обратный путь проверены fixture-сценарием до уровня протокола. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: shared-conversation-compat, panel-resource-targeted.",
+      "task_brief": "Совместимость, миграция и откат на 0.5.41. Откат должен быть настоящим: данные 0.6.0 читаются версией 0.5.41, переход на протокол 9 описан. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: shared-conversation-compat, panel-resource-targeted.",
       "context_pack": {
         "documents": [
           {
@@ -795,7 +795,7 @@
         "Kit не менялся; если изменения Kit потребовались — добавлены kit-check и kit-assignments."
       ],
       "expected_commit_message": "test: регрессия выпуска 0.6.0",
-      "task_brief": "Полная регрессия выпуска. Подтвердить, что существующие функции сохранены до DOCS и сборки. Требования: Все назначенные проверки PASS без ослабления assertions; найденные регрессии исправлены в этой задаче с адресными тестами. Kit не менялся; если изменения Kit потребовались — добавлены kit-check и kit-assignments. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: unit-all, electron-smoke, architecture, chatgpt-plugin, executor-channel, native-startup-dock, native-startup-theme, orchestrator-startup, startup-recovery, search-extension-startup, plan-review-ui, migration-compatibility, force-stop.",
+      "task_brief": "Полная регрессия выпуска. Подтвердить, что существующие функции сохранены до DOCS и сборки. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: unit-all, electron-smoke, architecture, chatgpt-plugin, executor-channel, native-startup-dock, native-startup-theme, orchestrator-startup, startup-recovery, search-extension-startup, plan-review-ui, migration-compatibility, force-stop.",
       "context_pack": {
         "documents": [
           {
@@ -861,7 +861,7 @@
         "Живое поведение настоящего ChatGPT и native Windows/Linux отмечены NOT_RUN; DOCS завершена до production build."
       ],
       "expected_commit_message": "docs: актуализация документов выпуска 0.6.0",
-      "task_brief": "Актуализация всех документов проекта (выпуск 0.6.0). Перенести результат в действующие контракты до production build. Требования: Контракты модулей описывают владельца доставки, наблюдателей, свежесть, перенос подтверждения, ветвление, диагностику и переход/откат протокола 9; ограничение «второй браузер того же разговора не штатный» в backend.md и OVERVIEW сохраняется действующим до PASS шагов 1–4 живой проверки, новый контракт описан рядом с пометкой NOT_RUN. Выпущенные части двух spec перенесены и удалены с точной Git blob ссылкой; followup с невыпущенными требованиями сохранён; сценарий живой проверки — docs/acceptance/shared-conversation-mac.md; каждый документ ≤ 28000 байт. Живое поведение настоящего ChatGPT и native Windows/Linux отмечены NOT_RUN; DOCS завершена до production build. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: схема и состав документационного коммита.",
+      "task_brief": "Актуализация всех документов проекта. Перенести результат в действующие контракты до production build. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: схема и состав документационного коммита.",
       "context_pack": {
         "documents": [
           {
@@ -910,7 +910,7 @@
         "Три ОС после DOCS, семь assets, общий sourceCommit, manifest/SHA/size/composition/macOS подпись подтверждены."
       ],
       "expected_commit_message": "delivery: собрать macos windows linux",
-      "task_brief": "Собрать macOS Windows Linux. Проверенный полный комплект из одного sourceCommit. Требования: Перед каждой production/package проверкой cache preflight tools/codex-app-server-mcp без перехода по симлинкам, Python без bytecode. Три ОС после DOCS, семь assets, общий sourceCommit, manifest/SHA/size/composition/macOS подпись подтверждены. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: three-platform-release.",
+      "task_brief": "Собрать macOS Windows Linux. Проверенный полный комплект из одного sourceCommit. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: three-platform-release.",
       "context_pack": {
         "documents": [
           {
@@ -957,7 +957,7 @@
         "При BACKEND_RUNNING verified pending; не закрывать/не перезапускать приложение и backend, не менять donor; отчёт напоминает о переходе на протокол 9 (пауза, обновление коннектора, workflow_pilot_panel)."
       ],
       "expected_commit_message": "delivery: установить выпуск на этот mac",
-      "task_brief": "Установить выпуск на этот Mac. Поставить готовый комплект с rollback без остановки службы. Требования: Applications и checkout штатным installer: версии/manifest/подпись/rollback; без пересборки и переподписи. При BACKEND_RUNNING verified pending; не закрывать/не перезапускать приложение и backend, не менять donor; отчёт напоминает о переходе на протокол 9 (пауза, обновление коннектора, workflow_pilot_panel). Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: release-installed.",
+      "task_brief": "Установить выпуск на этот Mac. Поставить готовый комплект с rollback без остановки службы. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: release-installed.",
       "context_pack": {
         "documents": [
           {
@@ -1005,7 +1005,7 @@
         "Живая проверка и native Windows/Linux не объявляются пройденными; план остаётся READY_FOR_ACCEPTANCE до приёмки."
       ],
       "expected_commit_message": "delivery: опубликовать выпуск на github",
-      "task_brief": "Опубликовать выпуск на GitHub. Публичная доставка и проверка remote main. Требования: Tag равен sourceCommit, семь публичных assets проверены по SHA/size, remote main и итоговый push подтверждены. Живая проверка и native Windows/Linux не объявляются пройденными; план остаётся READY_FOR_ACCEPTANCE до приёмки. Полностью соблюдать docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md и AGENTS.md. Никаких новых кнопок, режимов, переключателей, DOM/клавиатурного Send, приватных endpoints ChatGPT, подмены User-Agent и внедрения панелей в DOM ChatGPT. Donor и рабочий профиль не менять; модельные агенты не запускать; живую проверку выполняет пользователь. Проверки только назначенные: github-release.",
+      "task_brief": "Опубликовать выпуск на GitHub. Публичная доставка и проверка remote main. Выполнить все критерии приёмки этой задачи по docs/planning/shared-conversation-mac.md и docs/planning/shared-conversation-mac-freshness.md с соблюдением AGENTS.md; без новых кнопок, режимов, DOM Send, подмены User-Agent и изменений donor/рабочего профиля; живую проверку выполняет пользователь. Проверки только назначенные: github-release.",
       "context_pack": {
         "documents": [
           {
@@ -1051,7 +1051,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1297
+Revision: 1298
 
 ## Цель
 
