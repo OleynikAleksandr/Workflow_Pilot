@@ -3,7 +3,7 @@ import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
-import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic} from '../../contracts/plugin-communication.mjs';
+import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic,deliveryView} from '../../contracts/plugin-communication.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE,NOTIFICATION_RULE,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
@@ -375,6 +375,11 @@ export class PluginCommunication {
       && input.permission_generation===member.generation,'STOPPED','Связь остановлена или срок разрешения истёк.');
     return context;
   }
+  // The delivery role of one bound workflow panel instance.
+  deliveryOf(run,member,panelId){
+    const panel=panelId&&this.panels.get(panelId);
+    return run.mode==='workflow'&&panel?.runId===run.id&&panel.memberId===member.id?deliveryView('owner',0):{};
+  }
   _join(input) {
     requireValue(identifier(input.run_id) && ['O','E'].includes(input.role),'INPUT','Укажите run_id и роль O/E.');
     const identity=communicationIdentity(input.metadata);
@@ -419,6 +424,7 @@ export class PluginCommunication {
       startup:startup?{...startup,launch:this.workflow.observe(member.target)?.startupLaunch??null}:null,
       ...(run.mode==='workflow'?this.choiceOf(run,member):{}),
       ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:this.workflow.livePanel(run,member)}:{}),
+      ...this.deliveryOf(run,member,input.panel_instance_id),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:expiresAt,
       seq:run.events.length,messages:run.messages.filter(m=>m.recipient_id===member.id||m.sender_id===member.id)
@@ -580,7 +586,8 @@ export class PluginCommunication {
     const {run,member}=this.member(input),pending=run.mode==='workflow'?this.workflow.pending(run,member):run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
     const end=Math.min(input.after_seq+100,run.events.length),events=this.visibleEvents(run,member,run.events.slice(input.after_seq,end));
     return {message_id:pending?.message_id??null,events,seq:end,expires_at:this.panels.get(input.panel_instance_id)?.expiresAt??0,
-      ...(run.mode==='workflow'?{work_progress:this.progressOf(member),...this.choiceOf(run,member)}:{}),stopped:(run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped)||member.generation!==input.permission_generation,critical_error:this.critical};
+      ...(run.mode==='workflow'?{work_progress:this.progressOf(member),...this.choiceOf(run,member)}:{}),
+      ...this.deliveryOf(run,member,input.panel_instance_id),stopped:(run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped)||member.generation!==input.permission_generation,critical_error:this.critical};
   }
   async _claim(input) {
     const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);

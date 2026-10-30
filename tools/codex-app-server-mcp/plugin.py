@@ -44,6 +44,7 @@ class CommunicationBinding(BaseModel):
     run_id: RunId
     participant_id: ParticipantId
     panel_instance_id: Annotated[str, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Fresh id for this mounted panel; never restored after reload.")]
+    frame_instance_id: Annotated[str | None, Field(pattern=r"^[0-9a-fA-F-]{36}$", description="Immutable id of the panel frame for its whole lifetime; the backend attests it only inside its own page. Never a claim of delivery ownership.")] = None
     protocol_version: Annotated[int, Field(description="Protocol implemented by the staged panel.")]
     build_id: Annotated[str, Field(max_length=128, description="Exact build of the staged panel.")]
     permission_generation: Annotated[int | None, Field(ge=0, description="Generation returned by enable; required before delivery.")] = None
@@ -293,7 +294,7 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_bind", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})
     async def bind(binding: Binding, ctx: Context, message_supported: Annotated[bool, Field(description="True only when the connected SDK exposes openai/message.")] = False) -> CallToolResult:
-        """App-only compare fresh host identity with this session's registration and report SDK readiness. Does not grant plan permission. Rebind each new instance; a historical tool result is not authorization."""
+        """App-only compare fresh host identity with this session's registration and report SDK readiness. Does not grant plan permission. Rebind each new instance; a historical tool result is not authorization. delivery_role is decided by the backend: owner only for the panel attested in its own page, observer for every other client; observers display progress and accept explicit user choice and Stop only."""
         return await communication("bind", ctx, binding=binding, message_supported=message_supported)
 
     @mcp.tool(name="workflow_communication_recover", annotations=READ, meta={"ui": {"visibility": ["app"]}})
@@ -327,7 +328,7 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_claim", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def claim(binding: Binding, message_id: MessageId, ctx: Context) -> CallToolResult:
-        """App-only consume-once delivery claim. A lost claim result is never retried or returned to pending. Requires current permission and fresh matching host metadata."""
+        """App-only consume-once delivery claim. A lost claim result is never retried or returned to pending. Requires current permission, fresh matching host metadata and the delivery owner panel; an observer receives PLUGIN_COMMUNICATION_DELIVERY_OBSERVER and never sends."""
         return await communication("claim", ctx, binding=binding, message_id=message_id)
 
     @mcp.tool(name="workflow_communication_choose", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
@@ -339,12 +340,12 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_claim_ready", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def claim_ready(binding: Binding, message_id: MessageId, ctx: Context) -> CallToolResult:
-        """App-only atomic claim and final identity/permission/admission check. One SDK invocation per returned attempt. Only the backend may authorize up to three notifications of the same durable message_id; never repeat a claim or a task effect yourself. Legacy unknown sends remain blocked."""
+        """App-only atomic claim and final identity/permission/admission check. One SDK invocation per returned attempt. Only the backend may authorize up to three notifications of the same durable message_id; never repeat a claim or a task effect yourself. Legacy unknown sends remain blocked. Observer panels receive PLUGIN_COMMUNICATION_DELIVERY_OBSERVER without an attempt."""
         return await communication("claimReady", ctx, binding=binding, message_id=message_id)
 
     @mcp.tool(name="workflow_communication_verify", annotations=LAUNCH, meta={"ui": {"visibility": ["app"]}})
     async def verify(binding: Binding, message_id: MessageId, delivery_attempt_id: MessageId, ctx: Context) -> CallToolResult:
-        """App-only final identity/permission check and one-shot send intent immediately before SDK target:active/send:true. Missing or changed host metadata forbids Send. This is not proof that the SDK was invoked."""
+        """App-only final identity/permission check and one-shot send intent immediately before SDK target:active/send:true. Missing or changed host metadata forbids Send; so does an observer role (PLUGIN_COMMUNICATION_DELIVERY_OBSERVER). This is not proof that the SDK was invoked."""
         return await communication("verify", ctx, binding=binding, message_id=message_id, delivery_attempt_id=delivery_attempt_id)
 
     @mcp.tool(name="workflow_communication_report", annotations=CONNECT, meta={"ui": {"visibility": ["app"]}})

@@ -323,6 +323,17 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.match(incompatible.message,/0\.5\.2-communication-1 \(протокол 1\)/);
   assert.ok(incompatible.message.includes(COMMUNICATION_BUILD));
   assert.match(incompatible.message,/Обновите инструменты подключения/);
+  // A mounted protocol 8 iframe receives the existing version refusal naming both builds.
+  const previous=(await call('bind',{binding:{...binding,build_id:'0.5.41-communication-8',protocol_version:8}})).structuredContent.error;
+  assert.equal(previous.code,'PLUGIN_COMMUNICATION_VERSION');
+  assert.match(previous.message,/0\.5\.41-communication-8 \(протокол 8\)/);
+  assert.match(previous.message,/0\.6\.0-communication-9 \(протокол 9\)/);
+  assert.equal(COMMUNICATION_PROTOCOL,9);assert.equal(COMMUNICATION_BUILD,'0.6.0-communication-9');
+  const schema=tools.find(t=>t.name==='workflow_communication_bind').inputSchema;
+  assert.ok(JSON.stringify(schema).includes('frame_instance_id'),'bind accepts the immutable frame id');
+  for(const suffix of ['claim','claim_ready','verify'])
+    assert.match(tools.find(t=>t.name==='workflow_communication_'+suffix).description,/PLUGIN_COMMUNICATION_DELIVERY_OBSERVER/);
+  assert.match(tools.find(t=>t.name==='workflow_communication_bind').description,/observer/);
   assert.equal((await call('bind',{binding})).isError,false);
   assert.equal((await call('enable',{binding,message_supported:false})).structuredContent.error.code,'PLUGIN_COMMUNICATION_UNSUPPORTED');
   const enabled=(await call('enable',{binding,message_supported:true})).structuredContent;
@@ -356,6 +367,10 @@ test('workflow panel automatically binds its current assignment after late SDK a
   assert.equal(ui.calls.filter(c=>c==='workflow_communication_enable').length,0);assert.equal(ui.messages.length,0);
   const participant=(await f.plugin.communication.recover({metadata})).participants.find(p=>p.mode==='workflow');
   assert.equal((await f.plugin.communication.status({...participant,metadata})).channel_ready,true);
+  const bound=[...f.plugin.communication.panels.keys()][0];
+  const synced=await f.plugin.communication.sync({...participant,metadata,panel_instance_id:bound,build_id:COMMUNICATION_BUILD,
+    protocol_version:COMMUNICATION_PROTOCOL,message_supported:true});
+  assert.ok(['owner','observer'].includes(synced.delivery_role));assert.ok(Number.isSafeInteger(synced.delivery_owner_generation));
   const next=await communicationHtml(t,c,{initialToolResult:{jsonrpc:'2.0',method:'ui/notifications/tool-result',params:{structuredContent:{registration:{run_id:'stale'}}}}});
   await eventually(()=>next.$('binding').textContent.includes('подтверждена'));
   assert.equal(next.$('participant').value,participant.participant_id);assert.equal(next.messages.length,0);

@@ -36,6 +36,16 @@ export function communicationMessageComplete(message) {
   if(message.intent&&['claimed','unknown','rejected'].includes(message.delivery)&&!message.resolved_by_read)return false;
   return !!(message.reply_observed||message.superseded);
 }
+// Protocol 9: only the panel attested inside the participant's backend page
+// delivers. Every other mounted panel of the same identity is an observer.
+export const DELIVERY_ROLES=Object.freeze(['owner','observer']);
+export const DELIVERY_OBSERVER_CODE='PLUGIN_COMMUNICATION_DELIVERY_OBSERVER';
+export const deliveryObserverError=()=>Object.assign(assignmentError('DELIVERY_OBSERVER',
+  'Доставку выполняет служба Workflow Pilot. Эта панель — наблюдатель и не отправляет уведомления.'),{reason:'delivery-observer'});
+export function deliveryView(role,generation){
+  assignmentCheck(DELIVERY_ROLES.includes(role)&&Number.isSafeInteger(generation)&&generation>=0,'INPUT','Некорректная роль доставки.');
+  return {delivery_role:role,delivery_owner_generation:generation};
+}
 export const ASSIGNMENT_KINDS=Object.freeze(['task','context_request','context','question','clarification','decision','result','revision_request','acceptance']);
 export const assignmentError=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 export const assignmentCheck=(value,code,message)=>{if(!value)throw assignmentError(code,message);};

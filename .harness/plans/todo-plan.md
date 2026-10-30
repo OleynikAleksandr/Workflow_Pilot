@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1299,
+  "plan_revision": 1301,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -128,8 +128,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "CONTRACT",
@@ -144,7 +144,8 @@
         "tools/codex-app-server-mcp/plugin.py",
         "tests/chatgpt-plugin.test.mjs",
         "tests/codex-app-server-mcp.test.mjs",
-        "tests/panel-resource-upgrade.test.mjs"
+        "tests/panel-resource-upgrade.test.mjs",
+        "src/control/plugin/communication.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -176,7 +177,16 @@
         "include_last_completed_task": false,
         "dependency_task_ids": []
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "src/control/plugin/communication.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -992,7 +1002,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1299
+Revision: 1301
 
 ## Цель
 
@@ -1010,10 +1020,10 @@ Revision: 1299
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Внешняя разработка Claude Code в текущем checkout; задачи последовательно меняют общие модули доставки; модельное делегирование запрещено. Claude Review через Kit разрешён.
 
-- [TODO] CONTRACT: Контракт протокола 9 и версия 0.6.0 — Ожидает
-  - Git Commit: [PENDING] feat: контракт протокола 9 и версия 0.6.0
+- [DONE] CONTRACT: Контракт протокола 9 и версия 0.6.0 — Завершено
+  - Git Commit: [DONE] feat: контракт протокола 9 и версия 0.6.0
   - Reference: shared-conversation-mac / CONTRACT / implementation
-  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/plugin-communication.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/plugin-communication.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, src/control/plugin/communication.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] ATTEST: Аттестация собственного кадра панели в Execution — Ожидает
