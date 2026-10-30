@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1361,
+  "plan_revision": 1362,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -143,7 +143,7 @@
       },
       {
         "path": "docs/planning/startup-freshness-loop.md",
-        "required": true,
+        "required": false,
         "revision": "56c9f913bba43ba053547a0ed511d98707bc0926"
       },
       {
@@ -1854,7 +1854,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1361
+Revision: 1362
 
 ## Цель
 
