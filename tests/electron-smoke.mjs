@@ -26,6 +26,7 @@ import { measureEventRuntimeBaseline } from './event-runtime-baseline.mjs';
 import {ExecutionFacade,ChatGPTSearchExtension} from '../src/execution/facade.mjs';
 import {verifyCurrentActionsLayout} from './fixtures/current-actions-layout.mjs';
 import {bridge as pluginFixtureBridge,client as pluginFixtureClient,communicationHtml} from './fixtures/plugin-host.mjs';
+import {attestBoundPanels} from './fixtures/panel-attestation.mjs';
 import {saveReview,readReview} from '@webpilot/workflow-kit/lib/review-state';
 import {COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/contracts/backend.mjs';
 import {userChoseMode} from './fixtures/execution-mode.mjs';
@@ -268,6 +269,8 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
     promise.then(()=>fixturePending.delete(id),()=>fixturePending.delete(id));return promise;
   };};
   trace(plugin.communication,'mutate');trace(plugin.communication,'modelInput');trace(plugin,'participantTarget');
+  // Smoke panels run outside the fixture page frames; the fixture page attests the panels it binds.
+  plugin.communication.ownership.attestPort=attestBoundPanels(()=>plugin.communication);
   fixtureBootstrap=async text=>{
     fixtureBootstrapStage='opening-panel';
     assert.match(text,/^Открой панель Workflow Pilot:/);assert.doesNotMatch(text,/Раздел 1:|wp-request-/);

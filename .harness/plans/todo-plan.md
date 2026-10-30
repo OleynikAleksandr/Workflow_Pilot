@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1319,
+  "plan_revision": 1321,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -813,8 +813,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "VERIFY",
@@ -825,9 +825,14 @@
       ],
       "functional_paths": [
         "tests/automatic-agent-dialogue.test.mjs",
-        "tests/fixtures/automatic-agent-dialogue.mjs"
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/electron-smoke.mjs"
       ],
-      "documentation_paths": [],
+      "documentation_paths": [
+        "docs/planning/shared-conversation-mac.md",
+        "docs/planning/shared-conversation-mac-freshness.md",
+        "docs/acceptance/shared-conversation-mac.md"
+      ],
       "verification_ids": [
         "unit-all",
         "electron-smoke",
@@ -868,7 +873,13 @@
           "COMPAT"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "docs/planning/shared-conversation-mac.md",
+        "docs/planning/shared-conversation-mac-freshness.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "tests/electron-smoke.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1107,7 +1118,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1319
+Revision: 1321
 
 ## Цель
 
@@ -1185,10 +1196,10 @@ Revision: 1319
   - Файлы: tests/shared-conversation-compat.test.mjs, tests/fixtures/released-communication-0.5.41/communication-store.mjs, tests/migration-compatibility.test.mjs, src/execution/plugin/communication-store.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: UI
-- [TODO] VERIFY: Полная регрессия выпуска — Ожидает
-  - Git Commit: [PENDING] test: регрессия выпуска 0.6.0
+- [DONE] VERIFY: Полная регрессия выпуска — Завершено
+  - Git Commit: [DONE] test: регрессия выпуска 0.6.0
   - Reference: shared-conversation-mac / VERIFY / implementation
-  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs
+  - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/electron-smoke.mjs, docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md, docs/acceptance/shared-conversation-mac.md
   - Параллельность: исключительное выполнение
   - Зависимости: COMPAT
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
