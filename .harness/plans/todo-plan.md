@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1386,
+  "plan_revision": 1387,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Первая команда каждой сессии Workflow Pilot (обсуждение, оркестратор, исполнитель) отправляется доверенным CDP-вводом в проверенный документ вместо q-адреса; выпуск 0.6.4 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Для всех ролей первая команда отправляется CDP-вводом в проверенный документ; навигаций ?q= нет.",
@@ -45,7 +45,12 @@
       "tests/electron-smoke.mjs",
       "tests/fixtures/search-extension-electron.cjs",
       "scripts/check-search-extension.mjs",
-      "src/control/projects/service.mjs"
+      "src/control/projects/service.mjs",
+      "src/execution/plugin/communication-store.mjs",
+      "src/control/plugin/communication.mjs",
+      "src/frontend/plugin/launch.mjs",
+      "tests/plugin-communication-store.test.mjs",
+      "tests/plugin-communication.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/cdp-startup-input.md",
@@ -62,7 +67,8 @@
       "docs/modules/sdk-messaging.md",
       "docs/modules/chatgpt-search-extension.md",
       "docs/acceptance/chat-only-startup.md",
-      "docs/acceptance/shared-conversation-mac.md"
+      "docs/acceptance/shared-conversation-mac.md",
+      "docs/planning/communication-journal-growth.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -81,6 +87,11 @@
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/communication-journal-growth.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -318,6 +329,161 @@
       ],
       "expected_commit_message": "feat: Опубликовать выпуск 0.6.4 на GitHub",
       "actual_files": []
+    },
+    {
+      "id": "JOURNAL",
+      "title": "Линейный рост журнала связи",
+      "why": "Прогон T_003 остановился на пределе 512 МиБ файла журнала.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/execution/plugin/communication-store.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/plugin-communication-store.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/communication-journal-growth.md"
+      ],
+      "verification_ids": [
+        "sdk-recovery-targeted",
+        "shared-conversation-compat"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Сжатие журнала в снимок совместимого формата: рост файла линейный, снимок читают текущий загрузчик и валидатор 0.5.41.",
+        "Потоковое чтение журнала без строки размером с файл; хвост и повреждения дают прежние коды.",
+        "clientEvents хранит отпечатки, не более 1024; тайминги Kit реже; диагностика после 16000 событий не останавливает прогон.",
+        "Пауза повторов ожидания панели растёт до 30 с; версия 0.6.5."
+      ],
+      "expected_commit_message": "feat: Линейный рост журнала связи",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "JOURNAL",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "JOURNAL"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/communication-journal-growth.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта"
+    },
+    {
+      "id": "RELEASE-2",
+      "title": "Собрать macOS Windows Linux 0.6.5",
+      "why": "Проверенный полный комплект из одного sourceCommit.",
+      "dependencies": [
+        "JOURNAL",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/communication-journal-growth.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС после DOCS из одного sourceCommit, семь assets, manifest/SHA/подпись подтверждены; preflight кэша Python."
+      ],
+      "expected_commit_message": "feat: Собрать macOS Windows Linux 0.6.5",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "RELEASE-2",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "INSTALL-2",
+      "title": "Установить выпуск 0.6.5 на этот Mac",
+      "why": "Поставить готовый комплект с rollback без остановки службы.",
+      "dependencies": [
+        "RELEASE-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/communication-journal-growth.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer без пересборки и переподписи; при работающей службе verified pending."
+      ],
+      "expected_commit_message": "feat: Установить выпуск 0.6.5 на этот Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "INSTALL-2",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "PUBLISH-2",
+      "title": "Опубликовать выпуск 0.6.5 на GitHub",
+      "why": "Публичная доставка и проверка remote main.",
+      "dependencies": [
+        "INSTALL-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/communication-journal-growth.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Tag равен sourceCommit, семь assets проверены, remote main подтверждён; живая проверка не объявляется пройденной."
+      ],
+      "expected_commit_message": "feat: Опубликовать выпуск 0.6.5 на GitHub",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "PUBLISH-2",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -335,10 +501,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1386
+Revision: 1387
 
 ## Цель
 
@@ -372,11 +538,32 @@ Revision: 1386
   - Git Commit: [DONE] feat: Опубликовать выпуск 0.6.4 на GitHub
   - Reference: cdp-startup-input / PUBLISH / implementation
   - Файлы: release-manifest.json
+- [TODO] JOURNAL: Линейный рост журнала связи — Ожидает
+  - Git Commit: [PENDING] feat: Линейный рост журнала связи
+  - Reference: cdp-startup-input / JOURNAL / implementation
+  - Файлы: src/execution/plugin/communication-store.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/plugin-communication-store.test.mjs, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/communication-journal-growth.md
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: cdp-startup-input / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/communication-journal-growth.md
+- [TODO] RELEASE-2: Собрать macOS Windows Linux 0.6.5 — Ожидает
+  - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.5
+  - Reference: cdp-startup-input / RELEASE-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/communication-journal-growth.md
+- [TODO] INSTALL-2: Установить выпуск 0.6.5 на этот Mac — Ожидает
+  - Git Commit: [PENDING] feat: Установить выпуск 0.6.5 на этот Mac
+  - Reference: cdp-startup-input / INSTALL-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/communication-journal-growth.md
+- [TODO] PUBLISH-2: Опубликовать выпуск 0.6.5 на GitHub — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.6.5 на GitHub
+  - Reference: cdp-startup-input / PUBLISH-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/communication-journal-growth.md
 
 ## Context Pack For This Cycle
 
 - docs/planning/cdp-startup-input.md
 - docs/modules/chat-only-startup.md
 - docs/architecture/OVERVIEW.md
+- docs/planning/communication-journal-growth.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
