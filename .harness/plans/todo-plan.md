@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1345,
+  "plan_revision": 1346,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Один разговор O/E продолжается с любого клиента ChatGPT, автоматическую доставку выполняет только серверная страница backend; выпуск 0.6.0 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Автоматическую доставку участнику выполняет только аттестованная панель его серверной страницы; панели других клиентов — наблюдатели без SDK-отправок.",
@@ -106,7 +106,8 @@
       "docs/acceptance/shared-conversation-mac.md",
       "docs/modules/shared-conversation.md",
       "docs/planning/restored-startup-draft.md",
-      "docs/modules/chat-only-startup.md"
+      "docs/modules/chat-only-startup.md",
+      "docs/planning/startup-freshness-loop.md"
     ]
   },
   "baseline_commit": "05822a86a51b74e586e098cb477700fb64d7dd56",
@@ -137,6 +138,11 @@
         "path": "docs/planning/restored-startup-draft.md",
         "required": true,
         "revision": "98466f34cfb6632f81c0728d819f3097e3f720e2"
+      },
+      {
+        "path": "docs/planning/startup-freshness-loop.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -1401,6 +1407,215 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "FIRST-TASK",
+      "title": "Доставка первого поручения после q-старта",
+      "why": "Фоновый исполнитель после старта не получает поручение: перезагрузка свежести бесконечно отклоняется страницей с владельцем стартовой навигации.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/execution/browser/session-runtime.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/conversation-freshness.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/session-runtime.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/conversation-freshness.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-freshness-loop.md"
+      ],
+      "verification_ids": [
+        "conversation-freshness",
+        "startup-recovery",
+        "orchestrator-startup",
+        "sdk-recovery-targeted",
+        "shared-conversation-compat",
+        "chatgpt-plugin",
+        "delivery-ui-targeted"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "После привязки адреса отправленной попытки владелец стартовой навигации снят; safeReload выполняется, чужой токен владельца не снимает.",
+        "Документ собственного q-старта свеж для первой доставки в течение 5 минут; поручение доставляется без перезагрузки.",
+        "Отказ перезагрузки учитывается и журналируется с причиной; после лимита — freshness-unavailable с редким повтором, бесконечного цикла нет; версия 0.6.2."
+      ],
+      "expected_commit_message": "feat: Доставка первого поручения после q-старта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "FIRST-TASK",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "VERIFY-3",
+      "title": "Полная регрессия выпуска 0.6.2",
+      "why": "Подтвердить сохранность функций до DOCS-3 и сборки.",
+      "dependencies": [
+        "FIRST-TASK"
+      ],
+      "functional_paths": [
+        "tests/electron-smoke.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-freshness-loop.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture",
+        "chatgpt-plugin",
+        "executor-channel",
+        "native-startup-dock",
+        "native-startup-theme",
+        "orchestrator-startup",
+        "startup-recovery",
+        "search-extension-startup",
+        "plan-review-ui",
+        "migration-compatibility",
+        "force-stop"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Все назначенные проверки PASS без ослабления assertions; найденные регрессии исправлены адресно."
+      ],
+      "expected_commit_message": "feat: Полная регрессия выпуска 0.6.2",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "VERIFY-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "FIRST-TASK",
+        "VERIFY-3"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/startup-freshness-loop.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-3",
+      "title": "Собрать macOS Windows Linux 0.6.2",
+      "why": "Собрать macOS Windows Linux 0.6.2",
+      "dependencies": [
+        "VERIFY-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-freshness-loop.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС после DOCS-3 из одного sourceCommit, семь assets, manifest/SHA/подпись подтверждены; preflight кэша Python."
+      ],
+      "expected_commit_message": "feat: Собрать macOS Windows Linux 0.6.2",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "RELEASE-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-3",
+      "title": "Установить выпуск 0.6.2 на этот Mac",
+      "why": "Установить выпуск 0.6.2 на этот Mac",
+      "dependencies": [
+        "RELEASE-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-freshness-loop.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer без пересборки и переподписи; при работающей службе verified pending."
+      ],
+      "expected_commit_message": "feat: Установить выпуск 0.6.2 на этот Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "INSTALL-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-3",
+      "title": "Опубликовать выпуск 0.6.2 на GitHub",
+      "why": "Опубликовать выпуск 0.6.2 на GitHub",
+      "dependencies": [
+        "INSTALL-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/startup-freshness-loop.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Tag равен sourceCommit, семь assets проверены, remote main подтверждён; живая проверка не объявляется пройденной."
+      ],
+      "expected_commit_message": "feat: Опубликовать выпуск 0.6.2 на GitHub",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "PUBLISH-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1425,10 +1640,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1345
+Revision: 1346
 
 ## Цель
 
@@ -1572,6 +1787,42 @@ Revision: 1345
   - Файлы: release-manifest.json, docs/planning/restored-startup-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL-2, DOCS-2
+- [TODO] FIRST-TASK: Доставка первого поручения после q-старта — Ожидает
+  - Git Commit: [PENDING] feat: Доставка первого поручения после q-старта
+  - Reference: shared-conversation-mac / FIRST-TASK / implementation
+  - Файлы: src/execution/browser/session-runtime.mjs, src/control/context/context-session.mjs, src/control/plugin/conversation-freshness.mjs, src/control/workflow/dialogue-delivery.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/conversation-freshness.test.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/startup-freshness-loop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] VERIFY-3: Полная регрессия выпуска 0.6.2 — Ожидает
+  - Git Commit: [PENDING] feat: Полная регрессия выпуска 0.6.2
+  - Reference: shared-conversation-mac / VERIFY-3 / implementation
+  - Файлы: tests/electron-smoke.mjs, docs/planning/startup-freshness-loop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FIRST-TASK
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: shared-conversation-mac / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-freshness-loop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: FIRST-TASK, VERIFY-3
+- [TODO] RELEASE-3: Собрать macOS Windows Linux 0.6.2 — Ожидает
+  - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.2
+  - Reference: shared-conversation-mac / RELEASE-3 / implementation
+  - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: VERIFY-3, DOCS-3
+- [TODO] INSTALL-3: Установить выпуск 0.6.2 на этот Mac — Ожидает
+  - Git Commit: [PENDING] feat: Установить выпуск 0.6.2 на этот Mac
+  - Reference: shared-conversation-mac / INSTALL-3 / implementation
+  - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-3, DOCS-3
+- [TODO] PUBLISH-3: Опубликовать выпуск 0.6.2 на GitHub — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.6.2 на GitHub
+  - Reference: shared-conversation-mac / PUBLISH-3 / implementation
+  - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-3, DOCS-3
 
 ## Context Pack For This Cycle
 
@@ -1580,5 +1831,6 @@ Revision: 1345
 - docs/planning/shared-conversation-mac-freshness.md
 - docs/planning/shared-backend-mobile-followup.md
 - docs/planning/restored-startup-draft.md
+- docs/planning/startup-freshness-loop.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
