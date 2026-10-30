@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1391,
+  "plan_revision": 1393,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -455,13 +455,16 @@
         "Три ОС после DOCS из одного sourceCommit, семь assets, manifest/SHA/подпись подтверждены; preflight кэша Python."
       ],
       "expected_commit_message": "feat: Собрать macOS Windows Linux 0.6.5",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "RELEASE-2",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-2",
@@ -542,7 +545,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1391
+Revision: 1393
 
 ## Цель
 
@@ -584,8 +587,8 @@ Revision: 1391
   - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-2 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/communication-journal-growth.md, README.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/sdk-messaging.md, docs/modules/shared-conversation.md, docs/modules/current-actions.md, docs/acceptance/shared-conversation-mac.md, docs/modules/chat-only-startup.md, docs/modules/release.md
-- [TODO] RELEASE-2: Собрать macOS Windows Linux 0.6.5 — Ожидает
-  - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.5
+- [DONE] RELEASE-2: Собрать macOS Windows Linux 0.6.5 — Завершено
+  - Git Commit: [DONE] feat: Собрать macOS Windows Linux 0.6.5
   - Reference: cdp-startup-input / RELEASE-2 / implementation
   - Файлы: release-manifest.json, docs/planning/communication-journal-growth.md
 - [TODO] INSTALL-2: Установить выпуск 0.6.5 на этот Mac — Ожидает
