@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1317,
+  "plan_revision": 1319,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -759,8 +759,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "COMPAT",
@@ -806,7 +806,11 @@
           "UI"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "tests/shared-conversation-compat.test.mjs",
+        "tests/fixtures/released-communication-0.5.41/communication-store.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1103,7 +1107,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1317
+Revision: 1319
 
 ## Цель
 
@@ -1175,8 +1179,8 @@ Revision: 1317
   - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/current-actions.mjs, src/frontend/plugin/panel.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/panel-dialogue-view.test.mjs, tests/sidebar.test.mjs, src/control/plugin/workflow-channel.mjs, tests/plugin-delivery-ownership.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: BRANCH, DIAG
-- [TODO] COMPAT: Совместимость, миграция и откат на 0.5.41 — Ожидает
-  - Git Commit: [PENDING] test: совместимость и откат протокола 9
+- [DONE] COMPAT: Совместимость, миграция и откат на 0.5.41 — Завершено
+  - Git Commit: [DONE] test: совместимость и откат протокола 9
   - Reference: shared-conversation-mac / COMPAT / implementation
   - Файлы: tests/shared-conversation-compat.test.mjs, tests/fixtures/released-communication-0.5.41/communication-store.mjs, tests/migration-compatibility.test.mjs, src/execution/plugin/communication-store.mjs
   - Параллельность: исключительное выполнение
