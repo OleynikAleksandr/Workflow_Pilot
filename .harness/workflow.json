@@ -543,6 +543,18 @@
       ],
       "timeout_ms": 300000,
       "evidence": "Проекции и вид панели/текущих действий: владелец/наблюдатель, нейтральные ожидания, оранжевые конфликты без дублей в sidebar."
+    },
+    {
+      "required": false,
+      "timeout_ms": 180000,
+      "id": "background-startup",
+      "kind": "test",
+      "executable": "node",
+      "args": [
+        "--test",
+        "tests/executor-background-startup.test.mjs"
+      ],
+      "evidence": "Настоящий Electron: скрытые фоновые страницы исполнителей стартуют через реальный observer и composer без выбора карточки; изолированный fixture без ChatGPT."
     }
   ],
   "budget": {
