@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1331,
+  "plan_revision": 1332,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -119,12 +119,12 @@
       },
       {
         "path": "docs/planning/shared-conversation-mac.md",
-        "required": true,
+        "required": false,
         "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
       },
       {
         "path": "docs/planning/shared-conversation-mac-freshness.md",
-        "required": true,
+        "required": false,
         "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
       },
       {
@@ -1387,7 +1387,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1331
+Revision: 1332
 
 ## Цель
 
