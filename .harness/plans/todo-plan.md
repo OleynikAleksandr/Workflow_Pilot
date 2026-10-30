@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1368,
+  "plan_revision": 1370,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -1825,14 +1825,15 @@
         "Штатный installer без пересборки и переподписи; при работающей службе verified pending."
       ],
       "expected_commit_message": "feat: Установить выпуск 0.6.3 на этот Mac",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "INSTALL-4",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-4",
@@ -1891,7 +1892,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1368
+Revision: 1370
 
 ## Цель
 
@@ -2089,8 +2090,8 @@ Revision: 1368
   - Файлы: release-manifest.json, docs/planning/start-not-sent-retry.md
   - Параллельность: исключительное выполнение
   - Зависимости: NOT-SENT, DOCS-4
-- [TODO] INSTALL-4: Установить выпуск 0.6.3 на этот Mac — Ожидает
-  - Git Commit: [PENDING] feat: Установить выпуск 0.6.3 на этот Mac
+- [DONE] INSTALL-4: Установить выпуск 0.6.3 на этот Mac — Завершено
+  - Git Commit: [DONE] feat: Установить выпуск 0.6.3 на этот Mac
   - Reference: shared-conversation-mac / INSTALL-4 / implementation
   - Файлы: release-manifest.json, docs/planning/start-not-sent-retry.md
   - Параллельность: исключительное выполнение
