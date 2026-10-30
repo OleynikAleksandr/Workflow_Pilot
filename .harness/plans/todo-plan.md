@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1382,
+  "plan_revision": 1384,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -262,8 +262,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "INSTALL",
@@ -287,7 +287,8 @@
       "acceptance_criteria": [
         "Штатный installer без пересборки и переподписи; при работающей службе verified pending."
       ],
-      "expected_commit_message": "feat: Установить выпуск 0.6.4 на этот Mac"
+      "expected_commit_message": "feat: Установить выпуск 0.6.4 на этот Mac",
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -336,7 +337,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1382
+Revision: 1384
 
 ## Цель
 
@@ -362,8 +363,8 @@ Revision: 1382
   - Git Commit: [DONE] feat: Собрать macOS Windows Linux 0.6.4
   - Reference: cdp-startup-input / RELEASE / implementation
   - Файлы: release-manifest.json
-- [TODO] INSTALL: Установить выпуск 0.6.4 на этот Mac — Ожидает
-  - Git Commit: [PENDING] feat: Установить выпуск 0.6.4 на этот Mac
+- [DONE] INSTALL: Установить выпуск 0.6.4 на этот Mac — Завершено
+  - Git Commit: [DONE] feat: Установить выпуск 0.6.4 на этот Mac
   - Reference: cdp-startup-input / INSTALL / implementation
   - Файлы: release-manifest.json
 - [TODO] PUBLISH: Опубликовать выпуск 0.6.4 на GitHub — Ожидает
