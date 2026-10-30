@@ -1,5 +1,6 @@
 import { createChatGPTDOM, CHATGPT_SELECTORS, chatGPTDOMScript } from './chatgpt-dom.mjs';
 import { startupCommand, STARTUP_TICKET_PLACEHOLDER } from '../../contracts/context.mjs';
+import { PageInput } from './presentation/input.mjs';
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 class ComposerError extends Error {
@@ -159,6 +160,18 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
     return { ...result, draftLength: normalized(draft()).length,
       action: normalized(draft()).length ? 'deferred' : 'draft-cleared',
       reason: normalized(draft()).length ? 'DRAFT_CLEAR_FAILED' : null };
+  }
+  if (action === 'focus-startup') {
+    // Focus only: the startup command arrives as trusted CDP input, never through this script.
+    if (location.pathname !== '/' || messages.length) return { ...result, action: 'deferred', reason: 'CHAT_CHANGED' };
+    if (draftLength) return { ...result, action: 'deferred', reason: 'DRAFT_PRESENT' };
+    editor.focus();
+    if (editor.tagName !== 'TEXTAREA' && editor.tagName !== 'INPUT') {
+      const selection = getSelection(), range = document.createRange();
+      range.selectNodeContents(editor); range.collapse(false); selection.removeAllRanges(); selection.addRange(range);
+    }
+    return { ...result, action: document.activeElement === editor ? 'focused' : 'deferred',
+      reason: document.activeElement === editor ? null : 'FOCUS_FAILED' };
   }
   if (action === 'retry-remove-attachment' || action === 'retry-paste-attachment') {
     const owned = editor[attachmentKey], index = attachmentIndex, card = cards[index];
@@ -385,6 +398,61 @@ export class ChatGPTComposer {
     if (result.reason === 'DRAFT_CLEAR_FAILED')
       throw new ComposerError('NEW_SESSION_DRAFT_CLEAR_FAILED', 'Не удалось очистить поле нового чата. Уберите старый черновик и повторите.');
     return result;
+  }
+
+  // The startup command as trusted input in the verified document: focus, CDP
+  // text, an exact check, then one Enter. Before onBeforeEnter nothing is sent;
+  // a failure there removes only this exact command. A failure after it is unknown.
+  async submitStartup({ text, canContinue = () => true, onBeforeEnter = () => true } = {}) {
+    if (this.inFlight) return { state: 'not-sent', reason: 'COMPOSER_IN_FLIGHT' };
+    const documentId = this.pageState?.current?.documentId, debug = this.contents.debugger;
+    if (!text || !documentId || !canContinue()) return { state: 'not-sent', reason: 'CHAT_CHANGED' };
+    if (!debug?.isAttached?.()) return { state: 'not-sent', reason: 'CDP_UNAVAILABLE' };
+    const same = () => canContinue() && this.documentKey() === documentId;
+    const input = new PageInput((method, params) => debug.sendCommand(method, params));
+    let inserted = false, emulated = false, entered = false;
+    const notSent = async reason => {
+      if (inserted) await this.clearNewSessionDraft({ startupOnly: true, canContinue: same }).catch(() => {});
+      this.trace('startup-input', { outcome: 'not-sent', reason });
+      return { state: 'not-sent', reason };
+    };
+    this.inFlight = true;
+    try {
+      // A background page has no OS focus; emulation lets the editor take and keep it.
+      await debug.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true }); emulated = true;
+      const code = `globalThis.__webPilotObserverDocumentId === ${JSON.stringify(documentId)}
+        ? ${pageScript({ action: 'focus-startup' })} : ({ action: 'deferred', reason: 'CHAT_CHANGED' })`;
+      const focused = await this.contents.executeJavaScriptInIsolatedWorld(999, [{ code }], true);
+      if (focused?.action !== 'focused') return await notSent(focused?.reason ?? 'EDITOR_UNAVAILABLE');
+      if (!same()) return await notSent('CHAT_CHANGED');
+      inserted = true;
+      await input.dispatch({ type: 'text', data: { text } });
+      const deadline = this.now() + this.timeoutMs;
+      let observation;
+      for (;;) {
+        if (!same()) return await notSent('CHAT_CHANGED');
+        observation = await this.inspect({ text });
+        if (observation.draftMatches && observation.sendEnabled && !observation.busy && !observation.userMessageCount) break;
+        if (!observation.draftMatches && observation.draftLength >= text.trim().length) return await notSent('DRAFT_CHANGED');
+        if (this.now() >= deadline) return await notSent(observation.draftMatches ? 'SEND_UNAVAILABLE' : 'DRAFT_CHANGED');
+        await this.wait(this.settleMs);
+      }
+      if (!same() || this.documentKey() !== documentId || !await onBeforeEnter()) return await notSent('CHAT_CHANGED');
+      entered = true;
+      await input.dispatch({ type: 'key', data: { action: 'down', key: 'Enter', code: 'Enter' } });
+      await input.dispatch({ type: 'key', data: { action: 'up', key: 'Enter', code: 'Enter' } });
+      this.trace('startup-input', { outcome: 'submitted' });
+      return { state: 'submitted' };
+    } catch (error) {
+      if (entered) {
+        this.trace('startup-input', { outcome: 'unknown' });
+        throw Object.assign(new Error('Исход отправки стартовой команды неизвестен. Повтора нет.'), { code: 'STARTUP_SEND_UNKNOWN' });
+      }
+      return await notSent(/^[A-Z][A-Z0-9_]{0,79}$/.test(error?.code ?? '') ? error.code : 'STARTUP_INPUT_FAILED');
+    } finally {
+      if (emulated) await debug.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: false }).catch(() => {});
+      this.inFlight = false;
+    }
   }
 
   async waitForSendReady(args, version, canContinue, onUploadProgress = () => {}) {

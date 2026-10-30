@@ -1,7 +1,11 @@
 // Public projection: never expose the ticket, q, context or enrollment hash.
 import {normalizeChatUrl} from './browser.mjs';
+// The first command is typed into the verified document (0.6.4). url-query is an
+// attempt saved by an earlier version: it is reconciled and shown, never started.
+export const STARTUP_TRANSPORT='composer-input';
+export const startupAttempt=attempt=>attempt?.bootstrapTransport===STARTUP_TRANSPORT||attempt?.bootstrapTransport==='url-query';
 export function startupLaunch(attempt,now=Date.now(),binding=null){
-  if(attempt?.bootstrapTransport!=='url-query')return null;
+  if(!startupAttempt(attempt))return null;
   const saved=normalizeChatUrl(binding?.chatUrl),observed=normalizeChatUrl(binding?.currentUrl);
   const owned=saved&&attempt.state==='sent'&&attempt.sentEvidence?.participant_id&&attempt.accountConfirmed
     &&normalizeChatUrl(attempt.addressCandidate)===saved&&attempt.addressStatus!=='conflict'

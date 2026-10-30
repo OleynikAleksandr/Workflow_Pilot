@@ -650,3 +650,69 @@ test('automatic Send exception after dispatch is unknown and never clears the ed
   assert.equal(f.editor.value, 'Продолжай');
   f.dom.window.close();
 });
+
+// CDP as Chromium applies it: text into the focused editor, a trusted Enter submits.
+function startupFixture({ draft = '', insert = text => text, enterFails = false } = {}) {
+  const f = fixture({ draft });
+  f.dom.window.__webPilotObserverDocumentId = 'root-document';
+  f.view.executeJavaScriptInIsolatedWorld = async (world, scripts) => { assert.equal(world, 999); return f.dom.window.eval(scripts[0].code); };
+  f.composer.pageState = { current: { documentId: 'root-document' } };
+  const commands = [];
+  f.view.debugger = { isAttached: () => true, sendCommand: async (method, params) => {
+    commands.push(method === 'Input.dispatchKeyEvent' ? method + ':' + params.type : method);
+    const active = f.document.activeElement;
+    if (method === 'Input.insertText' && active === f.editor) f.editor.value += insert(params.text);
+    if (method === 'Input.dispatchKeyEvent' && params.type === 'keyDown') {
+      if (enterFails) throw Error('target closed');
+      if (active === f.editor && params.text === '\r') f.document.querySelector('form').requestSubmit();
+    }
+    return {};
+  } };
+  return { ...f, commands };
+}
+
+test('the startup command is typed through CDP, checked exactly and sent with one Enter', async () => {
+  const command = startupCommand('a'.repeat(64)), f = startupFixture();let entered = 0;
+  const result = await f.composer.submitStartup({ text: command, onBeforeEnter: () => { entered++; return true; } });
+  assert.deepEqual(result, { state: 'submitted' });assert.equal(f.sends(), 1);assert.equal(entered, 1);
+  assert.deepEqual(f.commands, ['Emulation.setFocusEmulationEnabled', 'Input.insertText',
+    'Input.dispatchKeyEvent:keyDown', 'Input.dispatchKeyEvent:keyUp', 'Emulation.setFocusEmulationEnabled']);
+  assert.equal(f.document.querySelector('[data-message-author-role="user"]').textContent, command);
+  assert.equal(f.composer.inFlight, false); f.dom.window.close();
+});
+
+test('a typed start without an exact check, a current page or CDP never presses Enter', async () => {
+  const command = startupCommand('a'.repeat(64));
+  // User text already in the editor: nothing is typed and nothing is cleared.
+  let f = startupFixture({ draft: 'Мой черновик' });
+  assert.deepEqual(await f.composer.submitStartup({ text: command }), { state: 'not-sent', reason: 'DRAFT_PRESENT' });
+  assert.equal(f.editor.value, 'Мой черновик');assert.equal(f.commands.includes('Input.insertText'), false);
+  assert.equal(f.commands.at(-1), 'Emulation.setFocusEmulationEnabled', 'focus emulation always ends');
+  // Text changed during input: the mixed draft stays, no Enter.
+  f = startupFixture({ insert: text => text + ' лишнее' });
+  assert.equal((await f.composer.submitStartup({ text: command })).reason, 'DRAFT_CHANGED');
+  assert.equal(f.sends(), 0);assert.match(f.editor.value, /лишнее$/);
+  // Send never becomes available: the own exact command is removed.
+  f = startupFixture();f.document.querySelector('[data-testid="send-button"]').disabled = true;
+  assert.equal((await f.composer.submitStartup({ text: command })).reason, 'SEND_UNAVAILABLE');
+  assert.equal(f.editor.value, '');assert.equal(f.sends(), 0);
+  // The runtime refuses Enter (another input or navigation): removed, never sent.
+  f = startupFixture();
+  assert.equal((await f.composer.submitStartup({ text: command, onBeforeEnter: () => false })).state, 'not-sent');
+  assert.equal(f.editor.value, '');assert.equal(f.sends(), 0);
+  assert.equal(f.commands.at(-1), 'Emulation.setFocusEmulationEnabled', 'focus emulation always ends');
+  // Another document or no CDP attachment.
+  f = startupFixture();f.dom.window.__webPilotObserverDocumentId = 'other-document';
+  assert.equal((await f.composer.submitStartup({ text: command })).reason, 'CHAT_CHANGED');assert.equal(f.editor.value, '');
+  f = startupFixture();f.view.debugger.isAttached = () => false;
+  assert.equal((await f.composer.submitStartup({ text: command })).reason, 'CDP_UNAVAILABLE');
+  f.dom.window.close();
+});
+
+test('a failure once Enter began is unknown and never repeated', async () => {
+  const f = startupFixture({ enterFails: true });
+  await assert.rejects(f.composer.submitStartup({ text: startupCommand('a'.repeat(64)) }), { code: 'STARTUP_SEND_UNKNOWN' });
+  assert.equal(f.commands.filter(c => c === 'Input.dispatchKeyEvent:keyDown').length, 1);
+  assert.notEqual(f.editor.value, '', 'the editor is never cleared after Enter');assert.equal(f.composer.inFlight, false);
+  f.dom.window.close();
+});

@@ -27,7 +27,7 @@ export class BrowserSessions {
     if (this.#records.has(id)) return this.#records.get(id).port;
     const contents = this.host.create(id), source = new PageStateSource();
     const record = { id, incarnation: randomUUID(), contents, source, loading: false, epoch: 0, disposed: false, crashed: false,
-      navigationSequence: 0, navigationRequest: 0, preparationVersion: 0, navigationOwner: null, bootstrapTokens: new Set(), queryDispatched: false,
+      navigationSequence: 0, navigationRequest: 0, preparationVersion: 0, navigationOwner: null, bootstrapTokens: new Set(), startDispatched: false, ownEnter: 0,
       listeners: new Set(), cleanups: [] };
     let composer;
     try { composer = this.createComposer(contents, { pageState: source }); }
@@ -60,7 +60,7 @@ export class BrowserSessions {
     };
     const loadError = (error, url) => {
       const value=browserError(error);
-      if(record.queryDispatched||hasChatGPTQuery(url)||hasChatGPTQuery(contents.getURL())) {
+      if(hasChatGPTQuery(url)||hasChatGPTQuery(contents.getURL())) {
         value.code=/^[A-Z][A-Z0-9_]{0,95}$/.test(value.code)?value.code:'BROWSER_ERROR';
         value.message='Не удалось загрузить страницу ChatGPT. Первоначальная команда не повторяется.';
         composer.onDiagnostic?.({event:'navigation-failed',code:value.code,url:safeUrl(url)});
@@ -79,7 +79,27 @@ export class BrowserSessions {
       getURL: () => snapshot().url,
       navigationSnapshot: snapshot,
       openChatEntrypoint: () => record.port.navigate(CHATGPT_CHAT_ENTRYPOINT),
-      startChat: ({url,navigationToken,canContinue=()=>true}) => record.port.navigate(url,{bootstrapToken:navigationToken,isCurrent:canContinue}),
+      // The start's only Send: trusted input in the verified document. The token
+      // owns this page from its Enter on, without a navigation or a new epoch; any
+      // other input or navigation before Enter cancels it and nothing is sent.
+      submitStartup: async ({ text, navigationToken, canContinue = () => true }) => {
+        assertOpen();
+        if (typeof navigationToken !== 'string' || !navigationToken)
+          throw Object.assign(new Error('Некорректный токен старта.'), { code: 'BOOTSTRAP_NAVIGATION_INVALID' });
+        if (record.bootstrapTokens.has(navigationToken))
+          throw Object.assign(new Error('Первоначальная команда уже запускалась. Повтор запрещён.'), { code: 'BOOTSTRAP_ALREADY_DISPATCHED' });
+        const epoch = record.epoch, version = record.preparationVersion;
+        const current = () => !record.disposed && !record.loading && !record.crashed && record.epoch === epoch
+          && record.preparationVersion === version && record.navigationOwner === null && canContinue();
+        try {
+          return structuredClone(await composer.submitStartup({ text, canContinue: current, onBeforeEnter: () => {
+            if (!current() || record.bootstrapTokens.has(navigationToken)) return false;
+            record.bootstrapTokens.add(navigationToken); record.startDispatched = true;
+            record.navigationOwner = navigationToken; record.ownEnter = 1;
+            return true;
+          } }));
+        } finally { record.ownEnter = 0; }
+      },
       // Control ends the start's navigation authority once its address is bound:
       // only the same token, without a navigation, a new epoch or an event.
       endStartupNavigation: token => {
@@ -124,26 +144,19 @@ export class BrowserSessions {
         record.listeners.add(listener); return () => record.listeners.delete(listener);
       },
       setDiagnostic: listener => { assertOpen(); composer.onDiagnostic = listener; },
-      navigate: async (url, { reload = false, startup = false, bootstrapToken = null, isCurrent = () => true } = {}) => {
+      // A q address is never loaded: the first command is typed (submitStartup).
+      navigate: async (url, { reload = false, startup = false, isCurrent = () => true } = {}) => {
         assertOpen();
         if(!isCurrent())return null;
         const request=++record.navigationRequest,previousEpoch=record.epoch,preparationVersion=record.preparationVersion;
-        if(bootstrapToken!==null&&(reload||typeof bootstrapToken!=='string'||!bootstrapToken||!hasChatGPTQuery(url)))
-          throw Object.assign(new Error('Некорректная первоначальная навигация.'),{code:'BOOTSTRAP_NAVIGATION_INVALID'});
         if(this.prepareNavigation) {
           await this.prepareNavigation(url);
           if(record.disposed||record.navigationRequest!==request||record.epoch!==previousEpoch||record.preparationVersion!==preparationVersion||!isCurrent())return null;
         }
-        if(bootstrapToken!==null) {
-          if(reload||typeof bootstrapToken!=='string'||!bootstrapToken||!hasChatGPTQuery(url))
-            throw Object.assign(new Error('Некорректная первоначальная навигация.'),{code:'BOOTSTRAP_NAVIGATION_INVALID'});
-          if(record.bootstrapTokens.has(bootstrapToken))
-            throw Object.assign(new Error('Первоначальная команда уже запускалась. Повтор запрещён.'),{code:'BOOTSTRAP_ALREADY_DISPATCHED'});
-          record.bootstrapTokens.add(bootstrapToken);record.queryDispatched=true;
-        } else url=reload?chatGPTRefreshTarget(contents.getURL(),url):hasChatGPTQuery(url)?CHATGPT_CHAT_ENTRYPOINT:url;
+        url=reload?chatGPTRefreshTarget(contents.getURL(),url):hasChatGPTQuery(url)?CHATGPT_CHAT_ENTRYPOINT:url;
         clearTimeout(record.recoveryTimer);record.recoveryTimer=null;
         if (!reload && contents.getURL() === url) return snapshot();
-        record.navigationOwner=bootstrapToken;
+        record.navigationOwner=null;
         const epoch = ++record.epoch; record.loading = true; navigation('navigation-start',url,true,'command');
         try {
           if(!isCurrent()){record.loading=false;interrupt('cancelled');return null;}
@@ -207,6 +220,8 @@ export class BrowserSessions {
       on('did-redirect-navigation', (event={},url,_inPlace,mainFrame) => navigation('navigated',event.url??url,event.isMainFrame??mainFrame,'redirect'));
       on('before-input-event', (event,input={}) => {
         if(!['keyDown','rawKeyDown'].includes(input.type))return;
+        // Exactly the runtime's own startup Enter is not user input; any other key is.
+        if(record.ownEnter>0&&input.key==='Enter'&&!input.shift&&!input.control&&!input.alt&&!input.meta){record.ownEnter--;return;}
         interrupt('user-input');
         const refresh=input.key==='F5'||String(input.key).toLowerCase()==='r'&&(input.control||input.meta);
         if(refresh&&hasChatGPTQuery(contents.getURL())) {
@@ -247,7 +262,7 @@ export class BrowserSessions {
       const current=record.contents.getURL();
       // The runtime needs no attempt/store to prevent replay, even if the dead
       // renderer lost its URL before control could preserve a conversation.
-      if(hasChatGPTQuery(current)||!current&&record.queryDispatched) {
+      if(hasChatGPTQuery(current)||!current&&record.startDispatched) {
         void record.port.navigate(CHATGPT_CHAT_ENTRYPOINT,{reload:true}).catch(()=>{});
       } else {
         record.navigationOwner=null;record.epoch++;

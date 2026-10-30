@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { normalizeChatUrl } from '../sessions/workspace-session.mjs';
 import { CONTEXT_PROTOCOL, validateContextPacket, startupCommand } from '../../contracts/context.mjs';
-import { isChatGPTChatUrl, isPendingChatGPTConversation, CHATGPT_CHAT_ENTRYPOINT } from '../../execution/facade.mjs';
+import { startupAttempt, STARTUP_TRANSPORT } from '../../contracts/startup-view.mjs';
+import { isChatGPTChatUrl, isPendingChatGPTConversation } from '../../execution/facade.mjs';
 import { validateParallelSettings } from '../workflow/parallel-settings.mjs';
 import {SESSION_TITLE_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
@@ -99,7 +100,7 @@ const later = (fn, ms) => { const timer = setTimeout(fn, ms); timer.unref?.(); r
 // stays local, no request leaves. A successful start has a real address within seconds.
 export const START_NOT_SENT='start-not-sent';
 export const START_NOT_SENT_MS=30000,START_NOT_SENT_WATCH_MS=10*60*1000,MAX_START_RETRIES=1;
-const urlAttempt = attempt => attempt?.bootstrapTransport==='url-query';
+const urlAttempt = startupAttempt;
 const attemptIdentity = attempt => ({requestId:attempt.requestId,attemptGeneration:attempt.attemptGeneration});
 const urlStatus = attempt => ({requestId:attempt.requestId,state:attempt.state,addressStatus:attempt.addressStatus,
   cancelState:attempt.cancelState,
@@ -332,7 +333,7 @@ export class ContextSession {
         cancelRequestedAtMs:this.now(),cancelReason:'login-lost',addressStatus:'conflict'});
     }else if(snapshot.incarnation===source.incarnation&&snapshot.epoch===source.epoch
       &&!attempt.accountConfirmed&&page.login==='signed-in'
-      &&event.documentId&&event.documentId!==attempt.preflightDocumentId&&normalChatTarget(page.url)
+      &&event.documentId&&(attempt.bootstrapTransport===STARTUP_TRANSPORT||event.documentId!==attempt.preflightDocumentId)&&normalChatTarget(page.url)
       &&(snapshot.navigationOwner===source.token||attempt.addressCandidate===normalizeChatUrl(page.url))){
       await this.store.patchAttempt(project.workspace,project.sessionId,attemptIdentity(attempt),latest=>
         this.startupAllowed(latest)?{accountConfirmed:{documentId:event.documentId,incarnation:snapshot.incarnation,atMs:this.now()}}:{});
@@ -361,14 +362,17 @@ export class ContextSession {
   async restartNotSent(project,attempt){
     const latest=this.store.project(project.workspace,project.sessionId);
     if(latest?.attempt?.requestId!==attempt.requestId||latest.chatUrl)return;
+    // The revoked start no longer owns the page it stayed on (an ignored Enter at the root).
+    this.composer.endStartupNavigation?.(attempt.requestId);
     this.restartFrom={workspace:project.workspace,sessionId:project.sessionId,
       startupRetry:{count:(attempt.startupRetry?.count??0)+1,previousRequestId:attempt.requestId}};
     await this.store.updateSession(project.workspace,project.sessionId,{attempt:null});
     this.emit({phase:'startup-retry',messageSent:false,attempt:null,error:null});
     this.rerunRequested=true;
   }
-  // Proven not sent: the q document of this attempt still shows only a local conversation,
-  // no real address was ever seen, nothing runs and nobody registered.
+  // Proven not sent: the start document still shows only a local conversation, or the
+  // root with this start's exact command left in the editor (it was verified empty
+  // before input); no real address was ever seen, nothing runs, nobody registered.
   async startNotSent(attempt){
     const snapshot=this.composer.navigationSnapshot?.(),elapsed=this.now()-attempt.sendStartedAtMs;
     if(!attempt.navigation||attempt.addressCandidate||attempt.addressStatus==='conflict'||elapsed>START_NOT_SENT_WATCH_MS
@@ -378,6 +382,12 @@ export class ContextSession {
     if(normalizeChatUrl(url))return 'no';
     if(elapsed<START_NOT_SENT_MS)return 'later';
     const observation=await this.composer.inspect();
+    if(observation.busy===false&&newChatRoot(observation.url)&&!observation.userMessageCount&&observation.draftLength>0
+      &&attempt.bootstrapTransport===STARTUP_TRANSPORT){
+      const cleared=await this.composer.clearNewSessionDraft?.({startupOnly:true,canContinue:()=>newChatRoot(this.composer.getURL())
+        &&this.composer.navigationSnapshot?.()?.epoch===attempt.navigation.epoch});
+      return cleared?.action==='draft-cleared'?'yes':'later';
+    }
     if(observation.busy!==false||!isPendingChatGPTConversation(observation.url))return newChatRoot(observation.url)||observation.busy?'later':'no';
     return 'yes';
   }
@@ -456,7 +466,7 @@ export class ContextSession {
     if(project.assignmentId&&this.canSendContext&&!this.canSendContext(project)){
       this.emit({phase:'selected',projectInfo:info,error:null});return;
     }
-    if(!this.composer.startChat||!this.composer.navigationSnapshot)throw failure('STARTUP_NAVIGATION_UNAVAILABLE','URL-запуск Chat недоступен.');
+    if(!this.composer.submitStartup||!this.composer.navigationSnapshot)throw failure('STARTUP_NAVIGATION_UNAVAILABLE','Ввод стартовой команды недоступен.');
     if(!newChatRoot(this.composer.getURL())){
       this.emit({phase:'waiting-composer',projectInfo:info,error:null});
       await this.composer.openChatEntrypoint();return;
@@ -479,7 +489,7 @@ export class ContextSession {
     if(!this.current(generation))return;
     if(!await this.packetIsCurrent({...metadata(packet)},project))throw failure('CONTEXT_CHANGED','Пакет устарел до отправки.');
     if(!this.current(generation))return;
-    attempt=await this.patchUrl(project,null,{protocol:CONTEXT_PROTOCOL,bootstrapTransport:'url-query',contextTransport:'panel',
+    attempt=await this.patchUrl(project,null,{protocol:CONTEXT_PROTOCOL,bootstrapTransport:STARTUP_TRANSPORT,contextTransport:'panel',
       requestId:'wp-request-'+this.uuid(),attemptGeneration:this.uuid(),state:'reserving',createdAtMs:this.now(),sendStartedAtMs:null,
       packet:metadata(packet),startupText:orchestratorStartupContext(project,packet,this.runtime.startupRules??[]),
       preflightDocumentId,cancelState:'none',addressStatus:'pending',
@@ -512,18 +522,26 @@ export class ContextSession {
       return this.reconcileCancellation(project,attempt);
     }
     attempt=await this.patchUrl(project,attempt,latest=>this.startupAllowed(latest)?{state:'sending',sendStartedAtMs:this.now(),
-      navigation:{id:snapshot.id,incarnation:snapshot.incarnation,epoch:snapshot.epoch+1,
+      navigation:{id:snapshot.id,incarnation:snapshot.incarnation,epoch:snapshot.epoch,
         afterSequence:snapshot.navigationSequence,token:latest.requestId}}:{});
     if(!this.startupAllowed(attempt))return this.reconcileCancellation(project,attempt);
     const mayDispatch=()=>{const current=this.store.project(project.workspace,project.sessionId),navigation=this.composer.navigationSnapshot();
       return current?.attempt?.requestId===attempt.requestId&&current.attempt.attemptGeneration===attempt.attemptGeneration
         &&this.startupAllowed(current.attempt)&&!current.preparationPaused&&this.canStartChat(current)&&!['lost','conflict'].includes(current.attempt.addressStatus)
-        &&navigation.incarnation===attempt.navigation.incarnation&&(navigation.epoch===preflightSnapshot.epoch&&newChatRoot(this.composer.getURL())
-          ||navigation.epoch===attempt.navigation.epoch&&navigation.navigationOwner===attempt.requestId);};
+        &&navigation.incarnation===attempt.navigation.incarnation&&navigation.epoch===attempt.navigation.epoch
+        &&!navigation.navigationOwner&&newChatRoot(this.composer.getURL());};
     this.emit({phase:'sending',projectInfo:info,messageSent:false,attempt:urlStatus(attempt),error:null});
-    try{await this.composer.startChat({url:CHATGPT_CHAT_ENTRYPOINT+'?q='+encodeURIComponent(text),
-      navigationToken:attempt.requestId,canContinue:mayDispatch});}
+    let submitted;
+    try{submitted=await this.composer.submitStartup({text,navigationToken:attempt.requestId,canContinue:mayDispatch});}
     catch(error){await this.patchUrl(project,attempt,latest=>this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{});throw error;}
+    // No Enter: proven not sent, the invitation is revoked. A failed input is started once
+    // more; a start stopped by pause, draining or a lost page is not.
+    if(submitted?.state==='not-sent'){
+      const reason=mayDispatch()?START_NOT_SENT:'preflight-changed';
+      attempt=await this.patchUrl(project,attempt,latest=>this.startupAllowed(latest)&&latest.state!=='sent'
+        ?{cancelState:'requested',cancelReason:reason,cancelRequestedAtMs:this.now()}:{});
+      if(attempt.cancelState==='requested')return this.reconcileCancellation(project,attempt);
+    }
     this.rerunRequested=true;
   }
 

@@ -155,7 +155,7 @@ function urlFixture({attempt=null,chatUrl=null}={}){
     enrollmentProgress:async()=>evidence,startupProgress:()=>({complete}),
     cancelStartup:async()=>{order.push('revoke');return {status:evidence?.participant_id?'registered-stopped':'revoked'};}};
   const composer={getURL:()=>page.url,navigationSnapshot:()=>({...snap}),inspect:async()=>({...page}),
-    openChatEntrypoint:async()=>{order.push('root');page.url='https://chatgpt.com/';page.documentId='new-root';snap.epoch++;},
+    openChatEntrypoint:async()=>{order.push('root');page.url='https://chatgpt.com/';page.documentId='new-root';snap.epoch++;snap.navigationOwner=null;},
     deliver:async()=>{throw Error('DOM Send is forbidden');},
     // Only a restored startup command of another session may be cleared; user text never.
     clearNewSessionDraft:async({startupOnly=false,canContinue}={})=>{
@@ -163,10 +163,13 @@ function urlFixture({attempt=null,chatUrl=null}={}){
       if(!canContinue())return {action:'deferred',reason:'CHAT_CHANGED'};
       if(!page.restoredCommand)return {action:'deferred',reason:'DRAFT_NOT_STARTUP'};
       order.push('clear-restored');page.draftLength=0;page.restoredCommand=false;return {action:'draft-cleared'};},
-    startChat:async input=>{assert.equal(input.canContinue(),true);order.push('q');starts.push(input);
+    // The typed start: Enter in the verified root document, no navigation and no new epoch.
+    submitStartup:async input=>{if(!input.canContinue())return {state:'not-sent',reason:'CHAT_CHANGED'};
+      order.push('enter');starts.push(input);
       assert.ok(saved.attempt.contextRef);assert.equal(saved.attempt.state,'sending');assert.equal(saved.attempt.sendStartedAtMs,clock);
-      snap.epoch++;snap.navigationSequence++;snap.navigationOwner=input.navigationToken;page.url=input.url;
-      return true;},
+      if(composer.inputFails){composer.inputFails--;return {state:'not-sent',reason:'DRAFT_CHANGED'};}
+      snap.navigationOwner=input.navigationToken;
+      return {state:'submitted'};},
     endStartupNavigation:token=>{order.push('end-navigation');if(snap.navigationOwner===token)snap.navigationOwner=null;return snap.navigationOwner===null;}};
   const wakes=[];
   const controller=new ContextSession({store,runtime,composer,now:()=>clock,uuid:()=>String(++serial).padStart(8,'0'),wait:async()=>{},
@@ -183,14 +186,16 @@ function urlFixture({attempt=null,chatUrl=null}={}){
     get saved(){return saved;},setEvidence:e=>{evidence=e;},setComplete:()=>{complete=true;},advance:ms=>{clock+=ms;}};
 }
 
-test('URL bootstrap stages full role context and saves checkpoint before exactly one short q',async()=>{
+test('typed start stages full role context and saves checkpoint before exactly one short command',async()=>{
   for(const role of ['discussion','orchestrator','executor']){
     const f=urlFixture();f.info.role=role;if(role==='executor')f.info.assignmentId='assignment';
     await f.controller.tick();await settle();
-    assert.equal(f.starts.length,1);assert.ok(f.order.indexOf('stage')<f.order.indexOf('q'));
-    const u=new URL(f.starts[0].url);assert.deepEqual([...u.searchParams.keys()],['q']);
-    assert.equal(u.searchParams.get('q'),panelStartupMessage(project,'unused',packet(),[],invitation));
-    assert.doesNotMatch(u.searchParams.get('q'),/ПОЛНЫЙ КОНТЕКСТ|wp-request|session-1/);
+    assert.equal(f.starts.length,1);assert.ok(f.order.indexOf('stage')<f.order.indexOf('enter'));
+    assert.deepEqual(Object.keys(f.starts[0]).sort(),['canContinue','navigationToken','text'],'no address is involved');
+    assert.equal(f.starts[0].text,panelStartupMessage(project,'unused',packet(),[],invitation));
+    assert.doesNotMatch(f.starts[0].text,/ПОЛНЫЙ КОНТЕКСТ|wp-request|session-1/);
+    assert.equal(f.saved.attempt.bootstrapTransport,'composer-input');
+    assert.equal(f.saved.attempt.navigation.epoch,f.snap.epoch,'the start keeps the preflight document');
     assert.doesNotMatch(JSON.stringify(f.saved.attempt),new RegExp(invitation.enrollment_ticket));
     assert.doesNotMatch(JSON.stringify(f.controller.state),/ПОЛНЫЙ КОНТЕКСТ|enrollment_ticket/);
     assert.equal(f.saved.attempt.state,'sending');assert.equal(f.controller.state.phase,'waiting-registration');
@@ -214,16 +219,16 @@ test('URL alone is never sent; exact durable registration is sent; URL and signe
   }
 });
 const LOCAL='https://chatgpt.com/c/local-chatgpt:d026f12b-3690-4b0a-a409-05987c57573d';
-// ChatGPT kept the q command local («Учетная запись сменилась»): no request left the page.
+// ChatGPT kept the typed command local («Учетная запись сменилась»): no request left the page.
 const notSentStart=async f=>{await f.controller.tick();await settle();Object.assign(f.page,{url:LOCAL,busy:false});};
-test('a q command ChatGPT kept local is revoked and started once more with a new invitation; a second failure stops with a reason',async()=>{
+test('a typed command ChatGPT kept local is revoked and started once more with a new invitation; a second failure stops with a reason',async()=>{
   const f=urlFixture();await notSentStart(f);const first=f.saved.attempt;
   await f.controller.tick();
   assert.equal(f.saved.attempt.cancelState,'none','within 30 s a start may still be on its way');
   const wake=f.wakes.at(-1);assert.ok(wake&&wake.ms>0,'the quiet page is re-checked by a timer');
   f.advance(30001);await wake.fn();await settle();
   assert.equal(f.order.filter(x=>x==='revoke').length,1,'the old invitation is revoked first');
-  // The new start opens a clean root and then sends its own q.
+  // The new start opens a clean root and then types its own command.
   assert.equal(f.saved.attempt,null);assert.ok(f.order.includes('root'));
   await f.controller.tick();await settle();
   assert.equal(f.starts.length,2);assert.notEqual(f.saved.attempt.requestId,first.requestId);
@@ -233,6 +238,24 @@ test('a q command ChatGPT kept local is revoked and started once more with a new
   Object.assign(f.page,{url:LOCAL,busy:false});f.advance(30001);await f.controller.tick();await settle();
   assert.equal(f.starts.length,2);assert.equal(f.saved.attempt.cancelState,'revoked');
   assert.equal(f.controller.state.phase,'start-not-sent');
+});
+test('an input that never reached Enter is revoked and started once more; pause or draining is not restarted',async()=>{
+  const f=urlFixture();f.composer.inputFails=1;await f.controller.tick();await settle();
+  assert.equal(f.order.filter(x=>x==='revoke').length,1,'the unused invitation is revoked');
+  await f.controller.tick();await settle();
+  assert.equal(f.starts.length,2);assert.equal(f.saved.attempt.startupRetry.count,1);assert.equal(f.saved.attempt.state,'sending');
+});
+test('the root with the own command still in the editor after 30 s is proven not sent and cleared',async()=>{
+  const f=urlFixture();await f.controller.tick();await settle();
+  Object.assign(f.page,{draftLength:310,restoredCommand:true,busy:false});
+  await f.controller.tick();assert.equal(f.saved.attempt.cancelState,'none','within 30 s Enter may still be processed');
+  f.advance(30001);await f.controller.tick();await settle();
+  assert.ok(f.order.includes('clear-restored'));assert.equal(f.order.filter(x=>x==='revoke').length,1);
+  // The revoked start released the page it stayed on: the new start types its own command.
+  assert.equal(f.starts.length,2);assert.equal(f.saved.attempt.startupRetry.count,1);assert.equal(f.snap.navigationOwner,f.saved.attempt.requestId);
+  // User text at the root is never cleared and never proves anything.
+  const g=urlFixture();await g.controller.tick();await settle();Object.assign(g.page,{draftLength:12,restoredCommand:false,busy:false});
+  g.advance(30001);await g.controller.tick();assert.equal(g.saved.attempt.cancelState,'none');assert.equal(g.page.draftLength,12);
 });
 test('a start that reached ChatGPT, still runs, left its document or registered is never retried',async()=>{
   // A real conversation address was seen.
@@ -268,7 +291,7 @@ test('unrelated, old, revoked and uncorrelated registrations cannot confirm sent
     f.setEvidence({...good,...delta});await f.controller.tick();assert.equal(f.saved.attempt.state,'sending');
   }
 });
-test('persistent T1/T2 expire independently; restart never resets the deadline or repeats q',async()=>{
+test('persistent T1/T2 expire independently; restart never resets the deadline or repeats the start',async()=>{
   const f=urlFixture();await f.controller.tick();await settle();f.advance(60001);await f.controller.tick();
   assert.equal(f.controller.state.addressOverdue,true);assert.equal(f.saved.attempt.state,'sending');
   f.controller.attach(f.saved);f.advance(120000);await f.controller.tick();assert.equal(f.saved.attempt.state,'unknown');
@@ -280,7 +303,7 @@ test('a durable sent receipt survives a missing enrollment reader after restart 
   assert.equal(f.saved.attempt.state,'sent');assert.equal(f.controller.state.messageSent,true);assert.notEqual(f.controller.state.phase,'send-unknown');
   assert.equal(f.starts.length,1);
 });
-test('all preflight unknowns preserve draft and block reserve and q',async()=>{
+test('all preflight unknowns preserve draft and block reserve and the start',async()=>{
   for(const [key,value,phase] of [['accountStatus','unknown','waiting-login'],['accountStatus','signed-out','waiting-login'],
     ['documentId',null,'waiting-composer'],
     ['draftLength',4,'waiting-draft'],['draftLength',undefined,'waiting-draft'],['busy',true,'waiting-generation'],
@@ -289,12 +312,12 @@ test('all preflight unknowns preserve draft and block reserve and q',async()=>{
     assert.equal(f.controller.state.phase,phase);
   }
 });
-test('a restored startup command of another session is cleared before the draft check and before q',async()=>{
+test('a restored startup command of another session is cleared before the draft check and before the start',async()=>{
   let f=urlFixture();Object.assign(f.page,{draftLength:310,restoredCommand:true});
   await f.controller.tick();
-  assert.equal(f.order[0],'clear-restored');assert.equal(f.starts.length,1,'the start reaches its own q');
+  assert.equal(f.order[0],'clear-restored');assert.equal(f.starts.length,1,'the start reaches its own Enter');
   assert.equal(f.saved.attempt.state,'sending');
-  // ChatGPT may restore the command after the first observation: cleared again right before q.
+  // ChatGPT may restore the command after the first observation: cleared again right before the start.
   f=urlFixture();const stage=f.runtime.stageStartup;
   f.runtime.stageStartup=async(...args)=>{const m=await stage(...args);Object.assign(f.page,{draftLength:310,restoredCommand:true});return m;};
   await f.controller.tick();
@@ -309,7 +332,7 @@ test('composer on an old conversation is not evidence of the new-chat draft',asy
   const f=urlFixture();f.page.url=project.chatUrl;await f.controller.tick();assert.deepEqual(f.order,['root']);
   f.page.draftLength=5;await f.controller.tick();assert.equal(f.starts.length,0);assert.equal(f.controller.state.phase,'waiting-draft');
 });
-test('plan, account, document, draft, fingerprint and expiry changes during staging revoke before q',async()=>{
+test('plan, account, document, draft, fingerprint and expiry changes during staging revoke before the start',async()=>{
   for(const change of [f=>f.info.planRevision++,f=>f.page.accountStatus='unknown',
     f=>f.page.documentId='replacement',f=>f.page.draftLength=3,f=>f.snap.epoch++,f=>f.advance(1800001)]){
     const f=urlFixture(),stage=f.runtime.stageStartup;f.runtime.stageStartup=async(...args)=>{const m=await stage(...args);change(f);return m;};
@@ -327,7 +350,7 @@ test('wrong or incomplete context and failed readiness stop before reserve',asyn
   const f=urlFixture();f.controller.contextCache=new ContextCache({load:async()=>packet(),inputKey:async()=>{throw Error('not ready');}});
   await f.controller.tick();assert.equal(f.starts.length,0);assert.equal(f.saved.attempt,null);
 });
-test('each persistence or service failure before checkpoint blocks q and cannot replay a prepared attempt',async()=>{
+test('each persistence or service failure before checkpoint blocks the start and cannot replay a prepared attempt',async()=>{
   for(const boundary of ['reserve','stage','sending']){
     const f=urlFixture();
     if(boundary==='reserve')f.runtime.prepareBootstrap=async()=>{throw Error('WAL unavailable');};
@@ -339,7 +362,7 @@ test('each persistence or service failure before checkpoint blocks q and cannot 
   }
 });
 test('own navigation generation cancellation does not cancel the authorized dispatch',async()=>{
-  const f=urlFixture(),start=f.composer.startChat;f.composer.startChat=async input=>{
+  const f=urlFixture(),start=f.composer.submitStartup;f.composer.submitStartup=async input=>{
     f.controller.cancel();assert.equal(input.canContinue(),true);return start(input);};
   await f.controller.tick();assert.equal(f.starts.length,1);f.controller.attach(f.saved);await f.controller.tick();assert.equal(f.starts.length,1);
 });
@@ -351,12 +374,12 @@ test('user cancellation durably revokes; lost revoke ack remains pending and nev
   fail=false;f.controller.attach(f.saved);await f.controller.tick();assert.equal(f.saved.attempt.cancelState,'revoked');
   await f.controller.retry();assert.equal(f.starts.length,1);assert.equal(f.controller.state.phase,'startup-cancelled');
 });
-test('registration wins cancellation: participant remains, context stops, no replacement q',async()=>{
+test('registration wins cancellation: participant remains, context stops, no replacement start',async()=>{
   const f=urlFixture();await f.controller.tick();await settle();f.proof();await f.controller.tick();
   await f.controller.cancelPreparation();assert.equal(f.saved.attempt.state,'sent');assert.equal(f.saved.attempt.cancelState,'registered-stopped');
   await f.controller.retry();assert.equal(f.starts.length,1);
 });
-test('cancellation during reservation blocks q even if the service returns a late ticket',async()=>{
+test('cancellation during reservation blocks the start even if the service returns a late ticket',async()=>{
   const f=urlFixture();let release;const reserve=f.runtime.prepareBootstrap;
   f.runtime.prepareBootstrap=async(...a)=>{await new Promise(r=>release=r);return reserve(...a);};
   const running=f.controller.tick();while(!release)await settle();await f.controller.cancelPreparation();release();await running;
@@ -396,7 +419,7 @@ test('user refresh ends address authority even if account and registration later
   await f.navigate();await f.controller.tick();
   assert.equal(f.saved.chatUrl,null);assert.equal(f.saved.attempt.addressStatus,'lost');assert.equal(f.starts.length,1);
 });
-test('cache metadata survives without context in q and retry never rebuilds a dispatched packet',async()=>{
+test('cache metadata survives without context in the command and retry never rebuilds a dispatched packet',async()=>{
   const f=urlFixture();let builds=0;f.controller.contextCache=new ContextCache({load:async()=>{builds++;return packet();},inputKey:async()=> 'stable'});
   await f.controller.tick();await settle();assert.equal(builds,1);assert.equal(f.saved.attempt.packet.cacheKey,'stable');
   f.info.planRevision++;await f.controller.retry();assert.equal(builds,1);assert.equal(f.starts.length,1);
@@ -414,12 +437,12 @@ test('a confirmed URL snapshot observes fingerprint changes without rebuilding o
   assert.equal(f.controller.state.startup.complete,true);assert.equal(f.controller.state.startup.snapshot_stale,true);
   assert.equal(f.starts.length,1);assert.equal(builds,1);
 });
-test('backend draining before and during dispatch blocks a new q and resuming cannot replay it',async()=>{
+test('backend draining before and during dispatch blocks a new start and resuming cannot replay it',async()=>{
   const f=urlFixture();let allowed=true;f.controller.canStartChat=()=>allowed;
   const stage=f.runtime.stageStartup;f.runtime.stageStartup=async(...a)=>{const m=await stage(...a);allowed=false;return m;};
   await f.controller.tick();assert.equal(f.starts.length,0);assert.equal(f.saved.attempt.cancelState,'revoked');
   const g=urlFixture();g.controller.canStartChat=()=>allowed;allowed=true;
-  g.composer.startChat=async input=>{allowed=false;assert.equal(input.canContinue(),false);return null;};
+  g.composer.submitStartup=async input=>{allowed=false;assert.equal(input.canContinue(),false);return {state:'not-sent',reason:'CHAT_CHANGED'};};
   await g.controller.tick();await settle();allowed=true;await g.controller.retry();assert.equal(g.starts.length,0);
 });
 test('legacy bound and unknown attempts remain readable without services or a fresh Send',async()=>{

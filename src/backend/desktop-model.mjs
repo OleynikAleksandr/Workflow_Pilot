@@ -7,7 +7,7 @@ import { normalizeChatUrl, activeSessionsNewestFirst, externalClientLine,
 import { startupPlatformOptions, startupSupported, publicVpsState, publicRuntimeState } from '../control/facade.mjs';
 import { DESKTOP_CHANNELS } from '../contracts/desktop.mjs';
 import {currentPlanTasks,planActivity,activityClock,notificationActivity,executionIssue} from '../contracts/dialogue-view.mjs';
-import {startupContextState,startupView} from '../contracts/startup-view.mjs';
+import {startupContextState,startupView,startupAttempt} from '../contracts/startup-view.mjs';
 import {roleActor,participantName,buildWorkProgress,commitProgressLabel,messageEvent,notificationEvents,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity,reviewHistoryEvents} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
 import { openCommunicationStore } from '../execution/facade.mjs';
@@ -561,7 +561,7 @@ function snapshot() {
     selected, context: saved?.external ? {phase:'external-session',servicesReady:true,messageSent:true}
       : saved&&workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)&&!['sent','unknown','acknowledged'].includes(saved.attempt?.state)
         ? {phase:'error',messageSent:false,error:workflow.recoveryStatus(saved.parentWorkspace??saved.workspace)}
-      : saved?.attempt?.bootstrapTransport==='url-query'||saved?.attempt?.contextTransport==='panel'&&saved.attempt.state==='sent'
+      : startupAttempt(saved?.attempt)||saved?.attempt?.contextTransport==='panel'&&saved.attempt.state==='sent'
         ? startupContextState(controller?.state,workflow.startupProgress(saved.sessionId,saved.attempt.requestId),saved.attempt,
           {chatUrl:saved.chatUrl,currentUrl:observation?.documentId?observation.state?.url:undefined})
         : controller?.state ?? { phase: 'selected', servicesReady: false, messageSent: false },

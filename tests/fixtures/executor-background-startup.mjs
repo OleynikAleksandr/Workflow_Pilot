@@ -16,8 +16,7 @@ const html=`<!doctype html><style>#prompt-textarea{display:none}</style>
 <button data-testid="profile-button">Account</button>
 <form><textarea id="prompt-textarea"></textarea><button data-testid="send-button">Send</button></form><main></main>
 <script>
-window.starts=[];window.files=[];window.readyAt=0;
-const command=new URL(location.href).searchParams.get('q');
+window.starts=[];window.files=[];window.readyAt=0;window.untrusted=0;
 // CSSOM layout change: no DOM MutationObserver event, even though the editor is now usable.
 setTimeout(()=>{document.styleSheets[0].deleteRule(0);window.readyAt=Date.now()},1200);
 document.querySelector('textarea').onpaste=event=>{
@@ -30,13 +29,18 @@ document.querySelector('form').onsubmit=event=>{event.preventDefault();const edi
  const user=document.createElement('article');user.dataset.messageAuthorRole='user';user.textContent=editor.value;document.querySelector('main').append(user);editor.value='';
  history.replaceState(null,'','/c/'+crypto.randomUUID());const assistant=document.createElement('article');assistant.dataset.messageAuthorRole='assistant';assistant.textContent='Bootstrap complete';document.querySelector('main').append(assistant);
 };
-if(command){document.querySelector('textarea').value=command;document.querySelector('form').requestSubmit();}
+// Like ChatGPT: Enter in the editor sends; only a trusted key (CDP input) counts.
+document.querySelector('textarea').addEventListener('keydown',event=>{
+ if(event.key!=='Enter'||event.shiftKey)return;event.preventDefault();
+ if(!event.isTrusted){window.untrusted++;return;}document.querySelector('form').requestSubmit();
+});
 </script>`;
 
 async function run(){
 await app.whenReady();
 const partition='persist:isolated-background-startup',ownSession=session.fromPartition(partition);
-await ownSession.protocol.handle('https',()=>new Response(html,{headers:{'content-type':'text/html; charset=utf-8'}}));
+const requested=[];
+await ownSession.protocol.handle('https',request=>{requested.push(request.url);return new Response(html,{headers:{'content-type':'text/html; charset=utf-8'}});});
 const host=new BackendBrowserHost({BrowserWindow,BaseWindow,WebContentsView,nativeImage,screen,session:ownSession,
   partition,preload:path.resolve('resources/chatgpt-page-observer-preload.cjs'),pageMode:'view'});
 const execution=new ExecutionFacade();execution.attachBrowser({host,ipc:ipcMain});
@@ -79,15 +83,16 @@ try{
     while(Date.now()<deadline&&!records.every(r=>r.project().attempt?.state==='sent'))await delay(50);
     const pages=[];
     for(const r of records){
-      const raw=await host.view(r.key).webContents.executeJavaScript('({starts,files,readyAt,visible:document.visibilityState})');
+      const raw=await host.view(r.key).webContents.executeJavaScript('({starts,files,readyAt,untrusted,visible:document.visibilityState})');
       pages.push({starts:raw.starts.length,ready:!!raw.readyAt,observedEditor:r.pageState.current?.state.editorAvailable,
         actualEditor:(await r.composer.inspect()).editorAvailable,phase:r.controller.state.phase});
       if(!baseline){assert.equal(raw.starts.length,1);assert.deepEqual(raw.files,[],'model-pull does not send attachments');
-        assert.match(raw.starts[0],/workflow_pilot_panel/);assert.doesNotMatch(raw.starts[0],/MANDATORY RULES ONLY/);
+        assert.equal(raw.untrusted,0,'the start is trusted input');assert.match(raw.starts[0],/workflow_pilot_panel/);assert.doesNotMatch(raw.starts[0],/MANDATORY RULES ONLY/);
         assert.ok(staged.some(s=>s.sessionId===r.project().sessionId&&s.text.includes('MANDATORY RULES ONLY')));
         assert.ok(r.project().chatUrl);}
     }
     assert.equal(errors.length,0);assert.equal(sessions.visible,null);
+    assert.equal(requested.some(url=>new URL(url).searchParams.has('q')),false,'no command in an address');
     results.push({count,pages});sessions.dispose();
     if(baseline)break;
   }

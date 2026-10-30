@@ -39,7 +39,9 @@ export class ProjectsService {
   setArchived(...args) { return this.#store.setArchived(...args); }
   forgetArchived(...args) { return this.#store.forgetArchived(...args); }
   forgetArchivedMany(...args) { return this.#store.forgetArchivedMany(...args); }
-  whenIdle() { return this.#store.mutationTail; }
+  // Idle only: a failed unrelated mutation (a stale page title) never fails the caller,
+  // for example a panel context read that waits for committed session intent.
+  whenIdle() { return this.#store.mutationTail.then(() => {}, () => {}); }
   createDeletion(options) {
     const service = new WorkspaceDeletion({...options, store:this.#store, git:this.#store.git});
     return Object.freeze({

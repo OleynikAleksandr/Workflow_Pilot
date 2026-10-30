@@ -473,12 +473,12 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       inspect:async({action}={})=>({...page,documentId:record.pageState.current.documentId,accountStatus:'signed-in',login:false,draftLength:0,messageSeen:record.bootstrapCount>0}),
       sendUserMessage:async()=>{record.domWorkSends++;throw Error('Working message attempted DOM fallback');},
       deliver:async()=>{throw Error('Bootstrap attempted DOM Send');},
-      startChat:async input=>{
+      // The typed start: Enter in the verified root document owns it, without a new document or epoch.
+      submitStartup:async input=>{
         assert.equal(record.bootstrapCount,0,'initial context is not replayed');
-        assert.equal(input.canContinue(),true);const text=new URL(input.url).searchParams.get('q');
-        navigation.epoch++;navigation.navigationSequence++;navigation.navigationOwner=input.navigationToken;
+        assert.equal(input.canContinue(),true);const text=input.text;
+        navigation.navigationSequence++;navigation.navigationOwner=input.navigationToken;
         page.url='https://chatgpt.com/c/'+project.sessionId;
-        rawPage(record).documentId='postflight-'+project.sessionId;
         if(record.resetObservation){record.resetObservation();reportPage(record);}
         await record.controller.observeNavigation({type:'navigated',url:page.url,isMainFrame:true,navigationKind:'in-page',
           navigationSequence:navigation.navigationSequence,navigationOwner:navigation.navigationOwner,snapshot:{...navigation}});
@@ -535,7 +535,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
               return {}; // Host acceptance precedes the model's asynchronous work.
             }});
           page.url='https://chatgpt.com/c/'+project.sessionId;page.userMessagesRevision++;page.userTurnId='u'+page.userMessagesRevision;
-          finish(record);return {state:'sent'};
+          finish(record);return {state:'submitted'};
         };
         try{
           if(fast&&project.assignmentId){
@@ -543,7 +543,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
             const job=bootstrap().then(async()=>{
               await record.controller.tick();await record.controller.tick();reportPage(record);
             }).catch(error).finally(()=>jobs.delete(job));jobs.add(job);
-            return {state:'sent'};
+            return {state:'submitted'};
           }
           return await bootstrap();
         }finally{composer.inFlight=false;}

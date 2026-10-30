@@ -101,14 +101,20 @@ document.querySelector('form').addEventListener('submit',event=>{
    if(!localStorage.getItem('fixture-hold-conversation'))setTimeout(window.fixtureFinishConversation,600);
  }else{localStorage.setItem('fixture-messages:'+location.pathname,JSON.stringify(window.fixtureMessages));saveTurns();}
 });
-const bootstrapCommand=new URL(location.href).searchParams.get('q');
-if(bootstrapCommand){
- document.getElementById('prompt-textarea').textContent=bootstrapCommand;
- if(document.documentElement.dataset.searchExtension!=='1')throw Error('Official search extension must run before q bootstrap');
- document.querySelector('form').requestSubmit();
- fetch('/fixture-bootstrap',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:bootstrapCommand})})
-  .then(r=>r.json()).then(result=>{if(result.error)window.fixtureBootstrapError=result.error;else window.fixtureAssistant('Контекст подтверждён');});
-}
+// Like ChatGPT: a trusted Enter in the editor sends. The typed start arrives as CDP input.
+document.getElementById('prompt-textarea').addEventListener('keydown',event=>{
+ if(event.key!=='Enter'||event.shiftKey)return;event.preventDefault();
+ if(!event.isTrusted)return;
+ const command=document.getElementById('prompt-textarea').innerText.trim();
+ if(!/workflow_pilot_panel/.test(command)){document.querySelector('form').requestSubmit();return;}
+ if(document.documentElement.dataset.searchExtension!=='1')throw Error('Official search extension must run before the start');
+ fetch('/fixture-start',{method:'POST'}).then(r=>r.json()).then(start=>{
+  if(start.redirect){location.assign('/unsupported/fixture-redirect');return;}
+  document.querySelector('form').requestSubmit();
+  fetch('/fixture-bootstrap',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:command})})
+   .then(r=>r.json()).then(result=>{if(result.error)window.fixtureBootstrapError=result.error;else window.fixtureAssistant('Контекст подтверждён');});
+ });
+});
 </script></body></html>`;
 
 // Seed only the fresh smoke profile, before main restores settings or creates a page.
@@ -129,8 +135,10 @@ export async function createRuntime({ browser, session, dataDir }) {
   await searchExtension.ensure();
   await session.protocol.handle('https', async request => {
     const url = new URL(request.url);
-    if(fixtureUnsupportedRedirect&&url.hostname==='chatgpt.com'&&url.pathname==='/'&&url.searchParams.has('q')){
-      fixtureUnsupportedRedirect=false;return Response.redirect('https://chatgpt.com/unsupported/fixture-redirect',302);
+    // A start never travels in an address; the fixture page asks whether to leave the chat instead of sending.
+    assert.equal(url.searchParams.has('q'),false,'no command in an address');
+    if(url.hostname==='chatgpt.com'&&url.pathname==='/fixture-start'&&request.method==='POST'){
+      const redirect=fixtureUnsupportedRedirect;fixtureUnsupportedRedirect=false;return Response.json({redirect});
     }
     if(url.hostname==='chatgpt.com'&&url.pathname==='/unsupported/fixture-redirect')
       return Response.redirect('https://chatgpt.com/c/fixture-work-redirect',302);
@@ -247,7 +255,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   // Since 0.5.20 a startup ends in the panel channel; the fixture page never opens the panel, so a sent startup stays there.
   const settled = () => !!store.selected()?.chatUrl&&(snapshot().context.phase === 'delivered'
     || snapshot().context.phase==='startup-complete'
-    || store.selected()?.attempt?.bootstrapTransport!=='url-query'&&snapshot().context.phase==='startup-channel');
+    || !['url-query','composer-input'].includes(store.selected()?.attempt?.bootstrapTransport)&&snapshot().context.phase==='startup-channel');
   // A packet invalidated by a later Kit change: 'stale' for attachments, a stale startup error for the panel.
   const stale = () => snapshot().context.phase === 'stale' || snapshot().context.startup?.snapshot_stale
     || snapshot().context.startup?.error?.code === 'PLUGIN_COMMUNICATION_STALE_MESSAGE';

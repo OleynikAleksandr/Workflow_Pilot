@@ -3,6 +3,7 @@ import { AgentTimer } from './agent-timer.mjs';
 import { ConversationRecovery } from './conversation-recovery.mjs';
 import { normalizeChatUrl } from '../../contracts/browser.mjs';
 import { sessionRuntimeKey } from '../../contracts/control.mjs';
+import { startupAttempt } from '../../contracts/startup-view.mjs';
 export { sessionRuntimeKey } from '../../contracts/control.mjs';
 
 // This facade addresses one saved session, never the current sidebar selection.
@@ -48,7 +49,7 @@ export class SessionRuntimes {
     const observeNavigation=work=>{
       record.navigationTail=record.navigationTail.then(()=>record.disposed?undefined:work()).catch(error=>{
         const attempt=record.project()?.attempt;
-        if(attempt?.bootstrapTransport==='url-query')record.controller.cancelledRequests.add(attempt.requestId);
+        if(startupAttempt(attempt))record.controller.cancelledRequests.add(attempt.requestId);
         record.error={code:error.code??'STARTUP_OBSERVATION_FAILED',message:error.message};this.onError(record,error);
       });
       void record.navigationTail.then(()=>{if(!record.disposed){this.tick(record);this.onChange(record);}});
@@ -119,7 +120,7 @@ export class SessionRuntimes {
   }
   tick(record,{freshDraft=false}={}) {
     const project=record.project();
-    const urlStartup=project?.attempt?.bootstrapTransport==='url-query',cancelling=urlStartup&&project.attempt.cancelState==='requested';
+    const urlStartup=startupAttempt(project?.attempt),cancelling=urlStartup&&project.attempt.cancelState==='requested';
     if(record.disposed||!project||project.archivedAt||project.sessionArchivedAt)return;
     if(!cancelling&&(this.paused||!record.ready||record.loading))return;
     if(!project.chatUrl&&!project.attempt&&(record.manualStartObserved||project.manualStart)){

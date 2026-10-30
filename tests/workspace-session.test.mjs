@@ -1054,3 +1054,12 @@ test('a mutation that changes nothing does not rewrite the store', async t => {
   await store.mutate(data => { data.projects[0].displayName = 'Новое имя'; });
   assert.equal(saves, 1);
 });
+
+test('waiting for idle projects never inherits an unrelated failed mutation', async t => {
+  const { ProjectsService } = await import('../src/control/projects/service.mjs');
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pilot-idle-'));t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const projects = new ProjectsService(path.join(dir, 'workspaces.json'));await projects.load();
+  // A page title for a session that is no longer selected fails on its own.
+  await assert.rejects(projects.setSessionTitle('/missing', 'gone', 'Заголовок'), { code: 'SESSION_CHANGED' });
+  assert.equal(await projects.whenIdle(), undefined);
+});

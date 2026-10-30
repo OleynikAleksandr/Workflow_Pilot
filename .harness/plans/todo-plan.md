@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1376,
+  "plan_revision": 1378,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -44,7 +44,8 @@
       "tests/executor-background-startup.test.mjs",
       "tests/electron-smoke.mjs",
       "tests/fixtures/search-extension-electron.cjs",
-      "scripts/check-search-extension.mjs"
+      "scripts/check-search-extension.mjs",
+      "src/control/projects/service.mjs"
     ],
     "documentation_paths": [
       "docs/planning/cdp-startup-input.md",
@@ -88,8 +89,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "CDP-START",
@@ -122,7 +123,8 @@
         "tests/executor-background-startup.test.mjs",
         "tests/electron-smoke.mjs",
         "tests/fixtures/search-extension-electron.cjs",
-        "scripts/check-search-extension.mjs"
+        "scripts/check-search-extension.mjs",
+        "src/control/projects/service.mjs"
       ],
       "documentation_paths": [
         "docs/planning/cdp-startup-input.md"
@@ -148,7 +150,30 @@
         "Runtime пропускает ровно свой keyDown Enter (счётчик собственных нажатий); любой другой ввод до Enter отменяет попытку, после Enter снимает владельца стартовой навигации; корень с неотправленной командой или локальный разговор через 30 с ведут к одному повтору; попытки url-query прежних версий распознаются; версия 0.6.4.",
         "Настоящий Electron (background-startup, electron-smoke, search-extension-native) стартует фоновые страницы через CDP-ввод; fixtures реагируют на ввод и Enter вместо q."
       ],
-      "expected_commit_message": "feat: Старт сессии через CDP-ввод"
+      "expected_commit_message": "feat: Старт сессии через CDP-ввод",
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/projects/service.mjs",
+        "src/control/sessions/service.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/executor-background-startup.mjs",
+        "tests/fixtures/search-extension-electron.cjs",
+        "tests/session-opening-performance.test.mjs",
+        "tests/session-runtime.test.mjs",
+        "tests/workspace-session.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -289,7 +314,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1376
+Revision: 1378
 
 ## Цель
 
@@ -303,10 +328,10 @@ Revision: 1376
 
 ## Микрозадачи
 
-- [TODO] CDP-START: Старт сессии через CDP-ввод — Ожидает
-  - Git Commit: [PENDING] feat: Старт сессии через CDP-ввод
+- [DONE] CDP-START: Старт сессии через CDP-ввод — Завершено
+  - Git Commit: [DONE] feat: Старт сессии через CDP-ввод
   - Reference: cdp-startup-input / CDP-START / implementation
-  - Файлы: src/execution/browser/chatgpt-composer.mjs, src/execution/browser/session-runtime.mjs, src/control/context/context-session.mjs, src/contracts/context.mjs, src/contracts/startup-view.mjs, src/control/sessions/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/chatgpt-composer.test.mjs, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/chatgpt-plugin.test.mjs, tests/startup-context.test.mjs, tests/dialogue-delivery.test.mjs, tests/session-opening-performance.test.mjs, tests/workspace-session.test.mjs, tests/backend-desktop-model.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/executor-background-startup.test.mjs, tests/electron-smoke.mjs, tests/fixtures/search-extension-electron.cjs, scripts/check-search-extension.mjs, docs/planning/cdp-startup-input.md
+  - Файлы: src/execution/browser/chatgpt-composer.mjs, src/execution/browser/session-runtime.mjs, src/control/context/context-session.mjs, src/contracts/context.mjs, src/contracts/startup-view.mjs, src/control/sessions/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/chatgpt-composer.test.mjs, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/chatgpt-plugin.test.mjs, tests/startup-context.test.mjs, tests/dialogue-delivery.test.mjs, tests/session-opening-performance.test.mjs, tests/workspace-session.test.mjs, tests/backend-desktop-model.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/executor-background-startup.test.mjs, tests/electron-smoke.mjs, tests/fixtures/search-extension-electron.cjs, scripts/check-search-extension.mjs, src/control/projects/service.mjs, docs/planning/cdp-startup-input.md
 - [TODO] DOCS: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS / implementation

@@ -18,62 +18,79 @@ function navigationFixture(t,options={}) {
   return {manager,port,contents};
 }
 
-test('navigation waits for the extension before the first document and before dispatching q',async t=>{
+// The typed start: a fake composer that emits its own CDP Enter as Electron reports it.
+function startFixture(t,options={}) {
+  const typed=[];let f;
+  const composer={inFlight:false,beforeEnter:null,async submitStartup({text,canContinue,onBeforeEnter}){
+    await composer.beforeEnter?.(f.contents);
+    if(!canContinue())return {state:'not-sent',reason:'CHAT_CHANGED'};
+    if(!await onBeforeEnter())return {state:'not-sent',reason:'CHAT_CHANGED'};
+    f.contents.emit('before-input-event',{}, {type:'keyDown',key:'Enter'});
+    typed.push(text);return {state:'submitted'};}};
+  f=navigationFixture(t,{createComposer:()=>composer,...options});
+  const start=(token='once',extra={})=>f.port.composer.submitStartup({text:'command',navigationToken:token,...extra});
+  return {...f,composer,typed,start};
+}
+
+test('navigation waits for the extension before the first document; a q address always opens the root',async t=>{
   let ready;const waiting=new Promise(resolve=>{ready=resolve;}),prepared=[];
   const {port,contents}=navigationFixture(t,{prepareNavigation:async url=>{prepared.push(url);await waiting;}});
   contents.url='about:blank';const load=port.navigate('https://chatgpt.com/');
   assert.equal(contents.loads.length,0);ready();await load;assert.deepEqual(contents.loads,['https://chatgpt.com/']);
-  await port.composer.startChat({url:'https://chatgpt.com/?q=one',navigationToken:'prepared'});
-  assert.deepEqual(prepared,['https://chatgpt.com/','https://chatgpt.com/?q=one']);assert.equal(contents.loads.length,2);
+  contents.url='about:blank';await port.navigate('https://chatgpt.com/?q=one');
+  assert.deepEqual(contents.loads,['https://chatgpt.com/','https://chatgpt.com/'],'the command never travels in an address');
+  assert.equal(port.snapshot().navigationOwner,null);
 });
 
-test('extension error leaves bootstrap token unused and a later successful preparation can dispatch it once',async t=>{
-  let failure=true;const error=Object.assign(new Error('Extension unavailable'),{code:'CHATGPT_SEARCH_EXTENSION_DOWNLOAD'});
-  const {port,contents}=navigationFixture(t,{prepareNavigation:async()=>{if(failure)throw error;}});
-  const args={url:'https://chatgpt.com/?q=one',navigationToken:'retry-preparation'};
-  await assert.rejects(port.composer.startChat(args),{code:error.code});assert.equal(contents.loads.length,0);
-  assert.equal(port.snapshot().epoch,0);assert.equal(port.snapshot().navigationOwner,null);
-  failure=false;await port.composer.startChat(args);assert.deepEqual(contents.loads,[args.url]);
-  await assert.rejects(port.composer.startChat(args),{code:'BOOTSTRAP_ALREADY_DISPATCHED'});
+test('the typed start owns the page from its own Enter, once per token, without a navigation or a new epoch',async t=>{
+  const f=startFixture(t),events=[];f.port.subscribe(event=>events.push(event.type));const before=f.port.snapshot();
+  assert.deepEqual(await f.start(),{state:'submitted'});
+  assert.equal(f.port.snapshot().navigationOwner,'once','the own Enter is not user input');
+  assert.equal(f.port.snapshot().epoch,before.epoch);assert.equal(f.contents.loads.length,0);assert.deepEqual(events,[]);
+  await assert.rejects(f.start(),{code:'BOOTSTRAP_ALREADY_DISPATCHED'});assert.deepEqual(f.typed,['command']);
+  await assert.rejects(f.port.composer.submitStartup({text:'command',navigationToken:''}),{code:'BOOTSTRAP_NAVIGATION_INVALID'});
+  // Any further key, even another Enter, is the user's: it ends the start's authority.
+  f.contents.emit('before-input-event',{}, {type:'keyDown',key:'Enter'});assert.equal(f.port.snapshot().navigationOwner,null);
 });
 
-test('cancel, release, user interaction and main-frame navigation while preparing never dispatch the saved URL',async t=>{
+test('cancel, release, user key or mouse and main-frame navigation before Enter never send',async t=>{
   for(const reason of ['cancel','release','key','mouse','navigation']){
-    let resolve;const ready=new Promise(done=>{resolve=done;});let current=true;
-    const {port,contents}=navigationFixture(t,{prepareNavigation:()=>ready});
-    const sending=port.composer.startChat({url:'https://chatgpt.com/?q=one',navigationToken:'pending',canContinue:()=>current});
-    if(reason==='cancel')current=false;
-    if(reason==='release')port.release();
-    if(reason==='key')contents.emit('before-input-event',{}, {type:'keyDown',key:'x'});
-    if(reason==='mouse')contents.emit('before-mouse-event',{}, {type:'mouseDown'});
-    if(reason==='navigation')contents.emit('did-navigate-in-page',{},'https://chatgpt.com/c/manual-chat',true);
-    resolve();assert.equal(await sending,null,reason);assert.equal(contents.loads.length,0,reason);
+    let current=true;const f=startFixture(t);
+    f.composer.beforeEnter=contents=>{
+      if(reason==='cancel')current=false;
+      if(reason==='release')f.port.release();
+      if(reason==='key')contents.emit('before-input-event',{}, {type:'keyDown',key:'x'});
+      if(reason==='mouse')contents.emit('before-mouse-event',{}, {type:'mouseDown'});
+      if(reason==='navigation')contents.emit('did-navigate-in-page',{},'https://chatgpt.com/c/manual-chat',true);
+    };
+    const result=await f.start('pending',{canContinue:()=>current});
+    assert.equal(result.state,'not-sent',reason);assert.deepEqual(f.typed,[],reason);
+    if(reason!=='release')assert.equal(f.port.snapshot().navigationOwner,null,reason);
   }
+  // An iframe navigation is not the page's: the start proceeds.
+  const f=startFixture(t);f.composer.beforeEnter=contents=>contents.emit('did-navigate-in-page',{},'https://example.com/iframe',false);
+  assert.equal((await f.start('iframe-safe')).state,'submitted');
 });
 
-test('a newer navigation wins during preparation, while iframe navigation cannot cancel it',async t=>{
+test('a newer navigation wins during preparation',async t=>{
   let first;let calls=0;
   const {port,contents}=navigationFixture(t,{prepareNavigation:()=>++calls===1?new Promise(resolve=>{first=resolve;}):Promise.resolve()});
   const old=port.navigate('https://chatgpt.com/c/old-chat');
   await port.navigate('https://chatgpt.com/c/new-chat');first();assert.equal(await old,null);
   assert.deepEqual(contents.loads,['https://chatgpt.com/c/new-chat']);
-  let finish;const other=navigationFixture(t,{prepareNavigation:()=>new Promise(resolve=>{finish=resolve;})});
-  const q=other.port.composer.startChat({url:'https://chatgpt.com/?q=one',navigationToken:'iframe-safe'});
-  other.contents.emit('did-navigate-in-page',{},'https://example.com/iframe',false);finish();await q;
-  assert.equal(other.contents.loads.length,1);
 });
 
 test('navigation port preserves transient redirect URLs, frame identity and one sequence for all subscribers',async t=>{
-  const {port,contents}=navigationFixture(t),events=[],other=[];
+  const {port,contents,start}=startFixture(t),events=[],other=[];
   port.subscribe(event=>{events.push(structuredClone(event));event.url='changed';});port.subscribe(event=>other.push(event));
-  await port.composer.startChat({url:'https://chatgpt.com/?q=short',navigationToken:'request-one'});
+  await start('request-one');
   contents.url='https://chatgpt.com/c/final-chat';
   contents.emit('did-redirect-navigation',{url:'https://chatgpt.com/work/',isMainFrame:true});
   contents.emit('did-navigate-in-page',{},'https://chatgpt.com/c/iframe-chat',false);
   contents.emit('did-navigate-in-page',{},contents.url,true);
   const transitions=events.filter(e=>e.type==='navigated');
   assert.deepEqual(transitions.map(e=>[e.navigationKind,e.url,e.isMainFrame]),[
-    ['navigate','https://chatgpt.com/?q=short',true],['redirect','https://chatgpt.com/work/',true],
+    ['redirect','https://chatgpt.com/work/',true],
     ['in-page','https://chatgpt.com/c/iframe-chat',false],['in-page','https://chatgpt.com/c/final-chat',true]]);
   assert.deepEqual(events.map(e=>e.navigationSequence),other.map(e=>e.navigationSequence));
   const sequenced=events.filter(e=>e.navigationSequence!==undefined);
@@ -85,36 +102,33 @@ test('navigation port preserves transient redirect URLs, frame identity and one 
   assert.equal(events.length,before);assert.notEqual(navigationFixture(t).port.snapshot().incarnation,incarnation);
 });
 
-test('only an admitted bootstrap can load q once; refresh checks current and target including empty q',async t=>{
+test('refresh checks current and target including empty q',async t=>{
   for(const query of ['q=command','q=']) {
     const {port,contents}=navigationFixture(t),url='https://chatgpt.com/?'+query;
-    await port.composer.startChat({url,navigationToken:'once'});
-    assert.deepEqual(contents.loads,[url]);
-    await assert.rejects(port.composer.startChat({url,navigationToken:'once'}),{code:'BOOTSTRAP_ALREADY_DISPATCHED'});
+    contents.url=url;
     await port.navigate('https://chatgpt.com/c/saved-chat',{reload:true});
     assert.equal(contents.loads.at(-1),'https://chatgpt.com/');
     await port.navigate(url,{reload:true});assert.equal(contents.loads.at(-1),'https://chatgpt.com/');
-    await port.navigate(url);assert.equal(contents.loads.filter(value=>value===url).length,1);
+    await port.navigate(url);assert.equal(contents.loads.includes(url),false);
     assert.equal(contents.reloads,0);
   }
 });
 
-test('crash recovery never reloads q or uses a lost query URL, independently of control attempts',async t=>{
+test('crash recovery never reloads q or a lost URL after a start, independently of control attempts',async t=>{
   for(const loseUrl of [false,true]) {
-    const {port,contents}=navigationFixture(t,{recoverCrashed:true});
-    await port.composer.startChat({url:'https://chatgpt.com/?q=command',navigationToken:'once'});
-    if(loseUrl)contents.url='';
-    contents.emit('render-process-gone',{}, {reason:'killed'});
+    const f=startFixture(t,{recoverCrashed:true});await f.start();
+    f.contents.url=loseUrl?'':'https://chatgpt.com/?q=command';
+    f.contents.emit('render-process-gone',{}, {reason:'killed'});
     await new Promise(resolve=>setTimeout(resolve,25));
-    assert.equal(contents.reloads,0);assert.equal(contents.loads.length,2);
-    assert.equal(contents.loads.at(-1),'https://chatgpt.com/');assert.equal(port.snapshot().navigationOwner,null);
+    assert.equal(f.contents.reloads,0);assert.equal(f.contents.loads.length,1);
+    assert.equal(f.contents.loads.at(-1),'https://chatgpt.com/');assert.equal(f.port.snapshot().navigationOwner,null);
   }
 });
 
 test('native refresh shortcuts on a query page are routed through the same safe refresh',async t=>{
   for(const input of [{key:'r',meta:true},{key:'r',control:true},{key:'F5'}]) {
-    const {port,contents}=navigationFixture(t);let prevented=false;
-    await port.composer.startChat({url:'https://chatgpt.com/?q=command',navigationToken:'once'});
+    const {contents}=navigationFixture(t);let prevented=false;
+    contents.url='https://chatgpt.com/?q=command';
     contents.emit('before-input-event',{preventDefault:()=>{prevented=true;}},{type:'keyDown',...input});
     await new Promise(resolve=>setImmediate(resolve));
     assert.equal(prevented,true);assert.equal(contents.loads.at(-1),'https://chatgpt.com/');assert.equal(contents.reloads,0);
@@ -122,8 +136,8 @@ test('native refresh shortcuts on a query page are routed through the same safe 
 });
 
 test('explicit navigation wins a pending crash recovery and user input ends bootstrap ownership',async t=>{
-  const {port,contents}=navigationFixture(t,{recoverCrashed:true});
-  await port.composer.startChat({url:'https://chatgpt.com/?q=command',navigationToken:'once'});
+  const {port,contents,start}=startFixture(t,{recoverCrashed:true});
+  await start();
   contents.emit('before-mouse-event',{}, {type:'mouseMove'});assert.equal(port.snapshot().navigationOwner,'once');
   contents.emit('before-input-event',{}, {type:'rawKeyDown'});assert.equal(port.snapshot().navigationOwner,null);
   contents.emit('render-process-gone',{}, {reason:'killed'});
@@ -131,14 +145,14 @@ test('explicit navigation wins a pending crash recovery and user input ends boot
   assert.equal(contents.reloads,0);assert.equal(contents.loads.at(-1),'https://chatgpt.com/c/saved-chat');
 });
 
-test('bootstrap load errors and diagnostics never expose q or its ticket',async t=>{
+test('load errors and diagnostics of a q address never expose its query',async t=>{
   const {port,contents}=navigationFixture(t),secret='secret-ticket-value',diagnostics=[],events=[];
-  contents.loadURL=async()=>{throw Object.assign(Error('net failed https://chatgpt.com/?q='+secret),{code:'ERR_FAILED'});};
+  contents.url='https://chatgpt.com/?q='+secret;
+  contents.loadURL=async url=>{throw Object.assign(Error('net failed '+contents.getURL()+' '+url),{code:'ERR_FAILED'});};
   port.setDiagnostic(value=>diagnostics.push(value));port.subscribe(event=>{if(event.error)events.push(event.error);});
-  let failure;try{await port.composer.startChat({url:'https://chatgpt.com/?q='+secret,navigationToken:'once'});}catch(error){failure=error;}
+  let failure;try{await port.navigate('https://chatgpt.com/?q='+secret,{reload:true});}catch(error){failure=error;}
   assert.equal(failure.code,'ERR_FAILED');assert.ok(!String(failure).includes(secret));
   assert.ok(!JSON.stringify([...events,...diagnostics]).includes(secret));
-  assert.deepEqual(diagnostics[0].url.queryKeys,['q']);
 });
 
 function fixture(t) {
@@ -347,8 +361,8 @@ test('safeReload opens only the saved chat address, never q, and records the doc
 });
 
 test('a completed start keeps its navigation authority until Control ends it; then safeReload proceeds',async t=>{
-  const {port,contents}=navigationFixture(t);
-  await port.composer.startChat({url:'https://chatgpt.com/?q=start',navigationToken:'token-one'});
+  const {port,contents,start}=startFixture(t);
+  await start('token-one');
   contents.url='https://chatgpt.com/c/saved-chat-1';
   // 0.6.1: a background executor page refused every freshness reload from here on.
   assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-1'),{reloaded:false,reason:'startup-navigation'});
@@ -364,16 +378,14 @@ test('a completed start keeps its navigation authority until Control ends it; th
 });
 
 test('safeReload is refused during a send, a start navigation and a load',async t=>{
-  const composer={inFlight:true};
-  const {port,contents}=navigationFixture(t,{createComposer:()=>composer});
+  const {port,contents,composer,start}=startFixture(t);composer.inFlight=true;
   assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-1'),{reloaded:false,reason:'composer-in-flight'});
   composer.inFlight=false;
+  await start('token-one');
+  assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-1'),{reloaded:false,reason:'startup-navigation'});
+  port.composer.endStartupNavigation('token-one');
   let release;const original=contents.loadURL;
   contents.loadURL=url=>new Promise(resolve=>{release=()=>resolve(original(url));});
-  const starting=port.composer.startChat({url:'https://chatgpt.com/?q=start',navigationToken:'token-one'});
-  await new Promise(resolve=>setImmediate(resolve));
-  assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-1'),{reloaded:false,reason:'startup-navigation'});
-  release();await starting;
   const loading=port.navigate('https://chatgpt.com/c/saved-chat-2');await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-2'),{reloaded:false,reason:'loading'});
   release();await loading;

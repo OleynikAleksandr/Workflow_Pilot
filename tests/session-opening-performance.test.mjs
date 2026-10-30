@@ -51,7 +51,7 @@ test('production readiness and canonical recovery block insertion after real inp
     const composer = { getURL: () => 'https://chatgpt.com/',navigationSnapshot:()=>({id:'fixture',incarnation:'fixture',epoch:1,navigationSequence:0}),
       inspect: async options => ({ url: 'https://chatgpt.com/', editorAvailable: true, writable: true, draftLength: 0,
         documentId:'preflight',accountStatus:'signed-in',busy: false, login: false, messageSeen: false }),
-      startChat:async()=>{sends++;},deliver:async()=>{fills++;throw Error('DOM fallback forbidden');}};
+      submitStartup:async()=>{sends++;return {state:'submitted'};},deliver:async()=>{fills++;throw Error('DOM fallback forbidden');}};
     const controller = new ContextSession({ store, runtime: {
       ensure: async () => ({}),
       prepareBootstrap: async () => ({context_transport:'panel',enrollment_ticket:'a'.repeat(64),

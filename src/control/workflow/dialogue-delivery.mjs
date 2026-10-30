@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 import {readCommandActivity} from './command-activity.mjs';
 import {executorPageState} from './executor-session.mjs';
 import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
-import {startupLaunch} from '../../contracts/startup-view.mjs';
+import {startupLaunch,startupAttempt,STARTUP_TRANSPORT} from '../../contracts/startup-view.mjs';
 import {normalizeChatUrl} from '../../contracts/browser.mjs';
 import {communicationMessageComplete} from '../../contracts/plugin-communication.mjs';
 const startupFailure=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
@@ -27,7 +27,7 @@ export class DialogueDelivery {
         if(attempt.loginLost)throw startupFailure('STARTUP_LOGIN_REQUIRED','Вход в ChatGPT утрачен. Контекст не выдан.');
         if(attempt.cancelState&&attempt.cancelState!=='none'||record?.controller?.startupAllowed?.(attempt)===false)
           throw startupFailure('STARTUP_CANCELLED','Запуск отменён. Дальнейшее чтение и подтверждение запрещены.');
-        if(attempt.bootstrapTransport==='url-query'){
+        if(startupAttempt(attempt)){
           const observation=record?.pageState?.current,page=observation?.state;
           if(page?.login==='signed-out')throw startupFailure('STARTUP_LOGIN_REQUIRED','Нужно войти в ChatGPT. Контекст не выдан.');
           const snapshot=record?.browser?.snapshot?.()??record?.composer?.navigationSnapshot?.();
@@ -37,7 +37,9 @@ export class DialogueDelivery {
               &&!['lost','conflict'].includes(attempt.addressStatus);
           if(!owned)throw startupFailure('STARTUP_ADDRESS_UNCONFIRMED','Принадлежность страницы этой попытке не подтверждена. Контекст не выдан.');
           const ready=page?.login==='signed-in'&&observation.documentId
-            &&(project.chatUrl?normalizeChatUrl(page.url)===project.chatUrl:observation.documentId!==attempt.preflightDocumentId);
+            &&(project.chatUrl?normalizeChatUrl(page.url)===project.chatUrl
+              // A typed start stays in its verified document; a q start loaded a new one.
+              :attempt.bootstrapTransport===STARTUP_TRANSPORT||observation.documentId!==attempt.preflightDocumentId);
           if(!ready){
             const remaining=deadline-Date.now();
             if(remaining<=0||!record?.pageState?.waitForChange)throw startupFailure('STARTUP_NOT_READY','Ожидается подтверждение входа и готовности страницы ChatGPT. Контекст пока не выдан.');

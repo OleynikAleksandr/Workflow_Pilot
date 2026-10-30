@@ -16,10 +16,13 @@ app.on('window-all-closed', () => {});
     const { ChatGPTSearchExtension } = await import(pathToFileURL(path.join(source, 'chatgpt-search-extension.mjs')));
     const { BrowserSessions } = await import(pathToFileURL(path.join(source, 'session-runtime.mjs')));
     const ses = session.fromPartition('persist:isolated-chatgpt-search');let requests = 0, submissions = 0;
-    const html = '<!doctype html><title>Local extension startup fixture</title><script>'
+    // A trusted Enter in the editor sends, as in ChatGPT; the start never travels in an address.
+    const html = '<!doctype html><title>Local extension startup fixture</title><textarea></textarea><script>'
       + 'window.fixture={markerAtDocumentStart:document.documentElement.dataset.searchExtension??null};'
-      + 'const q=new URL(location.href).searchParams.get("q");'
-      + 'window.delivery=q&&window.fixture.markerAtDocumentStart==="1"?fetch("/submit",{method:"POST",body:q}):Promise.resolve();'
+      + 'window.delivery=Promise.resolve();'
+      + 'document.querySelector("textarea").addEventListener("keydown",e=>{if(e.key!=="Enter")return;e.preventDefault();'
+      + 'const text=e.currentTarget.value;if(e.isTrusted&&text&&window.fixture.markerAtDocumentStart==="1")'
+      + 'window.delivery=fetch("/submit",{method:"POST",body:text});});'
       + '</script>';
     await ses.protocol.handle('https', async req => {
       const u = new URL(req.url);assert.equal(u.origin, 'https://chatgpt.com');
@@ -32,7 +35,19 @@ app.on('window-all-closed', () => {});
     const host = { create: () => { const win = new BrowserWindow({ show: false, webPreferences: {
       session: ses, nodeIntegration: false, contextIsolation: true, sandbox: true } });windows.push(win);return win.webContents; },
       close: () => { for (const win of windows) if (!win.isDestroyed()) win.destroy(); } };
-    manager = new BrowserSessions({ host, ipc: {}, connect: () => () => {}, createComposer: () => ({ inFlight: false }),
+    // The typed start through the page's own CDP attachment, as the composer sends it.
+    const createComposer = contents => ({ inFlight: false, async submitStartup({ text, canContinue, onBeforeEnter }) {
+      const debug = contents.debugger;if (!debug.isAttached()) debug.attach('1.3');
+      await debug.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true });
+      await contents.executeJavaScript('document.querySelector("textarea").focus()');
+      await debug.sendCommand('Input.insertText', { text });
+      if (!canContinue() || !await onBeforeEnter()) return { state: 'not-sent' };
+      const key = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
+      await debug.sendCommand('Input.dispatchKeyEvent', { type: 'keyDown', ...key, text: '\r', unmodifiedText: '\r' });
+      await debug.sendCommand('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
+      return { state: 'submitted' };
+    } });
+    manager = new BrowserSessions({ host, ipc: {}, connect: () => () => {}, createComposer,
       prepareNavigation: url => extension.prepareNavigation(url) });
     const port = manager.open('extension-fixture');let result;
     if (phase === 'corrupt') {
@@ -43,10 +58,13 @@ app.on('window-all-closed', () => {});
       await port.navigate('https://chatgpt.com/');
       const contents = windows[0].webContents;
       const root = await contents.executeJavaScript('window.fixture');assert.equal(root.markerAtDocumentStart, '1');
-      await port.composer.startChat({ url: 'https://chatgpt.com/?q=isolated-opening-command', navigationToken: 'one-attempt' });
+      const start = { text: 'isolated-opening-command', navigationToken: 'one-attempt' };
+      assert.equal((await port.composer.submitStartup(start)).state, 'submitted');
+      // The page handles the trusted Enter asynchronously to the CDP acknowledgement.
+      for (const until = Date.now() + 3000; submissions === 0 && Date.now() < until;) await new Promise(r => setTimeout(r, 25));
       await contents.executeJavaScript('window.delivery');assert.equal(submissions, 1);
       const page = await contents.executeJavaScript('window.fixture');
-      await assert.rejects(port.composer.startChat({ url: 'https://chatgpt.com/?q=isolated-opening-command', navigationToken: 'one-attempt' }), { code: 'BOOTSTRAP_ALREADY_DISPATCHED' });
+      await assert.rejects(port.composer.submitStartup(start), { code: 'BOOTSTRAP_ALREADY_DISPATCHED' });
       await port.navigate('https://chatgpt.com/?q=isolated-opening-command', { reload: true });assert.equal(contents.getURL(), 'https://chatgpt.com/');
       assert.equal(submissions, 1);assert.equal(ses.extensions.getAllExtensions().length, 1);
       result = { requests, submissions, markerAtDocumentStart: page.markerAtDocumentStart, version: (await extension.ensure()).version };
