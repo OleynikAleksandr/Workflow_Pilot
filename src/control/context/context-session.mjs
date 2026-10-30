@@ -94,6 +94,11 @@ const metadata = packet => ({ workspace: packet.workspace, session_id: packet.se
   preparationMs: packet.preparation?.ms, cacheHit: packet.preparation?.cacheHit });
 const failure = (code, message) => Object.assign(new Error(message), { code });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+const later = (fn, ms) => { const timer = setTimeout(fn, ms); timer.unref?.(); return () => clearTimeout(timer); };
+// ChatGPT sometimes refuses the q command in the page («Учетная запись сменилась»): the message
+// stays local, no request leaves. A successful start has a real address within seconds.
+export const START_NOT_SENT='start-not-sent';
+export const START_NOT_SENT_MS=30000,START_NOT_SENT_WATCH_MS=10*60*1000,MAX_START_RETRIES=1;
 const urlAttempt = attempt => attempt?.bootstrapTransport==='url-query';
 const attemptIdentity = attempt => ({requestId:attempt.requestId,attemptGeneration:attempt.attemptGeneration});
 const urlStatus = attempt => ({requestId:attempt.requestId,state:attempt.state,addressStatus:attempt.addressStatus,
@@ -104,11 +109,12 @@ const newChatRoot = value => {
   catch{return false;}
 };
 const normalChatTarget = isChatGPTChatUrl;
+const cancelledPhase = attempt => attempt.cancelReason===START_NOT_SENT&&attempt.state!=='sent'?'start-not-sent':'startup-cancelled';
 
 export class ContextSession {
   constructor({ store, runtime, composer, contextCache = null, onChange = () => {}, onChatBound = () => {}, now = Date.now, uuid = randomUUID,
-    wait = pause, readRetryDelays = [25, 100],canStartChat=()=>true }) {
-    Object.assign(this, { store, runtime, composer, contextCache, onChange, onChatBound, now, uuid, wait, readRetryDelays,canStartChat });
+    wait = pause, readRetryDelays = [25, 100],canStartChat=()=>true,schedule=later }) {
+    Object.assign(this, { store, runtime, composer, contextCache, onChange, onChatBound, now, uuid, wait, readRetryDelays,canStartChat,schedule });
     this.generation = 0;
     this.active = null;
     this.pending = false;
@@ -119,6 +125,7 @@ export class ContextSession {
   }
 
   attach(project, { freshDraft = false } = {}) {
+    this.clearWake();
     this.preparationPaused = project.preparationPaused === true;
     this.serviceRetries = 0;
     this.retryGeneration = null;
@@ -134,6 +141,7 @@ export class ContextSession {
   }
 
   cancel() {
+    this.clearWake();
     this.retryGeneration = null;
     this.generation++; this.rerunRequested = false; this.active = null; this.servicesReady = false; this.freshDraft = false;
     this.emit({ phase: 'selected', messageSent: false, delivery: null, error: null, projectInfo: null });
@@ -333,15 +341,53 @@ export class ContextSession {
   async reconcileCancellation(project,attempt){
     this.cancelledRequests.add(attempt.requestId);
     if(attempt.cancelState!=='requested'){
-      this.emit({phase:'startup-cancelled',messageSent:attempt.state==='sent',attempt:urlStatus(attempt)});return;
+      // A restart interrupted between the revocation and the new start continues here.
+      if(this.mayRestart(attempt))return this.restartNotSent(project,attempt);
+      this.emit({phase:cancelledPhase(attempt),messageSent:attempt.state==='sent',attempt:urlStatus(attempt)});return;
     }
     try{
       if(!this.runtime.cancelStartup)throw failure('STARTUP_CHANNEL_UNAVAILABLE','Служба отзыва приглашения недоступна.');
       const stopped=await this.runtime.cancelStartup(project,attempt,attempt.cancelReason??'cancelled');
       attempt=await this.patchUrl(project,attempt,{cancelState:stopped.status,cancelCompletedAtMs:this.now()});
-      this.emit({phase:'startup-cancelled',messageSent:attempt.state==='sent',attempt:urlStatus(attempt),error:null});
+      if(this.mayRestart(attempt))return this.restartNotSent(project,attempt);
+      this.emit({phase:cancelledPhase(attempt),messageSent:attempt.state==='sent',attempt:urlStatus(attempt),error:null});
     }catch(error){this.emit({phase:'cancel-pending',attempt:urlStatus(attempt),error:{code:error.code??'STARTUP_CANCEL_PENDING',message:error.message}});}
   }
+  // Only a revoked invitation proves nobody registered: then one new start, never more.
+  mayRestart(attempt){
+    return attempt.cancelReason===START_NOT_SENT&&attempt.cancelState==='revoked'&&attempt.state!=='sent'
+      &&(attempt.startupRetry?.count??0)<MAX_START_RETRIES;
+  }
+  async restartNotSent(project,attempt){
+    const latest=this.store.project(project.workspace,project.sessionId);
+    if(latest?.attempt?.requestId!==attempt.requestId||latest.chatUrl)return;
+    this.restartFrom={workspace:project.workspace,sessionId:project.sessionId,
+      startupRetry:{count:(attempt.startupRetry?.count??0)+1,previousRequestId:attempt.requestId}};
+    await this.store.updateSession(project.workspace,project.sessionId,{attempt:null});
+    this.emit({phase:'startup-retry',messageSent:false,attempt:null,error:null});
+    this.rerunRequested=true;
+  }
+  // Proven not sent: the q document of this attempt still shows only a local conversation,
+  // no real address was ever seen, nothing runs and nobody registered.
+  async startNotSent(attempt){
+    const snapshot=this.composer.navigationSnapshot?.(),elapsed=this.now()-attempt.sendStartedAtMs;
+    if(!attempt.navigation||attempt.addressCandidate||attempt.addressStatus==='conflict'||elapsed>START_NOT_SENT_WATCH_MS
+      ||!snapshot||snapshot.incarnation!==attempt.navigation.incarnation||snapshot.epoch!==attempt.navigation.epoch)return 'no';
+    const url=this.composer.getURL();
+    if(!isPendingChatGPTConversation(url)&&!isChatGPTChatUrl(url))return 'no';
+    if(normalizeChatUrl(url))return 'no';
+    if(elapsed<START_NOT_SENT_MS)return 'later';
+    const observation=await this.composer.inspect();
+    if(observation.busy!==false||!isPendingChatGPTConversation(observation.url))return newChatRoot(observation.url)||observation.busy?'later':'no';
+    return 'yes';
+  }
+  wakeAt(at){
+    if(this.wake&&this.wake.at<=at)return;
+    this.clearWake();
+    const wake={at};wake.cancel=this.schedule(()=>{if(this.wake===wake)this.wake=null;this.signal();},Math.max(0,at-this.now()));
+    this.wake=wake;
+  }
+  clearWake(){this.wake?.cancel?.();this.wake=null;}
   async tickUrl(project,info,attempt,generation){
     if(attempt?.cancelState&&attempt.cancelState!=='none')return this.reconcileCancellation(project,attempt);
     if(project.preparationPaused){this.emit({phase:'preparation-paused',error:null});return;}
@@ -377,6 +423,15 @@ export class ContextSession {
       // would otherwise refuse every later freshness reload of a background page.
       if(project.chatUrl&&attempt.state==='sent'&&this.composer.navigationSnapshot?.()?.navigationOwner===attempt.requestId)
         this.composer.endStartupNavigation?.(attempt.requestId);
+      if(attempt.state!=='sent'&&!project.chatUrl){
+        const notSent=await this.startNotSent(attempt);
+        if(!this.current(generation))return;
+        if(notSent==='yes'){
+          attempt=await this.patchUrl(project,attempt,latest=>this.startupAllowed(latest)&&latest.state!=='sent'
+            ?{cancelState:'requested',cancelReason:START_NOT_SENT,cancelRequestedAtMs:this.now()}:{});
+          if(attempt.cancelState==='requested')return this.reconcileCancellation(project,attempt);
+        }else if(notSent==='later')this.wakeAt(Math.max(attempt.sendStartedAtMs+START_NOT_SENT_MS,this.now()+5000));
+      }
       const elapsed=this.now()-attempt.sendStartedAtMs;
       if(attempt.state!=='sent'&&elapsed>=180000)attempt=await this.patchUrl(project,attempt,latest=>
         this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{});
@@ -427,7 +482,9 @@ export class ContextSession {
     attempt=await this.patchUrl(project,null,{protocol:CONTEXT_PROTOCOL,bootstrapTransport:'url-query',contextTransport:'panel',
       requestId:'wp-request-'+this.uuid(),attemptGeneration:this.uuid(),state:'reserving',createdAtMs:this.now(),sendStartedAtMs:null,
       packet:metadata(packet),startupText:orchestratorStartupContext(project,packet,this.runtime.startupRules??[]),
-      preflightDocumentId,cancelState:'none',addressStatus:'pending'});
+      preflightDocumentId,cancelState:'none',addressStatus:'pending',
+      ...(this.restartFrom?.workspace===project.workspace&&this.restartFrom.sessionId===project.sessionId?{startupRetry:this.restartFrom.startupRetry}:{})});
+    this.restartFrom=null;
     const bootstrap=await this.runtime.prepareBootstrap?.(project,{request_id:attempt.requestId,attempt_generation:attempt.attemptGeneration});
     if(!this.current(generation)||!this.startupAllowed(this.store.project(project.workspace,project.sessionId)?.attempt)){
       attempt=await this.patchUrl(project,attempt,{cancelState:'requested',cancelReason:'preparation-interrupted',cancelRequestedAtMs:this.now(),

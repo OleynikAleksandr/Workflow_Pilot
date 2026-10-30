@@ -53,10 +53,12 @@ export function executorStatus(assignment,record,integration,{channel=null}={}) 
   const bootstrap=record?.controller?.state?.phase;
   const startup={selected:'Открывается разговор',preparing:'Подготовка службы и контекста',
     'loading-context':'Загружается контекст','preparing-message':'Готовится стартовое сообщение',
-    sending:'Отправляется стартовый контекст','waiting-chat':'Ожидаем постоянный адрес разговора'};
+    sending:'Отправляется стартовый контекст','waiting-chat':'Ожидаем постоянный адрес разговора',
+    'startup-retry':'ChatGPT не отправил стартовое сообщение · повторяем старт'};
   if(startup[bootstrap])return {phase:'starting',label:startup[bootstrap]};
   // A user draft in the new Chat is never cleared automatically; the start waits for the user.
   if(bootstrap==='waiting-draft')return {phase:'attention',label:'В новом чате исполнителя черновик · откройте чат и очистите поле'};
+  if(bootstrap==='start-not-sent')return {phase:'attention',label:'ChatGPT дважды не отправил стартовое сообщение · старт остановлен, создайте сессию заново'};
   if(bootstrap==='send-unknown')return {phase:'unknown',label:'Исход стартовой отправки неизвестен · автоматического повтора нет'};
   const page=record?.pageState.current?.state;
   if(!record||record.disposed||!page||record.loading)return {phase:'unknown',label:'Активность сейчас не наблюдается'};

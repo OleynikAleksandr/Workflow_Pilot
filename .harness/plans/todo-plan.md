@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1362,
+  "plan_revision": 1364,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -89,7 +89,8 @@
       "src/execution/browser/chatgpt-composer.mjs",
       "tests/context-session.test.mjs",
       "tests/chatgpt-composer.test.mjs",
-      "src/frontend/desktop/ui/sidebar.mjs"
+      "src/frontend/desktop/ui/sidebar.mjs",
+      "src/contracts/startup-view.mjs"
     ],
     "documentation_paths": [
       "docs/planning/shared-conversation-mac.md",
@@ -1679,7 +1680,8 @@
         "package-lock.json",
         "tests/context-session.test.mjs",
         "tests/panel-dialogue-view.test.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "src/contracts/startup-view.mjs"
       ],
       "documentation_paths": [
         "docs/planning/start-not-sent-retry.md"
@@ -1699,14 +1701,26 @@
         "Без DOM Send и повторной отправки отправленного; версия 0.6.3; полная регрессия не выполняется по решению пользователя."
       ],
       "expected_commit_message": "feat: Повтор неотправленной стартовой команды",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "NOT-SENT",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/context/context-session.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/context-session.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "id": "DOCS-4",
@@ -1854,7 +1868,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1362
+Revision: 1364
 
 ## Цель
 
@@ -2034,10 +2048,10 @@ Revision: 1362
   - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL-3, DOCS-3
-- [TODO] NOT-SENT: Повтор неотправленной стартовой команды — Ожидает
-  - Git Commit: [PENDING] feat: Повтор неотправленной стартовой команды
+- [DONE] NOT-SENT: Повтор неотправленной стартовой команды — Завершено
+  - Git Commit: [DONE] feat: Повтор неотправленной стартовой команды
   - Reference: shared-conversation-mac / NOT-SENT / implementation
-  - Файлы: src/control/context/context-session.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/context-session.test.mjs, tests/panel-dialogue-view.test.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/start-not-sent-retry.md
+  - Файлы: src/control/context/context-session.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/context-session.test.mjs, tests/panel-dialogue-view.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/startup-view.mjs, docs/planning/start-not-sent-retry.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает

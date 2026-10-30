@@ -137,6 +137,10 @@ test('orchestrator card and plan use current integration facts instead of an old
 test('a kept new-chat draft is an attention reason of the executor, not silent waiting',()=>{
   const status=executorStatus({id:'a',status:'RUNNING'},{controller:{state:{phase:'waiting-draft'}},pageState:{current:{state:{}}}},null);
   assert.equal(status.phase,'attention');assert.match(status.label,/черновик/);
+  // ChatGPT kept the q command local: a neutral retry, then an orange reason after the used retry.
+  const phase=value=>executorStatus({id:'a',status:'RUNNING'},{controller:{state:{phase:value}},pageState:{current:{state:{}}}},null);
+  assert.equal(phase('startup-retry').phase,'starting');assert.match(phase('startup-retry').label,/повторяем старт/);
+  assert.equal(phase('start-not-sent').phase,'attention');assert.match(phase('start-not-sent').label,/создайте сессию заново/);
 });
 
 test('working UI separates report, acceptance and integration and renders addressed dialogue without HTML execution',async t=>{

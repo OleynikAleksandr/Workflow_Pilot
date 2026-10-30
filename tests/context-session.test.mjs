@@ -168,7 +168,9 @@ function urlFixture({attempt=null,chatUrl=null}={}){
       snap.epoch++;snap.navigationSequence++;snap.navigationOwner=input.navigationToken;page.url=input.url;
       return true;},
     endStartupNavigation:token=>{order.push('end-navigation');if(snap.navigationOwner===token)snap.navigationOwner=null;return snap.navigationOwner===null;}};
-  const controller=new ContextSession({store,runtime,composer,now:()=>clock,uuid:()=>String(++serial).padStart(8,'0'),wait:async()=>{}});
+  const wakes=[];
+  const controller=new ContextSession({store,runtime,composer,now:()=>clock,uuid:()=>String(++serial).padStart(8,'0'),wait:async()=>{},
+    schedule:(fn,ms)=>{const wake={fn,ms,cancelled:false};wakes.push(wake);return ()=>{wake.cancelled=true;};}});
   controller.attach(saved);
   const proof=()=>{evidence={status:'active',participant_id:'member',run_id:'run',ticket_hash:'b'.repeat(64),
     request_id:saved.attempt.requestId,attempt_generation:saved.attempt.attemptGeneration};return evidence;};
@@ -177,7 +179,7 @@ function urlFixture({attempt=null,chatUrl=null}={}){
       navigationOwner:snap.navigationOwner,snapshot:{...snap},...extra});};
   const observe=async(extra={})=>{page.documentId='postflight';Object.assign(page,extra);
     await controller.observePage({documentId:page.documentId,state:{...page,login:page.accountStatus}}, {...snap});};
-  return {controller,store,runtime,composer,page,snap,info,order,starts,bindings,proof,navigate,observe,
+  return {controller,store,runtime,composer,page,snap,info,order,starts,bindings,proof,navigate,observe,wakes,
     get saved(){return saved;},setEvidence:e=>{evidence=e;},setComplete:()=>{complete=true;},advance:ms=>{clock+=ms;}};
 }
 
@@ -209,6 +211,54 @@ test('URL alone is never sent; exact durable registration is sent; URL and signe
     assert.equal(f.snap.navigationOwner,null);assert.equal(f.order.filter(x=>x==='end-navigation').length,1);
     f.setComplete();await f.controller.tick();assert.equal(f.controller.state.phase,'delivered');
     f.controller.attach(f.saved);await f.controller.tick();assert.equal(f.starts.length,1);assert.equal(f.bindings.length,1);
+  }
+});
+const LOCAL='https://chatgpt.com/c/local-chatgpt:d026f12b-3690-4b0a-a409-05987c57573d';
+// ChatGPT kept the q command local («Учетная запись сменилась»): no request left the page.
+const notSentStart=async f=>{await f.controller.tick();await settle();Object.assign(f.page,{url:LOCAL,busy:false});};
+test('a q command ChatGPT kept local is revoked and started once more with a new invitation; a second failure stops with a reason',async()=>{
+  const f=urlFixture();await notSentStart(f);const first=f.saved.attempt;
+  await f.controller.tick();
+  assert.equal(f.saved.attempt.cancelState,'none','within 30 s a start may still be on its way');
+  const wake=f.wakes.at(-1);assert.ok(wake&&wake.ms>0,'the quiet page is re-checked by a timer');
+  f.advance(30001);await wake.fn();await settle();
+  assert.equal(f.order.filter(x=>x==='revoke').length,1,'the old invitation is revoked first');
+  // The new start opens a clean root and then sends its own q.
+  assert.equal(f.saved.attempt,null);assert.ok(f.order.includes('root'));
+  await f.controller.tick();await settle();
+  assert.equal(f.starts.length,2);assert.notEqual(f.saved.attempt.requestId,first.requestId);
+  assert.deepEqual(f.saved.attempt.startupRetry,{count:1,previousRequestId:first.requestId});
+  assert.equal(f.order.filter(x=>x==='reserve').length,2,'a new invitation');
+  // The retry fails the same way: no third start, an orange reason.
+  Object.assign(f.page,{url:LOCAL,busy:false});f.advance(30001);await f.controller.tick();await settle();
+  assert.equal(f.starts.length,2);assert.equal(f.saved.attempt.cancelState,'revoked');
+  assert.equal(f.controller.state.phase,'start-not-sent');
+});
+test('a start that reached ChatGPT, still runs, left its document or registered is never retried',async()=>{
+  // A real conversation address was seen.
+  let f=urlFixture();await f.controller.tick();await settle();await f.navigate();Object.assign(f.page,{busy:false});
+  f.advance(30001);await f.controller.tick();assert.equal(f.saved.attempt.cancelState,'none');
+  // The local conversation still generates.
+  f=urlFixture();await notSentStart(f);f.page.busy=true;f.advance(30001);await f.controller.tick();
+  assert.equal(f.saved.attempt.cancelState,'none');assert.ok(f.wakes.length>0,'checked again later');
+  // Another document (reload, crash, other navigation).
+  f=urlFixture();await notSentStart(f);f.snap.epoch++;f.advance(30001);await f.controller.tick();
+  assert.equal(f.saved.attempt.cancelState,'none');
+  // Somebody registered with the old invitation: revoked as registered-stopped, no new start.
+  f=urlFixture();await notSentStart(f);
+  f.setEvidence({status:'active',participant_id:'late',run_id:'run',ticket_hash:'b'.repeat(64),request_id:'other',attempt_generation:'other'});
+  f.advance(30001);await f.controller.tick();await settle();
+  assert.equal(f.saved.attempt.cancelState,'registered-stopped');assert.equal(f.starts.length,1);
+  assert.equal(f.controller.state.phase,'start-not-sent');
+});
+test('a restart interrupted after the revocation continues; a used retry does not',async()=>{
+  for(const count of [0,1]){
+    const f=urlFixture({attempt:{...structuredClone(project.attempt??{}),bootstrapTransport:'url-query',requestId:'old',attemptGeneration:'g',
+      state:'sending',sendStartedAtMs:now-60000,cancelState:'revoked',cancelReason:'start-not-sent',addressStatus:'pending',
+      ...(count?{startupRetry:{count,previousRequestId:'older'}}:{})}});
+    await f.controller.tick();await settle();
+    if(count===0){assert.equal(f.saved.attempt?.requestId==='old',false,'the revoked attempt is replaced');assert.equal(f.order.filter(x=>x==='revoke').length,0);}
+    else{assert.equal(f.saved.attempt.requestId,'old');assert.equal(f.controller.state.phase,'start-not-sent');}
   }
 });
 test('unrelated, old, revoked and uncorrelated registrations cannot confirm sent',async()=>{

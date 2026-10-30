@@ -12,11 +12,15 @@ export function startupLaunch(attempt,now=Date.now(),binding=null){
     :owned?(observed?'confirmed':'saved'):attempt.addressStatus??'pending';
   return {registration:attempt.state==='sent'?'confirmed':!attempt.sendStartedAtMs?'not-started':attempt.state==='unknown'?'unknown':'pending',
     address,cancel:attempt.cancelState??'none',
+    // ChatGPT kept the q command local and the one automatic retry is used or impossible.
+    notSent:attempt.cancelReason==='start-not-sent'&&attempt.state!=='sent',
     loginLost:!!attempt.loginLost,
     addressOverdue:!saved&&!['confirmed','saved'].includes(address)&&!!attempt.sendStartedAtMs&&now-attempt.sendStartedAtMs>=60000};
 }
 export function startupView(progress){
   const launch=progress?.launch;
+  if(launch?.notSent&&launch.cancel!=='requested')return {phase:'start-not-sent',title:'ChatGPT не отправил стартовое сообщение',
+    detail:'Повтор тоже не прошёл; приглашение отозвано. Создайте новый Chat через меню проекта.'};
   if(progress?.cancelled||launch&&launch.cancel!=='none')return {
     phase:launch?.cancel==='requested'?'cancel-pending':'startup-cancelled',
     title:launch?.cancel==='requested'?'Завершаем отмену запуска':'Запуск остановлен',
@@ -58,7 +62,7 @@ export function startupView(progress){
 export function startupContextState(state,progress,attempt=null,binding=null){
   const launch=startupLaunch(attempt,Date.now(),binding)??state?.startup?.launch??null;
   if(progress?.cancelled||launch&&launch.cancel!=='none')return {...state,launch,
-    startup:{...progress,launch},phase:launch?.cancel==='requested'?'cancel-pending':'startup-cancelled'};
+    startup:{...progress,launch},phase:launch?.cancel==='requested'?'cancel-pending':launch?.notSent?'start-not-sent':'startup-cancelled'};
   const addressConflict=launch?.address==='conflict';
   const failed=addressConflict?{code:'STARTUP_ADDRESS_CONFLICT',message:'Текущая страница не соответствует привязке сессии.'}
     :state?.phase==='stale'?{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE',message:'Стартовый пакет устарел.'}
