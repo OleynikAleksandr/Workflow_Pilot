@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1349,
+  "plan_revision": 1351,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -1502,14 +1502,15 @@
         "Все назначенные проверки PASS без ослабления assertions; найденные регрессии исправлены адресно."
       ],
       "expected_commit_message": "feat: Полная регрессия выпуска 0.6.2",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "VERIFY-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "DOCS-3",
@@ -1658,7 +1659,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1349
+Revision: 1351
 
 ## Цель
 
@@ -1808,8 +1809,8 @@ Revision: 1349
   - Файлы: src/execution/browser/session-runtime.mjs, src/control/context/context-session.mjs, src/control/plugin/conversation-freshness.mjs, src/control/workflow/dialogue-delivery.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/conversation-freshness.test.mjs, tests/chatgpt-plugin.test.mjs, tests/dialogue-delivery.test.mjs, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] VERIFY-3: Полная регрессия выпуска 0.6.2 — Ожидает
-  - Git Commit: [PENDING] feat: Полная регрессия выпуска 0.6.2
+- [DONE] VERIFY-3: Полная регрессия выпуска 0.6.2 — Завершено
+  - Git Commit: [DONE] feat: Полная регрессия выпуска 0.6.2
   - Reference: shared-conversation-mac / VERIFY-3 / implementation
   - Файлы: tests/electron-smoke.mjs, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
