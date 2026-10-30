@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1334,
+  "plan_revision": 1336,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -1245,14 +1245,15 @@
         "Все назначенные проверки PASS без ослабления assertions; найденные регрессии исправлены адресно."
       ],
       "expected_commit_message": "feat: Полная регрессия выпуска 0.6.1",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "VERIFY-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "DOCS-2",
@@ -1401,7 +1402,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1334
+Revision: 1336
 
 ## Цель
 
@@ -1515,8 +1516,8 @@ Revision: 1334
   - Файлы: src/contracts/context.mjs, src/control/context/context-session.mjs, src/execution/browser/chatgpt-composer.mjs, src/control/workflow/execution-projection.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/context-session.test.mjs, tests/chatgpt-composer.test.mjs, tests/panel-dialogue-view.test.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/restored-startup-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] VERIFY-2: Полная регрессия выпуска 0.6.1 — Ожидает
-  - Git Commit: [PENDING] feat: Полная регрессия выпуска 0.6.1
+- [DONE] VERIFY-2: Полная регрессия выпуска 0.6.1 — Завершено
+  - Git Commit: [DONE] feat: Полная регрессия выпуска 0.6.1
   - Reference: shared-conversation-mac / VERIFY-2 / implementation
   - Файлы: tests/electron-smoke.mjs, docs/planning/restored-startup-draft.md
   - Параллельность: исключительное выполнение
