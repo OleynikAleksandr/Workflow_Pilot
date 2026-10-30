@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1384,
+  "plan_revision": 1386,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Первая команда каждой сессии Workflow Pilot (обсуждение, оркестратор, исполнитель) отправляется доверенным CDP-вводом в проверенный документ вместо q-адреса; выпуск 0.6.4 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Для всех ролей первая команда отправляется CDP-вводом в проверенный документ; навигаций ?q= нет.",
@@ -291,8 +291,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "PUBLISH",
@@ -316,7 +316,8 @@
       "acceptance_criteria": [
         "Tag равен sourceCommit, семь assets проверены, remote main подтверждён; живая проверка не объявляется пройденной."
       ],
-      "expected_commit_message": "feat: Опубликовать выпуск 0.6.4 на GitHub"
+      "expected_commit_message": "feat: Опубликовать выпуск 0.6.4 на GitHub",
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -334,10 +335,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1384
+Revision: 1386
 
 ## Цель
 
@@ -367,8 +368,8 @@ Revision: 1384
   - Git Commit: [DONE] feat: Установить выпуск 0.6.4 на этот Mac
   - Reference: cdp-startup-input / INSTALL / implementation
   - Файлы: release-manifest.json
-- [TODO] PUBLISH: Опубликовать выпуск 0.6.4 на GitHub — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.6.4 на GitHub
+- [DONE] PUBLISH: Опубликовать выпуск 0.6.4 на GitHub — Завершено
+  - Git Commit: [DONE] feat: Опубликовать выпуск 0.6.4 на GitHub
   - Reference: cdp-startup-input / PUBLISH / implementation
   - Файлы: release-manifest.json
 
