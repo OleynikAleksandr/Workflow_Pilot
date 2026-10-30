@@ -373,6 +373,10 @@ export class ContextSession {
         project={...project,...bound};attempt=await this.patchUrl(project,attempt,{addressStatus:'confirmed'});
         this.onChatBound({workspace:project.workspace,sessionId:project.sessionId,chatUrl:project.chatUrl});
       }
+      // A bound address proves the page from now on; the start's navigation authority
+      // would otherwise refuse every later freshness reload of a background page.
+      if(project.chatUrl&&attempt.state==='sent'&&this.composer.navigationSnapshot?.()?.navigationOwner===attempt.requestId)
+        this.composer.endStartupNavigation?.(attempt.requestId);
       const elapsed=this.now()-attempt.sendStartedAtMs;
       if(attempt.state!=='sent'&&elapsed>=180000)attempt=await this.patchUrl(project,attempt,latest=>
         this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{});

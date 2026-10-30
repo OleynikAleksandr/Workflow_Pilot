@@ -6,7 +6,7 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
-import {FRESH_DOCUMENT_MS,pauseForBranch} from '../src/control/plugin/conversation-freshness.mjs';
+import {FRESH_DOCUMENT_MS,STARTUP_FRESH_MS,REFUSED_RETRY_MS,UNAVAILABLE_RETRY_MS,pauseForBranch} from '../src/control/plugin/conversation-freshness.mjs';
 import {ExecutionControl} from '../src/control/workflow/execution-control.mjs';
 
 const meta=id=>({'openai/session':id});
@@ -129,6 +129,50 @@ test('three reloads without a successful claim end with an orange reason, not a 
   assert.equal((await f.c.claimReady({...b,message_id:first.message_id})).reason,'freshness-reload-deferred','typing defers a reload');
   f.advance(11000);b=await f.rebind({run_id:b.run_id,participant_id:b.participant_id},'o');
   assert.equal((await f.c.claimReady({...b,message_id:first.message_id})).reason,'freshness-reload');
+});
+
+test('a refused reload counts and is journaled: retried soon, then an orange reason and a rare retry, never a loop',async t=>{
+  // 0.6.1: a background page kept its start's navigation authority and refused every reload.
+  const f=await fixture(t,{reloadResult:{reloaded:false,reason:'startup-navigation'}});await f.c.workflow.grant(f.o);let b=await f.bind('o');
+  const first=await queue(f.c,f.o,'one');
+  const claim=async()=>(await f.c.claimReady({...b,message_id:first.message_id})).reason;
+  const step=async ms=>{f.advance(ms);b=await f.rebind({run_id:b.run_id,participant_id:b.participant_id},'o');};
+  await step(FRESH_DOCUMENT_MS+1);
+  for(let i=1;i<=3;i++){
+    assert.equal(await claim(),'freshness-reload');await tick();assert.equal(f.reloads.length,i);
+    // Within the retry delay no new reload is ordered.
+    await step(REFUSED_RETRY_MS-1000);assert.equal(await claim(),i<3?'freshness-reload':'freshness-unavailable');
+    await tick();assert.equal(f.reloads.length,i);await step(1001);
+  }
+  // Limit reached: the orange reason, one new attempt per minute only.
+  assert.equal(await claim(),'freshness-unavailable');await tick();assert.equal(f.reloads.length,3);
+  await step(UNAVAILABLE_RETRY_MS-REFUSED_RETRY_MS);
+  assert.equal(await claim(),'freshness-reload');await tick();assert.equal(f.reloads.length,4);
+  await step(REFUSED_RETRY_MS+1);assert.equal(await claim(),'freshness-unavailable');await tick();assert.equal(f.reloads.length,4);
+  const refused=run(f,b).events.filter(e=>e.event_type==='freshness.reload_refused');
+  assert.ok(refused.length>=3);assert.ok(refused.every(e=>e.reason==='startup-navigation'&&e.attempt>=1&&e.attempt<=3));
+  assert.equal(run(f,b).events.filter(e=>e.event_type==='freshness.reload').length,4,'no reload loop');
+  assert.equal(attempts(f,b),0,'no attempt and no budget');
+});
+
+test('the document opened by the page\'s own start is fresh for its first claim within five minutes',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind('o');
+  f.page('o').startupDocumentId=f.page('o').documentId;
+  // Reading the startup context takes longer than the ordinary freshness window.
+  f.advance(FRESH_DOCUMENT_MS+5000);b=await f.rebind({run_id:b.run_id,participant_id:b.participant_id},'o');
+  const first=await queue(f.c,f.o,'one');
+  const ticket=await f.c.claimReady({...b,message_id:first.message_id});
+  assert.ok(ticket.delivery_attempt_id,'the first task is delivered without a reload');assert.equal(f.reloads.length,0);
+  await f.c.report({...b,...ticket,outcome:'accepted'});await f.c.readMessage({metadata:meta('o'),message_id:first.message_id});
+  // Only the first claim: later ones follow the ordinary rule.
+  f.advance(FRESH_DOCUMENT_MS+1);const second=await queue(f.c,f.o,'two');
+  assert.equal((await f.c.claimReady({...b,message_id:second.message_id})).reason,'freshness-reload');
+  // An old start document is not fresh either.
+  const late=await fixture(t);await late.c.workflow.grant(late.o);let lb=await late.bind('o');
+  late.page('o').startupDocumentId=late.page('o').documentId;
+  late.advance(STARTUP_FRESH_MS+1);lb=await late.rebind({run_id:lb.run_id,participant_id:lb.participant_id},'o');
+  const old=await queue(late.c,late.o,'old');
+  assert.equal((await late.c.claimReady({...lb,message_id:old.message_id})).reason,'freshness-reload');
 });
 
 // O sends a task to E through the real dialogue; E's backend page reloads.

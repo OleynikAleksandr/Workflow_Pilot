@@ -76,6 +76,8 @@ export class DialogueDelivery {
       observationSeq:page?.seq??0,
       // When the backend page first observed this document, and which document its own reload replaced.
       documentSince:record?.pageState?.document?.since??null,reloadedFrom:record?.pageState?.document?.reloadedFrom??null,
+      // The document this page's own sent start opened: fresh for its first claim.
+      startupDocumentId:project?.attempt?.state==='sent'&&project.chatUrl?project.attempt.accountConfirmed?.documentId??null:null,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
   }
   // Reload the saved conversation of this participant's backend page for freshness.

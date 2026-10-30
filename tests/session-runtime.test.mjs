@@ -346,6 +346,23 @@ test('safeReload opens only the saved chat address, never q, and records the doc
   source.reset();observe('document-other-1');assert.equal(port.pageState.document.reloadedFrom,null);
 });
 
+test('a completed start keeps its navigation authority until Control ends it; then safeReload proceeds',async t=>{
+  const {port,contents}=navigationFixture(t);
+  await port.composer.startChat({url:'https://chatgpt.com/?q=start',navigationToken:'token-one'});
+  contents.url='https://chatgpt.com/c/saved-chat-1';
+  // 0.6.1: a background executor page refused every freshness reload from here on.
+  assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-1'),{reloaded:false,reason:'startup-navigation'});
+  const events=[];port.subscribe(event=>events.push(event.type));const before=port.snapshot();
+  assert.equal(port.composer.endStartupNavigation('token-other'),false,'another token never ends it');
+  assert.equal(port.snapshot().navigationOwner,'token-one');
+  assert.equal(port.composer.endStartupNavigation('token-one'),true);
+  assert.equal(port.composer.endStartupNavigation('token-one'),true,'idempotent');
+  assert.deepEqual({epoch:port.snapshot().epoch,sequence:port.snapshot().navigationSequence,owner:port.snapshot().navigationOwner},
+    {epoch:before.epoch,sequence:before.navigationSequence,owner:null});
+  assert.deepEqual(events,[],'no navigation and no event');
+  assert.equal((await port.safeReload('https://chatgpt.com/c/saved-chat-1')).reloaded,true);
+});
+
 test('safeReload is refused during a send, a start navigation and a load',async t=>{
   const composer={inFlight:true};
   const {port,contents}=navigationFixture(t,{createComposer:()=>composer});

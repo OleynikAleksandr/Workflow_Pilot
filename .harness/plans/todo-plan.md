@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1347,
+  "plan_revision": 1349,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -1424,7 +1424,8 @@
         "tests/session-runtime.test.mjs",
         "tests/context-session.test.mjs",
         "tests/conversation-freshness.test.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/dialogue-delivery.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/startup-freshness-loop.md"
@@ -1445,14 +1446,28 @@
         "Отказ перезагрузки учитывается и журналируется с причиной; после лимита — freshness-unavailable с редким повтором, бесконечного цикла нет; версия 0.6.2."
       ],
       "expected_commit_message": "feat: Доставка первого поручения после q-старта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "FIRST-TASK",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/execution/browser/session-runtime.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/conversation-freshness.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/session-runtime.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/conversation-freshness.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/dialogue-delivery.test.mjs"
+      ]
     },
     {
       "id": "VERIFY-3",
@@ -1643,7 +1658,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1347
+Revision: 1349
 
 ## Цель
 
@@ -1787,10 +1802,10 @@ Revision: 1347
   - Файлы: release-manifest.json, docs/planning/restored-startup-draft.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL-2, DOCS-2
-- [TODO] FIRST-TASK: Доставка первого поручения после q-старта — Ожидает
-  - Git Commit: [PENDING] feat: Доставка первого поручения после q-старта
+- [DONE] FIRST-TASK: Доставка первого поручения после q-старта — Завершено
+  - Git Commit: [DONE] feat: Доставка первого поручения после q-старта
   - Reference: shared-conversation-mac / FIRST-TASK / implementation
-  - Файлы: src/execution/browser/session-runtime.mjs, src/control/context/context-session.mjs, src/control/plugin/conversation-freshness.mjs, src/control/workflow/dialogue-delivery.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/conversation-freshness.test.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/startup-freshness-loop.md
+  - Файлы: src/execution/browser/session-runtime.mjs, src/control/context/context-session.mjs, src/control/plugin/conversation-freshness.mjs, src/control/workflow/dialogue-delivery.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/conversation-freshness.test.mjs, tests/chatgpt-plugin.test.mjs, tests/dialogue-delivery.test.mjs, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] VERIFY-3: Полная регрессия выпуска 0.6.2 — Ожидает

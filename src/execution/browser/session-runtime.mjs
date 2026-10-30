@@ -80,6 +80,12 @@ export class BrowserSessions {
       navigationSnapshot: snapshot,
       openChatEntrypoint: () => record.port.navigate(CHATGPT_CHAT_ENTRYPOINT),
       startChat: ({url,navigationToken,canContinue=()=>true}) => record.port.navigate(url,{bootstrapToken:navigationToken,isCurrent:canContinue}),
+      // Control ends the start's navigation authority once its address is bound:
+      // only the same token, without a navigation, a new epoch or an event.
+      endStartupNavigation: token => {
+        if (typeof token === 'string' && token && record.navigationOwner === token) record.navigationOwner = null;
+        return record.navigationOwner === null;
+      },
       hasFilled: requestId => composer.hasFilled(requestId),
       inspect: args => call('inspect', args),
       observeSnapshot: async () => {

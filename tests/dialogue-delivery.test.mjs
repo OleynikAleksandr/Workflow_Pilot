@@ -31,6 +31,20 @@ test('legacy Review UNKNOWN blocks every new SDK kind for its exact chat, while 
   assert.equal(automation.entries.values().next().value.status,'sending','a new scope never rewrites the old unknown effect');
 });
 
+test('observation names the document of the page\'s own sent start only once its address is bound',()=>{
+  const attempt={bootstrapTransport:'url-query',state:'sent',accountConfirmed:{documentId:'doc-start'}};
+  const project={workspace:'/w',sessionId:'e',chatUrl:'https://chatgpt.com/c/e',attempt};
+  const record={project:()=>project,ready:true,controller:{},composer:{inFlight:false},
+    pageState:{document:{since:1,reloadedFrom:null},current:{documentId:'doc-start',seq:1,state:{url:project.chatUrl,login:'signed-in'}}}};
+  const delivery=new DialogueDelivery({store:{},record:()=>record,route:()=> 'plugin-v1',state:()=>({state:'running'})});
+  delivery.project=()=>project;
+  assert.equal(delivery.observe({local_session_id:'e'}).startupDocumentId,'doc-start');
+  for(const change of [{chatUrl:null},{attempt:{...attempt,state:'sending'}},{attempt:{...attempt,accountConfirmed:null}}]){
+    Object.assign(project,{chatUrl:'https://chatgpt.com/c/e',attempt},change);
+    assert.equal(delivery.observe({local_session_id:'e'}).startupDocumentId,null,JSON.stringify(change));
+  }
+});
+
 test('bootstrap preparation uses a new immutable message key when upgraded instructions change',async()=>{
   const sent=[],project={role:'executor',workspace:'/child',parentWorkspace:'/main',parentScopeId:'scope',
     sessionId:'e',assignmentId:'a',taskId:'T001',executionOriginSessionId:'o'};

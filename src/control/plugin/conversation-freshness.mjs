@@ -1,10 +1,14 @@
 // The backend page sends only from a document that reflects the conversation
 // as it is now, including turns made on other clients. A document is fresh
 // while it shows a running turn, while it was first observed recently, or for
-// its first claim after Control reloaded it for freshness. Otherwise Control
-// defers the claim (no attempt, no budget) and reloads the canonical chatUrl.
+// its first claim after Control reloaded it for freshness or opened it by its own
+// start. Otherwise Control defers the claim (no attempt, no budget) and reloads
+// the canonical chatUrl.
 export const FRESH_DOCUMENT_MS=20000;
 export const MAX_FRESHNESS_RELOADS=3;
+export const STARTUP_FRESH_MS=5*60*1000;
+// A refused reload counts as an attempt: retried soon, then rarely while unavailable.
+export const REFUSED_RETRY_MS=5000,UNAVAILABLE_RETRY_MS=60000;
 const MANUAL_INPUT_QUIET_MS=10000;
 const FOREIGN_TURN_MS=15000,FOREIGN_RETRY_MAX_MS=5*60*1000;
 const HOLD_MS=1000;
@@ -27,7 +31,7 @@ export class ConversationFreshness {
     const key=target.local_session_id,now=this.c.now(),documentId=page?.documentId??null;
     let s=this.pages.get(key);
     if(!s){s={documentId,since:page?.documentSince??now,claims:0,reloadedByControl:false,consecutive:0,lastReloadAt:0,
-      requestedFrom:null,manualRevision:page?.manualInputRevision??0,manualAt:0,holdUntil:0};this.pages.set(key,s);}
+      requestedFrom:null,refused:null,lastRefused:false,manualRevision:page?.manualInputRevision??0,manualAt:0,holdUntil:0};this.pages.set(key,s);}
     if(s.documentId!==documentId){
       const requested=s.requestedFrom!==null&&s.requestedFrom===s.documentId;
       Object.assign(s,{documentId,since:page?.documentSince??now,claims:0,reloadedByControl:requested,requestedFrom:null});
@@ -37,7 +41,8 @@ export class ConversationFreshness {
   }
   fresh(s,page){
     const now=this.c.now();
-    return page?.busy===true||now-s.since<=FRESH_DOCUMENT_MS||s.reloadedByControl&&s.claims===0;
+    return page?.busy===true||now-s.since<=FRESH_DOCUMENT_MS||s.reloadedByControl&&s.claims===0
+      ||s.claims===0&&!!s.documentId&&page?.startupDocumentId===s.documentId&&now-s.since<=STARTUP_FRESH_MS;
   }
   held(target){return this.enabled&&(this.pages.get(target.local_session_id)?.holdUntil??0)>this.c.now();}
   holdDelay(target){const until=this.pages.get(target.local_session_id)?.holdUntil??0;return until>this.c.now()?until-this.c.now():Infinity;}
@@ -62,18 +67,26 @@ export class ConversationFreshness {
     const s=this.state(member.target,page);
     if(this.fresh(s,page))return null;
     const now=this.c.now();s.holdUntil=now+HOLD_MS;
+    // The page's refusal is journaled inside the next transaction.
+    if(s.refused){this.c.event(run,'freshness.reload_refused',{participant_id:member.id,message_id:message.message_id,...s.refused});s.refused=null;}
     const blocked=this.reloadBlock(run,member,page,s);
     if(blocked)return blocked;
-    // A reload of this window is still loading; only then is the limit decided.
-    if(now-s.lastReloadAt<FRESH_DOCUMENT_MS)return FRESHNESS_REASONS.reload;
-    if(s.consecutive>=MAX_FRESHNESS_RELOADS)return FRESHNESS_REASONS.unavailable;
-    s.lastReloadAt=now;s.consecutive++;s.requestedFrom=s.documentId;
-    const target=structuredClone(member.target);
+    const exhausted=s.consecutive>=MAX_FRESHNESS_RELOADS;
+    // A reload of this window is still loading (or was refused): wait for it.
+    // Only a refusal of the last allowed reload decides the limit early.
+    if(now-s.lastReloadAt<FRESH_DOCUMENT_MS)return exhausted&&s.lastRefused?FRESHNESS_REASONS.unavailable:FRESHNESS_REASONS.reload;
+    if(exhausted&&now-s.lastReloadAt<UNAVAILABLE_RETRY_MS)return FRESHNESS_REASONS.unavailable;
+    s.lastReloadAt=now;s.consecutive=Math.min(s.consecutive+1,MAX_FRESHNESS_RELOADS);s.requestedFrom=s.documentId;s.lastRefused=false;
+    const target=structuredClone(member.target),attempt=s.consecutive;
     // The reload is a page operation outside the transaction; it never creates an attempt.
+    // A refusal keeps the count: the limit ends in a visible reason, never in a loop.
+    const refuse=reason=>{if(s.requestedFrom!==s.documentId)return;
+      s.requestedFrom=null;s.refused={reason,attempt};s.lastRefused=true;
+      s.lastReloadAt=attempt>=MAX_FRESHNESS_RELOADS?this.c.now():this.c.now()-FRESH_DOCUMENT_MS+REFUSED_RETRY_MS;};
     queueMicrotask(()=>{Promise.resolve(this.reloadPort(target)).then(result=>{
-      if(result?.reloaded===false&&s.requestedFrom===s.documentId){s.requestedFrom=null;s.lastReloadAt=0;s.consecutive=Math.max(0,s.consecutive-1);}
-    },()=>{s.requestedFrom=null;});});
-    this.c.event(run,'freshness.reload',{participant_id:member.id,message_id:message.message_id,attempt:s.consecutive});
+      if(result?.reloaded===false)refuse(typeof result.reason==='string'?result.reason:'refused');
+    },()=>refuse('reload-error'));});
+    this.c.event(run,'freshness.reload',{participant_id:member.id,message_id:message.message_id,attempt});
     return FRESHNESS_REASONS.reload;
   }
   // A turn confirmation moves to a new document only across this page's own

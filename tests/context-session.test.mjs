@@ -166,7 +166,8 @@ function urlFixture({attempt=null,chatUrl=null}={}){
     startChat:async input=>{assert.equal(input.canContinue(),true);order.push('q');starts.push(input);
       assert.ok(saved.attempt.contextRef);assert.equal(saved.attempt.state,'sending');assert.equal(saved.attempt.sendStartedAtMs,clock);
       snap.epoch++;snap.navigationSequence++;snap.navigationOwner=input.navigationToken;page.url=input.url;
-      return true;}};
+      return true;},
+    endStartupNavigation:token=>{order.push('end-navigation');if(snap.navigationOwner===token)snap.navigationOwner=null;return snap.navigationOwner===null;}};
   const controller=new ContextSession({store,runtime,composer,now:()=>clock,uuid:()=>String(++serial).padStart(8,'0'),wait:async()=>{}});
   controller.attach(saved);
   const proof=()=>{evidence={status:'active',participant_id:'member',run_id:'run',ticket_hash:'b'.repeat(64),
@@ -197,12 +198,15 @@ test('URL bootstrap stages full role context and saves checkpoint before exactly
 test('URL alone is never sent; exact durable registration is sent; URL and signed-in observation bind independently',async()=>{
   for(const registrationFirst of [false,true]){
     const f=urlFixture();await f.controller.tick();await settle();
-    if(registrationFirst){f.proof();await f.controller.tick();assert.equal(f.saved.attempt.state,'sent');assert.equal(f.saved.chatUrl,null);}
+    if(registrationFirst){f.proof();await f.controller.tick();assert.equal(f.saved.attempt.state,'sent');assert.equal(f.saved.chatUrl,null);
+      assert.equal(f.snap.navigationOwner,f.saved.attempt.requestId,'without a bound address the start keeps its authority');}
     await f.navigate();await f.controller.tick();
     if(!registrationFirst)assert.equal(f.saved.attempt.state,'sending');
     assert.equal(f.saved.chatUrl,null,'mode observation is still required');
     await f.observe();f.proof();await f.controller.tick();
     assert.equal(f.saved.attempt.state,'sent');assert.equal(f.saved.chatUrl,project.chatUrl);assert.equal(f.bindings.length,1);
+    // The bound address proves the page: the start's navigation authority ends, freshness reloads are allowed.
+    assert.equal(f.snap.navigationOwner,null);assert.equal(f.order.filter(x=>x==='end-navigation').length,1);
     f.setComplete();await f.controller.tick();assert.equal(f.controller.state.phase,'delivered');
     f.controller.attach(f.saved);await f.controller.tick();assert.equal(f.starts.length,1);assert.equal(f.bindings.length,1);
   }

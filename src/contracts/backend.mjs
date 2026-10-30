@@ -2,8 +2,8 @@
 // No Electron, filesystem, shell, store or secret crosses this boundary.
 export const BACKEND_API_VERSION = 1;
 export const COMMUNICATION_PROTOCOL = 9;
-export const COMMUNICATION_APP_VERSION = '0.6.1';
-export const COMMUNICATION_BUILD = '0.6.1-communication-9';
+export const COMMUNICATION_APP_VERSION = '0.6.2';
+export const COMMUNICATION_BUILD = '0.6.2-communication-9';
 export function communicationVersionMessage(panel, server={build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL}) {
   const build=value=>typeof value==='string'&&/^[A-Za-z0-9._-]{1,128}$/.test(value)?value:'неизвестна';
   const protocol=value=>Number.isSafeInteger(value)&&value>=0&&value<=9999?value:'неизвестен';
