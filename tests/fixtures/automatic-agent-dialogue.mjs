@@ -463,6 +463,10 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
         userMessagesRevision:0,assistantRevision:0,turnId:preplan?'':'a0',userTurnId:preplan?'':'u0'}}}};
     const page=record.pageState.current.state;
     const navigation={id:project.sessionId,incarnation:'fixture-'+project.sessionId,epoch:1,navigationSequence:0,navigationOwner:null};
+    // The fixture page hosts the panel mounted for this record; Execution reads its published frame value.
+    record.browser={attestPanelFrames:async()=>({browserSessionId:project.sessionId,incarnation:navigation.incarnation,
+      documentId:record.pageState.current.documentId,stale:false,
+      frames:record.ui?.dom.window.__workflowPilotPanel?[{frame_instance_id:record.ui.dom.window.__workflowPilotPanel.frame_instance_id}]:[]})};
     const composer=record.composer={inFlight:false,getURL:()=>page.url,clearNewSessionDraft:async()=>({action:'draft-cleared'}),
       navigationSnapshot:()=>({...navigation}),
       observeSnapshot:async()=>{record.pageState.current.seq++;return true;},
@@ -577,7 +581,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     available:()=>false,contextAvailable:()=>false,onChange:()=>{},report:error,save:async()=>{},getPlugin:()=>plugin});
   workflow.attachSessions(live);
   plugin=control.createPlugin({plans,loadContext:(workspace)=>plans.loadContext(workspace),communicationStore:await openCommunicationStore(path.join(directory,'communication')),
-    observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
+    observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
     userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input)});
   if(preplan){
     const reserve=plugin.reserveParticipant.bind(plugin);

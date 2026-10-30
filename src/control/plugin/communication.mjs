@@ -3,7 +3,8 @@ import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
-import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic,deliveryView} from '../../contracts/plugin-communication.mjs';
+import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic,deliveryObserverError} from '../../contracts/plugin-communication.mjs';
+import {DeliveryOwnership} from './delivery-ownership.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE,NOTIFICATION_RULE,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
@@ -33,7 +34,7 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
@@ -41,6 +42,7 @@ export class PluginCommunication {
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
+    this.ownership=new DeliveryOwnership(this,attest);
     this.assignment=new AssignmentDialogue(this,dialogueKit);
     this.startup=new StartupContext(this);
     this.ready=this.restore();
@@ -74,17 +76,17 @@ export class PluginCommunication {
     }
   }
   mutate(name,input) {
-    const queued=performance.now();
+    const queued=performance.now(),attested=this.ready.then(()=>this.ownership.prefetch(name,input));
     const work=this.tail.then(async()=>{
       const entered=performance.now();
-      await this.ready;
+      await this.ready;await attested;
       requireValue(!this.disposed,'CLOSED','Служба связи закрывается.');
       requireValue(!this.critical,'STORE_BLOCKED','Критическая ошибка журнала. Отправка заблокирована.');
       // Internal revocation verifies the saved owner in its transaction. It
       // must remain possible after a target was retired or its role changed.
       if(name!=='revokeEnrollment')await this.enrollment.validateInput(input,name);
       const validated=performance.now();
-      const old=this.runs.get(input.run_id),panels=structuredClone(this.panels);
+      const old=this.runs.get(input.run_id),panels=structuredClone(this.panels),owners=this.ownership.snapshot();
       this.transactionView={id:input.run_id,before:old};
       if(old)this.runs.set(input.run_id,structuredClone(old));
       const offset=old?.events.length??0;
@@ -112,9 +114,10 @@ export class PluginCommunication {
         }
         return structuredClone(result);
       }catch(error) {
-        this.panels=panels;if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
+        this.panels=panels;this.ownership.restore(owners);if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
         const denialKey=input.run_id+':'+input.message_id;
-        const repeated=name==='observed'&&this.observedDenials.get(denialKey)===error.code;
+        // An observer's refusal is its normal state, not a delivery incident.
+        const repeated=name==='observed'&&this.observedDenials.get(denialKey)===error.code||error.code==='PLUGIN_COMMUNICATION_DELIVERY_OBSERVER';
         if(name==='observed'){
           if(!this.observedDenials.has(denialKey)&&this.observedDenials.size>=2048)
             this.observedDenials.delete(this.observedDenials.keys().next().value);
@@ -378,8 +381,9 @@ export class PluginCommunication {
   // The delivery role of one bound workflow panel instance.
   deliveryOf(run,member,panelId){
     const panel=panelId&&this.panels.get(panelId);
-    return run.mode==='workflow'&&panel?.runId===run.id&&panel.memberId===member.id?deliveryView('owner',0):{};
+    return run.mode==='workflow'&&panel?.runId===run.id&&panel.memberId===member.id?this.ownership.view(run,member,panel):{};
   }
+  requireOwner(run,member,panel){if(run.mode==='workflow'&&this.ownership.role(run,member,panel)!=='owner')throw deliveryObserverError();}
   _join(input) {
     requireValue(identifier(input.run_id) && ['O','E'].includes(input.role),'INPUT','Укажите run_id и роль O/E.');
     const identity=communicationIdentity(input.metadata);
@@ -410,6 +414,7 @@ export class PluginCommunication {
     if(!previous)this.panels.set(input.panel_instance_id,{runId:run.id,memberId:member.id,identity:member.identity,generation:0,expiresAt:0});
     this.panels.get(input.panel_instance_id).id=input.panel_instance_id;
     this.panels.get(input.panel_instance_id).messageSupported=input.message_supported===true;
+    this.ownership.bound(this.panels.get(input.panel_instance_id),input);
     if(run.mode==='workflow'){const panel=this.panels.get(input.panel_instance_id);panel.generation=member.generation;panel.expiresAt=this.now()+60000;}
     this.event(run,'binding.confirmed',{participant_id:member.id,panel_instance_id:input.panel_instance_id});
     return this._status(input);
@@ -570,7 +575,7 @@ export class PluginCommunication {
     // Only an already valid lease in this generation can be renewed by wait.
     // Reconnection and expired leases still require explicit sync.
     if(run.mode==='workflow')panel.expiresAt=this.now()+60000;
-    if(run.mode==='workflow')this.workflow.connectionWaited(member,panel);
+    if(run.mode==='workflow'&&this.ownership.role(run,member,panel)==='owner')this.workflow.connectionWaited(member,panel);
     requireValue(Number.isSafeInteger(input.after_seq)&&input.after_seq>=0&&input.after_seq<=run.events.length,'CURSOR','Некорректный курсор журнала.');
     const value=this.waitResult(input);
     if(value.message_id||run.events.slice(input.after_seq).some(e=>this.wakes(run,input.participant_id,e)))return {immediate:true};
@@ -583,14 +588,18 @@ export class PluginCommunication {
     return {};
   }
   waitResult(input) {
-    const {run,member}=this.member(input),pending=run.mode==='workflow'?this.workflow.pending(run,member):run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
+    const {run,member}=this.member(input),panel=this.panels.get(input.panel_instance_id);
+    // An observer receives the state and history, never a message to deliver.
+    const pending=run.mode==='workflow'?(this.ownership.role(run,member,panel)==='owner'?this.workflow.pending(run,member):null)
+      :run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read);
     const end=Math.min(input.after_seq+100,run.events.length),events=this.visibleEvents(run,member,run.events.slice(input.after_seq,end));
     return {message_id:pending?.message_id??null,events,seq:end,expires_at:this.panels.get(input.panel_instance_id)?.expiresAt??0,
       ...(run.mode==='workflow'?{work_progress:this.progressOf(member),...this.choiceOf(run,member)}:{}),
       ...this.deliveryOf(run,member,input.panel_instance_id),stopped:(run.mode==='workflow'?!this.workflow.transportPermitted(run,member):member.stopped)||member.generation!==input.permission_generation,critical_error:this.critical};
   }
   async _claim(input) {
-    const {run,member}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
+    const {run,member,panel}=this.allowed(input),message=run.messages.find(m=>m.message_id===input.message_id);
+    this.requireOwner(run,member,panel);
     requireValue(!message?.cancelled,'STARTUP_CANCELLED','Стартовый пакет отменён.');
     requireValue(message && message.recipient_id===member.id && (message.delivery==='pending'||run.mode==='workflow'&&this.workflow.retryEligible(run,member,message)) && !message.read
       && message.delivery_mode!=='model-pull','CLAIM_DENIED','Доставка уже принята или не принадлежит участнику.');
@@ -625,6 +634,7 @@ export class PluginCommunication {
     return {...claimed,...await this._verify({...input,delivery_attempt_id:claimed.delivery_attempt_id},true)};
   }
   async _verify(input,alreadyChecked=false) {
+    if(!alreadyChecked){const {run,member,panel}=this.allowed(input);this.requireOwner(run,member,panel);}
     const {run,member,message}=this.attempt(input);
     requireValue(!message.cancelled,'STARTUP_CANCELLED','Стартовый пакет отменён.');
     requireValue(message.delivery==='claimed' && !message.intent && message.permission_generation===member.generation,

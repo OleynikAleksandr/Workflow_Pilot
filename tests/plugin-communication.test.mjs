@@ -7,18 +7,19 @@ import {randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
+import {AttestedCommunication} from './fixtures/panel-attestation.mjs';
 
 async function fixture(t,options={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-communication-control-')));
   t.after(()=>fs.rm(directory,{recursive:true,force:true}));
-  const store=await openCommunicationStore(directory),comm=new PluginCommunication({store,waitMs:30,...options});
+  const store=await openCommunicationStore(directory),comm=new AttestedCommunication({store,waitMs:30,...options});
   t.after(()=>comm.dispose());
   const people={};
   for(const role of ['O','E']){
     const metadata={'openai/session':'secret-session-'+role,'openai/subject':'secret-subject'};
     const joined=await comm.join({run_id:'exchange',role,metadata});
     people[role]={run_id:joined.run_id,participant_id:joined.participant_id,metadata,
-      panel_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
+      panel_instance_id:randomUUID(),frame_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
     await comm.bind(people[role]);
   }
   return {comm,store,directory,...people};
@@ -97,7 +98,7 @@ test('restart persists Stop/read/outcomes, requires rebind and never replays a s
   const {comm,O,E,directory}=await fixture(t);await enable(comm,E);await enable(comm,O);
   const q=await send(comm,O,E),ticket=await comm.claim({...E,...q});await comm.verify({...E,...ticket});await comm.read({...E,...q});
   await comm.probe({...O,delay_ms:60000});comm.dispose();await comm.tail;
-  const next=new PluginCommunication({store:await openCommunicationStore(directory)});t.after(()=>next.dispose());await next.ready;
+  const next=new AttestedCommunication({store:await openCommunicationStore(directory)});t.after(()=>next.dispose());await next.ready;
   const state=await next.status(E);assert.equal(state.stopped,true);assert.equal(state.messages[0].delivery,'unknown');assert.equal(state.messages[0].read,true);
   await assert.rejects(next.claim({...E,...q}),error('BINDING'));
   const fresh={...E,panel_instance_id:randomUUID()};await next.bind(fresh);
@@ -106,7 +107,7 @@ test('restart persists Stop/read/outcomes, requires rebind and never replays a s
   assert.deepEqual(next.runs.get(O.run_id).probes,{});
   assert.ok((await next.journal(O)).events.some(e=>e.event_type==='backend.restart'));
   await next.stop(fresh);next.dispose();await next.tail;
-  const third=new PluginCommunication({store:await openCommunicationStore(directory)});t.after(()=>third.dispose());
+  const third=new AttestedCommunication({store:await openCommunicationStore(directory)});t.after(()=>third.dispose());
   assert.equal((await third.status(E)).stopped,true);
 });
 
@@ -191,14 +192,14 @@ test('a failed message append is not acknowledged or visible after restart',asyn
   comm.store={load:store.load,append:async()=>{throw Error('private disk details');}};
   await assert.rejects(send(comm,O,E),error('STORE_WRITE'));
   assert.deepEqual((await comm.status(E)).messages,[]);comm.dispose();
-  const next=new PluginCommunication({store:await openCommunicationStore(directory)});t.after(()=>next.dispose());
+  const next=new AttestedCommunication({store:await openCommunicationStore(directory)});t.after(()=>next.dispose());
   assert.deepEqual((await next.status(E)).messages,[]);
 });
 
 test('every plan participant gets the project progress; a progress change wakes panel waits',async t=>{
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-progress-')));
   const targets=new Map(),calls=[];
-  const comm=new PluginCommunication({store:await openCommunicationStore(directory),waitMs:5000,resolveTarget:id=>targets.get(id)??null,
+  const comm=new AttestedCommunication({store:await openCommunicationStore(directory),waitMs:5000,resolveTarget:id=>targets.get(id)??null,
     workProgress:target=>{calls.push(target.local_session_id);return {version:1,phase:'Выполнение',self:target.role==='E'?target.task_id:target.role};}});
   t.after(async()=>{comm.dispose();await comm.tail;await fs.rm(directory,{recursive:true,force:true});});
   const people={};
@@ -207,7 +208,7 @@ test('every plan participant gets the project progress; a progress change wakes 
       assignment_id:role==='E'?'assignment-1':null,task_id:role==='E'?'T001':null});
     const metadata={'openai/session':'private-'+id,'openai/subject':'private-user'};
     const joined=await comm.enroll((await comm.reserve(targets.get(id))).enrollment_ticket,metadata);
-    people[role]={...joined,metadata,panel_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
+    people[role]={...joined,metadata,panel_instance_id:randomUUID(),frame_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
   }
   for(const role of ['O','E']){
     const value=await comm.status({...people[role],view:'panel'});

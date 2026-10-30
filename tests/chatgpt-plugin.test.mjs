@@ -14,6 +14,7 @@ import {startPluginBridge} from '../src/execution/plugin/bridge.mjs';
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
+import {attestBoundPanels} from './fixtures/panel-attestation.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
 const digest=text=>createHash('sha256').update(text).digest('hex');
@@ -58,7 +59,8 @@ async function fixture(t){
   }
   const loadContext=async workspace=>packet(workspace,path.basename(workspace));
   let changes=0;
-  plugin=control.createPlugin({loadContext,onChange:()=>changes++,communicationStore:await openCommunicationStore(path.join(directory,'communication'))});
+  plugin=control.createPlugin({loadContext,onChange:()=>changes++,attest:attestBoundPanels(()=>plugin.communication),
+    communicationStore:await openCommunicationStore(path.join(directory,'communication'))});
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
 
@@ -199,7 +201,7 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   assert.equal(authorized.structuredContent.phase,'authorized');assert.equal(effects.length,0);
   const member=Object.values([...comm.runs.values()][0].members).find(m=>m.role==='E');
   const binding={...comm.enrollment.publicMember([...comm.runs.values()][0],member),metadata:{'openai/session':'e'},
-    panel_instance_id:randomUUID(),build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
+    panel_instance_id:randomUUID(),frame_instance_id:randomUUID(),build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
   await comm.bind({...binding,message_supported:true});await comm.sync({...binding,message_supported:true});
   comm.workflow.reconcile=async()=>({sdkDocumentReady:true,stopped:true,busy:false,commandsIdle:true});
   await comm.assignment.reconcile('fixture','scope');

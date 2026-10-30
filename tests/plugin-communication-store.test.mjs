@@ -6,6 +6,7 @@ import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
+import {AttestedCommunication} from './fixtures/panel-attestation.mjs';
 
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const state={id:'store-test',members:{},messages:[],probes:{},clientEvents:{},clientSequences:{}};
@@ -103,7 +104,7 @@ test('workflow WAL persists O, E and S while rejecting unknown roles before chan
 test('NET/UNKNOWN: lost SDK outcome survives durable restart, never reclaims or duplicates Send intent',async t=>{
   const dir=await directory(t),instances=[];
   const create=async()=>{
-    const c=new PluginCommunication({store:await openCommunicationStore(dir),waitMs:20});
+    const c=new AttestedCommunication({store:await openCommunicationStore(dir),waitMs:20});
     instances.push(c);await c.ready;return c;
   };
   t.after(async()=>{for(const c of instances){c.dispose();await c.tail;}});
@@ -111,7 +112,7 @@ test('NET/UNKNOWN: lost SDK outcome survives durable restart, never reclaims or 
   for(const role of ['O','E']){
     const metadata={'openai/session':'isolated-net-'+role};
     const joined=await c.join({run_id:'net-interruption',role,metadata});
-    participants[role]={...joined,metadata,panel_instance_id:randomUUID(),
+    participants[role]={...joined,metadata,panel_instance_id:randomUUID(),frame_instance_id:randomUUID(),
       protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
     await c.bind(participants[role]);
   }

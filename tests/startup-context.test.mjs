@@ -10,6 +10,7 @@ import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
 import {startupView,startupContextState,startupLaunch} from '../src/contracts/startup-view.mjs';
 import {PluginProjects} from '../src/control/plugin/service.mjs';
 import {localParticipantTarget} from '../src/control/plugin/enrollment.mjs';
+import {AttestedCommunication,AttestedProjects} from './fixtures/panel-attestation.mjs';
 const metadata={'openai/session':'startup-fixture','openai/subject':'local-test'};
 const target={project_id:'p',local_session_id:'o',origin_session_id:'o',role:'O',scope_id:null,assignment_id:null,task_id:null};
 test('saved own binding supersedes historical lost without certifying a foreign or unobserved page',()=>{
@@ -43,7 +44,7 @@ test('ordinary chats receive complete panel recovery for every plan strategy wit
       deliveryStatus:'READY_FOR_ACCEPTANCE',sessions:[session],planExecution:{execution_strategy:strategy,execution_origin_session_id:'other'}};
     const projects={snapshot:()=>({projects:[project]}),project:()=>project,inspect:async()=>project};
     const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-startup-role-')));
-    const plugin=new PluginProjects({projects,communicationStore:await openCommunicationStore(directory)});
+    const plugin=new AttestedProjects({projects,communicationStore:await openCommunicationStore(directory)});
     t.after(async()=>{plugin.communication.dispose();await plugin.communication.tail;await fs.rm(directory,{recursive:true,force:true});});
     const target=localParticipantTarget(projects,'chat');assert.equal(target.role,status==='NONE'?'O':'S');
     const invitation=await plugin.reserveParticipant('chat');
@@ -63,7 +64,7 @@ test('ordinary chats receive complete panel recovery for every plan strategy wit
     if(target.role==='S')await assert.rejects(plugin.communication.workflow.grant(target),{code:'PLUGIN_COMMUNICATION_MODE'});
     assert.equal(session.role,status==='NONE'?'orchestrator':'discussion');
     plugin.communication.dispose();await plugin.communication.tail;
-    const recovered=new PluginProjects({projects,communicationStore:await openCommunicationStore(directory)});
+    const recovered=new AttestedProjects({projects,communicationStore:await openCommunicationStore(directory)});
     t.after(async()=>{recovered.communication.dispose();await recovered.communication.tail;});
     await recovered.communication.ready;
     assert.equal(recovered.communication.critical,null);
@@ -78,7 +79,7 @@ test('ordinary chats receive complete panel recovery for every plan strategy wit
 
 test('executor startup is addressed separately and gates work until its own all-parts receipt',async t=>{
   const e={...target,local_session_id:'e',role:'E',scope_id:'scope',assignment_id:'a',task_id:'T001'};
-  const c=new PluginCommunication({resolveTarget:id=>id==='e'?e:target,observe:()=>({sdkDocumentReady:true,canSend:true}),admit:async()=>true});t.after(()=>c.dispose());
+  const c=new AttestedCommunication({resolveTarget:id=>id==='e'?e:target,observe:()=>({sdkDocumentReady:true,canSend:true}),admit:async()=>true});t.after(()=>c.dispose());
   const invitation=await c.reserve(e);await c.startup.stage(e,{request_id:'e-start',text:'Правила назначения'});
   const joined=await c.enroll(invitation.enrollment_ticket,metadata),run=c.runs.get(joined.run_id),member=run.members[joined.participant_id];
   const m=c.startup.message(run,'e');
@@ -91,7 +92,7 @@ async function fixture(t,{delivery_mode='sdk-notification',correlated=false}={})
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-startup-'))),instances=[];
   let valid=true,current=true,canSend=true,admitted=true;
   const create=async()=>{
-    const c=new PluginCommunication({store:await openCommunicationStore(directory),resolveTarget:()=>valid?target:null,
+    const c=new AttestedCommunication({store:await openCommunicationStore(directory),resolveTarget:()=>valid?target:null,
       observe:()=>({sdkDocumentReady:canSend,canSend,stopped:canSend,busy:!canSend}),admit:async()=>admitted,currentMessage:async()=>current,waitMs:10});
     instances.push(c);await c.ready;return c;
   };
@@ -100,7 +101,7 @@ async function fixture(t,{delivery_mode='sdk-notification',correlated=false}={})
   const staged=await c.startup.stage(target,{...correlation,text:'Полный контекст 🪟\n'.repeat(4000),delivery_mode});
   const registration=await c.enroll(invitation.enrollment_ticket,metadata);
   const bind=async comm=>{
-    const input={...registration,metadata,panel_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,message_supported:true};
+    const input={...registration,metadata,panel_instance_id:randomUUID(),frame_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,message_supported:true};
     const result=await comm.bind(input);return {...input,permission_generation:result.permission_generation};
   };
   const input={...await bind(c),message_id:staged.message_id};
@@ -385,7 +386,7 @@ test('issued S snapshot survives a concurrent plan revision on durable WAL witho
   const delivery=new DialogueDelivery({store:projects,record:()=>({controller:{packetIsCurrent:async packet=>packet.planRevision===project.planRevision}})});
   const instances=[];
   const create=async()=>{
-    const c=new PluginCommunication({store:await openCommunicationStore(directory),
+    const c=new AttestedCommunication({store:await openCommunicationStore(directory),
       resolveTarget:id=>id==='s'?registered:null,currentMessage:(to,m)=>delivery.currentMessage(to,m)});
     instances.push(c);await c.ready;return c;
   };

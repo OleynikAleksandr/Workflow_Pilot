@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createFixture,planFixture} from '../packages/workflow-kit/scripts/check-parallel-execution-fixture.mjs';
 import {readPlan} from '../packages/workflow-kit/src/lib/plan.mjs';
+import {AttestedProjects} from './fixtures/panel-attestation.mjs';
 
 test('legacy Review UNKNOWN blocks every new SDK kind for its exact chat, while an independent busy chat receives messages',async()=>{
   const projects=['old','independent'].map(sessionId=>({workspace:'/main',projectId:'project',scopeId:'new-scope',
@@ -44,7 +45,7 @@ test('bootstrap preparation uses a new immutable message key when upgraded instr
 test('assignment contract reads tolerate a Git replacement window but not persistent corruption',async()=>{
   let calls=0,broken=false;
   const target={local_session_id:'o',role:'O',scope_id:'scope',assignment_id:null};
-  const plugin=new PluginProjects({projects:{snapshot:()=>({projects:[{workspace:'/fixture',sessions:[{sessionId:'o'}]}]})},
+  const plugin=new AttestedProjects({projects:{snapshot:()=>({projects:[{workspace:'/fixture',sessions:[{sessionId:'o'}]}]})},
     plans:{call:async()=>{if(broken||++calls<3)throw Object.assign(Error('replacement'),{code:'PLAN_JSON'});return {ok:true};}}});
   plugin.participantTarget=async()=>target;
   try{
@@ -73,7 +74,7 @@ test('removed checkout terminal proof is narrow and requires parent identity and
   const child={workspace:'/worker',sessions:[{sessionId:'e',role:'executor',assignmentId:'a',taskId:'T001',
     parentProjectId:'p',parentScopeId:'s',parentWorkspace:'/main',executionOriginSessionId:'o'}]};
   const projects={snapshot:()=>({projects:[{workspace:'/main',projectId:'p',sessions:[{sessionId:'o'}]},child]})};
-  const plugin=new PluginProjects({projects,loadContext:async()=>null});
+  const plugin=new AttestedProjects({projects,loadContext:async()=>null});
   const state={phase:'INTEGRATED',scope_id:'s',task_id:'T001',worktree:'/worker',
     cleanup:{status:'DONE',commands_idle:true},dialogue:{acceptance:message}};
   plugin.participantTarget=async()=>({role:'O',project_id:'p',scope_id:'s'});
@@ -104,7 +105,7 @@ test('scope-bound UI receipts settle the channel without completing a model turn
 });
 
 test('participant validation retries transient integration reads but never retains stale ownership',async()=>{
-  const plugin=new PluginProjects({projects:{snapshot:()=>({projects:[]})},loadContext:async()=>null});
+  const plugin=new AttestedProjects({projects:{snapshot:()=>({projects:[]})},loadContext:async()=>null});
   let calls=0;const target={role:'O',local_session_id:'o'};
   plugin.participantSnapshot=async()=>{
     if(++calls===1)throw Object.assign(Error('plan replacement'),{code:'WORKFLOW_PLAN_INVALID'});

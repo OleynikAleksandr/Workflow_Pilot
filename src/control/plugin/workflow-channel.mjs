@@ -76,7 +76,8 @@ export class WorkflowChannel {
     if(!panel.messageSupported)return 'sdk-unavailable';
     return null;
   }
-  livePanel(run,member){return [...this.c.panels.values()].some(p=>this.panelIssue(run,member,p)===null);}
+  // Only the attested owner panel makes the delivery channel live; observers never do.
+  livePanel(run,member){const {panel}=this.c.ownership.owner(run,member);return !!panel&&this.panelIssue(run,member,panel)===null;}
   progress(sessionId) {
     const c=this.c,target=c.enrollment.resolveTarget?.(sessionId);
     if(!target||c.removedSessions.has(sessionId))return null;
@@ -165,7 +166,8 @@ export class WorkflowChannel {
     check(input.recovery_id===undefined||typeof input.recovery_id==='string'&&/^[a-f0-9-]{36}$/i.test(input.recovery_id),'INPUT','Некорректная квитанция восстановления.');
     check(!(input.recover_notifications&&input.recovery_id),'INPUT','Начало и подтверждение восстановления — разные шаги.');
     let incident=this.connectionIncident(member,panel);
-    if(input.recover_notifications===true&&this.transportPermitted(run,member)&&!this.panelIssue(run,member,panel)){
+    const owner=c.ownership.role(run,member,panel)==='owner';
+    if(input.recover_notifications===true&&owner&&this.transportPermitted(run,member)&&!this.panelIssue(run,member,panel)){
       const page=this.observe(member.target);
       if(page?.sdkDocumentReady&&page.documentId&&!this.physicalBlock(member.target)){
         if(!incident||incident.restored_at){
@@ -177,7 +179,7 @@ export class WorkflowChannel {
       }
     }
     if(input.recovery_id){
-      check(incident?.id===input.recovery_id&&incident.waited,'RECOVERY_STALE','Нет подтверждённого восстановления этого подключения.');
+      check(owner&&incident?.id===input.recovery_id&&incident.waited,'RECOVERY_STALE','Нет подтверждённого восстановления этого подключения.');
       if(this.transportPermitted(run,member)&&!this.panelIssue(run,member,panel)&&!this.physicalBlock(member.target)){
         if(!incident.restored_at){incident.restored_at=c.now();
           c.event(run,'notification.connection_restored',{participant_id:member.id,incident_id:incident.id});}

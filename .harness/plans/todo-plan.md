@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1303,
+  "plan_revision": 1305,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -80,7 +80,8 @@
       "tests/fixtures/released-communication-0.5.41/communication-store.mjs",
       "tests/migration-compatibility.test.mjs",
       "src/execution/plugin/communication-store.mjs",
-      "release-manifest.json"
+      "release-manifest.json",
+      "tests/fixtures/panel-attestation.mjs"
     ],
     "documentation_paths": [
       "docs/planning/shared-conversation-mac.md",
@@ -255,8 +256,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "OWNER",
@@ -284,7 +285,9 @@
         "tests/plugin-enrollment.test.mjs",
         "tests/plugin-communication-store.test.mjs",
         "tests/electron-smoke.mjs",
-        "tests/backend-end-to-end.test.mjs"
+        "tests/backend-end-to-end.test.mjs",
+        "tests/fixtures/panel-attestation.mjs",
+        "tests/chatgpt-plugin.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -323,7 +326,26 @@
           "ATTEST"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/plugin/delivery-ownership.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/backend/desktop-model.mjs",
+        "tests/plugin-delivery-ownership.test.mjs",
+        "tests/fixtures/panel-attestation.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/plugin-enrollment.test.mjs",
+        "tests/plugin-communication-store.test.mjs",
+        "tests/dialogue-delivery.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1011,7 +1033,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1303
+Revision: 1305
 
 ## Цель
 
@@ -1041,10 +1063,10 @@ Revision: 1303
   - Файлы: src/execution/browser/panel-frame-attestation.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/session-runtime.mjs, src/execution/facade.mjs, src/frontend/plugin/launch.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CONTRACT
-- [TODO] OWNER: Единственный владелец доставки участника — Ожидает
-  - Git Commit: [PENDING] feat: единственный владелец доставки
+- [DONE] OWNER: Единственный владелец доставки участника — Завершено
+  - Git Commit: [DONE] feat: единственный владелец доставки
   - Reference: shared-conversation-mac / OWNER / implementation
-  - Файлы: src/control/plugin/delivery-ownership.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/bootstrap.mjs, src/backend/desktop-model.mjs, tests/plugin-delivery-ownership.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, tests/startup-context.test.mjs, tests/plugin-enrollment.test.mjs, tests/plugin-communication-store.test.mjs, tests/electron-smoke.mjs, tests/backend-end-to-end.test.mjs
+  - Файлы: src/control/plugin/delivery-ownership.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/bootstrap.mjs, src/backend/desktop-model.mjs, tests/plugin-delivery-ownership.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, tests/startup-context.test.mjs, tests/plugin-enrollment.test.mjs, tests/plugin-communication-store.test.mjs, tests/electron-smoke.mjs, tests/backend-end-to-end.test.mjs, tests/fixtures/panel-attestation.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: ATTEST
 - [TODO] OBSERVER: Режим наблюдателя в панели — Ожидает

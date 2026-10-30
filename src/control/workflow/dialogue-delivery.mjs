@@ -76,6 +76,11 @@ export class DialogueDelivery {
       observationSeq:page?.seq??0,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
   }
+  // Execution attests panel frames inside this participant's own backend page.
+  async attest(target){
+    const record=this.record(this.project(target.local_session_id));
+    return record?.browser?.attestPanelFrames?await record.browser.attestPanelFrames():null;
+  }
   async reconcile(target){
     const project=this.project(target.local_session_id),record=this.record(project);
     if(!record)return null;

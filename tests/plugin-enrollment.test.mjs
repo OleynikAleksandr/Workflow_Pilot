@@ -8,13 +8,14 @@ import {PluginCommunication} from '../src/control/plugin/communication.mjs';
 import {localParticipantTarget} from '../src/control/plugin/enrollment.mjs';
 import {PluginProjects} from '../src/control/plugin/service.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
+import {AttestedCommunication,AttestedProjects} from './fixtures/panel-attestation.mjs';
 
 const metadata=id=>({'openai/session':'private-'+id,'openai/subject':'private-user'});
 const target=(id,role='E')=>({project_id:'project',local_session_id:id,origin_session_id:'orchestrator',role,
   scope_id:'scope',assignment_id:role==='E'?'assignment-'+id:null,task_id:role==='E'?'task-'+id:null});
 async function fixture(t) {
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-enrollment-'))),targets=new Map();let now=100000;
-  const create=async()=>new PluginCommunication({store:await openCommunicationStore(directory),now:()=>now,
+  const create=async()=>new AttestedCommunication({store:await openCommunicationStore(directory),now:()=>now,
     resolveTarget:id=>targets.get(id)??null});
   const comm=await create();
   t.after(async()=>{comm.dispose();await comm.tail;await fs.rm(directory,{recursive:true,force:true});});
@@ -27,7 +28,7 @@ test('same named working copies with a common project ID have distinct plugin re
     sessions:[{sessionId:id,role:'planning',archivedAt:null}]}));
   const projects={snapshot:()=>({projects:copies}),project:w=>copies.find(p=>p.workspace===w),
     inspect:async w=>({projectId:copies.find(p=>p.workspace===w).projectId})};
-  const plugin=new PluginProjects({projects});t.after(()=>plugin.communication.dispose());
+  const plugin=new AttestedProjects({projects});t.after(()=>plugin.communication.dispose());
   assert.deepEqual(plugin.list().projects.map(p=>p.id),['one','two']);
   assert.throws(()=>plugin.project('shared'),{code:'PLUGIN_PROJECT_UNAVAILABLE'});
   assert.equal((await plugin.open('two')).sessions[0].id,'two');

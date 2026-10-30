@@ -8,11 +8,12 @@ import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '..
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {ROLE_PROTOCOL_VERSION,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 import {bridge,client} from './fixtures/plugin-host.mjs';
+import {AttestedCommunication} from './fixtures/panel-attestation.mjs';
 const meta=id=>({'openai/session':id});
 async function fixture(t,currentMessage,dialogueKit=null){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'workflow-channel-')));
   const targets=new Map(),pages=new Map(),admission=new Map(),instances=[];let now=100000;
-  const create=async()=>{const c=new PluginCommunication({store:await openCommunicationStore(directory),now:()=>now,waitMs:5,
+  const create=async()=>{const c=new AttestedCommunication({store:await openCommunicationStore(directory),now:()=>now,waitMs:5,
     resolveTarget:id=>targets.get(id),verifyTarget:async id=>targets.get(id),observe:target=>pages.get(target.local_session_id),
     reconcile:async target=>{const p=pages.get(target.local_session_id);if(!p)return null;
       if(!p.stale)p.observationSeq++;return structuredClone(p);},
@@ -23,7 +24,7 @@ async function fixture(t,currentMessage,dialogueKit=null){
     pages.set(id,{sdkDocumentReady:true,canSend:true,stopped:true,busy:false,commandsIdle:true,sdkCommands:[],observationSeq:1,documentId:'doc-'+id,turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1});return value;};
   const o=target('o','O');
   const bind=async(c,target)=>{const invite=await c.reserve(target),member=await c.enroll(invite.enrollment_ticket,meta(target.local_session_id));
-    const input={...member,metadata:meta(target.local_session_id),panel_instance_id:randomUUID(),build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
+    const input={...member,metadata:meta(target.local_session_id),panel_instance_id:randomUUID(),frame_instance_id:randomUUID(),build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL};
     await c.bind({...input,message_supported:true});return sync(c,input);};
   const sync=async(c,input)=>({...input,permission_generation:(await c.sync({...input,message_supported:true})).permission_generation});
   t.after(async()=>{for(const c of instances){c.dispose();await c.tail;}await fs.rm(directory,{recursive:true,force:true});});
