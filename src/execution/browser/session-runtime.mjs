@@ -91,8 +91,20 @@ export class BrowserSessions {
       sendUserMessage: args => call('sendUserMessage', args),
       clearNewSessionDraft: args => call('clearNewSessionDraft', args),
     });
+    // The time this page first observed its current document. A reload ordered
+    // by safeReload records the document it replaced, so Control can transfer
+    // a turn confirmation only across its own reload.
+    record.document = { id: null, since: null, reloadedFrom: null };
+    record.cleanups.push(source.subscribe(() => {
+      const documentId = source.current?.documentId ?? null;
+      if (documentId === record.document.id) return;
+      const reloadedFrom = documentId && record.reloadOrigin ? record.reloadOrigin : null;
+      if (documentId) record.reloadOrigin = null;
+      record.document = { id: documentId, since: documentId ? this.now() : null, reloadedFrom };
+    }));
     const pageState = Object.freeze({
       get current() { return structuredClone(source.current); },
+      get document() { return structuredClone(record.document); },
       get version() { return source.version; },
       subscribe: listener => source.subscribe(event => listener(structuredClone(event))),
       waitForChange: async (version, options) => structuredClone(await source.waitForChange(version, options)),
@@ -151,6 +163,20 @@ export class BrowserSessions {
           || (source.current?.documentId ?? null) !== before.documentId;
         return { browserSessionId: id, incarnation: before.incarnation, documentId: before.documentId,
           frames: stale ? [] : frames, stale, attestedAt: this.now() };
+      },
+      // Reload the saved conversation only: never a q address, never during a
+      // send, a start navigation or a page load. It creates no attempt or ticket.
+      safeReload: async chatUrl => {
+        assertOpen();
+        const reason = typeof chatUrl !== 'string' || hasChatGPTQuery(chatUrl) || !/^https:\/\/chatgpt\.com\//.test(chatUrl) ? 'invalid-address'
+          : composer.inFlight ? 'composer-in-flight' : record.navigationOwner ? 'startup-navigation'
+            : record.loading ? 'loading' : record.crashed ? 'crashed' : null;
+        if (reason) return { reloaded: false, reason };
+        const from = source.current?.documentId ?? null;
+        record.reloadOrigin = from ? { documentId: from, reason: 'control' } : null;
+        try { await record.port.navigate(chatUrl, { reload: true }); }
+        catch (error) { record.reloadOrigin = null; return { reloaded: false, reason: 'load-failed', code: error.code ?? 'BROWSER_ERROR' }; }
+        return { reloaded: true, from };
       },
       release: () => this.#release(record),
     });
@@ -216,6 +242,7 @@ export class BrowserSessions {
         void record.port.navigate(CHATGPT_CHAT_ENTRYPOINT,{reload:true}).catch(()=>{});
       } else {
         record.navigationOwner=null;record.epoch++;
+        if(record.document?.id)record.reloadOrigin={documentId:record.document.id,reason:'recovery'};
         record.navigation('navigation-start',current,true,'recovery');
         try { record.contents.reload(); } catch { record.loading = false; }
       }

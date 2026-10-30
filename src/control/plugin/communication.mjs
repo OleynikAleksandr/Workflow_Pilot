@@ -5,6 +5,7 @@ import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
 import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic,deliveryObserverError} from '../../contracts/plugin-communication.mjs';
 import {DeliveryOwnership} from './delivery-ownership.mjs';
+import {ConversationFreshness} from './conversation-freshness.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE,NOTIFICATION_RULE,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
@@ -34,7 +35,7 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,reload=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
@@ -43,6 +44,7 @@ export class PluginCommunication {
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
     this.ownership=new DeliveryOwnership(this,attest);
+    this.freshness=new ConversationFreshness(this,{reload});
     this.assignment=new AssignmentDialogue(this,dialogueKit);
     this.startup=new StartupContext(this);
     this.ready=this.restore();
@@ -611,6 +613,7 @@ export class PluginCommunication {
       return {deferred:true,reason};
     }
     delete message.claim_wait_reason;
+    if(run.mode==='workflow')this.freshness.claimed(member,this.workflow.observe(member.target));
     message.delivery='claimed';message.delivery_attempt_id=this.makeId();message.panel_instance_id=input.panel_instance_id;
     if(run.mode==='workflow')message.claimed_at=this.now();
     message.permission_generation=member.generation;

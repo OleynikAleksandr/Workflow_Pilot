@@ -150,7 +150,7 @@ export class WorkflowChannel {
   retryDelay(run,member){
     const delays=run.messages.filter(m=>m.recipient_id===member.id&&this.messagePermitted(run,member,m))
       .map(m=>notificationRecovery(m,this.c.now())).filter(r=>r?.retrying&&r.due_at>this.c.now()).map(r=>r.due_at-this.c.now());
-    return delays.length?Math.min(...delays):Infinity;
+    return Math.min(this.c.freshness.holdDelay(member.target),...delays);
   }
   attach(run,member) {
     if(run.grant){member.generation=run.grant.generation;member.stopped=!run.grant.active;}
@@ -281,7 +281,7 @@ export class WorkflowChannel {
       block_id:message.block_id??null,problem_id:message.problem_id??null,repair_attempt:message.repair_attempt??null,
       escalation_required:message.escalation_required===true,...deliveryStage(message)}:{})};}
   pending(run,member) {
-    if(!this.transportPermitted(run,member)||this.physicalBlock(member.target))return null;
+    if(!this.transportPermitted(run,member)||this.physicalBlock(member.target)||this.c.freshness.held(member.target))return null;
     const first=this.first(run,member);
     return first&&(first.delivery==='pending'||this.retryEligible(run,member,first))?first:null;
   }
@@ -300,7 +300,7 @@ export class WorkflowChannel {
     if(!this.messagePermitted(run,member,message))return 'admission-denied';
     const admitted=await this.admission(member.target,message);
     if(admitted!==true&&admitted?.allowed!==true)return admitted?.reason??'admission-denied';
-    return this.physicalBlock(member.target);
+    return this.physicalBlock(member.target)??this.c.freshness.blockReason(run,member,message,this.observe(member.target));
   }
   begin(run,member,message) {
     if(['user-choice','review'].includes(message.kind))return;

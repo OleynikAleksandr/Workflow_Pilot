@@ -323,3 +323,36 @@ test('owned manual Send checkpoints before its permanent address and never reope
   release();await tail;await record.manualDocumentOwner.checkpoint;
   assert.equal(saved.manualStart,true);assert.equal(saved.chatUrl,'https://chatgpt.com/c/manual1234');assert.deepEqual(errors,[]);
 });
+
+test('safeReload opens only the saved chat address, never q, and records the document it replaced',async t=>{
+  let source,now=5000;
+  const {port,contents}=navigationFixture(t,{connect:(_contents,_ipc,pageSource)=>{source=pageSource;return ()=>{};},now:()=>now});
+  const observe=documentId=>source.accept({version:1,documentId,seq:1,state:{url:'https://chatgpt.com/c/saved-chat-1',login:'signed-in',
+    editorAvailable:true,editorRevision:1,writable:true,busy:false,sendEnabled:false,draftRevision:0,userMessageCount:0,userMessagesRevision:0}});
+  await port.navigate('https://chatgpt.com/c/saved-chat-1');observe('document-first-1');
+  assert.deepEqual(port.pageState.document,{id:'document-first-1',since:5000,reloadedFrom:null});
+  for(const address of ['https://chatgpt.com/?q=repeat','https://example.com/c/saved-chat-1',null])
+    assert.deepEqual(await port.safeReload(address),{reloaded:false,reason:'invalid-address'});
+  const loads=contents.loads.length;now=9000;
+  assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-1'),{reloaded:true,from:'document-first-1'});
+  assert.deepEqual(contents.loads.slice(loads),['https://chatgpt.com/c/saved-chat-1']);
+  assert.equal(contents.loads.some(url=>url.includes('?q=')),false);
+  source.reset();observe('document-second-1');
+  assert.deepEqual(port.pageState.document,{id:'document-second-1',since:9000,reloadedFrom:{documentId:'document-first-1',reason:'control'}});
+});
+
+test('safeReload is refused during a send, a start navigation and a load',async t=>{
+  const composer={inFlight:true};
+  const {port,contents}=navigationFixture(t,{createComposer:()=>composer});
+  assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-1'),{reloaded:false,reason:'composer-in-flight'});
+  composer.inFlight=false;
+  let release;const original=contents.loadURL;
+  contents.loadURL=url=>new Promise(resolve=>{release=()=>resolve(original(url));});
+  const starting=port.composer.startChat({url:'https://chatgpt.com/?q=start',navigationToken:'token-one'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-1'),{reloaded:false,reason:'startup-navigation'});
+  release();await starting;
+  const loading=port.navigate('https://chatgpt.com/c/saved-chat-2');await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(await port.safeReload('https://chatgpt.com/c/saved-chat-2'),{reloaded:false,reason:'loading'});
+  release();await loading;
+});

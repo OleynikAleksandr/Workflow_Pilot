@@ -74,7 +74,15 @@ export class DialogueDelivery {
     return {...physical,legacySendUnknown:physical.legacySendUnknown||!!this.legacyUnknown(project),startupLaunch:startupLaunch(project?.attempt,Date.now(),{
       chatUrl:project?.chatUrl,currentUrl:page?.documentId?page.state?.url:undefined}),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
       observationSeq:page?.seq??0,
+      // When the backend page first observed this document, and which document its own reload replaced.
+      documentSince:record?.pageState?.document?.since??null,reloadedFrom:record?.pageState?.document?.reloadedFrom??null,
       userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
+  }
+  // Reload the saved conversation of this participant's backend page for freshness.
+  async reload(target){
+    const project=this.project(target.local_session_id),record=this.record(project);
+    if(!project?.chatUrl||!record?.browser?.safeReload)return {reloaded:false,reason:'recipient-unavailable'};
+    return record.browser.safeReload(project.chatUrl);
   }
   // Execution attests panel frames inside this participant's own backend page.
   async attest(target){
