@@ -304,7 +304,8 @@ test('bounded backend timing records explicit gaps without waking functional con
   const f=await fixture(t),e=f.target('e');await f.c.workflow.grant(f.o);
   const b=await f.bind(f.c,e);let changes=0;
   await new Promise(resolve=>setImmediate(resolve));f.c.onChange=()=>changes++;
-  for(let n=0;n<70;n++)f.c.recordKitTiming(e,{operation:'status',elapsed_ms:n,ok:true});
+  // Slow calls bypass sampling, so the bounded buffer itself overflows.
+  for(let n=0;n<70;n++)f.c.recordKitTiming(e,{operation:'status',elapsed_ms:1000+n,ok:true});
   assert.equal(f.c.timings.length,64);
   await f.c.telemetryBatch({...b,events:[{event_id:randomUUID(),client_sequence:1,
     client_time:new Date().toISOString(),duration_ms:1,event_type:'rpc.completed',operation:'status',operation_ms:1}]});

@@ -25,6 +25,9 @@ export function communicationIdentity(metadata) {
 const MUTATIONS=['join','bind','enable','stop','send','probe','claim','claimReady','verify','report','read','telemetry','telemetryBatch','sync'];
 const diagnostic=e=>e.component==='frontend'||['operation.timing','kit.timing','observer.timing','diagnostic.gap','claim.deferred'].includes(e.event_type);
 const functional=e=>!diagnostic(e)&&!e.event_type.startsWith('wait.');
+// Diagnostics stop before the hard event limit, so timing never ends a working run.
+const EVENT_LIMIT=20000,DIAGNOSTIC_EVENT_LIMIT=16000,CLIENT_EVENT_MEMORY=1024,KIT_SAMPLE_MS=30000,KIT_SLOW_MS=1000;
+const fingerprint=value=>createHash('sha256').update(value).digest('hex');
 const SECRET=/(?:Bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{12,}|(?:authorization|cookie|api[_-]?key|password|(?:access[_-]?)?token)\s*[:=]\s*\S+|https?:\/\/[^\s/:]+:[^\s/@]+@)/i;
 const CLIENT_EVENTS=new Set(['sdk.invoked','sdk.accepted','sdk.rejected','sdk.timeout','sdk.error','sdk.late_accepted','sdk.late_rejected','report.failed',
   'stop.local','stop.failed','host.handshake','host.context_changed','visibility.changed','panel.pagehide','panel.dispose','panel.mount','panel.resume',
@@ -40,7 +43,7 @@ export class PluginCommunication {
     Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
-    this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];this.timingDrops=0;
+    this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];this.timingDrops=0;this.kitSampled=new Map();
     this.backendId=makeId();this.tail=Promise.resolve();this.critical=null;this.disposed=false;
     this.enrollment=new ParticipantEnrollment(this,resolveTarget,verifyTarget);
     this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
@@ -146,6 +149,10 @@ export class PluginCommunication {
   readableRun(id){return this.transactionView?.id===id?this.transactionView.before:this.runs.get(id);}
   recordKitTiming(target,span){
     if(!/^[a-z]+(?::[a-z-]+)?$/.test(span.operation)||!Number.isFinite(span.elapsed_ms))return;
+    // Routine polling is sampled; failures and slow calls are always kept.
+    const key=[target.project_id,target.scope_id,target.assignment_id??'',span.operation].join('\0'),now=this.now();
+    if(span.ok&&span.elapsed_ms<KIT_SLOW_MS&&now-(this.kitSampled.get(key)??-Infinity)<KIT_SAMPLE_MS)return;
+    if(span.ok&&span.elapsed_ms<KIT_SLOW_MS)this.kitSampled.set(key,now);
     this.timings.push({project_id:target.project_id,scope_id:target.scope_id,assignment_id:target.assignment_id??null,
       operation:span.operation,elapsed_ms:Math.max(0,Math.round(span.elapsed_ms)),outcome:span.ok?'ok':'error',
       started_at:span.started_at??null,ended_at:span.ended_at??new Date(this.now()).toISOString()});
@@ -178,7 +185,8 @@ export class PluginCommunication {
     }
   }
   event(run,type,fields={}) {
-    requireValue(run.events.length<20000,'LIMIT','Лимит журнала достигнут. Начните отдельный опыт.');
+    if(run.events.length>=DIAGNOSTIC_EVENT_LIMIT&&diagnostic({component:fields.component??'control',event_type:type}))return null;
+    requireValue(run.events.length<EVENT_LIMIT,'LIMIT','Лимит журнала достигнут. Начните отдельный опыт.');
     const entry={schema_version:1,event_id:this.makeId(),seq:run.events.length+1,run_id:run.id,
       component:'control',event_type:type,severity:'info',server_time:new Date(this.now()).toISOString(),
       backend_instance_id:this.backendId,...fields};
@@ -759,14 +767,18 @@ export class PluginCommunication {
       }
     }
     if(data.sdk_error)safe.sdk_error=sdkDiagnostic(data.sdk_error,data.sdk_error.stage);
+    // The state keeps only recent signature digests; older retries fall back to the event-log check below.
     const signature=JSON.stringify({panel_instance_id:input.panel_instance_id,...safe}),previous=run.clientEvents[data.event_id];
-    requireValue(!previous||previous===signature,'CONFLICT','ID события уже использован.');
+    requireValue(!previous||previous===fingerprint(signature)||previous===signature,'CONFLICT','ID события уже использован.');
     if(previous)return {duplicate:true};
     requireValue(!run.events.some(e=>e.event_id===data.event_id),'CONFLICT','ID события уже использован журналом.');
     const last=run.clientSequences[input.panel_instance_id]??0;
     requireValue(data.client_sequence>last,'CURSOR','Порядок событий панели нарушен.');
     if(data.client_sequence!==last+1)this.event(run,'frontend.gap',{panel_instance_id:input.panel_instance_id,from:last+1,to:data.client_sequence-1,severity:'warning'});
-    run.clientSequences[input.panel_instance_id]=data.client_sequence;run.clientEvents[data.event_id]=signature;
+    run.clientSequences[input.panel_instance_id]=data.client_sequence;run.clientEvents[data.event_id]=fingerprint(signature);
+    const remembered=Object.keys(run.clientEvents),forget=Math.max(0,remembered.length-CLIENT_EVENT_MEMORY);
+    remembered.forEach((id,i)=>{if(i<forget)delete run.clientEvents[id];
+      else if(!/^[0-9a-f]{64}$/.test(run.clientEvents[id]))run.clientEvents[id]=fingerprint(run.clientEvents[id]);});
     this.event(run,safe.event_type,{...safe,component:'frontend',server_received_at:new Date(this.now()).toISOString(),
       panel_instance_id:input.panel_instance_id,participant_id:input.participant_id});
     return {seq:run.events.length};

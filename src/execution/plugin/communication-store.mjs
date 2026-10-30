@@ -6,13 +6,31 @@ import {createHash} from 'node:crypto';
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const failure=code=>Object.assign(new Error('Журнал связи недоступен. Отправка заблокирована; исходные файлы сохранены.'),{code});
 const encode=value=>JSON.stringify(value);
+const FILE_LIMIT=512*1024*1024,COMPACT_BYTES=32*1024*1024;
+const journal=name=>/^[a-f0-9]{64}\.jsonl$/.test(name);
+// Lines are read in chunks: a journal close to FILE_LIMIT must not become one V8 string.
+async function* readLines(handle) {
+  const chunk=Buffer.alloc(1024*1024);let parts=[],position=0;
+  for(;;) {
+    const {bytesRead}=await handle.read(chunk,0,chunk.length,position);if(!bytesRead)break;position+=bytesRead;
+    const view=chunk.subarray(0,bytesRead);let start=0,end;
+    while((end=view.indexOf(10,start))!==-1) {
+      parts.push(Buffer.from(view.subarray(start,end)));yield {text:Buffer.concat(parts).toString('utf8'),terminated:true};parts=[];start=end+1;
+    }
+    if(start<bytesRead)parts.push(Buffer.from(view.subarray(start)));
+  }
+  if(parts.length)yield {text:Buffer.concat(parts).toString('utf8'),terminated:false};
+}
 const supportedState=state=>state?.registry_version===undefined&&!state?.mode||state?.registry_version===2&&state.mode==='workflow'
   &&state.enrollments&&typeof state.enrollments==='object'
   &&Object.entries(state.members??{}).every(([id,member])=>id===member.id&&member.target&&['O','E','S'].includes(member.role));
 
 // One fsynced JSONL transaction contains the new state and its contiguous events.
-// The WAL, not a separately replaced snapshot, is the only source of truth.
-export async function openCommunicationStore(directory,{files=fs}={}) {
+// The WAL is the only source of truth. Because every line repeats the state, a
+// journal that outgrows its last snapshot is atomically replaced by one ordinary
+// record with the current state and all events, so the file grows linearly and
+// released validators still read it.
+export async function openCommunicationStore(directory,{files=fs,compactBytes=COMPACT_BYTES}={}) {
   directory=path.resolve(directory);
   let current=path.parse(directory).root;
   for(const part of directory.slice(current.length).split(path.sep)) {
@@ -23,16 +41,16 @@ export async function openCommunicationStore(directory,{files=fs}={}) {
   await files.mkdir(directory,{recursive:true,mode:0o700});
   const records=new Map(),issues=[];
   for(const name of (await files.readdir(directory)).sort()) {
-    if(!/^[a-f0-9]{64}\.jsonl$/.test(name))continue;
+    // An unfinished snapshot never replaced its journal, which stays authoritative.
+    if(journal(name.replace(/\.compact$/,''))&&name.endsWith('.compact')){await files.unlink(path.join(directory,name));continue;}
+    if(!journal(name))continue;
     const file=path.join(directory,name),stat=await files.lstat(file);
-    if(!stat.isFile()||stat.isSymbolicLink()||stat.size>512*1024*1024)throw failure('PLUGIN_COMMUNICATION_STORE_UNSAFE');
-    const text=await files.readFile(file,'utf8'),lines=text.split('\n');
-    let previous=null,seq=0,state=null,events=[],code=null,validBytes=0;
-    const ids=new Set();
-    for(let i=0;i<lines.length;i++) {
-      const line=lines[i];if(i===lines.length-1&&line==='')break;
+    if(!stat.isFile()||stat.isSymbolicLink()||stat.size>FILE_LIMIT)throw failure('PLUGIN_COMMUNICATION_STORE_UNSAFE');
+    let previous=null,seq=0,state=null,events=[],code=null,validBytes=0,base=0;
+    const ids=new Set(),handle=await files.open(file,constants.O_RDONLY|(constants.O_NOFOLLOW??0));
+    try{for await(const {text:line,terminated} of readLines(handle)) {
       try {
-        if(i===lines.length-1)throw Error('tail');
+        if(!terminated)throw Error('tail');
         const {checksum,...record}=JSON.parse(line);
         if(!supportedState(record.state)||record.schema_version!==(record.state.registry_version===2?2:1))throw Error('version');
         if(checksum!==digest(encode(record))||record.previous!==previous
@@ -45,11 +63,12 @@ export async function openCommunicationStore(directory,{files=fs}={}) {
           ids.add(event.event_id);
         }
         if(record.seq!==next||record.event_id!==record.events.at(-1).event_id)throw Error('sequence');
+        if(!validBytes)base=Buffer.byteLength(line+'\n');
         seq=next;previous=checksum;state=record.state;events.push(...record.events);validBytes+=Buffer.byteLength(line+'\n');
       }catch(error){code=error.message==='version'?'PLUGIN_COMMUNICATION_STORE_VERSION':error.message==='tail'?'PLUGIN_COMMUNICATION_STORE_TAIL':'PLUGIN_COMMUNICATION_STORE_CORRUPT';break;}
-    }
+    }}finally{await handle.close();}
     if(code)issues.push({run_id:state?.id??null,error_code:code,last_seq:seq,valid_bytes:validBytes});
-    if(state)records.set(state.id,{state,events,previous,size:stat.size});
+    if(state)records.set(state.id,{state,events,previous,size:stat.size,base});
   }
   let broken=issues.length>0,tail=Promise.resolve();
   async function readContent(ref) {
@@ -85,19 +104,31 @@ export async function openCommunicationStore(directory,{files=fs}={}) {
         const old=records.get(state.id),seq=old?.events.at(-1)?.seq??0;
         const ids=new Set(old?.events.map(e=>e.event_id)??[]);
         if(!events.length||events.some((e,i)=>{const duplicate=ids.has(e.event_id);ids.add(e.event_id);return duplicate||e.run_id!==state.id||e.seq!==seq+i+1;}))throw failure('PLUGIN_COMMUNICATION_STORE_SEQUENCE');
-        const record={schema_version:state.registry_version===2?2:1,run_id:state.id,seq:events.at(-1).seq,event_id:events.at(-1).event_id,
-          previous:old?.previous??null,events:structuredClone(events),state:structuredClone(state)};
-        const checksum=digest(encode(record)),line=encode({...record,checksum})+'\n';
-        const file=path.join(directory,digest(state.id)+'.jsonl');let handle;
+        const header={schema_version:state.registry_version===2?2:1,run_id:state.id,seq:events.at(-1).seq,event_id:events.at(-1).event_id};
+        const encoded=record=>{const checksum=digest(encode(record));return {checksum,line:encode({...record,checksum})+'\n'};};
+        let {checksum,line}=encoded({...header,previous:old?.previous??null,events:structuredClone(events),state:structuredClone(state)});
+        const file=path.join(directory,digest(state.id)+'.jsonl'),temporary=file+'.compact';let handle,size=(old?.size??0)+Buffer.byteLength(line),base=old?.base??0,compacting=false;
         try {
-          handle=await files.open(file,constants.O_WRONLY|constants.O_APPEND|constants.O_CREAT|(constants.O_NOFOLLOW??0),0o600);
-          const stat=await handle.stat();
-          if(!stat.isFile()||stat.size!==(old?.size??0)||stat.size+Buffer.byteLength(line)>512*1024*1024)throw Error('size');
-          await handle.writeFile(line,'utf8');await handle.sync();await handle.close();handle=null;
-          if(!old&&process.platform!=='win32'){const dir=await files.open(directory,'r');try{await dir.sync();}finally{await dir.close();}}
-          records.set(state.id,{state:structuredClone(state),events:[...(old?.events??[]),...structuredClone(events)],previous:checksum,
-            size:(old?.size??0)+Buffer.byteLength(line)});
+          if(old&&size>Math.max(compactBytes,4*base)) {
+            compacting=true;
+            ({checksum,line}=encoded({...header,previous:null,events:[...old.events,...structuredClone(events)],state:structuredClone(state)}));
+            size=base=Buffer.byteLength(line);if(size>FILE_LIMIT)throw Error('size');
+            const current=await files.lstat(file);
+            if(!current.isFile()||current.isSymbolicLink()||current.size!==old.size)throw Error('size');
+            handle=await files.open(temporary,constants.O_WRONLY|constants.O_CREAT|constants.O_TRUNC|(constants.O_NOFOLLOW??0),0o600);
+            await handle.writeFile(line,'utf8');await handle.sync();await handle.close();handle=null;
+            await files.rename(temporary,file);
+          }else {
+            handle=await files.open(file,constants.O_WRONLY|constants.O_APPEND|constants.O_CREAT|(constants.O_NOFOLLOW??0),0o600);
+            const stat=await handle.stat();
+            if(!stat.isFile()||stat.size!==(old?.size??0)||size>FILE_LIMIT)throw Error('size');
+            if(!old)base=Buffer.byteLength(line);
+            await handle.writeFile(line,'utf8');await handle.sync();await handle.close();handle=null;
+          }
+          if((!old||compacting)&&process.platform!=='win32'){const dir=await files.open(directory,'r');try{await dir.sync();}finally{await dir.close();}}
+          records.set(state.id,{state:structuredClone(state),events:[...(old?.events??[]),...structuredClone(events)],previous:checksum,size,base});
         }catch {broken=true;issues.push({run_id:state.id,error_code:'PLUGIN_COMMUNICATION_STORE_WRITE',last_seq:seq});
+          if(compacting)await files.unlink(temporary).catch(()=>{});
           throw failure('PLUGIN_COMMUNICATION_STORE_WRITE');
         }finally{await handle?.close().catch(()=>{});}
       });

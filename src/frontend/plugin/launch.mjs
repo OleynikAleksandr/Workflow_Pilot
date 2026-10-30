@@ -297,7 +297,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
         if(!current())return;
         status('Восстанавливаем ожидание сообщений. Сохранённые поручения остаются в работе.','waiting');failures++;
         await new Promise(resolve=>{const finish=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',finish);resolve();};
-          const timer=setTimeout(finish,Math.min(5000,250*2**Math.min(failures-1,5)));controller.signal.addEventListener('abort',finish,{once:true});if(controller.signal.aborted)finish();});
+          const timer=setTimeout(finish,Math.min(30000,250*2**Math.min(failures-1,7)));controller.signal.addEventListener('abort',finish,{once:true});if(controller.signal.aborted)finish();});
         continue;
       }
       if(!current())return;

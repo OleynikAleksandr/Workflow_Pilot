@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1387,
+  "plan_revision": 1389,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -50,7 +50,8 @@
       "src/control/plugin/communication.mjs",
       "src/frontend/plugin/launch.mjs",
       "tests/plugin-communication-store.test.mjs",
-      "tests/plugin-communication.test.mjs"
+      "tests/plugin-communication.test.mjs",
+      "tests/workflow-channel.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/cdp-startup-input.md",
@@ -344,7 +345,8 @@
         "package-lock.json",
         "tests/plugin-communication-store.test.mjs",
         "tests/plugin-communication.test.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/workflow-channel.test.mjs"
       ],
       "documentation_paths": [
         "docs/planning/communication-journal-growth.md"
@@ -361,13 +363,26 @@
         "Пауза повторов ожидания панели растёт до 30 с; версия 0.6.5."
       ],
       "expected_commit_message": "feat: Линейный рост журнала связи",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "JOURNAL",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "src/execution/plugin/communication-store.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/plugin-communication-store.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "docs/planning/communication-journal-growth.md"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -504,7 +519,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1387
+Revision: 1389
 
 ## Цель
 
@@ -538,10 +553,10 @@ Revision: 1387
   - Git Commit: [DONE] feat: Опубликовать выпуск 0.6.4 на GitHub
   - Reference: cdp-startup-input / PUBLISH / implementation
   - Файлы: release-manifest.json
-- [TODO] JOURNAL: Линейный рост журнала связи — Ожидает
-  - Git Commit: [PENDING] feat: Линейный рост журнала связи
+- [DONE] JOURNAL: Линейный рост журнала связи — Завершено
+  - Git Commit: [DONE] feat: Линейный рост журнала связи
   - Reference: cdp-startup-input / JOURNAL / implementation
-  - Файлы: src/execution/plugin/communication-store.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/plugin-communication-store.test.mjs, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/communication-journal-growth.md
+  - Файлы: src/execution/plugin/communication-store.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/plugin-communication-store.test.mjs, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/workflow-channel.test.mjs, docs/planning/communication-journal-growth.md
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-2 / implementation

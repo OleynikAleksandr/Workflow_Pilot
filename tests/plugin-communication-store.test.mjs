@@ -147,3 +147,49 @@ test('NET/UNKNOWN: lost SDK outcome survives durable restart, never reclaims or 
   assert.equal(events.filter(e=>e.event_type==='send.intent').length,1,'a lost receipt cannot cause another SDK Send');
   assert.equal(recovered.critical,null);
 });
+
+test('a journal that outgrows its snapshot is replaced by one compatible record and grows linearly',async t=>{
+  const {openCommunicationStore:openReleasedStore}=await import('./fixtures/released-communication-0.5.41/communication-store.mjs');
+  const dir=await directory(t),store=await openCommunicationStore(dir,{compactBytes:16*1024});let grown=state,seq=0,largest=0;
+  for(let i=0;i<300;i++){
+    grown={...grown,clientEvents:{...grown.clientEvents,[randomUUID()]:'x'.repeat(40)}};
+    await store.append(grown,[event(++seq),event(++seq)]);largest=Math.max(largest,(await fs.stat(file(dir))).size);
+  }
+  const lines=(await fs.readFile(file(dir),'utf8')).trim().split('\n').map(JSON.parse),snapshot=lines[0];
+  assert.equal(snapshot.previous,null);assert.equal(snapshot.events[0].seq,1);
+  assert.ok(lines.length<300,'the journal was compacted');
+  // Without compaction 300 states of up to ~30 KB would exceed 4 MB.
+  assert.ok(largest<Math.max(16*1024,4*Buffer.byteLength(JSON.stringify(snapshot)))+64*1024,'file size stays linear');
+  for(const open of [openCommunicationStore,openReleasedStore]){
+    const loaded=(await open(dir)).load();
+    assert.deepEqual(loaded.issues,[]);assert.deepEqual(loaded.runs[0].events.map(e=>e.seq),Array.from({length:600},(_,i)=>i+1));
+    assert.deepEqual(loaded.runs[0].clientEvents,grown.clientEvents);
+  }
+  const next=await openCommunicationStore(dir);await next.append(grown,[event(++seq)]);
+  assert.equal((await openCommunicationStore(dir)).load().runs[0].events.length,601);
+});
+
+test('records longer than one read chunk load intact and an unfinished snapshot is discarded',async t=>{
+  const dir=await directory(t),store=await openCommunicationStore(dir),large={...state,note:'é'.repeat(1_500_000)};
+  await store.append(large,[event(1)]);await store.append(large,[event(2)]);
+  await fs.writeFile(file(dir)+'.compact','{"partial":');
+  const loaded=(await openCommunicationStore(dir)).load();
+  assert.deepEqual(loaded.issues,[]);assert.equal(loaded.runs[0].note,large.note);assert.equal(loaded.runs[0].events.length,2);
+  await assert.rejects(fs.stat(file(dir)+'.compact'),{code:'ENOENT'});
+  await fs.appendFile(file(dir),'{"unfinished":');
+  assert.equal((await openCommunicationStore(dir)).load().issues[0].error_code,'PLUGIN_COMMUNICATION_STORE_TAIL');
+});
+
+test('a failed snapshot keeps the previous journal and blocks writes',async t=>{
+  const dir=await directory(t),renamed=[];
+  const files={...fs,async rename(...args){renamed.push(args);throw Object.assign(Error('rename'),{code:'EIO'});}};
+  const store=await openCommunicationStore(dir,{files,compactBytes:1});let seq=0,before,failure;
+  // The fourth record exceeds four snapshot sizes and starts the replacement.
+  while(!failure&&seq<10){before=await fs.readFile(file(dir),'utf8').catch(()=>'');
+    await store.append(state,[event(++seq)]).catch(error=>{failure=error;});}
+  assert.equal(failure?.code,'PLUGIN_COMMUNICATION_STORE_WRITE');assert.equal(renamed.length,1);
+  assert.equal(await fs.readFile(file(dir),'utf8'),before);
+  await assert.rejects(fs.stat(file(dir)+'.compact'),{code:'ENOENT'});
+  await assert.rejects(store.append(state,[event(seq)]),{code:'PLUGIN_COMMUNICATION_STORE_BLOCKED'});
+  assert.equal((await openCommunicationStore(dir)).load().runs[0].events.length,seq-1);
+});

@@ -263,3 +263,47 @@ test('an unmatched model identity is journaled outside the WAL and visible in th
   assert.match(journal,/"event":"identity\.unmatched"[^\n]*"source":"model-read"/);
   assert.doesNotMatch(journal+JSON.stringify(exported),/private-|secret/,'metadata values are never stored');
 });
+
+test('panel event memory keeps 1024 digests, accepts legacy signatures and still detects conflicts',async t=>{
+  const {comm,O}=await fixture(t),base={event_type:'panel.mount',client_time:new Date().toISOString(),duration_ms:0};
+  const first={...base,event_id:randomUUID(),client_sequence:1};
+  await comm.telemetry({...O,event:first});
+  assert.match(comm.runs.get(O.run_id).clientEvents[first.event_id],/^[0-9a-f]{64}$/);
+  assert.equal((await comm.telemetry({...O,event:first})).duplicate,true);
+  await assert.rejects(comm.telemetry({...O,event:{...first,event_type:'sdk.error'}}),error('CONFLICT'));
+  // A 0.6.4 journal stored the signature text itself.
+  const legacy={...base,event_id:randomUUID(),client_sequence:2};await comm.telemetry({...O,event:legacy});
+  comm.runs.get(O.run_id).clientEvents[legacy.event_id]=JSON.stringify({panel_instance_id:O.panel_instance_id,event_id:legacy.event_id,
+    event_type:legacy.event_type,client_sequence:2,client_time:legacy.client_time,duration_ms:0,duration_kind:'since-panel-mount'});
+  assert.equal((await comm.telemetry({...O,event:legacy})).duplicate,true);
+  for(let next=3;next<=1100;next+=16)await comm.telemetryBatch({...O,events:Array.from({length:Math.min(16,1101-next)},(_,i)=>
+    ({...base,event_id:randomUUID(),client_sequence:next+i}))});
+  const memory=comm.runs.get(O.run_id).clientEvents;
+  assert.equal(Object.keys(memory).length,1024);assert.equal(memory[first.event_id],undefined);
+  assert.ok(Object.values(memory).every(value=>/^[0-9a-f]{64}$/.test(value)));
+  await assert.rejects(comm.telemetry({...O,event:first}),error('CONFLICT'));
+});
+
+test('diagnostic events stop before the event limit while working events continue',()=>{
+  const context={makeId:randomUUID,now:Date.now,backendId:'backend'},event=PluginCommunication.prototype.event;
+  const run={id:'limit',events:Array.from({length:15999},(_,i)=>({seq:i+1}))};
+  assert.ok(event.call(context,run,'kit.timing'));assert.equal(run.events.length,16000);
+  assert.equal(event.call(context,run,'kit.timing'),null);assert.equal(event.call(context,run,'rpc.completed',{component:'frontend'}),null);
+  assert.equal(run.events.length,16000);
+  assert.ok(event.call(context,run,'message.persisted'));assert.equal(run.events.length,16001);
+  run.events.length=20000;
+  assert.throws(()=>event.call(context,run,'message.persisted'),error('LIMIT'));
+});
+
+test('routine Kit timing is sampled while slow and failed calls are always kept',()=>{
+  let now=0;const context={timings:[],timingDrops:0,kitSampled:new Map(),now:()=>now},record=PluginCommunication.prototype.recordKitTiming;
+  const target={project_id:'p',scope_id:'s',assignment_id:'a'};
+  for(let i=0;i<5;i++)record.call(context,target,{operation:'assignment:dialogue-status',elapsed_ms:20,ok:true});
+  assert.equal(context.timings.length,1);
+  record.call(context,{...target,assignment_id:'b'},{operation:'assignment:dialogue-status',elapsed_ms:20,ok:true});
+  record.call(context,target,{operation:'assignment:dialogue-status',elapsed_ms:1500,ok:true});
+  record.call(context,target,{operation:'assignment:dialogue-status',elapsed_ms:20,ok:false});
+  assert.equal(context.timings.length,4);
+  now=30000;record.call(context,target,{operation:'assignment:dialogue-status',elapsed_ms:20,ok:true});
+  assert.equal(context.timings.length,5);assert.deepEqual(context.timings.map(t=>t.outcome),['ok','ok','ok','error','ok']);
+});
