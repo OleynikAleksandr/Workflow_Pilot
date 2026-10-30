@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1360,
+  "plan_revision": 1361,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Один разговор O/E продолжается с любого клиента ChatGPT, автоматическую доставку выполняет только серверная страница backend; выпуск 0.6.0 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Автоматическую доставку участнику выполняет только аттестованная панель его серверной страницы; панели других клиентов — наблюдатели без SDK-отправок.",
@@ -88,7 +88,8 @@
       "src/control/context/context-session.mjs",
       "src/execution/browser/chatgpt-composer.mjs",
       "tests/context-session.test.mjs",
-      "tests/chatgpt-composer.test.mjs"
+      "tests/chatgpt-composer.test.mjs",
+      "src/frontend/desktop/ui/sidebar.mjs"
     ],
     "documentation_paths": [
       "docs/planning/shared-conversation-mac.md",
@@ -107,7 +108,8 @@
       "docs/modules/shared-conversation.md",
       "docs/planning/restored-startup-draft.md",
       "docs/modules/chat-only-startup.md",
-      "docs/planning/startup-freshness-loop.md"
+      "docs/planning/startup-freshness-loop.md",
+      "docs/planning/start-not-sent-retry.md"
     ]
   },
   "baseline_commit": "05822a86a51b74e586e098cb477700fb64d7dd56",
@@ -143,6 +145,11 @@
         "path": "docs/planning/startup-freshness-loop.md",
         "required": true,
         "revision": "56c9f913bba43ba053547a0ed511d98707bc0926"
+      },
+      {
+        "path": "docs/planning/start-not-sent-retry.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -1657,6 +1664,169 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "NOT-SENT",
+      "title": "Повтор неотправленной стартовой команды",
+      "why": "ChatGPT иногда не отправляет q-команду («Учетная запись сменилась»); старт молча ждёт регистрацию и через 180 с становится неизвестным.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/context/context-session.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/context-session.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/start-not-sent-retry.md"
+      ],
+      "verification_ids": [
+        "startup-recovery",
+        "orchestrator-startup",
+        "attachment-retry",
+        "chatgpt-plugin",
+        "delivery-ui-targeted",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Доказанная неотправка (30 с, тот же документ, временный адрес, нет генерации, адреса и регистрации) распознаётся по таймеру; удачный и медленный старт не задеты.",
+        "Приглашение отзывается; только при revoked — один новый старт с новым приглашением из чистого чата, переживает перезапуск; registered-stopped и второй сбой — оранжевая причина без повтора.",
+        "Без DOM Send и повторной отправки отправленного; версия 0.6.3; полная регрессия не выполняется по решению пользователя."
+      ],
+      "expected_commit_message": "feat: Повтор неотправленной стартовой команды",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "NOT-SENT",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-4",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "DOCS-4",
+        "role": "implementation",
+        "iteration": 4
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "NOT-SENT"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/start-not-sent-retry.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-4",
+      "title": "Собрать macOS Windows Linux 0.6.3",
+      "why": "Собрать macOS Windows Linux 0.6.3",
+      "dependencies": [
+        "NOT-SENT",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/start-not-sent-retry.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС после DOCS-4 из одного sourceCommit, семь assets, manifest/SHA/подпись подтверждены; preflight кэша Python."
+      ],
+      "expected_commit_message": "feat: Собрать macOS Windows Linux 0.6.3",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "RELEASE-4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-4",
+      "title": "Установить выпуск 0.6.3 на этот Mac",
+      "why": "Установить выпуск 0.6.3 на этот Mac",
+      "dependencies": [
+        "RELEASE-4",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/start-not-sent-retry.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer без пересборки и переподписи; при работающей службе verified pending."
+      ],
+      "expected_commit_message": "feat: Установить выпуск 0.6.3 на этот Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "INSTALL-4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-4",
+      "title": "Опубликовать выпуск 0.6.3 на GitHub",
+      "why": "Опубликовать выпуск 0.6.3 на GitHub",
+      "dependencies": [
+        "INSTALL-4",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/start-not-sent-retry.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Tag равен sourceCommit, семь assets проверены, remote main подтверждён; живая проверка не объявляется пройденной."
+      ],
+      "expected_commit_message": "feat: Опубликовать выпуск 0.6.3 на GitHub",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "PUBLISH-4",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1681,10 +1851,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1360
+Revision: 1361
 
 ## Цель
 
@@ -1864,6 +2034,36 @@ Revision: 1360
   - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL-3, DOCS-3
+- [TODO] NOT-SENT: Повтор неотправленной стартовой команды — Ожидает
+  - Git Commit: [PENDING] feat: Повтор неотправленной стартовой команды
+  - Reference: shared-conversation-mac / NOT-SENT / implementation
+  - Файлы: src/control/context/context-session.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/context-session.test.mjs, tests/panel-dialogue-view.test.mjs, tests/chatgpt-plugin.test.mjs, docs/planning/start-not-sent-retry.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: shared-conversation-mac / DOCS-4 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/start-not-sent-retry.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: NOT-SENT
+- [TODO] RELEASE-4: Собрать macOS Windows Linux 0.6.3 — Ожидает
+  - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.3
+  - Reference: shared-conversation-mac / RELEASE-4 / implementation
+  - Файлы: release-manifest.json, docs/planning/start-not-sent-retry.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: NOT-SENT, DOCS-4
+- [TODO] INSTALL-4: Установить выпуск 0.6.3 на этот Mac — Ожидает
+  - Git Commit: [PENDING] feat: Установить выпуск 0.6.3 на этот Mac
+  - Reference: shared-conversation-mac / INSTALL-4 / implementation
+  - Файлы: release-manifest.json, docs/planning/start-not-sent-retry.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-4, DOCS-4
+- [TODO] PUBLISH-4: Опубликовать выпуск 0.6.3 на GitHub — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.6.3 на GitHub
+  - Reference: shared-conversation-mac / PUBLISH-4 / implementation
+  - Файлы: release-manifest.json, docs/planning/start-not-sent-retry.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-4, DOCS-4
 
 ## Context Pack For This Cycle
 
@@ -1873,5 +2073,6 @@ Revision: 1360
 - docs/planning/shared-backend-mobile-followup.md
 - docs/planning/restored-startup-draft.md
 - docs/planning/startup-freshness-loop.md
+- docs/planning/start-not-sent-retry.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
