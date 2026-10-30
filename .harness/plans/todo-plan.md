@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1330,
+  "plan_revision": 1331,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Один разговор O/E продолжается с любого клиента ChatGPT, автоматическую доставку выполняет только серверная страница backend; выпуск 0.6.0 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Автоматическую доставку участнику выполняет только аттестованная панель его серверной страницы; панели других клиентов — наблюдатели без SDK-отправок.",
@@ -83,7 +83,12 @@
       "release-manifest.json",
       "tests/fixtures/panel-attestation.mjs",
       "src/backend/main.mjs",
-      "src/control/plugin/identity-trace.mjs"
+      "src/control/plugin/identity-trace.mjs",
+      "src/contracts/context.mjs",
+      "src/control/context/context-session.mjs",
+      "src/execution/browser/chatgpt-composer.mjs",
+      "tests/context-session.test.mjs",
+      "tests/chatgpt-composer.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/shared-conversation-mac.md",
@@ -99,7 +104,8 @@
       "docs/modules/current-actions.md",
       "docs/modules/release.md",
       "docs/acceptance/shared-conversation-mac.md",
-      "docs/modules/shared-conversation.md"
+      "docs/modules/shared-conversation.md",
+      "docs/planning/restored-startup-draft.md"
     ]
   },
   "baseline_commit": "05822a86a51b74e586e098cb477700fb64d7dd56",
@@ -124,6 +130,11 @@
       {
         "path": "docs/planning/shared-backend-mobile-followup.md",
         "required": false,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/planning/restored-startup-draft.md",
+        "required": true,
         "revision": "WORKTREE"
       }
     ],
@@ -1143,6 +1154,212 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "DRAFT",
+      "title": "Очистка восстановленной стартовой команды",
+      "why": "Новый Chat и фоновый исполнитель не стартуют из-за чужой команды, восстановленной ChatGPT в поле ввода.",
+      "dependencies": [],
+      "functional_paths": [
+        "src/contracts/context.mjs",
+        "src/control/context/context-session.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/control/workflow/execution-projection.mjs",
+        "src/contracts/backend.mjs",
+        "package.json",
+        "package-lock.json",
+        "tests/context-session.test.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/panel-dialogue-view.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/restored-startup-draft.md"
+      ],
+      "verification_ids": [
+        "startup-recovery",
+        "orchestrator-startup",
+        "attachment-retry",
+        "chatgpt-plugin",
+        "delivery-ui-targeted"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Точная стартовая команда Workflow Pilot с любым тикетом в поле нового чата / очищается перед решением о черновике и повторно перед q-навигацией; старт доходит до q.",
+        "Пользовательский текст и команда с добавленным текстом не стираются; старт ждёт, задача исполнителя показывает оранжевую причину с инструкцией.",
+        "Шаблон команды общий для формирования и распознавания; текст черновика не покидает страницу; версия 0.6.1."
+      ],
+      "expected_commit_message": "feat: Очистка восстановленной стартовой команды",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "DRAFT",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "VERIFY-2",
+      "title": "Полная регрессия выпуска 0.6.1",
+      "why": "Подтвердить сохранность функций до DOCS-2 и сборки.",
+      "dependencies": [
+        "DRAFT"
+      ],
+      "functional_paths": [
+        "tests/electron-smoke.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/restored-startup-draft.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture",
+        "chatgpt-plugin",
+        "executor-channel",
+        "native-startup-dock",
+        "native-startup-theme",
+        "orchestrator-startup",
+        "startup-recovery",
+        "search-extension-startup",
+        "plan-review-ui",
+        "migration-compatibility",
+        "force-stop"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Все назначенные проверки PASS без ослабления assertions; найденные регрессии исправлены адресно."
+      ],
+      "expected_commit_message": "feat: Полная регрессия выпуска 0.6.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "VERIFY-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "DRAFT",
+        "VERIFY-2"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/restored-startup-draft.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-2",
+      "title": "Собрать macOS Windows Linux 0.6.1",
+      "why": "Собрать macOS Windows Linux 0.6.1",
+      "dependencies": [
+        "VERIFY-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/restored-startup-draft.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Три ОС после DOCS-2 из одного sourceCommit, семь assets, manifest/SHA/подпись подтверждены; preflight кэша Python."
+      ],
+      "expected_commit_message": "feat: Собрать macOS Windows Linux 0.6.1",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "RELEASE-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-2",
+      "title": "Установить выпуск 0.6.1 на этот Mac",
+      "why": "Установить выпуск 0.6.1 на этот Mac",
+      "dependencies": [
+        "RELEASE-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/restored-startup-draft.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Штатный installer без пересборки и переподписи; при работающей службе verified pending."
+      ],
+      "expected_commit_message": "feat: Установить выпуск 0.6.1 на этот Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "INSTALL-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "PUBLISH-2",
+      "title": "Опубликовать выпуск 0.6.1 на GitHub",
+      "why": "Опубликовать выпуск 0.6.1 на GitHub",
+      "dependencies": [
+        "INSTALL-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/planning/restored-startup-draft.md"
+      ],
+      "verification_ids": [
+        "github-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Tag равен sourceCommit, семь assets проверены, remote main подтверждён; живая проверка не объявляется пройденной."
+      ],
+      "expected_commit_message": "feat: Опубликовать выпуск 0.6.1 на GitHub",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "shared-conversation-mac",
+        "task_id": "PUBLISH-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -1167,10 +1384,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1330
+Revision: 1331
 
 ## Цель
 
@@ -1278,6 +1495,42 @@ Revision: 1330
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: INSTALL, DOCS
+- [TODO] DRAFT: Очистка восстановленной стартовой команды — Ожидает
+  - Git Commit: [PENDING] feat: Очистка восстановленной стартовой команды
+  - Reference: shared-conversation-mac / DRAFT / implementation
+  - Файлы: src/contracts/context.mjs, src/control/context/context-session.mjs, src/execution/browser/chatgpt-composer.mjs, src/control/workflow/execution-projection.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/context-session.test.mjs, tests/chatgpt-composer.test.mjs, tests/panel-dialogue-view.test.mjs, docs/planning/restored-startup-draft.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] VERIFY-2: Полная регрессия выпуска 0.6.1 — Ожидает
+  - Git Commit: [PENDING] feat: Полная регрессия выпуска 0.6.1
+  - Reference: shared-conversation-mac / VERIFY-2 / implementation
+  - Файлы: tests/electron-smoke.mjs, docs/planning/restored-startup-draft.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DRAFT
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: shared-conversation-mac / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/restored-startup-draft.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: DRAFT, VERIFY-2
+- [TODO] RELEASE-2: Собрать macOS Windows Linux 0.6.1 — Ожидает
+  - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.1
+  - Reference: shared-conversation-mac / RELEASE-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/restored-startup-draft.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: VERIFY-2, DOCS-2
+- [TODO] INSTALL-2: Установить выпуск 0.6.1 на этот Mac — Ожидает
+  - Git Commit: [PENDING] feat: Установить выпуск 0.6.1 на этот Mac
+  - Reference: shared-conversation-mac / INSTALL-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/restored-startup-draft.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-2, DOCS-2
+- [TODO] PUBLISH-2: Опубликовать выпуск 0.6.1 на GitHub — Ожидает
+  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.6.1 на GitHub
+  - Reference: shared-conversation-mac / PUBLISH-2 / implementation
+  - Файлы: release-manifest.json, docs/planning/restored-startup-draft.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: INSTALL-2, DOCS-2
 
 ## Context Pack For This Cycle
 
@@ -1285,5 +1538,6 @@ Revision: 1330
 - docs/planning/shared-conversation-mac.md
 - docs/planning/shared-conversation-mac-freshness.md
 - docs/planning/shared-backend-mobile-followup.md
+- docs/planning/restored-startup-draft.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
