@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1355,
+  "plan_revision": 1357,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -1616,14 +1616,15 @@
         "Штатный installer без пересборки и переподписи; при работающей службе verified pending."
       ],
       "expected_commit_message": "feat: Установить выпуск 0.6.2 на этот Mac",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "INSTALL-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "id": "PUBLISH-3",
@@ -1682,7 +1683,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1355
+Revision: 1357
 
 ## Цель
 
@@ -1850,8 +1851,8 @@ Revision: 1355
   - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
   - Зависимости: VERIFY-3, DOCS-3
-- [TODO] INSTALL-3: Установить выпуск 0.6.2 на этот Mac — Ожидает
-  - Git Commit: [PENDING] feat: Установить выпуск 0.6.2 на этот Mac
+- [DONE] INSTALL-3: Установить выпуск 0.6.2 на этот Mac — Завершено
+  - Git Commit: [DONE] feat: Установить выпуск 0.6.2 на этот Mac
   - Reference: shared-conversation-mac / INSTALL-3 / implementation
   - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
