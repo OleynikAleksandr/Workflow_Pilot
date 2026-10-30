@@ -1,6 +1,6 @@
 # Общий разговор: серверная доставка
 
-Контракт Workflow Pilot 0.6.0, Kit 1.10.5, панель `0.6.0-communication-9`, протокол панели 9. Живая проверка с настоящим ChatGPT — **NOT_RUN**, сценарий: [приёмка](../acceptance/shared-conversation-mac.md). До PASS её шагов 1–4 действует прежнее ограничение [backend](backend.md): продолжение того же разговора во втором браузере или приложении — не штатный сценарий. Нативные Windows/Linux — NOT_RUN. Отложенная мобильная часть — [followup](../planning/shared-backend-mobile-followup.md).
+Контракт Workflow Pilot 0.6.0 (действует без изменений в 0.6.1), Kit 1.10.5, панель `0.6.1-communication-9`, протокол панели 9. Живая проверка с настоящим ChatGPT — **NOT_RUN**, сценарий: [приёмка](../acceptance/shared-conversation-mac.md). До PASS её шагов 1–4 действует прежнее ограничение [backend](backend.md): продолжение того же разговора во втором браузере или приложении — не штатный сценарий. Нативные Windows/Linux — NOT_RUN. Отложенная мобильная часть — [followup](../planning/shared-backend-mobile-followup.md).
 
 ## Назначение
 
