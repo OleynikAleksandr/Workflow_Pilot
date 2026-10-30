@@ -95,10 +95,13 @@ export class BrowserSessions {
     // by safeReload records the document it replaced, so Control can transfer
     // a turn confirmation only across its own reload.
     record.document = { id: null, since: null, reloadedFrom: null };
+    const lineage = from => [...(record.document.id === from ? record.document.reloadedFrom?.lineage ?? [] : []), from].slice(-8);
+    record.lineage = lineage;
     record.cleanups.push(source.subscribe(() => {
       const documentId = source.current?.documentId ?? null;
       if (documentId === record.document.id) return;
       const reloadedFrom = documentId && record.reloadOrigin ? record.reloadOrigin : null;
+      // lineage: earlier documents of this page connected only by its own reloads.
       if (documentId) record.reloadOrigin = null;
       record.document = { id: documentId, since: documentId ? this.now() : null, reloadedFrom };
     }));
@@ -173,7 +176,7 @@ export class BrowserSessions {
             : record.loading ? 'loading' : record.crashed ? 'crashed' : null;
         if (reason) return { reloaded: false, reason };
         const from = source.current?.documentId ?? null;
-        record.reloadOrigin = from ? { documentId: from, reason: 'control' } : null;
+        record.reloadOrigin = from ? { documentId: from, reason: 'control', lineage: lineage(from) } : null;
         try { await record.port.navigate(chatUrl, { reload: true }); }
         catch (error) { record.reloadOrigin = null; return { reloaded: false, reason: 'load-failed', code: error.code ?? 'BROWSER_ERROR' }; }
         return { reloaded: true, from };
@@ -242,7 +245,7 @@ export class BrowserSessions {
         void record.port.navigate(CHATGPT_CHAT_ENTRYPOINT,{reload:true}).catch(()=>{});
       } else {
         record.navigationOwner=null;record.epoch++;
-        if(record.document?.id)record.reloadOrigin={documentId:record.document.id,reason:'recovery'};
+        if(record.document?.id)record.reloadOrigin={documentId:record.document.id,reason:'recovery',lineage:record.lineage(record.document.id)};
         record.navigation('navigation-start',current,true,'recovery');
         try { record.contents.reload(); } catch { record.loading = false; }
       }

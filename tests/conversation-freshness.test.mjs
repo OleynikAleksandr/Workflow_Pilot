@@ -11,18 +11,20 @@ import {FRESH_DOCUMENT_MS} from '../src/control/plugin/conversation-freshness.mj
 const meta=id=>({'openai/session':id});
 // One backend page per participant. A reload creates a new document and the
 // panel of the new document binds again, as the real page remounts its widget.
-async function fixture(t,{reloadResult=null}={}){
+async function fixture(t,{reloadResult=null,dialogueKit=null}={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'conversation-freshness-')));
   const targets=new Map(),pages=new Map(),reloads=[],instances=[];let now=1000000,documents=0;
   const page=id=>pages.get(id);
   const create=async()=>{const c=new PluginCommunication({store:await openCommunicationStore(directory),now:()=>now,waitMs:5,
     resolveTarget:id=>targets.get(id),verifyTarget:async id=>targets.get(id),observe:target=>page(target.local_session_id),
-    reconcile:async target=>structuredClone(page(target.local_session_id)),admit:async()=>true,
+    reconcile:async target=>{const p=page(target.local_session_id);p.observationSeq++;return structuredClone(p);},admit:async()=>true,
     attest:async target=>({documentId:page(target.local_session_id).documentId,incarnation:'i',stale:false,
       frames:[{frame_instance_id:page(target.local_session_id).frame}]}),
-    reload:async target=>{reloads.push({target:target.local_session_id,at:now,from:page(target.local_session_id).documentId});
+    dialogueKit,reload:async target=>{reloads.push({target:target.local_session_id,at:now,from:page(target.local_session_id).documentId});
       if(reloadResult)return reloadResult;
-      const p=page(target.local_session_id);Object.assign(p,{documentId:'doc-'+(++documents),documentSince:now,frame:randomUUID()});
+      const p=page(target.local_session_id),from=p.documentId;
+      Object.assign(p,{documentId:'doc-'+(++documents),documentSince:now,frame:randomUUID(),
+        reloadedFrom:{documentId:from,reason:'control',lineage:[...(p.reloadedFrom?.lineage??[]),from]}});
       return {reloaded:true};}});
     instances.push(c);await c.ready;return c;};
   const c=await create();
@@ -39,7 +41,7 @@ async function fixture(t,{reloadResult=null}={}){
     await c.bind({...input,message_supported:true});
     return {...input,permission_generation:(await c.sync({...input,message_supported:true})).permission_generation};};
   t.after(async()=>{for(const x of instances){x.dispose();await x.tail;}await fs.rm(directory,{recursive:true,force:true});});
-  return {c,o,targets,pages,page,reloads,bind,rebind,advance:ms=>now+=ms,get now(){return now;}};
+  return {c,o,target,targets,pages,page,reloads,bind,rebind,advance:ms=>now+=ms,get now(){return now;}};
 }
 const queue=(c,o,key)=>c.workflow.enqueue(o,{key,kind:'continue',text:'Сообщение '+key});
 const run=(f,b)=>f.c.runs.get(b.run_id);
@@ -94,8 +96,8 @@ test('reload is refused for a draft, a running SDK call, recent manual input and
   assert.equal(attempts(f,b),0);
 });
 
-test('an unconfirmed handled turn forbids reload with a neutral reason',async t=>{
-  const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind('o');
+test('an unconfirmed handled turn without native identities forbids reload with a neutral reason',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind('o');f.page('o').turnIdentitySource='cycle';
   const first=await queue(f.c,f.o,'one');
   const ticket=await f.c.claimReady({...b,message_id:first.message_id});await f.c.report({...b,...ticket,outcome:'accepted'});
   const message=run(f,b).messages.find(m=>m.message_id===first.message_id);
@@ -126,4 +128,84 @@ test('three reloads without a successful claim end with an orange reason, not a 
   assert.equal((await f.c.claimReady({...b,message_id:first.message_id})).reason,'freshness-reload-deferred','typing defers a reload');
   f.advance(11000);b=await f.rebind({run_id:b.run_id,participant_id:b.participant_id},'o');
   assert.equal((await f.c.claimReady({...b,message_id:first.message_id})).reason,'freshness-reload');
+});
+
+// O sends a task to E through the real dialogue; E's backend page reloads.
+function dialogueKitFixture(){
+  const effects=new Map(),states=new Map();
+  return {status:async(_target,id)=>({dialogue_version:1,contract_digest:'fixture-contract',dialogue:states.get(id)??{attempt:1}}),
+    apply:async(target,input)=>{if(effects.has(input.operation_id))return {...effects.get(input.operation_id),duplicate:true};
+      const receipt={ok:true,operation_id:input.operation_id,message_id:input.message_id,assignment_id:input.assignment_id,
+        task_id:'t-'+input.assignment_id.slice(2),attempt:input.attempt,kind:input.kind};
+      effects.set(input.operation_id,receipt);states.set(input.assignment_id,{attempt:input.attempt,grant:input.kind==='task'?{message_id:input.message_id}:null});
+      return receipt;}};
+}
+async function handledTask(t,{native=true}={}){
+  const f=await fixture(t,{dialogueKit:dialogueKitFixture()});await f.c.workflow.grant(f.o);
+  const e=f.target('e','E');f.page('e').turnIdentitySource=native?'native':'cycle';
+  await f.bind('o');const b=await f.bind('e');
+  const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
+  const sent=await f.c.assignmentSend({metadata:meta('o'),recipient,kind:'task',attempt:1,body:'Задача',idempotency_key:'task-one'});
+  const ticket=await f.c.claimReady({...b,message_id:sent.message_id});await f.c.report({...b,...ticket,outcome:'accepted'});
+  await f.c.readMessage({metadata:meta('e'),message_id:sent.message_id});
+  await f.c.assignmentYield({metadata:meta('e'),message_ids:[sent.message_id],reason:'handled'});
+  const message=()=>run(f,b).messages.find(m=>m.message_id===sent.message_id);
+  const observe=async()=>{await f.c.mutate('observed',{run_id:b.run_id,message_id:sent.message_id});};
+  return {f,b,e,sent,message,observe};
+}
+const reloadPage=(f,id,{reason='control',busy=false,lastMessageRole='assistant'}={})=>{
+  const p=f.page(id),from=p.documentId;
+  Object.assign(p,{documentId:from+'-r',documentSince:f.now,frame:randomUUID(),busy,stopped:!busy&&lastMessageRole==='assistant',
+    canSend:!busy&&lastMessageRole==='assistant',lastMessageRole,turnId:'b1',assistantRevision:1,
+    reloadedFrom:{documentId:from,reason,lineage:[...(p.reloadedFrom?.lineage??[]),from]}});
+};
+
+test('a turn handled on another client is confirmed on the reloaded document after two idle observations',async t=>{
+  const {f,b,e,message,observe}=await handledTask(t);
+  await observe();assert.equal(f.reloads.length,0,'within 15 s after yield the page may still show the turn');
+  f.advance(15001);await observe();await tick();
+  assert.equal(f.reloads.length,1,'yield without busy or new assistant text means another client');
+  assert.equal(f.reloads[0].target,'e');
+  reloadPage(f,'e');
+  await observe();assert.equal(message().reply_observed,false,'one observation is not enough');
+  f.advance(1000);await observe();assert.equal(message().reply_observed,false,'two observations less than 2 s apart');
+  f.advance(1500);await observe();
+  assert.equal(message().reply_observed,true);
+  assert.ok(run(f,b).events.some(event=>event.event_type==='freshness.rebased'&&event.message_id===message().message_id));
+  // The next step reaches the new document without user action.
+  const next=await f.c.workflow.enqueue(e,{key:'next-step',kind:'continue',text:'Следующий шаг'});
+  const current=await f.rebind({run_id:b.run_id,participant_id:b.participant_id},'e');
+  assert.ok((await f.c.claimReady({...current,message_id:next.message_id})).delivery_attempt_id);
+});
+
+test('a reload during a still running foreign turn repeats with growing intervals until the end is visible',async t=>{
+  const {f,message,observe}=await handledTask(t);
+  f.advance(15001);await observe();await tick();assert.equal(f.reloads.length,1);
+  reloadPage(f,'e',{busy:true});
+  await observe();f.advance(5000);await observe();await tick();
+  assert.equal(f.reloads.length,1,'the next reload waits 20 s');
+  f.advance(15001);await observe();await tick();assert.equal(f.reloads.length,2);
+  reloadPage(f,'e',{lastMessageRole:'user'});
+  f.advance(20000);await observe();await tick();assert.equal(f.reloads.length,2,'then 40 s');
+  f.advance(20001);await observe();await tick();assert.equal(f.reloads.length,3);
+  reloadPage(f,'e');
+  await observe();f.advance(2500);await observe();
+  assert.equal(message().reply_observed,true,'transfer across the whole chain of own reloads');
+});
+
+test('renderer recovery transfers the confirmation; without native identities nothing moves and reload is refused',async t=>{
+  const recovered=await handledTask(t);
+  reloadPage(recovered.f,'e',{reason:'recovery'});
+  await recovered.observe();recovered.f.advance(2500);await recovered.observe();
+  assert.equal(recovered.message().reply_observed,true);
+  const cycle=await handledTask(t,{native:false});
+  cycle.f.advance(15001);await cycle.observe();await tick();
+  assert.equal(cycle.f.reloads.length,0,'no transfer is possible, so no reload');
+  const next=await cycle.f.c.workflow.enqueue(cycle.e,{key:'next',kind:'continue',text:'Дальше'});
+  cycle.f.advance(FRESH_DOCUMENT_MS+1);const b=await cycle.f.rebind({run_id:cycle.b.run_id,participant_id:cycle.b.participant_id},'e');
+  assert.equal((await cycle.f.c.claimReady({...b,message_id:next.message_id})).reason,'awaiting-turn-end');
+  // Any other document change is not a reload of this page.
+  const other=await handledTask(t);const p=other.f.page('e');p.documentId='unrelated-document';
+  await other.observe();other.f.advance(2500);await other.observe();
+  assert.equal(other.message().reply_observed,false);
 });

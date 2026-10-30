@@ -6,6 +6,7 @@
 export const FRESH_DOCUMENT_MS=20000;
 export const MAX_FRESHNESS_RELOADS=3;
 const MANUAL_INPUT_QUIET_MS=10000;
+const FOREIGN_TURN_MS=15000,FOREIGN_RETRY_MAX_MS=5*60*1000;
 const HOLD_MS=1000;
 export const FRESHNESS_REASONS=Object.freeze({reload:'freshness-reload',draft:'freshness-conflict-draft',
   turnEnd:'awaiting-turn-end',deferred:'freshness-reload-deferred',unavailable:'freshness-unavailable'});
@@ -36,7 +37,8 @@ export class ConversationFreshness {
   reloadBlock(run,member,page,s){
     if(page?.draftPresent)return FRESHNESS_REASONS.draft;
     if(run.messages.some(m=>m.recipient_id===member.id&&m.delivery==='claimed'))return FRESHNESS_REASONS.deferred;
-    if(this.openBaseline(run,member))return FRESHNESS_REASONS.turnEnd;
+    // Without native turn identities a confirmation cannot move to a new document.
+    if(this.openBaseline(run,member)&&page?.turnIdentitySource!=='native')return FRESHNESS_REASONS.turnEnd;
     if(s.manualAt&&this.c.now()-s.manualAt<MANUAL_INPUT_QUIET_MS)return FRESHNESS_REASONS.deferred;
     return null;
   }
@@ -64,6 +66,30 @@ export class ConversationFreshness {
     },()=>{s.requestedFrom=null;});});
     this.c.event(run,'freshness.reload',{participant_id:member.id,message_id:message.message_id,attempt:s.consecutive});
     return FRESHNESS_REASONS.reload;
+  }
+  // A turn confirmation moves to a new document only across this page's own
+  // reload (Control or renderer recovery), never across any other change.
+  transferable(baselineDocumentId,page){
+    return !!baselineDocumentId&&page?.documentId!==baselineDocumentId
+      &&Array.isArray(page?.reloadedFrom?.lineage)&&page.reloadedFrom.lineage.includes(baselineDocumentId);
+  }
+  // A handled turn the backend page never showed: it ran on another client.
+  // Reload to see its end; repeat 20, 40, 80 s … up to 5 minutes while open.
+  foreignTurn(run,member,message,gate,page){
+    if(!this.enabled||page?.turnIdentitySource!=='native')return false;
+    const now=this.c.now(),retry=gate.foreign_reload;
+    if(!retry&&now-message.yielded.at<FOREIGN_TURN_MS)return false;
+    if(retry&&now<retry.next_at)return false;
+    const s=this.state(member.target,page);
+    if(page.draftPresent||run.messages.some(m=>m.recipient_id===member.id&&m.delivery==='claimed')
+      ||s.manualAt&&now-s.manualAt<MANUAL_INPUT_QUIET_MS)return false;
+    const count=(retry?.count??0)+1;
+    gate.foreign_reload={count,next_at:now+Math.min(FOREIGN_RETRY_MAX_MS,FRESH_DOCUMENT_MS*2**(count-1))};
+    s.lastReloadAt=now;s.requestedFrom=s.documentId;
+    const target=structuredClone(member.target);
+    queueMicrotask(()=>{Promise.resolve(this.reloadPort(target)).catch(()=>{});});
+    this.c.event(run,'freshness.reload',{participant_id:member.id,message_id:message.message_id,reason:'foreign-turn',attempt:count});
+    return true;
   }
   claimed(member,page){const s=this.state(member.target,page);s.claims++;s.consecutive=0;s.holdUntil=0;}
   forget(sessionIds){for(const id of sessionIds)this.pages.delete(id);}

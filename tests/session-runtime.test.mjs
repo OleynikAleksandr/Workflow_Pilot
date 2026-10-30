@@ -338,7 +338,12 @@ test('safeReload opens only the saved chat address, never q, and records the doc
   assert.deepEqual(contents.loads.slice(loads),['https://chatgpt.com/c/saved-chat-1']);
   assert.equal(contents.loads.some(url=>url.includes('?q=')),false);
   source.reset();observe('document-second-1');
-  assert.deepEqual(port.pageState.document,{id:'document-second-1',since:9000,reloadedFrom:{documentId:'document-first-1',reason:'control'}});
+  assert.deepEqual(port.pageState.document,{id:'document-second-1',since:9000,reloadedFrom:{documentId:'document-first-1',reason:'control',lineage:['document-first-1']}});
+  // A second reload extends the lineage of documents connected by this page's own reloads.
+  await port.safeReload('https://chatgpt.com/c/saved-chat-1');source.reset();observe('document-third-1');
+  assert.deepEqual(port.pageState.document.reloadedFrom.lineage,['document-first-1','document-second-1']);
+  // Any other navigation is not a reload of this page.
+  source.reset();observe('document-other-1');assert.equal(port.pageState.document.reloadedFrom,null);
 });
 
 test('safeReload is refused during a send, a start navigation and a load',async t=>{

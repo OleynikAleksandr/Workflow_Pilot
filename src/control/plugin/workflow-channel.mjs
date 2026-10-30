@@ -366,6 +366,26 @@ export class WorkflowChannel {
     }
     const page=await this.reconcile(member.target);
     let baseline=gate.restoredBaseline??message.yielded.page;
+    // The backend page reloaded this conversation itself: confirm the end of
+    // the turn on the new document by two idle observations at least 2 s apart.
+    if(page&&baseline&&!gate.restoredBaseline&&this.c.freshness.transferable(baseline.documentId,page)){
+      const ready=page.stopped&&!page.busy&&page.canSend&&page.commandsIdle&&page.lastMessageRole==='assistant'&&page.turnIdentitySource==='native';
+      const signature=JSON.stringify([page.documentId,page.turnId,page.assistantRevision]);
+      if(!ready){delete gate.rebase;
+        if(gate.wait_reason!=='rebase-waiting'){gate.wait_reason='rebase-waiting';this.c.event(run,'turn.waiting',{message_id:message.message_id,reason:'rebase-waiting'});}
+        this.c.freshness.foreignTurn(run,member,message,gate,page);return;}
+      if(gate.rebase?.signature!==signature){gate.rebase={signature,seq:page.observationSeq,at:this.c.now()};return;}
+      if(page.observationSeq<=gate.rebase.seq||this.c.now()-gate.rebase.at<2000)return;
+      message.reply_observed=true;
+      if(member.deliveryGate?.message_id===message.message_id)delete member.deliveryGate;
+      delete message.handlingGate;
+      this.c.event(run,'freshness.rebased',{participant_id:member.id,message_id:message.message_id});
+      this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id,evidence:'rebased-fresh-idle'});
+      return;
+    }
+    // Delivered before a reload of this page and handled after it: the gate follows its own document.
+    if(page&&baseline&&gate.documentId!==page.documentId&&page.documentId===baseline.documentId
+      &&this.c.freshness.transferable(gate.documentId,page))gate.documentId=page.documentId;
     // Read/yield survives a backend restart; the old page no longer exists.
     // Observe the restored, verified recipient twice, without inventing SDK
     // acceptance or replaying a message it already handled.
@@ -386,7 +406,9 @@ export class WorkflowChannel {
       return;
     }
     // A fresh read of the old idle bubble is not evidence of this turn ending.
-    if(!baseline.busy&&!gate.seenBusy&&page.assistantRevision<=baseline.assistantRevision)return;
+    // When it stays so after yield, the turn ran on another client.
+    if(!baseline.busy&&!gate.seenBusy&&page.assistantRevision<=baseline.assistantRevision){
+      this.c.freshness.foreignTurn(run,member,message,gate,page);return;}
     const signature=JSON.stringify([page.documentId,page.turnId,page.assistantRevision]);
     if(gate.idle?.signature!==signature){
       gate.idle={signature,seq:page.observationSeq,at:this.c.now()};gate.wait_reason='confirming-idle';

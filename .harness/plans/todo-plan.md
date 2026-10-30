@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1309,
+  "plan_revision": 1311,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -484,8 +484,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "REBASE",
@@ -501,7 +501,8 @@
         "src/execution/browser/session-runtime.mjs",
         "tests/conversation-freshness.test.mjs",
         "tests/automatic-agent-dialogue.test.mjs",
-        "tests/fixtures/automatic-agent-dialogue.mjs"
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/session-runtime.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -537,7 +538,14 @@
           "FRESH"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/plugin/conversation-freshness.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "tests/conversation-freshness.test.mjs",
+        "tests/session-runtime.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1053,7 +1061,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1309
+Revision: 1311
 
 ## Цель
 
@@ -1101,10 +1109,10 @@ Revision: 1309
   - Файлы: src/control/plugin/conversation-freshness.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/executor-session.mjs, src/execution/browser/session-runtime.mjs, src/execution/facade.mjs, src/backend/desktop-model.mjs, tests/conversation-freshness.test.mjs, tests/session-runtime.test.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, src/control/plugin/communication.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: OBSERVER
-- [TODO] REBASE: Перенос подтверждения хода на новый документ — Ожидает
-  - Git Commit: [PENDING] feat: перенос подтверждения хода после перезагрузки
+- [DONE] REBASE: Перенос подтверждения хода на новый документ — Завершено
+  - Git Commit: [DONE] feat: перенос подтверждения хода после перезагрузки
   - Reference: shared-conversation-mac / REBASE / implementation
-  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/conversation-freshness.mjs, src/control/plugin/assignment-dialogue.mjs, src/execution/browser/session-runtime.mjs, tests/conversation-freshness.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs
+  - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/conversation-freshness.mjs, src/control/plugin/assignment-dialogue.mjs, src/execution/browser/session-runtime.mjs, tests/conversation-freshness.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/session-runtime.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FRESH
 - [TODO] BRANCH: Обнаружение ветвления разговора — Ожидает
