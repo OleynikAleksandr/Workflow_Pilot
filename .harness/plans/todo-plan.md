@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1380,
+  "plan_revision": 1382,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -232,8 +232,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "RELEASE",
@@ -256,7 +256,10 @@
       "acceptance_criteria": [
         "Три ОС после DOCS из одного sourceCommit, семь assets, manifest/SHA/подпись подтверждены; preflight кэша Python."
       ],
-      "expected_commit_message": "feat: Собрать macOS Windows Linux 0.6.4"
+      "expected_commit_message": "feat: Собрать macOS Windows Linux 0.6.4",
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -333,7 +336,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1380
+Revision: 1382
 
 ## Цель
 
@@ -355,8 +358,8 @@ Revision: 1380
   - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS / implementation
   - Файлы: docs/planning/cdp-startup-input.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/chat-only-startup.md, docs/modules/browser.md, docs/modules/chatgpt-plugin.md, docs/modules/current-actions.md, docs/modules/release.md, docs/modules/shared-conversation.md, docs/modules/orchestrator-startup.md, docs/modules/control.md, docs/modules/sdk-messaging.md, docs/modules/chatgpt-search-extension.md, docs/acceptance/chat-only-startup.md, docs/acceptance/shared-conversation-mac.md
-- [TODO] RELEASE: Собрать macOS Windows Linux 0.6.4 — Ожидает
-  - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.4
+- [DONE] RELEASE: Собрать macOS Windows Linux 0.6.4 — Завершено
+  - Git Commit: [DONE] feat: Собрать macOS Windows Linux 0.6.4
   - Reference: cdp-startup-input / RELEASE / implementation
   - Файлы: release-manifest.json
 - [TODO] INSTALL: Установить выпуск 0.6.4 на этот Mac — Ожидает
