@@ -414,6 +414,45 @@ test('lost automatic bind response is recovered with bounded reads and no model 
   assert.equal(ui.messages.length,0);assert.equal(ui.$('enable').hidden,true);
 });
 
+test('an observer panel of the same identity never sends; a role change applies without reload or a second send',async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;
+  const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};
+  const e={...o,local_session_id:'worker',role:'E',assignment_id:'assignment',task_id:'T001'};
+  comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?o:id==='worker'?e:null;
+  const page={sdkDocumentReady:true,canSend:true,stopped:true,busy:false,documentId:'doc',turnId:'a0',userTurnId:'u0',assistantRevision:1,userMessagesRevision:1};
+  comm.workflow.observe=()=>page;comm.workflow.admission=async()=>true;comm.waitMs=30;
+  // The backend page hosts exactly the frames listed here; other panels are foreign clients.
+  let hosted=new Set();
+  comm.ownership.attestPort=async()=>({documentId:'doc',incarnation:'fixture',stale:false,frames:[...hosted].map(frame_instance_id=>({frame_instance_id}))});
+  const invitation=await comm.reserve(e);await bridge(t,f);const c=await client(t,f);
+  await c.callTool({name:'workflow_pilot_panel',arguments:{enrollment_ticket:invitation.enrollment_ticket},_meta:metadata});
+  const reads=[];const read=async request=>{const args=notificationArgs(request);reads.push(args.message_id);await modelTool(c,metadata,'read_message',args);return {};};
+  const server=await communicationHtml(t,c,{timerMs:ms=>ms===2000?30:ms,onMessage:read});
+  hosted.add(server.dom.window.__workflowPilotPanel.frame_instance_id);
+  const foreign=await communicationHtml(t,c,{timerMs:ms=>ms===2000?30:ms,onMessage:read});
+  await eventually(()=>server.$('binding').textContent.includes('подтверждена')&&foreign.$('binding').textContent.includes('подтверждена'));
+  await comm.workflow.grant(o);
+  await eventually(()=>foreign.$('permission-help').dataset.deliveryRole==='observer',5000);
+  assert.match(foreign.$('permission-help').textContent,/Доставку выполняет служба Workflow Pilot/);
+  assert.match(foreign.$('enable-reason').textContent,/Доставку выполняет служба Workflow Pilot/);
+  const first=await comm.workflow.enqueue(e,{key:'first',kind:'assignment-start',text:'Первое поручение'});
+  await eventually(()=>reads.includes(first.message_id),5000);
+  assert.equal(server.messages.length,1);assert.equal(foreign.messages.length,0);
+  for(const name of ['workflow_communication_claim','workflow_communication_claim_ready','workflow_communication_verify'])
+    assert.equal(foreign.calls.includes(name),false,'an observer never claims');
+  assert.notEqual(server.$('permission-help').dataset.deliveryRole,'observer');
+  // The backend page now hosts the other frame: roles swap on the next backend response.
+  hosted=new Set([foreign.dom.window.__workflowPilotPanel.frame_instance_id]);
+  await eventually(()=>foreign.$('permission-help').dataset.deliveryRole==='owner'&&server.$('permission-help').dataset.deliveryRole==='observer',5000);
+  const second=await comm.workflow.enqueue(e,{key:'second',kind:'continue',text:'Второе поручение'});
+  await eventually(()=>reads.includes(second.message_id),5000);await delay(100);
+  assert.equal(foreign.messages.length,1);assert.equal(server.messages.length,1,'no second send of the first message');
+  assert.deepEqual(reads,[first.message_id,second.message_id]);
+  const run=[...comm.runs.values()].find(r=>r.mode==='workflow');
+  assert.equal(run.messages.filter(m=>m.notification_attempts?.length).every(m=>m.notification_attempts.length===1),true);
+  assert.deepEqual([...server.errors,...foreign.errors],[]);
+});
+
 test('real SDK working channel queues the next message during busy generation and reads full context',async t=>{
   const f=await fixture(t),comm=f.plugin.communication;
   const o={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:'scope',assignment_id:null,task_id:null};

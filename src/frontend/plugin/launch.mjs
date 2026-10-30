@@ -1,4 +1,5 @@
 import {mountPanel} from './panel.mjs';
+import {OBSERVER_DELIVERY_LABEL} from '../../contracts/dialogue-view.mjs';
 import {sdkDiagnostic} from '../../contracts/plugin-communication.mjs';
 import {COMMUNICATION_PROTOCOL as PROTOCOL,COMMUNICATION_BUILD as BUILD,communicationVersionMessage} from '../../contracts/backend.mjs';
 const terminal=code=>/^PLUGIN_COMMUNICATION_(BINDING|IDENTITY_REQUIRED|ASSIGNMENT_CHANGED|VERSION|STOPPED|STORE_|CLOSED|LIMIT)/.test(code??'');
@@ -27,7 +28,13 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   let clientSequence=0,telemetry=[],flushing=null,flushTimer=null,dropped=0,exported='',exportRun='',serverError=null;
   let refreshing=null,refreshTimer=null;const sampledAt=new Map();
   let connected=false,suspended=false,contextBlocked=false,recovery=null,stopPromise=null,candidates=[],resumePending=false,recovered=false,workflow=false,recoveryFailures=0,retryTimer=null;
-  let workflowTimer=null,completedScope=null,closed=false,resourceUri='ещё не получен';
+  let workflowTimer=null,completedScope=null,closed=false,resourceUri='ещё не получен',role=null;
+  // The backend decides the delivery role from its own page; an observer never runs the delivery loop.
+  const observer=()=>workflow&&role==='observer';
+  function applyRole(value){
+    if(!workflow||!value||!['owner','observer'].includes(value.delivery_role))return;
+    role=value.delivery_role;ui.role(role);
+  }
   function watchWorkflow(){
     clearTimeout(workflowTimer);
     // A finished plan keeps its progress view current with a slow read-only status.
@@ -43,7 +50,8 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       try{const value=await call('sync',{binding:current,message_supported:!!getMessage()});
         if(epoch!==generation||disposed||suspended||binding!==current)return;
         if(finishCompleted(value,current,generation))return;
-        binding={...current,permission_generation:value.permission_generation};expiresAt=value.expires_at;ui.snapshot(value);
+        binding={...current,permission_generation:value.permission_generation};expiresAt=value.expires_at;ui.snapshot(value);applyRole(value);
+        if(observer()){status(OBSERVER_DELIVERY_LABEL+'. Здесь видны ход работы, выбор и остановка плана.','waiting');return;}
         if(value.startup?.delivery_mode==='model-pull'&&(!value.startup.complete||!value.permission?.active)&&!value.user_choice_pending){
           status(value.startup.complete?'Стартовый контекст подтверждён. Можно ставить задачу.':'Агент получает контекст в текущем ходе через MCP.','waiting');
           return; // Display only: no SDK wakeup or long poll for model-pull.
@@ -63,7 +71,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       !connected?'SDK не подключён. Переоткройте панель, если подключение не завершится.':serverError?serverError:
       contextBlocked?'Контекст изменился. Нажмите «Восстановить данные».':busy?'Восстанавливаем данные или выполняем действие…':
       stopping?'Ждём подтверждения остановки.':closed?'План закрыт. Активных действий нет.':completedScope?'Выполнение завершено. Рабочее ожидание остановлено; ожидается ваша приёмка.':!binding?'Привязка не подтверждена. Восстановите данные или выберите запуск.':
-      !getMessage()?'Хост не предоставил openai/message. Отправка недоступна.':enabled?'Связь включена.':loop?'Завершаем прежнее ожидание…':workflow?'Панель подключена. Ожидаем разрешение выполнения плана.':'Можно включить связь на 30 минут.';
+      observer()?OBSERVER_DELIVERY_LABEL+'.':!getMessage()?'Хост не предоставил openai/message. Отправка недоступна.':enabled?'Связь включена.':loop?'Завершаем прежнее ожидание…':workflow?'Панель подключена. Ожидаем разрешение выполнения плана.':'Можно включить связь на 30 минут.';
     $('bind').disabled=unavailable||busy||enabled||!!binding||contextBlocked;
     $('recover').disabled=unavailable||busy||stopping||enabled;
     $('runs').disabled=unavailable||busy||enabled||!!binding;
@@ -298,12 +306,18 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       // A wait woken by a progress change already carries the new projection.
       if(update.work_progress)ui.progress(update.work_progress);
       if('user_choice' in update)ui.choice(update.user_choice);
+      applyRole(update);
+      if(observer()){enabled=false;status(OBSERVER_DELIVERY_LABEL+'. Здесь видны ход работы, выбор и остановка плана.','waiting');return;}
       if(update.stopped||update.critical_error){
         if(workflow&&!update.critical_error)try{await refresh();if(!current())return;}catch{}
         localStop(update.critical_error?'Ошибка журнала. Отправка запрещена.':'Разрешение отозвано.',update.critical_error?'error':'idle');return;}
       if(update.message_id){
         try{await deliver(update.message_id,generation,controller.signal);}
-        catch{if(current())await stop('Доставка остановлена локально.','Исход попытки или отчёт не подтверждён. Повтора нет.');return;}
+        catch(error){
+          // A role change reaches the claim first: no attempt exists, nothing to stop.
+          if(error.code==='PLUGIN_COMMUNICATION_DELIVERY_OBSERVER'){role='observer';ui.role(role);enabled=false;
+            status(OBSERVER_DELIVERY_LABEL+'. Здесь видны ход работы, выбор и остановка плана.','waiting');return;}
+          if(current())await stop('Доставка остановлена локально.','Исход попытки или отчёт не подтверждён. Повтора нет.');return;}
       }
       if(current())scheduleRefresh();
     }
@@ -313,7 +327,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     const generation=epoch;
     const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,frame_instance_id:frameId,protocol_version:PROTOCOL,build_id:BUILD};
     try{const result=await call('bind',{binding:next,message_supported:!!getMessage()});if(disposed||suspended||epoch!==generation)return;binding=next;serverError=result.critical_error;
-      workflow=result.mode==='workflow';ui.mode(result.mode);
+      workflow=result.mode==='workflow';ui.mode(result.mode);applyRole(result);
       record('host.handshake',{message_supported:!!getMessage()});
       if(workflow)refreshing=refresh(true).catch(()=>{if(epoch===generation)status('Не удалось обновить журнал панели.','error');})
         .finally(()=>{refreshing=null;});
@@ -330,7 +344,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     recovery=(async()=>{
       await stopPromise;await loop;
       if(disposed||suspended||epoch!==generation)return;
-      if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;completedScope=null;closed=false;expiresAt=0;seq=0;ui.unbound();
+      if(recovered){panelId=uuid();clientSequence=0;}recovered=true;binding=null;completedScope=null;closed=false;expiresAt=0;seq=0;role=null;ui.unbound();
       const result=await call('recover');
       if(disposed||suspended||epoch!==generation)return;
       if(result.build_id!==BUILD||result.protocol_version!==PROTOCOL)throw Object.assign(Error(communicationVersionMessage({build_id:BUILD,protocol_version:PROTOCOL},result)),{code:'PLUGIN_COMMUNICATION_VERSION'});

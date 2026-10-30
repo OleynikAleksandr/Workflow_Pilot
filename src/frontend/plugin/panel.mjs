@@ -1,4 +1,4 @@
-import {assignmentStage} from '../../contracts/dialogue-view.mjs';
+import {assignmentStage,OBSERVER_DELIVERY_LABEL} from '../../contracts/dialogue-view.mjs';
 import {startupView} from '../../contracts/startup-view.mjs';
 import {paletteCss,spinnerCss} from '../../contracts/palette.mjs';
 import {choiceCardCss,renderChoiceCard} from '../../contracts/user-choice.mjs';
@@ -82,6 +82,11 @@ export function mountPanel({document}) {
         text('permission-help','Связь управляется кнопкой выполнения плана. Отдельное включение для каждого исполнителя не требуется.');
       }
     },
+    // The owner keeps the usual view; an observer names who delivers.
+    role(value){if(!workflow)return;text('permission-help',value==='observer'
+      ?OBSERVER_DELIVERY_LABEL+'. Эта панель показывает ход работы и принимает ваш выбор и остановку плана; уведомления агенту отсюда не отправляются.'
+      :'Связь управляется кнопкой выполнения плана. Отдельное включение для каждого исполнителя не требуется.');
+      $('permission-help').dataset.deliveryRole=value;},
     unbound(){renderChoice(null);text('identity','Участник не подтверждён');text('binding','Проверяем принадлежность текущему разговору.');
       $('roster-section').hidden=true;$('roster').replaceChildren();text('outbox','');
       $('run').value='';$('participant').value='';text('permission','Разрешение не выдано');text('queue','Очередь пока недоступна');

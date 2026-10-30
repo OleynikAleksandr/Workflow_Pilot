@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1305,
+  "plan_revision": 1307,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -348,8 +348,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "OBSERVER",
@@ -397,7 +397,13 @@
           "OWNER"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1033,7 +1039,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1305
+Revision: 1307
 
 ## Цель
 
@@ -1069,8 +1075,8 @@ Revision: 1305
   - Файлы: src/control/plugin/delivery-ownership.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/bootstrap.mjs, src/backend/desktop-model.mjs, tests/plugin-delivery-ownership.test.mjs, tests/plugin-communication.test.mjs, tests/workflow-channel.test.mjs, tests/dialogue-delivery.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/automatic-agent-dialogue.test.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, tests/startup-context.test.mjs, tests/plugin-enrollment.test.mjs, tests/plugin-communication-store.test.mjs, tests/electron-smoke.mjs, tests/backend-end-to-end.test.mjs, tests/fixtures/panel-attestation.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: ATTEST
-- [TODO] OBSERVER: Режим наблюдателя в панели — Ожидает
-  - Git Commit: [PENDING] feat: режим наблюдателя панели
+- [DONE] OBSERVER: Режим наблюдателя в панели — Завершено
+  - Git Commit: [DONE] feat: режим наблюдателя панели
   - Reference: shared-conversation-mac / OBSERVER / implementation
   - Файлы: src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/contracts/dialogue-view.mjs, tests/chatgpt-plugin.test.mjs, tests/panel-dialogue-view.test.mjs
   - Параллельность: исключительное выполнение

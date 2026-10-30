@@ -131,3 +131,6 @@ export function activityClock({now=()=>performance.now(),wallNow=Date.now,limit=
       clock:Number.isFinite(start)?'durable-stage-time':'observed-backend-monotonic'};
   };
 }
+// An observer panel shows the work and accepts explicit user actions; the
+// backend page of the participant delivers every automatic message.
+export const OBSERVER_DELIVERY_LABEL='Доставку выполняет служба Workflow Pilot';
