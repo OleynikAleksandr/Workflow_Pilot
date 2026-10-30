@@ -18,6 +18,11 @@ function toolError(value){
 }
 export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto.randomUUID(),sendTimeoutMs=90000}) {
   const ui=mountPanel({document}),$=ui.$,clock=()=>document.defaultView.performance.now(),started=clock();let panelId=uuid();
+  // The frame id lives as long as this frame; panelId changes on every repeated recover.
+  // The backend reads this value only in its own page to attest the delivery owner.
+  const frameId=uuid();
+  if(!Object.hasOwn(document.defaultView,'__workflowPilotPanel'))Object.defineProperty(document.defaultView,'__workflowPilotPanel',{value:Object.freeze({frame_instance_id:frameId,build_id:BUILD,protocol_version:PROTOCOL}),
+    writable:false,configurable:false,enumerable:false});
   let binding=null,enabled=false,disposed=false,epoch=0,abort=null,seq=0,busy=false,stopping=false,loop=null,expiry=null,expiresAt=0;
   let clientSequence=0,telemetry=[],flushing=null,flushTimer=null,dropped=0,exported='',exportRun='',serverError=null;
   let refreshing=null,refreshTimer=null;const sampledAt=new Map();
@@ -306,7 +311,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
   async function bind({automatic=false}={}){
     if(binding||disposed||suspended||contextBlocked)return;
     const generation=epoch;
-    const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,protocol_version:PROTOCOL,build_id:BUILD};
+    const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,frame_instance_id:frameId,protocol_version:PROTOCOL,build_id:BUILD};
     try{const result=await call('bind',{binding:next,message_supported:!!getMessage()});if(disposed||suspended||epoch!==generation)return;binding=next;serverError=result.critical_error;
       workflow=result.mode==='workflow';ui.mode(result.mode);
       record('host.handshake',{message_supported:!!getMessage()});

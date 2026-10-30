@@ -6,6 +6,7 @@ import { openStartupPage } from './browser-startup.mjs';
 import { randomUUID } from 'node:crypto';
 import { CHATGPT_CHAT_ENTRYPOINT, hasChatGPTQuery, chatGPTRefreshTarget } from './chatgpt-experience.mjs';
 import { safeUrl } from './diagnostics.mjs';
+import { attestPanelFrames } from './panel-frame-attestation.mjs';
 
 // No projects, stores, recovery decisions or selected cwd cross this boundary.
 export class BrowserSessions {
@@ -16,9 +17,10 @@ export class BrowserSessions {
   // Send stays UNKNOWN and nothing is typed or sent again.
   constructor({ host, ipc, connect = connectPageState,
     createComposer = (contents, options) => new ChatGPTComposer(contents, options),
+    attestFrames = attestPanelFrames,
     prepareNavigation = null,
     recoverCrashed = false, recoveryDelayMs = 1000, recoveryLimit = 3, recoveryWindowMs = 10 * 60 * 1000, now = Date.now }) {
-    Object.assign(this, { host, ipc, connect, createComposer, prepareNavigation, recoverCrashed, recoveryDelayMs, recoveryLimit, recoveryWindowMs, now });
+    Object.assign(this, { host, ipc, connect, createComposer, attestFrames, prepareNavigation, recoverCrashed, recoveryDelayMs, recoveryLimit, recoveryWindowMs, now });
   }
   open(id) {
     if (typeof id !== 'string' || !id) throw new TypeError('BROWSER_SESSION_ID_REQUIRED');
@@ -137,6 +139,18 @@ export class BrowserSessions {
           }
           throw safeError;
         }
+      },
+      // Panel frames mounted in this page's current document. A navigation or
+      // reload during enumeration discards the result: it belongs to no document.
+      attestPanelFrames: async () => {
+        assertOpen();
+        const before = { incarnation: record.incarnation, documentId: source.current?.documentId ?? null,
+          navigationSequence: record.navigationSequence, epoch: record.epoch };
+        const frames = before.documentId && !record.loading && !record.crashed ? await this.attestFrames(contents) : [];
+        const stale = record.disposed || record.epoch !== before.epoch || record.navigationSequence !== before.navigationSequence
+          || (source.current?.documentId ?? null) !== before.documentId;
+        return { browserSessionId: id, incarnation: before.incarnation, documentId: before.documentId,
+          frames: stale ? [] : frames, stale, attestedAt: this.now() };
       },
       release: () => this.#release(record),
     });

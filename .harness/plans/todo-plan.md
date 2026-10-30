@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1301,
+  "plan_revision": 1303,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -189,8 +189,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "ATTEST",
@@ -206,7 +206,8 @@
         "src/execution/facade.mjs",
         "src/frontend/plugin/launch.mjs",
         "tests/panel-frame-attestation.test.mjs",
-        "tests/fixtures/panel-frame-host.mjs"
+        "tests/fixtures/panel-frame-host.mjs",
+        "tests/chatgpt-plugin.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -243,7 +244,15 @@
           "CONTRACT"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/execution/browser/panel-frame-attestation.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/panel-frame-attestation.test.mjs",
+        "tests/fixtures/panel-frame-host.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1002,7 +1011,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1301
+Revision: 1303
 
 ## Цель
 
@@ -1026,10 +1035,10 @@ Revision: 1301
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/plugin-communication.mjs, tools/codex-app-server-mcp/plugin.py, tests/chatgpt-plugin.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/panel-resource-upgrade.test.mjs, src/control/plugin/communication.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] ATTEST: Аттестация собственного кадра панели в Execution — Ожидает
-  - Git Commit: [PENDING] feat: аттестовать кадр панели серверной страницы
+- [DONE] ATTEST: Аттестация собственного кадра панели в Execution — Завершено
+  - Git Commit: [DONE] feat: аттестовать кадр панели серверной страницы
   - Reference: shared-conversation-mac / ATTEST / implementation
-  - Файлы: src/execution/browser/panel-frame-attestation.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/session-runtime.mjs, src/execution/facade.mjs, src/frontend/plugin/launch.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs
+  - Файлы: src/execution/browser/panel-frame-attestation.mjs, src/execution/browser/backend-host.mjs, src/execution/browser/session-runtime.mjs, src/execution/facade.mjs, src/frontend/plugin/launch.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: CONTRACT
 - [TODO] OWNER: Единственный владелец доставки участника — Ожидает

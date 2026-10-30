@@ -350,6 +350,25 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
 });
 
 
+test('two recovers in one panel frame keep its attested frame id while panel instances change',async t=>{
+  const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
+  await c.callTool({name:'workflow_communication_join',arguments:{run_id:'frame-recover',role:'E'},_meta:metadata});
+  const binds=[];
+  const ui=await communicationHtml(t,c,{toolReply:async(request,result)=>{
+    if(request.name==='workflow_communication_bind')binds.push({binding:request.arguments.binding,error:result.isError});return result;}});
+  await eventually(()=>binds.length===1);
+  const published=ui.dom.window.__workflowPilotPanel;
+  assert.deepEqual({...published},{frame_instance_id:binds[0].binding.frame_instance_id,build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL});
+  assert.equal(Object.isFrozen(published),true);
+  assert.equal(Reflect.set(ui.dom.window,'__workflowPilotPanel',{frame_instance_id:randomUUID()}),false);
+  assert.equal(ui.dom.window.__workflowPilotPanel,published,'the published value cannot be replaced');
+  await eventually(()=>!ui.$('recover').disabled);ui.$('recover').click();
+  await eventually(()=>binds.length===2,5000);
+  assert.equal(binds[1].binding.frame_instance_id,published.frame_instance_id,'same frame after a repeated recover');
+  assert.notEqual(binds[1].binding.panel_instance_id,binds[0].binding.panel_instance_id,'a new panel instance');
+  assert.deepEqual(binds.map(b=>b.error),[false,false]);
+});
+
 test('workflow panel automatically binds its current assignment after late SDK and recovers a new instance without manual IDs',async t=>{
   const f=await fixture(t),target={project_id:'fixture',local_session_id:'worker',origin_session_id:'origin',role:'E',scope_id:'scope',assignment_id:'assignment',task_id:'T001'};
   f.plugin.communication.enrollment.resolveTarget=f.plugin.communication.enrollment.verifyTarget=id=>id==='worker'?target:null;
