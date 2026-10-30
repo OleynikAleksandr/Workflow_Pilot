@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1366,
+  "plan_revision": 1368,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -1791,14 +1791,17 @@
         "Три ОС после DOCS-4 из одного sourceCommit, семь assets, manifest/SHA/подпись подтверждены; preflight кэша Python."
       ],
       "expected_commit_message": "feat: Собрать macOS Windows Linux 0.6.3",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "RELEASE-4",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-4",
@@ -1888,7 +1891,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1366
+Revision: 1368
 
 ## Цель
 
@@ -2080,8 +2083,8 @@ Revision: 1366
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/start-not-sent-retry.md, README.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/current-actions.md, docs/modules/release.md, docs/modules/sdk-messaging.md, docs/modules/shared-conversation.md, docs/acceptance/shared-conversation-mac.md
   - Параллельность: исключительное выполнение
   - Зависимости: NOT-SENT
-- [TODO] RELEASE-4: Собрать macOS Windows Linux 0.6.3 — Ожидает
-  - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.3
+- [DONE] RELEASE-4: Собрать macOS Windows Linux 0.6.3 — Завершено
+  - Git Commit: [DONE] feat: Собрать macOS Windows Linux 0.6.3
   - Reference: shared-conversation-mac / RELEASE-4 / implementation
   - Файлы: release-manifest.json, docs/planning/start-not-sent-retry.md
   - Параллельность: исключительное выполнение
