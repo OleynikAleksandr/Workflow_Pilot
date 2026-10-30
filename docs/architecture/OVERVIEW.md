@@ -1,12 +1,12 @@
 # Workflow Pilot
 
-Workflow Pilot 0.5.41 — локальные проекты, Workflow Kit 1.10.5 и обычный ChatGPT Chat, собственный MCP-исполнитель и [панель](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
+Workflow Pilot 0.6.0 — локальные проекты, Workflow Kit 1.10.5 и обычный ChatGPT Chat, собственный MCP-исполнитель и [панель](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
 
 Перед первой страницей ChatGPT backend подготавливает [официальное расширение поиска](../modules/chatgpt-search-extension.md) в своей persistent session: проверенная автоматическая загрузка/установка, затем локальный кэш. Новые сессии используют [Chat-only URL-start](../modules/chat-only-startup.md): короткий `q`, сохранённая попытка и отдельные подтверждения регистрации, адреса и контекста. Выбора режима и чтения старых Work-сессий нет. Schema 9 добавляет отдельный случайный workspaceId, сохраняя projectId/sessionId прежних Chat; вход и принадлежность страницы проверяются независимо от переключателя. [Выбор пользователя](../modules/user-choice.md), роли, Kit и SDK-диалог сохраняются. [Живая приёмка](../acceptance/chat-only-startup.md) ChatGPT и native Windows/Linux остаётся NOT_RUN.
 
 ## Устройство
 
-Backend — фоновая служба с Control, Execution, Kit, stores, страницами ChatGPT, MCP и туннелем. Закрытие клиента не останавливает работу; повторное открытие возвращает живую страницу без повторного recovery. Все три ОС используют встроенное окно службы с настоящей страницей; отдельный HTTP-клиент служит проверке и iPad через Tailscale. Один диалог — одна backend-страница; второй браузер того же разговора не штатный сценарий.
+Backend — фоновая служба с Control, Execution, Kit, stores, страницами ChatGPT, MCP и туннелем. Закрытие клиента не останавливает работу; повторное открытие возвращает живую страницу без повторного recovery. Все три ОС используют встроенное окно службы с настоящей страницей; отдельный HTTP-клиент служит проверке и iPad через Tailscale. Один диалог — одна backend-страница; второй браузер того же разговора не штатный сценарий. С 0.6.0 автоматически доставляет только серверная страница, панели других клиентов — наблюдатели; перед доставкой проверяется свежесть страницы ([общий разговор](../modules/shared-conversation.md)). Живая проверка NOT_RUN, ограничение действует до её PASS.
 
 | Слой | Ответственность и граница |
 | --- | --- |
@@ -52,7 +52,7 @@ MAIN_DIRTY до выдачи даёт paused/blocked и «Продолжить»
 
 ## Карта модулей
 
-- [Плагин/канал](../modules/chatgpt-plugin.md), [приёмка A–D](../modules/automatic-agent-dialogue-acceptance.md), [матрица](../modules/chatgpt-plugin-acceptance.md), [legacy P0/P1](../modules/plugin-communication-handoff.md).
+- [Плагин/канал](../modules/chatgpt-plugin.md), [общий разговор и серверная доставка](../modules/shared-conversation.md), [приёмка A–D](../modules/automatic-agent-dialogue-acceptance.md), [матрица](../modules/chatgpt-plugin-acceptance.md), [legacy P0/P1](../modules/plugin-communication-handoff.md).
 - [Авторские поручения до Start](../modules/prepared-tasks.md), [основная панель текущей работы](../modules/current-actions.md), [приёмка семи исправлений 0.5.35](../acceptance/release-0535-defects.md), прежняя [D001–D011](../acceptance/release-0534-defects.md).
 - [Тайминги и сокращение ожиданий](../modules/dialogue-timing.md): очередь, Kit, панель, SDK и наблюдаемые стадии без предположений о скрытом рассуждении модели.
 - [Backend](../modules/backend.md), [Desktop](../modules/desktop.md), [встроенное окно](../modules/native-window.md), [Browser](../modules/browser.md), [iPad/Tailscale](../modules/remote-access.md).

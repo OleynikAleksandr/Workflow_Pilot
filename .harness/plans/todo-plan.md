@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1321,
+  "plan_revision": 1323,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -98,7 +98,8 @@
       "docs/modules/browser.md",
       "docs/modules/current-actions.md",
       "docs/modules/release.md",
-      "docs/acceptance/shared-conversation-mac.md"
+      "docs/acceptance/shared-conversation-mac.md",
+      "docs/modules/shared-conversation.md"
     ]
   },
   "baseline_commit": "05822a86a51b74e586e098cb477700fb64d7dd56",
@@ -113,12 +114,12 @@
       {
         "path": "docs/planning/shared-conversation-mac.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
       },
       {
         "path": "docs/planning/shared-conversation-mac-freshness.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
       },
       {
         "path": "docs/planning/shared-backend-mobile-followup.md",
@@ -170,11 +171,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -235,11 +238,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -316,11 +321,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -387,11 +394,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -458,11 +467,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -528,11 +539,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -594,11 +607,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -666,11 +681,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -737,11 +754,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -794,11 +813,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -861,11 +882,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -882,8 +905,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "DOCS",
@@ -916,7 +939,8 @@
         "docs/modules/browser.md",
         "docs/modules/current-actions.md",
         "docs/modules/release.md",
-        "docs/acceptance/shared-conversation-mac.md"
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/modules/shared-conversation.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -933,11 +957,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -948,7 +974,22 @@
           "VERIFY"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/backend.md",
+        "docs/modules/browser.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/native-window.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/planning/shared-backend-mobile-followup.md",
+        "docs/planning/shared-conversation-mac.md",
+        "docs/planning/shared-conversation-mac-freshness.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -982,11 +1023,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -1029,11 +1072,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -1077,11 +1122,13 @@
         "documents": [
           {
             "path": "docs/planning/shared-conversation-mac.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           },
           {
             "path": "docs/planning/shared-conversation-mac-freshness.md",
-            "required": true
+            "required": true,
+            "revision": "e822c44c7154cd92881ad4aef032974f8b38bf41"
           }
         ],
         "include_last_completed_task": false,
@@ -1118,7 +1165,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1321
+Revision: 1323
 
 ## Цель
 
@@ -1202,10 +1249,10 @@ Revision: 1321
   - Файлы: tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/electron-smoke.mjs, docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md, docs/acceptance/shared-conversation-mac.md
   - Параллельность: исключительное выполнение
   - Зависимости: COMPAT
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализация документов выпуска 0.6.0
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализация документов выпуска 0.6.0
   - Reference: shared-conversation-mac / DOCS / implementation
-  - Файлы: docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md, docs/planning/shared-backend-mobile-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/chatgpt-plugin.md, docs/modules/backend.md, docs/modules/native-window.md, docs/modules/browser.md, docs/modules/current-actions.md, docs/modules/release.md, docs/acceptance/shared-conversation-mac.md
+  - Файлы: docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md, docs/planning/shared-backend-mobile-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/chatgpt-plugin.md, docs/modules/backend.md, docs/modules/native-window.md, docs/modules/browser.md, docs/modules/current-actions.md, docs/modules/release.md, docs/acceptance/shared-conversation-mac.md, docs/modules/shared-conversation.md
   - Параллельность: исключительное выполнение
   - Зависимости: CONTRACT, ATTEST, OWNER, OBSERVER, FRESH, REBASE, BRANCH, DIAG, UI, COMPAT, VERIFY
 - [TODO] RELEASE: Собрать macOS Windows Linux — Ожидает

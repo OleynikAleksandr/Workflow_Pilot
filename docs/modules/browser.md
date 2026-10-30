@@ -25,7 +25,8 @@ Backend создаёт `BackendBrowserHost` и один раз вызывает 
 - `composer.getURL/hasFilled/inspect/deliver/sendUserMessage/clearNewSessionDraft` и readonly `inFlight` — операции прежнего composer без ссылки на Chromium;
 - `navigate(url, {reload, startup, isCurrent})` — навигацию с защитой от позднего результата; `startup` сохраняет существующую диагностику первого документа;
 - `subscribe(listener)` — сериализуемые события navigation-start/loaded/navigated/error/crashed со snapshot и ошибкой `{code,message}`; возвращает отписку;
-- `setDiagnostic(listener)` — прежние метаданные composer без текста сообщения; `release()` — адресное завершение страницы.
+- `setDiagnostic(listener)` — прежние метаданные composer без текста сообщения; `release()` — адресное завершение страницы;
+- `attestPanelFrames()` — read-only аттестация кадров панели Workflow Pilot своей страницы, `safeReload(chatUrl)` — перезагрузка сохранённого адреса с отказом при in-flight, старте, загрузке и crash, `pageState.document` — `{id,since,reloadedFrom}` с линией собственных перезагрузок, `turnVariant` последнего хода ([общий разговор](shared-conversation.md)).
 
 Callbacks `canContinue/onBeforeFill/onBeforeSend` являются локальными операциями допуска и сохранения checkpoint; они не входят в snapshots/события. После начала Send неопределённый исход не разрешает второй клик. Composer вставляет текст один раз для данного request/document. Ограниченное ожидание вложений сохранено, но стартовый ContextSession всегда передаёт пустой массив файлов.
 
