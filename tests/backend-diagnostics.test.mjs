@@ -56,6 +56,7 @@ test('backend journal keeps only small scalar facts, private and bounded',async 
   assert.equal(journal.record('child-process-gone',{type:'GPU',reason:'killed',exitCode:15,token:{secret:'x'},list:['a'],'bad key':1}),true);
   assert.equal(journal.record('lease',{held:true,generation:3,note:'y'.repeat(500)}),true);
   assert.equal(journal.record('bad event!',{}),false,'event names are fixed identifiers');
+  assert.equal(journal.record('identity.unmatched',{source:'model-read',identity_prefix:'0123abcd'}),true,'dotted identity events are accepted');
   const lines=fs.readFileSync(file,'utf8').trim().split('\n').map(line=>JSON.parse(line));
   assert.deepEqual(lines[0],{ts:'2026-10-16T00:00:00.000Z',pid:42,event:'child-process-gone',type:'GPU',reason:'killed',exitCode:15});
   assert.equal(lines[1].note.length,120,'strings are shortened');

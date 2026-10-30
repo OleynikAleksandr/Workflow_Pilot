@@ -92,6 +92,16 @@ def host_metadata(ctx: Context) -> dict[str, str]:
             if isinstance(values.get(key), str) and len(values[key]) <= 512}
 
 
+META_KEY = re.compile(r"^[A-Za-z0-9_./:-]{1,64}$")
+
+
+def host_meta_keys(ctx: Context) -> list[str]:
+    """Names of host _meta keys for identity diagnostics; values are never sent."""
+    meta = ctx.request_context.meta
+    values = meta.model_dump(by_alias=True) if meta else {}
+    return sorted(key for key in values if isinstance(key, str) and META_KEY.fullmatch(key))[:32]
+
+
 class PluginBridge:
     def __init__(self, state_root: Path):
         self.descriptor = state_root / "plugin-bridge.json"
@@ -149,7 +159,7 @@ def register_plugin(mcp, state_root: Path):
         if binding is not None:
             args.update(binding.model_dump())
         data = await asyncio.to_thread(bridge.call, {**args, "action": "communication." + action,
-                                                   "metadata": host_metadata(ctx)})
+                                                   "metadata": host_metadata(ctx), "meta_keys": host_meta_keys(ctx)})
         # Catalogue URI belongs to this immutable MCP snapshot, not to a replayed iframe.
         return result({**data, "panel_resource_uri": ui_uri})
 
@@ -375,6 +385,7 @@ def register_plugin(mcp, state_root: Path):
     async def panel(ctx: Context, enrollment_ticket: Annotated[str | None, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque invitation from this Chat session's opening command; never invent or share it.")] = None) -> CallToolResult:
         """Open Workflow Pilot beside this conversation. With the bootstrap invitation, register this existing local session using fresh host identity; retrying the same binding is safe. If startup_context is returned, read its included first part now, read remaining parts through workflow_communication_read_context and confirm workflow_startup_complete in this same turn. Do not end the turn to wait for another startup notification. No manual run/participant transfer or join is required for working plans. Without an invitation, open the existing panel. Success does not prove iframe readiness, permission or model wakeup; never bypass host confirmations. Every new session receives its role-specific recovery this way. Executor bootstrap must end after confirmation and wait for a separate work instruction; project chats gain no orchestrator privileges. Legacy startup_resume retains its supplied instructions."""
         return result(await asyncio.to_thread(bridge.call, {"action": "panel", "metadata": host_metadata(ctx),
+                                                            "meta_keys": host_meta_keys(ctx),
                                                             **({"enrollment_ticket": enrollment_ticket} if enrollment_ticket else {})}))
 
     @mcp.tool(name="workflow_open_project", title="Сведения о проектах Workflow Pilot", annotations=READ)

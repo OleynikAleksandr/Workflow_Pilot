@@ -16,7 +16,7 @@ const reference=(run,target)=>'assignment:'+hash(JSON.stringify([run.id,target.s
 // proof and acceptance. A persisted intent bridges these two durable owners.
 export class AssignmentDialogue {
   constructor(communication,kit){this.c=communication;this.kit=kit;this.pending=new Map();}
-  async input(input){return this.c.modelInput({metadata:input.metadata});}
+  async input(input){return this.c.modelInput({metadata:input.metadata,meta_keys:input.meta_keys,trace_source:input.trace_source});}
   async migrate(input){
     const binding=await this.input(input),{run,member}=this.c.member(binding);
     check(member.role==='O'&&run.mode==='workflow'&&run.grant?.phase==='paused','MIGRATION_PAUSE','Переход выполняет O после общей паузы.');

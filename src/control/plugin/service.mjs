@@ -15,11 +15,11 @@ export function pluginConversationKey(metadata) {
 
 // Both frontends use the same ProjectsService. No profile copies or browser operations.
 export class PluginProjects {
-  constructor({ projects, loadContext, plans=null,migrate=null, communicationStore = null, onChange = () => {}, observe, admit, reconcile, attest = null, reload = null, currentMessage, onCommunicationChange, workProgress = null, userChoice = null, choose = null }) {
+  constructor({ projects, loadContext, plans=null,migrate=null, communicationStore = null, onChange = () => {}, observe, admit, reconcile, attest = null, reload = null, currentMessage, onCommunicationChange, workProgress = null, userChoice = null, choose = null, journal = null }) {
     Object.assign(this, { projects, loadContext, onChange,plans });
     this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id),
       verifyTarget:id=>this.participantTarget(id),verifyTerminal:(target,message)=>this.terminalTarget(target,message),
-      observe,admit,reconcile,attest,reload,currentMessage,onChange:onCommunicationChange,workProgress,userChoice,choose,
+      observe,admit,reconcile,attest,reload,currentMessage,onChange:onCommunicationChange,workProgress,userChoice,choose,journal,
       dialogueKit:plans?{status:(target,id)=>this.dialogueOperation(target,'assignment:dialogue-status',id),
         close:(target,input)=>this.dialogueOperation(target,'assignment:transport',input),
         apply:(target,input)=>this.dialogueOperation(target,'assignment:dialogue',input),migrate}:null});
@@ -132,11 +132,11 @@ export class PluginProjects {
     if(result.changed)this.onChange({sessionTitle:{sessionId:target.local_session_id}});
     return result;
   }
-  async panel({enrollment_ticket,metadata}={}) {
+  async panel({enrollment_ticket,metadata,meta_keys}={}) {
     await this.communication.ready;
     const registration=enrollment_ticket?await this.communication.enroll(enrollment_ticket,metadata):null;
     let startup_resume,startup_context,role_update,binding=registration;
-    if(!binding&&metadata)try{binding=await this.communication.modelInput({metadata});
+    if(!binding&&metadata)try{binding=await this.communication.modelInput({metadata,meta_keys,trace_source:'model-panel'});
       await this.communication.enrollment.validateInput(binding);
     }catch{/* An unregistered panel still opens its normal connection view. */}
     if(binding){

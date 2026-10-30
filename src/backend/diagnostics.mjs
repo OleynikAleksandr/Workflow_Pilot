@@ -20,7 +20,7 @@ function clean(data) {
 export function createBackendJournal(file,{now=()=>new Date().toISOString(),pid=process.pid}={}) {
   let failed=false;
   const record=(event,data={})=>{
-    if(failed||typeof event!=='string'||!KEY.test(event.replace(/-/g,'_')))return false;
+    if(failed||typeof event!=='string'||!KEY.test(event.replace(/[-.]/g,'_')))return false;
     try {
       fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700});
       if((fs.statSync(file,{throwIfNoEntry:false})?.size??0)>MAX_BYTES)fs.renameSync(file,file+'.1');

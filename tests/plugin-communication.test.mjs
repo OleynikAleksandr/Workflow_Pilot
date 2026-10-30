@@ -8,6 +8,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {AttestedCommunication} from './fixtures/panel-attestation.mjs';
+import {createBackendJournal} from '../src/backend/diagnostics.mjs';
 
 async function fixture(t,options={}){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-communication-control-')));
@@ -227,4 +228,38 @@ test('every plan participant gets the project progress; a progress change wakes 
   comm.waiters.delete('panel-e');
   const result=comm.waitResult({...people.E,after_seq:0,permission_generation:0});
   assert.equal(result.work_progress.self,'T001');
+});
+
+test('an unmatched model identity is journaled outside the WAL and visible in the export of O, without metadata values',async t=>{
+  const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-identity-trace-')));
+  const targets=new Map(),file=path.join(directory,'diagnostics','backend-events.jsonl');
+  const store=await openCommunicationStore(path.join(directory,'wal'));
+  const comm=new AttestedCommunication({store,waitMs:30,resolveTarget:id=>targets.get(id)??null,journal:createBackendJournal(file)});
+  t.after(async()=>{comm.dispose();await comm.tail;await fs.rm(directory,{recursive:true,force:true});});
+  const people={},keys=['openai/organization','openai/session','openai/subject','progressToken'];
+  for(const [id,role] of [['orchestrator','O'],['worker','E']]){
+    targets.set(id,{project_id:'project',local_session_id:id,origin_session_id:'orchestrator',role,scope_id:'scope',
+      assignment_id:role==='E'?'assignment-1':null,task_id:role==='E'?'T001':null});
+    const metadata={'openai/session':'private-'+id,'openai/subject':'private-user'};
+    const joined=await comm.enroll((await comm.reserve(targets.get(id))).enrollment_ticket,metadata);
+    people[role]={...joined,metadata,panel_instance_id:randomUUID(),frame_instance_id:randomUUID(),protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD};
+  }
+  await comm.recover({metadata:people.O.metadata,meta_keys:keys});
+  await comm.bind({...people.O,meta_keys:keys});
+  const walBefore=JSON.stringify((await store.load()).runs);
+  await assert.rejects(comm.readMessage({metadata:{'openai/session':'private-other-client','openai/subject':'private-user'},
+    meta_keys:[...keys,'bad key!'],message_id:randomUUID()}),error('BINDING'));
+  assert.equal(JSON.stringify((await store.load()).runs),walBefore,'the refusal is not written to the WAL');
+  const exported=await comm.export(people.O),records=exported.summary.identity;
+  const unmatched=records.find(r=>r.event_type==='identity.unmatched');
+  assert.equal(unmatched.source,'model-read');assert.match(unmatched.identity_prefix,/^[0-9a-f]{8}$/);
+  assert.deepEqual(unmatched.meta_keys,keys,'only valid key names are kept');assert.equal(unmatched.participants,0);
+  assert.deepEqual(records.filter(r=>r.event_type==='identity.observed').map(r=>[r.source,r.delivery_role]),
+    [['panel-recover',null],['panel-bind','owner']]);
+  assert.equal(records.find(r=>r.source==='panel-bind').panel_instance_id,people.O.panel_instance_id);
+  assert.notEqual(records[0].identity_prefix,unmatched.identity_prefix,'different clients have different prefixes');
+  assert.equal((await comm.export(people.E)).summary.identity,undefined,'only O receives identity records');
+  const journal=await fs.readFile(file,'utf8');
+  assert.match(journal,/"event":"identity\.unmatched"[^\n]*"source":"model-read"/);
+  assert.doesNotMatch(journal+JSON.stringify(exported),/private-|secret/,'metadata values are never stored');
 });

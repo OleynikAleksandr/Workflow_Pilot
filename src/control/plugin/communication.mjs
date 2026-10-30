@@ -6,6 +6,7 @@ import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
 import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic,deliveryObserverError} from '../../contracts/plugin-communication.mjs';
 import {DeliveryOwnership} from './delivery-ownership.mjs';
 import {ConversationFreshness} from './conversation-freshness.mjs';
+import {IdentityTrace} from './identity-trace.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE,NOTIFICATION_RULE,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD,COMMUNICATION_PERMISSION_MS,communicationVersionMessage} from '../../contracts/backend.mjs';
@@ -35,7 +36,7 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,reload=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,reload=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null,journal=null}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
@@ -45,6 +46,7 @@ export class PluginCommunication {
     this.workflow=new WorkflowChannel(this,{observe,admit,reconcile,currentMessage});
     this.ownership=new DeliveryOwnership(this,attest);
     this.freshness=new ConversationFreshness(this,{reload});
+    this.identities=new IdentityTrace({now,journal});
     this.assignment=new AssignmentDialogue(this,dialogueKit);
     this.startup=new StartupContext(this);
     this.ready=this.restore();
@@ -114,8 +116,10 @@ export class PluginCommunication {
           this.syncTimers(run);this.wake(run,run.events.slice(offset));
           if(changes.some(functional)&&run.mode==='workflow')queueMicrotask(()=>this.onChange(run.id,changes));
         }
+        if(name==='bind')this.traceIdentity('identity.observed','panel-bind',input,{role:result?.delivery_role??null});
         return structuredClone(result);
       }catch(error) {
+        if(name==='bind'&&/_(BINDING|IDENTITY_REQUIRED)$/.test(error.code??''))this.traceIdentity('identity.unmatched','panel-bind',input);
         this.panels=panels;this.ownership.restore(owners);if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
         const denialKey=input.run_id+':'+input.message_id;
         // An observer's refusal is its normal state, not a delivery incident.
@@ -247,7 +251,7 @@ export class PluginCommunication {
   _assignmentYield(input){return this.assignment.yielded(input);}
   assignmentSend(input){return this.assignment.send(input);}
   assignmentStatus(input){return this.assignment.status(input);}
-  assignmentYield(input){return this.assignment.yield(input);}
+  assignmentYield(input){return this.assignment.yield({...input,trace_source:'model-yield'});}
   assignmentMigrate(input){return this.assignment.migrate(input);}
   _assignmentMigrated(input){return this.assignment.migrated(input);}
   async _sync(input){
@@ -300,17 +304,26 @@ export class PluginCommunication {
     for(const waiter of this.waiters.values())if(waiter.runId===run.id
       &&run.members[waiter.memberId]?.target.local_session_id===sessionId)waiter.wake('event');
   }}
+  traceIdentity(type,source,input,extra={}){
+    let identity=null;try{identity=communicationIdentity(input?.metadata);}catch{/* Missing identity is traced without a prefix. */}
+    return this.identities.record(type,{identity,source,input,...extra});
+  }
   async modelInput(input){
     if(input.run_id&&input.participant_id)return input;
-    await this.ready;await this.tail;const identity=communicationIdentity(input.metadata);
+    await this.ready;await this.tail;const source=input.trace_source??'model-call';
+    let identity;
+    try{identity=communicationIdentity(input.metadata);}catch(error){this.traceIdentity('identity.unmatched',source,input);throw error;}
     const matches=[];
     for(const run of this.runs.values())if(run.mode==='workflow')for(const member of Object.values(run.members))
       if(member.identity===identity&&(!input.message_id||run.messages.some(m=>m.message_id===input.message_id&&m.recipient_id===member.id)))matches.push({run,member});
+    // An unmatched model identity is journaled outside the WAL: no run owns it.
+    if(matches.length!==1)this.identities.record('identity.unmatched',{identity,source,input,participants:matches.length});
     requireValue(matches.length===1,'BINDING','Рабочее назначение текущего разговора не найдено.');
+    this.identities.record('identity.observed',{identity,source,input});
     return {...input,run_id:matches[0].run.id,participant_id:matches[0].member.id};
   }
   async readMessage(input){
-    const binding=await this.modelInput(input),{run:startupRun}=this.member(binding);
+    const binding=await this.modelInput({...input,trace_source:'model-read'}),{run:startupRun}=this.member(binding);
     if(startupRun.messages.some(m=>m.message_id===input.message_id&&m.kind==='startup-context'&&m.delivery_mode==='model-pull'))
       return this.mutate('startupOpen',binding);
     const message=await this.read(binding);
@@ -794,13 +807,16 @@ export class PluginCommunication {
     return value;
   }
   async recover(input){
-    await this.ready;await this.tail;const identity=communicationIdentity(input.metadata),participants=[];
+    await this.ready;await this.tail;let identity;
+    try{identity=communicationIdentity(input.metadata);}catch(error){this.traceIdentity('identity.unmatched','panel-recover',input);throw error;}
+    const participants=[];
     for(const run of this.runs.values())for(const member of Object.values(run.members))if(member.identity===identity) {
       if(run.mode==='workflow') {
         try{await this.enrollment.validate(member.target);}catch{continue;}
         participants.push(this.enrollment.publicMember(run,member));
       }else participants.push({run_id:run.id,participant_id:member.id,role:member.role});
     }
+    this.identities.record(participants.length?'identity.observed':'identity.unmatched',{identity,source:'panel-recover',input,participants:participants.length});
     return {participants,build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,
       assignment_dialogue_version:ASSIGNMENT_DIALOGUE_VERSION,role_protocol_version:ROLE_PROTOCOL_VERSION,critical_error:this.critical};
   }
@@ -823,7 +839,9 @@ export class PluginCommunication {
       summary:{run_id:run.id,events:through,through_seq:through,visibility:run.mode==='workflow'&&member.role==='E'?'own-assignment':'whole-run',
         page_from:after,page_through:next,protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
         sdk_versions:SDK_VERSIONS,gaps:this.visibleEvents(run,member,run.events.slice(0,through)).filter(e=>e.event_type==='frontend.gap')
-          .map(({seq,panel_instance_id,from,to})=>({seq,panel_instance_id,from,to})),critical_error:this.critical}};}
+          .map(({seq,panel_instance_id,from,to})=>({seq,panel_instance_id,from,to})),critical_error:this.critical,
+        // O also sees the identity records of this boot within its run interval.
+        ...(member.role==='O'?{identity:this.identities.since(run.events[0]?.server_time)}:{})}};}
   dispose(){this.disposed=true;this.workflow.dispose();for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
 }
 for(const name of MUTATIONS)PluginCommunication.prototype[name]=function(input){return this.mutate(name,input);};

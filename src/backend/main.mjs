@@ -109,7 +109,7 @@ export function startBackend(electron,{fixtureRoot=null,leaseTtlMs=null,pageMode
       desktop=createDesktopModel({electron:{...electron,dialog:guardedDialog},recoverCrashedPages:true,remoteAccess,sourceDir,dataDir:identity.dataDir,partition:identity.partition,smoke:false,
         eventBaseline:false,eventRuntimeChecker:false,executionServices:execution,createControl,dependencies:desktopDependencies,
         browserHost:host,surface,offline:!!fixtureRoot,pluginDirectory:fixtureRoot?path.join(fixtureRoot,'plugin'):null,
-        prepareBrowserNavigation:searchExtension?url=>searchExtension.prepareNavigation(url):null});
+        prepareBrowserNavigation:searchExtension?url=>searchExtension.prepareNavigation(url):null,journal});
       if(!await desktop.start())throw Object.assign(new Error('Desktop model did not start.'),{code:'BACKEND_STARTUP_FAILED'});
       const base=desktop.services;
       const service=Object.freeze({view:()=>({...stopper?.view()??{phase:'running',reasons:[],since:null,error:null},

@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1313,
+  "plan_revision": 1315,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -81,7 +81,9 @@
       "tests/migration-compatibility.test.mjs",
       "src/execution/plugin/communication-store.mjs",
       "release-manifest.json",
-      "tests/fixtures/panel-attestation.mjs"
+      "tests/fixtures/panel-attestation.mjs",
+      "src/backend/main.mjs",
+      "src/control/plugin/identity-trace.mjs"
     ],
     "documentation_paths": [
       "docs/planning/shared-conversation-mac.md",
@@ -619,8 +621,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "DIAG",
@@ -636,7 +638,13 @@
         "src/backend/diagnostics.mjs",
         "tests/codex-app-server-mcp.test.mjs",
         "tests/backend-diagnostics.test.mjs",
-        "tests/plugin-communication.test.mjs"
+        "tests/plugin-communication.test.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/main.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/identity-trace.mjs",
+        "tests/chatgpt-plugin.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -670,7 +678,20 @@
           "OWNER"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/backend/desktop-model.mjs",
+        "src/backend/diagnostics.mjs",
+        "src/backend/main.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/identity-trace.mjs",
+        "tests/backend-diagnostics.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1074,7 +1095,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1313
+Revision: 1315
 
 ## Цель
 
@@ -1134,10 +1155,10 @@ Revision: 1313
   - Файлы: src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/control/plugin/conversation-freshness.mjs, src/control/workflow/executor-session.mjs, tests/page-state.test.mjs, tests/chatgpt-dom.test.mjs, tests/conversation-freshness.test.mjs, src/control/workflow/plan-continuation.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: REBASE
-- [TODO] DIAG: Диагностика identity клиентов — Ожидает
-  - Git Commit: [PENDING] feat: диагностика identity клиентов
+- [DONE] DIAG: Диагностика identity клиентов — Завершено
+  - Git Commit: [DONE] feat: диагностика identity клиентов
   - Reference: shared-conversation-mac / DIAG / implementation
-  - Файлы: tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/control/plugin/communication.mjs, src/backend/diagnostics.mjs, tests/codex-app-server-mcp.test.mjs, tests/backend-diagnostics.test.mjs, tests/plugin-communication.test.mjs
+  - Файлы: tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/control/plugin/communication.mjs, src/backend/diagnostics.mjs, tests/codex-app-server-mcp.test.mjs, tests/backend-diagnostics.test.mjs, tests/plugin-communication.test.mjs, src/backend/desktop-model.mjs, src/backend/main.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, src/control/plugin/identity-trace.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: OWNER
 - [TODO] UI: Состояния доставки в текущих действиях — Ожидает

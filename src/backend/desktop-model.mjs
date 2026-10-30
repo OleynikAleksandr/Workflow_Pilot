@@ -41,7 +41,7 @@ export function executorDispatchStage(assignment,channel) {
 // (in-process legacy window or a remote client) and supplies the page host.
 export function createDesktopModel({electron,sourceDir,dataDir,partition,smoke,eventBaseline,eventRuntimeChecker,executionServices,createControl,dependencies,
   browserHost,surface,remotePages=false,fixture=null,offline=false,pluginDirectory=null,recoverCrashedPages=false,remoteAccess=null,
-  prepareBrowserNavigation=null}) {
+  prepareBrowserNavigation=null,journal=null}) {
 const {app,session,ipcMain,dialog,clipboard,shell}=electron;
 const {LinuxExecutorBootstrap,LinuxRuntimeSwitcher,LinuxServices,bundledLinuxNode}=dependencies;
 const {ChromiumDiagnostics,safeUrl,appendDiagnostic,inspectMacGit,installMacGit,chatGPTTitleScript, toolFilterScript, installChatGPTAutoScroll, ChatColors, normalizeChatColors, validateColorChange, DEFAULT_COLORS, CHATGPT_CHAT_ENTRYPOINT, CHATGPT_SIGNIN_ENTRYPOINT, BUNDLED_NODE_VERSION, defaultRuntimeFolder, bundledMacNode, nodeExecutableCandidates, WindowsExecutorBootstrap, WINDOWS_RUNTIME_ARCHIVE, CodexAppServerRuntime, MacRuntimeSwitcher, runtimeLabel, CHATGPT_CHANNEL_SECURE, CHATGPT_CHANNELS, VpsTunnel, WindowsVpsTunnel}=dependencies;
@@ -1682,7 +1682,7 @@ async function start() {
         void syncSelectedSessionTitle({force:true,reason:'topic-title-changed'});
     },communicationStore,workProgress:workProgressFor,
       userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
-      observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,reload:workflow.reloadParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
+      observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,reload:workflow.reloadParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,journal,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;
   }

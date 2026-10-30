@@ -298,6 +298,13 @@ test('real MCP panel enrolls an existing assignment using fresh host identity wi
   assert.deepEqual((await c.callTool(args)).structuredContent.registration,first.structuredContent.registration);
   assert.equal((await c.callTool({...args,_meta:{...metadata,'openai/session':'wrong'}})).structuredContent.error.code,'PLUGIN_COMMUNICATION_BINDING');
   assert.equal((await c.callTool({...args,_meta:{}})).structuredContent.error.code,'PLUGIN_COMMUNICATION_IDENTITY_REQUIRED');
+  // A model call from another client sends only the names of its host _meta keys.
+  const foreign=await c.callTool({name:'workflow_communication_read_message',arguments:{message_id:'00000000-0000-4000-8000-000000000001'},
+    _meta:{...metadata,'openai/session':'foreign-client-value','openai/locale':'uk-UA'}});
+  assert.equal(foreign.structuredContent.error.code,'PLUGIN_COMMUNICATION_BINDING');
+  const traced=f.plugin.communication.identities.entries.at(-1);
+  assert.deepEqual([traced.event_type,traced.source,traced.meta_keys],['identity.unmatched','model-read',['openai/locale','openai/session','openai/subject','progressToken']]);
+  assert.doesNotMatch(JSON.stringify(f.plugin.communication.identities.entries),/foreign-client-value|uk-UA|user-fixture/);
   assert.deepEqual(f.store.snapshot(),before);
 });
 test('communication MCP contracts reject missing identity, wrong binding and stale protocol; Stop cancels probe',async t=>{
