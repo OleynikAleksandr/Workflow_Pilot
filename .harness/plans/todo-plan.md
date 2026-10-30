@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1393,
+  "plan_revision": 1395,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -488,13 +488,14 @@
         "Штатный installer без пересборки и переподписи; при работающей службе verified pending."
       ],
       "expected_commit_message": "feat: Установить выпуск 0.6.5 на этот Mac",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "INSTALL-2",
         "role": "implementation"
-      }
+      },
+      "actual_files": []
     },
     {
       "id": "PUBLISH-2",
@@ -545,7 +546,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1393
+Revision: 1395
 
 ## Цель
 
@@ -591,8 +592,8 @@ Revision: 1393
   - Git Commit: [DONE] feat: Собрать macOS Windows Linux 0.6.5
   - Reference: cdp-startup-input / RELEASE-2 / implementation
   - Файлы: release-manifest.json, docs/planning/communication-journal-growth.md
-- [TODO] INSTALL-2: Установить выпуск 0.6.5 на этот Mac — Ожидает
-  - Git Commit: [PENDING] feat: Установить выпуск 0.6.5 на этот Mac
+- [DONE] INSTALL-2: Установить выпуск 0.6.5 на этот Mac — Завершено
+  - Git Commit: [DONE] feat: Установить выпуск 0.6.5 на этот Mac
   - Reference: cdp-startup-input / INSTALL-2 / implementation
   - Файлы: release-manifest.json, docs/planning/communication-journal-growth.md
 - [TODO] PUBLISH-2: Опубликовать выпуск 0.6.5 на GitHub — Ожидает
