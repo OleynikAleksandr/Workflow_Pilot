@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { normalizeChatUrl } from '../sessions/workspace-session.mjs';
-import { CONTEXT_PROTOCOL, validateContextPacket } from '../../contracts/context.mjs';
+import { CONTEXT_PROTOCOL, validateContextPacket, startupCommand } from '../../contracts/context.mjs';
 import { isChatGPTChatUrl, isPendingChatGPTConversation, CHATGPT_CHAT_ENTRYPOINT } from '../../execution/facade.mjs';
 import { validateParallelSettings } from '../workflow/parallel-settings.mjs';
 import {SESSION_TITLE_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
@@ -46,9 +46,7 @@ export const contextPartName = (part, requestId) => {
 export function startupMessage(project, requestId, packet, toolRules = [], bootstrap = null) {
   if(bootstrap?.context_transport!=='panel'||!/^[a-f0-9]{64}$/.test(bootstrap.enrollment_ticket??''))
     throw failure('STARTUP_CHANNEL_REQUIRED','Нужен действительный тикет панели этой сессии.');
-  return 'Открой панель Workflow Pilot: один раз вызови workflow_pilot_panel с аргументами '
-    +JSON.stringify({enrollment_ticket:bootstrap.enrollment_ticket})
-    +'. Если вызов вернул ошибку или в ответе нет startup_context, сообщи точную причину и ничего не выдумывай; подтверждения хоста не обходи. Приглашение не публикуй и не сохраняй.';
+  return startupCommand(bootstrap.enrollment_ticket);
 }
 
 export function orchestratorStartupContext(project,packet,toolRules=[]){
@@ -404,7 +402,7 @@ export class ContextSession {
       this.emit({phase:'waiting-composer',projectInfo:info,error:null});
       await this.composer.openChatEntrypoint();return;
     }
-    let observation=await this.composer.inspect();
+    let observation=await this.inspectStartupPage(generation);
     if(!this.current(generation))return;
     const deferred=observation.accountStatus!=='signed-in'?'waiting-login'
       :!observation.documentId||!observation.editorAvailable||!observation.writable?'waiting-composer'
@@ -439,7 +437,7 @@ export class ContextSession {
       enrollmentRef:{run_id:bootstrap.run_id,ticket_hash:bootstrap.ticket_hash}});
     const staged=await this.runtime.stageStartup(project,attempt);
     attempt=await this.patchUrl(project,attempt,{contextRef:{message_id:staged.message_id}});
-    observation=await this.composer.inspect();
+    observation=await this.inspectStartupPage(generation);
     if(!this.current(generation))return;
     const latestInfo=await this.inspectProject(project.workspace,project.sessionId,generation),snapshot=this.composer.navigationSnapshot();
     if(!this.current(generation))return;
@@ -466,6 +464,18 @@ export class ContextSession {
       navigationToken:attempt.requestId,canContinue:mayDispatch});}
     catch(error){await this.patchUrl(project,attempt,latest=>this.startupAllowed(latest)&&latest.state!=='sent'?{state:'unknown'}:{});throw error;}
     this.rerunRequested=true;
+  }
+
+  // ChatGPT restores the last new-chat text of this profile into every new Chat.
+  // An exact Workflow Pilot startup command there belongs to another session:
+  // it is cleared and never sent. Any other text is the user's draft and stays.
+  async inspectStartupPage(generation){
+    const observation=await this.composer.inspect();
+    if(!this.current(generation)||!(observation.draftLength>0)||!observation.documentId||!newChatRoot(observation.url))return observation;
+    const cleared=await this.composer.clearNewSessionDraft({startupOnly:true,
+      canContinue:()=>this.current(generation)&&newChatRoot(this.composer.getURL())});
+    if(!this.current(generation)||cleared.action!=='draft-cleared')return observation;
+    return this.composer.inspect();
   }
 
   async tick() {

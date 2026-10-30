@@ -156,7 +156,13 @@ function urlFixture({attempt=null,chatUrl=null}={}){
     cancelStartup:async()=>{order.push('revoke');return {status:evidence?.participant_id?'registered-stopped':'revoked'};}};
   const composer={getURL:()=>page.url,navigationSnapshot:()=>({...snap}),inspect:async()=>({...page}),
     openChatEntrypoint:async()=>{order.push('root');page.url='https://chatgpt.com/';page.documentId='new-root';snap.epoch++;},
-    deliver:async()=>{throw Error('DOM Send is forbidden');},clearNewSessionDraft:async()=>{throw Error('Draft clearing is forbidden');},
+    deliver:async()=>{throw Error('DOM Send is forbidden');},
+    // Only a restored startup command of another session may be cleared; user text never.
+    clearNewSessionDraft:async({startupOnly=false,canContinue}={})=>{
+      if(!startupOnly)throw Error('Draft clearing is forbidden');
+      if(!canContinue())return {action:'deferred',reason:'CHAT_CHANGED'};
+      if(!page.restoredCommand)return {action:'deferred',reason:'DRAFT_NOT_STARTUP'};
+      order.push('clear-restored');page.draftLength=0;page.restoredCommand=false;return {action:'draft-cleared'};},
     startChat:async input=>{assert.equal(input.canContinue(),true);order.push('q');starts.push(input);
       assert.ok(saved.attempt.contextRef);assert.equal(saved.attempt.state,'sending');assert.equal(saved.attempt.sendStartedAtMs,clock);
       snap.epoch++;snap.navigationSequence++;snap.navigationOwner=input.navigationToken;page.url=input.url;
@@ -228,6 +234,22 @@ test('all preflight unknowns preserve draft and block reserve and q',async()=>{
     const f=urlFixture();f.page[key]=value;await f.controller.tick();assert.equal(f.starts.length,0);assert.equal(f.saved.attempt,null);
     assert.equal(f.controller.state.phase,phase);
   }
+});
+test('a restored startup command of another session is cleared before the draft check and before q',async()=>{
+  let f=urlFixture();Object.assign(f.page,{draftLength:310,restoredCommand:true});
+  await f.controller.tick();
+  assert.equal(f.order[0],'clear-restored');assert.equal(f.starts.length,1,'the start reaches its own q');
+  assert.equal(f.saved.attempt.state,'sending');
+  // ChatGPT may restore the command after the first observation: cleared again right before q.
+  f=urlFixture();const stage=f.runtime.stageStartup;
+  f.runtime.stageStartup=async(...args)=>{const m=await stage(...args);Object.assign(f.page,{draftLength:310,restoredCommand:true});return m;};
+  await f.controller.tick();
+  assert.ok(f.order.indexOf('clear-restored')>f.order.indexOf('stage'));assert.equal(f.starts.length,1);
+  assert.equal(f.saved.attempt.cancelState,'none');
+  // User text is never cleared: the start waits and creates no attempt.
+  f=urlFixture();f.page.draftLength=12;await f.controller.tick();
+  assert.equal(f.order.includes('clear-restored'),false);assert.equal(f.starts.length,0);assert.equal(f.saved.attempt,null);
+  assert.equal(f.controller.state.phase,'waiting-draft');
 });
 test('composer on an old conversation is not evidence of the new-chat draft',async()=>{
   const f=urlFixture();f.page.url=project.chatUrl;await f.controller.tick();assert.deepEqual(f.order,['root']);

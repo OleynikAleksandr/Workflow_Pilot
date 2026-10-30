@@ -2,6 +2,16 @@ import { createHash } from 'node:crypto';
 import { RuntimeError } from './errors.mjs';
 export const CONTEXT_PROTOCOL = 'inline-context-v1';
 
+// The first command of a new Chat. ChatGPT restores the last new-chat text of
+// the profile into every later new Chat, so this exact text, with any ticket,
+// is recognized there as another session's command; the page compares it.
+export const STARTUP_TICKET_PLACEHOLDER = '@@enrollment_ticket@@';
+export function startupCommand(ticket) {
+  return 'Открой панель Workflow Pilot: один раз вызови workflow_pilot_panel с аргументами '
+    + JSON.stringify({ enrollment_ticket: ticket })
+    + '. Если вызов вернул ошибку или в ответе нет startup_context, сообщи точную причину и ничего не выдумывай; подтверждения хоста не обходи. Приглашение не публикуй и не сохраняй.';
+}
+
 export function validateContextPacket(packet, workspace) {
   if(packet?.recovery_profile!==undefined&&packet.recovery_profile!=='assignment-dialogue-v1')
     throw new RuntimeError('MCP_CONTEXT_PROFILE','Неизвестный профиль recovery. Контекст не отправлен.');

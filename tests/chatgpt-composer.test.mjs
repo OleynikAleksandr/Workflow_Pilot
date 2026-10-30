@@ -8,6 +8,7 @@ import { ChatGPTComposer, pageOperation, pageScript } from '../src/chatgpt-compo
 import { EventEmitter } from 'node:events';
 import { ExecutionFacade } from '../src/execution/facade.mjs';
 import { DesktopBrowserHost } from '../src/frontend/desktop/browser-host.mjs';
+import { startupCommand, STARTUP_TICKET_PLACEHOLDER } from '../src/contracts/context.mjs';
 
 function executionFixture(f, t) {
   const contents=Object.assign(new EventEmitter(),f.view);
@@ -462,6 +463,28 @@ test('explicit new conversation clears textarea through input, never the clipboa
   f.dom.reconfigure({ url: 'https://chatgpt.com/c/existing' });
   assert.equal((await f.composer.clearNewSessionDraft()).reason, 'CHAT_CHANGED');
   assert.equal(f.editor.value, 'Сохранить'); f.dom.window.close();
+});
+
+test('a restored startup command of another session is cleared; user text and extended commands are kept', async () => {
+  const command = startupCommand('a'.repeat(64));
+  for (const [draft, cleared] of [[command, true], ['  ' + command.replace('. Если', '.\nЕсли') + '\n', true],
+    [command + ' И ещё мой вопрос', false], ['Мой черновик', false], [command.replace('a'.repeat(64), 'xyz'), false]]) {
+    const f = fixture({ draft });
+    f.dom.window.__webPilotObserverDocumentId = 'fresh-document';
+    f.view.executeJavaScriptInIsolatedWorld = async (_world, scripts) => f.dom.window.eval(scripts[0].code);
+    f.composer.pageState = { current: { documentId: 'fresh-document' } };
+    const result = await f.composer.clearNewSessionDraft({ startupOnly: true });
+    assert.equal(result.action, cleared ? 'draft-cleared' : 'deferred', draft);
+    assert.equal(f.editor.value, cleared ? '' : draft);
+    if (!cleared) assert.equal(result.reason, 'DRAFT_NOT_STARTUP');
+    assert.equal(JSON.stringify(result).includes('enrollment_ticket'), false, 'draft text never leaves the page');
+    assert.equal(f.sends(), 0); f.dom.window.close();
+  }
+  const f = fixture({ draft: command });
+  f.dom.reconfigure({ url: 'https://chatgpt.com/c/existing' });
+  assert.equal(f.dom.window.eval(pageScript({ action: 'clear-new-draft', startupTemplate: startupCommand(STARTUP_TICKET_PLACEHOLDER),
+    startupPlaceholder: STARTUP_TICKET_PLACEHOLDER })).reason, 'CHAT_CHANGED', 'an existing conversation is never cleared');
+  assert.equal(f.editor.value, command); f.dom.window.close();
 });
 
 test('new conversation clearing preserves active generation and messages at entrypoint', () => {

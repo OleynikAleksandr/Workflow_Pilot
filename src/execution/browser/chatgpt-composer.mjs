@@ -1,4 +1,5 @@
 import { createChatGPTDOM, CHATGPT_SELECTORS, chatGPTDOMScript } from './chatgpt-dom.mjs';
+import { startupCommand, STARTUP_TICKET_PLACEHOLDER } from '../../contracts/context.mjs';
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 class ComposerError extends Error {
@@ -6,7 +7,7 @@ class ComposerError extends Error {
 }
 
 // Runs only in the visible ChatGPT document. No page internals, cookies or API requests.
-export function pageOperation({ action = 'inspect', text = '', requestId = '', expectedUrl = null, diagnose = false, draftToken = '', attachments = [], attachmentIndex = null } = {}, dom = createChatGPTDOM(CHATGPT_SELECTORS)) {
+export function pageOperation({ action = 'inspect', text = '', requestId = '', expectedUrl = null, diagnose = false, draftToken = '', attachments = [], attachmentIndex = null, startupTemplate = '', startupPlaceholder = '' } = {}, dom = createChatGPTDOM(CHATGPT_SELECTORS)) {
   const { first } = dom;
   const editor = dom.editor();
   const busy = dom.busy();
@@ -134,6 +135,14 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
     // Explicit New Chat only. A conversation (even empty) is never cleared.
     if (location.pathname !== '/' || messages.length)
       return { ...result, action: 'deferred', reason: 'CHAT_CHANGED' };
+    // Restored startup command only: the exact template with one ticket, nothing added.
+    if (startupTemplate && draftLength) {
+      const ticket = actual.match(/"enrollment_ticket":"([a-f0-9]{64})"/)?.[1];
+      // Restored text may differ in whitespace only (the editor rewraps lines).
+      const compact = value => value.replace(/\s+/g, ' ').trim();
+      if (!ticket || !startupPlaceholder || compact(actual) !== compact(startupTemplate.split(startupPlaceholder).join(ticket)))
+        return { ...result, action: 'deferred', reason: 'DRAFT_NOT_STARTUP' };
+    }
     if (draftLength) {
       editor.focus();
       if (editor.tagName === 'TEXTAREA') {
@@ -362,14 +371,15 @@ export class ChatGPTComposer {
   sendUserMessage(args) { return this.traceDelivery('user-message', args, () => this.sendUserMessageInternal(args)); }
   deliver(args) { return this.traceDelivery('recovery', args, () => this.deliverInternal(args)); }
 
-  async clearNewSessionDraft({ canContinue = () => true } = {}) {
+  async clearNewSessionDraft({ canContinue = () => true, startupOnly = false } = {}) {
     if (!canContinue()) return { action: 'deferred', reason: 'CHAT_CHANGED' };
     const documentId = this.pageState?.current?.documentId;
     if (!documentId) return { action: 'deferred', reason: 'EDITOR_UNAVAILABLE' };
     // Verify the isolated observer's identity in the same renderer turn as deletion.
     // A queued operation from the previous document cannot erase the next chat.
     const code = `globalThis.__webPilotObserverDocumentId === ${JSON.stringify(documentId)}
-      ? ${pageScript({ action: 'clear-new-draft' })}
+      ? ${pageScript({ action: 'clear-new-draft', ...(startupOnly ? { startupTemplate: startupCommand(STARTUP_TICKET_PLACEHOLDER),
+        startupPlaceholder: STARTUP_TICKET_PLACEHOLDER } : {}) })}
       : ({ action: 'deferred', reason: 'CHAT_CHANGED' })`;
     const result = await this.contents.executeJavaScriptInIsolatedWorld(999, [{ code }], true);
     if (result.reason === 'DRAFT_CLEAR_FAILED')

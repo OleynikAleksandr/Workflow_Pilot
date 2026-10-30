@@ -134,6 +134,11 @@ test('orchestrator card and plan use current integration facts instead of an old
   assert.equal(currentPlanTasks({...project,planExecution:{execution_strategy:'sequential'}},execution),project.planView.tasks);
 });
 
+test('a kept new-chat draft is an attention reason of the executor, not silent waiting',()=>{
+  const status=executorStatus({id:'a',status:'RUNNING'},{controller:{state:{phase:'waiting-draft'}},pageState:{current:{state:{}}}},null);
+  assert.equal(status.phase,'attention');assert.match(status.label,/черновик/);
+});
+
 test('working UI separates report, acceptance and integration and renders addressed dialogue without HTML execution',async t=>{
   const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));
   t.after(()=>dom.window.close());const ui=mountPanel({document:dom.window.document});ui.mode('workflow');
