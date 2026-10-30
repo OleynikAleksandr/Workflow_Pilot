@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1325,
+  "plan_revision": 1327,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -1043,8 +1043,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "INSTALL",
@@ -1090,7 +1090,8 @@
           "DOCS"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -1168,7 +1169,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1325
+Revision: 1327
 
 ## Цель
 
@@ -1264,8 +1265,8 @@ Revision: 1325
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить выпуск на этот Mac — Ожидает
-  - Git Commit: [PENDING] delivery: установить выпуск на этот mac
+- [DONE] INSTALL: Установить выпуск на этот Mac — Завершено
+  - Git Commit: [DONE] delivery: установить выпуск на этот mac
   - Reference: shared-conversation-mac / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
