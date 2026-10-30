@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1378,
+  "plan_revision": 1380,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -61,7 +61,8 @@
       "docs/modules/control.md",
       "docs/modules/sdk-messaging.md",
       "docs/modules/chatgpt-search-extension.md",
-      "docs/acceptance/chat-only-startup.md"
+      "docs/acceptance/chat-only-startup.md",
+      "docs/acceptance/shared-conversation-mac.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -71,7 +72,7 @@
       {
         "path": "docs/planning/cdp-startup-input.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "d5ffd6ca16396ebe18d871a0cb5e9fd0f7e01942"
       },
       {
         "path": "docs/modules/chat-only-startup.md",
@@ -176,8 +177,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "DOCS",
@@ -201,7 +202,8 @@
         "docs/modules/control.md",
         "docs/modules/sdk-messaging.md",
         "docs/modules/chatgpt-search-extension.md",
-        "docs/acceptance/chat-only-startup.md"
+        "docs/acceptance/chat-only-startup.md",
+        "docs/acceptance/shared-conversation-mac.md"
       ],
       "verification_ids": [],
       "id": "DOCS",
@@ -210,7 +212,24 @@
       "acceptance_criteria": [
         "Контракты старта описывают CDP-ввод вместо q-адреса и уточнённое правило клавиатуры; выпущенная spec удалена с точной Git blob ссылкой; каждый документ ≤ 28000 байт; живая проверка отмечена pending."
       ],
-      "expected_commit_message": "docs: актуализировать документацию проекта"
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/chat-only-startup.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/browser.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/chatgpt-search-extension.md",
+        "docs/modules/control.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/planning/cdp-startup-input.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -314,7 +333,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1378
+Revision: 1380
 
 ## Цель
 
@@ -332,10 +351,10 @@ Revision: 1378
   - Git Commit: [DONE] feat: Старт сессии через CDP-ввод
   - Reference: cdp-startup-input / CDP-START / implementation
   - Файлы: src/execution/browser/chatgpt-composer.mjs, src/execution/browser/session-runtime.mjs, src/control/context/context-session.mjs, src/contracts/context.mjs, src/contracts/startup-view.mjs, src/control/sessions/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/desktop-model.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/chatgpt-composer.test.mjs, tests/session-runtime.test.mjs, tests/context-session.test.mjs, tests/chatgpt-plugin.test.mjs, tests/startup-context.test.mjs, tests/dialogue-delivery.test.mjs, tests/session-opening-performance.test.mjs, tests/workspace-session.test.mjs, tests/backend-desktop-model.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/executor-background-startup.mjs, tests/executor-background-startup.test.mjs, tests/electron-smoke.mjs, tests/fixtures/search-extension-electron.cjs, scripts/check-search-extension.mjs, src/control/projects/service.mjs, docs/planning/cdp-startup-input.md
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS / implementation
-  - Файлы: docs/planning/cdp-startup-input.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/chat-only-startup.md, docs/modules/browser.md, docs/modules/chatgpt-plugin.md, docs/modules/current-actions.md, docs/modules/release.md, docs/modules/shared-conversation.md, docs/modules/orchestrator-startup.md, docs/modules/control.md, docs/modules/sdk-messaging.md, docs/modules/chatgpt-search-extension.md, docs/acceptance/chat-only-startup.md
+  - Файлы: docs/planning/cdp-startup-input.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/chat-only-startup.md, docs/modules/browser.md, docs/modules/chatgpt-plugin.md, docs/modules/current-actions.md, docs/modules/release.md, docs/modules/shared-conversation.md, docs/modules/orchestrator-startup.md, docs/modules/control.md, docs/modules/sdk-messaging.md, docs/modules/chatgpt-search-extension.md, docs/acceptance/chat-only-startup.md, docs/acceptance/shared-conversation-mac.md
 - [TODO] RELEASE: Собрать macOS Windows Linux 0.6.4 — Ожидает
   - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.4
   - Reference: cdp-startup-input / RELEASE / implementation
