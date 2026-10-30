@@ -6,7 +6,8 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
-import {FRESH_DOCUMENT_MS} from '../src/control/plugin/conversation-freshness.mjs';
+import {FRESH_DOCUMENT_MS,pauseForBranch} from '../src/control/plugin/conversation-freshness.mjs';
+import {ExecutionControl} from '../src/control/workflow/execution-control.mjs';
 
 const meta=id=>({'openai/session':id});
 // One backend page per participant. A reload creates a new document and the
@@ -208,4 +209,40 @@ test('renderer recovery transfers the confirmation; without native identities no
   const other=await handledTask(t);const p=other.f.page('e');p.documentId='unrelated-document';
   await other.observe();other.f.advance(2500);await other.observe();
   assert.equal(other.message().reply_observed,false);
+});
+
+test('a branched conversation after a service delivery pauses the plan; Continue clears only the remembered turn',async t=>{
+  const {f,b,e,message,observe}=await handledTask(t);
+  const p=f.page('e');Object.assign(p,{busy:true,stopped:false,canSend:false});await observe();
+  Object.assign(p,{busy:false,stopped:true,canSend:true,assistantRevision:2,turnId:'a2',userTurnId:'u2',turnVariant:'multiple'});
+  await observe();f.advance(600);await observe();
+  assert.equal(message().reply_observed,true);
+  const conflict=run(f,b).events.find(event=>event.event_type==='freshness.branch');
+  assert.equal(conflict.user_turn_id,'u2');
+  // The standard program pause: the one button shows Continue; history and outbox stay.
+  const control=new ExecutionControl();control.write('/workspace','s','running');
+  pauseForBranch(control,'/workspace','s',run(f,b).events);
+  assert.equal(control.view('/workspace','s').state,'pausing');control.settle('/workspace','s',{busy:false});
+  assert.deepEqual({state:control.view('/workspace','s').state,code:control.view('/workspace','s').issue.code},{state:'paused',code:'CONVERSATION_BRANCH'});
+  assert.match(control.view('/workspace','s').issue.message,/выберите нужную ветку и нажмите «Продолжить»/);
+  const next=await f.c.workflow.enqueue(e,{key:'after-branch',kind:'continue',text:'Дальше'});
+  assert.equal((await f.c.claimReady({...b,message_id:next.message_id})).reason,'freshness-conflict-branch');
+  assert.equal(attempts(f,b),1,'no repeated send');
+  // Continue: the user chose the branch for the remembered turn.
+  await f.c.workflow.grant(f.o,'paused');await f.c.workflow.grant(f.o,'running');
+  assert.ok(run(f,b).events.some(event=>event.event_type==='freshness.branch_resolved'));
+  assert.equal(pauseForBranch(control,'/workspace','s',[]),null);
+  const current=await f.rebind({run_id:b.run_id,participant_id:b.participant_id},'e');
+  const ticket=await f.c.claimReady({...current,message_id:next.message_id});assert.ok(ticket.delivery_attempt_id);
+  await f.c.report({...current,...ticket,outcome:'accepted'});
+  // The same switch on the remembered turn raises nothing; a newer branched turn does.
+  const member=Object.values(run(f,b).members).find(m=>m.role==='E');
+  f.c.freshness.turnEnded(run(f,b),member,{...run(f,b).messages.at(-1),intent:true},{...p,userTurnId:'u2',turnVariant:'multiple'});
+  assert.equal(member.branch_conflict,undefined);
+  f.c.freshness.turnEnded(run(f,b),member,{...run(f,b).messages.at(-1),intent:true},{...p,userTurnId:'u3',turnVariant:'multiple'});
+  assert.equal(member.branch_conflict.user_turn_id,'u3');
+  // unknown never blocks and is journaled once.
+  delete member.branch_conflict;const plain={...run(f,b).messages.at(-1),intent:true};
+  f.c.freshness.turnEnded(run(f,b),member,plain,{...p,turnVariant:'unknown'});
+  assert.equal(member.branch_conflict,undefined);assert.equal(plain.variant_unknown,true);
 });

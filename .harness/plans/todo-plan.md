@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1311,
+  "plan_revision": 1313,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -548,8 +548,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "BRANCH",
@@ -568,7 +568,8 @@
         "tests/chatgpt-dom.test.mjs",
         "tests/conversation-freshness.test.mjs",
         "src/control/workflow/plan-continuation.mjs",
-        "src/control/workflow/coordination.mjs"
+        "src/control/workflow/coordination.mjs",
+        "src/control/plugin/workflow-channel.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -603,7 +604,19 @@
           "REBASE"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/page-state.mjs",
+        "src/control/plugin/conversation-freshness.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "tests/page-state.test.mjs",
+        "tests/chatgpt-dom.test.mjs",
+        "tests/conversation-freshness.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1061,7 +1074,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1311
+Revision: 1313
 
 ## Цель
 
@@ -1115,10 +1128,10 @@ Revision: 1311
   - Файлы: src/control/plugin/workflow-channel.mjs, src/control/plugin/conversation-freshness.mjs, src/control/plugin/assignment-dialogue.mjs, src/execution/browser/session-runtime.mjs, tests/conversation-freshness.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/session-runtime.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: FRESH
-- [TODO] BRANCH: Обнаружение ветвления разговора — Ожидает
-  - Git Commit: [PENDING] feat: обнаружить ветвление разговора
+- [DONE] BRANCH: Обнаружение ветвления разговора — Завершено
+  - Git Commit: [DONE] feat: обнаружить ветвление разговора
   - Reference: shared-conversation-mac / BRANCH / implementation
-  - Файлы: src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/control/plugin/conversation-freshness.mjs, src/control/workflow/executor-session.mjs, tests/page-state.test.mjs, tests/chatgpt-dom.test.mjs, tests/conversation-freshness.test.mjs, src/control/workflow/plan-continuation.mjs, src/control/workflow/coordination.mjs
+  - Файлы: src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, src/control/plugin/conversation-freshness.mjs, src/control/workflow/executor-session.mjs, tests/page-state.test.mjs, tests/chatgpt-dom.test.mjs, tests/conversation-freshness.test.mjs, src/control/workflow/plan-continuation.mjs, src/control/workflow/coordination.mjs, src/control/plugin/workflow-channel.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: REBASE
 - [TODO] DIAG: Диагностика identity клиентов — Ожидает

@@ -19,3 +19,13 @@ test('nested old/new message wrappers count once; code is not message evidence',
   const d = fixture('<div data-message-author-role="user"><div data-user-message-bubble>one</div></div><pre><div data-user-message-bubble>fake</div></pre>');
   const api = d.window.eval(chatGPTDOMScript()); assert.equal(api.messages('user').length, 1);
 });
+
+test('turn variant detection keeps public DOM exports and never clicks a switch', () => {
+  const d = fixture('<article><div data-message-author-role="user">one</div><button aria-label="Предыдущий ответ"></button></article>');
+  const api = d.window.eval(chatGPTDOMScript());let clicks = 0;
+  d.window.document.querySelector('button').addEventListener('click', () => clicks++);
+  assert.equal(api.turnVariant(api.messages('user').at(-1)), 'multiple');assert.equal(api.turnVariant(null), 'unknown');
+  assert.equal(clicks, 0);
+  for (const name of ['selectors','visible','first','messages','connectionError','editor','account','sendButton','busy'])
+    assert.ok(api[name], name);
+});

@@ -314,3 +314,19 @@ test('observer finds native IDs inside Work wrappers and avoids positional fallb
   assert.equal(messages.at(-1).state.turnIdentitySource, 'cycle');
   dispose(); w.close();
 });
+
+test('the observer reports a variant switch of the newest user turn, read only', async t => {
+  const f = await accountFixture(t, '<article data-testid="conversation-turn-1"><div data-message-author-role="user" data-message-id="u-1">Первый вопрос</div></article>');
+  assert.equal(f.state().turnVariant, 'single');
+  const article = f.w.document.createElement('article');article.dataset.testid = 'conversation-turn-3';
+  article.innerHTML = '<div data-message-author-role="user" data-message-id="u-2">Исправленный вопрос</div>'
+    + '<div><button aria-label="Previous response"></button><span>2/2</span><button aria-label="Next response"></button></div>';
+  f.w.document.body.append(article); await turn();
+  assert.equal(f.state().turnVariant, 'multiple');
+  const quoted = await accountFixture(t, '<article><div data-message-author-role="user" data-message-id="u-3">Цитата 2/3 из текста</div></article>');
+  assert.equal(quoted.state().turnVariant, 'single', 'a counter inside the message text is not a switch');
+  const empty = await accountFixture(t);
+  assert.equal(empty.state().turnVariant, 'unknown');
+  assert.equal(normalizePageObservation({ version: 1, documentId: 'document-0001', seq: 1, state: { url: '', editorRevision: 0, draftRevision: 0,
+    userMessageCount: 0, userMessagesRevision: 0, editorAvailable: false, writable: false, busy: false, sendEnabled: false, turnVariant: 'forged' } }).state.turnVariant, 'unknown');
+});

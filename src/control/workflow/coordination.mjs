@@ -22,6 +22,7 @@ import { readExecutionMode, chooseExecutionMode } from '@webpilot/workflow-kit/l
 import { readPlanningOwner } from '@webpilot/workflow-kit/lib/planning-owner';
 import { safePath } from '@webpilot/workflow-kit/lib/common';
 import { desktopFiles } from '../../execution/facade.mjs';
+import {pauseForBranch} from '../plugin/conversation-freshness.mjs';
 
 // The 0.6.115 coordination rules live here. Desktop supplies presentation/readiness and persistence.
 export function createWorkflowCoordination({store, setup:workspaceSetup, plans:sessionPlans,
@@ -588,6 +589,7 @@ return Object.freeze({
     if(uncertain&&['running','pausing'].includes(executionControl.view(parent.workspace,run.grant.scope_id).state)){
       executionControl.write(parent.workspace,run.grant.scope_id,'paused','unknown','Доставка '+uncertain.message_id+' — '+uncertain.delivery+'. Автоматического повтора нет.');
     }
+    pauseForBranch(executionControl,parent.workspace,run.grant?.scope_id,events);
     const global=!events.length||events.some(e=>/^(plan\.|backend\.|project\.)/.test(e.event_type));
     const affected=new Set(events.flatMap(e=>{
       const message=run.messages.find(m=>m.message_id===e.message_id);

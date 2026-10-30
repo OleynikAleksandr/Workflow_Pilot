@@ -8,7 +8,15 @@ export const MAX_FRESHNESS_RELOADS=3;
 const MANUAL_INPUT_QUIET_MS=10000;
 const FOREIGN_TURN_MS=15000,FOREIGN_RETRY_MAX_MS=5*60*1000;
 const HOLD_MS=1000;
-export const FRESHNESS_REASONS=Object.freeze({reload:'freshness-reload',draft:'freshness-conflict-draft',
+export const BRANCH_MESSAGE='Разговор разветвился: откройте его, выберите нужную ветку и нажмите «Продолжить».';
+// A branched conversation pauses the plan by the standard program pause; the one
+// button then shows Continue, and the current executors keep their outbox.
+export function pauseForBranch(executionControl,workspace,scopeId,events){
+  if(!scopeId||!events.some(e=>e.event_type==='freshness.branch'))return null;
+  if(!['running','pausing'].includes(executionControl.view(workspace,scopeId).state))return null;
+  return executionControl.block(workspace,scopeId,{code:'CONVERSATION_BRANCH',message:BRANCH_MESSAGE},{busy:true});
+}
+export const FRESHNESS_REASONS=Object.freeze({branch:'freshness-conflict-branch',reload:'freshness-reload',draft:'freshness-conflict-draft',
   turnEnd:'awaiting-turn-end',deferred:'freshness-reload-deferred',unavailable:'freshness-unavailable'});
 
 export class ConversationFreshness {
@@ -49,6 +57,7 @@ export class ConversationFreshness {
       &&m.yielded?.page);
   }
   blockReason(run,member,message,page){
+    if(member.branch_conflict&&message.kind!=='startup-context')return FRESHNESS_REASONS.branch;
     if(!this.enabled||message.kind==='startup-context')return null;
     const s=this.state(member.target,page);
     if(this.fresh(s,page))return null;
@@ -90,6 +99,26 @@ export class ConversationFreshness {
     queueMicrotask(()=>{Promise.resolve(this.reloadPort(target)).catch(()=>{});});
     this.c.event(run,'freshness.reload',{participant_id:member.id,message_id:message.message_id,reason:'foreign-turn',attempt:count});
     return true;
+  }
+  // After the end of a turn delivered by the service: a variant switch on the
+  // newest user turn means the conversation branched. The conflict is durable,
+  // pauses the plan and is cleared only by Continue for that remembered turn.
+  turnEnded(run,member,message,page){
+    if(!message.intent||!page)return;
+    if(page.turnVariant==='unknown'){
+      if(!message.variant_unknown){message.variant_unknown=true;this.c.event(run,'freshness.variant_unknown',{participant_id:member.id,message_id:message.message_id});}
+      return;
+    }
+    if(page.turnVariant!=='multiple'||!page.userTurnId||member.branch_conflict||member.branch_acknowledged===page.userTurnId)return;
+    member.branch_conflict={user_turn_id:page.userTurnId,message_id:message.message_id,at:this.c.now()};
+    this.c.event(run,'freshness.branch',{participant_id:member.id,message_id:message.message_id,user_turn_id:page.userTurnId});
+  }
+  // Continue is the user's decision for the remembered turn; a newer branched turn raises a new conflict.
+  resolveBranches(run){
+    for(const member of Object.values(run.members))if(member.branch_conflict){
+      member.branch_acknowledged=member.branch_conflict.user_turn_id;delete member.branch_conflict;
+      this.c.event(run,'freshness.branch_resolved',{participant_id:member.id});
+    }
   }
   claimed(member,page){const s=this.state(member.target,page);s.claims++;s.consecutive=0;s.holdUntil=0;}
   forget(sessionIds){for(const id of sessionIds)this.pages.delete(id);}

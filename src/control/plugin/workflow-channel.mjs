@@ -60,6 +60,7 @@ export class WorkflowChannel {
       'PERMISSION_CHANGED','Разрешение уже изменилось; прежняя команда не применяется.');
     const generation=Math.max(old?.generation??0,...Object.values(run.members).map(m=>m.generation))+1;
     run.grant={scope_id:target.scope_id,generation,phase,active,boot:c.backendId};
+    if(phase==='running')c.freshness.resolveBranches(run);
     c.assignment.invalidateAuthorizations(run);
     for(const member of Object.values(run.members)){member.generation=generation;member.stopped=!active;
       if(member.role==='O')member.target.scope_id=target.scope_id;}
@@ -381,6 +382,7 @@ export class WorkflowChannel {
       delete message.handlingGate;
       this.c.event(run,'freshness.rebased',{participant_id:member.id,message_id:message.message_id});
       this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id,evidence:'rebased-fresh-idle'});
+      this.c.freshness.turnEnded(run,member,message,page);
       return;
     }
     // Delivered before a reload of this page and handled after it: the gate follows its own document.
@@ -419,6 +421,7 @@ export class WorkflowChannel {
     if(member.deliveryGate?.message_id===message.message_id)delete member.deliveryGate;
     delete message.handlingGate;
     this.c.event(run,'reply.observed',{participant_id:member.id,message_id:message.message_id,evidence:'read-yield-fresh-idle'});
+    this.c.freshness.turnEnded(run,member,message,page);
   }
   syncProbes(run){
     if(this.c.disposed)return;

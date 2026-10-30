@@ -19,6 +19,7 @@ export function executorPageState(record) {
     busy:!!page?.busy,turnId:page?.turnId??null,assistantRevision:page?.assistantRevision??0,
     connectionError:page?.connectionError??null,userTurnId:page?.userTurnId??null,
     turnIdentitySource:page?.turnIdentitySource??'none',manualInputRevision:page?.manualInputRevision??0,
+    turnVariant:page?.turnVariant??'unknown',
     manualSendRevision:page?.manualSendRevision??0,
     manualStopped:!!blocked,
     legacySendUnknown:!!(record?.primaryAutomation?.automation??record?.executor?.automation)?.unknown(project)

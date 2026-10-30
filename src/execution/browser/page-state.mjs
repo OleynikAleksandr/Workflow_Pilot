@@ -46,6 +46,7 @@ export function normalizePageObservation(message) {
       turnId: typeof state.turnId === 'string' && /^[a-f0-9]{1,8}$/.test(state.turnId) ? state.turnId : '',
       userTurnId: typeof state.userTurnId === 'string' && /^[a-f0-9]{1,8}$/.test(state.userTurnId) ? state.userTurnId : '',
       turnIdentitySource: ['native', 'cycle', 'none'].includes(state.turnIdentitySource) ? state.turnIdentitySource : 'none',
+      turnVariant: ['single', 'multiple', 'unknown'].includes(state.turnVariant) ? state.turnVariant : 'unknown',
       lastMessageRole: ['user', 'assistant'].includes(state.lastMessageRole) ? state.lastMessageRole : null,
       draftPresent: state.draftPresent === true,
       draftRevision: state.draftRevision,

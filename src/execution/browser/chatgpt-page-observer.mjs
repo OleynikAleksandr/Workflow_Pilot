@@ -59,6 +59,7 @@ export function installPageObserver(dom, send) {
       connectionError: dom.connectionError(),
       busy: dom.busy(), sendEnabled: !!button && !button.disabled && button.getAttribute('aria-disabled') !== 'true',
       manualStopRevision, manualInputRevision, assistantRevision: reportedAssistantRevision, turnId, userTurnId, turnIdentitySource, lastMessageRole, draftPresent: !!editorText(editor),
+      turnVariant: dom.turnVariant ? dom.turnVariant(user) : 'unknown',
       manualSendRevision, draftRevision, userMessageCount: dom.messages('user').length, userMessagesRevision,
     };
   };

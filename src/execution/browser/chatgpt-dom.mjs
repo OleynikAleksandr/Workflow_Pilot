@@ -10,6 +10,9 @@ export const CHATGPT_SELECTORS = Object.freeze({
   scroller: '.thread-scroll-container',
   login: '[data-testid="login-button"],[data-testid="signup-button"],a[href="/auth/login"],a[href="https://chatgpt.com/auth/login"]',
   profile: '[data-testid="profile-button"],[data-testid="accounts-profile-button"],[data-testid="user-menu-button"],[data-testid="profile-menu-button"],[data-testid="user-menu-dropdown"]',
+  // Variant switch of an edited user turn ("< 2/2 >"); read only, never clicked.
+  variantSwitch: 'button[aria-label="Previous response"],button[aria-label="Next response"],button[aria-label="Предыдущий ответ"],button[aria-label="Следующий ответ"],button[aria-label="Previous message"],button[aria-label="Next message"]',
+  turn: 'article,[data-testid^="conversation-turn-"]',
 });
 
 export function createChatGPTDOM(selectors) {
@@ -73,6 +76,18 @@ export function createChatGPTDOM(selectors) {
     }
     return null;
   };
-  return { selectors, visible, first, messages, connectionError, editor, account, sendButton, busy: () => !!first(selectors.stop) };
+  // single | multiple | unknown for the last user turn: whether ChatGPT shows
+  // a variant switch, which marks a branch made by editing that turn.
+  const turnVariant = node => {
+    if (!node) return 'unknown';
+    const turn = node.closest(selectors.turn) ?? node.parentElement;
+    if (!turn) return 'unknown';
+    const switches = [...turn.querySelectorAll(selectors.variantSwitch)].filter(e => !e.closest('pre,code,[contenteditable="true"]'));
+    const counter = [...turn.querySelectorAll('div,span')].some(e => e.children.length === 0
+      && /^\s*\d+\s*\/\s*\d+\s*$/.test(e.textContent ?? '') && Number((e.textContent ?? '').split('/')[1]) > 1
+      && !e.closest(selectors.user + ',' + selectors.assistant + ',pre,code'));
+    return switches.length || counter ? 'multiple' : 'single';
+  };
+  return { selectors, visible, first, messages, connectionError, editor, account, sendButton, turnVariant, busy: () => !!first(selectors.stop) };
 }
 export const chatGPTDOMScript = () => `(${createChatGPTDOM.toString()})(${JSON.stringify(CHATGPT_SELECTORS)})`;
