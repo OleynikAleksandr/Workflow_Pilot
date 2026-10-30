@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1389,
+  "plan_revision": 1391,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -69,7 +69,8 @@
       "docs/modules/chatgpt-search-extension.md",
       "docs/acceptance/chat-only-startup.md",
       "docs/acceptance/shared-conversation-mac.md",
-      "docs/planning/communication-journal-growth.md"
+      "docs/planning/communication-journal-growth.md",
+      "docs/modules/dialogue-timing.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -94,7 +95,7 @@
       {
         "path": "docs/planning/communication-journal-growth.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "6c59cc5a0cfea87bf9fc225feb6dadd9c12ca9e0"
       }
     ],
     "include_last_completed_task": false,
@@ -387,8 +388,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "DOCS-2",
@@ -402,13 +403,35 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/communication-journal-growth.md"
+        "docs/planning/communication-journal-growth.md",
+        "README.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/current-actions.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/release.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
-      "expected_commit_message": "docs: актуализировать документацию проекта"
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/current-actions.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/release.md",
+        "docs/planning/communication-journal-growth.md"
+      ]
     },
     {
       "id": "RELEASE-2",
@@ -519,7 +542,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1389
+Revision: 1391
 
 ## Цель
 
@@ -557,10 +580,10 @@ Revision: 1389
   - Git Commit: [DONE] feat: Линейный рост журнала связи
   - Reference: cdp-startup-input / JOURNAL / implementation
   - Файлы: src/execution/plugin/communication-store.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/plugin-communication-store.test.mjs, tests/plugin-communication.test.mjs, tests/chatgpt-plugin.test.mjs, tests/workflow-channel.test.mjs, docs/planning/communication-journal-growth.md
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/communication-journal-growth.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/communication-journal-growth.md, README.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/sdk-messaging.md, docs/modules/shared-conversation.md, docs/modules/current-actions.md, docs/acceptance/shared-conversation-mac.md, docs/modules/chat-only-startup.md, docs/modules/release.md
 - [TODO] RELEASE-2: Собрать macOS Windows Linux 0.6.5 — Ожидает
   - Git Commit: [PENDING] feat: Собрать macOS Windows Linux 0.6.5
   - Reference: cdp-startup-input / RELEASE-2 / implementation

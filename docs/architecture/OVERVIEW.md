@@ -1,6 +1,6 @@
 # Workflow Pilot
 
-Workflow Pilot 0.6.4 — локальные проекты, Workflow Kit 1.10.5 и обычный ChatGPT Chat, собственный MCP-исполнитель и [панель](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
+Workflow Pilot 0.6.5 — локальные проекты, Workflow Kit 1.10.5 и обычный ChatGPT Chat, собственный MCP-исполнитель и [панель](../modules/chatgpt-plugin.md). Репозиторий: https://github.com/OleynikAleksandr/Workflow_Pilot. [Донор](../../PROVENANCE.md) заморожен; его профиль, cookies и службы не импортируются.
 
 Перед первой страницей ChatGPT backend подготавливает [официальное расширение поиска](../modules/chatgpt-search-extension.md) в своей persistent session: проверенная автоматическая загрузка/установка, затем локальный кэш. Новые сессии используют [Chat-only старт](../modules/chat-only-startup.md): короткая команда доверенным CDP-вводом и одним Enter в проверенный корень (с 0.6.4, без `?q=`), сохранённая попытка и отдельные подтверждения регистрации, адреса и контекста. Выбора режима и чтения старых Work-сессий нет. Schema 9 добавляет отдельный случайный workspaceId, сохраняя projectId/sessionId прежних Chat; вход и принадлежность страницы проверяются независимо от переключателя. [Выбор пользователя](../modules/user-choice.md), роли, Kit и SDK-диалог сохраняются. [Живая приёмка](../acceptance/chat-only-startup.md) ChatGPT и native Windows/Linux остаётся NOT_RUN.
 

@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.6.4 / Kit 1.10.5, протокол панели 9, build `0.6.4-communication-9`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
+Workflow Pilot 0.6.5 / Kit 1.10.5, протокол панели 9, build `0.6.5-communication-9`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
 
 ## Пользовательский путь
 
@@ -87,7 +87,7 @@ Legacy-only join/send_message/probe/enable — отдельный [ручной 
 
 Control PluginCommunication сериализует мутации и подтверждает после append+fsync. Проверенные факты проекта/назначения поступают через PluginProjects и узкий DialogueDelivery; протокол не читает Kit, fs или Electron. Execution обслуживает приватный мост и store; Frontend — SDK. Границы [Control](control.md)/[Execution](execution.md) сохраняются.
 
-WAL в собственном `plugin-communication`: legacy schema 1, workflow registry/WAL 2; состояние и последовательные события с SHA-цепочкой, без второго snapshot. Неизвестный формат отклоняется до записи, старый журнал не мигрирует молча. Контекст — неизменяемый файл по hash с fsync/O_NOFOLLOW и проверкой SHA при чтении. Повреждение, неполный хвост, внешний размер или symlink блокируют запись и сохраняют исходник/доступный префикс. На POSIX синхронизируется также каталог. Лимиты: 100 runs, 256 приглашений, 2048 workflow-сообщений (256 legacy), 20000 событий/run, WAL до 512 MiB. Превышение — явный отказ.
+WAL в собственном `plugin-communication`: legacy schema 1, workflow registry/WAL 2; состояние и события с SHA-цепочкой; сжатие снимком ([журнал](dialogue-timing.md#журнал-связи)). Неизвестный формат отклоняется до записи, старый журнал не мигрирует молча. Контекст — неизменяемый файл по hash с fsync/O_NOFOLLOW и проверкой SHA при чтении. Повреждение, неполный хвост, внешний размер или symlink блокируют запись, сохраняя исходник/доступный префикс. На POSIX fsync и каталога. Лимиты: 100 runs, 256 приглашений, 2048 workflow-сообщений (256 legacy), 20000 событий/run (диагностика ≤16000), WAL до 512 MiB. Превышение — явный отказ.
 
 Новый panel_instance_id создаётся при mount. Handshake → recover → bind → sync; поздний SDK восстанавливается ограниченно без модельных ходов. Исторический tool-result не управляет актуальным допуском. Sync при ожидании разрешения — раз в две секунды; рабочий wait продлевает живую lease сам. Backoff ошибок 250–5000 мс; binding/version/storage прекращает доставку, ошибка не повторяет Send. Refresh объединён (500 мс) и не блокирует доставку.
 
