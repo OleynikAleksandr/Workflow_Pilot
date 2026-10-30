@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1323,
+  "plan_revision": 1325,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -992,8 +992,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "RELEASE",
@@ -1037,7 +1037,10 @@
           "DOCS"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1165,7 +1168,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1323
+Revision: 1325
 
 ## Цель
 
@@ -1255,8 +1258,8 @@ Revision: 1323
   - Файлы: docs/planning/shared-conversation-mac.md, docs/planning/shared-conversation-mac-freshness.md, docs/planning/shared-backend-mobile-followup.md, README.md, docs/architecture/OVERVIEW.md, docs/modules/sdk-messaging.md, docs/modules/chatgpt-plugin.md, docs/modules/backend.md, docs/modules/native-window.md, docs/modules/browser.md, docs/modules/current-actions.md, docs/modules/release.md, docs/acceptance/shared-conversation-mac.md, docs/modules/shared-conversation.md
   - Параллельность: исключительное выполнение
   - Зависимости: CONTRACT, ATTEST, OWNER, OBSERVER, FRESH, REBASE, BRANCH, DIAG, UI, COMPAT, VERIFY
-- [TODO] RELEASE: Собрать macOS Windows Linux — Ожидает
-  - Git Commit: [PENDING] delivery: собрать macos windows linux
+- [DONE] RELEASE: Собрать macOS Windows Linux — Завершено
+  - Git Commit: [DONE] delivery: собрать macos windows linux
   - Reference: shared-conversation-mac / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
