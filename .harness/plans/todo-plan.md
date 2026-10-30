@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1364,
+  "plan_revision": 1366,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -150,7 +150,7 @@
       {
         "path": "docs/planning/start-not-sent-retry.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "c01c93019c5784d9518e0ac5bc53a18ebcf10583"
       }
     ],
     "include_last_completed_task": false,
@@ -1725,8 +1725,8 @@
     {
       "id": "DOCS-4",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "DOCS-4",
@@ -1740,14 +1740,34 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/start-not-sent-retry.md"
+        "docs/planning/start-not-sent-retry.md",
+        "README.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/acceptance/shared-conversation-mac.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/planning/start-not-sent-retry.md"
+      ]
     },
     {
       "id": "RELEASE-4",
@@ -1868,7 +1888,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1364
+Revision: 1366
 
 ## Цель
 
@@ -2054,10 +2074,10 @@ Revision: 1364
   - Файлы: src/control/context/context-session.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/sidebar.mjs, src/contracts/backend.mjs, package.json, package-lock.json, tests/context-session.test.mjs, tests/panel-dialogue-view.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/startup-view.mjs, docs/planning/start-not-sent-retry.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-4: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: shared-conversation-mac / DOCS-4 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/start-not-sent-retry.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/start-not-sent-retry.md, README.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/current-actions.md, docs/modules/release.md, docs/modules/sdk-messaging.md, docs/modules/shared-conversation.md, docs/acceptance/shared-conversation-mac.md
   - Параллельность: исключительное выполнение
   - Зависимости: NOT-SENT
 - [TODO] RELEASE-4: Собрать macOS Windows Linux 0.6.3 — Ожидает
