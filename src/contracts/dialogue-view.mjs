@@ -8,6 +8,8 @@ export function executionIssue(error) {
     reason:error.message,userAction:'Сохраните или зафиксируйте свои изменения в main, затем нажмите «Продолжить».'};
   if(['LOGIN_REQUIRED','AUTH_REQUIRED','SIGNED_OUT'].includes(code))return {phase:'attention',label:'Нужен вход в ChatGPT',
     reason:error.message,userAction:'Войдите в свой аккаунт ChatGPT в указанной сессии.'};
+  if(code==='CONVERSATION_BRANCH')return {phase:'attention',label:'Разговор разветвился',
+    reason:error.message,userAction:'Откройте разговор, выберите нужную ветку и нажмите «Продолжить».'};
   return {phase:'stopped',label:'Работа остановлена',reason:error?.message??'Причина уточняется; подробности доступны в диагностике.'};
 }
 export function notificationActivity(recovery){
@@ -30,6 +32,7 @@ export function assignmentStage({phase,status,dialogue,block,channel,physical}={
   if(channel&&!channel.sdk)return {phase:'starting',label:'Ожидаем подключение SDK и привязку панели'};
   if(channel&&!channel.permitted)return {phase:'waiting',label:'Связь плана приостановлена'};
   const recovery=notificationActivity(channel?.incoming?.recovery);if(recovery)return recovery;
+  const conflict=channel?.incoming&&!channel.incoming.read&&deliveryAttention(channel.incoming.reason);if(conflict)return conflict;
   if(block||channel?.blocked)return {phase:'question',label:'Вопрос оркестратору · ожидаем решение'};
   if(dialogue?.acceptance)return {phase:'accepted',label:'Результат принят оркестратором · ожидаем интеграцию'};
   if(dialogue?.result)return {phase:'review',label:channel?.result?.read
@@ -43,7 +46,18 @@ export function assignmentStage({phase,status,dialogue,block,channel,physical}={
   return {phase:'waiting',label:'Задание получено · ожидаем следующий шаг'};
 }
 
+// Server-page delivery: neutral waits resolve themselves; conflicts need the user.
+export const DELIVERY_ATTENTION=Object.freeze({
+  'freshness-conflict-draft':{label:'Черновик задерживает доставку',reason:'Отправьте или очистите черновик в окне Workflow Pilot; черновик не стирается.'},
+  'freshness-unavailable':{label:'Серверная страница не готова к доставке',reason:'Откройте разговор во встроенном окне Workflow Pilot; после загрузки страницы доставка продолжится.'},
+  'freshness-conflict-branch':{label:'Разговор разветвился',reason:'Откройте разговор, выберите нужную ветку и нажмите «Продолжить».'},
+});
+export const deliveryAttention=reason=>DELIVERY_ATTENTION[reason]?{phase:'attention',...DELIVERY_ATTENTION[reason]}:null;
 const waits={
+  'owner-unavailable':'Доставку выполняет служба Workflow Pilot; ожидаем панель её серверной страницы.',
+  'freshness-reload':'Обновляем серверную страницу разговора перед доставкой.',
+  'freshness-reload-deferred':'Обновление серверной страницы отложено до конца отправки или ручного ввода.',
+  'awaiting-turn-end':'Ожидаем подтверждение конца хода.',
   'previous-message':'Предыдущая передача ещё не подтверждена.',
   'recipient-unavailable':'Восстанавливаем соединение с чатом получателя.',
   'recipient-connection-error':'Соединение с получателем прервано.',
@@ -91,6 +105,8 @@ export function planActivity({run={},execution={},channel,physical}={}) {
         'Проверьте чат получателя. Автоматического повтора нет.','Канал связи');
       if(incoming.reason==='manual-stop')return current('attention','Отправка остановлена вручную',
         'Продолжите работу в чате получателя.','Канал связи');
+      const conflict=deliveryAttention(incoming.reason);
+      if(conflict)return current('attention',conflict.label+task,conflict.reason,'Канал связи');
       const label=incoming.delivery==='accepted'?'Сообщение принято ChatGPT'+task
         :preparation&&recipient==='O'
         ?channel.sdk===false?'Восстанавливаем соединение с оркестратором'

@@ -97,6 +97,7 @@ test('without an attested owner delivery waits neutrally; Stop and the choice re
   const run=f.c.runs.get(observer.run_id);
   assert.equal(run.messages[0].delivery,'pending');assert.ok(!run.messages[0].read);
   assert.equal(run.events.some(e=>/unknown|denied/.test(e.event_type)),false,'not a refusal and not UNKNOWN');
+  assert.equal(f.c.workflow.progress('o').incoming.reason,'owner-unavailable','the view names the missing owner neutrally');
   const stopped=await f.c.stop({...observer,scope:'participant'});
   assert.equal(stopped.stopped,true,'explicit Stop of the plan from any client');
   assert.equal(message.delivery,'pending');

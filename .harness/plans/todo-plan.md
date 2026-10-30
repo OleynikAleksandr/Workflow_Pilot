@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1315,
+  "plan_revision": 1317,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -694,8 +694,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "UI",
@@ -714,7 +714,9 @@
         "tests/work-progress.test.mjs",
         "tests/work-progress-scenario.test.mjs",
         "tests/panel-dialogue-view.test.mjs",
-        "tests/sidebar.test.mjs"
+        "tests/sidebar.test.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/plugin-delivery-ownership.test.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -748,7 +750,13 @@
           "DIAG"
         ]
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "src/contracts/dialogue-view.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/plugin-delivery-ownership.test.mjs"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -1095,7 +1103,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1315
+Revision: 1317
 
 ## Цель
 
@@ -1161,10 +1169,10 @@ Revision: 1315
   - Файлы: tools/codex-app-server-mcp/plugin.py, src/execution/plugin/bridge.mjs, src/control/plugin/communication.mjs, src/backend/diagnostics.mjs, tests/codex-app-server-mcp.test.mjs, tests/backend-diagnostics.test.mjs, tests/plugin-communication.test.mjs, src/backend/desktop-model.mjs, src/backend/main.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, src/control/plugin/identity-trace.mjs, tests/chatgpt-plugin.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: OWNER
-- [TODO] UI: Состояния доставки в текущих действиях — Ожидает
-  - Git Commit: [PENDING] feat: состояния серверной доставки в интерфейсе
+- [DONE] UI: Состояния доставки в текущих действиях — Завершено
+  - Git Commit: [DONE] feat: состояния серверной доставки в интерфейсе
   - Reference: shared-conversation-mac / UI / implementation
-  - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/current-actions.mjs, src/frontend/plugin/panel.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/panel-dialogue-view.test.mjs, tests/sidebar.test.mjs
+  - Файлы: src/contracts/work-progress.mjs, src/contracts/dialogue-view.mjs, src/control/workflow/execution-projection.mjs, src/frontend/desktop/ui/current-actions.mjs, src/frontend/plugin/panel.mjs, tests/work-progress.test.mjs, tests/work-progress-scenario.test.mjs, tests/panel-dialogue-view.test.mjs, tests/sidebar.test.mjs, src/control/plugin/workflow-channel.mjs, tests/plugin-delivery-ownership.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: BRANCH, DIAG
 - [TODO] COMPAT: Совместимость, миграция и откат на 0.5.41 — Ожидает

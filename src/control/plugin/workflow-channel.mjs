@@ -77,6 +77,8 @@ export class WorkflowChannel {
     if(!panel.messageSupported)return 'sdk-unavailable';
     return null;
   }
+  // Panels of this member are bound, yet none is the attested server-page owner.
+  observedOnly(run,member){return [...this.c.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id);}
   // Only the attested owner panel makes the delivery channel live; observers never do.
   livePanel(run,member){const {panel}=this.c.ownership.owner(run,member);return !!panel&&this.panelIssue(run,member,panel)===null;}
   progress(sessionId) {
@@ -118,7 +120,7 @@ export class WorkflowChannel {
         sender_role:incoming.sender_role,recipient_role:member?.role??target.role,read:!!incoming.read,
         service_action:incoming.idempotency_key?.startsWith('prepare:')?'prepare'
           :incoming.idempotency_key?.startsWith('parked:')?'parked':incoming.idempotency_key?.startsWith('authorize:')?'authorize':null,
-        handled:!!incoming.yielded,delivery:incoming.delivery,recovery:notificationRecovery(incoming,c.now()),reason:incoming.claim_wait_reason??null}}:{}),
+        handled:!!incoming.yielded,delivery:incoming.delivery,recovery:notificationRecovery(incoming,c.now()),reason:incoming.claim_wait_reason??(member&&!sdk&&this.observedOnly(run,member)?'owner-unavailable':null)}}:{}),
       ...(draft?{draft:{phase:draft.phase}}:{}),
       initial:initial?{message_id:initial.message_id,delivery:initial.delivery,read:initial.read,recovery:notificationRecovery(initial,c.now()),handled:!!initial.yielded,physical_complete:!!initial.reply_observed}:null};
   }

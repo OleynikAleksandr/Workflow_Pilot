@@ -237,3 +237,33 @@ test('panel shows every current action with its time, a collapsed history and di
   await new Promise(resolve=>setTimeout(resolve,1100));
   assert.notEqual($('progress-now').children[1].querySelector('.wp-time').textContent,before,'the time ticks');
 });
+
+test('server-page delivery waits are neutral; draft, unavailable page and branch are the only orange actions',async t=>{
+  const dom=new JSDOM(await fs.readFile(new URL('../src/frontend/plugin/index.html',import.meta.url),'utf8'));
+  t.after(()=>dom.window.close());const ui=mountPanel({document:dom.window.document});
+  const incoming={message_id:'result-two',kind:'result',task_id:'T002',read:false,delivery:'pending'};
+  const render=(channel,run={state:'running'})=>{
+    const activity=planActivity({run,channel});
+    const item={actor:activity.actor==='Канал связи'?'APP':'O',text:activity.label,reason:activity.reason,kind:stageKind(activity.phase)};
+    ui.progress(buildWorkProgress({now:[item]}));return {activity,kind:item.kind,warn:dom.window.document.querySelectorAll('#progress-now .wp-row.warn').length};
+  };
+  for(const [reason,text] of [['owner-unavailable',/служба Workflow Pilot/],['freshness-reload',/Обновляем серверную страницу/],
+    ['freshness-reload-deferred',/отложено/],['awaiting-turn-end',/ожидаем подтверждение конца хода/i]]){
+    const value=render({incoming:{...incoming,reason}});
+    assert.notEqual(value.kind,'warn',reason+' is neutral');assert.equal(value.warn,0);assert.match(value.activity.reason,text);
+    assert.match(value.activity.label,/Результат · T002 готов/,'the delivery itself stays the current action');
+  }
+  const draft=render({incoming:{...incoming,reason:'freshness-conflict-draft'}});
+  assert.equal(draft.kind,'warn');assert.equal(draft.warn,1);assert.match(draft.activity.reason,/Отправьте или очистите черновик в окне Workflow Pilot/);
+  const unavailable=render({incoming:{...incoming,reason:'freshness-unavailable'}});
+  assert.equal(unavailable.kind,'warn');assert.equal(unavailable.activity.label,'Серверная страница не готова к доставке · T002');
+  assert.match(unavailable.activity.reason,/Откройте разговор во встроенном окне/);
+  const branch=render({incoming},{state:'paused',reason:'blocked',issue:{code:'CONVERSATION_BRANCH',
+    message:'Разговор разветвился: откройте его, выберите нужную ветку и нажмите «Продолжить».'}});
+  assert.equal(branch.kind,'warn');assert.equal(branch.activity.label,'Разговор разветвился');assert.match(branch.activity.reason,/нажмите «Продолжить»/);
+  assert.match(executionIssue({code:'CONVERSATION_BRANCH',message:'x'}).userAction,/выберите нужную ветку/);
+  assert.equal(dom.window.document.querySelectorAll('#progress-now button').length,0,'no new buttons');
+  const connected={registered:true,sdk:true,permitted:true};
+  assert.equal(assignmentStage({dialogue:{grant:{}},channel:{...connected,incoming:{read:false,reason:'freshness-conflict-draft'}}}).phase,'attention');
+  assert.equal(assignmentStage({dialogue:{grant:{}},channel:{...connected,incoming:{read:false,reason:'freshness-reload'}}}).phase,'waiting');
+});
