@@ -1,6 +1,6 @@
 # Общий разговор: серверная доставка
 
-Контракт Workflow Pilot 0.6.0 (действует без изменений в 0.6.1), Kit 1.10.5, панель `0.6.1-communication-9`, протокол панели 9. Живая проверка с настоящим ChatGPT — **NOT_RUN**, сценарий: [приёмка](../acceptance/shared-conversation-mac.md). До PASS её шагов 1–4 действует прежнее ограничение [backend](backend.md): продолжение того же разговора во втором браузере или приложении — не штатный сценарий. Нативные Windows/Linux — NOT_RUN. Отложенная мобильная часть — [followup](../planning/shared-backend-mobile-followup.md).
+Контракт Workflow Pilot 0.6.0 с правкой свежести 0.6.2, Kit 1.10.5, панель `0.6.2-communication-9`, протокол панели 9. Живая проверка с настоящим ChatGPT — **NOT_RUN**, сценарий: [приёмка](../acceptance/shared-conversation-mac.md). До PASS её шагов 1–4 действует прежнее ограничение [backend](backend.md): продолжение того же разговора во втором браузере или приложении — не штатный сценарий. Нативные Windows/Linux — NOT_RUN. Отложенная мобильная часть — [followup](../planning/shared-backend-mobile-followup.md).
 
 ## Назначение
 
@@ -21,14 +21,14 @@
 
 ## Свежесть серверной страницы
 
-`src/control/plugin/conversation-freshness.mjs`. Перед каждым автоматическим claim (кроме `startup-context`) страница должна быть свежей: `busy`, либо первичное наблюдение документа не старше `FRESH_DOCUMENT_MS` (20 с), либо это первый claim в документе, перезагруженном самим Control. Время загрузки и монтирования панели в окно не входит. Иначе claim откладывается существующим `claim.deferred` с причиной `freshness-reload` (попытка не создаётся) и Control просит Execution о безопасной перезагрузке. Правило включено, только когда передан порт `reload` (production); изолированные fixtures без порта сохраняют прежнюю семантику.
+`src/control/plugin/conversation-freshness.mjs`. Перед каждым автоматическим claim (кроме `startup-context`) страница должна быть свежей: `busy`, либо первичное наблюдение документа не старше `FRESH_DOCUMENT_MS` (20 с), либо это первый claim в документе, перезагруженном самим Control, либо (с 0.6.2) первый claim в документе собственного отправленного q-старта этой страницы с привязанным адресом, не старше `STARTUP_FRESH_MS` (5 мин): чтение стартового контекста длиннее 20 с, и без этого каждое первое поручение исполнителю ждало перезагрузки. Время загрузки и монтирования панели в окно не входит. Иначе claim откладывается существующим `claim.deferred` с причиной `freshness-reload` (попытка не создаётся) и Control просит Execution о безопасной перезагрузке. Правило включено, только когда передан порт `reload` (production); изолированные fixtures без порта сохраняют прежнюю семантику.
 
-**Безопасная перезагрузка** `safeReload(chatUrl)` (`session-runtime.mjs`): только сохранённый канонический `chatUrl` без q; не становится попыткой старта и не меняет attempt, ticket, UNKNOWN, бюджет, Stop и допуск плана. Отказ: некорректный адрес, `composer-in-flight`, навигация старта, загрузка, упавший renderer. Control не перезагружает, пока:
+**Безопасная перезагрузка** `safeReload(chatUrl)` (`session-runtime.mjs`): только сохранённый канонический `chatUrl` без q; не становится попыткой старта и не меняет attempt, ticket, UNKNOWN, бюджет, Stop и допуск плана. Отказ: некорректный адрес, `composer-in-flight`, навигация старта, загрузка, упавший renderer. Владелец стартовой навигации снимается Control после привязки адреса отправленной попытки (`endStartupNavigation`, 0.6.2); в 0.6.0–0.6.1 он оставался у фоновой страницы навсегда, и каждая перезагрузка отклонялась. Control не перезагружает, пока:
 - на странице черновик — `freshness-conflict-draft`, черновик не стирается;
 - у участника есть claimed-попытка SDK или за последние 10 с был ручной ввод — `freshness-reload-deferred`;
 - открыта базовая линия подтверждения (`yielded.page` без `reply_observed`), а нативных отпечатков ходов нет — `awaiting-turn-end`.
 
-Не чаще одной перезагрузки на окно свежести; подряд не более 3 без успешного claim, затем `freshness-unavailable` до ручного открытия разговора. Ожидание удерживается 1 с, чтобы не крутить цикл. После первого claim в перезагруженном документе снова действуют только busy или возраст.
+Не чаще одной перезагрузки на окно свежести; подряд не более 3 без успешного claim, затем `freshness-unavailable` и не чаще раза в минуту одна новая попытка. Отказ страницы (`reloaded:false` или ошибка) — тоже попытка: причина пишется событием `freshness.reload_refused` (без текста страницы), повтор через 5 с; после отказа последней попытки причина сразу оранжевая. Бесконечного цикла перезагрузок нет. Ожидание удерживается 1 с, чтобы не крутить цикл. После первого claim в перезагруженном документе снова действуют только busy или возраст.
 
 **Ход на другом клиенте.** Если после `yield` страница 15 с не показала `busy` или рост `assistantRevision`, ход шёл на другом клиенте: Control запрашивает ту же перезагрузку и повторяет её через 20, 40, 80 с … до 5 минут, пока новый документ не покажет конец хода.
 
@@ -68,7 +68,7 @@ Observer страницы публикует `turnVariant: single|multiple|unkno
 
 Execution: `panel-frame-attestation.mjs`, `session-runtime.mjs` (аттестация, документ и линия, `safeReload`), `chatgpt-dom.mjs`/`chatgpt-page-observer.mjs`/`page-state.mjs` (`turnVariant`). Control: `delivery-ownership.mjs`, `conversation-freshness.mjs`, `identity-trace.mjs`, `communication.mjs`, `workflow-channel.mjs`, `coordination.mjs`, `dialogue-delivery.mjs`. Frontend: `launch.mjs`, `panel.mjs`. Контракты: `backend.mjs` (протокол 9), `plugin-communication.mjs`, `dialogue-view.mjs`. Проверки: `panel-frame-attestation` (настоящий Electron, HTTPS и вложенные кадры разных origin), `delivery-ownership`, `conversation-freshness`, `shared-conversation-compat`, `delivery-ui-targeted`, `chatgpt-plugin`.
 
-Принятая спецификация: [основная](https://github.com/OleynikAleksandr/Workflow_Pilot/blob/bdc75faf014ce3d06c6d4e4bb615b5cb5e57977a/docs/planning/shared-conversation-mac.md) и [свежесть, откат, проверка](https://github.com/OleynikAleksandr/Workflow_Pilot/blob/bdc75faf014ce3d06c6d4e4bb615b5cb5e57977a/docs/planning/shared-conversation-mac-freshness.md).
+Исправление 0.6.2 — [спецификация](https://github.com/OleynikAleksandr/Workflow_Pilot/blob/852fa40f835da604e5241302417afa965d22bde9/docs/planning/startup-freshness-loop.md). Принятая спецификация: [основная](https://github.com/OleynikAleksandr/Workflow_Pilot/blob/bdc75faf014ce3d06c6d4e4bb615b5cb5e57977a/docs/planning/shared-conversation-mac.md) и [свежесть, откат, проверка](https://github.com/OleynikAleksandr/Workflow_Pilot/blob/bdc75faf014ce3d06c6d4e4bb615b5cb5e57977a/docs/planning/shared-conversation-mac-freshness.md).
 
 ## Ограничения
 

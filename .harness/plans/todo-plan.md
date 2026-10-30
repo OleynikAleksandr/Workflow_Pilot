@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1351,
+  "plan_revision": 1353,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
@@ -142,7 +142,7 @@
       {
         "path": "docs/planning/startup-freshness-loop.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "56c9f913bba43ba053547a0ed511d98707bc0926"
       }
     ],
     "include_last_completed_task": false,
@@ -1515,8 +1515,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "DOCS-3",
@@ -1531,14 +1531,34 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/startup-freshness-loop.md"
+        "docs/planning/startup-freshness-loop.md",
+        "README.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/acceptance/shared-conversation-mac.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/planning/startup-freshness-loop.md"
+      ]
     },
     {
       "id": "RELEASE-3",
@@ -1659,7 +1679,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1351
+Revision: 1353
 
 ## Цель
 
@@ -1815,10 +1835,10 @@ Revision: 1351
   - Файлы: tests/electron-smoke.mjs, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIRST-TASK
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: shared-conversation-mac / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-freshness-loop.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/startup-freshness-loop.md, README.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/current-actions.md, docs/modules/release.md, docs/modules/sdk-messaging.md, docs/modules/shared-conversation.md, docs/acceptance/shared-conversation-mac.md
   - Параллельность: исключительное выполнение
   - Зависимости: FIRST-TASK, VERIFY-3
 - [TODO] RELEASE-3: Собрать macOS Windows Linux 0.6.2 — Ожидает
