@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1357,
+  "plan_revision": 1359,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "shared-conversation-mac",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Один разговор O/E продолжается с любого клиента ChatGPT, автоматическую доставку выполняет только серверная страница backend; выпуск 0.6.0 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Автоматическую доставку участнику выполняет только аттестованная панель его серверной страницы; панели других клиентов — наблюдатели без SDK-отправок.",
@@ -1648,14 +1648,15 @@
         "Tag равен sourceCommit, семь assets проверены, remote main подтверждён; живая проверка не объявляется пройденной."
       ],
       "expected_commit_message": "feat: Опубликовать выпуск 0.6.2 на GitHub",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "shared-conversation-mac",
         "task_id": "PUBLISH-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -1680,10 +1681,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: shared-conversation-mac
 Current Task: нет
-Revision: 1357
+Revision: 1359
 
 ## Цель
 
@@ -1857,8 +1858,8 @@ Revision: 1357
   - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-3, DOCS-3
-- [TODO] PUBLISH-3: Опубликовать выпуск 0.6.2 на GitHub — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.6.2 на GitHub
+- [DONE] PUBLISH-3: Опубликовать выпуск 0.6.2 на GitHub — Завершено
+  - Git Commit: [DONE] feat: Опубликовать выпуск 0.6.2 на GitHub
   - Reference: shared-conversation-mac / PUBLISH-3 / implementation
   - Файлы: release-manifest.json, docs/planning/startup-freshness-loop.md
   - Параллельность: исключительное выполнение
