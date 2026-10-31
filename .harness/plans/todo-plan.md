@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1404,
+  "plan_revision": 1405,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -707,7 +707,17 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/planning/panel-recovery-066.md"
+        "docs/planning/panel-recovery-066.md",
+        "README.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/release.md",
+        "docs/acceptance/shared-conversation-mac.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -790,7 +800,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1404
+Revision: 1405
 
 ## Цель
 
@@ -855,7 +865,7 @@ Revision: 1404
 - [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-recovery-066.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-recovery-066.md, README.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/assignment-dialogue.md, docs/modules/shared-conversation.md, docs/modules/sdk-messaging.md, docs/modules/current-actions.md, docs/modules/dialogue-timing.md, docs/modules/release.md, docs/acceptance/shared-conversation-mac.md
 - [TODO] RELEASE-3: Собрать Workflow Pilot 0.6.6 для трёх ОС — Ожидает
   - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.6.6 для трёх ОС
   - Reference: cdp-startup-input / RELEASE-3 / implementation
