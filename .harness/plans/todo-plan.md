@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1401,
+  "plan_revision": 1402,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Первая команда каждой сессии Workflow Pilot (обсуждение, оркестратор, исполнитель) отправляется доверенным CDP-вводом в проверенный документ вместо q-адреса; выпуск 0.6.4 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Для всех ролей первая команда отправляется CDP-вводом в проверенный документ; навигаций ?q= нет.",
@@ -59,7 +59,16 @@
       "tests/role-protocol.test.mjs",
       "tests/workflow-kit-upgrade.test.mjs",
       "tests/fixtures/released-kit/manifest.json",
-      "tests/fixtures/released-kit/kit-1.10.5.tar.gz"
+      "tests/fixtures/released-kit/kit-1.10.5.tar.gz",
+      "src/execution/browser/panel-frame-attestation.mjs",
+      "src/control/plugin/panel-recovery.mjs",
+      "src/control/plugin/service.mjs",
+      "src/control/workflow/coordination.mjs",
+      "tools/codex-app-server-mcp/plugin.py",
+      "tools/codex-app-server-mcp/plugin-ui.html",
+      "tests/panel-frame-attestation.test.mjs",
+      "tests/fixtures/panel-frame-host.mjs",
+      "tests/plugin-delivery-ownership.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/cdp-startup-input.md",
@@ -79,7 +88,8 @@
       "docs/acceptance/shared-conversation-mac.md",
       "docs/planning/communication-journal-growth.md",
       "docs/modules/dialogue-timing.md",
-      "docs/modules/assignment-dialogue.md"
+      "docs/modules/assignment-dialogue.md",
+      "docs/planning/panel-recovery-066.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -594,6 +604,147 @@
         "tests/workflow-channel.test.mjs",
         "tests/workflow-kit-upgrade.test.mjs"
       ]
+    },
+    {
+      "id": "PANEL-RECOVER",
+      "title": "Восстанавливать отсутствующую панель O и E без очереди",
+      "why": "Восстанавливать отсутствующую панель O и E без очереди",
+      "dependencies": [],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs",
+        "src/contracts/context.mjs",
+        "src/execution/browser/panel-frame-attestation.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/control/plugin/panel-recovery.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/backend/desktop-model.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "tools/codex-app-server-mcp/plugin-ui.html",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/role-protocol.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/panel-frame-attestation.test.mjs",
+        "tests/fixtures/panel-frame-host.mjs",
+        "tests/plugin-delivery-ownership.test.mjs",
+        "tests/session-runtime.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/planning/panel-recovery-066.md"
+      ],
+      "verification_ids": [
+        "panel-frame-attestation",
+        "delivery-ownership",
+        "conversation-freshness",
+        "attachment-retry",
+        "intake-instructions",
+        "chatgpt-plugin",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Три состояния: ошибка, тайм-аут, навигация и загрузка не подтверждают отсутствие. Фоновая проверка активных O/E независима от поступления сообщений.",
+        "Повторная проверка того же документа, однократная адресная команда без ticket через CDP; защита черновика, занятого чата, Stop, и неизвестного Enter. Агент в своём ходе может проверить свою панель через MCP без ручных ID.",
+        "Инструкция Git с !!! сохраняется. Проверки с настоящими кадрами Electron и имитатором чата выполняются без рабочего профиля."
+      ],
+      "expected_commit_message": "feat: восстанавливать панели оркестратора и исполнителей",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "PANEL-RECOVER",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "GIT-READ",
+        "PANEL-RECOVER"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/planning/panel-recovery-066.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта"
+    },
+    {
+      "id": "RELEASE-3",
+      "title": "Собрать Workflow Pilot 0.6.6 для трёх ОС",
+      "why": "Собрать Workflow Pilot 0.6.6 для трёх ОС",
+      "dependencies": [
+        "PANEL-RECOVER",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Единый sourceCommit, macOS arm64, Windows и Linux x64, manifest, хеши и комплект Downloads."
+      ],
+      "expected_commit_message": "feat: Собрать Workflow Pilot 0.6.6 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "RELEASE-3",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "INSTALL-3",
+      "title": "Установить проверенный комплект 0.6.6 на Mac",
+      "why": "Установить проверенный комплект 0.6.6 на Mac",
+      "dependencies": [
+        "RELEASE-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Installer проверяет обе цели, оставляет pending при занятой службе и не обрывает активный прогон."
+      ],
+      "expected_commit_message": "feat: Установить проверенный комплект 0.6.6 на Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "INSTALL-3",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -611,10 +762,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1401
+Revision: 1402
 
 ## Цель
 
@@ -672,6 +823,22 @@ Revision: 1401
   - Git Commit: [DONE] feat: уточнить вызовы Git в инструкции оркестратора
   - Reference: cdp-startup-input / GIT-READ / implementation
   - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, package-lock.json, tests/role-protocol.test.mjs, tests/workflow-channel.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.5.tar.gz, docs/modules/assignment-dialogue.md
+- [TODO] PANEL-RECOVER: Восстанавливать отсутствующую панель O и E без очереди — Ожидает
+  - Git Commit: [PENDING] feat: восстанавливать панели оркестратора и исполнителей
+  - Reference: cdp-startup-input / PANEL-RECOVER / implementation
+  - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/context.mjs, src/execution/browser/panel-frame-attestation.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/control/plugin/panel-recovery.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/plugin-ui.html, packages/workflow-kit/src/lib/role-protocol.mjs, tests/workflow-kit-upgrade.test.mjs, tests/role-protocol.test.mjs, tests/chatgpt-plugin.test.mjs, tests/chatgpt-composer.test.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs, tests/plugin-delivery-ownership.test.mjs, tests/session-runtime.test.mjs, docs/planning/panel-recovery-066.md
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: cdp-startup-input / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-recovery-066.md
+- [TODO] RELEASE-3: Собрать Workflow Pilot 0.6.6 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.6.6 для трёх ОС
+  - Reference: cdp-startup-input / RELEASE-3 / implementation
+  - Файлы: release-manifest.json
+- [TODO] INSTALL-3: Установить проверенный комплект 0.6.6 на Mac — Ожидает
+  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.6.6 на Mac
+  - Reference: cdp-startup-input / INSTALL-3 / implementation
+  - Файлы: release-manifest.json
 
 ## Context Pack For This Cycle
 
