@@ -35,7 +35,7 @@ test('Review preference continues permitted work and does not create work when n
   assert.match(STARTUP_INSTRUCTIONS,/Bootstrap не разрешает начинать задачу/);
 });
 
-test('installed self recovery agrees with canonical obligations and one task per turn',t=>{
+test('installed recovery gives each role its own operating instructions',t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'pilot-intake-role-'));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
   const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'});
@@ -48,5 +48,14 @@ test('installed self recovery agrees with canonical obligations and one task per
   assert.ok(/одна микрозадача/i.test(text),'the actual recovery keeps one plan task per turn');
   assert.ok(/Граница одной задачи\/коммита\/отчёта\/конца хода сохраняется/.test(text),'the actual Workflow Core agrees with the role');
   assert.ok(/не требуя от пользователя «Продолжай» только из-за служебного события/.test(text),'a service event cannot discard the pending request');
-  assert.equal(ROLE_PROTOCOL_VERSION,14);
+  const orchestrator=recover(root,'manual',{role:'orchestrator'});
+  const gitRule=roleText('orchestrator',1).split('\n').find(line=>line.startsWith('!!!'));
+  assert.match(gitRule,/exec_command.*отдельно для каждой команды чтения.*cmd, абсолютный workdir.*read_only: true отдельными полями/);
+  assert.match(gitRule,/Команды Workflow Kit вызывай отдельно/);
+  assert.ok(JSON.stringify(orchestrator).includes(gitRule));
+  for(const version of [0,1]){
+    assert.ok(roleUpdate('orchestrator',version).includes(gitRule));
+    assert.ok(!roleText('executor',version).includes(gitRule));
+  }
+  assert.equal(ROLE_PROTOCOL_VERSION,15);
 });

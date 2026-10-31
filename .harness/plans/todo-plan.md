@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1399,
+  "plan_revision": 1401,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Первая команда каждой сессии Workflow Pilot (обсуждение, оркестратор, исполнитель) отправляется доверенным CDP-вводом в проверенный документ вместо q-адреса; выпуск 0.6.4 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Для всех ролей первая команда отправляется CDP-вводом в проверенный документ; навигаций ?q= нет.",
@@ -575,13 +575,25 @@
         "Установка обновляет неизменённый Kit 1.10.5 в существующем проекте; план сохраняется, роль обновляется. Выпуск приложения не входит в задачу."
       ],
       "expected_commit_message": "feat: уточнить вызовы Git в инструкции оркестратора",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "GIT-READ",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "package-lock.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "tests/fixtures/released-kit/kit-1.10.5.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/role-protocol.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs"
+      ]
     }
   ],
   "blocked_reason": null,
@@ -599,10 +611,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1399
+Revision: 1401
 
 ## Цель
 
@@ -656,8 +668,8 @@ Revision: 1399
   - Git Commit: [DONE] feat: Опубликовать выпуск 0.6.5 на GitHub
   - Reference: cdp-startup-input / PUBLISH-2 / implementation
   - Файлы: release-manifest.json, docs/planning/communication-journal-growth.md
-- [TODO] GIT-READ: Оркестратор получает правило отдельных проверочных Git-вызовов — Ожидает
-  - Git Commit: [PENDING] feat: уточнить вызовы Git в инструкции оркестратора
+- [DONE] GIT-READ: Оркестратор получает правило отдельных проверочных Git-вызовов — Завершено
+  - Git Commit: [DONE] feat: уточнить вызовы Git в инструкции оркестратора
   - Reference: cdp-startup-input / GIT-READ / implementation
   - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, package-lock.json, tests/role-protocol.test.mjs, tests/workflow-channel.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.5.tar.gz, docs/modules/assignment-dialogue.md
 

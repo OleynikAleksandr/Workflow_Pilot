@@ -718,7 +718,8 @@ test('terminal acceptance survives verified cleanup but cannot authorize another
   const result=await f.c.assignmentSend({metadata:meta('e'),recipient:'orchestrator',attempt:1,kind:'result',
     body:'Done',source_commit:'a'.repeat(40),idempotency_key:'result'});
   assert.deepEqual(f.c.workflow.progress('e').result,{delivery:'pending',read:false});
-  await f.c.readMessage({metadata:meta('o'),message_id:result.message_id});
+  const received=await f.c.readMessage({metadata:meta('o'),message_id:result.message_id});
+  assert.match(received.instructions,/!!! Для проверки Git.*exec_command.*read_only: true/);
   assert.equal(f.c.workflow.progress('e').result.read,true,'executor progress follows the actual orchestrator receipt');
   const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
   const acceptance=await f.c.assignmentSend({metadata:meta('o'),recipient,attempt:1,kind:'acceptance',
