@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1398,
+  "plan_revision": 1399,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -93,7 +93,7 @@
       },
       {
         "path": "docs/modules/chat-only-startup.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
@@ -602,7 +602,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1398
+Revision: 1399
 
 ## Цель
 
