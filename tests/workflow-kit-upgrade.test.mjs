@@ -43,7 +43,7 @@ test('released '+version+' upgrades to permanent SDK role instructions without r
   assert.equal(manifest.version,VERSION);assert.equal(manifest.upgraded_from,version);
   assert.deepEqual(fs.readFileSync(path.join(project,'.harness/plans/todo-plan.md')),plan);
   const updatedRole=await import(pathToFileURL(path.join(project,'.harness/kit/lib/role-protocol.mjs')).href);
-  assert.equal(updatedRole.ROLE_PROTOCOL_VERSION,15);assert.match(updatedRole.roleText('planning'),/workflow_session_set_title/);
+  assert.equal(updatedRole.ROLE_PROTOCOL_VERSION,16);assert.match(updatedRole.roleText('planning'),/workflow_session_set_title/);
   assert.match(updatedRole.roleText('orchestrator',1),/!!! Для проверки Git.*read_only: true/);
   assert.match(updatedRole.roleText('planning'),/pending_incoming/);
   assert.match(updatedRole.roleText('planning'),/already_handled/);

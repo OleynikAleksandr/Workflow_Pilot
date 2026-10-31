@@ -4,6 +4,7 @@ import {executorPageState} from './executor-session.mjs';
 import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 import {startupLaunch,startupAttempt,STARTUP_TRANSPORT} from '../../contracts/startup-view.mjs';
 import {normalizeChatUrl} from '../../contracts/browser.mjs';
+import {REOPEN_PANEL_COMMAND} from '../../contracts/context.mjs';
 import {communicationMessageComplete} from '../../contracts/plugin-communication.mjs';
 const startupFailure=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 
@@ -92,6 +93,15 @@ export class DialogueDelivery {
   async attest(target){
     const record=this.record(this.project(target.local_session_id));
     return record?.browser?.attestPanelFrames?await record.browser.attestPanelFrames():null;
+  }
+  async reopen(target,documentId,allowed,onBeforeEnter){
+    const project=this.project(target.local_session_id),record=this.record(project),chatUrl=project?.chatUrl;
+    if(!chatUrl || normalizeChatUrl(chatUrl)!==chatUrl || !record?.composer?.reopenPanel
+        || !this.observe(target).canSend || !allowed())return {state:'not-sent'};
+    const activity=await readCommandActivity(project.workspace);
+    if(activity.commandActive||!allowed())return {state:'not-sent'};
+    return record.composer.reopenPanel({text:REOPEN_PANEL_COMMAND,chatUrl,documentId,onBeforeEnter,
+      canContinue:()=>allowed() && this.project(target.local_session_id)?.chatUrl===chatUrl && this.record(project)===record});
   }
   async reconcile(target){
     const project=this.project(target.local_session_id),record=this.record(project);

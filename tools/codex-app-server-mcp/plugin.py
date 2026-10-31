@@ -197,6 +197,11 @@ def register_plugin(mcp, state_root: Path):
         """Read the complete working instruction in numbered UTF-8 parts. Read zero through total-1 before acting; no truncation. A startup part already included in panel startup_context or read_message needs no repeated read; independent remaining startup parts may be requested in parallel within the same turn. Fresh identity, current assignment and block correlation must match. STALE_MESSAGE means do not execute the old decision. No UI or model turn is created."""
         return await communication("content", ctx, message_id=message_id, context_ref=context_ref, part=part)
 
+    @mcp.tool(name="workflow_panel_check", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
+    async def panel_check(ctx: Context) -> CallToolResult:
+        """Check this participant's own backend Chat panel by host identity; no IDs. Only open_here=true reserves a single workflow_pilot_panel() call, without an invitation. Unknown includes reloads and inconclusive checks. Continue normal work, do not poll."""
+        return await communication("panelCheck", ctx)
+
     @mcp.tool(name="workflow_communication_participants", annotations=READ, meta={"ui": {"visibility": ["model"]}})
     async def participants(ctx: Context) -> CallToolResult:
         """Read pending_incoming for this exact recipient, including UI decisions before a plan. Read current plan participants and assignment recipient_ref/attempt from verified host identity. O sees its executors; E addresses orchestrator. block is Kit state; parked requires a current stopped page and idle local commands. Check parked for every affected E before shared environment repair; otherwise yield and await service recovery. No copied IDs. Legacy capability errors require safe migration."""

@@ -578,6 +578,7 @@ return Object.freeze({
   cancelStartup:(project,attempt,reason)=>dialogue.cancelStartup(project,attempt,reason),
     observeParticipant:target=>dialogue.observe(target),admitParticipant:(target,message,policy)=>dialogue.admit(target,message,policy),
   reconcileParticipant:target=>dialogue.reconcile(target),attestParticipant:target=>dialogue.attest(target),reloadParticipant:target=>dialogue.reload(target),
+  reopenParticipant:(...args)=>dialogue.reopen(...args),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),
   communicationChanged:(runId,events=[])=>{
     const run=getPlugin()?.communication.runs.get(runId);if(!run)return;

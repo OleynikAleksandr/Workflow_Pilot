@@ -6,7 +6,7 @@ import { openStartupPage } from './browser-startup.mjs';
 import { randomUUID } from 'node:crypto';
 import { CHATGPT_CHAT_ENTRYPOINT, hasChatGPTQuery, chatGPTRefreshTarget } from './chatgpt-experience.mjs';
 import { safeUrl } from './diagnostics.mjs';
-import { attestPanelFrames } from './panel-frame-attestation.mjs';
+import { inspectPanelFrames } from './panel-frame-attestation.mjs';
 
 // No projects, stores, recovery decisions or selected cwd cross this boundary.
 export class BrowserSessions {
@@ -17,7 +17,7 @@ export class BrowserSessions {
   // Send stays UNKNOWN and nothing is typed or sent again.
   constructor({ host, ipc, connect = connectPageState,
     createComposer = (contents, options) => new ChatGPTComposer(contents, options),
-    attestFrames = attestPanelFrames,
+    attestFrames = inspectPanelFrames,
     prepareNavigation = null,
     recoverCrashed = false, recoveryDelayMs = 1000, recoveryLimit = 3, recoveryWindowMs = 10 * 60 * 1000, now = Date.now }) {
     Object.assign(this, { host, ipc, connect, createComposer, attestFrames, prepareNavigation, recoverCrashed, recoveryDelayMs, recoveryLimit, recoveryWindowMs, now });
@@ -107,6 +107,14 @@ export class BrowserSessions {
         return record.navigationOwner === null;
       },
       hasFilled: requestId => composer.hasFilled(requestId),
+      reopenPanel: ({text,chatUrl,documentId,canContinue,onBeforeEnter}) => {
+        assertOpen();
+        const epoch=record.epoch, version=record.preparationVersion;
+        const current=()=>!record.disposed && !record.loading && !record.crashed && !record.navigationOwner
+          && record.epoch===epoch && record.preparationVersion===version && source.current?.documentId===documentId
+          && contents.getURL()===chatUrl && canContinue();
+        return composer.submitStartup({text,expectedUrl:chatUrl,canContinue:current,onBeforeEnter});
+      },
       inspect: args => call('inspect', args),
       observeSnapshot: async () => {
         const epoch = record.epoch, message = await call('observeSnapshot');
@@ -180,10 +188,12 @@ export class BrowserSessions {
         assertOpen();
         const before = { incarnation: record.incarnation, documentId: source.current?.documentId ?? null,
           navigationSequence: record.navigationSequence, epoch: record.epoch };
-        const frames = before.documentId && !record.loading && !record.crashed ? await this.attestFrames(contents) : [];
+        const scan = before.documentId && !record.loading && !record.crashed ? await this.attestFrames(contents) : null;
+        const frames = scan?.frames ?? (Array.isArray(scan) ? scan : []);
         const stale = record.disposed || record.epoch !== before.epoch || record.navigationSequence !== before.navigationSequence
           || (source.current?.documentId ?? null) !== before.documentId;
-        return { browserSessionId: id, incarnation: before.incarnation, documentId: before.documentId,
+        const presence = stale || record.loading || record.crashed ? 'unknown' : scan?.presence ?? (frames.length ? 'present' : 'unknown');
+        return { browserSessionId: id, incarnation: before.incarnation, documentId: before.documentId, presence,
           frames: stale ? [] : frames, stale, attestedAt: this.now() };
       },
       // Reload the saved conversation only: never a q address, never during a

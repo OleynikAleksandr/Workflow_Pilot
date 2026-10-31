@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1402,
+  "plan_revision": 1404,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -655,13 +655,38 @@
         "Инструкция Git с !!! сохраняется. Проверки с настоящими кадрами Electron и имитатором чата выполняются без рабочего профиля."
       ],
       "expected_commit_message": "feat: восстанавливать панели оркестратора и исполнителей",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "PANEL-RECOVER",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "docs/planning/panel-recovery-066.md",
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/context.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/panel-recovery.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/browser/panel-frame-attestation.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/panel-frame-host.mjs",
+        "tests/panel-frame-attestation.test.mjs",
+        "tests/plugin-delivery-ownership.test.mjs",
+        "tests/role-protocol.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-3",
@@ -765,7 +790,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1402
+Revision: 1404
 
 ## Цель
 
@@ -823,8 +848,8 @@ Revision: 1402
   - Git Commit: [DONE] feat: уточнить вызовы Git в инструкции оркестратора
   - Reference: cdp-startup-input / GIT-READ / implementation
   - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, package-lock.json, tests/role-protocol.test.mjs, tests/workflow-channel.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.5.tar.gz, docs/modules/assignment-dialogue.md
-- [TODO] PANEL-RECOVER: Восстанавливать отсутствующую панель O и E без очереди — Ожидает
-  - Git Commit: [PENDING] feat: восстанавливать панели оркестратора и исполнителей
+- [DONE] PANEL-RECOVER: Восстанавливать отсутствующую панель O и E без очереди — Завершено
+  - Git Commit: [DONE] feat: восстанавливать панели оркестратора и исполнителей
   - Reference: cdp-startup-input / PANEL-RECOVER / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/context.mjs, src/execution/browser/panel-frame-attestation.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/control/plugin/panel-recovery.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/plugin-ui.html, packages/workflow-kit/src/lib/role-protocol.mjs, tests/workflow-kit-upgrade.test.mjs, tests/role-protocol.test.mjs, tests/chatgpt-plugin.test.mjs, tests/chatgpt-composer.test.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs, tests/plugin-delivery-ownership.test.mjs, tests/session-runtime.test.mjs, docs/planning/panel-recovery-066.md
 - [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает

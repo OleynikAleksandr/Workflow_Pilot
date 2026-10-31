@@ -716,3 +716,22 @@ test('a failure once Enter began is unknown and never repeated', async () => {
   assert.notEqual(f.editor.value, '', 'the editor is never cleared after Enter');assert.equal(f.composer.inFlight, false);
   f.dom.window.close();
 });
+
+test('CDP panel recovery uses an existing conversation and preserves a changed draft before Enter',async()=>{
+  const text='Открой панель Workflow Pilot',url='https://chatgpt.com/c/existing-chat';
+  for(const change of ['none','draft','navigate','edit']){
+    const f=startupFixture({draft:change==='draft'?'Мой текст':''});
+    f.dom.reconfigure({url});f.view.getURL=()=>f.dom.window.location.href;
+    const history=f.document.createElement('div');history.setAttribute('data-message-author-role','user');
+    history.textContent='Прошлый ход';f.document.body.append(history);
+    const result=await f.composer.submitStartup({text,expectedUrl:url,onBeforeEnter:()=>{
+      if(change==='navigate')f.dom.reconfigure({url:'https://chatgpt.com/c/other-chat'});
+      if(change==='edit')f.editor.value='Сохранить этот текст';
+      return true;
+    }});
+    assert.equal(result.state,change==='none'?'submitted':'not-sent',change);
+    assert.equal(f.sends(),change==='none'?1:0);
+    if(change==='draft'||change==='edit')assert.match(f.editor.value,/Мой текст|Сохранить этот текст/);
+    f.dom.window.close();
+  }
+});

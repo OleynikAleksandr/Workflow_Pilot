@@ -1682,7 +1682,7 @@ async function start() {
         void syncSelectedSessionTitle({force:true,reason:'topic-title-changed'});
     },communicationStore,workProgress:workProgressFor,
       userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
-      observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,reload:workflow.reloadParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,journal,
+      observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,reload:workflow.reloadParticipant,reopen:workflow.reopenParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,journal,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;
   }

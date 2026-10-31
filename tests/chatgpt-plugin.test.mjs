@@ -311,6 +311,11 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   const f=await fixture(t);await bridge(t,f);const c=await client(t,f);
   const tools=(await c.listTools()).tools;
   assert.match(tools.find(t=>t.name==='workflow_communication_enable').description,/Working plans reject Enable/);
+  const checkTool=tools.find(t=>t.name==='workflow_panel_check');
+  assert.deepEqual(checkTool._meta.ui.visibility,['model']);assert.match(checkTool.description,/open_here=true/);
+  assert.deepEqual(Object.keys(checkTool.inputSchema.properties??{}),[]);
+  const anonymous=await c.callTool({name:'workflow_panel_check',arguments:{}});
+  assert.equal(anonymous.structuredContent.error.code,'PLUGIN_COMMUNICATION_IDENTITY_REQUIRED');
   assert.match(tools.find(t=>t.name==='workflow_communication_stop').description,/whole plan/);
   assert.match(tools.find(t=>t.name==='workflow_communication_stop').description,/only detaches/);
   const appOnly=['bind','claim','claim_ready','enable','recover','report','stop','sync','telemetry','telemetry_batch','verify','wait'];
@@ -336,8 +341,8 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   const previous=(await call('bind',{binding:{...binding,build_id:'0.5.41-communication-8',protocol_version:8}})).structuredContent.error;
   assert.equal(previous.code,'PLUGIN_COMMUNICATION_VERSION');
   assert.match(previous.message,/0\.5\.41-communication-8 \(протокол 8\)/);
-  assert.match(previous.message,/0\.6\.5-communication-9 \(протокол 9\)/);
-  assert.equal(COMMUNICATION_PROTOCOL,9);assert.equal(COMMUNICATION_BUILD,'0.6.5-communication-9');
+  assert.ok(previous.message.includes(COMMUNICATION_BUILD+' (протокол '+COMMUNICATION_PROTOCOL+')'));
+  assert.equal(COMMUNICATION_PROTOCOL,9);assert.equal(COMMUNICATION_BUILD,'0.6.6-communication-9');
   const schema=tools.find(t=>t.name==='workflow_communication_bind').inputSchema;
   assert.ok(JSON.stringify(schema).includes('frame_instance_id'),'bind accepts the immutable frame id');
   for(const suffix of ['claim','claim_ready','verify'])

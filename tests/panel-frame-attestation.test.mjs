@@ -4,9 +4,10 @@ import {spawn} from 'node:child_process';
 import readline from 'node:readline';
 import path from 'node:path';
 import {EventEmitter} from 'node:events';
-import {attestPanelFrames,validPanelAttestation,PANEL_ATTESTATION_SCRIPT} from '../src/execution/browser/panel-frame-attestation.mjs';
+import {attestPanelFrames,inspectPanelFrames,validPanelAttestation,PANEL_ATTESTATION_SCRIPT} from '../src/execution/browser/panel-frame-attestation.mjs';
 import {BrowserSessions} from '../src/execution/browser/session-runtime.mjs';
 import {COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/contracts/backend.mjs';
+import {REOPEN_PANEL_COMMAND} from '../src/contracts/context.mjs';
 
 const here=import.meta.dirname;
 const id='0f8fad5b-d9cb-469f-a165-70867728950e';
@@ -29,6 +30,8 @@ test('real Electron attests only the panel frame of its own page; the main docum
     assert.deepEqual(result.other,[{frame_instance_id:result.ids.second}],'another webContents is attested separately');
     assert.deepEqual(result.reloaded,[{frame_instance_id:result.ids.reloaded}],'a reload discards the previous frame');
     assert.equal(result.unchanged,true);assert.equal(result.mutations,0);
+    assert.equal(result.empty,'absent','ready new document with only an unrelated frame');
+    assert.deepEqual(result.recovery,{before:'absent',reopen:'submitted',after:'present',inputs:[REOPEN_PANEL_COMMAND]});
   });
 
 test('attestation validates the published value and skips the main, same-origin, detached and silent frames',async()=>{
@@ -50,6 +53,22 @@ test('attestation validates the published value and skips the main, same-origin,
   assert.ok(scripts.every(script=>script===PANEL_ATTESTATION_SCRIPT),'one constant read-only script');
   assert.equal(scripts.length,5,'main and same-origin ChatGPT frames are never evaluated');
   assert.deepEqual(await attestPanelFrames({isDestroyed:()=>true}),[]);
+});
+
+test('an absent frame is different from a timeout, a loading child, a version mismatch or a changed tree',async()=>{
+  const main={origin:'https://chatgpt.com',processId:1,routingId:1};
+  const contents={mainFrame:main};
+  const inspect=()=>inspectPanelFrames(contents,{timeoutMs:10});
+  main.framesInSubtree=[main];assert.equal((await inspect()).presence,'absent');
+  const frame={origin:'https://widget.test',processId:2,routingId:2};
+  main.framesInSubtree=[main,frame];
+  for(const result of [null,value(id,'old'),new Error('detached'),'hang','no-panel',value()]){
+    frame.executeJavaScript=async()=>{if(result instanceof Error)throw result;
+      if(result==='hang')await new Promise(resolve=>setTimeout(resolve,40));return result;};
+    assert.equal((await inspect()).presence,result==='no-panel'?'absent':result?.build_id===COMMUNICATION_BUILD?'present':'unknown');
+  }
+  frame.executeJavaScript=async()=>{main.framesInSubtree=[main];return 'no-panel';};
+  assert.equal((await inspect()).presence,'unknown');
 });
 
 test('the page port binds attested frames to its session, incarnation and current document only',async()=>{

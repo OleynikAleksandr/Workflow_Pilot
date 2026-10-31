@@ -57,5 +57,6 @@ test('installed recovery gives each role its own operating instructions',t=>{
     assert.ok(roleUpdate('orchestrator',version).includes(gitRule));
     assert.ok(!roleText('executor',version).includes(gitRule));
   }
-  assert.equal(ROLE_PROTOCOL_VERSION,15);
+  for(const role of ['orchestrator','executor'])for(const version of [0,1])assert.match(roleText(role,version),/workflow_panel_check.*open_here=true/);
+  assert.equal(ROLE_PROTOCOL_VERSION,16);
 });

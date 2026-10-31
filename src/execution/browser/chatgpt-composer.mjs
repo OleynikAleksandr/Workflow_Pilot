@@ -132,9 +132,17 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
   if (connectionError) return { ...result, action: 'deferred', reason: 'CONNECTION_INTERRUPTED' };
   if (login || !writable) return { ...result, action: 'deferred', reason: 'LOGIN_REQUIRED' };
   if (busy) return { ...result, action: 'deferred', reason: 'GENERATION_ACTIVE' };
-  if (action === 'clear-new-draft') {
+  if (action === 'focus-panel' || action === 'verify-panel-command') {
+    const form = editor.closest('form') ?? editor.parentElement;
+    if (!expectedUrl || connectionError || [...form.querySelectorAll('input[type=file]')].some(node=>node.files?.length)
+        || form.querySelector('[data-testid="attachment-chip"],[data-testid="file-chip"],[data-testid="remove-file"],[aria-label^="Remove file"],[aria-label^="Удалить файл"]'))
+      return {...result,action:'deferred',reason:'COMPOSER_UNAVAILABLE'};
+    if (action==='verify-panel-command') return {...result,action:document.activeElement===editor && draftText===text && sendEnabled?'panel-command-ready':'deferred'};
+    if (draftText) return {...result,action:'deferred',reason:'DRAFT_PRESENT'};
+  }
+  if (action === 'clear-new-draft' || action === 'clear-panel-command') {
     // Explicit New Chat only. A conversation (even empty) is never cleared.
-    if (location.pathname !== '/' || messages.length)
+    if (action === 'clear-panel-command' ? !expectedUrl || draftText !== text : location.pathname !== '/' || messages.length)
       return { ...result, action: 'deferred', reason: 'CHAT_CHANGED' };
     // Restored startup command only: the exact template with one ticket, nothing added.
     if (startupTemplate && draftLength) {
@@ -161,9 +169,9 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
       action: normalized(draft()).length ? 'deferred' : 'draft-cleared',
       reason: normalized(draft()).length ? 'DRAFT_CLEAR_FAILED' : null };
   }
-  if (action === 'focus-startup') {
+  if (action === 'focus-startup' || action === 'focus-panel') {
     // Focus only: the startup command arrives as trusted CDP input, never through this script.
-    if (location.pathname !== '/' || messages.length) return { ...result, action: 'deferred', reason: 'CHAT_CHANGED' };
+    if (action === 'focus-panel' ? !expectedUrl : location.pathname !== '/' || messages.length) return { ...result, action: 'deferred', reason: 'CHAT_CHANGED' };
     if (draftLength) return { ...result, action: 'deferred', reason: 'DRAFT_PRESENT' };
     editor.focus();
     if (editor.tagName !== 'TEXTAREA' && editor.tagName !== 'INPUT') {
@@ -403,16 +411,18 @@ export class ChatGPTComposer {
   // The startup command as trusted input in the verified document: focus, CDP
   // text, an exact check, then one Enter. Before onBeforeEnter nothing is sent;
   // a failure there removes only this exact command. A failure after it is unknown.
-  async submitStartup({ text, canContinue = () => true, onBeforeEnter = () => true } = {}) {
+  async submitStartup({ text, canContinue = () => true, onBeforeEnter = () => true, expectedUrl = null } = {}) {
     if (this.inFlight) return { state: 'not-sent', reason: 'COMPOSER_IN_FLIGHT' };
     const documentId = this.pageState?.current?.documentId, debug = this.contents.debugger;
     if (!text || !documentId || !canContinue()) return { state: 'not-sent', reason: 'CHAT_CHANGED' };
     if (!debug?.isAttached?.()) return { state: 'not-sent', reason: 'CDP_UNAVAILABLE' };
-    const same = () => canContinue() && this.documentKey() === documentId;
+    const same = () => canContinue() && this.documentKey() === documentId && (!expectedUrl || this.getURL()===expectedUrl);
     const input = new PageInput((method, params) => debug.sendCommand(method, params));
     let inserted = false, emulated = false, entered = false;
     const notSent = async reason => {
-      if (inserted) await this.clearNewSessionDraft({ startupOnly: true, canContinue: same }).catch(() => {});
+      if (inserted && expectedUrl && this.documentKey()===documentId)
+        await this.contents.executeJavaScriptInIsolatedWorld(999,[{code:`globalThis.__webPilotObserverDocumentId === ${JSON.stringify(documentId)} && ${pageScript({action:'clear-panel-command',text,expectedUrl})}`}],true).catch(()=>{});
+      else if (inserted && !expectedUrl) await this.clearNewSessionDraft({ startupOnly: true, canContinue: same }).catch(() => {});
       this.trace('startup-input', { outcome: 'not-sent', reason });
       return { state: 'not-sent', reason };
     };
@@ -421,7 +431,7 @@ export class ChatGPTComposer {
       // A background page has no OS focus; emulation lets the editor take and keep it.
       await debug.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true }); emulated = true;
       const code = `globalThis.__webPilotObserverDocumentId === ${JSON.stringify(documentId)}
-        ? ${pageScript({ action: 'focus-startup' })} : ({ action: 'deferred', reason: 'CHAT_CHANGED' })`;
+        ? ${pageScript({ action: expectedUrl ? 'focus-panel' : 'focus-startup', expectedUrl })} : ({ action: 'deferred', reason: 'CHAT_CHANGED' })`;
       const focused = await this.contents.executeJavaScriptInIsolatedWorld(999, [{ code }], true);
       if (focused?.action !== 'focused') return await notSent(focused?.reason ?? 'EDITOR_UNAVAILABLE');
       if (!same()) return await notSent('CHAT_CHANGED');
@@ -432,12 +442,16 @@ export class ChatGPTComposer {
       for (;;) {
         if (!same()) return await notSent('CHAT_CHANGED');
         observation = await this.inspect({ text });
-        if (observation.draftMatches && observation.sendEnabled && !observation.busy && !observation.userMessageCount) break;
+        if (observation.draftMatches && observation.sendEnabled && !observation.busy && (expectedUrl || !observation.userMessageCount)) break;
         if (!observation.draftMatches && observation.draftLength >= text.trim().length) return await notSent('DRAFT_CHANGED');
         if (this.now() >= deadline) return await notSent(observation.draftMatches ? 'SEND_UNAVAILABLE' : 'DRAFT_CHANGED');
         await this.wait(this.settleMs);
       }
       if (!same() || this.documentKey() !== documentId || !await onBeforeEnter()) return await notSent('CHAT_CHANGED');
+      if (expectedUrl) {
+        const last = await this.inspect({text,expectedUrl,action:'verify-panel-command'});
+        if (!same() || last.action !== 'panel-command-ready') return await notSent('DRAFT_CHANGED');
+      }
       entered = true;
       await input.dispatch({ type: 'key', data: { action: 'down', key: 'Enter', code: 'Enter' } });
       await input.dispatch({ type: 'key', data: { action: 'up', key: 'Enter', code: 'Enter' } });
