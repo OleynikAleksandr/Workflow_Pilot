@@ -2,6 +2,8 @@
 
 Контракт Workflow Pilot 0.5.39 / Kit 1.10.4: `dialogue_version: 1`, ролевой протокол 13, панель `0.5.39-communication-7`, протокол панели 7. Новый orchestrated-план получает версию диалога автоматически при создании. Уже существующий план не переключается при чтении, расширении или обновлении Settings. [Надёжность и переход](assignment-dialogue-reliability.md), [живые опыты A–D](automatic-agent-dialogue-acceptance.md), [Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md).
 
+Оркестратор проверяет Git одной командой чтения на вызов MCP, передавая cmd, workdir и read_only: true отдельно. В протоколе ролей 16 оба участника после bootstrap один раз за рабочий ход проверяют серверную панель через workflow_panel_check. [Контракт открытия](shared-conversation.md#восстановление-панели).
+
 ## Роли и пользовательский процесс
 
 Пользовательский `user-choice`, включая Review ON/OFF, не является сообщением задачи назначения. Нажатие завершает решение после сохранения; read фиксирует получение и историю. После SDK accepted следующий pending отправляется без ожидания read/yield/ответа. Start не сбрасывает UNKNOWN. Назначения сохраняют собственные read/yield/result/acceptance и terminal-квитанции. [Решения пользователя](user-choice.md#доставка), [единый SDK](sdk-messaging.md).

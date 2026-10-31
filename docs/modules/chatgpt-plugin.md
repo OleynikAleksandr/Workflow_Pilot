@@ -1,12 +1,12 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.6.5 / Kit 1.10.5, протокол панели 9, build `0.6.5-communication-9`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
+Workflow Pilot 0.6.6 / Kit 1.10.6, протокол панели 9, build `0.6.6-communication-9`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
 
 ## Пользовательский путь
 
 Основная панель Workflow Pilot обслуживает стартовый контекст любой локальной сессии и рабочий диалог.
 
-1. Пользователь создаёт новый обычный Chat. [URL-команда с тикетом](chat-only-startup.md) открывает workflow_pilot_panel без DOM-ввода/вложений. Ответ включает первую часть recovery; агент дочитывает остальные и подтверждает SHA в том же ходе. Iframe/SDK и разрешение плана проверяются отдельно.
+1. В новом Chat стартовая команда с приглашением открывает workflow_pilot_panel и выдаёт recovery. После регистрации O/E проверяют свою панель через workflow_panel_check. [Восстановление](shared-conversation.md#восстановление-панели) действует в уже привязанном чате.
 2. До окончательного Review/публикации автор сохраняет полные [подготовленные поручения](prepared-tasks.md) всех обычных задач и DOCS: байты, hash, автор/project/scope и semantic digest. Публикация связывает scope с execution_origin_session_id и не запускает работу.
 3. Одна кнопка Start после preflight разрешает scope. Control/ParallelExecution создаёт настоящие назначения/worktree/Chat E; backend механически связывает и авторизует согласованный пакет, доставляя после SDK/bind и подтверждения принадлежности документа без нового хода O для сочинения. Старые brief-only планы сохраняют поздний prepare O. Backend assignment-start — только прежний контракт.
 4. Поручения, продолжения, вопросы/решения, интеграции, delivery и итог передаются через канал. Пользователь не переносит run/participant, не открывает панели исполнителей, не вызывает join/Enable и не пишет «продолжай» при обычной технической блокировке.

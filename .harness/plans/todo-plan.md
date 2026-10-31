@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1405,
+  "plan_revision": 1408,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -89,7 +89,12 @@
       "docs/planning/communication-journal-growth.md",
       "docs/modules/dialogue-timing.md",
       "docs/modules/assignment-dialogue.md",
-      "docs/planning/panel-recovery-066.md"
+      "docs/planning/panel-recovery-066.md",
+      "packages/workflow-kit/README.md",
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+      "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+      "docs/modules/project-compatibility.md",
+      "docs/modules/user-choice.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -691,8 +696,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "DOCS-3",
@@ -717,13 +722,37 @@
         "docs/modules/current-actions.md",
         "docs/modules/dialogue-timing.md",
         "docs/modules/release.md",
-        "docs/acceptance/shared-conversation-mac.md"
+        "docs/acceptance/shared-conversation-mac.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/user-choice.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
-      "expected_commit_message": "docs: актуализировать документацию проекта"
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/user-choice.md",
+        "docs/planning/panel-recovery-066.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "id": "RELEASE-3",
@@ -800,7 +829,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1405
+Revision: 1408
 
 ## Цель
 
@@ -862,10 +891,10 @@ Revision: 1405
   - Git Commit: [DONE] feat: восстанавливать панели оркестратора и исполнителей
   - Reference: cdp-startup-input / PANEL-RECOVER / implementation
   - Файлы: package.json, package-lock.json, src/contracts/backend.mjs, src/contracts/context.mjs, src/execution/browser/panel-frame-attestation.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-composer.mjs, src/control/plugin/panel-recovery.mjs, src/control/plugin/communication.mjs, src/control/plugin/service.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/workflow/coordination.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, tools/codex-app-server-mcp/plugin-ui.html, packages/workflow-kit/src/lib/role-protocol.mjs, tests/workflow-kit-upgrade.test.mjs, tests/role-protocol.test.mjs, tests/chatgpt-plugin.test.mjs, tests/chatgpt-composer.test.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs, tests/plugin-delivery-ownership.test.mjs, tests/session-runtime.test.mjs, docs/planning/panel-recovery-066.md
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-recovery-066.md, README.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/assignment-dialogue.md, docs/modules/shared-conversation.md, docs/modules/sdk-messaging.md, docs/modules/current-actions.md, docs/modules/dialogue-timing.md, docs/modules/release.md, docs/acceptance/shared-conversation-mac.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-recovery-066.md, README.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/assignment-dialogue.md, docs/modules/shared-conversation.md, docs/modules/sdk-messaging.md, docs/modules/current-actions.md, docs/modules/dialogue-timing.md, docs/modules/release.md, docs/acceptance/shared-conversation-mac.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/modules/project-compatibility.md, docs/modules/user-choice.md
 - [TODO] RELEASE-3: Собрать Workflow Pilot 0.6.6 для трёх ОС — Ожидает
   - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.6.6 для трёх ОС
   - Reference: cdp-startup-input / RELEASE-3 / implementation
