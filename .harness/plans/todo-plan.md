@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1408,
+  "plan_revision": 1410,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -774,13 +774,16 @@
         "Единый sourceCommit, macOS arm64, Windows и Linux x64, manifest, хеши и комплект Downloads."
       ],
       "expected_commit_message": "feat: Собрать Workflow Pilot 0.6.6 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "RELEASE-3",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-3",
@@ -829,7 +832,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1408
+Revision: 1410
 
 ## Цель
 
@@ -895,8 +898,8 @@ Revision: 1408
   - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-3 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/planning/panel-recovery-066.md, README.md, docs/modules/chatgpt-plugin.md, docs/modules/chat-only-startup.md, docs/modules/assignment-dialogue.md, docs/modules/shared-conversation.md, docs/modules/sdk-messaging.md, docs/modules/current-actions.md, docs/modules/dialogue-timing.md, docs/modules/release.md, docs/acceptance/shared-conversation-mac.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, docs/modules/project-compatibility.md, docs/modules/user-choice.md
-- [TODO] RELEASE-3: Собрать Workflow Pilot 0.6.6 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.6.6 для трёх ОС
+- [DONE] RELEASE-3: Собрать Workflow Pilot 0.6.6 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать Workflow Pilot 0.6.6 для трёх ОС
   - Reference: cdp-startup-input / RELEASE-3 / implementation
   - Файлы: release-manifest.json
 - [TODO] INSTALL-3: Установить проверенный комплект 0.6.6 на Mac — Ожидает
