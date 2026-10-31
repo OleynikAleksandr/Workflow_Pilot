@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1397,
+  "plan_revision": 1398,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Первая команда каждой сессии Workflow Pilot (обсуждение, оркестратор, исполнитель) отправляется доверенным CDP-вводом в проверенный документ вместо q-адреса; выпуск 0.6.4 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Для всех ролей первая команда отправляется CDP-вводом в проверенный документ; навигаций ?q= нет.",
@@ -51,7 +51,15 @@
       "src/frontend/plugin/launch.mjs",
       "tests/plugin-communication-store.test.mjs",
       "tests/plugin-communication.test.mjs",
-      "tests/workflow-channel.test.mjs"
+      "tests/workflow-channel.test.mjs",
+      "packages/workflow-kit/src/lib/role-protocol.mjs",
+      "packages/workflow-kit/package.json",
+      "packages/workflow-kit/src/lib/common.mjs",
+      "packages/workflow-kit/src/lib/installer.mjs",
+      "tests/role-protocol.test.mjs",
+      "tests/workflow-kit-upgrade.test.mjs",
+      "tests/fixtures/released-kit/manifest.json",
+      "tests/fixtures/released-kit/kit-1.10.5.tar.gz"
     ],
     "documentation_paths": [
       "docs/planning/cdp-startup-input.md",
@@ -70,7 +78,8 @@
       "docs/acceptance/chat-only-startup.md",
       "docs/acceptance/shared-conversation-mac.md",
       "docs/planning/communication-journal-growth.md",
-      "docs/modules/dialogue-timing.md"
+      "docs/modules/dialogue-timing.md",
+      "docs/modules/assignment-dialogue.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -96,6 +105,11 @@
         "path": "docs/planning/communication-journal-growth.md",
         "required": true,
         "revision": "6c59cc5a0cfea87bf9fc225feb6dadd9c12ca9e0"
+      },
+      {
+        "path": "docs/modules/assignment-dialogue.md",
+        "required": true,
+        "revision": "WORKTREE"
       }
     ],
     "include_last_completed_task": false,
@@ -527,6 +541,47 @@
         "role": "implementation"
       },
       "actual_files": []
+    },
+    {
+      "id": "GIT-READ",
+      "title": "Оркестратор получает правило отдельных проверочных Git-вызовов",
+      "why": "В T_005 результат был прочитан, а составной вызов для проверки Git был отклонён. Выдавать проверенный формат в инструкциях роли при старте и чтении результата.",
+      "dependencies": [],
+      "functional_paths": [
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "package-lock.json",
+        "tests/role-protocol.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/released-kit/kit-1.10.5.tar.gz"
+      ],
+      "documentation_paths": [
+        "docs/modules/assignment-dialogue.md"
+      ],
+      "verification_ids": [
+        "intake-instructions",
+        "kit-upgrade",
+        "kit-check",
+        "kit-assignments"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Одна строка с !!! требует у оркестратора одну проверочную Git-команду на exec_command, отдельные cmd, абсолютный workdir и read_only: true. Команды Workflow Kit отделены.",
+        "Реальный recovery для O и readMessage результата возвращают правило. Проверяется также отсутствие правила у исполнителя и сохранение приёмки перед интеграцией.",
+        "Установка обновляет неизменённый Kit 1.10.5 в существующем проекте; план сохраняется, роль обновляется. Выпуск приложения не входит в задачу."
+      ],
+      "expected_commit_message": "feat: уточнить вызовы Git в инструкции оркестратора",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "GIT-READ",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -544,10 +599,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1397
+Revision: 1398
 
 ## Цель
 
@@ -601,6 +656,10 @@ Revision: 1397
   - Git Commit: [DONE] feat: Опубликовать выпуск 0.6.5 на GitHub
   - Reference: cdp-startup-input / PUBLISH-2 / implementation
   - Файлы: release-manifest.json, docs/planning/communication-journal-growth.md
+- [TODO] GIT-READ: Оркестратор получает правило отдельных проверочных Git-вызовов — Ожидает
+  - Git Commit: [PENDING] feat: уточнить вызовы Git в инструкции оркестратора
+  - Reference: cdp-startup-input / GIT-READ / implementation
+  - Файлы: packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/package.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, package-lock.json, tests/role-protocol.test.mjs, tests/workflow-channel.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.5.tar.gz, docs/modules/assignment-dialogue.md
 
 ## Context Pack For This Cycle
 
@@ -608,5 +667,6 @@ Revision: 1397
 - docs/modules/chat-only-startup.md
 - docs/architecture/OVERVIEW.md
 - docs/planning/communication-journal-growth.md
+- docs/modules/assignment-dialogue.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
