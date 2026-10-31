@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1410,
+  "plan_revision": 1412,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Первая команда каждой сессии Workflow Pilot (обсуждение, оркестратор, исполнитель) отправляется доверенным CDP-вводом в проверенный документ вместо q-адреса; выпуск 0.6.4 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Для всех ролей первая команда отправляется CDP-вводом в проверенный документ; навигаций ?q= нет.",
@@ -805,13 +805,14 @@
         "Installer проверяет обе цели, оставляет pending при занятой службе и не обрывает активный прогон."
       ],
       "expected_commit_message": "feat: Установить проверенный комплект 0.6.6 на Mac",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "INSTALL-3",
         "role": "implementation"
-      }
+      },
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -829,10 +830,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1410
+Revision: 1412
 
 ## Цель
 
@@ -902,8 +903,8 @@ Revision: 1410
   - Git Commit: [DONE] feat: Собрать Workflow Pilot 0.6.6 для трёх ОС
   - Reference: cdp-startup-input / RELEASE-3 / implementation
   - Файлы: release-manifest.json
-- [TODO] INSTALL-3: Установить проверенный комплект 0.6.6 на Mac — Ожидает
-  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.6.6 на Mac
+- [DONE] INSTALL-3: Установить проверенный комплект 0.6.6 на Mac — Завершено
+  - Git Commit: [DONE] feat: Установить проверенный комплект 0.6.6 на Mac
   - Reference: cdp-startup-input / INSTALL-3 / implementation
   - Файлы: release-manifest.json
 
