@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1451,
+  "plan_revision": 1453,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
@@ -696,8 +696,8 @@
     {
       "id": "DOCS-3",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "DOCS-3",
@@ -710,14 +710,39 @@
       ],
       "functional_paths": [],
       "documentation_paths": [
-        "docs/architecture/OVERVIEW.md"
+        "docs/architecture/OVERVIEW.md",
+        "README.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/user-choice.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/user-choice.md"
+      ]
     },
     {
       "id": "RELEASE-3",
@@ -801,7 +826,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1451
+Revision: 1453
 
 ## Цель
 
@@ -879,10 +904,10 @@ Revision: 1451
   - Файлы: package.json, package-lock.json, src/control/context/context-session.mjs, src/control/plugin/context-files.mjs, src/control/plugin/service.mjs, src/control/plugin/startup-context.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/contracts/backend.mjs, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/workflow/coordination.mjs, src/execution/browser/session-runtime.mjs, tests/context-session.test.mjs, tests/fixtures/plugin-host.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-3: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: panel-inbox-068 / DOCS-3 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md
+  - Файлы: docs/architecture/OVERVIEW.md, README.md, docs/acceptance/shared-conversation-mac.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/current-actions.md, docs/modules/dialogue-timing.md, docs/modules/orchestrator-startup.md, docs/modules/release.md, docs/modules/sdk-messaging.md, docs/modules/shared-conversation.md, docs/modules/user-choice.md
   - Параллельность: исключительное выполнение
   - Зависимости: STARTUP-RECOVERY
 - [TODO] RELEASE-3: Собрать комплект Workflow Pilot 0.6.10 для трёх платформ — Ожидает

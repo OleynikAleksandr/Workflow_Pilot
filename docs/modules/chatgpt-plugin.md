@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.6.9 / Kit 1.10.9, протокол панели 10, build `0.6.9-communication-10`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
+Workflow Pilot 0.6.10 / Kit 1.10.9, протокол панели 10, build `0.6.10-communication-10`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
 
 ## Пользовательский путь
 
