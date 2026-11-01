@@ -81,7 +81,7 @@ sequenceDiagram
 | `workflow_assignment_dispatch` | Только O: свой draft_id; when_ready=true авторизует отложенную отправку; свежая проверка → intent → Kit → WAL |
 | `workflow_assignment_send` | recipient, kind, attempt, body, idempotency_key; необязательные in_reply_to, contexts, block_id, problem_id, blocking, resume, source_commit, result_id |
 | `workflow_communication_read_message` | Свой message_id; сохраняет read, возвращает полный текст/ссылки и актуальные инструкции |
-| `workflow_communication_read_context` | message_id, context_ref, part; проверенные полные части |
+| `workflow_communication_read_context` | message_id, context_ref, part; старые части и не-`task` сообщения |
 | `workflow_assignment_yield` | message_ids прочитанных собственных сообщений, reason; подтверждает обработку, затем агент заканчивает ход |
 | `workflow_assignment_status` | Факты очереди, receipt, назначения и ожидающие операции; не отправляет уведомление и не объявляет сообщения прочитанными |
 | `workflow_assignment_migrate` | Только O старого рабочего плана после общей безопасной паузы; [контракт перехода](assignment-dialogue-reliability.md#переход-старого-плана) |
@@ -125,4 +125,4 @@ O выполняет последовательные интеграции в ma
 
 Старт всех новых локальных сессий — [единый канал панели](orchestrator-startup.md), независимо от стратегии и состояния плана. URL передаёт только приглашение; ролевые правила E тоже читаются через MCP. Старый генератор вложений отключён. Получение пакета не назначает O и не разрешает выполнение задач.
 
-В 0.6.9 `workflow_communication_read_message` возвращает авторский Markdown и выбранные источники в порядке манифеста одним комплектом файлов. Все фактические зависимости входят в тот же документ. Исполнитель читает все ресурсы и тем же инструментом подтверждает порядок меток (`file_receipts`). Отчёт `result` требует подтверждения. Дочитывание отдельными вызовами сохраняется для старых форматов и других видов сообщений.
+С 0.6.11 `workflow_communication_read_message` для `task` возвращает `context_files`: авторский Markdown и выбранные источники в порядке манифеста, нарезанные на файлы до 24 000 байт в `.harness/runtime/inbox/<message_id>/` worktree исполнителя. Файлы пишутся при публикации `task` до сигнала (ошибка записи блокирует отправку: CONFLICT/PATH/INVALID — постоянная, остальные — `PLUGIN_COMMUNICATION_CONTEXT_FILES_PENDING` с повтором) и лениво при первом чтении для `task`, опубликованных до обновления. Исполнитель читает файлы строго по одному и тем же инструментом подтверждает порядок меток (`file_receipts`). Отчёт `result` и yield требуют подтверждения. `workflow_communication_read_context` остаётся для старых частей и остальных сообщений больше 12000 байт.

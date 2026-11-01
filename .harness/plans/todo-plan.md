@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1461,
+  "plan_revision": 1463,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "context-files-0611",
@@ -92,7 +92,7 @@
       {
         "path": "docs/planning/context-files-0611.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "3633c8648e6ee459ccbb1a35ac1af4bba451c0b0"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -215,8 +215,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "context-files-0611",
         "task_id": "DOCS",
@@ -258,7 +258,30 @@
         "Документы описывают 0.6.11: файлы на диске, последовательное чтение, отказ от EmbeddedResource и read_context для новых сообщений; живая приёмка отмечена NOT_RUN; спецификация удалена после переноса."
       ],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/execution.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/user-choice.md",
+        "docs/planning/context-files-0611.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/parallel-assignments.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -371,7 +394,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: context-files-0611
 Current Task: нет
-Revision: 1461
+Revision: 1463
 
 ## Цель
 
@@ -394,8 +417,8 @@ Revision: 1461
   - Файлы: src/control/plugin/context-files.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/communication.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, src/control/plugin/workflow-channel.mjs, src/control/context/context-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/execution/facade.mjs, src/execution/files/context-inbox.mjs, src/contracts/context.mjs, src/contracts/backend.mjs, src/contracts/startup-view.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/prepared-task.mjs, packages/workflow-kit/package.json, package.json, package-lock.json, .dependency-cruiser.cjs, tests/context-files.test.mjs, tests/context-inbox.test.mjs, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs, tests/prepared-task-flow.test.mjs, tests/role-protocol.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.9.tar.gz, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/plugin-host.mjs, tests/execution-architecture.test.mjs, src/execution/browser/chatgpt-composer.mjs, tests/chatgpt-composer.test.mjs, tests/plugin-communication.test.mjs, tests/automatic-agent-dialogue.test.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: context-files-0611 / DOCS / implementation
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/prepared-tasks.md, docs/modules/assignment-dialogue.md, docs/modules/chat-only-startup.md, docs/modules/execution.md, docs/modules/release.md, docs/planning/context-files-0611.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/project-compatibility.md, docs/modules/user-choice.md, docs/modules/dialogue-timing.md, docs/modules/shared-conversation.md, docs/modules/current-actions.md, docs/modules/sdk-messaging.md, docs/acceptance/shared-conversation-mac.md, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение

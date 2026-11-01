@@ -10,6 +10,7 @@ Execution не владеет проектом, current plan, привязкой
 | --- | --- |
 | commands/service.mjs | transient desktop workers, stdin, process groups, результаты |
 | files/adapter.mjs | чтение/запись JSON/текста, canonical path, digest, existence |
+| files/context-inbox.mjs | неизменяемые файлы контекста агентов в `.harness/runtime/inbox/<message_id>/` (с 0.6.11) |
 | runtime/service.mjs | подготовка Codex runtime, локальная готовность, выбор канала, login services |
 | runtime/mcp-client.mjs | initialize/tools-list собственного MCP; вызовы инструментов здесь запрещены |
 | runtime/project-commands.mjs | приватная адресная остановка команд удаляемого проекта, без остановки общей службы |
@@ -26,6 +27,7 @@ Facade предоставляет конкретные методы, без ун
 - runCommand(file, args, options) → snapshot с operationId; writeCommandInput(id, text, {end}); waitCommand(id, yieldMs); stopCommand(id); commandSnapshot(id).
 - executeFile(file, args, options, input?) — совместимость worker-вызовов: ждёт terminal result, возвращает stdout/stderr/operationId/outcome либо ошибку с теми же evidence. input идёт только в pipe и не хранится в records/argv/env.
 - readText/readJson/writeJson/canonicalPath — абсолютные пути; ошибки FS сохраняют коды. writeJson создаёт private файл через временный файл и rename; exclusive:true использует wx. Временный файл удаляется в finally.
+- writeContextFiles({workspace, messageId, files}) → {workdir, directory, files[{index,name,path,bytes}]}: UUID-каталог и имена `context-NN-of-MM.md`, цепочка `.harness/runtime/inbox/<id>` без симлинков, запись через временный файл и rename со сверкой SHA-256. Тот же hash переиспользуется, другой — `CONTEXT_FILES_CONFLICT` без перезаписи; неверный путь — `CONTEXT_FILES_PATH`, данные — `CONTEXT_FILES_INVALID`. pruneContextFiles({workspace, keep}) удаляет только чужие `keep` UUID-каталоги, не переходя по ссылкам. Рабочую копию выбирает Control по зарегистрированной сессии (E — worktree, O/S — checkout); Control не импортирует `fs`.
 - ensureServices/inspectServices/startMcpOnly/selectChannel — операции выбранного runtime. lastStatus — копия, а не изменяемый внутренний объект.
 
 Команда получает уникальный ID экземпляра; stdin и stop не принимают PID и не переназначают чужие операции. Состояния: running, success, error, cancel, UNKNOWN. success подтверждён exit 0, error — отказом запуска/завершения; cancel — запросом отмены и terminal evidence. Незнакомый/вытесненный из истории ID даёт UNKNOWN с exitCode:null, не успех. Для stdin/stop неизвестного ID — EXECUTION_SESSION_UNKNOWN; нет активного writable pipe — EXECUTION_STDIN_CLOSED. Ошибки ID/пути/владельца имеют отдельные коды.

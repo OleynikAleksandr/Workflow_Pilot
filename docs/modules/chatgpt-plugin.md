@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.6.10 / Kit 1.10.9, протокол панели 10, build `0.6.10-communication-10`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
+Workflow Pilot 0.6.11 / Kit 1.10.10, протокол панели 10, build `0.6.11-communication-10`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
 
 ## Пользовательский путь
 
@@ -119,5 +119,5 @@ WAL в собственном `plugin-communication`: legacy schema 1, workflow 
 
 Staging перед start/test/smoke/build собирает автономный HTML с лицензиями; Runtime.syncSource доставляет весь tools-комплект. DOCS предшествует общей сборке трёх ОС из одного commit и штатной установке ([поставка](release.md)). Автоматические проверки: настоящий SDK/HTML/Python MCP/Control/Kit/Git в изоляции, O и E в Chat, без моделей и рабочих профилей. [Матрица](chatgpt-plugin-acceptance.md) отделяет эту проверку от живой приёмки.
 
-`file_receipts` подтверждает комплект. Манифест в `structuredContent`, файлы в `content[].resource`. [Контракт](orchestrator-startup.md).
+`file_receipts` подтверждает комплект. В ответе только `context_files` (пути, размеры); файлы на диске. [Контракт](orchestrator-startup.md).
 
