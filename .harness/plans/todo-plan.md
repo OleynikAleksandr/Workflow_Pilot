@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1447,
+  "plan_revision": 1448,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Устранить остановку доставки из прогона T001 и выпустить 0.6.8.",
   "acceptance_criteria": [
     "Две совместимые работы одного адресата в очереди получают одно пробуждение и отдельное адресное чтение/подтверждение. При пополнении во время обработки следующее сообщение остаётся доступно, пропущенное чтение не считается доставкой.",
@@ -89,7 +89,8 @@
       "src/execution/browser/chatgpt-composer.mjs",
       "tests/chatgpt-composer.test.mjs",
       "tests/fixtures/plugin-host.mjs",
-      "tests/prepared-task-flow.test.mjs"
+      "tests/prepared-task-flow.test.mjs",
+      "src/frontend/plugin/index.html"
     ],
     "documentation_paths": [
       "docs/planning/panel-inbox-068.md",
@@ -621,6 +622,135 @@
       },
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "STARTUP-RECOVERY",
+      "title": "Восстановить неподтверждённый старт и доставку выбора Review в том же чате",
+      "why": "Восстановить неподтверждённый старт и доставку выбора Review в том же чате",
+      "dependencies": [],
+      "functional_paths": [
+        "package.json",
+        "package-lock.json",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/context-files.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "src/frontend/plugin/index.html",
+        "src/contracts/backend.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "kit-check",
+        "kit-assignments",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Первый Markdown содержит параметры подтверждения. Все файлы до 24000 байт, подтверждение проверяет все конечные метки.",
+        "При изменении ревизии до подтверждения та же сессия получает актуальный комплект. Старая квитанция отвергается. Панель открывается с состоянием подключения.",
+        "После конца хода допустимо одно напоминание для комплекта. Выбор Review доставляется обычным адресным каналом с квитанцией чтения."
+      ],
+      "expected_commit_message": "feat: Восстановить неподтверждённый старт и доставку выбора Review в том же чате",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "panel-inbox-068",
+        "task_id": "STARTUP-RECOVERY",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-3",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "panel-inbox-068",
+        "task_id": "DOCS-3",
+        "role": "implementation",
+        "iteration": 3
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "STARTUP-RECOVERY"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-3",
+      "title": "Собрать комплект Workflow Pilot 0.6.10 для трёх платформ",
+      "why": "Собрать комплект Workflow Pilot 0.6.10 для трёх платформ",
+      "dependencies": [
+        "STARTUP-RECOVERY",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Собрать комплект Workflow Pilot 0.6.10 для трёх платформ"
+      ],
+      "expected_commit_message": "feat: Собрать комплект Workflow Pilot 0.6.10 для трёх платформ",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "panel-inbox-068",
+        "task_id": "RELEASE-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-3",
+      "title": "Установить проверенный комплект 0.6.10 с возможностью отката",
+      "why": "Установить проверенный комплект 0.6.10 с возможностью отката",
+      "dependencies": [
+        "RELEASE-3",
+        "DOCS-3"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установить проверенный комплект 0.6.10 с возможностью отката"
+      ],
+      "expected_commit_message": "feat: Установить проверенный комплект 0.6.10 с возможностью отката",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "panel-inbox-068",
+        "task_id": "INSTALL-3",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -643,10 +773,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1447
+Revision: 1448
 
 ## Цель
 
@@ -718,6 +848,30 @@ Revision: 1447
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-2, DOCS-2
+- [TODO] STARTUP-RECOVERY: Восстановить неподтверждённый старт и доставку выбора Review в том же чате — Ожидает
+  - Git Commit: [PENDING] feat: Восстановить неподтверждённый старт и доставку выбора Review в том же чате
+  - Reference: panel-inbox-068 / STARTUP-RECOVERY / implementation
+  - Файлы: package.json, package-lock.json, src/control/context/context-session.mjs, src/control/plugin/context-files.mjs, src/control/plugin/service.mjs, src/control/plugin/startup-context.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/contracts/backend.mjs, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: panel-inbox-068 / DOCS-3 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: STARTUP-RECOVERY
+- [TODO] RELEASE-3: Собрать комплект Workflow Pilot 0.6.10 для трёх платформ — Ожидает
+  - Git Commit: [PENDING] feat: Собрать комплект Workflow Pilot 0.6.10 для трёх платформ
+  - Reference: panel-inbox-068 / RELEASE-3 / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: STARTUP-RECOVERY, DOCS-3
+- [TODO] INSTALL-3: Установить проверенный комплект 0.6.10 с возможностью отката — Ожидает
+  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.6.10 с возможностью отката
+  - Reference: panel-inbox-068 / INSTALL-3 / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-3, DOCS-3
 
 ## Context Pack For This Cycle
 
