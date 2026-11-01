@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1465,
+  "plan_revision": 1467,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "context-files-0611",
@@ -316,8 +316,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "context-files-0611",
         "task_id": "INSTALL",
@@ -342,7 +342,8 @@
       ],
       "expected_commit_message": "feat: Установить проверенный комплект 0.6.11 с возможностью отката",
       "why": "Установить проверенный комплект 0.6.11 с возможностью отката",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     },
     {
       "implementation_status": "TODO",
@@ -397,7 +398,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: context-files-0611
 Current Task: нет
-Revision: 1465
+Revision: 1467
 
 ## Цель
 
@@ -432,8 +433,8 @@ Revision: 1465
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: FILES, DOCS
-- [TODO] INSTALL: Установить проверенный комплект 0.6.11 с возможностью отката — Ожидает
-  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.6.11 с возможностью отката
+- [DONE] INSTALL: Установить проверенный комплект 0.6.11 с возможностью отката — Завершено
+  - Git Commit: [DONE] feat: Установить проверенный комплект 0.6.11 с возможностью отката
   - Reference: context-files-0611 / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
