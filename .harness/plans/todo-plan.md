@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1431,
+  "plan_revision": 1433,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Устранить остановку доставки из прогона T001 и выпустить 0.6.8.",
   "acceptance_criteria": [
     "Две совместимые работы одного адресата в очереди получают одно пробуждение и отдельное адресное чтение/подтверждение. При пополнении во время обработки следующее сообщение остаётся доступно, пропущенное чтение не считается доставкой.",
@@ -343,8 +343,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "INSTALL",
@@ -370,7 +370,8 @@
       ],
       "expected_commit_message": "feat: Установить комплект 0.6.8 на Mac",
       "task_brief": "Проверить готовую копию и учесть запущенную службу\nУстановлена или подготовлена к замене проверенная сборка",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -393,10 +394,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1431
+Revision: 1433
 
 ## Цель
 
@@ -438,8 +439,8 @@ Revision: 1431
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: DOCS
-- [TODO] INSTALL: Установить комплект 0.6.8 на Mac — Ожидает
-  - Git Commit: [PENDING] feat: Установить комплект 0.6.8 на Mac
+- [DONE] INSTALL: Установить комплект 0.6.8 на Mac — Завершено
+  - Git Commit: [DONE] feat: Установить комплект 0.6.8 на Mac
   - Reference: panel-inbox-068 / INSTALL / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
