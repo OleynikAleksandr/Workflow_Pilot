@@ -25,7 +25,10 @@ export function taskEvidence(tasks=[],assignments=[]) {
 // Only describe the delivery stage that a Kit or SDK receipt actually proves.
 export function executorDispatchStage(assignment,channel) {
   if(!assignment||['UNKNOWN','REFUSED','READY_FOR_INTEGRATION','INTEGRATED'].includes(assignment.status))return null;
-  const initial=channel?.initial;
+  const initial=channel?.initial,startup=channel?.startup;
+  if(initial&&!initial.read&&startup?.read&&!startup.complete&&!startup.cancelled&&!startup.superseded)
+    return {phase:'waiting-channel',label:startup.files_issued?'Старт не завершён · ждём подтверждения '+startup.files_issued+' файлов':'Старт не завершён · получено частей '+startup.parts_read+' из '+startup.total_parts};
+  if(initial?.file_count&&!initial.files_confirmed)return {phase:'received',label:'Поручение выдано · ждём подтверждения '+initial.file_count+' файлов'};
   if(initial?.read&&assignment.status==='RUNNING')return {phase:'started',label:'Исполнитель начал задачу · Kit RUNNING'};
   if(initial?.read)return {phase:'received',label:'Задание прочитано исполнителем · запуск не подтверждён'};
   if(initial?.delivery==='accepted')return {phase:'dispatch',label:'SDK принял задание · чтение не подтверждено'};

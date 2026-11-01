@@ -14,7 +14,7 @@ import {sessionStore} from '../../src/control/sessions/service.mjs';
 import {ContextSession} from '../../src/control/context/context-session.mjs';
 import {createWorkflowCoordination} from '../../src/control/workflow/coordination.mjs';
 import {openCommunicationStore} from '../../src/execution/plugin/communication-store.mjs';
-import {bridge,communicationHtml} from './plugin-host.mjs';
+import {bridge,communicationHtml,readMarkdownFiles} from './plugin-host.mjs';
 import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 import {createScope,startTask} from '../../packages/workflow-kit/src/lib/actions.mjs';
 import {createAssignment,setupAssignment,assignmentStatus} from '../../packages/workflow-kit/src/lib/task-assignment.mjs';
@@ -200,10 +200,13 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   const runAgent=async(record,request)=>{
     const metadata=record.metadata,notice=request.content.find(item=>item.type==='text').text;
     const args=JSON.parse(notice.match(/аргументами (\{[^\n]+?\})\./)[1]);
+    let taskFiles;
     const call=async(name,input)=>{
       modelCalls.push(name);
       const r=await c.callTool({name:name.startsWith('assignment_')?'workflow_'+name:'workflow_communication_'+name,arguments:input,_meta:metadata});
-      assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));return r.structuredContent;
+      assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));
+      if(r.structuredContent.files)taskFiles=readMarkdownFiles(r,r.structuredContent.files);
+      return r.structuredContent;
     };
     const message=await call('read_message',args);
     if(record.completedMessages?.has(message.message_id))return;
@@ -216,7 +219,8 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       assert.equal(result.isError,false);record.startupComplete=true;return;
     }
     assert.equal(message.role_protocol,ROLE_PROTOCOL_VERSION);
-    let text=fast&&message.inline_context?.complete?message.inline_context.text:'';
+    if(taskFiles){const ack=await call('read_message',{message_id:message.message_id,file_receipts:taskFiles.receipts});assert.equal(ack.files_confirmed,true);}
+    let text=taskFiles?.text??(fast&&message.inline_context?.complete?message.inline_context.text:'');
     for(let part=0,total=text?0:1;part<total;part++){
       const value=await call('read_context',{message_id:message.message_id,context_ref:message.context_ref,part});
       text+=value.text;total=value.total;
@@ -276,17 +280,13 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       }else if(message.kind==='task'){
         assert.equal(message.sender_role,'O');assert.equal(record.bootstrapCount,1);
         const agreedTask=readPlan(root).tasks.find(t=>t.id===project.taskId);
-        assert.equal(text,agreedTask.task_brief,'E receives the exact text authored before Start');
-        let selected='';for(let part=0,total=1;part<total;part++){
-          const v=await call('read_context',{message_id:message.message_id,context_ref:message.contexts[0].sha256,part});selected+=v.text;total=v.total;
-        }
-        assert.equal(selected,'Selected context for '+project.taskId);
+        const expected=agreedTask.task_brief+'\n\n## orchestrator-selection\n\nSelected context for '+project.taskId;
+        assert.equal(agreedTask.dependencies.length?text.slice(0,expected.length):text,expected,'single delivered document preserves author body and selected context');
         if(agreedTask.dependencies.length){
           const factsContext=message.contexts.find(c=>c.source==='workflow-kit-dependencies.json');assert.ok(factsContext);
-          let factsText='';for(let part=0,total=1;part<total;part++){
-            const v=await call('read_context',{message_id:message.message_id,context_ref:factsContext.sha256,part});factsText+=v.text;total=v.total;
-          }
-          const facts=JSON.parse(factsText),proof=validate(root).resolved;
+          const heading='\n\n## '+factsContext.source+'\n\n';
+          assert.ok(text.startsWith(expected+heading));
+          const facts=JSON.parse(text.slice(expected.length+heading.length)),proof=validate(root).resolved;
           assert.deepEqual(facts.map(f=>f.task_id),agreedTask.dependencies);
           assert.ok(facts.every(f=>proof[f.task_id]?.sha===f.commit),'deferred inputs contain only proven integration commits');
         }
@@ -501,14 +501,9 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
           assert.equal(registered.isError,false,JSON.stringify(registered.structuredContent));
           const startup=registered.structuredContent.startup_context;
           if(startup){
-            assert.ok(startup.text);
-            for(let part=1;part<startup.total;part++){
-              const value=await c.callTool({name:'workflow_communication_read_context',arguments:{
-                message_id:startup.message_id,context_ref:startup.context_ref,part},_meta:record.metadata});
-              assert.equal(value.isError,false);
-            }
+            const files=readMarkdownFiles(registered,startup.files);assert.ok(files.text);
             const ack=await c.callTool({name:'workflow_startup_complete',arguments:{
-              message_id:startup.message_id,context_sha256:startup.context_ref},_meta:record.metadata});
+              message_id:startup.message_id,context_sha256:startup.context_ref,file_receipts:files.receipts},_meta:record.metadata});
             assert.equal(ack.isError,false);record.startupComplete=true;
           }
           record.bootstrapCount++;record.registration=registered.structuredContent.registration;
@@ -634,7 +629,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   await fs.writeFile(path.join(root,'docs/planning/dialogue.md'),'# Isolated automatic dialogue\n');
   const task=(id,file,dependencies=[])=>({id,title:'Write '+file,why:'Actual automatic dialogue fixture',dependencies,parallel_safe:true,
     files:[file],checks:['dependency'],acceptance:['Checked output committed'],commit:'docs: '+file,
-    ...((owned||fast)?{task_brief:'Implement only '+id+' and return the checked commit.'}:{}),
+    ...((owned||fast)?{task_brief:'Implement only '+id+' and return the checked commit.'+(fast&&id==='T001'?'\nПроверка UTF-8 🪟'.repeat(1200):'')}:{}),
     ...(owned?{prepared_task:{version:1,contexts:[{source:'orchestrator-selection',text:'Selected context for '+id}]}}:{})});
   const planInput={id:'dialogue-fixture',spec:'docs/planning/dialogue.md',stack:'Node fixture',objective:'Two independent assignments, a question and a dependent result',approval:'Isolated fixture authorized',
     parallel_allowed:true,max_workers:workers,execution_strategy:'orchestrated',execution_reason:'Independent files, then verified integration',execution_origin_session_id:origin.sessionId,release:false,...(owned?{}:{dialogue_version:0}),

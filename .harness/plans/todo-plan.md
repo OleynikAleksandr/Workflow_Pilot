@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1434,
+  "plan_revision": 1440,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
@@ -83,7 +83,13 @@
       "packages/workflow-kit/src/lib/prepared-task.mjs",
       "packages/workflow-kit/src/schemas/plan.schema.json",
       "tests/startup-context.test.mjs",
-      "tests/fixtures/released-kit/kit-1.10.8.tar.gz"
+      "tests/fixtures/released-kit/kit-1.10.8.tar.gz",
+      "src/contracts/startup-view.mjs",
+      "src/control/context/context-session.mjs",
+      "src/execution/browser/chatgpt-composer.mjs",
+      "tests/chatgpt-composer.test.mjs",
+      "tests/fixtures/plugin-host.mjs",
+      "tests/prepared-task-flow.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/panel-inbox-068.md",
@@ -409,7 +415,16 @@
         "tests/workflow-kit-upgrade.test.mjs",
         "tests/fixtures/released-kit/manifest.json",
         "tests/fixtures/released-kit/kit-1.10.8.tar.gz",
-        "tests/fixtures/automatic-agent-dialogue.mjs"
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "tests/prepared-task-flow.test.mjs",
+        "tests/role-protocol.test.mjs"
       ],
       "documentation_paths": [
         "packages/workflow-kit/src/templates/PLAN.md"
@@ -424,17 +439,56 @@
       "verification_kind": "code",
       "acceptance_criteria": [
         "Новая O/E/S-сессия и подтверждённое рабочее поручение используют штатные инструменты и роли. Для одного авторского текста и зависимостей Pilot формирует пронумерованные UTF-8 файлы не более 24 000 байт, возвращает весь комплект один раз за вызов, исключает дублирование большого текста в JSON. Одна итоговая квитанция старта, отдельное исполнение разрешённого рабочего задания. Реальный хост и отсутствие обрезки проверяет пользователь на новом релизе.",
-        "Свежий адресат, все файлы и исходный текст проверяются. Пропущенная часть не подтверждает старт. Повтор чтения, частичный прежний старт и предыдущий комплект для отката сохраняются. Проверить фактический публичный MCP для старта/рабочего сообщения, границу UTF-8, большой авторский Markdown и неизменность подготовленных источников."
+        "Свежий адресат, все файлы и исходный текст проверяются. Пропущенная часть не подтверждает старт. Повтор чтения, частичный прежний старт и предыдущий комплект для отката сохраняются. Проверить фактический публичный MCP для старта/рабочего сообщения, границу UTF-8, большой авторский Markdown и неизменность подготовленных источников.",
+        "Сборка 0.6.9 через обычные panel/read_message, публичный MCP и запуск с контекстом 5×24 kB. Получатель подтверждает конечные метки целиком. Неполное чтение блокирует подтверждение. Проверить совместимость с черновиком 0.6.8.",
+        "Подтверждение уже выданного S-снимка после смены ревизии и перезапуска проверено на долговечном журнале.",
+        "План и Review сохраняют один авторский Markdown длиннее 24 000 байт, лимит UTF-8 и дайджест проверяются раздельно."
       ],
       "expected_commit_message": "feat: Выдавать весь Markdown-контекст в одном ответе панели или чтения задания",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "BUNDLE",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "packages/workflow-kit/src/lib/prepared-task.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/schemas/plan.schema.json",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/context.mjs",
+        "src/contracts/startup-view.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/context-files.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/fixtures/released-kit/kit-1.10.8.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/prepared-task-flow.test.mjs",
+        "tests/role-protocol.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-2",
@@ -545,7 +599,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1434
+Revision: 1440
 
 ## Цель
 
@@ -593,10 +647,10 @@ Revision: 1434
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] BUNDLE: Выдавать весь Markdown-контекст в одном ответе панели или чтения задания — Ожидает
-  - Git Commit: [PENDING] feat: Выдавать весь Markdown-контекст в одном ответе панели или чтения задания
+- [DONE] BUNDLE: Выдавать весь Markdown-контекст в одном ответе панели или чтения задания — Завершено
+  - Git Commit: [DONE] feat: Выдавать весь Markdown-контекст в одном ответе панели или чтения задания
   - Reference: panel-inbox-068 / BUNDLE / implementation
-  - Файлы: src/control/plugin/startup-context.mjs, src/control/plugin/context-files.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/contracts/context.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, src/backend/desktop-model.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/prepared-task.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package.json, package-lock.json, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.8.tar.gz, tests/fixtures/automatic-agent-dialogue.mjs, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: src/control/plugin/startup-context.mjs, src/control/plugin/context-files.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/contracts/context.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, src/backend/desktop-model.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/prepared-task.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package.json, package-lock.json, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.8.tar.gz, tests/fixtures/automatic-agent-dialogue.mjs, src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/plugin/assignment-dialogue.mjs, src/execution/browser/chatgpt-composer.mjs, tests/chatgpt-composer.test.mjs, tests/fixtures/plugin-host.mjs, src/control/workflow/dialogue-delivery.mjs, tests/prepared-task-flow.test.mjs, tests/role-protocol.test.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает

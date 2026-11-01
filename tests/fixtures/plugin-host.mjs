@@ -8,6 +8,22 @@ import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {startPluginBridge} from '../../src/execution/plugin/bridge.mjs';
 const root=path.resolve(import.meta.dirname,'../..');
 const metadata={'openai/session':'conversation-fixture','openai/subject':'user-fixture'};
+export function readMarkdownFiles(response, manifest) {
+  const resources=response.content.filter(item=>item.type==='resource').map(item=>item.resource);
+  assert.equal(resources.length,manifest.length);
+  const parts=[],receipts=[];
+  for(const [index,resource] of resources.entries()){
+    assert.equal(resource.uri,manifest[index].uri);
+    assert.equal(resource.mimeType,'text/markdown');
+    assert.equal(Buffer.byteLength(resource.text),manifest[index].bytes);
+    assert.ok(manifest[index].bytes<=24000);
+    const end=resource.text.match(/\n\nWorkflow Pilot receipt: ([a-f0-9]{12})\n$/);
+    assert.ok(end,'each resource includes the end of its file');
+    parts.push(resource.text.slice(0,end.index));receipts.push(end[1]);
+  }
+  return {text:parts.join(''),receipts};
+}
+
 async function bridge(t,f){
   const b=await startPluginBridge({directory:f.directory,panel:input=>f.plugin.panel(input),list:()=>f.plugin.list(),open:id=>f.plugin.open(id),connect:i=>f.plugin.connect(i),
     sessionTitle:input=>f.plugin.sessionTitle(input),communication:f.plugin.communication});

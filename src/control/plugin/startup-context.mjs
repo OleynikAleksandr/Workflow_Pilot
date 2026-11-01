@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 import {workflowRunId} from './enrollment.mjs';
+import {contextFileBundle,requireFileReceipts} from './context-files.mjs';
 
 const hash=text=>createHash('sha256').update(text).digest('hex');
 const check=(ok,code,message)=>{if(!ok)throw Object.assign(Error(message),{code:'PLUGIN_COMMUNICATION_'+code});};
@@ -68,6 +69,7 @@ export class StartupContext {
   view(m){return m?{message_id:m.message_id,request_id:m.request_id,delivery:m.delivery,read:m.read,
     delivery_mode:m.delivery_mode??'sdk-notification',complete:!!m.startup_complete,cancelled:!!m.cancelled,
     superseded:!!m.superseded,parts_read:m.parts_read.length,total_parts:m.total_parts,
+    ...(m.file_receipt?{files_issued:m.file_receipt.count,files_confirmed:!!m.startup_complete}:{}),
     ...(m.startup_complete?{completion:{id:'startup:'+m.message_id,at:m.startup_completed_at??null}}:{})}:null;}
   progress(sessionId,requestId){
     if(this.c.removedSessions.has(sessionId))return null;
@@ -95,6 +97,17 @@ export class StartupContext {
     const {run,member,m}=await this.own(input);
     check(m.delivery_mode==='model-pull'&&!m.intent,'MODE','Начатую SDK-доставку нельзя заменить прямым чтением.');
     if(!m.read){m.read=true;this.c.event(run,'message.read',{message_id:m.message_id,participant_id:member.id});}
+    if(input.context_format==='markdown-files-v1'){
+      const text=this.c.store?await this.c.store.readContent(m.context_ref):this.c.workflow.contents.get(m.context_ref);
+      check(typeof text==='string'&&hash(text)===m.context_ref,'CONTEXT','Сохранённый стартовый контекст повреждён.');
+      const {files,receiptHash}=contextFileBundle(m.message_id,text);
+      if(!m.file_receipt){
+        m.file_receipt={count:files.length,digest:receiptHash};
+        this.c.event(run,'context.files_issued',{message_id:m.message_id,participant_id:member.id,count:files.length});
+      }
+      return {message_id:m.message_id,context_ref:m.context_ref,bytes:m.context_bytes,complete:!!m.startup_complete,
+        markdown_files:files,instructions:'В этом ответе сразу приложен весь стартовый контекст в пронумерованных .md. Прочитай каждый файл целиком. В этом же ходе один раз вызови workflow_startup_complete с message_id, context_sha256=context_ref и file_receipts: метки Workflow Pilot receipt из концов всех файлов по порядку. Если файл недоступен, сообщи его имя; не подтверждай неполный комплект. После подтверждения заверши стартовый ход и ожидай отдельное поручение. '+INCOMING_WORK_RULE};
+    }
     // One durable transaction owns the receipt and first part. A lost tool
     // response is retried as a read, never as a second model notification.
     const result=await this.returnPart(run,m,0);
@@ -114,9 +127,11 @@ export class StartupContext {
   async completed(input){
     const {run,member,m}=await this.own(input);
     check(input.context_sha256===m.context_ref,'CONTEXT','Digest не совпадает со стартовым пакетом.');
-    check(m.read&&m.parts_read.length===m.total_parts,'INCOMPLETE','Прочитайте все части стартового контекста перед подтверждением.');
+    if(m.file_receipt && !m.startup_complete)requireFileReceipts(m.file_receipt,input.file_receipts);
+    else if(!m.startup_complete)check(m.read&&m.parts_read.length===m.total_parts,'INCOMPLETE','Прочитайте все части стартового контекста перед подтверждением.');
     if(!m.startup_complete){m.startup_complete=true;m.startup_completed_at=new Date(this.c.now()).toISOString();
       if(member.deliveryGate?.message_id===m.message_id)delete member.deliveryGate;
+      if(m.file_receipt)this.c.event(run,'context.files_confirmed',{message_id:m.message_id,participant_id:member.id,count:m.file_receipt.count});
       this.c.event(run,'startup.complete',{message_id:m.message_id,participant_id:member.id,total_parts:m.total_parts});}
     return {...this.view(m),instructions:'Контекст полностью получен и подтверждён. Кратко сообщите о восстановлении проекта. Выполнение плана не разрешено этим подтверждением.\n'+INCOMING_WORK_RULE};
   }

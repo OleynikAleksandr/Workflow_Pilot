@@ -6,9 +6,10 @@ export const CONTEXT_PROTOCOL = 'inline-context-v1';
 // the profile into every later new Chat, so this exact text, with any ticket,
 // is recognized there as another session's command; the page compares it.
 export const STARTUP_TICKET_PLACEHOLDER = '@@enrollment_ticket@@';
-export function startupCommand(ticket) {
+export function startupCommand(ticket, withFileInstructions = true) {
   return 'Открой панель Workflow Pilot: один раз вызови workflow_pilot_panel с аргументами '
     + JSON.stringify({ enrollment_ticket: ticket })
+    + (withFileInstructions ? '. В том же ходе прочитай до конца все приложенные Markdown-файлы по порядку и подтверди весь комплект один раз согласно startup_context' : '')
     + '. Если вызов вернул ошибку или в ответе нет startup_context, сообщи точную причину и ничего не выдумывай; подтверждения хоста не обходи. Приглашение не публикуй и не сохраняй.';
 }
 

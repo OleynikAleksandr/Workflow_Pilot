@@ -467,7 +467,7 @@ test('explicit new conversation clears textarea through input, never the clipboa
 
 test('a restored startup command of another session is cleared; user text and extended commands are kept', async () => {
   const command = startupCommand('a'.repeat(64));
-  for (const [draft, cleared] of [[command, true], ['  ' + command.replace('. Если', '.\nЕсли') + '\n', true],
+  for (const [draft, cleared] of [[command, true], [startupCommand('a'.repeat(64),false), true], ['  ' + command.replace('. Если', '.\nЕсли') + '\n', true],
     [command + ' И ещё мой вопрос', false], ['Мой черновик', false], [command.replace('a'.repeat(64), 'xyz'), false]]) {
     const f = fixture({ draft });
     f.dom.window.__webPilotObserverDocumentId = 'fresh-document';

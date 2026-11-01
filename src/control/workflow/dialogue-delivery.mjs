@@ -50,7 +50,7 @@ export class DialogueDelivery {
           }
         }
         // An already issued discussion snapshot remains immutable across plan changes.
-        if(target.role==='S'&&message.delivery_mode==='model-pull'&&message.read&&message.parts_read?.includes(0))return true;
+        if(target.role==='S'&&message.delivery_mode==='model-pull'&&message.read&&(message.file_receipt?.count>0||message.parts_read?.includes(0)))return true;
         const info=await this.store.inspect(project.workspace,project.sessionId);
         return await record?.controller.packetIsCurrent(attempt.packet,{...project,...info})===true;
       }

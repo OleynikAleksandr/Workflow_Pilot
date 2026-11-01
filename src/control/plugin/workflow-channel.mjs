@@ -111,6 +111,7 @@ export class WorkflowChannel {
     const member=Object.values(run?.members??{}).find(m=>['project_id','local_session_id','origin_session_id','role','scope_id','assignment_id','task_id','workspace_id','origin_workspace_id']
       .every(key=>(m.target[key]??null)===(target[key]??null)));
     const sdk=!!member&&this.livePanel(run,member);
+    const startup=run&&c.startup.view(c.startup.message(run,sessionId));
     const initial=run?.messages.findLast(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id
       &&m.assignment_id===target.assignment_id&&['assignment-start','task','revision_request'].includes(m.kind)&&!m.superseded);
     const dialogue=run?.messages.filter(m=>m.assignment_id===target.assignment_id&&m.scope_id===target.scope_id&&!m.superseded)??[];
@@ -137,7 +138,7 @@ export class WorkflowChannel {
       &&i.effect.kind==='task'&&!['published','retired','failed'].includes(i.phase));
     const finalReceipt=run?.messages.findLast(m=>m.recipient_session_id===sessionId && m.scope_id===target.scope_id
       &&m.kind==='finalization'&&!m.superseded&&!m.cancelled);
-    return {...(finalReceipt?.read&&finalReceipt.yielded?{finalizationHandled:true}:{}),registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
+    return {...(startup?{startup}:{}),...(finalReceipt?.read&&finalReceipt.yielded?{finalizationHandled:true}:{}),registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
       generation:member?.generation??null,blocked,
       ...(blocker?{blocker}:{}),
       ...(result?{result:{delivery:result.delivery,read:!!result.read}}:{}),
@@ -148,7 +149,7 @@ export class WorkflowChannel {
           :incoming.idempotency_key?.startsWith('parked:')?'parked':incoming.idempotency_key?.startsWith('authorize:')?'authorize':null,
         handled:!!incoming.yielded,delivery:incoming.delivery,recovery:notificationRecovery(incoming,c.now()),reason:incoming.claim_wait_reason??(member&&!sdk&&this.observedOnly(run,member)?'owner-unavailable':null)}}:{}),
       ...(draft?{draft:{phase:draft.phase}}:{}),
-      initial:initial?{message_id:initial.message_id,delivery:initial.delivery,read:initial.read,recovery:notificationRecovery(initial,c.now()),handled:!!initial.yielded,physical_complete:!!initial.reply_observed}:null};
+      initial:initial?{message_id:initial.message_id,delivery:initial.delivery,read:initial.read,...(initial.file_receipt?{file_count:initial.file_receipt.count,files_confirmed:!!initial.files_confirmed}:{}),recovery:notificationRecovery(initial,c.now()),handled:!!initial.yielded,physical_complete:!!initial.reply_observed}:null};
   }
   permitted(run,member) {
     return ['O','E'].includes(member.role)&&run.grant?.active===true&&run.grant.boot===this.c.backendId&&!member.stopped

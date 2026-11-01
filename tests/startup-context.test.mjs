@@ -375,7 +375,7 @@ test('model-pull rejects an enrolled executor and a removed project',async t=>{
   await assert.rejects(c.startupOpen(input),{code:'PLUGIN_COMMUNICATION_PROJECT_REMOVED'});
 });
 
-test('issued S snapshot survives a concurrent plan revision on durable WAL without a second delivery',async t=>{
+for(const format of ['parts','files'])test('issued S '+format+' survive a concurrent plan revision on durable WAL without a second delivery',async t=>{
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-s-revision-')));
   const s={...target,role:'S',local_session_id:'s',origin_session_id:'s',scope_id:'scope'};
   const project={workspace:'/fixture',sessionId:'s',planRevision:5,
@@ -399,6 +399,19 @@ test('issued S snapshot survives a concurrent plan revision on durable WAL witho
   await assert.rejects(c.startupOpen(input),{code:'PLUGIN_COMMUNICATION_STALE_MESSAGE'});
   assert.equal(c.startup.progress('s','snapshot-rev5').parts_read,0);
   project.planRevision=5;
+  if(format==='files'){
+    const fileInput={...input,context_format:'markdown-files-v1'};
+    const opened=await c.startupOpen(fileInput);
+    const marks=opened.markdown_files.map(f=>f.text.match(/Workflow Pilot receipt: ([a-f0-9]{12})\n$/)[1]);
+    assert.ok(marks.length>2);
+    project.planRevision=6;
+    c.dispose();await c.tail;
+    const restored=await create();
+    assert.deepEqual(await restored.startupOpen(fileInput),opened);
+    await assert.rejects(restored.startupComplete({...input,context_sha256:opened.context_ref,file_receipts:marks.slice(1)}),{code:'PLUGIN_COMMUNICATION_INCOMPLETE'});
+    assert.equal((await restored.startupComplete({...input,context_sha256:opened.context_ref,file_receipts:marks})).complete,true);
+    return;
+  }
   const first=await c.startupOpen(input);
   assert.equal(first.part,0);assert.ok(first.total>2);
   assert.equal(c.startup.progress('s','snapshot-rev5').parts_read,1);

@@ -132,7 +132,7 @@ export class PluginProjects {
     if(result.changed)this.onChange({sessionTitle:{sessionId:target.local_session_id}});
     return result;
   }
-  async panel({enrollment_ticket,metadata,meta_keys}={}) {
+  async panel({enrollment_ticket,metadata,meta_keys,context_format}={}) {
     await this.communication.ready;
     const registration=enrollment_ticket?await this.communication.enroll(enrollment_ticket,metadata):null;
     let startup_resume,startup_context,role_update,binding=registration;
@@ -142,7 +142,7 @@ export class PluginProjects {
     if(binding){
       const c=this.communication,run=c.runs.get(binding.run_id),member=run.members[binding.participant_id],m=c.startup.message(run,member.target.local_session_id);
       if(m?.delivery_mode==='model-pull'&&!m.startup_complete)
-        startup_context=await c.startupOpen({metadata,message_id:m.message_id});
+        startup_context=await c.startupOpen({metadata,message_id:m.message_id,context_format});
       else if(m?.intent&&!m.startup_complete&&!m.superseded)startup_resume={message_id:m.message_id,
         instructions:'Продолжите чтение того же стартового пакета через workflow_communication_read_message/read_context и подтвердите workflow_startup_complete. Повтор уведомления не требуется.'};
       // A candidate that lost planning to the owner learns its new role here; no message enters its chat.

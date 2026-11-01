@@ -96,7 +96,8 @@ export class AssignmentDialogue {
         const physical=state.block?await this.c.workflow.reconcile(target):this.c.workflow.observe(target);
         assignments.push({recipient_ref:member.role==='O'?reference(run,target):'orchestrator',task_id:target.task_id,
           assignment_id:target.assignment_id,attempt:state.dialogue?.attempt??1,dialogue_version:state.dialogue_version,
-          ...(member.role==='O'&&state.task_brief?{task_brief:state.task_brief,contract_digest:state.contract_digest}:{}),
+          ...(member.role==='O'&&state.task_brief?{contract_digest:state.contract_digest,
+            ...(Buffer.byteLength(state.task_brief)<=12000?{task_brief:state.task_brief}:{task_brief_bytes:Buffer.byteLength(state.task_brief)})}:{}),
           phase:state.phase,block:state.block??null,channel:this.c.workflow.progress(target.local_session_id),
           physical:physical?{busy:physical.busy===true,stopped:physical.stopped===true,commandsIdle:physical.commandsIdle===true,
             document_id:physical.documentId??null,observation_seq:physical.observationSeq??0}:null,
@@ -248,6 +249,10 @@ export class AssignmentDialogue {
       'CAPABILITY','Обновите Workflow Kit проекта: подготовка требует проверяемой версии требований назначения.');
     check((state.dialogue?.attempt??1)===payload.attempt,'STALE_ATTEMPT','Попытка изменилась. Прочитайте статус назначения.');
     if(payload.kind==='task'&&!input.draft)await this.ready(target);
+    if(payload.kind==='result'){
+      const grant=run.messages.findLast(m=>m.kind==='task'&&m.recipient_id===member.id&&m.assignment_id===worker.assignment_id&&m.attempt===payload.attempt&&!m.superseded);
+      check(!grant?.file_receipt||grant.files_confirmed,'INCOMPLETE','Сначала подтвердите конечные метки всех файлов рабочего поручения.');
+    }
     if(payload.in_reply_to){const parent=run.messages.find(m=>m.message_id===payload.in_reply_to);
       check(parent?.recipient_id===member.id&&parent.read&&parent.assignment_id===worker.assignment_id&&parent.attempt===payload.attempt,
         'CORRELATION','Ответ требует прочитанного сообщения текущей попытки своего назначения.');}
@@ -431,6 +436,7 @@ export class AssignmentDialogue {
       'YIELD_DENIED','Квитанция относится только к прочитанным сообщениям своего текущего плана.');
     for(const message of messages){
       if(message.superseded_read&&input.reason==='handled')continue;
+      if(message.file_receipt&&input.reason!=='awaiting_reply')check(message.files_confirmed,'INCOMPLETE','Полный комплект поручения ещё не подтверждён.');
       const reply=run.messages.find(m=>m.sender_id===member.id&&m.assignment_id===message.assignment_id
         &&m.in_reply_to===message.message_id&&((m.kind==='revision_request'&&m.result_id===message.message_id)
           ||(m.kind==='decision'&&m.resume&&m.block_id===message.block_id)));

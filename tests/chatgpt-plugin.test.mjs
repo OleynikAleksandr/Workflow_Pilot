@@ -94,30 +94,32 @@ test('real MCP sets an early topic only for its registered host, without a plan 
   await f.store.setArchived(project.workspace,true);
   assert.equal((await call('Removed target')).isError,true);
 });
-test('startup panel returns first context in the same MCP turn without iframe readiness or a second SDK wakeup',async t=>{
+import {readMarkdownFiles} from './fixtures/plugin-host.mjs';
+
+test('startup panel returns five whole Markdown files in the same MCP turn without iframe readiness or a second SDK wakeup',async t=>{
   const f=await fixture(t),comm=f.plugin.communication;
   const target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};
   comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?target:null;
   comm.workflow.observe=()=>({canSend:false,busy:true});comm.workflow.admission=async()=>false;
-  const invite=await comm.reserve(target),text='Контекст 🪟 '.repeat(2500);
+  const invite=await comm.reserve(target),text='Контекст 🪟 '.repeat(5400);
   const staged=await comm.startup.stage(target,{request_id:'pull-request',text});
   await bridge(t,f);const c=await client(t,f);
   const call=(name,args={})=>c.callTool({name,arguments:args,_meta:metadata});
   const opened=await call('workflow_pilot_panel',{enrollment_ticket:invite.enrollment_ticket});
   assert.equal(opened.isError,false);const first=opened.structuredContent.startup_context;
-  assert.equal(first.message_id,staged.message_id);assert.equal(first.part,0);assert.ok(first.total>1);
+  assert.equal(first.message_id,staged.message_id);assert.equal(first.files.length,5);
   assert.ok(Buffer.byteLength(JSON.stringify(opened.structuredContent))<28000);
   const retry=await call('workflow_pilot_panel');assert.deepEqual(retry.structuredContent.startup_context,first);
   const early=await call('workflow_startup_complete',{message_id:first.message_id,context_sha256:first.context_ref});assert.equal(early.isError,true);
   const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?10:ms});
   await eventually(()=>ui.calls.includes('workflow_communication_sync'));
-  let actual=first.text;
-  for(let part=1;part<first.total;part++){
-    const r=await call('workflow_communication_read_context',{message_id:first.message_id,context_ref:first.context_ref,part});
-    assert.equal(r.isError,false);actual+=r.structuredContent.text;
+  const files=readMarkdownFiles(opened,first.files);assert.equal(files.text,text);
+  assert.deepEqual(readMarkdownFiles(retry,first.files),files);
+  for(const file_receipts of [files.receipts.slice(0,-1),[...files.receipts].reverse()]){
+    const partial=await call('workflow_startup_complete',{message_id:first.message_id,context_sha256:first.context_ref,file_receipts});
+    assert.equal(partial.structuredContent.error.code,'PLUGIN_COMMUNICATION_INCOMPLETE');
   }
-  assert.equal(actual,text);
-  const ack=await call('workflow_startup_complete',{message_id:first.message_id,context_sha256:first.context_ref});assert.equal(ack.structuredContent.complete,true);
+  const ack=await call('workflow_startup_complete',{message_id:first.message_id,context_sha256:first.context_ref,file_receipts:files.receipts});assert.equal(ack.structuredContent.complete,true);
   await eventually(()=>ui.dom.window.document.body.textContent.includes('Можно ставить задачу'));
   assert.equal(ui.messages.length,0);
   for(const name of ['wait','claim_ready','report'])assert.equal(ui.calls.includes('workflow_communication_'+name),false,name);
@@ -212,6 +214,14 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   assert.equal(read.structuredContent.role_protocol,ROLE_PROTOCOL_VERSION);
   assert.match(read.structuredContent.instructions,/обязательно отправь orchestrator result/);
   assert.match(read.structuredContent.instructions,/workflow_assignment_yield/);
+  const files=readMarkdownFiles(read,read.structuredContent.files);
+  assert.equal(files.text,'Реализуй назначенный модуль\n\n## selected-contract\n\n'+text);
+  const blocked=await call('e','workflow_assignment_yield',{message_ids:[message_id],reason:'handled'});
+  assert.equal(blocked.structuredContent.error.code,'PLUGIN_COMMUNICATION_INCOMPLETE');
+  const wrongRecipient=await call('o','workflow_communication_read_message',{message_id,file_receipts:files.receipts});
+  assert.equal(wrongRecipient.isError,true);
+  const ack=await call('e','workflow_communication_read_message',{message_id,file_receipts:files.receipts});assert.equal(ack.structuredContent.files_confirmed,true);
+  const repeat=await call('e','workflow_communication_read_message',{message_id,file_receipts:files.receipts});assert.deepEqual(repeat.structuredContent,ack.structuredContent);
   const context=await call('e','workflow_communication_read_context',{message_id,context_ref:read.structuredContent.contexts[0].sha256});
   assert.ok(context.structuredContent.total>1);assert.equal(context.structuredContent.bytes,Buffer.byteLength(text));
   const yielded=await call('e','workflow_assignment_yield',{message_ids:[message_id],reason:'handled'});
@@ -280,8 +290,8 @@ test('the real project projection reserves the published origin even though pers
   assert.equal(opened.isError,false,JSON.stringify(opened.structuredContent?.error));
   assert.equal(opened.structuredContent.registration.role,'S');
   const first=opened.structuredContent.startup_context;
-  assert.equal(first.text,'Контекст обычного чата');
-  const ack=await c.callTool({name:'workflow_startup_complete',arguments:{message_id:first.message_id,context_sha256:first.context_ref},_meta:{'openai/session':'discussion-fixture'}});
+  const files=readMarkdownFiles(opened,first.files);assert.equal(files.text,'Контекст обычного чата');
+  const ack=await c.callTool({name:'workflow_startup_complete',arguments:{message_id:first.message_id,context_sha256:first.context_ref,file_receipts:files.receipts},_meta:{'openai/session':'discussion-fixture'}});
   assert.equal(ack.isError,false,JSON.stringify(ack.structuredContent?.error));
   assert.equal(ack.structuredContent.complete,true);
   await assert.rejects(f.plugin.communication.workflow.grant(chatTarget),{code:'PLUGIN_COMMUNICATION_MODE'});
@@ -342,7 +352,7 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.equal(previous.code,'PLUGIN_COMMUNICATION_VERSION');
   assert.match(previous.message,/0\.5\.41-communication-8 \(протокол 8\)/);
   assert.ok(previous.message.includes(COMMUNICATION_BUILD+' (протокол '+COMMUNICATION_PROTOCOL+')'));
-  assert.equal(COMMUNICATION_PROTOCOL,9);assert.equal(COMMUNICATION_BUILD,JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8')).version+'-communication-9');
+  assert.equal(COMMUNICATION_PROTOCOL,10);assert.equal(COMMUNICATION_BUILD,JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8')).version+'-communication-10');
   const schema=tools.find(t=>t.name==='workflow_communication_bind').inputSchema;
   assert.ok(JSON.stringify(schema).includes('frame_instance_id'),'bind accepts the immutable frame id');
   for(const suffix of ['claim','claim_ready','verify'])

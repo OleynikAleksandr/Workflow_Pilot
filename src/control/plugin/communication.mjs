@@ -3,6 +3,7 @@ import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
+import {contextFileBundle,requireFileReceipts} from './context-files.mjs';
 import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic,deliveryObserverError} from '../../contracts/plugin-communication.mjs';
 import {DeliveryOwnership} from './delivery-ownership.mjs';
 import {ConversationFreshness} from './conversation-freshness.mjs';
@@ -742,6 +743,30 @@ export class PluginCommunication {
         instructions:message.kind==='user-choice'?USER_EVENT_RULE+'\n'+INCOMING_WORK_RULE+'\nЭто событие заменено новым решением. Прочитайте актуальный review:status; прежнее решение не применяйте.'
           :'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Для диалога версии 1 вызовите workflow_assignment_yield с reason=handled для этого уведомления, затем завершите ход.'};
     }
+    let bundle;
+    if(input.file_receipts!=null){
+      requireValue(message.kind==='task'&&message.file_receipt,'READ_DENIED','Здесь нет выданного комплекта поручения.');
+      requireFileReceipts(message.file_receipt,input.file_receipts);
+      if(!message.files_confirmed){
+        message.files_confirmed=true;
+        this.event(run,'context.files_confirmed',{message_id:message.message_id,participant_id:member.id,count:message.file_receipt.count});
+      }
+      return {message_id:message.message_id,files_confirmed:true,already_handled:!!message.yielded};
+    }
+    if(input.context_format==='markdown-files-v1'&&message.dialogue_version===1&&message.kind==='task'&&!message.yielded){
+      const sources=[{sha256:message.context_ref},...message.contexts??[]];
+      const sections=[];
+      for(const source of sources){
+        const text=this.store?await this.store.readContent(source.sha256):this.workflow.contents.get(source.sha256);
+        requireValue(typeof text==='string'&&createHash('sha256').update(text).digest('hex')===source.sha256,'CONTEXT','Сохранённый источник поручения повреждён.');
+        sections.push(source.source?'\n\n## '+source.source+'\n\n'+text:text);
+      }
+      bundle=contextFileBundle(message.message_id,sections.join(''));
+      if(!message.file_receipt){
+        message.file_receipt={count:bundle.files.length,digest:bundle.receiptHash};
+        this.event(run,'context.files_issued',{message_id:message.message_id,participant_id:member.id,count:bundle.files.length});
+      }
+    }
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;
       if(message.kind==='user-choice')message.read_page=structuredClone(this.workflow.observe(member.target));
@@ -754,7 +779,10 @@ export class PluginCommunication {
     if(!message.yielded)this.workflow.coverIncoming(run,member,message,new Set(pending_incoming.map(m=>m.message_id)));
     if(message.yielded)return {message_id:message.message_id,already_handled:true,pending_incoming,
       instructions:'Это сообщение уже обработано. Не повторяйте команды, task:start, result или интеграцию. Прочитайте pending_incoming, если есть новые входящие.\n'+INCOMING_WORK_RULE};
-    const {idempotency_key,fingerprint,read_page,handlingGate,inbox_wake,notification_attempts,...value}=message;
+    const {idempotency_key,fingerprint,read_page,handlingGate,inbox_wake,notification_attempts,file_receipt,...value}=message;
+    if(bundle)return {...structuredClone(value),pending_incoming,role_protocol:ROLE_PROTOCOL_VERSION,
+      markdown_files:bundle.files,document_sha256:bundle.contextHash,
+      instructions:roleUpdate('executor',message.dialogue_version)+'\nПоручение и выбранные источники уже приложены целиком в пронумерованных Markdown-файлах. Прочитай все файлы по порядку в этом ходе. Подтверди весь комплект одним workflow_communication_read_message с тем же message_id и file_receipts из последних строк. После подтверждения выполни поручение. Если файл недоступен, сообщи имя; не подтверждай неполный комплект.'};
     return {...structuredClone(value),...(run.mode==='workflow'?{pending_incoming,role_protocol:ROLE_PROTOCOL_VERSION,
       instructions:(message.ui_event?.type==='review-continuation'?'Проверьте review:status и выполните оставшийся шаг автора. Для этого напоминания достаточно чтения.\n'+INCOMING_WORK_RULE
         :message.ui_event?USER_EVENT_RULE+'\n'+NOTIFICATION_RULE+'\n'+INCOMING_WORK_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)

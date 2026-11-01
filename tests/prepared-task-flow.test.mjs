@@ -22,7 +22,7 @@ test('planning briefs survive simple DOCS normalization, review digest and verif
   t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
   const root=createFixture(directory),spec='docs/planning/prepared.md';
   fs.mkdirSync(path.dirname(path.join(root,spec)),{recursive:true});fs.writeFileSync(path.join(root,spec),'# Selected scope\n');
-  const brief='PRIVATE_PLANNING_BRIEF: update only README and return exact proof.';
+  const brief='PRIVATE_PLANNING_BRIEF: update only README and return exact proof.\n'+'я'.repeat(13000);
   userChoseMode(root,'fixture-o');
   const input={id:'brief-plan',spec,objective:'Prepared assignments',parallel_allowed:false,max_workers:1,
     execution_strategy:'orchestrated',execution_reason:'Isolated fixture',execution_origin_session_id:'fixture-o',release:false,
@@ -39,7 +39,7 @@ test('planning briefs survive simple DOCS normalization, review digest and verif
   assert.equal(parsePlan(renderPlan(plan)).tasks[0].task_brief,brief);
   const changed=structuredClone(plan);changed.tasks[0].task_brief+=' changed';
   assert.notEqual(reviewPlanDigest(plan),reviewPlanDigest(changed));
-  for(const value of ['',null,42,' ','я'.repeat(6001)]){
+  for(const value of ['',null,42,' ','я'.repeat(90001)]){
     const invalid=structuredClone(plan);invalid.tasks[0].task_brief=value;
     assert.throws(()=>validatePlan(invalid),{code:'PLAN_SCHEMA'});
   }

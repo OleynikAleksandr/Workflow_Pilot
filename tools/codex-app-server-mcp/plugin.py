@@ -9,7 +9,7 @@ from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from mcp.server.fastmcp import Context
-from mcp.types import CallToolResult, TextContent, ToolAnnotations
+from mcp.types import CallToolResult, EmbeddedResource, TextResourceContents, TextContent, ToolAnnotations
 from pydantic import BaseModel, ConfigDict, Field
 
 LEGACY_UI_URI = "ui://workflow-pilot/projects-v1.html"
@@ -122,8 +122,9 @@ class PluginBridge:
             connection.request("POST", "/plugin", json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                                {"Authorization": "Bearer " + state["token"], "Content-Type": "application/json"})
             response = connection.getresponse()
-            body = response.read(2_000_001)
-            if len(body) > 2_000_000:
+            limit = 8_000_000 if payload.get("context_format") == "markdown-files-v1" else 2_000_000
+            body = response.read(limit + 1)
+            if len(body) > limit:
                 raise ValueError("Response too large")
             result = json.loads(body)
             if not isinstance(result, dict):
@@ -143,7 +144,18 @@ def result(data: dict[str, Any]) -> CallToolResult:
         return CallToolResult(isError=True, content=[TextContent(type="text", text=error["message"])], structuredContent=data)
     context = data.get("context")
     summary = {key: value for key, value in data.items() if key != "context"}
+    # Keep file bodies out of structuredContent and the human-readable manifest.
+    envelope = summary.get("startup_context")
+    if not isinstance(envelope, dict):
+        envelope = summary
+    else:
+        summary["startup_context"] = envelope = dict(envelope)
+    files = envelope.pop("markdown_files", [])
+    if files:
+        envelope["files"] = [{key: f[key] for key in ("name", "uri", "bytes")} for f in files]
     blocks = [TextContent(type="text", text=json.dumps(summary, ensure_ascii=False))]
+    blocks.extend(EmbeddedResource(type="resource", resource=TextResourceContents(
+        uri=f["uri"], mimeType="text/markdown", text=f["text"])) for f in files)
     if context:
         blocks.append(TextContent(type="text", text=context))
     return CallToolResult(content=blocks, structuredContent=summary)
@@ -186,10 +198,12 @@ def register_plugin(mcp, state_root: Path):
 
     @mcp.tool(name="workflow_communication_read_message", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def read_message(message_id: MessageId, ctx: Context,
+                           file_receipts: Annotated[list[str] | None, Field(max_length=64, description="For task files only: end markers from every Markdown file in order, once after reading them.")] = None,
                            run_id: Annotated[str | None, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$", description="Legacy run only; omit for automatically registered working plans.")] = None,
                            participant_id: Annotated[str | None, Field(max_length=128, description="Legacy participant only; working plans derive it from host identity.")] = None) -> CallToolResult:
-        """Read an addressed message, current instructions and record receipt. Read pending_incoming explicitly in this turn. already_handled means do not repeat its effect; unfinished work resumes from canonical Kit state. Repeated notifications have the same message_id. Review ON/OFF is a versioned UI decision: verify current review:status before prepare/publication, preserve the current role; it grants neither task:start nor plan Start and needs no assignment yield. Account for the policy and continue any previously accepted, permitted unfinished request; the new input does not cancel earlier requests. Preserve the one plan task, commit, report and end-of-turn boundary; a subsequent plan task needs the ordinary app Start/Continue. Startup model-pull returns the first numbered context part directly; read remaining parts and confirm workflow_startup_complete in this same turn. Small service messages include complete inline_context with digest and recipient_ref: use them directly without another context/participants read. Otherwise read all referenced context parts. Apply explicit role updates without replaying completed work. A review-continuation wake is read without assignment yield. Check review:status for a current wake. A superseded wake requires no action. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
-        return await communication("readMessage", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id)
+        """Read an addressed message, current instructions and record receipt. Read pending_incoming explicitly in this turn. already_handled means do not repeat its effect; unfinished work resumes from canonical Kit state. Repeated notifications have the same message_id. Review ON/OFF is a versioned UI decision: verify current review:status before prepare/publication, preserve the current role; it grants neither task:start nor plan Start and needs no assignment yield. Account for the policy and continue any previously accepted, permitted unfinished request; the new input does not cancel earlier requests. Preserve the one plan task, commit, report and end-of-turn boundary; a subsequent plan task needs the ordinary app Start/Continue. When the result lists Markdown files, all files are included as individual resources in this response. Read them in order and confirm their end markers together in this turn. Startup uses workflow_startup_complete; a task uses this tool again with file_receipts and its message_id. Small service messages include complete inline_context with digest and recipient_ref: use them directly without another context/participants read. Otherwise read all referenced context parts. Apply explicit role updates without replaying completed work. A review-continuation wake is read without assignment yield. Check review:status for a current wake. A superseded wake requires no action. A superseded signal must not execute. Identity must match the recipient. This mutation never notifies or returns UI."""
+        return await communication("readMessage", ctx, run_id=run_id, participant_id=participant_id, message_id=message_id,
+                                   context_format="markdown-files-v1", file_receipts=file_receipts)
 
     @mcp.tool(name="workflow_communication_read_context", annotations=READ, meta={"ui": {"visibility": ["model"]}})
     async def read_context(message_id: MessageId, context_ref: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque context reference returned by read_message or panel startup_context.")], ctx: Context,
@@ -210,9 +224,9 @@ def register_plugin(mcp, state_root: Path):
     @mcp.tool(name="workflow_startup_complete", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def startup_complete(message_id: MessageId,
                                context_sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$", description="Exact context_ref of the startup message after reading every part.")],
-                               ctx: Context) -> CallToolResult:
-        """Confirm this session's initial recovery (orchestrator, executor or project chat) only after reading every part, including the first part returned in panel startup_context and remaining parts via workflow_communication_read_context. INCOMPLETE requires reading missing parts; never invent a receipt. Idempotent for the same packet and bound host identity. This does not authorize task:start or start a plan. Give a short project confirmation and end the turn; no assignment_yield or model wait is needed."""
-        return await communication("startupComplete", ctx, message_id=message_id, context_sha256=context_sha256)
+                               ctx: Context, file_receipts: Annotated[list[str] | None, Field(max_length=64, description="End markers from every issued Markdown file, in order.")] = None) -> CallToolResult:
+        """Confirm this session's initial recovery (orchestrator, executor or project chat) only after reading every attached Markdown file. Pass file_receipts from their final lines in order. For an older response without files use the supplied numbered-part instructions. Never invent a receipt. Idempotent for the same packet and bound host identity. This does not authorize task:start or start a plan. Give a short project confirmation and end the turn; no assignment_yield or model wait is needed."""
+        return await communication("startupComplete", ctx, message_id=message_id, context_sha256=context_sha256, file_receipts=file_receipts)
 
     @mcp.tool(name="workflow_assignment_send", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
     async def assignment_send(
@@ -388,8 +402,8 @@ def register_plugin(mcp, state_root: Path):
     @mcp.tool(name="workflow_pilot_panel", title="Workflow Pilot", annotations=CONNECT,
               meta={"ui": ui, "openai/ui": {"entrypoints": [{"type": "global"}, {"type": "thread"}]}})
     async def panel(ctx: Context, enrollment_ticket: Annotated[str | None, Field(pattern=r"^[a-f0-9]{64}$", description="Opaque invitation from this Chat session's opening command; never invent or share it.")] = None) -> CallToolResult:
-        """Open Workflow Pilot beside this conversation. With the bootstrap invitation, register this existing local session using fresh host identity; retrying the same binding is safe. If startup_context is returned, read its included first part now, read remaining parts through workflow_communication_read_context and confirm workflow_startup_complete in this same turn. Do not end the turn to wait for another startup notification. No manual run/participant transfer or join is required for working plans. Without an invitation, open the existing panel. Success does not prove iframe readiness, permission or model wakeup; never bypass host confirmations. Every new session receives its role-specific recovery this way. Executor bootstrap must end after confirmation and wait for a separate work instruction; project chats gain no orchestrator privileges. Legacy startup_resume retains its supplied instructions."""
-        return result(await asyncio.to_thread(bridge.call, {"action": "panel", "metadata": host_metadata(ctx),
+        """Open Workflow Pilot beside this conversation. With the bootstrap invitation, register this existing local session using fresh host identity; retrying the same binding is safe. If startup_context lists files, all numbered Markdown resources are attached in this response. Read each to its end and call workflow_startup_complete once with their file_receipts in this turn. Follow the supplied legacy instructions only for an older response without files. Do not end the turn to wait for another startup notification. No manual run/participant transfer or join is required for working plans. Without an invitation, open the existing panel. Success does not prove iframe readiness, permission or model wakeup; never bypass host confirmations. Every new session receives its role-specific recovery this way. Executor bootstrap must end after confirmation and wait for a separate work instruction; project chats gain no orchestrator privileges. Legacy startup_resume retains its supplied instructions."""
+        return result(await asyncio.to_thread(bridge.call, {"action": "panel", "context_format": "markdown-files-v1", "metadata": host_metadata(ctx),
                                                             "meta_keys": host_meta_keys(ctx),
                                                             **({"enrollment_ticket": enrollment_ticket} if enrollment_ticket else {})}))
 
