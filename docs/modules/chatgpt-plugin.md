@@ -1,12 +1,12 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.6.7 / Kit 1.10.7, протокол панели 9, build `0.6.7-communication-9`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
+Workflow Pilot 0.6.8 / Kit 1.10.8, протокол панели 9, build `0.6.8-communication-9`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
 
 ## Пользовательский путь
 
 Основная панель Workflow Pilot обслуживает стартовый контекст любой локальной сессии и рабочий диалог.
 
-1. В новом Chat стартовая команда с приглашением открывает workflow_pilot_panel и выдаёт recovery. После регистрации O/E проверяют свою панель через workflow_panel_check. [Восстановление](shared-conversation.md#восстановление-панели) действует в уже привязанном чате.
+1. Старт с приглашением открывает панель и выдаёт recovery. Затем агент периодически обновляет карточку в собственном ходе. [Правило O/E](shared-conversation.md#восстановление-панели).
 2. До окончательного Review/публикации автор сохраняет полные [подготовленные поручения](prepared-tasks.md) всех обычных задач и DOCS: байты, hash, автор/project/scope и semantic digest. Публикация связывает scope с execution_origin_session_id и не запускает работу.
 3. Одна кнопка Start после preflight разрешает scope. Control/ParallelExecution создаёт настоящие назначения/worktree/Chat E; backend механически связывает и авторизует согласованный пакет, доставляя после SDK/bind и подтверждения принадлежности документа без нового хода O для сочинения. Старые brief-only планы сохраняют поздний prepare O. Backend assignment-start — только прежний контракт.
 4. Поручения, продолжения, вопросы/решения, интеграции, delivery и итог передаются через канал. Пользователь не переносит run/participant, не открывает панели исполнителей, не вызывает join/Enable и не пишет «продолжай» при обычной технической блокировке.
@@ -44,7 +44,7 @@ Start/Continue после свежего preflight выдаёт допуск т�
 
 ## Доставка и блокировки
 
-Claim_ready проверяет identity/document/attempt/grant, Stop и непроверенный legacy UNKNOWN; intent сохраняется до SDK. После accepted следующий pending доступен без busy/read/yield/команд. Тайм-ауты, lease и отдельные terminal receipts — в [едином контракте SDK](sdk-messaging.md).
+Claim_ready проверяет identity/document/attempt/grant, Stop и непроверенный legacy UNKNOWN; intent сохраняется до SDK. Один вызов может разбудить чат для нескольких pending. Тайм-ауты, lease и отдельные terminal receipts — в [едином контракте SDK](sdk-messaging.md).
 
 `pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report и restart сохраняют unknown попытки. notification_version=1 допускает три попытки и один цикл до трёх после проверенного восстановления; потерянный report повторяется без нового SDK-вызова; новые сообщения не удерживаются прошлым отказом, read прекращает повторы. Legacy Send не повторяется. Стартовый контекст имеет [отдельный контракт](orchestrator-startup.md). Рабочий контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
 

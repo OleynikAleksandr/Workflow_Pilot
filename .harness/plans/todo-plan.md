@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1427,
+  "plan_revision": 1429,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
@@ -106,7 +106,7 @@
       {
         "path": "docs/planning/panel-inbox-068.md",
         "required": true,
-        "revision": "WORKTREE"
+        "revision": "04f081bea33c914b29d936dd2b023c0923949c82"
       },
       {
         "path": "docs/architecture/OVERVIEW.md",
@@ -248,8 +248,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "DOCS",
@@ -289,7 +289,26 @@
       ],
       "expected_commit_message": "docs: Актуализировать контракты выпуска 0.6.8",
       "task_brief": "Синхронизировать документацию с реализованным поведением\nОписаны периодичность, очередь, условия приёмки и ограничения iPad\nDOCS включает действующие контракты Pilot/Kit, удаление авто-CDP, ограничение для уже спящего агента и живую проверку пользователем. Перед тестами подготовить ресурс панели. Полные проверки через Kit, Python без кэша.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/user-choice.md",
+        "docs/planning/panel-inbox-068.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -374,7 +393,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1427
+Revision: 1429
 
 ## Цель
 
@@ -404,8 +423,8 @@ Revision: 1427
   - Файлы: src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/conversation-freshness.mjs, src/control/plugin/panel-recovery.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, src/contracts/backend.mjs, src/frontend/plugin/launch.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, package.json, package-lock.json, tools/codex-app-server-mcp/plugin.py, tests/plugin-delivery-ownership.test.mjs, tests/workflow-channel.test.mjs, tests/conversation-freshness.test.mjs, tests/role-protocol.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/context.mjs, src/contracts/workflow-wake.mjs, src/control/workflow/executor-session.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, src/contracts/work-progress.mjs, src/contracts/workflow-view.mjs, src/frontend/plugin/panel.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/panel-dialogue-view.test.mjs, tests/sidebar.test.mjs, src/control/plugin/startup-context.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.7.tar.gz, tests/plugin-communication-store.test.mjs, tests/shared-conversation-compat.test.mjs, tests/page-state.test.mjs, tests/dialogue-delivery.test.mjs, tests/work-progress-scenario.test.mjs, tests/work-progress.test.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: Актуализировать контракты выпуска 0.6.8
+- [DONE] DOCS: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: Актуализировать контракты выпуска 0.6.8
   - Reference: panel-inbox-068 / DOCS / implementation
   - Файлы: README.md, docs/modules/sdk-messaging.md, docs/modules/current-actions.md, docs/modules/release.md, docs/modules/chatgpt-plugin.md, docs/modules/shared-conversation.md, docs/architecture/OVERVIEW.md, docs/planning/panel-inbox-068.md, docs/acceptance/shared-conversation-mac.md, docs/modules/assignment-dialogue.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/project-compatibility.md, docs/modules/chat-only-startup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение
