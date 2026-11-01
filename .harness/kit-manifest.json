@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "1.10.8",
+  "version": "1.10.9",
   "initialized_git": true,
   "hook_mechanism": "git",
   "node_runtime": "system",
@@ -182,8 +182,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "c256da1d8abf6ca6337a747f984ba9fb16408c41fd54619cf3cfffe9cc39fb92",
-      "hash": "e2a65405352000f242c8ba72422febc70e4845a24bdce270b1773b6a063fa9c8",
+      "original_hash": "e2a65405352000f242c8ba72422febc70e4845a24bdce270b1773b6a063fa9c8",
+      "hash": "8fe1fd047b887b81dc9adb1c89c5e73a58a57ba55d8b901c386c01b9529b7799",
       "existed": true
     },
     {
@@ -236,8 +236,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "116714ab1f4fbaf947a26cf0edc884e4f1439d59401f86f6393892b705b78b0d",
-      "hash": "e5ce0b1c9e10f1165cd08a9e0876c33a75e3bf3ab925d091e3b45414a68fd87e",
+      "original_hash": "e5ce0b1c9e10f1165cd08a9e0876c33a75e3bf3ab925d091e3b45414a68fd87e",
+      "hash": "4760bb5803ce193e02076f1f0f409b034e9209e547739b3470b3ae999fa4d211",
       "existed": true
     },
     {
@@ -255,7 +255,7 @@
       "kind": "owned",
       "mode": 420,
       "original_hash": "3f970837f79a50e9ac713a7260af493e33d7d1780b8fedc5f891ac1d9c173b75",
-      "hash": "3f970837f79a50e9ac713a7260af493e33d7d1780b8fedc5f891ac1d9c173b75",
+      "hash": "ecaeb589fa7f9fbb388717027da1d7d13a97402dd433795985ed9ab02cad3b42",
       "existed": true
     },
     {
@@ -372,7 +372,7 @@
       "kind": "owned",
       "mode": 420,
       "original_hash": "8722dda48227b03c1ffca9fb98ad5cd8eba1aa55598d73eb1e6d1242c2b1fb30",
-      "hash": "8722dda48227b03c1ffca9fb98ad5cd8eba1aa55598d73eb1e6d1242c2b1fb30",
+      "hash": "55924f7811dfd5080f5c42761d657bca312a34a8dddd4c1c3c97caaf179abbf8",
       "existed": true
     },
     {
@@ -408,7 +408,7 @@
       "kind": "owned",
       "mode": 420,
       "original_hash": "ce33aa45e4de82669704dd57d5916da9e468fe6a2f1b92453f5e8e82c009a88f",
-      "hash": "ce33aa45e4de82669704dd57d5916da9e468fe6a2f1b92453f5e8e82c009a88f",
+      "hash": "c85a4fea218237c776f8b64a64bce69e615511bf391ccf2279a03cd2b99d95eb",
       "existed": true
     },
     {
@@ -533,8 +533,8 @@
       "external": false,
       "kind": "owned",
       "mode": 420,
-      "original_hash": "5443d192f1e6b3fbd6318fc5c60992f880798aa28c5f6c64ba232bedb81f2395",
-      "hash": "59286d90924a633ba4511a1ab5c59d848b7c153f4759369f2c71a63960f6a9d7",
+      "original_hash": "59286d90924a633ba4511a1ab5c59d848b7c153f4759369f2c71a63960f6a9d7",
+      "hash": "9421bbd071056aa3c71eb7f4fd5b8a0a40a1e8cee8b09747e7c2e0bb6e87c52d",
       "existed": true
     },
     {
@@ -615,7 +615,7 @@
       "kind": "owned",
       "mode": 420,
       "original_hash": "0f07a3713ec29e85a86e149c539bb3ddae60a8b96a50221402482a154ecc31d3",
-      "hash": "0f07a3713ec29e85a86e149c539bb3ddae60a8b96a50221402482a154ecc31d3",
+      "hash": "a7a98ad7da8776a3f9c8c23119d74f92642ceed517e8eef74a6f46d301d2a57f",
       "existed": true
     },
     {
@@ -624,7 +624,7 @@
       "kind": "editable",
       "mode": 420,
       "original_hash": "ce33aa45e4de82669704dd57d5916da9e468fe6a2f1b92453f5e8e82c009a88f",
-      "hash": "ce33aa45e4de82669704dd57d5916da9e468fe6a2f1b92453f5e8e82c009a88f",
+      "hash": "c85a4fea218237c776f8b64a64bce69e615511bf391ccf2279a03cd2b99d95eb",
       "existed": true
     },
     {
@@ -642,18 +642,18 @@
       "external": false,
       "kind": "editable",
       "mode": 420,
-      "original_hash": "6fb44fd1ce925ea8cd058faac30279f80f8261567a3c19374938e9d26bde38bb",
-      "hash": "6fb44fd1ce925ea8cd058faac30279f80f8261567a3c19374938e9d26bde38bb",
+      "original_hash": "8889819abbb485cb9932144dfb7adb1a590edcefc6ee6cd478fe5318f15bcc76",
+      "hash": "8889819abbb485cb9932144dfb7adb1a590edcefc6ee6cd478fe5318f15bcc76",
       "existed": true
     }
   ],
-  "upgraded_from": "1.10.7",
-  "upgraded_at": "2026-11-01T09:45:53.397Z",
+  "upgraded_from": "1.10.8",
+  "upgraded_at": "2026-11-01T11:33:23.052Z",
   "legacy_plan_migration": {
     "model": "single-active-plan",
     "removed_count": 0,
-    "source_commit": "cfb09802a8d198c811a4727326d2c368a315e239",
-    "migrated_at": "2026-11-01T09:45:53.407Z"
+    "source_commit": "8830fba153f12b2411b160c758c7b2f82846a4de",
+    "migrated_at": "2026-11-01T11:33:23.059Z"
   },
-  "installed_at": "2026-11-01T09:45:53.407Z"
+  "installed_at": "2026-11-01T11:33:23.059Z"
 }

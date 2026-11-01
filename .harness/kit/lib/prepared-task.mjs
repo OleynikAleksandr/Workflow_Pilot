@@ -24,7 +24,7 @@ export function validatePreparedTask(plan,task,{document_bytes=28000,hard_bytes=
   fail(p.version===1&&p.project_id===plan.project_id&&p.scope_id===(plan.assignment?.parent_scope_id??plan.scope_id)
     &&typeof p.author_session_id==='string'&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(p.author_session_id),task,'подготовка принадлежит другому автору/проекту/scope.');
   if(!plan.assignment)fail(p.author_session_id===plan.execution_origin_session_id,task,'автор не является владельцем этого плана.');
-  fail(typeof task.task_brief==='string'&&task.task_brief.trim()&&Buffer.byteLength(task.task_brief)<=12000
+  fail(typeof task.task_brief==='string'&&task.task_brief.trim()&&Buffer.byteLength(task.task_brief)<=Math.min(hard_bytes,180000)
     &&p.body_sha256===hash(task.task_brief)&&!task.task_brief.includes('\0')&&!forbidden.test(task.task_brief),task,'нужен целый авторский task_brief без секретов.');
   fail(Array.isArray(p.contexts)&&p.contexts.length<=16&&Array.isArray(p.dependency_task_ids),task,'повреждён манифест контекста.');
   let bytes=Buffer.byteLength(task.task_brief);
