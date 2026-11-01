@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1433,
+  "plan_revision": 1434,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Устранить остановку доставки из прогона T001 и выпустить 0.6.8.",
   "acceptance_criteria": [
     "Две совместимые работы одного адресата в очереди получают одно пробуждение и отдельное адресное чтение/подтверждение. При пополнении во время обработки следующее сообщение остаётся доступно, пропущенное чтение не считается доставкой.",
@@ -77,7 +77,13 @@
       "tests/page-state.test.mjs",
       "tests/dialogue-delivery.test.mjs",
       "tests/work-progress-scenario.test.mjs",
-      "tests/work-progress.test.mjs"
+      "tests/work-progress.test.mjs",
+      "src/control/plugin/context-files.mjs",
+      "packages/workflow-kit/src/lib/plan.mjs",
+      "packages/workflow-kit/src/lib/prepared-task.mjs",
+      "packages/workflow-kit/src/schemas/plan.schema.json",
+      "tests/startup-context.test.mjs",
+      "tests/fixtures/released-kit/kit-1.10.8.tar.gz"
     ],
     "documentation_paths": [
       "docs/planning/panel-inbox-068.md",
@@ -96,7 +102,8 @@
       "docs/modules/chat-only-startup.md",
       "packages/workflow-kit/README.md",
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
-      "packages/workflow-kit/docs/modules/orchestrated-plans.md"
+      "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+      "packages/workflow-kit/src/templates/PLAN.md"
     ]
   },
   "baseline_commit": "831d91090f00ac5110d8c561d6c3aa2fcb7aed67",
@@ -372,6 +379,147 @@
       "task_brief": "Проверить готовую копию и учесть запущенную службу\nУстановлена или подготовлена к замене проверенная сборка",
       "parallel_safe": false,
       "actual_files": []
+    },
+    {
+      "id": "BUNDLE",
+      "title": "Выдавать весь Markdown-контекст в одном ответе панели или чтения задания",
+      "why": "Выдавать весь Markdown-контекст в одном ответе панели или чтения задания",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/plugin/startup-context.mjs",
+        "src/control/plugin/context-files.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/plugin/service.mjs",
+        "src/contracts/context.mjs",
+        "src/contracts/backend.mjs",
+        "tools/codex-app-server-mcp/plugin.py",
+        "src/backend/desktop-model.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/plan.mjs",
+        "packages/workflow-kit/src/lib/prepared-task.mjs",
+        "packages/workflow-kit/src/schemas/plan.schema.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/package.json",
+        "package.json",
+        "package-lock.json",
+        "tests/startup-context.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/released-kit/kit-1.10.8.tar.gz",
+        "tests/fixtures/automatic-agent-dialogue.mjs"
+      ],
+      "documentation_paths": [
+        "packages/workflow-kit/src/templates/PLAN.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "kit-check",
+        "kit-assignments",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Новая O/E/S-сессия и подтверждённое рабочее поручение используют штатные инструменты и роли. Для одного авторского текста и зависимостей Pilot формирует пронумерованные UTF-8 файлы не более 24 000 байт, возвращает весь комплект один раз за вызов, исключает дублирование большого текста в JSON. Одна итоговая квитанция старта, отдельное исполнение разрешённого рабочего задания. Реальный хост и отсутствие обрезки проверяет пользователь на новом релизе.",
+        "Свежий адресат, все файлы и исходный текст проверяются. Пропущенная часть не подтверждает старт. Повтор чтения, частичный прежний старт и предыдущий комплект для отката сохраняются. Проверить фактический публичный MCP для старта/рабочего сообщения, границу UTF-8, большой авторский Markdown и неизменность подготовленных источников."
+      ],
+      "expected_commit_message": "feat: Выдавать весь Markdown-контекст в одном ответе панели или чтения задания",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "panel-inbox-068",
+        "task_id": "BUNDLE",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "DOCS-2",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "panel-inbox-068",
+        "task_id": "DOCS-2",
+        "role": "implementation",
+        "iteration": 2
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "BUNDLE"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "packages/workflow-kit/src/templates/PLAN.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "parallel_safe": false
+    },
+    {
+      "id": "RELEASE-2",
+      "title": "Собрать комплект Workflow Pilot 0.6.9 для трёх платформ",
+      "why": "Собрать комплект Workflow Pilot 0.6.9 для трёх платформ",
+      "dependencies": [
+        "BUNDLE",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Собрать комплект Workflow Pilot 0.6.9 для трёх платформ"
+      ],
+      "expected_commit_message": "feat: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "panel-inbox-068",
+        "task_id": "RELEASE-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
+    },
+    {
+      "id": "INSTALL-2",
+      "title": "Установить проверенный комплект 0.6.9 с возможностью отката",
+      "why": "Установить проверенный комплект 0.6.9 с возможностью отката",
+      "dependencies": [
+        "RELEASE-2",
+        "DOCS-2"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установить проверенный комплект 0.6.9 с возможностью отката"
+      ],
+      "expected_commit_message": "feat: Установить проверенный комплект 0.6.9 с возможностью отката",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "panel-inbox-068",
+        "task_id": "INSTALL-2",
+        "role": "implementation"
+      },
+      "parallel_safe": false
     }
   ],
   "blocked_reason": null,
@@ -394,10 +542,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1433
+Revision: 1434
 
 ## Цель
 
@@ -445,6 +593,30 @@ Revision: 1433
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
+- [TODO] BUNDLE: Выдавать весь Markdown-контекст в одном ответе панели или чтения задания — Ожидает
+  - Git Commit: [PENDING] feat: Выдавать весь Markdown-контекст в одном ответе панели или чтения задания
+  - Reference: panel-inbox-068 / BUNDLE / implementation
+  - Файлы: src/control/plugin/startup-context.mjs, src/control/plugin/context-files.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/contracts/context.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, src/backend/desktop-model.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/prepared-task.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package.json, package-lock.json, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.8.tar.gz, tests/fixtures/automatic-agent-dialogue.mjs, packages/workflow-kit/src/templates/PLAN.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: нет
+- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: panel-inbox-068 / DOCS-2 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, packages/workflow-kit/src/templates/PLAN.md
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUNDLE
+- [TODO] RELEASE-2: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ — Ожидает
+  - Git Commit: [PENDING] feat: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ
+  - Reference: panel-inbox-068 / RELEASE-2 / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: BUNDLE, DOCS-2
+- [TODO] INSTALL-2: Установить проверенный комплект 0.6.9 с возможностью отката — Ожидает
+  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.6.9 с возможностью отката
+  - Reference: panel-inbox-068 / INSTALL-2 / implementation
+  - Файлы: release-manifest.json
+  - Параллельность: исключительное выполнение
+  - Зависимости: RELEASE-2, DOCS-2
 
 ## Context Pack For This Cycle
 
