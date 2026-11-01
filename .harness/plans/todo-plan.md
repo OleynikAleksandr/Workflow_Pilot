@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1463,
+  "plan_revision": 1465,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "context-files-0611",
@@ -284,8 +284,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "context-files-0611",
         "task_id": "RELEASE",
@@ -310,7 +310,10 @@
       ],
       "expected_commit_message": "feat: Собрать комплект Workflow Pilot 0.6.11 для трёх платформ",
       "why": "Собрать комплект Workflow Pilot 0.6.11 для трёх платформ",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -394,7 +397,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: context-files-0611
 Current Task: нет
-Revision: 1463
+Revision: 1465
 
 ## Цель
 
@@ -423,8 +426,8 @@ Revision: 1463
   - Файлы: README.md, docs/architecture/OVERVIEW.md, docs/modules/orchestrator-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/prepared-tasks.md, docs/modules/assignment-dialogue.md, docs/modules/chat-only-startup.md, docs/modules/execution.md, docs/modules/release.md, docs/planning/context-files-0611.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/parallel-assignments.md, docs/modules/project-compatibility.md, docs/modules/user-choice.md, docs/modules/dialogue-timing.md, docs/modules/shared-conversation.md, docs/modules/current-actions.md, docs/modules/sdk-messaging.md, docs/acceptance/shared-conversation-mac.md, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: FILES
-- [TODO] RELEASE: Собрать комплект Workflow Pilot 0.6.11 для трёх платформ — Ожидает
-  - Git Commit: [PENDING] feat: Собрать комплект Workflow Pilot 0.6.11 для трёх платформ
+- [DONE] RELEASE: Собрать комплект Workflow Pilot 0.6.11 для трёх платформ — Завершено
+  - Git Commit: [DONE] feat: Собрать комплект Workflow Pilot 0.6.11 для трёх платформ
   - Reference: context-files-0611 / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
