@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1412,
+  "plan_revision": 1413,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "READY_FOR_ACCEPTANCE",
+  "delivery_status": "IN_PROGRESS",
   "objective": "Первая команда каждой сессии Workflow Pilot (обсуждение, оркестратор, исполнитель) отправляется доверенным CDP-вводом в проверенный документ вместо q-адреса; выпуск 0.6.4 трёх ОС, установка на Mac и публикация GitHub.",
   "acceptance_criteria": [
     "Для всех ролей первая команда отправляется CDP-вводом в проверенный документ; навигаций ?q= нет.",
@@ -68,7 +68,10 @@
       "tools/codex-app-server-mcp/plugin-ui.html",
       "tests/panel-frame-attestation.test.mjs",
       "tests/fixtures/panel-frame-host.mjs",
-      "tests/plugin-delivery-ownership.test.mjs"
+      "tests/plugin-delivery-ownership.test.mjs",
+      "src/control/workflow/review-continuation.mjs",
+      "src/control/plugin/workflow-channel.mjs",
+      "tests/plan-review.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/cdp-startup-input.md",
@@ -94,7 +97,8 @@
       "packages/workflow-kit/docs/modules/orchestrated-plans.md",
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
       "docs/modules/project-compatibility.md",
-      "docs/modules/user-choice.md"
+      "docs/modules/user-choice.md",
+      "docs/modules/workflow-execution.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -123,6 +127,11 @@
       },
       {
         "path": "docs/modules/assignment-dialogue.md",
+        "required": true,
+        "revision": "WORKTREE"
+      },
+      {
+        "path": "docs/modules/workflow-execution.md",
         "required": true,
         "revision": "WORKTREE"
       }
@@ -813,6 +822,133 @@
         "role": "implementation"
       },
       "actual_files": []
+    },
+    {
+      "id": "REVIEW-WAKE",
+      "title": "Будить автора ревью только после окончания хода",
+      "why": "Будить автора ревью только после окончания хода",
+      "dependencies": [],
+      "functional_paths": [
+        "src/control/workflow/review-continuation.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/plugin-communication.test.mjs",
+        "package.json",
+        "package-lock.json",
+        "src/contracts/backend.mjs",
+        "tests/chatgpt-plugin.test.mjs"
+      ],
+      "documentation_paths": [
+        "docs/modules/workflow-execution.md"
+      ],
+      "verification_ids": [
+        "unit-all",
+        "electron-smoke",
+        "architecture"
+      ],
+      "verification_kind": "code",
+      "acceptance_criteria": [
+        "Два раунда и публикация в одном активном ходе не будят автора. После подтверждённого конца хода при оставшемся действии допускается только актуальное уведомление.",
+        "После публикации старые ошибки доставки review уходят из текущих предупреждений, включая сохранённые в 0.6.6. Рабочие результаты и история сохраняются.",
+        "Устаревший review не требует assignment yield. Гонка нового хода и ручной Stop удерживают отправку."
+      ],
+      "expected_commit_message": "feat: Будить автора ревью только после окончания хода",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "REVIEW-WAKE",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "DOCS-4",
+      "title": "Актуализация всех документов проекта",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "DOCS-4",
+        "role": "implementation",
+        "iteration": 4
+      },
+      "why": "Перед выпуском сверить README, OVERVIEW и действующие контракты модулей с результатом; обновить устаревшее.",
+      "dependencies": [
+        "REVIEW-WAKE"
+      ],
+      "functional_paths": [],
+      "documentation_paths": [
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/workflow-execution.md"
+      ],
+      "acceptance_criteria": [
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+      ],
+      "verification_ids": [],
+      "expected_commit_message": "docs: актуализировать документацию проекта"
+    },
+    {
+      "id": "RELEASE-4",
+      "title": "Собрать Workflow Pilot 0.6.7 для трёх ОС",
+      "why": "Собрать Workflow Pilot 0.6.7 для трёх ОС",
+      "dependencies": [
+        "REVIEW-WAKE",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/workflow-execution.md"
+      ],
+      "verification_ids": [
+        "three-platform-release"
+      ],
+      "verification_kind": "package",
+      "acceptance_criteria": [
+        "Собрать Workflow Pilot 0.6.7 для трёх ОС"
+      ],
+      "expected_commit_message": "feat: Собрать Workflow Pilot 0.6.7 для трёх ОС",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "RELEASE-4",
+        "role": "implementation"
+      }
+    },
+    {
+      "id": "INSTALL-4",
+      "title": "Установить проверенную сборку 0.6.7 на Mac",
+      "why": "Установить проверенную сборку 0.6.7 на Mac",
+      "dependencies": [
+        "RELEASE-4",
+        "DOCS-4"
+      ],
+      "functional_paths": [
+        "release-manifest.json"
+      ],
+      "documentation_paths": [
+        "docs/modules/workflow-execution.md"
+      ],
+      "verification_ids": [
+        "release-installed"
+      ],
+      "verification_kind": "installed",
+      "acceptance_criteria": [
+        "Установить проверенную сборку 0.6.7 на Mac"
+      ],
+      "expected_commit_message": "feat: Установить проверенную сборку 0.6.7 на Mac",
+      "implementation_status": "TODO",
+      "commit_status": "PENDING",
+      "commit_ref": {
+        "scope_id": "cdp-startup-input",
+        "task_id": "INSTALL-4",
+        "role": "implementation"
+      }
     }
   ],
   "blocked_reason": null,
@@ -830,10 +966,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: READY_FOR_ACCEPTANCE
+Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1412
+Revision: 1413
 
 ## Цель
 
@@ -907,6 +1043,22 @@ Revision: 1412
   - Git Commit: [DONE] feat: Установить проверенный комплект 0.6.6 на Mac
   - Reference: cdp-startup-input / INSTALL-3 / implementation
   - Файлы: release-manifest.json
+- [TODO] REVIEW-WAKE: Будить автора ревью только после окончания хода — Ожидает
+  - Git Commit: [PENDING] feat: Будить автора ревью только после окончания хода
+  - Reference: cdp-startup-input / REVIEW-WAKE / implementation
+  - Файлы: src/control/workflow/review-continuation.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/plan-review.test.mjs, tests/plugin-communication.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, tests/chatgpt-plugin.test.mjs, docs/modules/workflow-execution.md
+- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
+  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+  - Reference: cdp-startup-input / DOCS-4 / implementation
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md
+- [TODO] RELEASE-4: Собрать Workflow Pilot 0.6.7 для трёх ОС — Ожидает
+  - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.6.7 для трёх ОС
+  - Reference: cdp-startup-input / RELEASE-4 / implementation
+  - Файлы: release-manifest.json, docs/modules/workflow-execution.md
+- [TODO] INSTALL-4: Установить проверенную сборку 0.6.7 на Mac — Ожидает
+  - Git Commit: [PENDING] feat: Установить проверенную сборку 0.6.7 на Mac
+  - Reference: cdp-startup-input / INSTALL-4 / implementation
+  - Файлы: release-manifest.json, docs/modules/workflow-execution.md
 
 ## Context Pack For This Cycle
 
@@ -915,5 +1067,6 @@ Revision: 1412
 - docs/architecture/OVERVIEW.md
 - docs/planning/communication-journal-growth.md
 - docs/modules/assignment-dialogue.md
+- docs/modules/workflow-execution.md
 
 Служебные состояния меняются только командами workflow. Приёмка не архивирует scope.
