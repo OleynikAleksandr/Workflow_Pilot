@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1459,
+  "plan_revision": 1461,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "context-files-0611",
@@ -105,8 +105,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "context-files-0611",
         "task_id": "FILES",
@@ -179,7 +179,40 @@
         "Роли, описания инструментов и PLAN согласованы; Workflow Pilot 0.6.11, Kit 1.10.10, ROLE_PROTOCOL_VERSION повышен, архив Kit 1.10.9 для теста обновления; периодическое открытие панели не изменено."
       ],
       "expected_commit_message": "feat: Выдавать контекст агентам файлами на диске вместо вложений MCP",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/context.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/context-files.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/execution/browser/chatgpt-composer.mjs",
+        "src/execution/facade.mjs",
+        "src/execution/files/context-inbox.mjs",
+        "tests/chatgpt-composer.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/context-files.test.mjs",
+        "tests/context-inbox.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/plugin-host.mjs",
+        "tests/fixtures/released-kit/kit-1.10.9.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/role-protocol.test.mjs",
+        "tests/startup-context.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -338,7 +371,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: context-files-0611
 Current Task: нет
-Revision: 1459
+Revision: 1461
 
 ## Цель
 
@@ -355,8 +388,8 @@ Revision: 1459
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Одна связанная реализация общих контрактов контекста, MCP и ролей в текущем checkout, затем последовательный delivery.
 
-- [TODO] FILES: Выдавать контекст агентам файлами на диске вместо вложений MCP — Ожидает
-  - Git Commit: [PENDING] feat: Выдавать контекст агентам файлами на диске вместо вложений MCP
+- [DONE] FILES: Выдавать контекст агентам файлами на диске вместо вложений MCP — Завершено
+  - Git Commit: [DONE] feat: Выдавать контекст агентам файлами на диске вместо вложений MCP
   - Reference: context-files-0611 / FILES / implementation
   - Файлы: src/control/plugin/context-files.mjs, src/control/plugin/startup-context.mjs, src/control/plugin/communication.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/service.mjs, src/control/plugin/workflow-channel.mjs, src/control/context/context-session.mjs, src/control/workflow/dialogue-delivery.mjs, src/execution/facade.mjs, src/execution/files/context-inbox.mjs, src/contracts/context.mjs, src/contracts/backend.mjs, src/contracts/startup-view.mjs, src/backend/desktop-model.mjs, tools/codex-app-server-mcp/plugin.py, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/prepared-task.mjs, packages/workflow-kit/package.json, package.json, package-lock.json, .dependency-cruiser.cjs, tests/context-files.test.mjs, tests/context-inbox.test.mjs, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs, tests/prepared-task-flow.test.mjs, tests/role-protocol.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.9.tar.gz, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/plugin-host.mjs, tests/execution-architecture.test.mjs, src/execution/browser/chatgpt-composer.mjs, tests/chatgpt-composer.test.mjs, tests/plugin-communication.test.mjs, tests/automatic-agent-dialogue.test.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение

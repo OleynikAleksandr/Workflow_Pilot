@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
 import {workflowRunId} from './enrollment.mjs';
-import {contextFileBundle,requireFileReceipts} from './context-files.mjs';
+import {contextFileBundle,requireFileReceipts,receiptVersion,contextFilesView,CONTEXT_FILES_VERSION,CONTEXT_FILES_RULE} from './context-files.mjs';
 
 const hash=text=>createHash('sha256').update(text).digest('hex');
 const check=(ok,code,message)=>{if(!ok)throw Object.assign(Error(message),{code:'PLUGIN_COMMUNICATION_'+code});};
@@ -70,6 +70,9 @@ export class StartupContext {
       ...(replace?{replaces_message_id:replace}:{}),context_ref:ref,context_bytes:Buffer.byteLength(text),
       total_parts:contextParts(text,24000).length,parts_read:[],body:'Стартовый контекст сессии',
       delivery_mode:input.delivery_mode??'model-pull',delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
+    // Files reach the recipient's disk before the opening command; issuing still happens on open.
+    if(c.contextFiles&&message.delivery_mode==='model-pull')
+      await c.contextFiles.write(target,message.message_id,contextFileBundle(message.message_id,text,{startup:true}).files);
     run.messages.push(message);c.event(run,'startup.prepared',{message_id:message.message_id,participant_id:member?.id??null,
       context_bytes:message.context_bytes,total_parts:message.total_parts});return this.view(message);
   }
@@ -109,16 +112,21 @@ export class StartupContext {
     check(m.delivery_mode==='model-pull'&&!m.intent,'MODE','Начатую SDK-доставку нельзя заменить прямым чтением.');
     if(!m.read){m.read=true;this.c.event(run,'message.read',{message_id:m.message_id,participant_id:member.id});}
     if(input.context_format==='markdown-files-v1'){
+      check(this.c.contextFiles,'CONTEXT','Служба не может записать стартовый комплект файлов на диск.');
       const text=this.c.store?await this.c.store.readContent(m.context_ref):this.c.workflow.contents.get(m.context_ref);
       check(typeof text==='string'&&hash(text)===m.context_ref,'CONTEXT','Сохранённый стартовый контекст повреждён.');
-      const {files,receiptHash}=contextFileBundle(m.message_id,text,{startup:true});
+      // A bundle issued by 0.6.9-0.6.10 keeps its generator and marks; a new one uses the current version.
+      const version=m.file_receipt?receiptVersion(m.file_receipt):CONTEXT_FILES_VERSION;
+      const {files,receiptHash}=contextFileBundle(m.message_id,text,{startup:true,version});
+      const written=await this.c.contextFiles.write(member.target,m.message_id,files);
       if(m.file_receipt?.digest!==receiptHash){
         const previous=m.file_receipt;
-        m.file_receipt={count:files.length,digest:receiptHash,...(previous?{previous}:{})};
+        m.file_receipt={count:files.length,digest:receiptHash,version,directory:written.directory,...(previous?{previous}:{})};
         this.c.event(run,'context.files_issued',{message_id:m.message_id,participant_id:member.id,count:files.length});
       }
       return {message_id:m.message_id,context_ref:m.context_ref,bytes:m.context_bytes,complete:!!m.startup_complete,
-        markdown_files:files,instructions:'В этом ответе сразу приложен весь стартовый контекст в пронумерованных .md. Прочитай каждый файл целиком. В этом же ходе один раз вызови workflow_startup_complete с message_id, context_sha256=context_ref и file_receipts: метки Workflow Pilot receipt из концов всех файлов по порядку. Если файл недоступен, сообщи его имя; не подтверждай неполный комплект. После подтверждения заверши стартовый ход и ожидай отдельное поручение. '+INCOMING_WORK_RULE};
+        context_files:contextFilesView({messageId:m.message_id,contextRef:m.context_ref,written}),
+        instructions:'Весь стартовый контекст записан в пронумерованные файлы. '+CONTEXT_FILES_RULE+' В этом же ходе один раз вызови workflow_startup_complete с message_id, context_sha256=context_ref и file_receipts: метки Workflow Pilot receipt из концов всех файлов по порядку. После подтверждения заверши стартовый ход и ожидай отдельное поручение. '+INCOMING_WORK_RULE};
     }
     // One durable transaction owns the receipt and first part. A lost tool
     // response is retried as a read, never as a second model notification.

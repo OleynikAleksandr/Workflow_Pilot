@@ -14,6 +14,7 @@ import {sessionStore} from '../../src/control/sessions/service.mjs';
 import {ContextSession} from '../../src/control/context/context-session.mjs';
 import {createWorkflowCoordination} from '../../src/control/workflow/coordination.mjs';
 import {openCommunicationStore} from '../../src/execution/plugin/communication-store.mjs';
+import {writeContextFiles,pruneContextFiles} from '../../src/execution/files/context-inbox.mjs';
 import {bridge,communicationHtml,readMarkdownFiles} from './plugin-host.mjs';
 import {dialogueRuntime,dialogueApi} from './dialogue-runtime.mjs';
 import {createScope,startTask} from '../../packages/workflow-kit/src/lib/actions.mjs';
@@ -205,7 +206,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       modelCalls.push(name);
       const r=await c.callTool({name:name.startsWith('assignment_')?'workflow_'+name:'workflow_communication_'+name,arguments:input,_meta:metadata});
       assert.equal(r.isError,false,JSON.stringify({name,response:r.structuredContent,task:record.project()?.taskId}));
-      if(r.structuredContent.files)taskFiles=readMarkdownFiles(r,r.structuredContent.files);
+      if(r.structuredContent.context_files)taskFiles=readMarkdownFiles(r,r.structuredContent.context_files);
       return r.structuredContent;
     };
     const message=await call('read_message',args);
@@ -501,7 +502,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
           assert.equal(registered.isError,false,JSON.stringify(registered.structuredContent));
           const startup=registered.structuredContent.startup_context;
           if(startup){
-            const files=readMarkdownFiles(registered,startup.files);assert.ok(files.text);
+            const files=readMarkdownFiles(registered,startup.context_files);assert.ok(files.text);
             const ack=await c.callTool({name:'workflow_startup_complete',arguments:{
               message_id:startup.message_id,context_sha256:startup.context_ref,file_receipts:files.receipts},_meta:record.metadata});
             assert.equal(ack.isError,false);record.startupComplete=true;
@@ -585,7 +586,8 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
   workflow.attachSessions(live);
   plugin=control.createPlugin({plans,loadContext:(workspace)=>plans.loadContext(workspace),communicationStore:await openCommunicationStore(path.join(directory,'communication')),
     observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,
-    userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input)});
+    userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
+    contextFiles:{write:writeContextFiles,prune:pruneContextFiles}});
   if(preplan){
     const reserve=plugin.reserveParticipant.bind(plugin);
     plugin.reserveParticipant=async(sessionId,correlation)=>{

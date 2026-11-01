@@ -8,7 +8,7 @@ import { ChatGPTComposer, pageOperation, pageScript } from '../src/chatgpt-compo
 import { EventEmitter } from 'node:events';
 import { ExecutionFacade } from '../src/execution/facade.mjs';
 import { DesktopBrowserHost } from '../src/frontend/desktop/browser-host.mjs';
-import { startupCommand, STARTUP_TICKET_PLACEHOLDER } from '../src/contracts/context.mjs';
+import { startupCommand, previousStartupCommands, STARTUP_TICKET_PLACEHOLDER } from '../src/contracts/context.mjs';
 
 function executionFixture(f, t) {
   const contents=Object.assign(new EventEmitter(),f.view);
@@ -467,7 +467,9 @@ test('explicit new conversation clears textarea through input, never the clipboa
 
 test('a restored startup command of another session is cleared; user text and extended commands are kept', async () => {
   const command = startupCommand('a'.repeat(64));
-  for (const [draft, cleared] of [[command, true], [startupCommand('a'.repeat(64),false), true], ['  ' + command.replace('. Если', '.\nЕсли') + '\n', true],
+  const [command0610, commandWithoutFiles] = previousStartupCommands('a'.repeat(64));
+  assert.match(command0610, /приложенные Markdown-файлы/, 'the exact 0.6.10 text is still recognized after the upgrade');
+  for (const [draft, cleared] of [[command, true], [startupCommand('a'.repeat(64),false), true], [command0610, true], [commandWithoutFiles, true], ['  ' + command.replace('. Если', '.\nЕсли') + '\n', true],
     [command + ' И ещё мой вопрос', false], ['Мой черновик', false], [command.replace('a'.repeat(64), 'xyz'), false]]) {
     const f = fixture({ draft });
     f.dom.window.__webPilotObserverDocumentId = 'fresh-document';

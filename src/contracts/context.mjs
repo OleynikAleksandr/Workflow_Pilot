@@ -6,11 +6,18 @@ export const CONTEXT_PROTOCOL = 'inline-context-v1';
 // the profile into every later new Chat, so this exact text, with any ticket,
 // is recognized there as another session's command; the page compares it.
 export const STARTUP_TICKET_PLACEHOLDER = '@@enrollment_ticket@@';
+const STARTUP_HEAD = 'Открой панель Workflow Pilot: один раз вызови workflow_pilot_panel с аргументами ';
+const STARTUP_TAIL = '. Если вызов вернул ошибку или в ответе нет startup_context, сообщи точную причину и ничего не выдумывай; подтверждения хоста не обходи. Приглашение не публикуй и не сохраняй.';
+const STARTUP_FILES = '. В том же ходе прочитай файлы из startup_context.context_files строго по одному и по порядку и подтверди весь комплект один раз согласно startup_context';
+// Exact 0.6.9-0.6.10 wording; never edit it, restored drafts are compared byte for byte.
+const STARTUP_FILES_0610 = '. В том же ходе прочитай до конца все приложенные Markdown-файлы по порядку и подтверди весь комплект один раз согласно startup_context';
+const startupText = (ticket, files) => STARTUP_HEAD + JSON.stringify({ enrollment_ticket: ticket }) + files + STARTUP_TAIL;
 export function startupCommand(ticket, withFileInstructions = true) {
-  return 'Открой панель Workflow Pilot: один раз вызови workflow_pilot_panel с аргументами '
-    + JSON.stringify({ enrollment_ticket: ticket })
-    + (withFileInstructions ? '. В том же ходе прочитай до конца все приложенные Markdown-файлы по порядку и подтверди весь комплект один раз согласно startup_context' : '')
-    + '. Если вызов вернул ошибку или в ответе нет startup_context, сообщи точную причину и ничего не выдумывай; подтверждения хоста не обходи. Приглашение не публикуй и не сохраняй.';
+  return startupText(ticket, withFileInstructions ? STARTUP_FILES : '');
+}
+// Earlier commands that ChatGPT may still restore into a new Chat after an upgrade.
+export function previousStartupCommands(ticket) {
+  return [startupText(ticket, STARTUP_FILES_0610), startupText(ticket, '')];
 }
 
 export function validateContextPacket(packet, workspace) {

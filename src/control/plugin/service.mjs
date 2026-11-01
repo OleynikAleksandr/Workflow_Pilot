@@ -15,14 +15,26 @@ export function pluginConversationKey(metadata) {
 
 // Both frontends use the same ProjectsService. No profile copies or browser operations.
 export class PluginProjects {
-  constructor({ projects, loadContext, plans=null,migrate=null, communicationStore = null, onChange = () => {}, observe, admit, reconcile, attest = null, reload = null, currentMessage, onCommunicationChange, workProgress = null, userChoice = null, choose = null, journal = null }) {
+  constructor({ projects, loadContext, plans=null,migrate=null, communicationStore = null, onChange = () => {}, observe, admit, reconcile, attest = null, reload = null, currentMessage, onCommunicationChange, workProgress = null, userChoice = null, choose = null, journal = null, contextFiles = null }) {
     Object.assign(this, { projects, loadContext, onChange,plans });
+    // Bundle files are written by Execution into the recipient's own checkout; the path never comes from the model.
+    const files=contextFiles&&{write:(target,messageId,bundle)=>contextFiles.write({workspace:this.contextWorkspace(target),messageId,files:bundle}),
+      prune:(target,keep)=>contextFiles.prune({workspace:this.contextWorkspace(target),keep})};
     this.communication = new PluginCommunication({store:communicationStore,resolveTarget:id=>localParticipantTarget(projects,id),
       verifyTarget:id=>this.participantTarget(id),verifyTerminal:(target,message)=>this.terminalTarget(target,message),
-      observe,admit,reconcile,attest,reload,currentMessage,onChange:onCommunicationChange,workProgress,userChoice,choose,journal,
+      observe,admit,reconcile,attest,reload,currentMessage,onChange:onCommunicationChange,workProgress,userChoice,choose,journal,contextFiles:files,
       dialogueKit:plans?{status:(target,id)=>this.dialogueOperation(target,'assignment:dialogue-status',id),
         close:(target,input)=>this.dialogueOperation(target,'assignment:transport',input),
         apply:(target,input)=>this.dialogueOperation(target,'assignment:dialogue',input),migrate}:null});
+  }
+  // E receives its own worktree, O and S the project checkout of the registered session.
+  contextWorkspace(target){
+    const project=this.projects.snapshot().projects.find(p=>!p.archivedAt&&p.sessions.some(s=>s.sessionId===target?.local_session_id&&!s.archivedAt));
+    const session=project?.sessions.find(s=>s.sessionId===target.local_session_id);
+    const worktree=target?.role==='E';
+    if(!session||session.external||(session.role==='executor')!==worktree||!!project.parentWorkspace!==worktree||typeof project.workspace!=='string')
+      throw fail('PLUGIN_COMMUNICATION_CONTEXT','Рабочая копия получателя комплекта не найдена.');
+    return project.workspace;
   }
   async terminalTarget(target,message){
     if(target.role!=='E'||message.kind!=='acceptance'||!message.read||!message.yielded

@@ -76,6 +76,7 @@ export class WorkflowChannel {
     for(const member of Object.values(run.members)){member.generation=generation;member.stopped=!active;
       if(member.role==='O')member.target.scope_id=target.scope_id;}
     c.event(run,'plan.permission',{scope_id:target.scope_id,permission_generation:generation,phase,active});
+    if(phase==='complete')queueMicrotask(()=>void c.pruneContextFiles().catch(()=>{}));
     return this.state(run);
   }
   state(run){return {scope_id:run.grant?.scope_id??null,phase:run.grant?.phase??'not-started',active:run.grant?.active===true};}
@@ -285,6 +286,7 @@ export class WorkflowChannel {
       c.assignment.invalidateAuthorizations(run);
       for(const m of Object.values(run.members)){m.stopped=true;m.generation=run.grant.generation;}
       c.event(run,'plan.revoked',{participant_id:member.id,scope_id:run.grant.scope_id});
+      queueMicrotask(()=>void c.pruneContextFiles().catch(()=>{}));
     }
     return {...c._status(input),stop_applied:true};
   }

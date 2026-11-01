@@ -2,6 +2,7 @@ import test from 'node:test';
 import {bridge,client,eventually,communicationHtml} from './fixtures/plugin-host.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import {mkdirSync} from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
@@ -13,6 +14,7 @@ import {ControlFacade} from '../src/control/facade.mjs';
 import {startPluginBridge} from '../src/execution/plugin/bridge.mjs';
 import {COMMUNICATION_PROTOCOL,COMMUNICATION_BUILD} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
+import {writeContextFiles,pruneContextFiles} from '../src/execution/files/context-inbox.mjs';
 import {ROLE_PROTOCOL_VERSION} from '@webpilot/workflow-kit/lib/role-protocol';
 import {attestBoundPanels} from './fixtures/panel-attestation.mjs';
 
@@ -60,7 +62,10 @@ async function fixture(t){
   const loadContext=async workspace=>packet(workspace,path.basename(workspace));
   let changes=0;
   plugin=control.createPlugin({loadContext,onChange:()=>changes++,attest:attestBoundPanels(()=>plugin.communication),
-    communicationStore:await openCommunicationStore(path.join(directory,'communication'))});
+    communicationStore:await openCommunicationStore(path.join(directory,'communication')),contextFiles:{write:writeContextFiles,prune:pruneContextFiles}});
+  // Registered sessions use the real checkout resolution; synthetic targets get an isolated directory.
+  const resolved=plugin.contextWorkspace.bind(plugin);
+  plugin.contextWorkspace=target=>{try{return resolved(target);}catch{const dir=path.join(directory,'synthetic',target.local_session_id);mkdirSync(dir,{recursive:true});return dir;}};
   return {directory,file,control,store,plugin,loadContext,changes:()=>changes};
 }
 
@@ -107,14 +112,14 @@ test('startup panel returns five whole Markdown files in the same MCP turn witho
   const call=(name,args={})=>c.callTool({name,arguments:args,_meta:metadata});
   const opened=await call('workflow_pilot_panel',{enrollment_ticket:invite.enrollment_ticket});
   assert.equal(opened.isError,false);const first=opened.structuredContent.startup_context;
-  assert.equal(first.message_id,staged.message_id);assert.equal(first.files.length,5);
+  assert.equal(first.message_id,staged.message_id);assert.equal(first.context_files.count,5);
   assert.ok(Buffer.byteLength(JSON.stringify(opened.structuredContent))<28000);
   const retry=await call('workflow_pilot_panel');assert.deepEqual(retry.structuredContent.startup_context,first);
   const early=await call('workflow_startup_complete',{message_id:first.message_id,context_sha256:first.context_ref});assert.equal(early.isError,true);
   const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?10:ms});
   await eventually(()=>ui.calls.includes('workflow_communication_sync'));
-  const files=readMarkdownFiles(opened,first.files);assert.equal(files.text,text);
-  assert.deepEqual(readMarkdownFiles(retry,first.files),files);
+  const files=readMarkdownFiles(opened,first.context_files);assert.equal(files.text,text);
+  assert.deepEqual(readMarkdownFiles(retry,first.context_files),files);
   for(const file_receipts of [files.receipts.slice(0,-1),[...files.receipts].reverse()]){
     const partial=await call('workflow_startup_complete',{message_id:first.message_id,context_sha256:first.context_ref,file_receipts});
     assert.equal(partial.structuredContent.error.code,'PLUGIN_COMMUNICATION_INCOMPLETE');
@@ -136,7 +141,7 @@ test('A001: a stale bundle leaves the panel usable and preserves the Review noti
   await bridge(t,f);const c=await client(t,f);
   const call=(name,args={})=>c.callTool({name,arguments:args,_meta:metadata});
   const first=await call('workflow_pilot_panel',{enrollment_ticket:invite.enrollment_ticket});
-  const files=readMarkdownFiles(first,first.structuredContent.startup_context.files);
+  const files=readMarkdownFiles(first,first.structuredContent.startup_context.context_files);
   assert.ok(files.receipts.length>1);
   comm.workflow.currentMessage=async(_to,m)=>m.message_id!==old.message_id;
   const choice=await comm.workflow.enqueue(target,{key:'review-policy:on',kind:'user-choice',text:'Review ON',
@@ -151,7 +156,7 @@ test('A001: a stale bundle leaves the panel usable and preserves the Review noti
   const denied=await call('workflow_startup_complete',{message_id:old.message_id,context_sha256:first.structuredContent.startup_context.context_ref,file_receipts:files.receipts});
   assert.equal(denied.isError,true);
   const updated=await call('workflow_pilot_panel'),bundle=updated.structuredContent.startup_context;
-  const receipt=readMarkdownFiles(updated,bundle.files);
+  const receipt=readMarkdownFiles(updated,bundle.context_files);
   assert.equal(bundle.message_id,fresh.message_id);assert.equal(receipt.text,replace.text);
   assert.equal((await call('workflow_startup_complete',{message_id:fresh.message_id,context_sha256:bundle.context_ref,file_receipts:receipt.receipts})).structuredContent.complete,true);
   let delivered=0;
@@ -244,15 +249,20 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   await comm.bind({...binding,message_supported:true});await comm.sync({...binding,message_supported:true});
   comm.workflow.reconcile=async()=>({sdkDocumentReady:true,stopped:true,busy:false,commandsIdle:true});
   await comm.assignment.reconcile('fixture','scope');
+  // Published as by 0.6.10: no bundle on disk until the first read writes it lazily.
+  const port=comm.contextFiles;comm.contextFiles=null;
   const result=await call('o','workflow_assignment_dispatch',{draft_id:draft.structuredContent.draft_id});
+  comm.contextFiles=port;
   assert.equal(result.isError,false,JSON.stringify(result));assert.equal(effects.length,1);assert.equal(effects[0].target.role,'O');
   const message_id=result.structuredContent.message_id;
   const read=await call('e','workflow_communication_read_message',{message_id});assert.equal(read.structuredContent.sender_role,'O');
   assert.equal(read.structuredContent.role_protocol,ROLE_PROTOCOL_VERSION);
   assert.match(read.structuredContent.instructions,/обязательно отправь orchestrator result/);
   assert.match(read.structuredContent.instructions,/workflow_assignment_yield/);
-  const files=readMarkdownFiles(read,read.structuredContent.files);
+  const files=readMarkdownFiles(read,read.structuredContent.context_files);
   assert.equal(files.text,'Реализуй назначенный модуль\n\n## selected-contract\n\n'+text);
+  assert.ok(files.receipts.length>1);assert.match(read.structuredContent.instructions,/строго по одному и по порядку/);
+  assert.equal(read.structuredContent.context_files.workdir,path.join(f.directory,'synthetic','e'));
   const blocked=await call('e','workflow_assignment_yield',{message_ids:[message_id],reason:'handled'});
   assert.equal(blocked.structuredContent.error.code,'PLUGIN_COMMUNICATION_INCOMPLETE');
   const wrongRecipient=await call('o','workflow_communication_read_message',{message_id,file_receipts:files.receipts});
@@ -264,6 +274,19 @@ test('actual MCP exposes working send/status/yield and transfers selected UTF-8 
   const yielded=await call('e','workflow_assignment_yield',{message_ids:[message_id],reason:'handled'});
   assert.equal(yielded.isError,false);assert.equal(yielded.structuredContent.physical_completion,false);
   const status=await call('o','workflow_assignment_status');assert.equal(status.isError,false);assert.equal(effects.length,1);
+  // Messages other than startup and task keep numbered parts above the inline threshold.
+  const large='Подробный отчёт исполнителя 😀\n'.repeat(1500);
+  await comm.workflow.enqueue(o,{key:'large-diagnostic',kind:'diagnostic',text:large});
+  const notice=[...comm.runs.values()][0].messages.findLast(m=>m.kind==='diagnostic');
+  const forO=await call('o','workflow_communication_read_message',{message_id:notice.message_id});
+  assert.equal(forO.isError,false);assert.equal(forO.structuredContent.context_files,undefined);assert.equal(forO.structuredContent.inline_context,undefined);
+  assert.match(forO.structuredContent.instructions,/workflow_communication_read_context/);
+  let joined='';
+  for(let part=0,total=1;part<total;part++){
+    const piece=await call('o','workflow_communication_read_context',{message_id:notice.message_id,context_ref:notice.context_ref,part});
+    assert.equal(piece.isError,false,JSON.stringify(piece.structuredContent));total=piece.structuredContent.total;joined+=piece.structuredContent.text;
+  }
+  assert.equal(joined,large);
 });
 test('MCP advertises content-addressed HTML and keeps the legacy address inert',async t=>{
   const f=await fixture(t);const c=await client(t,f);
@@ -327,7 +350,7 @@ test('the real project projection reserves the published origin even though pers
   assert.equal(opened.isError,false,JSON.stringify(opened.structuredContent?.error));
   assert.equal(opened.structuredContent.registration.role,'S');
   const first=opened.structuredContent.startup_context;
-  const files=readMarkdownFiles(opened,first.files);assert.equal(files.text,'Контекст обычного чата');
+  const files=readMarkdownFiles(opened,first.context_files);assert.equal(files.text,'Контекст обычного чата');
   const ack=await c.callTool({name:'workflow_startup_complete',arguments:{message_id:first.message_id,context_sha256:first.context_ref,file_receipts:files.receipts},_meta:{'openai/session':'discussion-fixture'}});
   assert.equal(ack.isError,false,JSON.stringify(ack.structuredContent?.error));
   assert.equal(ack.structuredContent.complete,true);

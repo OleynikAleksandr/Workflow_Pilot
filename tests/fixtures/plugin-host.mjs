@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {JSDOM,VirtualConsole} from 'jsdom';
@@ -8,18 +9,21 @@ import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 import {startPluginBridge} from '../../src/execution/plugin/bridge.mjs';
 const root=path.resolve(import.meta.dirname,'../..');
 const metadata={'openai/session':'conversation-fixture','openai/subject':'user-fixture'};
+// Bundles are files on the recipient's disk; the MCP response carries only their manifest.
 export function readMarkdownFiles(response, manifest) {
-  const resources=response.content.filter(item=>item.type==='resource').map(item=>item.resource);
-  assert.equal(resources.length,manifest.length);
+  assert.equal(response.content.some(item=>item.type==='resource'),false,'no file resources in the MCP response');
+  assert.doesNotMatch(JSON.stringify(response.content),/Workflow Pilot receipt: [a-f0-9]{12}/,'end markers are never revealed');
+  assert.ok(manifest&&Array.isArray(manifest.files)&&manifest.count===manifest.files.length,'context_files manifest');
   const parts=[],receipts=[];
-  for(const [index,resource] of resources.entries()){
-    assert.equal(resource.uri,manifest[index].uri);
-    assert.equal(resource.mimeType,'text/markdown');
-    assert.equal(Buffer.byteLength(resource.text),manifest[index].bytes);
-    assert.ok(manifest[index].bytes<=24000);
-    const end=resource.text.match(/\n\nWorkflow Pilot receipt: ([a-f0-9]{12})\n$/);
-    assert.ok(end,'each resource includes the end of its file');
-    let body=resource.text.slice(0,end.index);
+  for(const [index,file] of manifest.files.entries()){
+    assert.equal(file.index,index+1);assert.ok(path.isAbsolute(file.path));
+    assert.equal(path.dirname(file.path),manifest.directory);assert.ok(file.path.startsWith(manifest.workdir+path.sep));
+    const text=readFileSync(file.path,'utf8');
+    assert.equal(Buffer.byteLength(text),file.bytes);
+    assert.ok(file.bytes<=24000);
+    const end=text.match(/\n\nWorkflow Pilot receipt: ([a-f0-9]{12})\n$/);
+    assert.ok(end,'each file ends with its marker');
+    let body=text.slice(0,end.index);
     if(index===0&&response.structuredContent.startup_context){
       const header=body.match(/^# Подтверждение стартового контекста Workflow Pilot\nmessage_id: ([^\n]+)\ncontext_ref: ([a-f0-9]{64})\n[^]*?\n---\n/);
       assert.ok(header,'the first file alone supplies the acknowledgement parameters');

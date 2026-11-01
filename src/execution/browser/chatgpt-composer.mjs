@@ -1,5 +1,5 @@
 import { createChatGPTDOM, CHATGPT_SELECTORS, chatGPTDOMScript } from './chatgpt-dom.mjs';
-import { startupCommand, STARTUP_TICKET_PLACEHOLDER } from '../../contracts/context.mjs';
+import { startupCommand, previousStartupCommands, STARTUP_TICKET_PLACEHOLDER } from '../../contracts/context.mjs';
 import { PageInput } from './presentation/input.mjs';
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -8,7 +8,7 @@ class ComposerError extends Error {
 }
 
 // Runs only in the visible ChatGPT document. No page internals, cookies or API requests.
-export function pageOperation({ action = 'inspect', text = '', requestId = '', expectedUrl = null, diagnose = false, draftToken = '', attachments = [], attachmentIndex = null, startupTemplate = '', previousStartupTemplate = '', startupPlaceholder = '' } = {}, dom = createChatGPTDOM(CHATGPT_SELECTORS)) {
+export function pageOperation({ action = 'inspect', text = '', requestId = '', expectedUrl = null, diagnose = false, draftToken = '', attachments = [], attachmentIndex = null, startupTemplate = '', previousStartupTemplate = '', startupTemplates = null, startupPlaceholder = '' } = {}, dom = createChatGPTDOM(CHATGPT_SELECTORS)) {
   const { first } = dom;
   const editor = dom.editor();
   const busy = dom.busy();
@@ -149,7 +149,7 @@ export function pageOperation({ action = 'inspect', text = '', requestId = '', e
       const ticket = actual.match(/"enrollment_ticket":"([a-f0-9]{64})"/)?.[1];
       // Restored text may differ in whitespace only (the editor rewraps lines).
       const compact = value => value.replace(/\s+/g, ' ').trim();
-      if (!ticket || !startupPlaceholder || ![startupTemplate,previousStartupTemplate].filter(Boolean).some(template=>compact(actual)===compact(template.split(startupPlaceholder).join(ticket))))
+      if (!ticket || !startupPlaceholder || !(startupTemplates??[startupTemplate,previousStartupTemplate]).filter(Boolean).some(template=>compact(actual)===compact(template.split(startupPlaceholder).join(ticket))))
         return { ...result, action: 'deferred', reason: 'DRAFT_NOT_STARTUP' };
     }
     if (draftLength) {
@@ -400,7 +400,7 @@ export class ChatGPTComposer {
     // A queued operation from the previous document cannot erase the next chat.
     const code = `globalThis.__webPilotObserverDocumentId === ${JSON.stringify(documentId)}
       ? ${pageScript({ action: 'clear-new-draft', ...(startupOnly ? { startupTemplate: startupCommand(STARTUP_TICKET_PLACEHOLDER),
-        previousStartupTemplate: startupCommand(STARTUP_TICKET_PLACEHOLDER,false), startupPlaceholder: STARTUP_TICKET_PLACEHOLDER } : {}) })}
+        startupTemplates: [startupCommand(STARTUP_TICKET_PLACEHOLDER), ...previousStartupCommands(STARTUP_TICKET_PLACEHOLDER)], startupPlaceholder: STARTUP_TICKET_PLACEHOLDER } : {}) })}
       : ({ action: 'deferred', reason: 'CHAT_CHANGED' })`;
     const result = await this.contents.executeJavaScriptInIsolatedWorld(999, [{ code }], true);
     if (result.reason === 'DRAFT_CLEAR_FAILED')

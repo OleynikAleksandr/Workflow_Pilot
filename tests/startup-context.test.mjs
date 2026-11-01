@@ -4,6 +4,9 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {readFileSync,mkdirSync} from 'node:fs';
+import {writeContextFiles,pruneContextFiles} from '../src/execution/files/context-inbox.mjs';
+import {contextFileBundle} from '../src/control/plugin/context-files.mjs';
 import {PluginCommunication,COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/control/plugin/communication.mjs';
 import {openCommunicationStore} from '../src/execution/plugin/communication-store.mjs';
 import {DialogueDelivery} from '../src/control/workflow/dialogue-delivery.mjs';
@@ -386,8 +389,10 @@ for(const format of ['parts','files'])test('issued S '+format+' survive a concur
   const delivery=new DialogueDelivery({store:projects,record:()=>({controller:{packetIsCurrent:async packet=>packet.planRevision===project.planRevision}})});
   const instances=[];
   const create=async()=>{
+    const workspace=path.join(directory,'checkout');mkdirSync(workspace,{recursive:true});
     const c=new AttestedCommunication({store:await openCommunicationStore(directory),
-      resolveTarget:id=>id==='s'?registered:null,currentMessage:(to,m)=>delivery.currentMessage(to,m)});
+      resolveTarget:id=>id==='s'?registered:null,currentMessage:(to,m)=>delivery.currentMessage(to,m),
+      contextFiles:{write:(_t,messageId,files)=>writeContextFiles({workspace,messageId,files}),prune:(_t,keep)=>pruneContextFiles({workspace,keep})}});
     instances.push(c);await c.ready;return c;
   };
   t.after(async()=>{for(const c of instances){c.dispose();await c.tail;}await fs.rm(directory,{recursive:true,force:true});});
@@ -402,7 +407,8 @@ for(const format of ['parts','files'])test('issued S '+format+' survive a concur
   if(format==='files'){
     const fileInput={...input,context_format:'markdown-files-v1'};
     const opened=await c.startupOpen(fileInput);
-    const marks=opened.markdown_files.map(f=>f.text.match(/Workflow Pilot receipt: ([a-f0-9]{12})\n$/)[1]);
+    assert.equal(opened.markdown_files,undefined);
+    const marks=opened.context_files.files.map(f=>readFileSync(f.path,'utf8').match(/Workflow Pilot receipt: ([a-f0-9]{12})\n$/)[1]);
     assert.ok(marks.length>2);
     project.planRevision=6;
     c.dispose();await c.tail;
@@ -447,4 +453,43 @@ for(const format of ['parts','files'])test('issued S '+format+' survive a concur
   registered=s;
   await restored.removeProjects([{sessionIds:['s']}]);
   await assert.rejects(restored.startupComplete({...input,context_sha256:first.context_ref}),{code:'PLUGIN_COMMUNICATION_PROJECT_REMOVED'});
+});
+
+test('a startup bundle issued by 0.6.10 keeps its generator and old receipts after the upgrade',async t=>{
+  const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-v1-startup-')));
+  const port={write:(_t,messageId,files)=>writeContextFiles({workspace:directory,messageId,files}),prune:async()=>({removed:[]})};
+  const c=new AttestedCommunication({resolveTarget:id=>id==='o'?target:null,currentMessage:async()=>true});
+  t.after(async()=>{c.dispose();await c.tail;await fs.rm(directory,{recursive:true,force:true});});
+  await c.ready;
+  const invitation=await c.reserve(target),text='Старт 0.6.10 🪟\n'.repeat(4000);
+  const packet=await c.startup.stage(target,{request_id:'legacy-files',text});
+  await c.enroll(invitation.enrollment_ticket,metadata);
+  // 0.6.10 issued this bundle as MCP resources: the receipt has no version and nothing is on disk yet.
+  const m=[...c.runs.values()][0].messages.find(x=>x.message_id===packet.message_id);
+  const legacy=contextFileBundle(m.message_id,text,{startup:true,version:1});
+  m.file_receipt={count:legacy.files.length,digest:legacy.receiptHash};m.read=true;
+  c.contextFiles=port;
+  const input={metadata,message_id:packet.message_id,context_format:'markdown-files-v1'};
+  const opened=await c.startupOpen(input);
+  const texts=opened.context_files.files.map(file=>readFileSync(file.path,'utf8'));
+  assert.deepEqual(texts,legacy.files.map(file=>file.text));
+  const marks=texts.map(value=>value.match(/Workflow Pilot receipt: ([a-f0-9]{12})\n$/)[1]);
+  assert.equal((await c.startupComplete({...input,context_sha256:opened.context_ref,file_receipts:marks})).complete,true);
+});
+
+test('a new startup bundle is on disk before the opening command and open reuses it',async t=>{
+  const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'pilot-v2-startup-')));
+  const writes=[];
+  const port={write:async(_t,messageId,files)=>{writes.push(messageId);return writeContextFiles({workspace:directory,messageId,files});},prune:async()=>({removed:[]})};
+  const c=new AttestedCommunication({resolveTarget:id=>id==='o'?target:null,currentMessage:async()=>true,contextFiles:port});
+  t.after(async()=>{c.dispose();await c.tail;await fs.rm(directory,{recursive:true,force:true});});
+  await c.ready;
+  const invitation=await c.reserve(target),packet=await c.startup.stage(target,{request_id:'disk-first',text:'Стартовый контекст\n\n'.repeat(3000)});
+  assert.deepEqual(writes,[packet.message_id]);
+  const inbox=path.join(directory,'.harness','runtime','inbox',packet.message_id);
+  assert.ok((await fs.readdir(inbox)).length>1);
+  assert.equal(c.startup.progress('o','disk-first').files_issued,undefined,'a pre-write is not an issue to the agent');
+  await c.enroll(invitation.enrollment_ticket,metadata);
+  const opened=await c.startupOpen({metadata,message_id:packet.message_id,context_format:'markdown-files-v1'});
+  assert.equal(opened.context_files.directory,inbox);assert.equal(c.startup.progress('o','disk-first').files_issued,opened.context_files.count);
 });

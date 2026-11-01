@@ -10,7 +10,7 @@ import {currentPlanTasks,planActivity,activityClock,notificationActivity,executi
 import {startupContextState,startupView,startupAttempt} from '../contracts/startup-view.mjs';
 import {roleActor,participantName,buildWorkProgress,commitProgressLabel,messageEvent,notificationEvents,planPhase,PLAN_READY_TEXT,stageKind,WORK_SILENCE_MS,reviewActivity,reviewHistoryEvents} from '../contracts/work-progress.mjs';
 import { drainReasons } from './shutdown.mjs';
-import { openCommunicationStore } from '../execution/facade.mjs';
+import { openCommunicationStore, writeContextFiles, pruneContextFiles } from '../execution/facade.mjs';
 import {ClosedPlanCache} from '../contracts/workflow-plan.mjs';
 
 // Kit proof, independent of current chat UI. A READY_FOR_INTEGRATION child
@@ -1684,11 +1684,12 @@ async function start() {
       publish();
       if(change?.sessionTitle&&change.sessionTitle.sessionId===store.selected()?.sessionId)
         void syncSelectedSessionTitle({force:true,reason:'topic-title-changed'});
-    },communicationStore,workProgress:workProgressFor,
+    },communicationStore,contextFiles:{write:writeContextFiles,prune:pruneContextFiles},workProgress:workProgressFor,
       userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
       observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,reload:workflow.reloadParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,journal,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;
+    void plugin.communication.pruneContextFiles().catch(()=>{});
   }
   if (!storageError) {
     const errors = await deletion.recover();

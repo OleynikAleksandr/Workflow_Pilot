@@ -295,7 +295,7 @@ export class AssignmentDialogue {
         // The same durable operation survives a paused plan, process restart or
         // an interrupted CLI response. Permanent validation is visible, not retried.
         const code=String(error.code??'KIT_UNAVAILABLE');
-        const retry=/(?:CHANNEL_NOT_READY|WORKFLOW_LOCKED|PLAN_PAUSED|TEST_INTERRUPTION|KIT_UNAVAILABLE|TIMEOUT|ECONN|EPIPE|COMMAND_ACTIVE|COMMAND_UNKNOWN|INTEGRATION_PENDING|TRANSACTION_PENDING)$/.test(code);
+        const retry=/(?:CHANNEL_NOT_READY|WORKFLOW_LOCKED|PLAN_PAUSED|TEST_INTERRUPTION|KIT_UNAVAILABLE|TIMEOUT|ECONN|EPIPE|COMMAND_ACTIVE|COMMAND_UNKNOWN|INTEGRATION_PENDING|TRANSACTION_PENDING|CONTEXT_FILES_PENDING)$/.test(code);
         await this.c.mutate('assignmentDeferred',{run_id:runId,message_id:messageId,retry,code,message:String(error.message).slice(0,700)});
         if(!retry)throw error;
         return {message_id:messageId,operation_id:intent.operation_id,persisted:true,published:false,phase:'deferred',error:{code,message:String(error.message).slice(0,700)}};
@@ -322,7 +322,7 @@ export class AssignmentDialogue {
       return this.publish({...input,receipt});
     }catch(error){
       const code=String(error.code??'KIT_UNAVAILABLE');
-      const retry=/(?:CHANNEL_NOT_READY|WORKFLOW_LOCKED|PLAN_PAUSED|TEST_INTERRUPTION|KIT_UNAVAILABLE|TIMEOUT|ECONN|EPIPE|COMMAND_ACTIVE|COMMAND_UNKNOWN|INTEGRATION_PENDING|TRANSACTION_PENDING)$/.test(code);
+      const retry=/(?:CHANNEL_NOT_READY|WORKFLOW_LOCKED|PLAN_PAUSED|TEST_INTERRUPTION|KIT_UNAVAILABLE|TIMEOUT|ECONN|EPIPE|COMMAND_ACTIVE|COMMAND_UNKNOWN|INTEGRATION_PENDING|TRANSACTION_PENDING|CONTEXT_FILES_PENDING)$/.test(code);
       if(!retry)intent.phase='needs_confirmation';
       if(intent.error?.code!==code||!retry){
         intent.error={code,message:String(error.message).slice(0,700)};
@@ -400,6 +400,13 @@ export class AssignmentDialogue {
       repair_attempt:receipt.repair_attempt,escalation_required:receipt.escalation_required,
       body:effect.kind+' · '+receipt.task_id,kit_receipt:receipt,idempotency_key:intent.key,fingerprint:intent.fingerprint,
       delivery:'pending',read:false,reply_observed:false,created_at:intent.created_at};
+    // The task bundle is on the recipient's disk before any notification; a write error leaves the intent retryable.
+    if(effect.kind==='task'&&c.contextFiles)try{await c.taskFiles(run,intent.target,message,{issue:false});}
+    catch(error){
+      // Conflicting bytes or an unsafe path are permanent; other IO is retried with the same operation.
+      if(/CONTEXT_FILES_(?:CONFLICT|PATH|INVALID)$/.test(String(error.code)))throw error;
+      throw Object.assign(new Error('Комплект поручения не записан на диск получателя: '+String(error.message).slice(0,300)),{code:'PLUGIN_COMMUNICATION_CONTEXT_FILES_PENDING'});
+    }
     run.messages.push(message);intent.phase='published';delete intent.error;
     if(effect.kind==='task')for(const other of Object.values(run.assignment_intents??{})){
       if(other!==intent&&other.effect.kind==='task'&&other.effect.assignment_id===effect.assignment_id

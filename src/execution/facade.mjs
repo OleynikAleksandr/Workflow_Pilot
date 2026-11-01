@@ -7,6 +7,7 @@ import {ProjectCommands} from './runtime/project-commands.mjs';
 export { openCommunicationStore } from './plugin/communication-store.mjs';
 export { isChatGPTChatUrl, isPendingChatGPTConversation } from './browser/chatgpt-experience.mjs';
 export { desktopFiles, exists } from './files/adapter.mjs';
+export { writeContextFiles, pruneContextFiles } from './files/context-inbox.mjs';
 export { ProjectInputWatch, ChildCommandWatches } from './files/project-input-watch.mjs';
 export { currentBootIdentity, isProcessDead } from './commands/activity-probe.mjs';
 export { CHATGPT_CHAT_ENTRYPOINT } from './browser/chatgpt-experience.mjs';

@@ -3,7 +3,7 @@ import {ParticipantEnrollment} from './enrollment.mjs';
 import {WorkflowChannel} from './workflow-channel.mjs';
 import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
-import {contextFileBundle,requireFileReceipts} from './context-files.mjs';
+import {contextFileBundle,requireFileReceipts,receiptVersion,contextFilesView,CONTEXT_FILES_VERSION,CONTEXT_FILES_RULE} from './context-files.mjs';
 import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic,deliveryObserverError} from '../../contracts/plugin-communication.mjs';
 import {DeliveryOwnership} from './delivery-ownership.mjs';
 import {ConversationFreshness} from './conversation-freshness.mjs';
@@ -40,8 +40,8 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,reload=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null,journal=null}={}) {
-    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose});
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,reload=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null,journal=null,contextFiles=null}={}) {
+    Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose,contextFiles});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
     this.observedDenials=new Map();this.verifyTerminal=verifyTerminal;this.timings=[];this.timingDrops=0;this.kitSampled=new Map();
@@ -757,18 +757,8 @@ export class PluginCommunication {
       return {message_id:message.message_id,files_confirmed:true,already_handled:!!message.yielded};
     }
     if(input.context_format==='markdown-files-v1'&&message.dialogue_version===1&&message.kind==='task'&&!message.yielded){
-      const sources=[{sha256:message.context_ref},...message.contexts??[]];
-      const sections=[];
-      for(const source of sources){
-        const text=this.store?await this.store.readContent(source.sha256):this.workflow.contents.get(source.sha256);
-        requireValue(typeof text==='string'&&createHash('sha256').update(text).digest('hex')===source.sha256,'CONTEXT','Сохранённый источник поручения повреждён.');
-        sections.push(source.source?'\n\n## '+source.source+'\n\n'+text:text);
-      }
-      bundle=contextFileBundle(message.message_id,sections.join(''));
-      if(!message.file_receipt){
-        message.file_receipt={count:bundle.files.length,digest:bundle.receiptHash};
-        this.event(run,'context.files_issued',{message_id:message.message_id,participant_id:member.id,count:bundle.files.length});
-      }
+      // A bundle not yet on disk (published before the upgrade or without a port) is written lazily here.
+      bundle=await this.taskFiles(run,member.target,message);
     }
     this.event(run,'read.requested',{participant_id:member.id,message_id:message.message_id});
     if(!message.read){message.read=true;
@@ -784,13 +774,53 @@ export class PluginCommunication {
       instructions:'Это сообщение уже обработано. Не повторяйте команды, task:start, result или интеграцию. Прочитайте pending_incoming, если есть новые входящие.\n'+INCOMING_WORK_RULE};
     const {idempotency_key,fingerprint,read_page,handlingGate,inbox_wake,notification_attempts,file_receipt,...value}=message;
     if(bundle)return {...structuredClone(value),pending_incoming,role_protocol:ROLE_PROTOCOL_VERSION,
-      markdown_files:bundle.files,document_sha256:bundle.contextHash,
-      instructions:roleUpdate('executor',message.dialogue_version)+'\nПоручение и выбранные источники уже приложены целиком в пронумерованных Markdown-файлах. Прочитай все файлы по порядку в этом ходе. Подтверди весь комплект одним workflow_communication_read_message с тем же message_id и file_receipts из последних строк. После подтверждения выполни поручение. Если файл недоступен, сообщи имя; не подтверждай неполный комплект.'};
+      context_files:contextFilesView({messageId:message.message_id,contextRef:message.context_ref,documentSha256:bundle.bundle.contextHash,written:bundle.written}),
+      instructions:roleUpdate('executor',message.dialogue_version)+'\nПоручение и выбранные источники записаны целиком в пронумерованные файлы. '+CONTEXT_FILES_RULE+' Подтверди весь комплект одним workflow_communication_read_message с тем же message_id и file_receipts из последних строк по порядку. После подтверждения выполни поручение.'};
     return {...structuredClone(value),...(run.mode==='workflow'?{pending_incoming,role_protocol:ROLE_PROTOCOL_VERSION,
       instructions:(message.ui_event?.type==='review-continuation'?'Проверьте review:status и выполните оставшийся шаг автора. Для этого напоминания достаточно чтения.\n'+INCOMING_WORK_RULE
         :message.ui_event?USER_EVENT_RULE+'\n'+NOTIFICATION_RULE+'\n'+INCOMING_WORK_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
         :roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0))
         +'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
+  }
+  async taskMarkdown(message){
+    const sections=[];
+    for(const source of [{sha256:message.context_ref},...message.contexts??[]]){
+      const text=this.store?await this.store.readContent(source.sha256):this.workflow.contents.get(source.sha256);
+      requireValue(typeof text==='string'&&createHash('sha256').update(text).digest('hex')===source.sha256,'CONTEXT','Сохранённый источник поручения повреждён.');
+      sections.push(source.source?'\n\n## '+source.source+'\n\n'+text:text);
+    }
+    return sections.join('');
+  }
+  // Deterministic and immutable: repeating the write reuses the same bytes on disk.
+  // Only a read issues the bundle; a pre-write at publication leaves the receipt unset.
+  async taskFiles(run,target,message,{issue=true}={}){
+    requireValue(this.contextFiles,'CONTEXT','Служба не может записать комплект файлов поручения на диск.');
+    const version=message.file_receipt?receiptVersion(message.file_receipt):CONTEXT_FILES_VERSION;
+    const bundle=contextFileBundle(message.message_id,await this.taskMarkdown(message),{version});
+    const written=await this.contextFiles.write(target,message.message_id,bundle.files);
+    if(!issue)return {bundle,written};
+    if(!message.file_receipt){
+      message.file_receipt={count:bundle.files.length,digest:bundle.receiptHash,version,directory:written.directory};
+      this.event(run,'context.files_issued',{message_id:message.message_id,participant_id:message.recipient_id,count:bundle.files.length});
+    }
+    requireValue(message.file_receipt.digest===bundle.receiptHash,'CONTEXT','Комплект файлов поручения не совпал с выданным.');
+    return {bundle,written};
+  }
+  // Serialized with transactions so a bundle written by a concurrent stage is never mistaken for an old one.
+  // Message ids are unique across runs, so one keep set protects every session sharing a checkout.
+  pruneContextFiles(){
+    if(!this.contextFiles?.prune)return Promise.resolve({targets:0});
+    const work=this.tail.then(async()=>{
+      await this.ready;
+      const runs=[...this.runs.values()],keep=new Set(),targets=new Map();
+      for(const run of runs)for(const m of run.messages)
+        if(!m.cancelled&&!m.superseded&&(m.kind==='startup-context'?!m.startup_complete:m.kind==='task'&&!m.files_confirmed))keep.add(m.message_id);
+      for(const run of runs)for(const member of Object.values(run.members))
+        if(['O','S'].includes(member.role)&&!member.removed)targets.set(member.target.local_session_id,member.target);
+      for(const target of targets.values())try{await this.contextFiles.prune(target,keep);}catch{/* best effort; the next trigger retries */}
+      return {targets:targets.size};
+    });
+    this.tail=work.catch(()=>{});return work;
   }
   async pendingIncoming(run,member){
     const pending=[];
