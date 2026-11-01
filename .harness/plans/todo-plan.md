@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1467,
+  "plan_revision": 1469,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "context-files-0611",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Доставлять большой контекст агентам файлами ≤24000 байт на диске без запроса хоста и выпустить 0.6.11.",
   "acceptance_criteria": [
     "Старт и рабочее поручение доходят файлами ≤24000 байт на диске; ответ MCP без EmbeddedResource, со списком путей и размеров.",
@@ -346,8 +346,8 @@
       "actual_files": []
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "context-files-0611",
         "task_id": "PUBLISH",
@@ -372,7 +372,8 @@
       ],
       "expected_commit_message": "feat: Опубликовать выпуск 0.6.11 на GitHub",
       "why": "Опубликовать выпуск 0.6.11 на GitHub",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -395,10 +396,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: context-files-0611
 Current Task: нет
-Revision: 1467
+Revision: 1469
 
 ## Цель
 
@@ -439,8 +440,8 @@ Revision: 1467
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE, DOCS
-- [TODO] PUBLISH: Опубликовать выпуск 0.6.11 на GitHub — Ожидает
-  - Git Commit: [PENDING] feat: Опубликовать выпуск 0.6.11 на GitHub
+- [DONE] PUBLISH: Опубликовать выпуск 0.6.11 на GitHub — Завершено
+  - Git Commit: [DONE] feat: Опубликовать выпуск 0.6.11 на GitHub
   - Reference: context-files-0611 / PUBLISH / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
