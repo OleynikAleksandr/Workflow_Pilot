@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1417,
+  "plan_revision": 1419,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -122,7 +122,9 @@
       "docs/modules/project-compatibility.md",
       "docs/modules/user-choice.md",
       "docs/modules/workflow-execution.md",
-      "packages/workflow-kit/src/WORKFLOW.md"
+      "packages/workflow-kit/src/WORKFLOW.md",
+      "docs/modules/session-titles.md",
+      "docs/modules/project-lifecycle.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -983,8 +985,8 @@
     {
       "id": "DOCS-4",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "DOCS-4",
@@ -999,13 +1001,51 @@
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
         "docs/modules/workflow-execution.md",
-        "packages/workflow-kit/src/WORKFLOW.md"
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "README.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/release.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/session-titles.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
       ],
       "verification_ids": [],
-      "expected_commit_message": "docs: актуализировать документацию проекта"
+      "expected_commit_message": "docs: актуализировать документацию проекта",
+      "actual_files": [
+        "README.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/workflow-execution.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/user-choice.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/release.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/session-titles.md",
+        "docs/modules/project-lifecycle.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "id": "RELEASE-4",
@@ -1086,7 +1126,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1417
+Revision: 1419
 
 ## Цель
 
@@ -1164,10 +1204,10 @@ Revision: 1417
   - Git Commit: [DONE] feat: Будить автора ревью только после окончания хода
   - Reference: cdp-startup-input / REVIEW-WAKE / implementation
   - Файлы: src/control/workflow/review-continuation.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/plan-review.test.mjs, tests/plugin-communication.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, tests/chatgpt-plugin.test.mjs, src/control/sessions/workspace-session.mjs, src/backend/desktop-model.mjs, src/control/projects/workspace-deletion.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/client.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/workspace-session.test.mjs, tests/backend-api.test.mjs, tests/backend-desktop-model.test.mjs, tests/backend-end-to-end.test.mjs, tests/desktop-client.test.mjs, tests/electron-smoke.mjs, tests/workflow-kit-upgrade.test.mjs, tests/role-protocol.test.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.6.tar.gz, src/backend/lifecycle.mjs, src/contracts/plugin-communication.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, tests/backend-native-window.test.mjs, tests/backend-remote-gateway.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/remote-backend.mjs, tests/page-state.test.mjs, tests/web-client-electron.test.mjs, tests/workflow-channel.test.mjs, tools/codex-app-server-mcp/plugin.py, docs/modules/workflow-execution.md, packages/workflow-kit/src/WORKFLOW.md
-- [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-4: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-4 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, packages/workflow-kit/src/WORKFLOW.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, packages/workflow-kit/src/WORKFLOW.md, README.md, docs/modules/assignment-dialogue.md, docs/modules/current-actions.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/sdk-messaging.md, docs/modules/chat-only-startup.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/shared-conversation.md, docs/modules/session-titles.md, docs/modules/project-lifecycle.md, docs/acceptance/shared-conversation-mac.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md
 - [TODO] RELEASE-4: Собрать Workflow Pilot 0.6.7 для трёх ОС — Ожидает
   - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.6.7 для трёх ОС
   - Reference: cdp-startup-input / RELEASE-4 / implementation

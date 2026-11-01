@@ -1,6 +1,6 @@
 # Workflow Kit — контракт пакета
 
-`@webpilot/workflow-kit` 1.10.6 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
+`@webpilot/workflow-kit` 1.10.7 (`packages/workflow-kit`, private, Node ≥22): один current plan на checkout/worktree, проверяемые коммиты, recovery и установка. [Назначения и интеграции](parallel-assignments.md); [план оркестратора](orchestrated-plans.md); [доставка recovery](../../../../docs/modules/control.md).
 
 ## Код
 - `index.mjs` — `VERSION`, `WorkflowError`, `getRuntimeRoot()`, `currentPlanView`, `sessionPlanView`, пространства `actions`, `plan`, `sessionPlans`, `recovery`, `installer`. Exports: `.`, `./cli`, `./install`, `./lib/*`, `./schemas/*`, `./templates/*`, `./examples/*`, `./WORKFLOW.md`; bin `workflow`. Экспорты и lib-подпути сохраняются: их импортируют потребители.
@@ -28,7 +28,7 @@
 - `commit --task ID [--files JSON]`: без списка — изменения после task:start, кроме `.harness/` и приватных путей; прежние правки, изменённые снова, → `EXISTING_EDITS_CHANGED`; явный приватный путь → `PRIVATE_CONTEXT`, `.harness/` → `MANAGED_FILE`. Невошедшее — в `excluded_changes`.
 - `plan:extend --input` (`spec`, `tasks`, `dependencies`), только ACTIVE (`SCOPE_LIFECYCLE`): DONE не меняются и не переставляются; новая задача — в конец или `before` перед ещё не начатой задачей того же вида (обычная/delivery, не DOCS), которая получает зависимость от новой; зависимость на задачу ниже → `TASK_ORDER`; ID `DOCS*` зарезервированы (`TASK_ID_CONFLICT`).
 - `task:update` добавляет files/checks/acceptance; `plan:apply` не меняет статусы и DONE (`MANAGED_FIELDS`, `COMPLETED_TASK_IMMUTABLE`); `config:apply` — полный файл; непустой stack ставит DEVELOPMENT (1.9.7).
-- `project:rename --name` — имя в плане, recovery и путях hooks manifest одним коммитом kit-update; без активной задачи (`TASK_ACTIVE`), ≤ 100 символов (`PROJECT_NAME`); повтор без изменений — без коммита; папку не переименовывает.
+- `project:rename --name` синхронизирует имя Kit и пути hooks с папкой. Другое имя даёт WORKSPACE_NAME_FIXED, активная задача — TASK_ACTIVE. До 100 символов. Коммит нужен только при изменениях.
 - `repair --dry-run` → `repair_id` → `--apply` (завершить/повторить транзакцию, восстановить проекцию, отложить DOCS) или `--cancel` (отменить неподтверждённую подготовку). Журнал вручную не удалять.
 
 Подготовка новых orchestrated-планов, prepared_task, проверка автора/байтов/digest и совместимость brief-only — [контракт](../../../../docs/modules/prepared-tasks.md). Ролевые правила 14 одинаковы в PLAN/recovery/MCP.
