@@ -1,6 +1,6 @@
 # Плагин Workflow Pilot — автоматический диалог
 
-Workflow Pilot 0.6.8 / Kit 1.10.8, протокол панели 9, build `0.6.8-communication-9`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
+Workflow Pilot 0.6.9 / Kit 1.10.9, протокол панели 10, build `0.6.9-communication-10`. Отправляет только панель серверной страницы ([общий разговор](shared-conversation.md)). URI — `ui://workflow-pilot/panel-<sha256 полного HTML>.html`; staging сверяет package/backend/HTML. [SDK](sdk-messaging.md), [приёмка](../acceptance/sdk-messaging.md).
 
 ## Пользовательский путь
 
@@ -19,7 +19,7 @@ Control резервирует случайное 32-байтовое пригл
 
 Участники индексируются по participant_id: один O и несколько E (fixtures — пять E). Роль выбирает сервер. Run связан с проектом и исходной сессией O, разрешение — с scope и поколением. Чужой кандидат не захватывает план; с 0.5.29 уступивший планирование получает `role_update` в ответе панели. Публикация проверяется свежим чтением до role reconciliation.
 
-Каждый MCP-запрос использует свежие host metadata. `openai/session` обязателен, organization/subject могут отсутствовать; нормализованная identity хешируется, исходные значения не сохраняются. Название/URL чата, sidebar, клиентские IDs и заявление роли не удостоверяют адресата. При регистрации, чтении и перед Send проверяется действующее назначение; завершённый/заменённый исполнитель не получает новые поручения. Оркестратор видит реестр своего плана, исполнитель — своё назначение. Реестр не выдаёт приглашения, raw metadata или чужие worktree.
+MCP проверяет текущую identity. `openai/session` обязателен, organization/subject могут отсутствовать; нормализованная identity хешируется, исходные значения не сохраняются. Название/URL чата, sidebar, клиентские IDs и заявление роли не удостоверяют адресата. При регистрации, чтении и перед Send проверяется действующее назначение; завершённый/заменённый исполнитель не получает новые поручения. Оркестратор видит реестр своего плана, исполнитель — своё назначение. Реестр не выдаёт приглашения, raw metadata или чужие worktree.
 
 Конверт содержит message_id, scope, assignment/task/attempt, проверенного автора/адресата, kind, in_reply_to, block_id/signal_id, idempotency key и ссылки на контекст. Рабочие типы: task, context_request, context, question, clarification, decision, result, revision_request, acceptance; service ready/recovery/finalization имеет автора backend. Legacy сохраняет прежние assignment-start/continue/integration. Содержимое не расширяет полномочия.
 
@@ -46,11 +46,11 @@ Start/Continue после свежего preflight выдаёт допуск т�
 
 Claim_ready проверяет identity/document/attempt/grant, Stop и непроверенный legacy UNKNOWN; intent сохраняется до SDK. Один вызов может разбудить чат для нескольких pending. Тайм-ауты, lease и отдельные terminal receipts — в [едином контракте SDK](sdk-messaging.md).
 
-`pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report и restart сохраняют unknown попытки. notification_version=1 допускает три попытки и один цикл до трёх после проверенного восстановления; потерянный report повторяется без нового SDK-вызова; новые сообщения не удерживаются прошлым отказом, read прекращает повторы. Legacy Send не повторяется. Стартовый контекст имеет [отдельный контракт](orchestrator-startup.md). Рабочий контекст хранится целиком, до 1 MiB, читается частями до 12000 байт UTF-8 с total/sha256; усечения нет, доступ проверяется на каждой части.
+`pending → claimed → accepted/rejected/unknown`; чтение и наблюдённый ответ независимы. Потеря claim/report и restart сохраняют unknown попытки. notification_version=1 допускает три попытки и один цикл до трёх после проверенного восстановления; потерянный report повторяется без нового SDK-вызова; новые сообщения не удерживаются прошлым отказом, read прекращает повторы. Legacy Send не повторяется. Стартовый контекст имеет [отдельный контракт](orchestrator-startup.md). Поручение приходит комплектом .md в read_message. Для остальных сообщений прежний read_context выдаёт части до 12 000 байт.
 
 Рабочий model API — workflow_assignment_prepare/dispatch/send/yield/status: черновик O без grant, его отправка после готовности, вопрос, решение, result и acceptance. Intent сохраняется до идемпотентного эффекта Kit и публикации WAL. Yield.reason явно ограничен awaiting_reply/tasks_sent/result_sent/handled. Совместимые task:block/assignment:message используют ту же корреляцию без дублирования MCP-вызова агентом. Clarification не снимает block_id; только актуальный decision resume=true возобновляет. [Контракт сообщений](assignment-dialogue.md#model-api).
 
-[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 13: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
+[Ролевой протокол Kit](../../packages/workflow-kit/docs/modules/orchestrated-plans.md#сигналы) — role-protocol.mjs, версия 19: O отбирает контекст, выдаёт task, уточняет и принимает result; E спрашивает O и обязательно отправляет result после проверенного commit. Общая среда — один владелец при припаркованных E; третья неудачная попытка требует эскалации. Обновление правил не повторяет task:start. Старые сигналы не переписываются и не снимают новую блокировку.
 
 ## MCP и SDK
 
@@ -64,7 +64,7 @@ SDK: ext-apps 1.7.5, mcp-extensions 0.2.0, MCP 1.32.1. Настоящий `App.c
 
 | workflow_pilot_panel | Model, optional enrollment_ticket; мутация регистрации и UI. Без приглашения открывает существующую панель. Успех вызова не доказывает mount/SDK |
 | communication_read_message | Model, message_id; workflow выводит участника из identity, legacy принимает run_id/participant_id; сохраняет read, возвращает текущие инструкции роли |
-| communication_read_context | Model, message_id/context_ref/part=0; прочитать 0…total−1 перед работой |
+| communication_read_context | Model, message_id/context_ref/part=0; для прежних и служебных сообщений |
 | communication_participants | Model, без аргументов; актуальный разрешённый реестр |
 | communication_recover | App, свежая identity; автоматическое обнаружение своего назначения без выдачи допуска |
 | communication_bind / sync | App, binding/message_supported; bind подтверждает новую панель, sync продлевает присутствие и читает существующий допуск |
@@ -118,4 +118,6 @@ WAL в собственном `plugin-communication`: legacy schema 1, workflow 
 `check-plugin-resource.mjs` сверяет package/backend, метки HTML, видимый build и compiled script при staging и в готовом пакете. Fixtures настоящего MCP/SDK проверяют старый кэш → новый каталог → автоматическую привязку O без join/ID/Enable, неизменность снимка и отдельные изменения HTML/CSS/JS. Это не живая приёмка хоста.
 
 Staging перед start/test/smoke/build собирает автономный HTML с лицензиями; Runtime.syncSource доставляет весь tools-комплект. DOCS предшествует общей сборке трёх ОС из одного commit и штатной установке ([поставка](release.md)). Автоматические проверки: настоящий SDK/HTML/Python MCP/Control/Kit/Git в изоляции, O и E в Chat, без моделей и рабочих профилей. [Матрица](chatgpt-plugin-acceptance.md) отделяет эту проверку от живой приёмки.
+
+`file_receipts` подтверждает комплект. Манифест в `structuredContent`, файлы в `content[].resource`. [Контракт](orchestrator-startup.md).
 

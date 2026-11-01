@@ -26,7 +26,7 @@
 | Preflight | Свежий signed-in/допустимый URL/пустой draft нужного документа; unknown, старый разговор, план/fingerprint/документ/TTL блокируют dispatch |
 | Подтверждения | URL не даёт sent; точный enroll даёт sent; оба порядка адреса/регистрации; вход/документ/принадлежность до первой выдачи; потерянный адрес не угадывается |
 | Отмена и WAL | Revoke/enroll в обоих порядках, revoked до прежнего participant, registered-stopped без удаления identity, ошибка fsync/потерянный ответ/restart |
-| Контекст | Ранний panel без переключателя и предожидания флага; pause/cancel/login/ownership/not-ready отличаются от stale; первая часть panel, все UTF-8 части/SHA, чужой/неполный ack отклоняются, отмена read/claim/complete и запрет same-request resume |
+| Контекст | Ранний panel без переключателя и предожидания флага; pause/cancel/login/ownership/not-ready отличаются от stale; все файлы в одном panel, UTF-8, SHA и метки, чужой/неполный ack отклоняются, отмена read/claim/complete и запрет same-request resume |
 | Долговечное отображение | Незавершённый fsync не показывает complete, отмена приоритетнее исторического complete, старый delivery=pending не создаёт ложное ожидание |
 | Runtime recovery | Crash, refresh, пустой q, refresh target и native shortcuts не перезагружают q; явный переход выигрывает ожидающее восстановление |
 | Несколько сессий | Два и пять скрытых Electron-исполнителей, раздельные страницы/владельцы, выбор не меняет контекст другого чата |

@@ -1,6 +1,6 @@
 # План оркестратора
 
-Workflow Kit 1.10.8 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
+Workflow Kit 1.10.9 поддерживает `execution_strategy: "orchestrated"` — план, который ведёт сессия-оркестратор Workflow Pilot. Остальные правила плана — [контракт пакета](workflow-kit-package.md); назначения и интеграции — [назначения](parallel-assignments.md). Код: `plan.mjs`, `actions.mjs`, `validate.mjs`, `task-assignment.mjs`, `task-integration.mjs`, `integration-proof.mjs`, `signals.mjs`, `recovery.mjs`.
 
 ## План
 
@@ -13,7 +13,7 @@ Workflow Kit 1.10.8 поддерживает `execution_strategy: "orchestrated"
 
 В упрощённом plan:create общая спецификация orchestrated-плана — read-контекст, не неявная область записи каждого E. DOCS владеет переносом/удалением. Явно общие documentation_paths всё равно запрещают одновременные назначения; legacy parallel сохранён.
 
-Новый dialogue_version=1 имеет preparation_version=1: до Review/публикации обязательны task_brief (полное поручение ≤12000 UTF-8 байт) и явный prepared_task каждой обычной задачи и DOCS. После нормализации Kit сохраняет неизменяемые contexts/source/commit/hash/bytes, project/scope/author и доменно разделённый semantic digest задачи. Потеря байтов/подмена договора или отсутствие подготовки даёт TASK_PREPARATION с task ID; обрезки нет. task:update/plan:extend принимают явную актуализацию подготовки без прежнего digest, DONE не переписываются. [Полный контракт и бюджеты](../../../../docs/modules/prepared-tasks.md). Sequential без E и delivery package/installed этого не требуют.
+Новый dialogue_version=1 имеет preparation_version=1: до Review/публикации обязательны task_brief (один авторский Markdown до 180000 байт UTF-8 в пределах общего бюджета) и явный prepared_task каждой обычной задачи и DOCS. После нормализации Kit сохраняет неизменяемые contexts/source/commit/hash/bytes, project/scope/author и доменно разделённый semantic digest задачи. Потеря байтов/подмена договора или отсутствие подготовки даёт TASK_PREPARATION с task ID; обрезки нет. task:update/plan:extend принимают явную актуализацию подготовки без прежнего digest, DONE не переписываются. [Полный контракт и бюджеты](../../../../docs/modules/prepared-tasks.md). Sequential без E и delivery package/installed этого не требуют.
 
 ## Версия рабочего диалога
 

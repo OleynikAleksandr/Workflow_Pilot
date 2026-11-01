@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1440,
+  "plan_revision": 1443,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
@@ -109,7 +109,10 @@
       "packages/workflow-kit/README.md",
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
       "packages/workflow-kit/docs/modules/orchestrated-plans.md",
-      "packages/workflow-kit/src/templates/PLAN.md"
+      "packages/workflow-kit/src/templates/PLAN.md",
+      "docs/modules/orchestrator-startup.md",
+      "docs/modules/prepared-tasks.md",
+      "docs/acceptance/chat-only-startup.md"
     ]
   },
   "baseline_commit": "831d91090f00ac5110d8c561d6c3aa2fcb7aed67",
@@ -493,8 +496,8 @@
     {
       "id": "DOCS-2",
       "title": "Актуализация всех документов проекта",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "DOCS-2",
@@ -508,14 +511,54 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "packages/workflow-kit/src/templates/PLAN.md"
+        "packages/workflow-kit/src/templates/PLAN.md",
+        "README.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/release.md",
+        "docs/modules/user-choice.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "docs/acceptance/chat-only-startup.md"
       ],
       "acceptance_criteria": [
-        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
+        "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git.",
+        "Обновлены текущие контракты пакета 0.6.9, Kit 1.10.9, инструкции живой проверки и отката на 0.6.8."
       ],
       "verification_ids": [],
       "expected_commit_message": "docs: актуализировать документацию проекта",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "README.md",
+        "docs/acceptance/chat-only-startup.md",
+        "docs/acceptance/shared-conversation-mac.md",
+        "docs/architecture/OVERVIEW.md",
+        "docs/modules/assignment-dialogue.md",
+        "docs/modules/chat-only-startup.md",
+        "docs/modules/chatgpt-plugin.md",
+        "docs/modules/current-actions.md",
+        "docs/modules/dialogue-timing.md",
+        "docs/modules/orchestrator-startup.md",
+        "docs/modules/prepared-tasks.md",
+        "docs/modules/project-compatibility.md",
+        "docs/modules/release.md",
+        "docs/modules/sdk-messaging.md",
+        "docs/modules/shared-conversation.md",
+        "docs/modules/user-choice.md",
+        "packages/workflow-kit/README.md",
+        "packages/workflow-kit/docs/modules/orchestrated-plans.md",
+        "packages/workflow-kit/docs/modules/workflow-kit-package.md"
+      ]
     },
     {
       "id": "RELEASE-2",
@@ -599,7 +642,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1440
+Revision: 1443
 
 ## Цель
 
@@ -653,10 +696,10 @@ Revision: 1440
   - Файлы: src/control/plugin/startup-context.mjs, src/control/plugin/context-files.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/service.mjs, src/contracts/context.mjs, src/contracts/backend.mjs, tools/codex-app-server-mcp/plugin.py, src/backend/desktop-model.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/plan.mjs, packages/workflow-kit/src/lib/prepared-task.mjs, packages/workflow-kit/src/schemas/plan.schema.json, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/src/lib/installer.mjs, packages/workflow-kit/package.json, package.json, package-lock.json, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.8.tar.gz, tests/fixtures/automatic-agent-dialogue.mjs, src/contracts/startup-view.mjs, src/control/context/context-session.mjs, src/control/plugin/assignment-dialogue.mjs, src/execution/browser/chatgpt-composer.mjs, tests/chatgpt-composer.test.mjs, tests/fixtures/plugin-host.mjs, src/control/workflow/dialogue-delivery.mjs, tests/prepared-task-flow.test.mjs, tests/role-protocol.test.mjs, packages/workflow-kit/src/templates/PLAN.md
   - Параллельность: исключительное выполнение
   - Зависимости: нет
-- [TODO] DOCS-2: Актуализация всех документов проекта — Ожидает
-  - Git Commit: [PENDING] docs: актуализировать документацию проекта
+- [DONE] DOCS-2: Актуализация всех документов проекта — Завершено
+  - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: panel-inbox-068 / DOCS-2 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, packages/workflow-kit/src/templates/PLAN.md
+  - Файлы: docs/architecture/OVERVIEW.md, packages/workflow-kit/src/templates/PLAN.md, README.md, docs/modules/orchestrator-startup.md, docs/modules/prepared-tasks.md, docs/modules/assignment-dialogue.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/shared-conversation.md, docs/modules/current-actions.md, docs/modules/project-compatibility.md, docs/modules/sdk-messaging.md, docs/modules/release.md, docs/modules/user-choice.md, docs/acceptance/shared-conversation-mac.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/acceptance/chat-only-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUNDLE
 - [TODO] RELEASE-2: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ — Ожидает
