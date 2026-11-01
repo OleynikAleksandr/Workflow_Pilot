@@ -4,12 +4,12 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1455,
+  "plan_revision": 1457,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
   "execution_scope_status": "ACTIVE",
-  "delivery_status": "IN_PROGRESS",
+  "delivery_status": "READY_FOR_ACCEPTANCE",
   "objective": "Устранить остановку доставки из прогона T001 и выпустить 0.6.8.",
   "acceptance_criteria": [
     "Две совместимые работы одного адресата в очереди получают одно пробуждение и отдельное адресное чтение/подтверждение. При пополнении во время обработки следующее сообщение остаётся доступно, пропущенное чтение не считается доставкой.",
@@ -796,14 +796,15 @@
         "Установить проверенный комплект 0.6.10 с возможностью отката"
       ],
       "expected_commit_message": "feat: Установить проверенный комплект 0.6.10 с возможностью отката",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "INSTALL-3",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": []
     }
   ],
   "blocked_reason": null,
@@ -826,10 +827,10 @@
 ## Состояние
 
 Execution Scope Status: ACTIVE
-Delivery Status: IN_PROGRESS
+Delivery Status: READY_FOR_ACCEPTANCE
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1455
+Revision: 1457
 
 ## Цель
 
@@ -919,8 +920,8 @@ Revision: 1455
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: STARTUP-RECOVERY, DOCS-3
-- [TODO] INSTALL-3: Установить проверенный комплект 0.6.10 с возможностью отката — Ожидает
-  - Git Commit: [PENDING] feat: Установить проверенный комплект 0.6.10 с возможностью отката
+- [DONE] INSTALL-3: Установить проверенный комплект 0.6.10 с возможностью отката — Завершено
+  - Git Commit: [DONE] feat: Установить проверенный комплект 0.6.10 с возможностью отката
   - Reference: panel-inbox-068 / INSTALL-3 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
