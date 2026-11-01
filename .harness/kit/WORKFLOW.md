@@ -21,7 +21,7 @@
 
 Команды вызываются через `./scripts/workflow`, в Windows PowerShell/CMD — `./scripts/workflow.cmd`. `--help` показывает нужную форму без чтения исходников Kit. `status` даёт свежую revision, Git и транзакцию; `validate` проверяет согласованность, `recover --format text/json/packet` возвращает контекст. При конфликте revision перечитай status, не повторяй изменение вслепую.
 
-`plan:create` создаёт scope при NONE. `plan:apply` уточняет разрешённые поля. `task:update` добавляет files/checks/acceptance. `project:rename` меняет имя в плане без активной задачи. `repair --dry-run` выдаёт конкретный repair_id для применения или отмены неподтверждённой подготовки с сохранением правок. `inspect/doctor/install` обслуживают установку. Схемы, статусы и commit_ref агент вручную не переписывает.
+`plan:create` создаёт scope при NONE. `plan:apply` уточняет разрешённые поля. `task:update` добавляет files/checks/acceptance. `project:rename` сверяет имя в плане с фактическим именем папки после её переноса. Для названия беседы меняется только сессия. `repair --dry-run` выдаёт конкретный repair_id для применения или отмены неподтверждённой подготовки с сохранением правок. `inspect/doctor/install` обслуживают установку. Схемы, статусы и commit_ref агент вручную не переписывает.
 
 ## Установка и совместимость
 
