@@ -186,6 +186,30 @@ function urlFixture({attempt=null,chatUrl=null}={}){
     get saved(){return saved;},setEvidence:e=>{evidence=e;},setComplete:()=>{complete=true;},advance:ms=>{clock+=ms;}};
 }
 
+test('an unfinished registered start rebuilds the current revision and reserves one reminder after idle',async()=>{
+  const f=urlFixture();await f.controller.tick();await settle();await f.navigate();await f.observe();f.proof();await f.controller.tick();
+  const original=f.saved.attempt;
+  let progress={message_id:'message',delivery_mode:'model-pull',files_issued:2,complete:false},idle=false;
+  f.runtime.startupProgress=()=>progress;
+  f.info.planRevision++;
+  f.runtime.loadContext=async()=>{const p=packet();p.facts.plan_revision=f.info.planRevision;return p;};
+  f.runtime.stageStartup=async(p,a)=>{
+    assert.equal(a.startupReplacement.message_id,'message');assert.equal(a.requestId,original.requestId);
+    progress={...progress,message_id:'new-message',files_issued:0};return progress;
+  };
+  let sent=0;
+  f.composer.submitContextReminder=async args=>{
+    assert.equal(args.expectedUrl,f.saved.chatUrl);
+    if(!idle)return {state:'not-sent'};
+    assert.equal(args.canContinue(),true);assert.equal(await args.onBeforeEnter(),true);
+    assert.equal(f.saved.attempt.contextReminderId,progress.message_id);sent++;return {state:'submitted'};
+  };
+  await f.controller.tick();assert.equal(f.saved.attempt.contextRef.message_id,'new-message');
+  assert.equal(f.saved.attempt.packet.facts.plan_revision,f.info.planRevision);
+  assert.equal(f.saved.attempt.contextReminderId,undefined);
+  idle=true;await f.controller.tick();await f.controller.tick();
+  assert.equal(sent,1);assert.equal(f.starts.length,1);assert.equal(f.saved.attempt.attemptGeneration,original.attemptGeneration);
+});
 test('typed start stages full role context and saves checkpoint before exactly one short command',async()=>{
   for(const role of ['discussion','orchestrator','executor']){
     const f=urlFixture();f.info.role=role;if(role==='executor')f.info.assignmentId='assignment';

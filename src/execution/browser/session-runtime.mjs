@@ -106,6 +106,16 @@ export class BrowserSessions {
         if (typeof token === 'string' && token && record.navigationOwner === token) record.navigationOwner = null;
         return record.navigationOwner === null;
       },
+      submitContextReminder: async args => {
+        const turn=source.current?.state?.turnId,documentId=source.current?.documentId;
+        const owned=()=>!record.disposed&&!record.loading&&!record.crashed&&!record.navigationOwner
+          &&!!turn&&source.current?.documentId===documentId&&source.current?.state?.turnId===turn
+          &&source.current?.state?.url===args.expectedUrl&&source.current.state.login==='signed-in'
+          &&source.current.state.busy===false&&source.current.state.assistantFinal===true
+          &&source.current.state.lastMessageRole==='assistant'&&!source.current.state.connectionError&&args.canContinue();
+        if(!owned()||source.current.state.draftPresent)return {state:'not-sent'};
+        return call('submitStartup',{...args,canContinue:owned});
+      },
       hasFilled: requestId => composer.hasFilled(requestId),
       inspect: args => call('inspect', args),
       observeSnapshot: async () => {

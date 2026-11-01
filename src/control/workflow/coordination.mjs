@@ -600,9 +600,13 @@ return Object.freeze({
     }));
     for(const member of Object.values(run.members))if(global||affected.has(member.id))
       liveRecord(dialogue.project(member.target.local_session_id))?.executor?.changed();
-    for(const event of events)if(event.event_type==='startup.complete'){
+    for(const event of events)if(['startup.complete','context.files_issued','startup.prepared'].includes(event.event_type)){
       const member=run.members[event.participant_id];
-      if(member)void liveRecord(dialogue.project(member.target.local_session_id))?.controller.tick();
+      if(member)void liveRecord(dialogue.project(member.target.local_session_id))?.controller?.tick();
+    }
+    for(const event of events)if(event.event_type==='message.persisted'&&event.kind==='user-choice'){
+      const m=run.messages.find(m=>m.message_id===event.message_id);
+      if(m?.ui_event?.type==='review-preference')liveRecord(dialogue.project(m.recipient_session_id))?.controller?.projectChanged();
     }
     void execution.signal(parent.workspace);publish();
   },

@@ -19,7 +19,15 @@ export function readMarkdownFiles(response, manifest) {
     assert.ok(manifest[index].bytes<=24000);
     const end=resource.text.match(/\n\nWorkflow Pilot receipt: ([a-f0-9]{12})\n$/);
     assert.ok(end,'each resource includes the end of its file');
-    parts.push(resource.text.slice(0,end.index));receipts.push(end[1]);
+    let body=resource.text.slice(0,end.index);
+    if(index===0&&response.structuredContent.startup_context){
+      const header=body.match(/^# Подтверждение стартового контекста Workflow Pilot\nmessage_id: ([^\n]+)\ncontext_ref: ([a-f0-9]{64})\n[^]*?\n---\n/);
+      assert.ok(header,'the first file alone supplies the acknowledgement parameters');
+      assert.equal(header[1],response.structuredContent.startup_context.message_id);
+      assert.equal(header[2],response.structuredContent.startup_context.context_ref);
+      body=body.slice(header[0].length);
+    }
+    parts.push(body);receipts.push(end[1]);
   }
   return {text:parts.join(''),receipts};
 }

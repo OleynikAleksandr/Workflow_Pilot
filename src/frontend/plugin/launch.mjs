@@ -65,7 +65,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       finally{ready();if(!loop)watchWorkflow();}
     },2000);
   }
-  const status=(text,state)=>{if(!disposed)ui.status(text,state);};
+  const status=(text,state)=>{if(!disposed){ui.status(text,state);ui.connection(!binding||state==='error'?text:null);}};
   const ready=()=>{
     const unavailable=disposed||suspended||!connected;
     const reason=disposed?'Панель завершена. Откройте её заново.':suspended?'Панель приостановлена до возвращения.':
@@ -91,13 +91,20 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     catch(error){const normalized=toolError(error);
       if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:normalized.code});
       throw normalized;}
-    if(/^ui:\/\/workflow-pilot\/panel-[a-f0-9]{64}\.html$/.test(result.structuredContent?.panel_resource_uri??''))resourceUri=result.structuredContent.panel_resource_uri;
     if(result.isError){
       const error=toolError(result);
       if(!name.startsWith('telemetry'))record('rpc.completed',{operation:name,operation_ms:clock()-began,error_code:error.code});
       throw error;
     }
-    const value=result.structuredContent;
+    let value=result.structuredContent;
+    if(!value){
+      for(const block of result.content??[])if(block.type==='text')try{
+        const parsed=JSON.parse(block.text);
+        if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)){value=parsed;break;}
+      }catch{}
+      if(!value)throw Error('Служба не вернула данные подключения для '+name+'.');
+    }
+    if(/^ui:\/\/workflow-pilot\/panel-[a-f0-9]{64}\.html$/.test(value.panel_resource_uri??''))resourceUri=value.panel_resource_uri;
     if(!name.startsWith('telemetry')&&(!['wait','status','sync'].includes(name)||value?.message_id
       ||clock()-(sampledAt.get(name)??-Infinity)>=30000)){
       sampledAt.set(name,clock());
@@ -326,7 +333,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     if(binding||disposed||suspended||contextBlocked)return;
     const generation=epoch;
     const next={run_id:$('run').value.trim(),participant_id:$('participant').value.trim(),panel_instance_id:panelId,frame_instance_id:frameId,protocol_version:PROTOCOL,build_id:BUILD};
-    try{const result=await call('bind',{binding:next,message_supported:!!getMessage()});if(disposed||suspended||epoch!==generation)return;binding=next;serverError=result.critical_error;
+    try{const result=await call('bind',{binding:next,message_supported:!!getMessage()});if(disposed||suspended||epoch!==generation)return;binding=next;resumePending=false;serverError=result.critical_error;
       workflow=result.mode==='workflow';ui.mode(result.mode);applyRole(result);
       record('host.handshake',{message_supported:!!getMessage()});
       if(workflow)refreshing=refresh(true).catch(()=>{if(epoch===generation)status('Не удалось обновить журнал панели.','error');})
@@ -352,7 +359,7 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       const assigned=result.participants.filter(p=>p.mode==='workflow');
       if(assigned.length>1)throw Error('Найдено несколько рабочих назначений этого разговора. Требуется проверка backend; выбор вручную запрещён.');
       candidates=assigned.length?assigned:result.participants;ui.candidates(candidates);
-      if(candidates.length===1){choose(candidates[0]);await bind({automatic:true});}
+      if(candidates.length===1){ui.reviewNotification(result.review_notification);choose(candidates[0]);await bind({automatic:true});}
       else status(candidates.length?'Найдено несколько экспериментальных запусков. Выберите нужный.':'Назначение этого разговора ещё не зарегистрировано. Ожидаем регистрацию из стартового контекста.');
       recoveryFailures=0;
     })().catch(error=>{if(epoch===generation){serverError=error.message;status('Не удалось восстановить данные: '+error.message,'error');
@@ -405,10 +412,17 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
     catch{status('Хост не разрешил скачивание. Используйте «Выделить журнал» и сохраните текст.','error');}
   });
   record('panel.mount');ready();return {ready,recover,connected(){connected=true;ready();return recover();},
-    toolResult(){if(!connected||disposed||binding||busy||recovery)return;resumePending=true;ready();},
+    toolResult(){if(!connected||disposed||binding)return;resumePending=true;ready();},
     contextChanged(fields=[]){
       const presentation=new Set(['theme','styles','containerDimensions','displayMode','availableDisplayModes','safeAreaInsets']);
       if(fields.length&&fields.every(field=>presentation.has(field)))return;
+      // Initial host metadata may arrive while recover is in flight. Discard
+      // that generation and recover the authenticated identity again before bind.
+      if(!binding&&!contextBlocked&&!disposed&&!suspended){
+        if(recovery){resumePending=true;localStop('Перепроверяем подключение панели…');}
+        else if(connected)void recover();
+        return;
+      }
       if(contextBlocked||disposed||suspended)return;contextBlocked=true;
       record('host.context_changed',{error_code:'CONTEXT_CHANGED'});void stop('Контекст хоста изменился; восстановите привязку.');ready();},
     visibilityChanged(){record('visibility.changed');},

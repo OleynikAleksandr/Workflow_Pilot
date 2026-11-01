@@ -41,8 +41,15 @@ export class StartupContext {
     check(!Object.values(run.enrollments).some(invitation=>invitation.target.local_session_id===target.local_session_id
       &&invitation.request_id===request_id&&(invitation.attempt_generation??null)===(input.attempt_generation??null)
       &&invitation.status==='revoked'),'STARTUP_CANCELLED','Приглашение этого стартового пакета отозвано.');
-    const existing=run.messages.find(m=>m.kind==='startup-context'&&m.request_id===request_id&&m.recipient_session_id===target.local_session_id);
-    if(existing){
+    const existing=run.messages.findLast(m=>m.kind==='startup-context'&&m.request_id===request_id&&m.recipient_session_id===target.local_session_id);
+    const replace=input.replaces_message_id;
+    if(replace){
+      check(existing&&!existing.cancelled&&!existing.intent&&existing.delivery_mode==='model-pull'
+        &&existing.attempt_generation===(input.attempt_generation??null)&&existing.assignment_id===(target.assignment_id??null)
+        &&(existing.message_id===replace||existing.replaces_message_id===replace),'CONFLICT','Попытка обновления относится к другому пакету.');
+      if(existing.startup_complete)return this.view(existing);
+    }
+    if(existing&&(!replace||existing.replaces_message_id===replace)){
       check(!existing.cancelled,'STARTUP_CANCELLED','Этот стартовый пакет отменён. Повтор не возобновляет его.');
       check((existing.attempt_generation??null)===(input.attempt_generation??null),'CONFLICT','Поколение стартового пакета изменилось.');
       check(existing.context_ref===digest,'CONFLICT','Нельзя заменить сохранённый стартовый пакет.');
@@ -51,7 +58,7 @@ export class StartupContext {
       return this.view(existing);
     }
     const old=this.message(run,target.local_session_id);
-    check(!old||(!old.intent&&!old.read)||old.startup_complete,'CONFLICT','Исход прежней отправки не подтверждён. Повтор запрещён.');
+    check(!old||(!old.intent&&(!old.read||old.message_id===replace))||old.startup_complete,'CONFLICT','Исход прежней отправки не подтверждён. Повтор запрещён.');
     check(run.messages.length<2048,'LIMIT','Достигнут лимит сообщений.');
     const ref=c.store?await c.store.putContent(text):digest;
     if(!c.store)c.workflow.contents.set(ref,text);
@@ -60,7 +67,7 @@ export class StartupContext {
     const message={message_id:c.makeId(),kind:'startup-context',service:true,sender_role:'backend',sender_id:null,
       recipient_id:member?.id??null,recipient_session_id:target.local_session_id,scope_id:target.scope_id,
       assignment_id:target.assignment_id??null,task_id:target.task_id??null,request_id,attempt_generation:input.attempt_generation??null,
-      context_ref:ref,context_bytes:Buffer.byteLength(text),
+      ...(replace?{replaces_message_id:replace}:{}),context_ref:ref,context_bytes:Buffer.byteLength(text),
       total_parts:contextParts(text,24000).length,parts_read:[],body:'Стартовый контекст сессии',
       delivery_mode:input.delivery_mode??'model-pull',delivery:'pending',read:false,reply_observed:false,created_at:new Date(c.now()).toISOString()};
     run.messages.push(message);c.event(run,'startup.prepared',{message_id:message.message_id,participant_id:member?.id??null,
@@ -75,7 +82,11 @@ export class StartupContext {
     if(this.c.removedSessions.has(sessionId))return null;
     const match=m=>m.kind==='startup-context'&&m.recipient_session_id===sessionId&&m.request_id===requestId;
     const target=this.c.enrollment.resolveTarget?.(sessionId);
-    if(target)return this.view(this.c.readableRun(workflowRunId(target))?.messages.findLast(match));
+    if(target){
+      const m=this.c.readableRun(workflowRunId(target))?.messages.findLast(match);
+      const view=this.view(m);
+      return view&&target.role==='S'&&m.read&&(m.file_receipt||m.parts_read.includes(0))?{...view,snapshot_pinned:true}:view;
+    }
     // A closed plan detaches the participant, but a confirmed startup stays confirmed.
     for(const id of this.c.runs.keys()){const m=this.c.readableRun(id)?.messages.findLast(match);if(m?.startup_complete)return this.view(m);}
     return null;
@@ -100,9 +111,10 @@ export class StartupContext {
     if(input.context_format==='markdown-files-v1'){
       const text=this.c.store?await this.c.store.readContent(m.context_ref):this.c.workflow.contents.get(m.context_ref);
       check(typeof text==='string'&&hash(text)===m.context_ref,'CONTEXT','Сохранённый стартовый контекст повреждён.');
-      const {files,receiptHash}=contextFileBundle(m.message_id,text);
-      if(!m.file_receipt){
-        m.file_receipt={count:files.length,digest:receiptHash};
+      const {files,receiptHash}=contextFileBundle(m.message_id,text,{startup:true});
+      if(m.file_receipt?.digest!==receiptHash){
+        const previous=m.file_receipt;
+        m.file_receipt={count:files.length,digest:receiptHash,...(previous?{previous}:{})};
         this.c.event(run,'context.files_issued',{message_id:m.message_id,participant_id:member.id,count:files.length});
       }
       return {message_id:m.message_id,context_ref:m.context_ref,bytes:m.context_bytes,complete:!!m.startup_complete,
@@ -127,7 +139,10 @@ export class StartupContext {
   async completed(input){
     const {run,member,m}=await this.own(input);
     check(input.context_sha256===m.context_ref,'CONTEXT','Digest не совпадает со стартовым пакетом.');
-    if(m.file_receipt && !m.startup_complete)requireFileReceipts(m.file_receipt,input.file_receipts);
+    if(m.file_receipt && !m.startup_complete){
+      try{requireFileReceipts(m.file_receipt,input.file_receipts);}
+      catch(error){if(!m.file_receipt.previous)throw error;requireFileReceipts(m.file_receipt.previous,input.file_receipts);}
+    }
     else if(!m.startup_complete)check(m.read&&m.parts_read.length===m.total_parts,'INCOMPLETE','Прочитайте все части стартового контекста перед подтверждением.');
     if(!m.startup_complete){m.startup_complete=true;m.startup_completed_at=new Date(this.c.now()).toISOString();
       if(member.deliveryGate?.message_id===m.message_id)delete member.deliveryGate;

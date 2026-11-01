@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1448,
+  "plan_revision": 1451,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
@@ -90,7 +90,8 @@
       "tests/chatgpt-composer.test.mjs",
       "tests/fixtures/plugin-host.mjs",
       "tests/prepared-task-flow.test.mjs",
-      "src/frontend/plugin/index.html"
+      "src/frontend/plugin/index.html",
+      "tests/context-session.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/panel-inbox-068.md",
@@ -642,7 +643,11 @@
         "src/frontend/plugin/index.html",
         "src/contracts/backend.mjs",
         "tests/startup-context.test.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "tests/context-session.test.mjs",
+        "tests/fixtures/plugin-host.mjs"
       ],
       "documentation_paths": [],
       "verification_ids": [
@@ -656,17 +661,37 @@
       "acceptance_criteria": [
         "Первый Markdown содержит параметры подтверждения. Все файлы до 24000 байт, подтверждение проверяет все конечные метки.",
         "При изменении ревизии до подтверждения та же сессия получает актуальный комплект. Старая квитанция отвергается. Панель открывается с состоянием подключения.",
-        "После конца хода допустимо одно напоминание для комплекта. Выбор Review доставляется обычным адресным каналом с квитанцией чтения."
+        "После конца хода допустимо одно напоминание для комплекта. Выбор Review доставляется обычным адресным каналом с квитанцией чтения.",
+        "Квитанции 0.6.9 остаются действительными для своего актуального пакета. После замены прежний message_id отклоняется. Проверки A001 проходят через публичные MCP и панель с SDK."
       ],
       "expected_commit_message": "feat: Восстановить неподтверждённый старт и доставку выбора Review в том же чате",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "STARTUP-RECOVERY",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "src/contracts/backend.mjs",
+        "src/control/context/context-session.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/context-files.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/startup-context.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/frontend/plugin/index.html",
+        "src/frontend/plugin/launch.mjs",
+        "src/frontend/plugin/panel.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/context-session.test.mjs",
+        "tests/fixtures/plugin-host.mjs"
+      ]
     },
     {
       "id": "DOCS-3",
@@ -776,7 +801,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1448
+Revision: 1451
 
 ## Цель
 
@@ -848,10 +873,10 @@ Revision: 1448
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
   - Зависимости: RELEASE-2, DOCS-2
-- [TODO] STARTUP-RECOVERY: Восстановить неподтверждённый старт и доставку выбора Review в том же чате — Ожидает
-  - Git Commit: [PENDING] feat: Восстановить неподтверждённый старт и доставку выбора Review в том же чате
+- [DONE] STARTUP-RECOVERY: Восстановить неподтверждённый старт и доставку выбора Review в том же чате — Завершено
+  - Git Commit: [DONE] feat: Восстановить неподтверждённый старт и доставку выбора Review в том же чате
   - Reference: panel-inbox-068 / STARTUP-RECOVERY / implementation
-  - Файлы: package.json, package-lock.json, src/control/context/context-session.mjs, src/control/plugin/context-files.mjs, src/control/plugin/service.mjs, src/control/plugin/startup-context.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/contracts/backend.mjs, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs
+  - Файлы: package.json, package-lock.json, src/control/context/context-session.mjs, src/control/plugin/context-files.mjs, src/control/plugin/service.mjs, src/control/plugin/startup-context.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/frontend/plugin/launch.mjs, src/frontend/plugin/panel.mjs, src/frontend/plugin/index.html, src/contracts/backend.mjs, tests/startup-context.test.mjs, tests/chatgpt-plugin.test.mjs, src/control/workflow/coordination.mjs, src/execution/browser/session-runtime.mjs, tests/context-session.test.mjs, tests/fixtures/plugin-host.mjs
   - Параллельность: исключительное выполнение
   - Зависимости: нет
 - [TODO] DOCS-3: Актуализация всех документов проекта — Ожидает

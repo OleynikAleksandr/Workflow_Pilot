@@ -126,6 +126,43 @@ test('startup panel returns five whole Markdown files in the same MCP turn witho
   const run=[...comm.runs.values()][0];assert.equal(run.grant,undefined);assert.equal(run.messages[0].intent,undefined);
   assert.deepEqual(ui.errors,[]);
 });
+test('A001: a stale bundle leaves the panel usable and preserves the Review notification in the original conversation',async t=>{
+  const f=await fixture(t),comm=f.plugin.communication;
+  const target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};
+  comm.enrollment.resolveTarget=comm.enrollment.verifyTarget=id=>id==='origin'?target:null;
+  comm.workflow.observe=()=>({sdkDocumentReady:true,canSend:true,stopped:true});comm.workflow.admission=async()=>true;
+  const owner={request_id:'start-001',attempt_generation:'generation-1'},invite=await comm.reserve(target,owner);
+  const old=await comm.startup.stage(target,{...owner,text:'Review OFF\n'+'Файл '.repeat(5000)});
+  await bridge(t,f);const c=await client(t,f);
+  const call=(name,args={})=>c.callTool({name,arguments:args,_meta:metadata});
+  const first=await call('workflow_pilot_panel',{enrollment_ticket:invite.enrollment_ticket});
+  const files=readMarkdownFiles(first,first.structuredContent.startup_context.files);
+  assert.ok(files.receipts.length>1);
+  comm.workflow.currentMessage=async(_to,m)=>m.message_id!==old.message_id;
+  const choice=await comm.workflow.enqueue(target,{key:'review-policy:on',kind:'user-choice',text:'Review ON',
+    ui_event:{type:'review-preference',id:'on',enabled:true,revision:1,recipient_session_id:'origin'}});
+  const panel=await call('workflow_pilot_panel');
+  assert.equal(panel.isError,false);assert.equal(panel.structuredContent.startup_status.code,'PLUGIN_COMMUNICATION_STALE_MESSAGE');
+  assert.equal(panel.structuredContent.startup_context,undefined);
+  const replace={...owner,text:'Review ON\n'+'Файл '.repeat(5000),replaces_message_id:old.message_id};
+  const fresh=await comm.startup.stage(target,replace);
+  assert.notEqual(fresh.message_id,old.message_id);
+  assert.equal((await comm.startup.stage(target,replace)).message_id,fresh.message_id);
+  const denied=await call('workflow_startup_complete',{message_id:old.message_id,context_sha256:first.structuredContent.startup_context.context_ref,file_receipts:files.receipts});
+  assert.equal(denied.isError,true);
+  const updated=await call('workflow_pilot_panel'),bundle=updated.structuredContent.startup_context;
+  const receipt=readMarkdownFiles(updated,bundle.files);
+  assert.equal(bundle.message_id,fresh.message_id);assert.equal(receipt.text,replace.text);
+  assert.equal((await call('workflow_startup_complete',{message_id:fresh.message_id,context_sha256:bundle.context_ref,file_receipts:receipt.receipts})).structuredContent.complete,true);
+  let delivered=0;
+  const ui=await communicationHtml(t,c,{timerMs:ms=>ms===2000?20:ms,toolReply:async(req,result)=>
+    req.name==='workflow_communication_recover'?{content:result.content}:result,onMessage:async()=>{
+      delivered++;
+      assert.equal((await call('workflow_communication_read_message',{message_id:choice.message_id})).isError,false);
+    }});
+  await eventually(()=>comm.runs.get(invite.run_id).messages.find(m=>m.message_id===choice.message_id)?.read);
+  assert.equal(delivered,1);assert.equal(ui.messages.length,1);
+});
 test('pre-plan orchestrator receives all startup context through actual MCP and panel SDK without enabling a plan',async t=>{
   const f=await fixture(t),comm=f.plugin.communication;
   const target={project_id:'fixture',local_session_id:'origin',origin_session_id:'origin',role:'O',scope_id:null,assignment_id:null,task_id:null};

@@ -23,6 +23,7 @@ export class DialogueDelivery {
         project=this.project(target.local_session_id);record=this.record?.(project);
         const attempt=project?.attempt;
         if(!project||attempt?.requestId!==message.request_id||attempt.contextTransport!=='panel'
+          ||(message.replaces_message_id&&attempt.contextRef?.message_id!==message.message_id)
           ||(attempt.attemptGeneration??null)!==(message.attempt_generation??null))return false;
         if(project.preparationPaused)throw startupFailure('STARTUP_PAUSED','Подготовка сессии приостановлена. Контекст не выдан.');
         if(attempt.loginLost)throw startupFailure('STARTUP_LOGIN_REQUIRED','Вход в ChatGPT утрачен. Контекст не выдан.');
@@ -52,7 +53,9 @@ export class DialogueDelivery {
         // An already issued discussion snapshot remains immutable across plan changes.
         if(target.role==='S'&&message.delivery_mode==='model-pull'&&message.read&&(message.file_receipt?.count>0||message.parts_read?.includes(0)))return true;
         const info=await this.store.inspect(project.workspace,project.sessionId);
-        return await record?.controller.packetIsCurrent(attempt.packet,{...project,...info})===true;
+        const fresh=await record?.controller.packetIsCurrent(attempt.packet,{...project,...info})===true;
+        if(!fresh&&!message.startup_complete&&!attempt.startupReplacement)record?.controller.projectChanged?.();
+        return fresh;
       }
     }
     if(message.dialogue_version===1&&message.assignment_id){
@@ -148,7 +151,7 @@ export class DialogueDelivery {
     const plugin=this.getPlugin(),target=await plugin.participantTarget(project.sessionId);
     if(!target)throw Object.assign(Error('Получатель стартового пакета не подтверждён.'),{code:'PLUGIN_PARTICIPANT_UNAVAILABLE'});
     return plugin.communication.startup.stage(target,{request_id:attempt.requestId,
-      attempt_generation:attempt.attemptGeneration??null,text:attempt.startupText});
+      attempt_generation:attempt.attemptGeneration??null,text:attempt.startupText,replaces_message_id:attempt.startupReplacement?.message_id});
   }
   enrollmentProgress(project,attempt){
     if(!attempt.enrollmentRef)return null;

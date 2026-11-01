@@ -19,7 +19,9 @@ select{display:block;width:100%;margin-top:6px;padding:10px;font:inherit;color:i
 </style></head><body class="wp-body">
 <main class="wp" aria-label="Ход работ">
 <header class="wp-head"><b id="progress-title">Workflow Pilot</b><span id="progress-phase" class="wp-sub"></span><span id="progress-open" class="wp-open"></span></header>
-<div id="progress-now" class="wp-now" aria-label="Происходит сейчас"><div class="wp-row wait"><span class="wp-mark">·</span><span class="wp-what">Ждём данные плана…</span><span></span></div></div>
+<p id="progress-connection" role="status">Подключаем панель Workflow Pilot…</p>
+<p id="progress-review" role="status" hidden></p>
+<div id="progress-now" class="wp-now" aria-label="Происходит сейчас"></div>
 <section id="progress-choice" class="wp-choice" hidden></section>
 <div id="progress-announcement" class="wp-announcement" role="status" aria-live="polite" aria-atomic="true"></div>
 <details id="progress-history" class="wp-hist"><summary><span class="wp-mark">≡</span><span>История</span><span id="progress-history-count" class="wp-count">0 событий</span><span class="wp-chev" aria-hidden="true">▾</span></summary>

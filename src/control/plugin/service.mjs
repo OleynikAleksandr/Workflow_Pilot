@@ -135,14 +135,19 @@ export class PluginProjects {
   async panel({enrollment_ticket,metadata,meta_keys,context_format}={}) {
     await this.communication.ready;
     const registration=enrollment_ticket?await this.communication.enroll(enrollment_ticket,metadata):null;
-    let startup_resume,startup_context,role_update,binding=registration;
+    let startup_resume,startup_context,startup_status,role_update,binding=registration;
     if(!binding&&metadata)try{binding=await this.communication.modelInput({metadata,meta_keys,trace_source:'model-panel'});
       await this.communication.enrollment.validateInput(binding);
     }catch{/* An unregistered panel still opens its normal connection view. */}
     if(binding){
       const c=this.communication,run=c.runs.get(binding.run_id),member=run.members[binding.participant_id],m=c.startup.message(run,member.target.local_session_id);
-      if(m?.delivery_mode==='model-pull'&&!m.startup_complete)
-        startup_context=await c.startupOpen({metadata,message_id:m.message_id,context_format});
+      if(m?.delivery_mode==='model-pull'&&!m.startup_complete){
+        try{startup_context=await c.startupOpen({metadata,message_id:m.message_id,context_format});}
+        catch(error){
+          if(error.code!=='PLUGIN_COMMUNICATION_STALE_MESSAGE')throw error;
+          startup_status={code:error.code,message:'Пакет устарел. Workflow Pilot готовит актуальный контекст этой сессии. Подтверждение прежнего пакета запрещено.'};
+        }
+      }
       else if(m?.intent&&!m.startup_complete&&!m.superseded)startup_resume={message_id:m.message_id,
         instructions:'Продолжите чтение того же стартового пакета через workflow_communication_read_message/read_context и подтвердите workflow_startup_complete. Повтор уведомления не требуется.'};
       // A candidate that lost planning to the owner learns its new role here; no message enters its chat.
@@ -150,7 +155,7 @@ export class PluginProjects {
       if(member.target.role==='O'&&!member.target.scope_id&&current?.role==='S'&&current.project_id===member.target.project_id)
         role_update={role_protocol:ROLE_PROTOCOL_VERSION,instructions:roleUpdate('discussion')};
     }
-    return {...(registration?{registration}:{}),...(startup_context?{startup_context}:{}),...(startup_resume?{startup_resume}:{}),...(role_update?{role_update}:{}),communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
+    return {...(registration?{registration}:{}),...(startup_context?{startup_context}:{}),...(startup_status?{startup_status}:{}),...(startup_resume?{startup_resume}:{}),...(role_update?{role_update}:{}),communication:{protocol_version:COMMUNICATION_PROTOCOL,build_id:COMMUNICATION_BUILD,
       storage:this.communication.store?'durable':'memory',critical_error:this.communication.critical}};
   }
   list() {

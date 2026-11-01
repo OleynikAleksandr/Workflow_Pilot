@@ -7,9 +7,17 @@ const codeLength = 12;
 const payloadLimit = limit - Buffer.byteLength(footer) - codeLength - 1;
 
 // Files carry their own end markers. The manifest must never reveal those markers.
-export function contextFileBundle(messageId, markdown) {
+export function contextFileBundle(messageId, markdown, {startup = false} = {}) {
+  const contextHash = digest(markdown);
+  const header = startup ? [
+    '# Подтверждение стартового контекста Workflow Pilot',
+    'message_id: ' + messageId, 'context_ref: ' + contextHash,
+    'Прочитай все приложенные файлы по порядку. В этом ходе вызови workflow_startup_complete.',
+    'Передай message_id из этой шапки, context_sha256 равный context_ref и file_receipts со всеми конечными метками по порядку.',
+    '', '---', '',
+  ].join('\n') : '';
   const chunks = [];
-  let chunk = '', bytes = 0;
+  let chunk = header, bytes = Buffer.byteLength(header);
   for (const char of markdown) {
     const size = Buffer.byteLength(char);
     if (bytes + size > payloadLimit) {
@@ -21,7 +29,6 @@ export function contextFileBundle(messageId, markdown) {
     bytes += size;
   }
   chunks.push(chunk);
-  const contextHash = digest(markdown);
   const marks = [];
   const files = chunks.map((part, index) => {
     const mark = digest(JSON.stringify([messageId, contextHash, index, part])).slice(0, codeLength);

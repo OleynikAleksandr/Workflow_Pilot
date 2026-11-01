@@ -274,7 +274,10 @@ export class PluginCommunication {
   // The session's choice card and whether a chosen answer still waits for delivery.
   choiceOf(run,member){
     let user_choice=null;try{user_choice=this.userChoice?.(member.target.local_session_id)??null;}catch{}
-    return {user_choice,user_choice_pending:this.workflow.choicePending(run,member)};
+    const review=run.messages.findLast(m=>m.recipient_id===member.id&&m.ui_event?.type==='review-preference'
+      &&!m.cancelled&&!m.superseded&&!m.superseded_read);
+    return {user_choice,user_choice_pending:this.workflow.choicePending(run,member),
+      review_notification:review?{enabled:review.ui_event.enabled,read:!!review.read}:null};
   }
   userChoiceChanged(sessionId){
     for(const waiter of this.waiters.values())if(this.runs.get(waiter.runId)?.members[waiter.memberId]?.target.local_session_id===sessionId)waiter.wake('event');
@@ -885,14 +888,17 @@ export class PluginCommunication {
     await this.ready;await this.tail;let identity;
     try{identity=communicationIdentity(input.metadata);}catch(error){this.traceIdentity('identity.unmatched','panel-recover',input);throw error;}
     const participants=[];
+    let reviewNotification;
     for(const run of this.runs.values())for(const member of Object.values(run.members))if(member.identity===identity) {
       if(run.mode==='workflow') {
         try{await this.enrollment.validate(member.target);}catch{continue;}
         participants.push(this.enrollment.publicMember(run,member));
+        reviewNotification=this.choiceOf(run,member).review_notification;
       }else participants.push({run_id:run.id,participant_id:member.id,role:member.role});
     }
     this.identities.record(participants.length?'identity.observed':'identity.unmatched',{identity,source:'panel-recover',input,participants:participants.length});
-    return {participants,build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,
+    return {participants,...(participants.length===1&&reviewNotification?{review_notification:reviewNotification}:{}),
+      build_id:COMMUNICATION_BUILD,protocol_version:COMMUNICATION_PROTOCOL,
       assignment_dialogue_version:ASSIGNMENT_DIALOGUE_VERSION,role_protocol_version:ROLE_PROTOCOL_VERSION,critical_error:this.critical};
   }
   visibleEvents(run,member,events) {

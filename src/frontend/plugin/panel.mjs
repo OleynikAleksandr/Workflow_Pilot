@@ -68,7 +68,14 @@ export function mountPanel({document}) {
     renderChoice(null);
     renderProgress({...lastProgress,phase:'План закрыт',now:[],primary:null,closed:true});return true;
   }
-  return {$,progress:renderProgress,closed:renderClosed,choice:renderChoice,currentChoice:()=>lastChoice,
+  function reviewNotification(review){
+    const node=nodes.get('progress-review');
+    if(!node)return;
+    node.hidden=!review||review.read;
+    node.textContent=node.hidden?'':`Review ${review.enabled?'включён':'выключен'}. Оркестратор ещё не подтвердил чтение.`;
+  }
+  return {$,progress:renderProgress,closed:renderClosed,choice:renderChoice,currentChoice:()=>lastChoice,reviewNotification,
+    connection(value){const node=nodes.get('progress-connection');if(node){node.hidden=!value;node.textContent=value??'';}},
     onChoice(handlers){choiceHandlers=handlers;renderChoice(lastChoice);},choiceBusy(value){choiceBusy=!!value;renderChoice(lastChoice);},status:(value,state='idle')=>{text('status',value);$('status').dataset.state=state;},
     mode(value){workflow=value==='workflow';
       for(const id of ['legacy-fields','bind','enable'])$(id).hidden=workflow;
@@ -105,6 +112,7 @@ export function mountPanel({document}) {
       if(events.length>200){events=events.slice(-200);trimmed=true;}renderEvents();
     },
     snapshot(value){
+      if('review_notification' in value)reviewNotification(value.review_notification);
       if('user_choice' in value)renderChoice(value.user_choice);
       if(value.work_progress)renderProgress(value.work_progress);
       if(value.assignments){$('roster-section').hidden=false;$('roster').replaceChildren();
