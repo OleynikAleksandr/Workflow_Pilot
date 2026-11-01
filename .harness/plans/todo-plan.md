@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1429,
+  "plan_revision": 1431,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
@@ -311,8 +311,8 @@
       ]
     },
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "RELEASE",
@@ -337,7 +337,10 @@
       ],
       "expected_commit_message": "feat: Собрать выпуск 0.6.8 для трёх платформ",
       "task_brief": "Выдать проверенный комплект\nВыпуск 0.6.8, комплект трёх ОС с одним sourceCommit и штатная установка на Mac с поддержкой pending при работающей службе. Изолированные проверки отделены от живой приёмки.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -393,7 +396,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1429
+Revision: 1431
 
 ## Цель
 
@@ -429,8 +432,8 @@ Revision: 1429
   - Файлы: README.md, docs/modules/sdk-messaging.md, docs/modules/current-actions.md, docs/modules/release.md, docs/modules/chatgpt-plugin.md, docs/modules/shared-conversation.md, docs/architecture/OVERVIEW.md, docs/planning/panel-inbox-068.md, docs/acceptance/shared-conversation-mac.md, docs/modules/assignment-dialogue.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/project-compatibility.md, docs/modules/chat-only-startup.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md
   - Параллельность: исключительное выполнение
   - Зависимости: CHANNEL
-- [TODO] RELEASE: Собрать выпуск 0.6.8 для трёх платформ — Ожидает
-  - Git Commit: [PENDING] feat: Собрать выпуск 0.6.8 для трёх платформ
+- [DONE] RELEASE: Собрать выпуск 0.6.8 для трёх платформ — Завершено
+  - Git Commit: [DONE] feat: Собрать выпуск 0.6.8 для трёх платформ
   - Reference: panel-inbox-068 / RELEASE / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
