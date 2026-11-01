@@ -36,7 +36,7 @@ export async function remoteBackend(t,{devices}={}) {
   const services=await initializeBackendServices({dataDir:root,sourceDir:path.resolve('src'),resourcesDir:path.resolve('resources'),
     execution:new ExecutionFacade({commands:new CommandService()}),diagnostics:false,browser:{host,ipc:{},connect:()=>()=>{},
       createComposer:()=>({inFlight:false,inspect:async()=>({login:true}),hasFilled:()=>false})}});
-  const port=await startBackendPort({identity,claim,services,host,remoteDevices:devices?.(root)});
+  const port=await startBackendPort({identity,claim,services,host,remotePreferredPort:0,remoteDevices:devices?.(root)});
   t.after(()=>port.stop());
   const status=await port.remote.enable({owner:'Owner@Example.com',dnsName:'mac.tailnet-fixture.ts.net'});
   const proxy=await startServeProxy({targetPort:status.port});t.after(()=>proxy.close());

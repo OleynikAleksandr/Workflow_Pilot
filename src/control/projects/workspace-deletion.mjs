@@ -147,7 +147,7 @@ export class WorkspaceDeletion {
     const project = this.record(workspace);
     const stat = await this.guard(workspace);
     const related=await this.related(project),sessionIds=project.sessions.map(s=>s.sessionId);
-    if (!stat) return { workspace, workspaceId:project.workspaceId, projectId: project.projectId, name: project.name, sessionCount: project.sessions.length, missing: true, bytes: 0, files: 0, fingerprint: 'missing', identity: null, related, sessionIds };
+    if (!stat) return { workspace, workspaceId:project.workspaceId, projectId: project.projectId, name: path.basename(workspace), sessionCount: project.sessions.length, missing: true, bytes: 0, files: 0, fingerprint: 'missing', identity: null, related, sessionIds };
     const info = await this.projectIdentity(workspace);
     if (info.projectId !== project.projectId) fail('PROJECT_REPLACED', 'В этой папке теперь другой проект. Удаление остановлено.');
     const hash = createHash('sha256'); let bytes = 0, files = 0;
@@ -159,7 +159,7 @@ export class WorkspaceDeletion {
       else { files++; bytes += Number(item.size); }
     };
     await visit(workspace, '');
-    return { workspace, workspaceId:project.workspaceId, projectId: project.projectId, name: project.name, sessionCount: project.sessions.length, missing: false, bytes, files, fingerprint: hash.digest('hex'), identity: identity(stat), related, sessionIds };
+    return { workspace, workspaceId:project.workspaceId, projectId: project.projectId, name: path.basename(workspace), sessionCount: project.sessions.length, missing: false, bytes, files, fingerprint: hash.digest('hex'), identity: identity(stat), related, sessionIds };
   }
   async preview(workspace) {
     if (this.isPending(workspace)) fail('DELETE_PENDING', 'Завершите ранее подтверждённое удаление кнопкой «Повторить очистку».');
@@ -190,7 +190,7 @@ export class WorkspaceDeletion {
     const related=this.store.snapshot().projects.filter(p=>ownedExecutor(p,project)).map(p=>({
       workspace:p.workspace,projectId:p.projectId,parentProjectId:project.projectId,
       id:p.sessions.find(s=>s.assignmentId)?.assignmentId,sessionIds:p.sessions.map(s=>s.sessionId)}));
-    const job={id,mode:'forget',workspace,workspaceId:project.workspaceId,projectId:project.projectId,name:project.name,
+    const job={id,mode:'forget',workspace,workspaceId:project.workspaceId,projectId:project.projectId,name:path.basename(workspace),
       sessionIds:project.sessions.map(s=>s.sessionId),related,missing:true,identity:null,
       quarantine:path.join(path.dirname(workspace),'.workflow-pilot-delete-'+id),stage:'confirmed'};
     if(!validJournal(job,id+'.json'))fail('DELETE_WORKTREE_CHANGED','Принадлежность локальных записей исполнителей не подтверждена.');

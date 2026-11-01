@@ -48,6 +48,12 @@ export function installPageObserver(dom, send) {
     const turnIdentitySource = assistantId ? 'native' : assistant ? 'cycle' : 'none';
     const lastMessageRole = user && (!assistant || assistant.compareDocumentPosition(user) & 4) ? 'user'
       : assistant ? 'assistant' : null;
+    // Intermediate tool output can have an assistant ID while the model still owns the turn.
+    // Only the response controls following this answer in its own turn count.
+    const turn = assistant?.closest(dom.selectors.turn);
+    const assistantFinal = !!assistantId && lastMessageRole === 'assistant' && !!turn
+      && [...turn.querySelectorAll(dom.selectors.finishedAction)].some(button =>
+        !button.closest(dom.selectors.assistant + ',pre,code,blockquote') && (assistant.compareDocumentPosition(button) & 4));
     if (editor !== editorIdentity) { editorIdentity = editor; editorRevision++; draftRevision++; }
     const button = dom.sendButton();
     const account = dom.account();
@@ -58,7 +64,7 @@ export function installPageObserver(dom, send) {
       writable: !!editor && !editor.disabled && !editor.readOnly && editor.getAttribute('contenteditable') !== 'false',
       connectionError: dom.connectionError(),
       busy: dom.busy(), sendEnabled: !!button && !button.disabled && button.getAttribute('aria-disabled') !== 'true',
-      manualStopRevision, manualInputRevision, assistantRevision: reportedAssistantRevision, turnId, userTurnId, turnIdentitySource, lastMessageRole, draftPresent: !!editorText(editor),
+      manualStopRevision, manualInputRevision, assistantRevision: reportedAssistantRevision, turnId, userTurnId, turnIdentitySource, lastMessageRole, assistantFinal, draftPresent: !!editorText(editor),
       turnVariant: dom.turnVariant ? dom.turnVariant(user) : 'unknown',
       manualSendRevision, draftRevision, userMessageCount: dom.messages('user').length, userMessagesRevision,
     };

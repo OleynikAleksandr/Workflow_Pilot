@@ -479,7 +479,8 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
         assert.equal(input.canContinue(),true);const text=input.text;
         navigation.navigationSequence++;navigation.navigationOwner=input.navigationToken;
         page.url='https://chatgpt.com/c/'+project.sessionId;
-        if(record.resetObservation){record.resetObservation();reportPage(record);}
+        // A same-document URL change keeps the current observer and its document ID.
+        if(record.publishObservation)reportPage(record);
         await record.controller.observeNavigation({type:'navigated',url:page.url,isMainFrame:true,navigationKind:'in-page',
           navigationSequence:navigation.navigationSequence,navigationOwner:navigation.navigationOwner,snapshot:{...navigation}});
         await record.controller.observePage({documentId:record.pageState.current.documentId,state:page},{...navigation});
@@ -563,7 +564,7 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       const browsers=new BrowserSessions({host:{create:()=>contents,close:()=>{}},ipc:new EventEmitter(),
         connect:(_contents,_ipc,source)=>{
           record.publishObservation=()=>source.accept(structuredClone({...raw,seq:++raw.seq}));
-          record.resetObservation=()=>source.reset();return ()=>{};
+          return ()=>{};
         },createComposer:()=>({get inFlight(){return composer.inFlight;},observeSnapshot:async()=>structuredClone({...raw,seq:++raw.seq})})});
       const port=browsers.open(project.sessionId);record.pageState=port.pageState;
       composer.observeSnapshot=port.composer.observeSnapshot;record.sdkPageVersions=new Map();
@@ -695,6 +696,8 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     const history=readReview(root).review_events;
     for(const type of ['prepared','requested','started','feedback','author'])assert.equal(history.filter(e=>e.type===type).length,2,type);
     assert.equal(history.filter(e=>e.type==='published').length,1);
+    assert.equal([...plugin.communication.runs.values()].flatMap(r=>r.messages)
+      .filter(m=>m.ui_event?.type==='review-continuation').length,0,'review in the ongoing author turn needs no panel wake');
     assert.equal(events().filter(e=>e.event_type==='send.intent'&&ids.includes(e.message_id)).length,2,'Review and publication never repeat a UI notification');
   }else{
     userChoseMode(root,origin.sessionId);await plans.call(root,'plan:create',[],planInput);

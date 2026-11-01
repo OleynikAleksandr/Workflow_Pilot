@@ -637,7 +637,7 @@ export function startDesktopClient(electron, { backendRoot = null, clientRoot = 
             }
             if (command.op === 'clipboard') value = fixtureText;
             if (command.op === 'rename') value = await sidebar.webContents.executeJavaScript(
-              `window.webPilot.renameProject(${JSON.stringify(command.workspace)}, ${JSON.stringify(command.name)})`);
+              `window.webPilot.renameSession(${JSON.stringify(command.workspace)}, ${JSON.stringify(command.sessionId)}, ${JSON.stringify(command.name)})`);
             process.stdout.write(JSON.stringify({ op: command.op, value }) + '\n');
           })().catch(error => process.stdout.write(JSON.stringify({ op: 'error', message: error.message }) + '\n'));
         }

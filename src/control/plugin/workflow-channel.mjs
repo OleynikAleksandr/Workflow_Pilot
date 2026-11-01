@@ -46,6 +46,12 @@ export class WorkflowChannel {
     this.c.event(run,'message.superseded',{participant_id:member.id,message_id:message.message_id,block_id:message.block_id});
     return true;
   }
+  async retireReviewNotices(run,member){
+    for(const message of run.messages){
+      if(message.recipient_id===member.id && message.ui_event?.type==='review-continuation'
+          && !message.superseded && !message.read)await this.superseded(run,member,message);
+    }
+  }
   async grant(target,phase='running',guard={}) {
     return this.c.mutate('grant',{run_id:workflowRunId(target),target,phase,...guard});
   }
@@ -163,6 +169,7 @@ export class WorkflowChannel {
   async sync(input) {
     const c=this.c,{run,member,panel}=c.panel(input);
     check(run.mode==='workflow','MODE','Эта операция относится к рабочему плану.');
+    await this.retireReviewNotices(run,member);
     panel.messageSupported=input.message_supported===true;
     panel.generation=member.generation;panel.expiresAt=c.now()+LEASE_MS;
     check(input.recover_notifications===undefined||typeof input.recover_notifications==='boolean','INPUT','Некорректное начало восстановления.');
@@ -286,6 +293,10 @@ export class WorkflowChannel {
   pending(run,member) {
     if(!this.transportPermitted(run,member)||this.physicalBlock(member.target)||this.c.freshness.held(member.target))return null;
     const first=this.first(run,member);
+    if(first?.ui_event?.type==='review-continuation'&&first.claim_wait_reason==='awaiting-turn-end'){
+      const page=this.observe(member.target);
+      if(!page?.stopped||page.busy||!page.assistantFinal)return null;
+    }
     return first&&(first.delivery==='pending'||this.retryEligible(run,member,first))?first:null;
   }
   async admit(target,message){

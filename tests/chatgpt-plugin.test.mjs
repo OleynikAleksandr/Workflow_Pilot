@@ -342,7 +342,7 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.equal(previous.code,'PLUGIN_COMMUNICATION_VERSION');
   assert.match(previous.message,/0\.5\.41-communication-8 \(протокол 8\)/);
   assert.ok(previous.message.includes(COMMUNICATION_BUILD+' (протокол '+COMMUNICATION_PROTOCOL+')'));
-  assert.equal(COMMUNICATION_PROTOCOL,9);assert.equal(COMMUNICATION_BUILD,'0.6.6-communication-9');
+  assert.equal(COMMUNICATION_PROTOCOL,9);assert.equal(COMMUNICATION_BUILD,JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8')).version+'-communication-9');
   const schema=tools.find(t=>t.name==='workflow_communication_bind').inputSchema;
   assert.ok(JSON.stringify(schema).includes('frame_instance_id'),'bind accepts the immutable frame id');
   for(const suffix of ['claim','claim_ready','verify'])

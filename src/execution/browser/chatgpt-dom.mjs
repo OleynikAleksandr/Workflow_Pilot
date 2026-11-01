@@ -13,6 +13,7 @@ export const CHATGPT_SELECTORS = Object.freeze({
   // Variant switch of an edited user turn ("< 2/2 >"); read only, never clicked.
   variantSwitch: 'button[aria-label="Previous response"],button[aria-label="Next response"],button[aria-label="Предыдущий ответ"],button[aria-label="Следующий ответ"],button[aria-label="Previous message"],button[aria-label="Next message"]',
   turn: 'article,[data-testid^="conversation-turn-"]',
+  finishedAction: 'button[data-testid="copy-turn-action-button"],button[data-testid="good-response-turn-action-button"],button[data-testid="bad-response-turn-action-button"]',
 });
 
 export function createChatGPTDOM(selectors) {

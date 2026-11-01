@@ -982,13 +982,11 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await controller.contextCache.load(workspace);
   const warmPacketLoads = packetLoads;
   assert.deepEqual(await sidebar.executeJavaScript(`(() => { document.querySelector('.project-menu-button').click(); return Array.from(document.querySelectorAll('.project-menu button')).map(button => button.textContent); })()`),
-    ['Новый Chat', 'Переименовать', 'Скопировать полный путь', 'Скопировать строку для внешнего клиента', 'Перенести в архив']);
-  await sidebar.executeJavaScript(`document.querySelector('.project-menu-button').click(); document.querySelector('.rename-project').click()`);
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("rename-dialog").open'), true);
-  assert.equal(await sidebar.executeJavaScript('document.getElementById("rename-dialog-input").value'), 'Тестовый проект с пробелами');
-  await sidebar.executeJavaScript(`document.getElementById('rename-dialog-input').value='Проект Smoke Rename'; document.getElementById('rename-dialog-save').click()`);
-  await waitFor(() => snapshot().projects[0].name === 'Проект Smoke Rename', 'project rename dialog IPC', snapshot);
-  assert.equal(store.project(workspace).name, 'Тестовый проект с пробелами', 'project rename keeps canonical workflow name');
+    ['Новый Chat', 'Скопировать полный путь', 'Скопировать строку для внешнего клиента', 'Перенести в архив']);
+  assert.equal(await sidebar.executeJavaScript('document.querySelector(".rename-project")'), null);
+  assert.equal(snapshot().projects[0].name,path.basename(workspace));
+  // Close the project menu after verifying its actions.
+  await sidebar.executeJavaScript("document.querySelector('.project-menu-button').click()");
   // The project list row in the real sidebar: the name uses the free width, «В архив» stays compact.
   const pickerLayout = await sidebar.executeJavaScript(`(()=>{const menu=document.getElementById('project-actions');const was=menu.open;menu.open=true;
     const row=document.querySelector('#project-options .project-choice'),name=row.querySelector('[data-project-choice]'),archive=row.querySelector('.project-choice-archive');
@@ -1177,7 +1175,7 @@ export async function run({ app, window, sidebar, store, plugin, selectWorkspace
   await waitFor(() => sessionArchive.executeJavaScript('typeof window.webPilotArchive === "object"'), 'session archive preload ready', snapshot);
   await sessionArchive.executeJavaScript('document.getElementById("tab-sessions").click()');
   await waitFor(() => sessionArchive.executeJavaScript('document.querySelectorAll(".item").length === 1'), 'archived session visible', snapshot);
-  assert.ok(await sessionArchive.executeJavaScript('document.querySelector(".item").textContent.includes("Проект Smoke Rename")'));
+  assert.ok(await sessionArchive.executeJavaScript('document.querySelector(".item").textContent.includes("Тестовый проект с пробелами")'));
   assert.ok(await sessionArchive.executeJavaScript('document.querySelector(".item").textContent.includes("Chat")'));
   await sessionArchive.executeJavaScript('document.querySelector(".item").click(); document.getElementById("restore-sessions").click()');
   await waitFor(() => !store.snapshot().projects[0].sessions.find(session => session.sessionId === second.sessionId)?.archivedAt, 'restore archived session', snapshot);

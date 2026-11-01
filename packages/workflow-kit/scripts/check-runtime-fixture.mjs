@@ -170,24 +170,26 @@ try {
     git(renameRoot, 'commit', '--no-verify', '-m', 'test: simulate moved project folder');
 
     const beforeRename = workflow(renameRoot, 'status');
-    const renamed = workflow(renameRoot, 'project:rename', '--name', 'renamed-project', '--expected-revision', String(beforeRename.plan_revision));
+    const refused = workflowFailure(renameRoot, 'project:rename', '--name', 'fictional-alias', '--expected-revision', String(beforeRename.plan_revision));
+    assert.equal(refused.code, 'WORKSPACE_NAME_FIXED');
+    const renamed = workflow(renameRoot, 'project:rename', '--name', path.basename(renameRoot), '--expected-revision', String(beforeRename.plan_revision));
     assert.equal(renamed.changed, true);
-    assert.equal(renamed.project_name, 'renamed-project');
-    assert.equal(planApi.readPlan(renameRoot).project_name, 'renamed-project');
-    assert.ok((await fs.readFile(path.join(renameRoot, '.harness/plans/todo-plan.md'), 'utf8')).startsWith('# Активный план — renamed-project\n'));
+    assert.equal(renamed.project_name, path.basename(renameRoot));
+    assert.equal(planApi.readPlan(renameRoot).project_name, path.basename(renameRoot));
+    assert.ok((await fs.readFile(path.join(renameRoot, '.harness/plans/todo-plan.md'), 'utf8')).startsWith('# Активный план — '+path.basename(renameRoot)+'\n'));
     const renamedManifest = JSON.parse(await fs.readFile(renameManifestFile, 'utf8'));
     for (const entry of renamedManifest.files.filter(item => item.external && item.kind === 'git-hook')) {
       assert.ok(!entry.path.startsWith('/old/location/'), 'stale hook path kept: ' + entry.path);
       assert.ok(entry.path.replaceAll('\\', '/').endsWith('/.git/hooks/' + path.basename(entry.path)), 'unexpected hook path: ' + entry.path);
     }
-    assert.equal(git(renameRoot, 'log', '-1', '--format=%s'), 'chore: переименовать проект в renamed-project');
+    assert.equal(git(renameRoot, 'log', '-1', '--format=%s'), 'chore: переименовать проект в '+path.basename(renameRoot));
     assert.equal(git(renameRoot, 'status', '--porcelain'), '', 'rename left uncommitted changes');
     const afterRename = workflow(renameRoot, 'status');
-    assert.equal(afterRename.project_name, 'renamed-project');
+    assert.equal(afterRename.project_name, path.basename(renameRoot));
     assert.equal(afterRename.recovery_completeness, 'COMPLETE');
 
     const headAfterRename = git(renameRoot, 'rev-parse', 'HEAD');
-    const repeated = workflow(renameRoot, 'project:rename', '--name', 'renamed-project', '--expected-revision', String(afterRename.plan_revision));
+    const repeated = workflow(renameRoot, 'project:rename', '--name', path.basename(renameRoot), '--expected-revision', String(afterRename.plan_revision));
     assert.equal(repeated.changed, false);
     assert.equal(git(renameRoot, 'rev-parse', 'HEAD'), headAfterRename, 'repeated rename committed changes');
 
@@ -196,7 +198,7 @@ try {
     workflow(renameRoot, 'task:start', 'T001');
     const active = workflowFailure(renameRoot, 'project:rename', '--name', 'other-name', '--expected-revision', String(workflow(renameRoot, 'status').plan_revision));
     assert.equal(active.code, 'TASK_ACTIVE');
-    assert.equal(planApi.readPlan(renameRoot).project_name, 'renamed-project');
+    assert.equal(planApi.readPlan(renameRoot).project_name, path.basename(renameRoot));
     assert.equal(git(renameRoot, 'rev-parse', 'HEAD'), headAfterRename, 'refused rename committed changes');
   } finally {
     await fs.rm(renameRoot, { recursive: true, force: true });

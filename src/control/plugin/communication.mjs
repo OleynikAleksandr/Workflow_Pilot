@@ -126,6 +126,8 @@ export class PluginCommunication {
       }catch(error) {
         if(name==='bind'&&/_(BINDING|IDENTITY_REQUIRED)$/.test(error.code??''))this.traceIdentity('identity.unmatched','panel-bind',input);
         this.panels=panels;this.ownership.restore(owners);if(old)this.runs.set(input.run_id,old);else this.runs.delete(input.run_id);
+        // A new turn between claim and verify cancels the whole atomic claim, before SDK intent.
+        if(name==='claimReady'&&error.code==='PLUGIN_COMMUNICATION_REVIEW_WAIT')return {deferred:true,reason:'awaiting-turn-end'};
         const denialKey=input.run_id+':'+input.message_id;
         // An observer's refusal is its normal state, not a delivery incident.
         const repeated=name==='observed'&&this.observedDenials.get(denialKey)===error.code||error.code==='PLUGIN_COMMUNICATION_DELIVERY_OBSERVER';
@@ -305,11 +307,16 @@ export class PluginCommunication {
     return result;
   }
   _turnTimeout(input){return this.workflow.timeout(input);}
-  async _observed(input){const run=this.run(input);for(const member of Object.values(run.members))
+  async _observed(input){const run=this.run(input);for(const member of Object.values(run.members)){
     if((!input.session_id||member.target.local_session_id===input.session_id)
       &&(!input.message_id||member.deliveryGate?.message_id===input.message_id
         ||run.messages.some(m=>m.message_id===input.message_id&&m.recipient_id===member.id&&m.read&&(m.yielded||m.read_page))))
-      await this.workflow.observed(run,member);return {};}
+      {
+        await this.workflow.retireReviewNotices(run,member);
+        await this.workflow.observed(run,member);
+      }
+    }return {};
+  }
   observeSession(sessionId){for(const run of this.runs.values())if(run.mode==='workflow'&&Object.values(run.members).some(m=>m.target.local_session_id===sessionId)){
     void this.mutate('observed',{run_id:run.id,session_id:sessionId}).catch(()=>{});
     for(const waiter of this.waiters.values())if(waiter.runId===run.id
@@ -666,6 +673,11 @@ export class PluginCommunication {
     return {...context,message};
   }
   async _claimReady(input){
+    const {run,member,panel}=this.panel(input);
+    const notice=run.messages.find(m=>m.message_id===input.message_id&&m.recipient_id===member.id);
+    if(notice?.ui_event?.type==='review-continuation'&&(notice.superseded||notice.read)){
+      this.requireOwner(run,member,panel);return {deferred:true};
+    }
     const claimed=await this._claim(input);if(claimed.deferred)return claimed;
     return {...claimed,...await this._verify({...input,delivery_attempt_id:claimed.delivery_attempt_id},true)};
   }
@@ -678,7 +690,7 @@ export class PluginCommunication {
     if(run.mode==='workflow'){
       if(await this.workflow.superseded(run,member,message))return {superseded:true,expires_at:0};
       requireValue(!this.workflow.physicalBlock(member.target)&&await this.workflow.admit(member.target,message),
-        'UNAVAILABLE','Адресат или разрешение изменились перед SDK. Повтора нет.');
+        alreadyChecked&&message.ui_event?.type==='review-continuation'?'REVIEW_WAIT':'UNAVAILABLE','Адресат или разрешение изменились перед SDK. Повтора нет.');
       requireValue(!this.workflow.physicalBlock(member.target),'UNAVAILABLE','Подключение адресата изменилось перед SDK.');
       if(message.kind==='startup-context')requireValue(!message.cancelled&&!message.superseded
         &&await this.workflow.currentMessage(member.target,message),'STARTUP_CANCELLED','Выдача стартового пакета остановлена.');
@@ -719,6 +731,8 @@ export class PluginCommunication {
       message.superseded_read=true;
       this.event(run,'message.obsolete_read',{participant_id:member.id,message_id:message.message_id});
       await this.workflow.observed(run,member);
+      if(message.ui_event?.type==='review-continuation')return {message_id:message.message_id,superseded:true,
+        instructions:'Это напоминание о ревью устарело. Дополнительных действий по нему не требуется. Продолжите текущее поручение.'};
       return {message_id:message.message_id,superseded:true,
         instructions:message.kind==='user-choice'?USER_EVENT_RULE+'\n'+INCOMING_WORK_RULE+'\nЭто событие заменено новым решением. Прочитайте актуальный review:status; прежнее решение не применяйте.'
           :'Этот сигнал устарел. Не выполняйте его и не повторяйте task:start. Для диалога версии 1 вызовите workflow_assignment_yield с reason=handled для этого уведомления, затем завершите ход.'};
@@ -736,7 +750,8 @@ export class PluginCommunication {
       instructions:'Это сообщение уже обработано. Не повторяйте команды, task:start, result или интеграцию. Прочитайте pending_incoming, если есть новые входящие.\n'+INCOMING_WORK_RULE};
     const {idempotency_key,fingerprint,read_page,handlingGate,notification_attempts,...value}=message;
     return {...structuredClone(value),...(run.mode==='workflow'?{pending_incoming,role_protocol:ROLE_PROTOCOL_VERSION,
-      instructions:(message.ui_event?USER_EVENT_RULE+'\n'+NOTIFICATION_RULE+'\n'+INCOMING_WORK_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
+      instructions:(message.ui_event?.type==='review-continuation'?'Проверьте review:status и выполните оставшийся шаг автора. Для этого напоминания достаточно чтения.\n'+INCOMING_WORK_RULE
+        :message.ui_event?USER_EVENT_RULE+'\n'+NOTIFICATION_RULE+'\n'+INCOMING_WORK_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
         :roleUpdate(member.role==='O'?'orchestrator':'executor',message.dialogue_version??0))
         +'\nПрочитайте ВСЕ части workflow_communication_read_context для основного context_ref и каждого contexts[].sha256, part от 0 до total-1. Сервисное событие backend содержит факты, не авторское задание агента. Действуйте в рамках роли и Workflow Kit; не повторяйте выполненные действия.'}:{})};
   }

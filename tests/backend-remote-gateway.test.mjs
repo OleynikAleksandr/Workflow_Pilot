@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {connect} from 'node:net';
+import {once} from 'node:events';
 import {remotePage,remotePreload} from '../src/backend/remote-gateway.mjs';
 import {remoteBackend} from './fixtures/remote-backend.mjs';
 
@@ -24,7 +26,9 @@ test('gateway: owner identity, origin and a confirmed device guard every request
   const local=await fetch(`http://127.0.0.1:${b.port.port}/v1/handshake`,{headers:{authorization:'Bearer '+b.claim.token}});
   assert.equal(local.status,200);
   await b.port.remote.disable();
-  await assert.rejects(fetch(`http://127.0.0.1:${b.status.port}/v1/handshake`),'a disabled gateway does not listen');
+  const socket=connect(b.status.port,'127.0.0.1');
+  try{await assert.rejects(once(socket,'connect',{signal:AbortSignal.timeout(5000)}),{code:'ECONNREFUSED'});}
+  finally{socket.destroy();}
 });
 
 test('gateway: the device clientId is assigned, an observer cannot use the holder generation, viewers belong to their device',async t=>{

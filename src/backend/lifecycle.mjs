@@ -30,7 +30,7 @@ const readBody=req=>new Promise((resolve,reject)=>{
 // Fixture routes (test profiles only) address backend-owned pages and expose
 // no URL navigation, JavaScript or file access.
 export async function startBackendPort({identity,claim,services,host,fixtureRoot=null,onEvents=()=>{},leaseTtlMs,appVersion,
-  onStreams=()=>{},onLease=()=>{},remoteDevices=null,remoteSourceDir=fileURLToPath(new URL('../',import.meta.url)),backendJournal}) {
+  onStreams=()=>{},onLease=()=>{},remoteDevices=null,remotePreferredPort,remoteSourceDir=fileURLToPath(new URL('../',import.meta.url)),backendJournal}) {
   const fixturePage=async()=>{
     const {sessions}=services;
     if(sessions.visible&&!sessions.visible.disposed)return sessions.visible;
@@ -109,7 +109,7 @@ export async function startBackendPort({identity,claim,services,host,fixtureRoot
     browser:{connected:true,owner:'backend',fixtureAvailable:!!fixtureRoot}});
   // The remote gateway forwards to the same routes with the device context; it
   // listens only after an explicit enable.
-  const remote=createRemoteGateway({sourceDir:remoteSourceDir,journal:backendJournal,
+  const remote=createRemoteGateway({sourceDir:remoteSourceDir,journal:backendJournal,preferredPort:remotePreferredPort,
     devices:remoteDevices??{authenticate:()=>null,route:async()=>{throw Object.assign(new Error('No devices.'),{code:'REMOTE_DEVICE_REQUIRED'});}},
     route:createApiRoute({claim,operations,events,status,appVersion,extra:(req,res,url,context)=>presentation.route(req,res,url,context)})});
   let server;

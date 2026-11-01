@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('webPilot', Object.freeze({
   copyVpsConnectorUrl: () => ipcRenderer.invoke('pilot:copy-vps-connector-url'),
   copyWorkspacePath: workspace => ipcRenderer.invoke('pilot:copy-workspace-path', workspace),
   copyExternalClientLine: workspace => ipcRenderer.invoke('pilot:copy-external-client-line', workspace),
+  // Older clients receive WORKSPACE_NAME_FIXED from the backend.
   renameProject: (workspace, name) => ipcRenderer.invoke('pilot:rename-project', { workspace, name }),
   renameSession: (workspace, sessionId, name) => ipcRenderer.invoke('pilot:rename-session', { workspace, sessionId, name }),
   archiveProject: (workspace, options) => ipcRenderer.invoke('pilot:archive-project',

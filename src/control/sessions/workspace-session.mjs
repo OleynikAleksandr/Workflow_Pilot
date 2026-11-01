@@ -263,13 +263,6 @@ const invalid = () => new WorkspaceError('SESSIONS_INVALID', 'Формат со�
 const sessionFields = ['planId', 'originSessionId', 'legacyPlanId', 'lastNamedScopeId', 'sessionId', 'experience', 'chatUrl', 'manualStart', 'preparationPaused', 'attempt', 'receipt', 'title', 'titleSource', 'createdAt', 'lastOpenedAt', 'archivedAt', 'executionSnapshot', 'external'];
 const explicitTitleSources = new Set(['manual', 'scope', 'topic']);
 
-function localName(value, { empty = 'Нужно непустое название.', code = 'TITLE_INVALID' } = {}) {
-  if (typeof value !== 'string') throw new WorkspaceError(code, empty);
-  const name = value.replace(/\s+/g, ' ').trim().slice(0, 160);
-  if (!name) throw new WorkspaceError(code, empty);
-  return name;
-}
-
 const SESSION_TITLE_MAX_CHARS = 80;
 const SESSION_TITLE_MAX_BYTES = 200;
 function sessionName(value, { empty = 'Нужно непустое название.', code = 'TITLE_INVALID' } = {}) {
@@ -480,7 +473,7 @@ function currentView(project, sessionId = project?.selectedSessionId) {
   const { sessions, archivedAt: projectArchivedAt, ...info } = project;
   const session = sessions.find(s => s.sessionId === sessionId);
   if (!session) return null;
-  return copy({ ...info, ...session, projectLastNamedScopeId: info.lastNamedScopeId ?? null,
+  return copy({ ...info, ...session, displayName:path.basename(project.workspace), projectLastNamedScopeId: info.lastNamedScopeId ?? null,
     planId: info.scopeId ?? null, originSessionId: null,
     archivedAt: projectArchivedAt, sessionArchivedAt: session.archivedAt });
 }
@@ -561,7 +554,11 @@ export class WorkspaceSessions {
     return this.snapshot();
   }
 
-  snapshot() { return persistent(this.data); }
+  snapshot() {
+    const view=persistent(this.data);
+    for(const project of view.projects)project.displayName=path.basename(project.workspace);
+    return view;
+  }
   selected() { return this.project(this.data.selectedWorkspace); }
   // Archiving or deleting the selected project clears the selection; the UI then returns
   // to another active project. Only an empty active list means first run.
@@ -815,7 +812,7 @@ export class WorkspaceSessions {
       const session=this.createSession();
       session.external={provider:'chatgpt-plugin',requestId,conversationKey};
       session.manualStart=true;
-      session.title=sessionName('ChatGPT · '+(project.displayName||project.name));
+      session.title=sessionName('ChatGPT · '+path.basename(project.workspace));
       session.titleSource='manual';
       project.sessions.push(session);project.expanded=true;
       // A remote tool call must not switch the user's desktop selection.
@@ -896,15 +893,9 @@ export class WorkspaceSessions {
     });
   }
 
-  setProjectDisplayName(workspace, value) {
-    return this.mutate(data => {
-      const project = data.projects.find(p => p.workspace === workspace);
-      if (!project) throw new WorkspaceError('WORKSPACE_REQUIRED', 'Выберите проект из списка.');
-      if (project.archivedAt) throw new WorkspaceError('PROJECT_ARCHIVED', 'Сначала верните проект из архива.');
-      const displayName = localName(value, { code: 'PROJECT_NAME_INVALID', empty: 'Введите название проекта.' });
-      if (project.displayName === displayName) return false;
-      project.displayName = displayName; return true;
-    });
+  // Older desktop and API clients can still request this operation.
+  async setProjectDisplayName() {
+    throw new WorkspaceError('WORKSPACE_NAME_FIXED','Название workspace определяется именем папки. Переименовать можно сессию.');
   }
 
   renameSession(workspace, sessionId, value) {

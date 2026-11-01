@@ -322,6 +322,7 @@ export function renameProject(root, name, expectedRevision) {
     const next = typeof name === 'string' ? name.trim() : '';
     check(next && next.length <= 100 && !/[\u0000-\u001f\u007f]/.test(next), 'PROJECT_NAME', 'Укажите имя проекта: одна строка до 100 символов без управляющих символов.');
     check(plan.current_task_id === null, 'TASK_ACTIVE', 'Сначала завершите активную микрозадачу.');
+    check(next === path.basename(root), 'WORKSPACE_NAME_FIXED', 'Используйте фактическое имя папки workspace. Для темы разговора задайте имя сессии.');
     const manifestFile = path.join(root, MANIFEST);
     const manifestBefore = fs.existsSync(manifestFile) ? fs.readFileSync(manifestFile, 'utf8') : null;
     let manifestAfter = manifestBefore;

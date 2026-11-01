@@ -450,25 +450,40 @@ test('old and new sessions keep their chats while projecting one current checkou
 });
 
 
-test('local project alias and explicit session titles persist without changing canonical workflow identity', async t => {
+test('workspace label always follows its folder across restart and session titles remain editable', async t => {
   const { project, store } = await fixture(t);
   const folder = await project('Canonical project');
   const first = await store.select(folder);
-  assert.equal(await store.setProjectDisplayName(first.workspace, '  Мой   проект  '), true);
+  await store.mutate(data=>{data.projects[0].name='Склад';data.projects[0].displayName='Склад';}); // Saved by an older release.
+  assert.equal(store.project(first.workspace).displayName,path.basename(folder));
+  assert.equal(store.snapshot().projects[0].displayName,path.basename(folder));
+  await assert.rejects(store.setProjectDisplayName(first.workspace,'Склад'),{code:'WORKSPACE_NAME_FIXED'});
   assert.equal(await store.renameSession(first.workspace, first.sessionId, '  Ручное   имя  '), true);
   assert.equal(await store.setSessionTitle(first.workspace, first.sessionId, 'Заголовок страницы'), false,
     'page title cannot overwrite an explicit local title');
   await store.select(folder);
   let raw = store.snapshot().projects[0];
   assert.equal(raw.name, 'Canonical project');
-  assert.equal(raw.displayName, 'Мой проект');
+  assert.equal(raw.displayName, path.basename(folder));
   assert.equal(raw.sessions[0].title, 'Ручное имя');
   assert.equal(raw.sessions[0].titleSource, 'manual');
 
   const restarted = new WorkspaceSessions(store.file); await restarted.load();
   raw = restarted.snapshot().projects[0];
-  assert.equal(raw.name, 'Canonical project'); assert.equal(raw.displayName, 'Мой проект');
+  assert.equal(raw.name, 'Canonical project'); assert.equal(raw.displayName, path.basename(folder));
   assert.equal(raw.sessions[0].title, 'Ручное имя'); assert.equal(raw.sessions[0].titleSource, 'manual');
+});
+
+test('T_006 and T_002 with the same legacy name remain distinguishable through archive and removal',async t=>{
+  const {project,store}=await fixture(t);
+  const a=await store.select(await project('T_002')),b=await store.select(await project('T_006'));
+  await store.mutate(data=>{for(const p of data.projects){p.name='Склад';p.displayName='Склад';}});
+  await store.renameSession(b.workspace,b.sessionId,'Склад');
+  await store.setArchived(b.workspace,true);
+  assert.deepEqual(Object.fromEntries(store.snapshot().projects.map(p=>[p.displayName,!!p.archivedAt])),{T_002:false,T_006:true});
+  await store.forgetArchived(b.workspace,b.projectId);
+  assert.deepEqual(store.snapshot().projects.map(p=>p.workspaceId),[a.workspaceId]);
+  assert.equal(store.project(a.workspace).displayName,'T_002');
 });
 
 test('session titles remain chat metadata independent of the current project plan', async t => {
@@ -977,7 +992,7 @@ test('slow projections do not hold mutations; A-B-A selects and persists only th
   const read = store.inspect, requests = [];
   store.inspect = (workspace, sessionId) => new Promise(resolve => requests.push({ workspace, sessionId, resolve }));
   const a1 = store.selectSession(a, first.sessionId), b1 = store.selectSession(b, second.sessionId), a2 = store.selectSession(a, first.sessionId);
-  await store.setProjectDisplayName(b, 'B переименован'); // Must finish while all three reads are still pending.
+  await store.renameSession(b, second.sessionId, 'B переименован'); // Must finish while all three reads are still pending.
   assert.equal(requests.length, 3);
   const resolve = async (i, revision) => requests[i].resolve({ ...await read(requests[i].workspace, requests[i].sessionId), planRevision: revision });
   await resolve(2, 102); await a2;
@@ -987,7 +1002,7 @@ test('slow projections do not hold mutations; A-B-A selects and persists only th
   assert.equal(store.selected().sessionId, first.sessionId);
   const disk = new WorkspaceSessions(store.file); await disk.load();
   assert.equal(disk.selected().workspace, a); assert.equal(disk.selected().planRevision, 102);
-  assert.equal(disk.project(b).displayName, 'B переименован');
+  assert.equal(disk.project(b).title, 'B переименован');
 });
 
 test('selection cancelled during an atomic save restores the previous disk snapshot', async t => {

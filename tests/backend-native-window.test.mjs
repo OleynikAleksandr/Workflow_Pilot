@@ -141,13 +141,13 @@ test('native window and HTTP client on one backend: one writer, typing through t
   await http.connect();
   await backend.command('native-open');
   const native=await backend.until(async()=>{const value=await backend.command('native-probe');
-    return value.native?.control&&/Alpha/.test(value.native.sidebar)&&value.attached&&value;},'native window shows the project and its chat');
+    return value.native?.control&&/alpha/.test(value.native.sidebar)&&value.attached&&value;},'native window shows the folder and its chat');
   // The HTTP client beside it observes: the native window holds the lease.
   const client=startHttpClient(backend);t.after(()=>{if(client.child.exitCode===null)client.child.kill('SIGKILL');});
   assert.equal((await client.ready).connected,true);
   const observing=await backend.until(async()=>{const value=(await client.call({op:'probe'})).value;return value.state&&value.viewers>0&&value;},'HTTP client sees the page');
   assert.equal(observing.control,false);assert.match(observing.title,/наблюдение/);
-  assert.match(observing.sidebar,/Alpha/,'both windows show the same state');
+  assert.match(observing.sidebar,/alpha/,'both windows show the folder name');
   // Closing the native window during work hands control to the HTTP client.
   const before=(await http.json('/v1/browser/fixture-state',{})).page;
   await backend.command('native-close');

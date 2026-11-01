@@ -30,6 +30,7 @@ export function sdkDiagnostic(error,stage='response') {
 export function communicationMessageComplete(message) {
   if(!message)return false;
   if(message.startup_complete)return true;
+  if(message.superseded&&message.ui_event?.type==='review-continuation')return true;
   if(message.notification_version!==1&&message.intent&&['claimed','unknown','rejected'].includes(message.delivery))return false;
   if(['user-choice','review'].includes(message.kind))return !!(message.superseded&&!message.intent
     ||message.read||message.superseded_read);

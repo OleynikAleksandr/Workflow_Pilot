@@ -1,9 +1,11 @@
 import path from 'node:path';
 import { PlanContinuation } from './plan-continuation.mjs';
-import { reviewStatus, acknowledgeReview } from '@webpilot/workflow-kit/lib/plan-review';
+import { reviewStatus } from '@webpilot/workflow-kit/lib/plan-review';
 
-const eligible=s=>s?.enabled && ['PREPARED','AUTHOR_PENDING','AGREED','NEEDS_USER'].includes(s.stage)
+export const reviewActionPending=s=>s?.enabled && ['PREPARED','AUTHOR_PENDING','AGREED','NEEDS_USER'].includes(s.stage)
   && !(s.stage==='NEEDS_USER' && s.notification_handled);
+export const reviewTurnEnded=page=>page?.busy===false && page.lastMessageRole==='assistant'
+  && page.assistantFinal===true && !!page.turnId && !page.connectionError;
 const owner=p=>JSON.stringify([p?.workspace,p?.sessionId,p?.chatUrl]);
 export function reviewContinueMessage(workspace,s) {
   return ['Продолжи ревью нового плана.',
@@ -16,16 +18,17 @@ export function reviewContinueMessage(workspace,s) {
   ].join('\n');
 }
 export class ReviewContinuation {
-  constructor({selected,client,send,available,saveCheckpoint,onChange=()=>{},status=reviewStatus,acknowledge=acknowledgeReview,...timing}) {
-    Object.assign(this,{selected,client,status,acknowledge});this.stops=new Map();this.signature='';this.persistenceError=false;
-    this.flow=new PlanContinuation({...timing,durableQueue:true,selected:()=>this.selection(),available:()=>available()&&!this.stops.has(owner(selected()))&&!this.persistenceError,
+  constructor({selected,client,send,available,saveCheckpoint,onChange=()=>{},status=reviewStatus,...timing}) {
+    Object.assign(this,{selected,client,status});this.stops=new Map();this.signature='';this.persistenceError=false;
+    this.flow=new PlanContinuation({...timing,durableQueue:true,selected:()=>this.selection(),available:()=>available()
+      &&reviewTurnEnded(this.flow?.page)&&!this.stops.has(owner(selected()))&&!this.persistenceError,
       inspectPlan:async()=>this.inspect(),saveCheckpoint:async checkpoint=>{
         await saveCheckpoint({...checkpoint,version:3,entries:checkpoint?.entries??[],cycles:checkpoint?.cycles??[],reviewStops:[...this.stops.values()]});
       },onChange,
       send:async(_text,ready,before)=>{
         const p=this.selected(),s=this.client.state;
-        if(!p || !eligible(s) || s.recipient_session_id!==p.sessionId || !ready())return {state:'cancelled'};
-        const same=latest=>owner(this.selected())===owner(p) && eligible(latest)
+        if(!p || !reviewActionPending(s) || s.recipient_session_id!==p.sessionId || !ready())return {state:'cancelled'};
+        const same=latest=>owner(this.selected())===owner(p) && reviewActionPending(latest)
           && latest.run_id===s.run_id && latest.generation===s.generation && latest.recipient_session_id===p.sessionId;
         const current=()=>ready() && same(this.client.state);
         const beforeSend=async()=>{
@@ -33,13 +36,9 @@ export class ReviewContinuation {
           if(!current() || !same(this.status(p.workspace)))return false;
           return await before() && current() && same(this.status(p.workspace));
         };
-        const result=await send(reviewContinueMessage(p.workspace,s),current,beforeSend,this.flow,{
+        return send(reviewContinueMessage(p.workspace,s),current,beforeSend,this.flow,{
           key:'review:'+s.run_id+':'+s.generation,ui_event:{type:'review-continuation',run_id:s.run_id,
             generation:s.generation,recipient_session_id:p.sessionId}});
-        if(['sent','queued'].includes(result.state) && s.stage==='NEEDS_USER'){
-          this.acknowledge(p.workspace,s.run_id);this.client.refresh();
-        }
-        return result;
       }});
   }
   selection() {
@@ -52,7 +51,7 @@ export class ReviewContinuation {
     const p=this.selection();
     if(!p?.scopeId)return {confirmed:false};
     const s=this.status(p.workspace);this.client.refresh();
-    const ready=eligible(s) && s.recipient_session_id===p.sessionId && p.scopeId==='review:'+s.run_id;
+    const ready=reviewActionPending(s) && s.recipient_session_id===p.sessionId && p.scopeId==='review:'+s.run_id;
     return {confirmed:ready,scopeId:p.scopeId,scopeStatus:'ACTIVE',planView:{tasks:ready?[{id:'review',status:'pending'}]:[]},
       nextTask:{id:s.run_id+':'+s.generation,title:'Продолжить ревью'}};
   }

@@ -3,7 +3,7 @@ import { configureProjectPlanContinuation } from './project-session-plan-continu
 import { PlanContinuation } from './plan-continuation.mjs';
 import { PlanReviewClient,reviewPreferenceMessage } from './plan-review.mjs';
 import { PlanningOwners } from './planning-owner.mjs';
-import { ReviewContinuation } from './review-continuation.mjs';
+import { ReviewContinuation, reviewActionPending } from './review-continuation.mjs';
 import { AutomationSendState } from './automation-send-state.mjs';
 import { readPlanContinuationState } from './plan-continuation-state.mjs';
 import { PlanMonitor } from './plan-monitor.mjs';
@@ -79,9 +79,8 @@ const dialogue=new DialogueDelivery({store,getPlugin,record:project=>project&&li
     const workspace=project.parentWorkspace??project.workspace;
     if(event.type==='review-continuation'){
       const state=readReview(workspace);
-      return state.enabled&&state.run_id===event.run_id&&state.generation===event.generation
-        &&state.recipient_session_id===target.local_session_id
-        &&['PREPARED','AUTHOR_PENDING','AGREED','NEEDS_USER'].includes(state.stage);
+      return reviewActionPending(state)&&state.run_id===event.run_id&&state.generation===event.generation
+        &&state.recipient_session_id===target.local_session_id;
     }
     return planReview.currentPreference(workspace,event,target.local_session_id);
   },
@@ -156,7 +155,11 @@ function configurePrimary(record) {
     log:(event,fields)=>record.diagnostics?.log.record('plan-continuation',event,fields)});
 }
 // A published plan (ACTIVE/BLOCKED) freezes the Review switch until the plan is closed.
-const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>publish(),
+const planReview = new PlanReviewClient({selected:()=>store.selected(),onChange:()=>{
+  const recipient=planReview.state?.recipient_session_id;
+  if(recipient)getPlugin()?.communication.observeSession(recipient);
+  publish();
+},
   deliverPreference:async(workspace,p)=>{
     const project=store.project(workspace,p.recipient_session_id);
     if(!project||project.archivedAt||project.sessionArchivedAt)return {skipped:true};

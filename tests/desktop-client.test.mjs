@@ -97,7 +97,7 @@ test('separate Desktop client starts the backend, renders it, and its crash leav
   await until(async()=>(await pageState()).dropped==='image.png:3','pasted image reaches the page');
   await first.call({op:'drop-files',files:[{name:'a.txt',type:'text/plain',text:'один'},{name:'b.md',type:'',text:'# b'}]});
   await until(async()=>(await pageState()).dropped==='a.txt:8,b.md:3','dropped files reach the page');
-  const renamed=(await first.call({op:'rename',workspace:selected.workspace,name:'Бета'})).value;
+  const renamed=(await first.call({op:'rename',workspace:selected.workspace,sessionId:selected.sessionId,name:'Бета'})).value;
   assert.equal(renamed.ok,true,'a sidebar action goes through the API');
   for(let i=0;i<100;i++){probe=(await first.call({op:'probe'})).value;if(probe.sidebar.includes('Бета'))break;await settle(50);}
   assert.match(probe.sidebar,/Бета/);

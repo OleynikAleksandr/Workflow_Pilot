@@ -25,11 +25,11 @@ const renameSave = $('rename-dialog-save');
 const renameCancel = $('rename-dialog-cancel');
 let renameRequest = null, renameSaving = false;
 
-function openRenameDialog({ kind, workspace, sessionId = null, value }) {
+function openRenameDialog({ workspace, sessionId, value }) {
   closeTreeMenus();
-  renameRequest = { kind, workspace, sessionId };
-  renameDialogTitle.textContent = kind === 'session' ? 'Переименовать сессию' : 'Переименовать проект';
-  renameDialogLabel.textContent = kind === 'session' ? 'Название сессии' : 'Название проекта в Web Pilot';
+  renameRequest = { workspace, sessionId };
+  renameDialogTitle.textContent = 'Переименовать сессию';
+  renameDialogLabel.textContent = 'Название сессии';
   renameInput.value = value ?? '';
   renameSave.disabled = false; renameCancel.disabled = false; renameSaving = false;
   renameDialog.showModal();
@@ -47,9 +47,7 @@ async function submitRenameDialog() {
   if (!value) { renameInput.setCustomValidity('Введите название.'); renameInput.reportValidity(); return; }
   renameInput.setCustomValidity(''); renameSaving = true; renameSave.disabled = true; renameCancel.disabled = true;
   try {
-    const response = renameRequest.kind === 'session'
-      ? await api.renameSession(renameRequest.workspace, renameRequest.sessionId, value)
-      : await api.renameProject(renameRequest.workspace, value);
+    const response = await api.renameSession(renameRequest.workspace, renameRequest.sessionId, value);
     if (!response?.ok) throw new Error(response?.error?.message || 'Не удалось переименовать.');
     if (response.state) render(response.state);
     closeRenameDialog();
@@ -336,9 +334,6 @@ function render(state) {
       };
       menuAction('new-project-chat', 'Новый Chat', () => action('newSession', project.workspace));
       const separator = document.createElement('div'); separator.className = 'menu-separator'; separator.setAttribute('aria-hidden', 'true'); menu.append(separator);
-      menuAction('rename-project', 'Переименовать', () => openRenameDialog({
-        kind: 'project', workspace: project.workspace, value: project.name,
-      }));
       menuAction('copy-workspace-path', 'Скопировать полный путь', () => action('copyWorkspacePath', project.workspace));
       menuAction('copy-external-client-line', 'Скопировать строку для внешнего клиента', () => action('copyExternalClientLine', project.workspace));
       menuAction('archive-project', 'Перенести в архив', () => archiveProject(project));
@@ -384,7 +379,7 @@ function render(state) {
         bindTreeMenu(menuButton, menu, `Меню сессии ${session.title || 'Новая сессия'}`);
         const rename = document.createElement('button'); rename.className = 'secondary rename-session'; rename.textContent = 'Переименовать';
         rename.addEventListener('click', () => openRenameDialog({
-          kind: 'session', workspace: project.workspace, sessionId: session.sessionId, value: session.title || 'Новая сессия',
+          workspace: project.workspace, sessionId: session.sessionId, value: session.title || 'Новая сессия',
         }));
         const archive = document.createElement('button'); archive.className = 'secondary archive-session'; archive.textContent = 'Перенести в архив';
         archive.addEventListener('click', () => { closeTreeMenus(); action('archiveSession', project.workspace, session.sessionId); });

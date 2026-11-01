@@ -48,6 +48,7 @@ export function normalizePageObservation(message) {
       turnIdentitySource: ['native', 'cycle', 'none'].includes(state.turnIdentitySource) ? state.turnIdentitySource : 'none',
       turnVariant: ['single', 'multiple', 'unknown'].includes(state.turnVariant) ? state.turnVariant : 'unknown',
       lastMessageRole: ['user', 'assistant'].includes(state.lastMessageRole) ? state.lastMessageRole : null,
+      assistantFinal: state.assistantFinal === true,
       draftPresent: state.draftPresent === true,
       draftRevision: state.draftRevision,
       userMessageCount: state.userMessageCount,

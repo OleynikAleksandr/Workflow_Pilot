@@ -116,7 +116,7 @@ test('client performs allowed project/session/settings/plan operations under the
   await until(()=>states.some(event=>backend.services.settings.shellTheme==='dark'&&event.type==='state'),'state event');
   await assert.rejects(client.run('settings.update',{theme:'neon'}),error=>error.code==='BACKEND_ARGS_INVALID');
   await assert.rejects(client.run('settings.update',{theme:'dark',script:'x'}),error=>error.code==='BACKEND_ARGS_INVALID');
-  assert.deepEqual(await client.run('projects.rename',{workspace:project.workspace,name:'Альфа'}),{changed:true});
+  await assert.rejects(client.run('projects.rename',{workspace:project.workspace,name:'Альфа'}),{code:'WORKSPACE_NAME_FIXED'});
   const created=await client.run('sessions.create',{workspace:project.workspace});
   assert.notEqual(created.selected.sessionId,project.sessionId);
   assert.deepEqual(await client.run('sessions.rename',{workspace:project.workspace,sessionId:created.selected.sessionId,name:'Вторая'}),{changed:true});

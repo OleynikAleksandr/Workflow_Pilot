@@ -315,6 +315,17 @@ test('observer finds native IDs inside Work wrappers and avoids positional fallb
   dispose(); w.close();
 });
 
+test('only response controls following the latest assistant answer confirm a final response', async t => {
+  const f=await accountFixture(t,'<article><div data-message-author-role="assistant" data-message-id="old"></div><button data-testid="copy-turn-action-button"></button></article>'
+    +'<article><div data-message-author-role="user" data-message-id="question"></div></article>'
+    +'<article id="answer"><div data-message-author-role="assistant" data-message-id="new"><pre><button data-testid="copy-turn-action-button"></button></pre></div></article>');
+  assert.equal(f.state().assistantFinal,false);
+  f.w.document.querySelector('#answer').insertAdjacentHTML('beforeend','<button data-testid="good-response-turn-action-button"></button>');
+  await turn();assert.equal(f.state().assistantFinal,true);
+  f.w.document.body.insertAdjacentHTML('beforeend','<article><div data-message-author-role="user" data-message-id="next"></div></article>');
+  await turn();assert.equal(f.state().assistantFinal,false);
+});
+
 test('the observer reports a variant switch of the newest user turn, read only', async t => {
   const f = await accountFixture(t, '<article data-testid="conversation-turn-1"><div data-message-author-role="user" data-message-id="u-1">Первый вопрос</div></article>');
   assert.equal(f.state().turnVariant, 'single');

@@ -108,7 +108,7 @@ test('explicit session ID through normal prepare and simulated Claude round rout
       }});
     if(checkpoint)flow.restore(checkpoint);
   };
-  const page={url:selected.chatUrl,busy:false,editorAvailable:true,writable:true,lastMessageRole:'assistant',
+  const page={url:selected.chatUrl,busy:false,assistantFinal:true,editorAvailable:true,writable:true,lastMessageRole:'assistant',
     turnId:'round-one-pause',userTurnId:'request',draftPresent:false,manualStopRevision:0,manualSendRevision:0};
   let restartCount=0;
   const observe=patch=>{Object.assign(page,patch);flow.observe({state:{...page},documentId:'fixture-doc-'+restartCount});};
@@ -136,6 +136,24 @@ test('explicit session ID through normal prepare and simulated Claude round rout
   assert.equal(readReview(root).recipient_session_id,recipient.recipient_session_id);
 });
 
+test('T_006: two rounds in one turn publish silently; unfinished review wakes its author once after final',async()=>{
+  const p={workspace:'/review',sessionId:'o',chatUrl:'https://chatgpt.com/c/o'};
+  const client={workspace:p.workspace,state:{enabled:true,stage:'PREPARED',run_id:'one',recipient_session_id:'o',generation:1},refresh(){}};
+  const sent=[];
+  const flow=new ReviewContinuation({selected:()=>p,client,available:()=>true,status:()=>client.state,
+    saveCheckpoint:async()=>{},send:async(_text,ready,before)=>{assert.ok(ready()&&await before());sent.push(client.state.stage);return {state:'queued'};}});
+  const show=(busy,assistantFinal)=>flow.observe({documentId:'doc',state:{url:p.chatUrl,busy,assistantFinal,lastMessageRole:'assistant',turnId:'answer'}});
+  const stage=async value=>{client.state={...client.state,stage:value,generation:client.state.generation+1};flow.update();await flow.flow.reconcile();};
+  try{
+    for(const value of ['PREPARED','RUNNING','AUTHOR_PENDING','AUTHOR_PENDING','PREPARED','RUNNING','AGREED','AGREED','PUBLISHED']){
+      show(true,true);await stage(value);show(false,false);await flow.flow.reconcile();
+    }
+    show(false,true);await flow.flow.reconcile();assert.deepEqual(sent,[]);
+    show(true,false);await stage('AUTHOR_PENDING');show(false,true);await flow.flow.reconcile();
+    assert.deepEqual(sent,['AUTHOR_PENDING']);show(false,true);await flow.flow.reconcile();assert.equal(sent.length,1);
+  }finally{flow.dispose();}
+});
+
 test('Review rechecks persisted recipient at final send even before the file event arrives',async()=>{
   const selected={workspace:'/fixture',sessionId:'chat-a',chatUrl:'https://chatgpt.com/c/fixture'};
   const original={enabled:true,stage:'AUTHOR_PENDING',run_id:'run',round:1,generation:1,recipient_session_id:'chat-a'};
@@ -148,7 +166,7 @@ test('Review rechecks persisted recipient at final send even before the file eve
     }});
   try{
     flow.observe({documentId:'doc',state:{url:selected.chatUrl,busy:false,editorAvailable:true,writable:true,
-      lastMessageRole:'assistant',turnId:'pause',userTurnId:'request',draftPresent:false}});
+      lastMessageRole:'assistant',assistantFinal:true,turnId:'pause',userTurnId:'request',draftPresent:false}});
     flow.update();await new Promise(r=>setTimeout(r,10));await flow.flow.reconcile();
     assert.equal(sends,0);
   }finally{flow.dispose();}
@@ -269,10 +287,10 @@ test('Review continuation at NONE targets its recipient, asks once and respects 
   const client={workspace:selected.workspace,state:{enabled:true,run_id:'run',stage:'PREPARED',round:0,generation:1,recipient_session_id:'chat'},refresh(){}};
   let saved;const sent=[];
   const flow=new ReviewContinuation({selected:()=>selected,client,available:()=>true,settleMs:0,
-    status:()=>client.state,acknowledge:()=>{client.state={...client.state,notification_handled:true,generation:client.state.generation+1};},
+    status:()=>client.state,
     saveCheckpoint:async v=>{saved=structuredClone(v);},
     send:async(text,ready,before)=>{if(!ready()||!await before())return {state:'cancelled'};sent.push(text);return {state:'sent'};}});
-  const page={url:selected.chatUrl,busy:false,editorAvailable:true,writable:true,lastMessageRole:'assistant',turnId:'a',userTurnId:'u',draftPresent:true,manualStopRevision:0,manualSendRevision:0};
+  const page={url:selected.chatUrl,busy:false,assistantFinal:true,editorAvailable:true,writable:true,lastMessageRole:'assistant',turnId:'a',userTurnId:'u',draftPresent:true,manualStopRevision:0,manualSendRevision:0};
   const observe=patch=>{Object.assign(page,patch);flow.observe({state:{...page},documentId:'doc'});};
   const drain=async()=>{await new Promise(r=>setTimeout(r,10));await flow.flow.reconcile();};
   try {
@@ -284,7 +302,7 @@ test('Review continuation at NONE targets its recipient, asks once and respects 
     client.state={...client.state,stage:'PREPARED',generation:4,notification_handled:false};flow.update();
     observe({busy:true,turnId:'d'});observe({busy:false,manualStopRevision:1});await drain();assert.equal(sent.length,2);
     assert.equal(saved.reviewStops.length,1);
-    observe({manualSendRevision:1,userTurnId:'u2',lastMessageRole:'user'});await drain();assert.equal(sent.length,3,'SDK does not wait for the user answer');
+    observe({manualSendRevision:1,userTurnId:'u2',lastMessageRole:'user'});await drain();assert.equal(sent.length,2,'user input starts a new turn');
     observe({busy:true});observe({busy:false,turnId:'e',lastMessageRole:'assistant'});await drain();assert.equal(sent.length,3);
     selected.sessionId='other';flow.update();observe({turnId:'f'});await drain();assert.equal(sent.length,3,'wrong recipient does not receive a review');
   } finally {flow.dispose();}

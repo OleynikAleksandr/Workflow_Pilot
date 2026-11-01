@@ -526,6 +526,7 @@ function snapshot() {
     requestId: saved.attempt.requestId, state: saved.attempt.state,bootstrapTransport:saved.attempt.bootstrapTransport,
     addressStatus:saved.attempt.addressStatus,cancelState:saved.attempt.cancelState }, receipt: undefined,
     ...(info?.workspace === saved.workspace && info.inspectedSessionId === saved.sessionId ? info : {}),
+    name: path.basename(saved.workspace), displayName:path.basename(saved.workspace),
     planReadError: planMonitor.error ?? planMonitor.watchError, agentRun: agentTimer?.view(saved) ?? null };
   return { projects: projects.filter(p => !p.archivedAt&&!p.parentWorkspace)
     .map(({ workspace, projectId, name, displayName, selectedSessionId, expanded, sessions, scopeStatus }) => ({

@@ -74,7 +74,7 @@ test('remote web client in Chromium: pairing on the Mac, the same UI and page, w
   backend.stdin.write(JSON.stringify({op:'remote-approve'})+'\n');
   await fromBackend(value=>value.op==='remote-approve','approve');
   await until("document.getElementById('app')?.classList.contains('ready')",'connected web client');
-  const sidebar=await until("document.getElementById('sidebar').contentDocument?.body?.innerText?.includes('Alpha')&&document.getElementById('sidebar').contentDocument.body.innerText",'sidebar state');
+  const sidebar=await until("document.getElementById('sidebar').contentDocument?.body?.innerText?.includes('alpha')&&document.getElementById('sidebar').contentDocument.body.innerText",'sidebar folder name');
   assert.match(sidebar,/alpha/i,'the same Desktop UI renders backend state');
   await until("document.getElementById('status').textContent.includes('этого устройства')",'control on the device');
   await until("document.getElementById('frame').src.startsWith('blob:')",'page frame');

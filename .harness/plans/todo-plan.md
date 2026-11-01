@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1413,
+  "plan_revision": 1417,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -71,7 +71,30 @@
       "tests/plugin-delivery-ownership.test.mjs",
       "src/control/workflow/review-continuation.mjs",
       "src/control/plugin/workflow-channel.mjs",
-      "tests/plan-review.test.mjs"
+      "tests/plan-review.test.mjs",
+      "src/control/sessions/workspace-session.mjs",
+      "src/control/projects/workspace-deletion.mjs",
+      "src/frontend/desktop/ui/sidebar.mjs",
+      "src/frontend/desktop/preload.cjs",
+      "src/frontend/desktop/client.mjs",
+      "packages/workflow-kit/src/lib/actions.mjs",
+      "packages/workflow-kit/src/lib/command-help.mjs",
+      "packages/workflow-kit/scripts/check-runtime-fixture.mjs",
+      "tests/backend-api.test.mjs",
+      "tests/backend-end-to-end.test.mjs",
+      "tests/desktop-client.test.mjs",
+      "tests/fixtures/released-kit/kit-1.10.6.tar.gz",
+      "src/backend/lifecycle.mjs",
+      "src/contracts/plugin-communication.mjs",
+      "src/execution/browser/chatgpt-dom.mjs",
+      "src/execution/browser/chatgpt-page-observer.mjs",
+      "src/execution/browser/page-state.mjs",
+      "tests/backend-native-window.test.mjs",
+      "tests/backend-remote-gateway.test.mjs",
+      "tests/codex-app-server-mcp.test.mjs",
+      "tests/fixtures/remote-backend.mjs",
+      "tests/page-state.test.mjs",
+      "tests/web-client-electron.test.mjs"
     ],
     "documentation_paths": [
       "docs/planning/cdp-startup-input.md",
@@ -98,7 +121,8 @@
       "packages/workflow-kit/docs/modules/workflow-kit-package.md",
       "docs/modules/project-compatibility.md",
       "docs/modules/user-choice.md",
-      "docs/modules/workflow-execution.md"
+      "docs/modules/workflow-execution.md",
+      "packages/workflow-kit/src/WORKFLOW.md"
     ]
   },
   "baseline_commit": "1d1651d34c61ef956d0947526f719ddbac13d9d8",
@@ -107,7 +131,7 @@
     "documents": [
       {
         "path": "docs/planning/cdp-startup-input.md",
-        "required": true,
+        "required": false,
         "revision": "d5ffd6ca16396ebe18d871a0cb5e9fd0f7e01942"
       },
       {
@@ -122,12 +146,12 @@
       },
       {
         "path": "docs/planning/communication-journal-growth.md",
-        "required": true,
+        "required": false,
         "revision": "6c59cc5a0cfea87bf9fc225feb6dadd9c12ca9e0"
       },
       {
         "path": "docs/modules/assignment-dialogue.md",
-        "required": true,
+        "required": false,
         "revision": "WORKTREE"
       },
       {
@@ -839,30 +863,122 @@
         "package.json",
         "package-lock.json",
         "src/contracts/backend.mjs",
-        "tests/chatgpt-plugin.test.mjs"
+        "tests/chatgpt-plugin.test.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/control/projects/workspace-deletion.mjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/client.mjs",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-runtime-fixture.mjs",
+        "tests/workspace-session.test.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/backend-end-to-end.test.mjs",
+        "tests/desktop-client.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/role-protocol.test.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/released-kit/kit-1.10.6.tar.gz",
+        "src/backend/lifecycle.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/page-state.mjs",
+        "tests/backend-native-window.test.mjs",
+        "tests/backend-remote-gateway.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/remote-backend.mjs",
+        "tests/page-state.test.mjs",
+        "tests/web-client-electron.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
       ],
       "documentation_paths": [
-        "docs/modules/workflow-execution.md"
+        "docs/modules/workflow-execution.md",
+        "packages/workflow-kit/src/WORKFLOW.md"
       ],
       "verification_ids": [
         "unit-all",
         "electron-smoke",
-        "architecture"
+        "architecture",
+        "kit-check",
+        "kit-assignments"
       ],
       "verification_kind": "code",
       "acceptance_criteria": [
         "Два раунда и публикация в одном активном ходе не будят автора. После подтверждённого конца хода при оставшемся действии допускается только актуальное уведомление.",
         "После публикации старые ошибки доставки review уходят из текущих предупреждений, включая сохранённые в 0.6.6. Рабочие результаты и история сохраняются.",
-        "Устаревший review не требует assignment yield. Гонка нового хода и ручной Stop удерживают отправку."
+        "Устаревший review не требует assignment yield. Гонка нового хода и ручной Stop удерживают отправку.",
+        "В списке проектов, архиве и API видны имена папок, включая существующие записи с одинаковыми темами, при прежних ID и путях.",
+        "Только сессию можно переименовать; Kit запрещает переименование проекта в произвольную тему. Существующие планы загружаются без переписывания истории."
       ],
       "expected_commit_message": "feat: Будить автора ревью только после окончания хода",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "REVIEW-WAKE",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/scripts/check-runtime-fixture.mjs",
+        "packages/workflow-kit/src/WORKFLOW.md",
+        "packages/workflow-kit/src/lib/actions.mjs",
+        "packages/workflow-kit/src/lib/command-help.mjs",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/backend/lifecycle.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/plugin-communication.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/projects/workspace-deletion.mjs",
+        "src/control/sessions/workspace-session.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/review-continuation.mjs",
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/page-state.mjs",
+        "src/frontend/desktop/client.mjs",
+        "src/frontend/desktop/preload.cjs",
+        "src/frontend/desktop/ui/sidebar.mjs",
+        "tests/backend-api.test.mjs",
+        "tests/backend-desktop-model.test.mjs",
+        "tests/backend-end-to-end.test.mjs",
+        "tests/backend-native-window.test.mjs",
+        "tests/backend-remote-gateway.test.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/codex-app-server-mcp.test.mjs",
+        "tests/desktop-client.test.mjs",
+        "tests/electron-smoke.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/released-kit/kit-1.10.6.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/fixtures/remote-backend.mjs",
+        "tests/page-state.test.mjs",
+        "tests/plan-review.test.mjs",
+        "tests/role-protocol.test.mjs",
+        "tests/web-client-electron.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tests/workspace-session.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "id": "DOCS-4",
@@ -882,7 +998,8 @@
       "functional_paths": [],
       "documentation_paths": [
         "docs/architecture/OVERVIEW.md",
-        "docs/modules/workflow-execution.md"
+        "docs/modules/workflow-execution.md",
+        "packages/workflow-kit/src/WORKFLOW.md"
       ],
       "acceptance_criteria": [
         "Документы описывают текущий результат, существенное из выпущенных рабочих спецификаций перенесено в контракты модулей; история остаётся в Git."
@@ -969,7 +1086,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1413
+Revision: 1417
 
 ## Цель
 
@@ -1043,14 +1160,14 @@ Revision: 1413
   - Git Commit: [DONE] feat: Установить проверенный комплект 0.6.6 на Mac
   - Reference: cdp-startup-input / INSTALL-3 / implementation
   - Файлы: release-manifest.json
-- [TODO] REVIEW-WAKE: Будить автора ревью только после окончания хода — Ожидает
-  - Git Commit: [PENDING] feat: Будить автора ревью только после окончания хода
+- [DONE] REVIEW-WAKE: Будить автора ревью только после окончания хода — Завершено
+  - Git Commit: [DONE] feat: Будить автора ревью только после окончания хода
   - Reference: cdp-startup-input / REVIEW-WAKE / implementation
-  - Файлы: src/control/workflow/review-continuation.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/plan-review.test.mjs, tests/plugin-communication.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, tests/chatgpt-plugin.test.mjs, docs/modules/workflow-execution.md
+  - Файлы: src/control/workflow/review-continuation.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, tests/plan-review.test.mjs, tests/plugin-communication.test.mjs, package.json, package-lock.json, src/contracts/backend.mjs, tests/chatgpt-plugin.test.mjs, src/control/sessions/workspace-session.mjs, src/backend/desktop-model.mjs, src/control/projects/workspace-deletion.mjs, src/frontend/desktop/ui/sidebar.mjs, src/frontend/desktop/preload.cjs, src/frontend/desktop/client.mjs, packages/workflow-kit/src/lib/actions.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/command-help.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, packages/workflow-kit/scripts/check-runtime-fixture.mjs, tests/workspace-session.test.mjs, tests/backend-api.test.mjs, tests/backend-desktop-model.test.mjs, tests/backend-end-to-end.test.mjs, tests/desktop-client.test.mjs, tests/electron-smoke.mjs, tests/workflow-kit-upgrade.test.mjs, tests/role-protocol.test.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.6.tar.gz, src/backend/lifecycle.mjs, src/contracts/plugin-communication.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, tests/backend-native-window.test.mjs, tests/backend-remote-gateway.test.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, tests/fixtures/remote-backend.mjs, tests/page-state.test.mjs, tests/web-client-electron.test.mjs, tests/workflow-channel.test.mjs, tools/codex-app-server-mcp/plugin.py, docs/modules/workflow-execution.md, packages/workflow-kit/src/WORKFLOW.md
 - [TODO] DOCS-4: Актуализация всех документов проекта — Ожидает
   - Git Commit: [PENDING] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-4 / implementation
-  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md
+  - Файлы: docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, packages/workflow-kit/src/WORKFLOW.md
 - [TODO] RELEASE-4: Собрать Workflow Pilot 0.6.7 для трёх ОС — Ожидает
   - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.6.7 для трёх ОС
   - Reference: cdp-startup-input / RELEASE-4 / implementation

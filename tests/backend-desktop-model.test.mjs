@@ -108,8 +108,9 @@ test('Electron backend runs the Desktop model; the client uses the former channe
   const invalid=await client.invoke('local','pilot:new-session',{workspace:project.workspace,unsupported:true});
   assert.equal(invalid.ok,false);assert.equal(invalid.error.code,'SESSION_INPUT');
   assert.equal((await client.read('ui.state')).state.selected.sessionId,project.sessionId,'rejected options cannot change selection');
-  assert.equal((await client.invoke('local','pilot:rename-project',{workspace:project.workspace,name:'Альфа'})).ok,true);
-  await until(()=>ui.get('state')?.projects?.[0]?.name==='Альфа','renamed state');
+  assert.equal((await client.invoke('local','pilot:rename-project',{workspace:project.workspace,name:'Альфа'})).error.code,'WORKSPACE_NAME_FIXED');
+  assert.equal((await client.invoke('local','pilot:rename-session',{workspace:project.workspace,sessionId:project.sessionId,name:'Альфа'})).ok,true);
+  await until(()=>ui.get('state')?.selected?.title==='Альфа','renamed state');
   const failed=await client.invoke('local','pilot:rename-project',{workspace:path.join(root,'missing'),name:'x'});
   assert.equal(failed.ok,false);assert.equal(typeof failed.error.message,'string');
   await assert.rejects(client.invoke('local','pilot:shell',{}),{code:'BACKEND_ARGS_INVALID'});
@@ -126,7 +127,8 @@ test('Electron backend runs the Desktop model; the client uses the former channe
   const later=new BackendConnection({port:ready.port,token:ready.token});t.after(()=>later.close());
   await later.connect();
   const again=new Map();later.subscribe({onUi:(kind,value)=>again.set(kind,value)});
-  const restored=await until(()=>again.get('state')?.projects?.[0]?.name==='Альфа'&&again.get('state'),'state after reconnect');
+  const restored=await until(()=>again.get('state')?.selected?.title==='Альфа'&&again.get('state'),'state after reconnect');
+  assert.equal(restored.projects[0].name,path.basename(project.workspace));
   assert.equal(restored.theme,'dark');assert.equal(restored.selected.sessionId,project.sessionId);
   later.close();
   backend.stdin.end('stop\n');

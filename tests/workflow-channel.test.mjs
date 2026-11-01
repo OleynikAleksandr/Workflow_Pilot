@@ -1071,6 +1071,41 @@ test('Review preference supersedes only unsent versions and keeps one notificati
   assert.equal(run.messages.find(m=>m.message_id===off.message_id).delivery,'accepted');
 });
 
+test('a new author turn before SDK intent defers the atomic review claim without using an attempt',async t=>{
+  const f=await fixture(t),b=await f.bind(f.c,f.o);
+  const m=await f.c.workflow.enqueue(f.o,{key:'review:one:2',kind:'review',text:'Continue',
+    ui_event:{type:'review-continuation',run_id:'one',generation:2,recipient_session_id:'o'}});
+  let checks=0;f.c.workflow.admission=async()=>++checks===1;
+  const claim=await f.c.claimReady({...b,message_id:m.message_id});
+  assert.equal(claim.deferred,true);assert.equal(claim.reason,'awaiting-turn-end');
+  const stored=f.c.runs.get(b.run_id).messages.find(row=>row.message_id===m.message_id);
+  assert.equal(stored.delivery,'pending');assert.deepEqual(stored.notification_attempts??[],[]);
+  f.c.workflow.admission=async()=>true;assert.ok((await f.c.claimReady({...b,message_id:m.message_id})).delivery_attempt_id);
+});
+
+test('publication retires exhausted review notices across restart without hiding unrelated delivery failures',async t=>{
+  let published=false;
+  const f=await fixture(t,(_target,m)=>m.kind!=='review'||!published);
+  const b=await f.bind(f.c,f.o);
+  const queueReview=await f.c.workflow.enqueue(f.o,{key:'review:one:4',kind:'review',text:'Continue review',
+    ui_event:{type:'review-continuation',run_id:'one',generation:4,recipient_session_id:'o'}});
+  const id=queueReview.message_id;
+  for(let i=0;i<3;i++){await sdk(f,b,id,'unknown');f.advance(10000);}
+  assert.equal(f.c.workflow.progress('o').blocker.recovery.exhausted,true);
+  f.c.dispose();await f.c.tail;published=true;
+  const c=await f.create(),fresh=await f.bind(c,f.o);
+  assert.equal(c.workflow.progress('o').blocker,undefined);
+  const old=c.runs.get(b.run_id).messages.find(m=>m.message_id===id);
+  assert.equal(old.superseded,true);assert.equal(old.read,false);assert.equal(old.notification_attempts.length,3);
+  assert.equal(old.delivery,'unknown');assert.equal(c.workflow.choicePending(c.runs.get(b.run_id),c.runs.get(b.run_id).members[fresh.participant_id]),false);
+  const stale=await c.read({...fresh,message_id:id});assert.equal(stale.superseded,true);
+  assert.doesNotMatch(stale.instructions,/yield|завершите ход/i);
+  await c.workflow.grant(f.o);const active=await f.sync(c,fresh);
+  const next=await queue(c,f.o,'ordinary');
+  for(let i=0;i<3;i++){await sdk({...f,c},active,next.message_id,'unknown');f.advance(10000);}
+  assert.equal(c.workflow.progress('o').blocker.message_id,next.message_id);assert.equal(c.workflow.progress('o').blocker.recovery.exhausted,true);
+});
+
 test('an obsolete SDK policy notification never blocks the current version or fabricates read',async t=>{
   for(const outcome of ['accepted','unknown']){
     let current='on';const f=await fixture(t,(_target,m)=>!m.ui_event||m.ui_event.id===current),b=await f.bind(f.c,f.o);

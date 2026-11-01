@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {readCommandActivity} from './command-activity.mjs';
 import {executorPageState} from './executor-session.mjs';
+import {reviewTurnEnded} from './review-continuation.mjs';
 import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 import {startupLaunch,startupAttempt,STARTUP_TRANSPORT} from '../../contracts/startup-view.mjs';
 import {normalizeChatUrl} from '../../contracts/browser.mjs';
@@ -81,7 +82,8 @@ export class DialogueDelivery {
       documentSince:record?.pageState?.document?.since??null,reloadedFrom:record?.pageState?.document?.reloadedFrom??null,
       // The document this page's own sent start opened: fresh for its first claim.
       startupDocumentId:project?.attempt?.state==='sent'&&project.chatUrl?project.attempt.accountConfirmed?.documentId??null:null,
-      userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null};
+      userMessagesRevision:page?.state?.userMessagesRevision??0,lastMessageRole:page?.state?.lastMessageRole??null,
+      assistantFinal:page?.state?.assistantFinal===true};
   }
   // Reload the saved conversation of this participant's backend page for freshness.
   async reload(target){
@@ -125,6 +127,11 @@ export class DialogueDelivery {
       ||project.attempt?.cancelState&&project.attempt.cancelState!=='none')return {allowed:false,reason:'recipient-unavailable'};
     if(!await this.currentMessage(target,message))return {allowed:false,reason:'admission-denied'};
     if(message?.kind==='startup-context')return {allowed:project.attempt?.state==='sent'&&project.attempt.requestId===message.request_id};
+    if(message.ui_event?.type==='review-continuation'){
+      const fresh=await this.reconcile(target);
+      if(!fresh?.stopped||!fresh.commandsIdle||!reviewTurnEnded(fresh))return {allowed:false,reason:'awaiting-turn-end'};
+      return {allowed:await this.currentMessage(target,message)};
+    }
     if(['user-choice','review'].includes(message?.kind))return {allowed:true};
     return {allowed:this.uses(project)&&['running'].includes(this.state(project.parentWorkspace??project.workspace,target.scope_id).state)};
   }

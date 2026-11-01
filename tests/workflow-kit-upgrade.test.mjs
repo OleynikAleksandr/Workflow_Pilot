@@ -24,7 +24,8 @@ function releasedKitArchive(ref) {
   return gunzipSync(bytes);
 }
 
-for(const [version,ref,roleVersion] of [['1.10.1','v0.5.35',10],['1.10.2','v0.5.36',11],['1.10.3','v0.5.38',12],['1.10.4','v0.5.40',13],['1.10.5','v0.6.5',14]])
+for(const [version,ref,roleVersion] of [['1.10.1','v0.5.35',10],['1.10.2','v0.5.36',11],['1.10.3','v0.5.38',12],['1.10.4','v0.5.40',13],['1.10.5','v0.6.5',14],
+  ['1.10.6','6ccacfe13a808b35293efce1f97418c4d1a1ea36',16]])
 test('released '+version+' upgrades to permanent SDK role instructions without replacing the checkout plan',async t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'kit-sdk-upgrade-'));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
@@ -43,7 +44,7 @@ test('released '+version+' upgrades to permanent SDK role instructions without r
   assert.equal(manifest.version,VERSION);assert.equal(manifest.upgraded_from,version);
   assert.deepEqual(fs.readFileSync(path.join(project,'.harness/plans/todo-plan.md')),plan);
   const updatedRole=await import(pathToFileURL(path.join(project,'.harness/kit/lib/role-protocol.mjs')).href);
-  assert.equal(updatedRole.ROLE_PROTOCOL_VERSION,16);assert.match(updatedRole.roleText('planning'),/workflow_session_set_title/);
+  assert.equal(updatedRole.ROLE_PROTOCOL_VERSION,17);assert.match(updatedRole.roleText('planning'),/workflow_session_set_title/);
   assert.match(updatedRole.roleText('orchestrator',1),/!!! Для проверки Git.*read_only: true/);
   assert.match(updatedRole.roleText('planning'),/pending_incoming/);
   assert.match(updatedRole.roleText('planning'),/already_handled/);

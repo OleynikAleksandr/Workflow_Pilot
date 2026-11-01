@@ -73,7 +73,7 @@ test('launcher → work → client crash → work continues → reconnect to the
   const before=await until(async()=>{const value=await page();return value.page&&value;},'fixture page');
   assert.equal(before.url,'https://chatgpt.com/c/end-to-end-chat');
   await api.acquire({takeover:true});
-  const operation=await api.submit('ui.invoke',{surface:'local',channel:'pilot:rename-project',input:{workspace:selected.workspace,name:'Сквозной'}},{requestId:'end-to-end-rename'});
+  const operation=await api.submit('ui.invoke',{surface:'local',channel:'pilot:rename-session',input:{workspace:selected.workspace,sessionId:selected.sessionId,name:'Сквозной'}},{requestId:'end-to-end-rename'});
   assert.equal(operation.status,'accepted');
   // The client process dies; the backend, its page and the operation continue.
   first.child.kill('SIGKILL');await first.exited;
@@ -83,7 +83,7 @@ test('launcher → work → client crash → work continues → reconnect to the
   const after=await page();
   assert.equal(after.page.bootId,before.page.bootId,'no reload');assert.ok(after.page.ticks>before.page.ticks,'work continued without a client');
   assert.equal(after.webContentsId,before.webContentsId);
-  const repeat=await api.submit('ui.invoke',{surface:'local',channel:'pilot:rename-project',input:{workspace:selected.workspace,name:'Сквозной'}},{requestId:'end-to-end-rename'});
+  const repeat=await api.submit('ui.invoke',{surface:'local',channel:'pilot:rename-session',input:{workspace:selected.workspace,sessionId:selected.sessionId,name:'Сквозной'}},{requestId:'end-to-end-rename'});
   assert.equal(repeat.operationId,operation.operationId,'the same operation, no second effect');
   // MCP and the plugin bridge serve agents with no desktop window at all.
   const python=path.join(project,'.harness/runtime/test-python/bin/python');
