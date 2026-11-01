@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1443,
+  "plan_revision": 1445,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
@@ -580,14 +580,17 @@
         "Собрать комплект Workflow Pilot 0.6.9 для трёх платформ"
       ],
       "expected_commit_message": "feat: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "RELEASE-2",
         "role": "implementation"
       },
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-2",
@@ -642,7 +645,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1443
+Revision: 1445
 
 ## Цель
 
@@ -702,8 +705,8 @@ Revision: 1443
   - Файлы: docs/architecture/OVERVIEW.md, packages/workflow-kit/src/templates/PLAN.md, README.md, docs/modules/orchestrator-startup.md, docs/modules/prepared-tasks.md, docs/modules/assignment-dialogue.md, docs/modules/chat-only-startup.md, docs/modules/chatgpt-plugin.md, docs/modules/dialogue-timing.md, docs/modules/shared-conversation.md, docs/modules/current-actions.md, docs/modules/project-compatibility.md, docs/modules/sdk-messaging.md, docs/modules/release.md, docs/modules/user-choice.md, docs/acceptance/shared-conversation-mac.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/workflow-kit-package.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, docs/acceptance/chat-only-startup.md
   - Параллельность: исключительное выполнение
   - Зависимости: BUNDLE
-- [TODO] RELEASE-2: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ — Ожидает
-  - Git Commit: [PENDING] feat: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ
+- [DONE] RELEASE-2: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ — Завершено
+  - Git Commit: [DONE] feat: Собрать комплект Workflow Pilot 0.6.9 для трёх платформ
   - Reference: panel-inbox-068 / RELEASE-2 / implementation
   - Файлы: release-manifest.json
   - Параллельность: исключительное выполнение
