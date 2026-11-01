@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1419,
+  "plan_revision": 1421,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "cdp-startup-input",
@@ -1069,13 +1069,16 @@
         "Собрать Workflow Pilot 0.6.7 для трёх ОС"
       ],
       "expected_commit_message": "feat: Собрать Workflow Pilot 0.6.7 для трёх ОС",
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "cdp-startup-input",
         "task_id": "RELEASE-4",
         "role": "implementation"
-      }
+      },
+      "actual_files": [
+        "release-manifest.json"
+      ]
     },
     {
       "id": "INSTALL-4",
@@ -1126,7 +1129,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: cdp-startup-input
 Current Task: нет
-Revision: 1419
+Revision: 1421
 
 ## Цель
 
@@ -1208,8 +1211,8 @@ Revision: 1419
   - Git Commit: [DONE] docs: актуализировать документацию проекта
   - Reference: cdp-startup-input / DOCS-4 / implementation
   - Файлы: docs/architecture/OVERVIEW.md, docs/modules/workflow-execution.md, packages/workflow-kit/src/WORKFLOW.md, README.md, docs/modules/assignment-dialogue.md, docs/modules/current-actions.md, docs/modules/dialogue-timing.md, docs/modules/user-choice.md, docs/modules/chatgpt-plugin.md, docs/modules/sdk-messaging.md, docs/modules/chat-only-startup.md, docs/modules/release.md, docs/modules/project-compatibility.md, docs/modules/shared-conversation.md, docs/modules/session-titles.md, docs/modules/project-lifecycle.md, docs/acceptance/shared-conversation-mac.md, packages/workflow-kit/README.md, packages/workflow-kit/docs/modules/orchestrated-plans.md, packages/workflow-kit/docs/modules/workflow-kit-package.md
-- [TODO] RELEASE-4: Собрать Workflow Pilot 0.6.7 для трёх ОС — Ожидает
-  - Git Commit: [PENDING] feat: Собрать Workflow Pilot 0.6.7 для трёх ОС
+- [DONE] RELEASE-4: Собрать Workflow Pilot 0.6.7 для трёх ОС — Завершено
+  - Git Commit: [DONE] feat: Собрать Workflow Pilot 0.6.7 для трёх ОС
   - Reference: cdp-startup-input / RELEASE-4 / implementation
   - Файлы: release-manifest.json, docs/modules/workflow-execution.md
 - [TODO] INSTALL-4: Установить проверенную сборку 0.6.7 на Mac — Ожидает
