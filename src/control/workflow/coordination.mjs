@@ -12,7 +12,7 @@ import { ParallelKit } from './parallel-kit.mjs';
 import { ExecutionControl } from './execution-control.mjs';
 import { readReview } from '@webpilot/workflow-kit/lib/plan-review';
 import { reviewBlocksExecution } from './plan-continuation-state.mjs';
-import { configureExecutor, executorPageState } from './executor-session.mjs';
+import { configureExecutor } from './executor-session.mjs';
 import { ProjectInputWatch, ChildCommandWatches, CHATGPT_CHAT_ENTRYPOINT } from '../../execution/facade.mjs';
 import { removeProjectSettings, belongsToProject } from '../projects/project-state-cleanup.mjs';
 import { unsentExecutor } from '../sessions/workspace-session.mjs';
@@ -270,8 +270,8 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   reconcileChannel:(workspace,scope)=>getPlugin()?.communication.assignment.reconcile(store.project(workspace)?.projectId,scope,
     store.snapshot().projects.find(p=>p.workspace===workspace)),
   restoreIntegrated:(workspace,assignment,entry)=>dialogue.reserved(store.project(assignment.worktree,entry?.sessionId)),
-  physicalWorkerState:(assignment,entry)=>executorPageState(liveRecord(store.project(assignment.worktree,entry?.sessionId))),
-  physicalMainState:origin=>executorPageState(liveRecord(origin)),
+  physicalWorkerState:(assignment,entry)=>dialogue.physical(store.project(assignment.worktree,entry?.sessionId)),
+  physicalMainState:origin=>dialogue.physical(origin,liveRecord(origin)),
   // A draining backend opens no new assignment and queues no new send.
   isEnabled:(workspace,scope)=>!liveSessions?.paused&&executorEnabled(workspace,scope),
   // New tasks, the final handoff and delivery steps of an orchestrated plan wait while it is not running.
@@ -334,14 +334,14 @@ const execution=new ParallelExecution({kit:authorizedExecutionKit,book:parallelE
   },
   mainState:origin=>{
     const record=liveRecord(origin),page=record?.pageState.current;
-    return {...executorPageState(record),documentId:page?.documentId??null,
+    return {...dialogue.physical(origin,record),documentId:page?.documentId??null,
       lastMessageRole:page?.state?.lastMessageRole??null,
       userMessagesRevision:page?.state?.userMessagesRevision??null,
       manualInputRevision:page?.state?.manualInputRevision??0,
       manualStopRevision:page?.state?.manualStopRevision??0};
   },
   workerState:(assignment,entry)=>{const project=store.project(assignment.worktree,entry?.sessionId);return {
-    ...executorPageState(liveRecord(project))};},
+    ...dialogue.physical(project,liveRecord(project))};},
   restoreOrigin:origin=>restoreExecutionPage(origin),
   restoreWorker:async(assignment,origin,entry,recovery)=>{
     if(!assignment.worktree)return null;
@@ -581,7 +581,6 @@ return Object.freeze({
   cancelStartup:(project,attempt,reason)=>dialogue.cancelStartup(project,attempt,reason),
     observeParticipant:target=>dialogue.observe(target),admitParticipant:(target,message,policy)=>dialogue.admit(target,message,policy),
   reconcileParticipant:target=>dialogue.reconcile(target),attestParticipant:target=>dialogue.attest(target),reloadParticipant:target=>dialogue.reload(target),
-  reopenParticipant:(...args)=>dialogue.reopen(...args),
   currentMessage:(target,message)=>dialogue.currentMessage(target,message),
   communicationChanged:(runId,events=[])=>{
     const run=getPlugin()?.communication.runs.get(runId);if(!run)return;
@@ -646,7 +645,7 @@ return Object.freeze({
     if(project&&planReview.preferenceErrors.has(project.parentWorkspace??project.workspace))
       void planReview.reconcilePreferences(project.parentWorkspace??project.workspace).catch(report);
     if(record.identity&&!record.identity.assignmentId&&execution.unwatch.has(record.identity.workspace)) {
-      const stopped=executorPageState(record).stopped;
+      const stopped=dialogue.physical(project,record).stopped;
       if(record.executionStopped!==stopped){record.executionStopped=stopped;void execution.signal(record.identity.workspace);}
     }
 

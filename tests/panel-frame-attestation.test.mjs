@@ -7,7 +7,6 @@ import {EventEmitter} from 'node:events';
 import {attestPanelFrames,inspectPanelFrames,validPanelAttestation,PANEL_ATTESTATION_SCRIPT} from '../src/execution/browser/panel-frame-attestation.mjs';
 import {BrowserSessions} from '../src/execution/browser/session-runtime.mjs';
 import {COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../src/contracts/backend.mjs';
-import {REOPEN_PANEL_COMMAND} from '../src/contracts/context.mjs';
 
 const here=import.meta.dirname;
 const id='0f8fad5b-d9cb-469f-a165-70867728950e';
@@ -31,7 +30,6 @@ test('real Electron attests only the panel frame of its own page; the main docum
     assert.deepEqual(result.reloaded,[{frame_instance_id:result.ids.reloaded}],'a reload discards the previous frame');
     assert.equal(result.unchanged,true);assert.equal(result.mutations,0);
     assert.equal(result.empty,'absent','ready new document with only an unrelated frame');
-    assert.deepEqual(result.recovery,{before:'absent',reopen:'submitted',after:'present',inputs:[REOPEN_PANEL_COMMAND]});
   });
 
 test('attestation validates the published value and skips the main, same-origin, detached and silent frames',async()=>{

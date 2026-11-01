@@ -51,9 +51,22 @@ export function installPageObserver(dom, send) {
     // Intermediate tool output can have an assistant ID while the model still owns the turn.
     // Only the response controls following this answer in its own turn count.
     const turn = assistant?.closest(dom.selectors.turn);
-    const assistantFinal = !!assistantId && lastMessageRole === 'assistant' && !!turn
+    const finishedControls = !!turn
       && [...turn.querySelectorAll(dom.selectors.finishedAction)].some(button =>
         !button.closest(dom.selectors.assistant + ',pre,code,blockquote') && (assistant.compareDocumentPosition(button) & 4));
+    // A real user bubble anywhere below the finished answer invalidates this proof.
+    let trailingWakeIds=[];
+    if(lastMessageRole==='user' && finishedControls && !dom.busy()){
+      const tail=users.filter(node=>assistant.compareDocumentPosition(node)&4);
+      if(tail.length<=32)for(const node of tail){
+        const bubble=node.querySelector(dom.selectors.userBubble)??node;
+        const text=normalize(bubble.innerText??bubble.textContent??'');
+        const id=text.match(/\{"message_id":"([0-9a-f-]{36})"\}/)?.[1];
+        if(!id || (text!==dom.wakeText(id) && text!==dom.wakeText(id,true))){trailingWakeIds=[];break;}
+        trailingWakeIds.push(id);
+      }
+    }
+    const assistantFinal=!!assistantId && lastMessageRole==='assistant' && finishedControls;
     if (editor !== editorIdentity) { editorIdentity = editor; editorRevision++; draftRevision++; }
     const button = dom.sendButton();
     const account = dom.account();
@@ -64,7 +77,7 @@ export function installPageObserver(dom, send) {
       writable: !!editor && !editor.disabled && !editor.readOnly && editor.getAttribute('contenteditable') !== 'false',
       connectionError: dom.connectionError(),
       busy: dom.busy(), sendEnabled: !!button && !button.disabled && button.getAttribute('aria-disabled') !== 'true',
-      manualStopRevision, manualInputRevision, assistantRevision: reportedAssistantRevision, turnId, userTurnId, turnIdentitySource, lastMessageRole, assistantFinal, draftPresent: !!editorText(editor),
+      manualStopRevision, manualInputRevision, assistantRevision: reportedAssistantRevision, turnId, userTurnId, turnIdentitySource, lastMessageRole, assistantFinal, trailingWakeIds, draftPresent: !!editorText(editor),
       turnVariant: dom.turnVariant ? dom.turnVariant(user) : 'unknown',
       manualSendRevision, draftRevision, userMessageCount: dom.messages('user').length, userMessagesRevision,
     };

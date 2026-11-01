@@ -449,6 +449,7 @@ export class AssignmentDialogue {
         c.event(run,'send.resolved',{message_id:message.message_id,evidence:'recipient-read-yield'});
       }
       c.event(run,'message.yielded',{message_id:message.message_id,participant_id:member.id,reason:input.reason});}
-    return {handled:messages.map(m=>m.message_id),physical_completion:false,instructions:INCOMING_WORK_RULE+'\nЭто квитанция обработки, не DONE и не подтверждение физической остановки. Завершите ответ после всей уже доступной разрешённой работы текущего поручения.'};
+    const pending_incoming=await c.pendingIncoming(run,member);
+    return {handled:messages.map(m=>m.message_id),pending_incoming,physical_completion:false,instructions:(pending_incoming.length?'Прочитайте оставшиеся pending_incoming в этом ходе. ':'')+INCOMING_WORK_RULE+'\nЭто квитанция обработки, не DONE и не подтверждение физической остановки. Завершите ответ после всей уже доступной разрешённой работы текущего поручения.'};
   }
 }

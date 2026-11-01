@@ -6,6 +6,11 @@ const hash=value=>createHash('sha256').update(value).digest('hex');
 const fail=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 const check=(value,code,message)=>{if(!value)throw fail(code,message);};
 const LEASE_MS=60000;
+const INBOX_WAKE_MS=60000;
+// A wake can advertise ordinary dialogue work. UI choices and bootstrap keep
+// their own admission, version and receipt rules.
+const batchable=m=>m.dialogue_version===1 && !m.ui_event && !['startup-context','user-choice','review'].includes(m.kind);
+
 const kinds=new Set(['assignment-start','continue','question','decision','result','integration','finalization','diagnostic','ready','recovery','user-choice','review']);
 // Only a receipt proves a stage. A persisted message (delivery:pending) is not
 // delivered: the agent must not report it as handed over to the recipient.
@@ -87,6 +92,18 @@ export class WorkflowChannel {
   observedOnly(run,member){return [...this.c.panels.values()].some(p=>p.runId===run.id&&p.memberId===member.id);}
   // Only the attested owner panel makes the delivery channel live; observers never do.
   livePanel(run,member){const {panel}=this.c.ownership.owner(run,member);return !!panel&&this.panelIssue(run,member,panel)===null;}
+  handledWakeTail(target,ids,observation){
+    const run=this.c.runs.get(workflowRunId(target));
+    if(!run?.grant?.active||!ids.length)return false;
+    return ids.every(id=>{
+      const message=run.messages.find(m=>m.message_id===id);
+      if(!message?.intent||!message.read||!message.yielded||message.cancelled
+          ||message.recipient_session_id!==target.local_session_id||message.scope_id!==run.grant.scope_id)return false;
+      const baseline=message.yielded.page;
+      return !observation || baseline?.documentId!==observation.documentId
+        || (observation.state.manualSendRevision??0)===(baseline?.manualSendRevision??0);
+    });
+  }
   progress(sessionId) {
     const c=this.c,target=c.enrollment.resolveTarget?.(sessionId);
     if(!target||c.removedSessions.has(sessionId))return null;
@@ -102,7 +119,8 @@ export class WorkflowChannel {
     const failed=run?.messages.find(m=>m.recipient_session_id===sessionId&&!m.read&&!m.superseded&&!m.cancelled&&['unknown','rejected'].includes(m.delivery));
     const incoming=failed
       ??(member&&this.first(run,member))
-      ??run?.messages.find(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id&&!communicationMessageComplete(m));
+      ??run?.messages.find(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id&&!m.yielded&&!communicationMessageComplete(m))
+      ??run?.messages.findLast(m=>m.recipient_session_id===sessionId&&m.scope_id===target.scope_id&&!communicationMessageComplete(m));
     const readAt=incoming&&run.events.findLast(e=>e.event_type==='message.read'&&e.message_id===incoming.message_id)?.server_time;
     const acceptedAt=incoming&&run.events.findLast(e=>e.event_type==='send.report'&&e.message_id===incoming.message_id&&e.outcome==='accepted')?.server_time;
     const gated=(member&&this.first(run,member))??failed;
@@ -117,7 +135,9 @@ export class WorkflowChannel {
     const draft=target.role==='E'&&Object.values(run?.assignment_intents??{}).findLast(i=>
       i.effect.assignment_id===target.assignment_id&&i.effect.scope_id===target.scope_id
       &&i.effect.kind==='task'&&!['published','retired','failed'].includes(i.phase));
-    return {registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
+    const finalReceipt=run?.messages.findLast(m=>m.recipient_session_id===sessionId && m.scope_id===target.scope_id
+      &&m.kind==='finalization'&&!m.superseded&&!m.cancelled);
+    return {...(finalReceipt?.read&&finalReceipt.yielded?{finalizationHandled:true}:{}),registered:!!member,sdk,permitted:!!member&&this.permitted(run,member),
       generation:member?.generation??null,blocked,
       ...(blocker?{blocker}:{}),
       ...(result?{result:{delivery:result.delivery,read:!!result.read}}:{}),
@@ -141,13 +161,36 @@ export class WorkflowChannel {
     return message.kind==='startup-context'?this.c.startup.active(run,member)
       :message.kind==='user-choice'||message.kind==='review'||this.permitted(run,member);
   }
+  coverIncoming(run,member,leader,ids){
+    if(!batchable(leader)||!leader.intent||leader.scope_id!==run.grant?.scope_id)return;
+    const until=this.c.now()+INBOX_WAKE_MS;
+    for(const m of run.messages)if(m!==leader && ids.has(m.message_id) && m.recipient_id===member.id
+        &&m.scope_id===leader.scope_id && batchable(m) && m.delivery==='pending'&&!m.read&&!m.intent&&!m.cancelled&&!m.superseded){
+      m.inbox_wake={id:leader.message_id,until,generation:member.generation};
+    }
+  }
+  wakeDeadline(run,member,message){
+    if(!batchable(message)||message.intent||message.scope_id!==run.grant?.scope_id)return 0;
+    const wake=message.inbox_wake,now=this.c.now();
+    for(const leader of run.messages){
+      if(!batchable(leader)||!leader.intent||leader.scope_id!==message.scope_id||leader.recipient_id!==member.id
+          ||leader.permission_generation!==member.generation||leader.yielded||leader.cancelled||leader.superseded
+          ||!['claimed','accepted'].includes(leader.delivery))continue;
+      if(wake?.id===leader.message_id&&wake.generation===member.generation&&wake.until>now)return wake.until;
+      // Arrivals before the first read are visible in its inbox. While work is
+      // underway, sibling results can wait for the next inbox read or yield.
+      const until=(leader.claimed_at??0)+INBOX_WAKE_MS;
+      if(until>now && (!leader.read||leader.kind==='result'&&message.kind==='result'))return until;
+    }
+    return 0;
+  }
   first(run,member){
     // Only a still-running or uncertain SDK effect occupies the transport lane.
     // Accepted/read/yield/assistant state never schedules a later notification.
     return run.messages.find(m=>m.recipient_id===member.id&&(m.delivery==='claimed'
         ||['unknown','rejected'].includes(m.delivery)&&m.notification_version!==1))
       ??run.messages.find(m=>m.recipient_id===member.id&&m.delivery==='pending'&&!m.read&&!m.superseded&&m.delivery_mode!=='model-pull'
-        &&this.messagePermitted(run,member,m)
+        &&this.messagePermitted(run,member,m)&&!this.wakeDeadline(run,member,m)
         &&(['startup-context','user-choice','review'].includes(m.kind)||m.scope_id===run.grant?.scope_id))
       ??run.messages.find(m=>m.recipient_id===member.id&&this.retryEligible(run,member,m));
   }
@@ -159,6 +202,10 @@ export class WorkflowChannel {
   retryDelay(run,member){
     const delays=run.messages.filter(m=>m.recipient_id===member.id&&this.messagePermitted(run,member,m))
       .map(m=>notificationRecovery(m,this.c.now())).filter(r=>r?.retrying&&r.due_at>this.c.now()).map(r=>r.due_at-this.c.now());
+    for(const m of run.messages)if(m.recipient_id===member.id && m.delivery==='pending' && !m.read){
+      const until=this.wakeDeadline(run,member,m);
+      if(until)delays.push(until-this.c.now());
+    }
     return Math.min(this.c.freshness.holdDelay(member.target),...delays);
   }
   attach(run,member) {
@@ -324,6 +371,8 @@ export class WorkflowChannel {
       assistantRevision:page.assistantRevision??0,userMessagesRevision:page.userMessagesRevision??0};
   }
   async observed(run,member) {
+    let snapshot;
+    const sample=()=>snapshot??=this.reconcile(member.target);
     // Retire only saved legacy UI gates whose own delivery is confirmed.
     // Never manufacture reply.observed: the model may still be answering.
     const uiGate=member.deliveryGate&&run.messages.find(m=>m.message_id===member.deliveryGate.message_id);
@@ -338,7 +387,7 @@ export class WorkflowChannel {
       const baseline=message.yielded.page;
       if(!baseline)continue;
       const gate=message.handlingGate??={documentId:baseline.documentId,observationSeq:baseline.observationSeq??0};
-      await this.observeDialogue(run,member,message,gate,true);
+      await this.observeDialogue(run,member,message,gate,sample,true);
     }
     // Migrate the old single handling gate in memory; never replay its SDK.
     if(member.deliveryGate){
@@ -349,7 +398,7 @@ export class WorkflowChannel {
     }
     for(const message of this.handledMessages(run,member)){
       if(message.dialogue_version===1){
-        if(message.yielded)await this.observeDialogue(run,member,message,message.handlingGate);
+        if(message.yielded)await this.observeDialogue(run,member,message,message.handlingGate,sample);
         continue;
       }
       const gate=message.handlingGate,page=this.observe(member.target);
@@ -362,13 +411,16 @@ export class WorkflowChannel {
     }
   }
   directlyHandled(run,member){
-    return run.messages.filter(m=>m.recipient_id===member.id&&m.scope_id===run.grant?.scope_id
-      &&m.dialogue_version===1&&m.delivery==='pending'&&!m.intent&&m.read&&m.yielded&&!m.reply_observed&&!m.superseded);
+    return run.messages.filter(m=>this.directlyHandledMessage(run,member,m));
+  }
+  directlyHandledMessage(run,member,m){
+    return m.recipient_id===member.id&&m.scope_id===run.grant?.scope_id
+      &&m.dialogue_version===1&&m.delivery==='pending'&&!m.intent&&m.read&&m.yielded&&!m.reply_observed&&!m.superseded;
   }
   handledMessages(run,member){return run.messages.filter(message=>message.handlingGate
     &&message.recipient_id===member.id&&message.scope_id===run.grant?.scope_id&&(message.delivery==='accepted'||message.resolved_by_read)
     &&(message.read||message.superseded_read)&&!message.reply_observed);}
-  async observeDialogue(run,member,message,gate,direct=false){
+  async observeDialogue(run,member,message,gate,sample,direct=false){
     if(!this.permitted(run,member)||!(message.read||message.superseded_read)||!message.yielded
       ||(!direct&&message.delivery!=='accepted'&&!message.resolved_by_read))return;
     try{await this.c.enrollment.validate(member.target);}catch(error){
@@ -378,12 +430,12 @@ export class WorkflowChannel {
         ||message.assignment_id!==member.target.assignment_id||message.scope_id!==member.target.scope_id||!this.c.verifyTerminal
         ||!await this.c.verifyTerminal(member.target,message))throw error;
     }
-    const page=await this.reconcile(member.target);
+    const page=await sample();
     let baseline=gate.restoredBaseline??message.yielded.page;
     // The backend page reloaded this conversation itself: confirm the end of
     // the turn on the new document by two idle observations at least 2 s apart.
     if(page&&baseline&&!gate.restoredBaseline&&this.c.freshness.transferable(baseline.documentId,page)){
-      const ready=page.stopped&&!page.busy&&page.canSend&&page.commandsIdle&&page.lastMessageRole==='assistant'&&page.turnIdentitySource==='native';
+      const ready=page.stopped&&!page.busy&&page.canSend&&page.commandsIdle&&(page.lastMessageRole==='assistant'&&page.turnIdentitySource==='native'||page.handledWakeTail===true);
       const signature=JSON.stringify([page.documentId,page.turnId,page.assistantRevision]);
       if(!ready){delete gate.rebase;
         if(gate.wait_reason!=='rebase-waiting'){gate.wait_reason='rebase-waiting';this.c.event(run,'turn.waiting',{message_id:message.message_id,reason:'rebase-waiting'});}
@@ -438,24 +490,35 @@ export class WorkflowChannel {
   }
   syncProbes(run){
     if(this.c.disposed)return;
-    const eligible=new Map(Object.values(run.members).flatMap(member=>{
-      const gate=member.deliveryGate,message=run.messages.find(m=>m.message_id===gate?.message_id);
-      return [...(message?.kind!=='user-choice'&&this.permitted(run,member)&&message?.dialogue_version===1&&message.yielded&&!message.reply_observed
-        ?[[message.message_id,member]]:[]),
-        ...(this.permitted(run,member)?[...this.directlyHandled(run,member),...this.handledMessages(run,member).filter(m=>m.dialogue_version===1&&m.yielded)].map(m=>[m.message_id,member]):[])];
-    }));
-    for(const [id,p] of this.turnProbes)if(p.runId===run.id&&!eligible.has(id)){clearTimeout(p.timer);this.turnProbes.delete(id);}
-    for(const [id] of eligible){
-      let p=this.turnProbes.get(id);if(p?.timer||p?.exhausted)continue;
-      if(!p){p={runId:run.id,count:0,timer:null};this.turnProbes.set(id,p);}
-      p.timer=setTimeout(async()=>{
-        p.count++;p.exhausted=p.count>=120;
-        try{await this.c.mutate('observed',{run_id:run.id,message_id:id});
-          if(p.exhausted)await this.c.mutate('turnTimeout',{run_id:run.id,message_id:id});
-        }catch{/* Identity/removal failures never authorize a new delivery. */}
-        p.timer=null;
-        if(!this.c.disposed){const current=this.c.runs.get(run.id);if(current)this.syncProbes(current);}
-      },1000);p.timer.unref?.();
+    const eligible=new Map();
+    for(const member of Object.values(run.members)){
+      if(!this.permitted(run,member))continue;
+      const ids=run.messages.filter(m=>m.recipient_id===member.id && m.dialogue_version===1 && m.yielded
+        && !m.reply_observed && (m.handlingGate || this.directlyHandledMessage(run,member,m) || member.deliveryGate?.message_id===m.message_id))
+        .map(m=>m.message_id);
+      if(ids.length)eligible.set(member.id,ids);
+    }
+    for(const [id,probe] of this.turnProbes)if(probe.runId===run.id && !eligible.has(id)){
+      clearTimeout(probe.timer);this.turnProbes.delete(id);
+    }
+    for(const [id,ids] of eligible){
+      const member=run.members[id];
+      let probe=this.turnProbes.get(id);
+      if(!probe){probe={runId:run.id,count:0,timer:null};this.turnProbes.set(id,probe);}
+      const newest=ids.at(-1);
+      if(probe.newest!==newest){probe.newest=newest;probe.count=0;}
+      if(probe.timer)continue;
+      probe.timer=setTimeout(async()=>{
+        probe.count++;
+        try{
+          await this.c.mutate('observed',{run_id:run.id,session_id:member.target.local_session_id});
+          if(probe.count===120)for(const message_id of ids)await this.c.mutate('turnTimeout',{run_id:run.id,message_id});
+        }catch{/* A failed observation never authorizes delivery. */}
+        probe.timer=null;
+        const current=this.c.runs.get(run.id);
+        if(current&&!this.c.disposed)this.syncProbes(current);
+      },probe.count>=120?30000:1000);
+      probe.timer.unref?.();
     }
   }
   timeout(input){

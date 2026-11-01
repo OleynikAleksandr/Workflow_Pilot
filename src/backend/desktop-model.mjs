@@ -448,7 +448,7 @@ function workProgressView(workspace,fresh=null) {
     const origin=project.planExecution?.execution_origin_session_id;
     if(activity.phase==='attention')warn(activity.label,activity.reason,null,activity.userAction??activity.reason);
     else now.push({actor,text:activity.label,reason:activity.reason,stage:activity.phase,recipient:activity.recipient,
-      key:activity.key,priority:activity.priority,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:activity.elapsedMs});
+      key:activity.key,priority:activity.priority,kind:stageKind(activity.phase,{busy:['processing','final'].includes(activity.phase)}),elapsedMs:['acceptance','complete'].includes(activity.phase)?null:activity.elapsedMs});
   }
   for(const task of tasks.filter(t=>['current','attention'].includes(t.status))){
     const own=executors.find(e=>e.taskId===task.id),kit=kitLabel(task.id);
@@ -488,7 +488,7 @@ function workProgressView(workspace,fresh=null) {
   const done=tasks.filter(t=>t.status==='done').length,allDone=tasks.length>0&&done===tasks.length;
   const started=tasks.some(t=>t.status!=='pending');
   const [phase,busy]=planPhase({scope,starting:startingNow,acting:now.some(i=>i.kind==='act'),attention:!!attention,allDone,started,
-    complete:!!scope&&(run.complete||project.planView?.state==='awaiting-acceptance'),
+    complete:!!scope&&(run.complete||run.activity?.phase==='acceptance'||project.planView?.state==='awaiting-acceptance'),
     paused:orchestrated&&['paused','pausing'].includes(run?.state),notStarted:run?.state==='not-started',
     preparing:orchestrated&&view.phase==='preparing',running:run?.state==='running',planning:!!project.executionMode?.strategy,
     review,choice:offered.length>0});
@@ -1683,7 +1683,7 @@ async function start() {
         void syncSelectedSessionTitle({force:true,reason:'topic-title-changed'});
     },communicationStore,workProgress:workProgressFor,
       userChoice:sessionId=>workflow.userChoices.view(sessionId),choose:input=>workflow.userChoices.choose(input),
-      observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,reload:workflow.reloadParticipant,reopen:workflow.reopenParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,journal,
+      observe:workflow.observeParticipant,admit:workflow.admitParticipant,reconcile:workflow.reconcileParticipant,attest:workflow.attestParticipant,reload:workflow.reloadParticipant,currentMessage:workflow.currentMessage,onCommunicationChange:workflow.communicationChanged,journal,
       ...(smoke?{loadContext:workspace=>runtime.loadContext(workspace)}:{})});
     await plugin.communication.ready;
   }

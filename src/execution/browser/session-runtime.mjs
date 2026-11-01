@@ -107,14 +107,6 @@ export class BrowserSessions {
         return record.navigationOwner === null;
       },
       hasFilled: requestId => composer.hasFilled(requestId),
-      reopenPanel: ({text,chatUrl,documentId,canContinue,onBeforeEnter}) => {
-        assertOpen();
-        const epoch=record.epoch, version=record.preparationVersion;
-        const current=()=>!record.disposed && !record.loading && !record.crashed && !record.navigationOwner
-          && record.epoch===epoch && record.preparationVersion===version && source.current?.documentId===documentId
-          && contents.getURL()===chatUrl && canContinue();
-        return composer.submitStartup({text,expectedUrl:chatUrl,canContinue:current,onBeforeEnter});
-      },
       inspect: args => call('inspect', args),
       observeSnapshot: async () => {
         const epoch = record.epoch, message = await call('observeSnapshot');

@@ -313,7 +313,7 @@ test('communication MCP contracts reject missing identity, wrong binding and sta
   assert.match(tools.find(t=>t.name==='workflow_communication_enable').description,/Working plans reject Enable/);
   const checkTool=tools.find(t=>t.name==='workflow_panel_check');
   assert.deepEqual(checkTool._meta.ui.visibility,['model']);assert.match(checkTool.description,/open_here=true/);
-  assert.deepEqual(Object.keys(checkTool.inputSchema.properties??{}),[]);
+  assert.deepEqual(Object.keys(checkTool.inputSchema.properties??{}),['turn_number']);
   const anonymous=await c.callTool({name:'workflow_panel_check',arguments:{}});
   assert.equal(anonymous.structuredContent.error.code,'PLUGIN_COMMUNICATION_IDENTITY_REQUIRED');
   assert.match(tools.find(t=>t.name==='workflow_communication_stop').description,/whole plan/);

@@ -276,3 +276,13 @@ test('server-page delivery waits are neutral; draft, unavailable page and branch
   assert.equal(assignmentStage({dialogue:{grant:{}},channel:{...connected,incoming:{read:false,reason:'freshness-conflict-draft'}}}).phase,'attention');
   assert.equal(assignmentStage({dialogue:{grant:{}},channel:{...connected,incoming:{read:false,reason:'freshness-reload'}}}).phase,'waiting');
 });
+
+test('handled finalization and all integrated clean assignments outrank old handled turn timers',()=>{
+  const execution={planView:{tasks:[{id:'T002',status:'done'},{id:'DOCS',status:'done'}]},
+    assignments:[{status:'INTEGRATED',cleanup:{status:'DONE'}}],integration:{status:'IDLE'}};
+  const channel={finalizationHandled:true,incoming:{kind:'result',task_id:'T002',read:true,handled:true}};
+  const activity=()=>planActivity({run:{state:'running'},execution,channel});
+  assert.equal(activity().phase,'acceptance');assert.match(activity().label,/2 из 2/);
+  execution.assignments[0].cleanup.status='PENDING';assert.notEqual(activity().phase,'acceptance');
+  execution.assignments[0].cleanup.status='DONE';channel.finalizationHandled=false;assert.notEqual(activity().phase,'acceptance');
+});

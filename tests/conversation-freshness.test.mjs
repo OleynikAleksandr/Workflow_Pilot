@@ -71,15 +71,17 @@ test('a stale document defers the claim without an attempt, reloads the chat onc
   assert.equal((await f.c.claimReady({...b,message_id:second.message_id})).reason,'freshness-reload');
 });
 
-test('a busy or recently observed document delivers at once; q never appears and accepted lets the next one go',async t=>{
+test('fresh documents deliver one wake for the inbox and busy pages admit the next independent wake',async t=>{
   const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind('o');
   const first=await queue(f.c,f.o,'one');
   const ticket=await f.c.claimReady({...b,message_id:first.message_id});assert.ok(ticket.delivery_attempt_id);
   await f.c.report({...b,...ticket,outcome:'accepted'});
-  // Accepted lets the next pending go at once in the same fresh document.
   const next=await queue(f.c,f.o,'next');
-  const following=await f.c.claimReady({...b,message_id:next.message_id});assert.ok(following.delivery_attempt_id);
-  await f.c.report({...b,...following,outcome:'accepted'});
+  assert.equal((await f.c.claimReady({...b,message_id:next.message_id})).deferred,true);
+  const read=await f.c.readMessage({metadata:meta('o'),message_id:first.message_id});
+  assert.ok(read.pending_incoming.some(m=>m.message_id===next.message_id));
+  await f.c.readMessage({metadata:meta('o'),message_id:next.message_id});
+  assert.equal(attempts(f,b),1,'both reads are served by the same SDK wake');
   f.advance(FRESH_DOCUMENT_MS*2);f.page('o').busy=true;b=await f.rebind({run_id:b.run_id,participant_id:b.participant_id},'o');
   const second=await queue(f.c,f.o,'two');
   assert.ok((await f.c.claimReady({...b,message_id:second.message_id})).delivery_attempt_id,'busy shows the current turn');
@@ -289,4 +291,16 @@ test('a branched conversation after a service delivery pauses the plan; Continue
   delete member.branch_conflict;const plain={...run(f,b).messages.at(-1),intent:true};
   f.c.freshness.turnEnded(run(f,b),member,plain,{...p,turnVariant:'unknown'});
   assert.equal(member.branch_conflict,undefined);assert.equal(plain.variant_unknown,true);
+});
+
+test('unread wake cannot strand the next addressed ID after the coalescing window',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);let b=await f.bind('o');
+  const first=await queue(f.c,f.o,'first'),second=await queue(f.c,f.o,'second');
+  const ticket=await f.c.claimReady({...b,message_id:first.message_id});
+  await f.c.report({...b,...ticket,outcome:'accepted'});
+  assert.equal((await f.c.claimReady({...b,message_id:second.message_id})).deferred,true);
+  f.advance(60001);f.page('o').busy=true;b=await f.rebind({run_id:b.run_id,participant_id:b.participant_id},'o');
+  assert.ok((await f.c.claimReady({...b,message_id:second.message_id})).delivery_attempt_id);
+  assert.equal(attempts(f,b),2);
+  assert.equal(run(f,b).messages[0].read,false);
 });

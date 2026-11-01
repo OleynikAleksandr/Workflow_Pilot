@@ -1,3 +1,4 @@
+import {workflowWakeText} from '../src/contracts/workflow-wake.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
@@ -340,4 +341,18 @@ test('the observer reports a variant switch of the newest user turn, read only',
   assert.equal(empty.state().turnVariant, 'unknown');
   assert.equal(normalizePageObservation({ version: 1, documentId: 'document-0001', seq: 1, state: { url: '', editorRevision: 0, draftRevision: 0,
     userMessageCount: 0, userMessagesRevision: 0, editorAvailable: false, writable: false, busy: false, sendEnabled: false, turnVariant: 'forged' } }).state.turnVariant, 'unknown');
+});
+
+test('finished answer followed by old and new Pilot notices preserves exact addressed IDs only',async t=>{
+  const ids=['11111111-1111-4111-a111-111111111111','22222222-2222-4222-a222-222222222222'];
+  const f=await accountFixture(t,'<article><div data-message-author-role="assistant">Ready</div><button data-testid="copy-turn-action-button"></button></article>');
+  const add=async text=>{
+    const el=f.w.document.createElement('div');el.dataset.messageAuthorRole='user';el.textContent=text;
+    f.w.document.body.append(el);await turn();
+  };
+  await add(workflowWakeText(ids[0],true));await add(workflowWakeText(ids[1]));
+  assert.equal(f.state().lastMessageRole,'user');
+  assert.deepEqual([...f.state().trailingWakeIds],ids);
+  await add('My next task');await add(workflowWakeText(ids[1]));
+  assert.deepEqual([...f.state().trailingWakeIds],[]);
 });

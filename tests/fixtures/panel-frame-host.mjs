@@ -1,6 +1,6 @@
 // Disposable Chromium process: local HTTPS pages with nested cross-origin frames.
 // No user profile, ChatGPT, plugin or OS window control.
-import {app,BrowserWindow,session} from 'electron';
+import {app,BrowserWindow} from 'electron';
 import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import os from 'node:os';
@@ -8,8 +8,6 @@ import path from 'node:path';
 import https from 'node:https';
 import {attestPanelFrames,inspectPanelFrames} from '../../src/execution/browser/panel-frame-attestation.mjs';
 import {COMMUNICATION_BUILD,COMMUNICATION_PROTOCOL} from '../../src/contracts/backend.mjs';
-import {ChatGPTComposer} from '../../src/execution/browser/chatgpt-composer.mjs';
-import {REOPEN_PANEL_COMMAND} from '../../src/contracts/context.mjs';
 
 const root=mkdtempSync(path.join(os.tmpdir(),'wp-panel-frames-'));
 app.setPath('userData',root);app.setPath('sessionData',path.join(root,'session'));
@@ -44,25 +42,6 @@ async function loaded(window,url){
   for(let i=0;i<100;i++){if(window.webContents.mainFrame.framesInSubtree.length>=6)break;await new Promise(r=>setTimeout(r,50));}
   await new Promise(r=>setTimeout(r,200));
 }
-async function recoveryInExistingChat(){
-  const partition=session.fromPartition('panel-recovery-fixture'),url='https://chatgpt.com/c/test-recovery';
-  const html='<!doctype html><article data-message-author-role="user">Previous turn</article><form><textarea id="prompt-textarea"></textarea><button type="button" data-testid="send-button">Send</button></form>'
-    +'<script>window.inputs=[];document.querySelector("textarea").onkeydown=e=>{if(e.key!=="Enter"||!e.isTrusted)return;e.preventDefault();inputs.push(e.target.value);e.target.value="";const frame=document.createElement("iframe");frame.src="https://panel.test/view";document.body.append(frame);};</script>';
-  // Own both origins in this disposable partition: no request reaches ChatGPT.
-  partition.protocol.handle('https',request=>new Response(request.url===url?html:'<!doctype html>'+publish(ids.reloaded),{headers:{'Content-Type':'text/html'}}));
-  const win=new BrowserWindow({show:false,webPreferences:{session:partition,sandbox:true,contextIsolation:true,nodeIntegration:false}});
-  try{
-    const wc=win.webContents;await wc.loadURL(url);wc.debugger.attach('1.3');
-    const documentId='fixture-existing-chat';
-    await wc.executeJavaScriptInIsolatedWorld(999,[{code:`globalThis.__webPilotObserverDocumentId=${JSON.stringify(documentId)}`}]);
-    const composer=new ChatGPTComposer(wc,{pageState:{current:{documentId}}});
-    const before=(await inspectPanelFrames(wc)).presence;
-    const reopen=await composer.submitStartup({text:REOPEN_PANEL_COMMAND,expectedUrl:url,onBeforeEnter:async()=>(await inspectPanelFrames(wc)).presence==='absent'});
-    let after;
-    for(let n=0;n<40;n++){after=(await inspectPanelFrames(wc)).presence;if(after==='present')break;await new Promise(r=>setTimeout(r,50));}
-    return {before,reopen:reopen.state,after,inputs:await wc.executeJavaScript('window.inputs')};
-  }finally{win.destroy();partition.protocol.unhandle('https');}
-}
 async function run(){
   const server=https.createServer(certificate(),(req,res)=>{
     const url=new URL(req.url,'https://localhost'),page=pages[url.pathname];
@@ -84,8 +63,7 @@ async function run(){
   const frames=first.webContents.mainFrame.framesInSubtree.length;
   await first.loadURL(`https://127.0.0.1:${port}/no-panel`);
   const empty=(await inspectPanelFrames(first.webContents)).presence;
-  const recovery=await recoveryInExistingChat();
-  report({ids,frames,attested,other,reloaded,empty,recovery,
+  report({ids,frames,attested,other,reloaded,empty,
     unchanged:before.html===after.html,mutations:after.mutations-before.mutations});
   server.close();first.destroy();second.destroy();
 }

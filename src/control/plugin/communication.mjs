@@ -5,7 +5,6 @@ import {AssignmentDialogue} from './assignment-dialogue.mjs';
 import {StartupContext,STARTUP_INSTRUCTIONS} from './startup-context.mjs';
 import {ASSIGNMENT_DIALOGUE_VERSION,notificationRecovery,sdkDiagnostic,deliveryObserverError} from '../../contracts/plugin-communication.mjs';
 import {DeliveryOwnership} from './delivery-ownership.mjs';
-import {PanelRecovery} from './panel-recovery.mjs';
 import {ConversationFreshness} from './conversation-freshness.mjs';
 import {IdentityTrace} from './identity-trace.mjs';
 import {ROLE_PROTOCOL_VERSION,roleUpdate,USER_EVENT_RULE,NOTIFICATION_RULE,INCOMING_WORK_RULE} from '@webpilot/workflow-kit/lib/role-protocol';
@@ -40,7 +39,7 @@ const SDK_VERSIONS={ext_apps:'1.7.5',mcp_extensions:'0.2.0',mcp:'1.32.1'};
 // Control owns the protocol. Every acknowledged mutation follows the adapter's
 // durable transaction. Readers and waiters see only committed state.
 export class PluginCommunication {
-  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,reload=null,reopen=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null,journal=null}={}) {
+  constructor({now=Date.now,uuid:makeId=randomUUID,waitMs=25000,store=null,resolveTarget=null,verifyTarget=null,verifyTerminal=null,observe,admit,reconcile,currentMessage,attest=null,reload=null,dialogueKit=null,onChange=()=>{},workProgress=null,userChoice=null,choose=null,journal=null}={}) {
     Object.assign(this,{now,makeId,waitMs,store,onChange,workProgress,userChoice,chooseOption:choose});
     this.runs=new Map();this.panels=new Map();this.waiters=new Map();this.probes=new Map();
     this.removedSessions=new Set();
@@ -53,7 +52,6 @@ export class PluginCommunication {
     this.identities=new IdentityTrace({now,journal});
     this.assignment=new AssignmentDialogue(this,dialogueKit);
     this.startup=new StartupContext(this);
-    this.panelRecovery=new PanelRecovery(this,{attest,reopen});
     this.ready=this.restore();
   }
   async restore() {
@@ -268,7 +266,6 @@ export class PluginCommunication {
   _assignmentMigrated(input){return this.assignment.migrated(input);}
   async _sync(input){
     const value=await this.workflow.sync(input),{run,member}=this.member(input);
-    if(run.mode==='workflow')this.panelRecovery.bound(run,member,this.panels.get(input.panel_instance_id));
     return run.mode==='workflow'&&value&&typeof value==='object'?{...value,work_progress:this.progressOf(member)}:value;
   }
   // The project-wide progress projection, the same for O, E and S; raw messages keep their own visibility.
@@ -376,11 +373,21 @@ export class PluginCommunication {
   }
   async panelCheck(input){
     const binding=await this.modelInput({metadata:input.metadata,trace_source:'panel-check'});
-    await this.enrollment.validateInput(binding);
-    return this.panelRecovery.check(binding.run_id,binding.participant_id,'agent');
+    return this.mutate('panelCadence',{...binding,turn_number:input.turn_number});
   }
-  _panelReopenClaim(input){return this.panelRecovery.claim(input);}
-  _panelReopenRelease(input){this.panelRecovery.release(input);}
+  _panelCadence(input){
+    const {run,member}=this.member(input),turn=input.turn_number;
+    const last=member.panel_refresh_turn??0;
+    const next=last?last+4:4;
+    const enabled=run.mode==='workflow'&&!run.removed&&!member.removed&&['O','E'].includes(member.role)
+      &&(!run.grant?member.role==='O':run.grant.phase==='running'&&this.workflow.permitted(run,member));
+    if(turn==null||!enabled)return {open_here:false,next_turn:next};
+    requireValue(Number.isSafeInteger(turn)&&turn>=1&&turn<=1000000,'INPUT','Укажите порядковый номер хода с начала этой сессии.');
+    if(turn<next)return {open_here:false,next_turn:next};
+    member.panel_refresh_turn=turn;
+    this.event(run,'panel.refresh_due',{participant_id:member.id,turn_number:turn});
+    return {open_here:true,next_turn:turn+4};
+  }
   _startupStage(input){return this.startup.staged(input);}
   _startupOpen(input){return this.startup.open(input);}
   async startupOpen(input){return this.mutate('startupOpen',await this.modelInput(input));}
@@ -457,7 +464,6 @@ export class PluginCommunication {
     this.ownership.bound(this.panels.get(input.panel_instance_id),input);
     if(run.mode==='workflow'){const panel=this.panels.get(input.panel_instance_id);panel.generation=member.generation;panel.expiresAt=this.now()+60000;}
     this.event(run,'binding.confirmed',{participant_id:member.id,panel_instance_id:input.panel_instance_id});
-    if(run.mode==='workflow')this.panelRecovery.bound(run,member,this.panels.get(input.panel_instance_id));
     return this._status(input);
   }
   _status(input) {
@@ -470,7 +476,6 @@ export class PluginCommunication {
       startup:startup?{...startup,launch:this.workflow.observe(member.target)?.startupLaunch??null}:null,
       ...(run.mode==='workflow'?this.choiceOf(run,member):{}),
       ...(run.mode==='workflow'?{permission:this.workflow.state(run),channel_ready:this.workflow.livePanel(run,member)}:{}),
-      ...(member.panel_reopen?{panel_reopen:{source:member.panel_reopen.source,at:member.panel_reopen.at}}:{}),
       ...this.deliveryOf(run,member,input.panel_instance_id),
       storage:this.store?'durable':'memory',critical_error:this.critical,recovery_issues:this.recoveryIssues.filter(i=>!i.run_id||i.run_id===run.id),
       expires_at:expiresAt,
@@ -746,9 +751,10 @@ export class PluginCommunication {
     if(message.notification_version===1&&message.intent&&['unknown','rejected'].includes(message.delivery))message.resolved_by_read=true;
     if(run.mode==='workflow')await this.workflow.observed(run,member);
     const pending_incoming=await this.pendingIncoming(run,member);
+    if(!message.yielded)this.workflow.coverIncoming(run,member,message,new Set(pending_incoming.map(m=>m.message_id)));
     if(message.yielded)return {message_id:message.message_id,already_handled:true,pending_incoming,
       instructions:'Это сообщение уже обработано. Не повторяйте команды, task:start, result или интеграцию. Прочитайте pending_incoming, если есть новые входящие.\n'+INCOMING_WORK_RULE};
-    const {idempotency_key,fingerprint,read_page,handlingGate,notification_attempts,...value}=message;
+    const {idempotency_key,fingerprint,read_page,handlingGate,inbox_wake,notification_attempts,...value}=message;
     return {...structuredClone(value),...(run.mode==='workflow'?{pending_incoming,role_protocol:ROLE_PROTOCOL_VERSION,
       instructions:(message.ui_event?.type==='review-continuation'?'Проверьте review:status и выполните оставшийся шаг автора. Для этого напоминания достаточно чтения.\n'+INCOMING_WORK_RULE
         :message.ui_event?USER_EVENT_RULE+'\n'+NOTIFICATION_RULE+'\n'+INCOMING_WORK_RULE:message.kind==='user-choice'&&message.recipient_role?roleUpdate(message.recipient_role)
@@ -759,6 +765,8 @@ export class PluginCommunication {
     const pending=[];
     if(run.mode==='workflow')for(const m of run.messages){
       if(m.recipient_id===member.id&&!m.read&&!m.superseded&&!m.cancelled&&m.kind!=='startup-context'
+        &&this.workflow.messagePermitted(run,member,m)
+        &&(['user-choice','review'].includes(m.kind)||m.scope_id===run.grant?.scope_id)
         &&await this.workflow.currentMessage(member.target,m))pending.push({message_id:m.message_id,kind:m.kind});
       if(pending.length>=32)break;
     }
@@ -881,6 +889,6 @@ export class PluginCommunication {
           .map(({seq,panel_instance_id,from,to})=>({seq,panel_instance_id,from,to})),critical_error:this.critical,
         // O also sees the identity records of this boot within its run interval.
         ...(member.role==='O'?{identity:this.identities.since(run.events[0]?.server_time)}:{})}};}
-  dispose(){this.disposed=true;this.panelRecovery.dispose();this.workflow.dispose();for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
+  dispose(){this.disposed=true;this.workflow.dispose();for(const probe of this.probes.values())clearTimeout(probe.timer);this.probes.clear();for(const w of this.waiters.values())w.wake('cancel');}
 }
 for(const name of MUTATIONS)PluginCommunication.prototype[name]=function(input){return this.mutate(name,input);};

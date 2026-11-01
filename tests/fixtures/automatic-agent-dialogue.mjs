@@ -363,13 +363,20 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
       }else if(message.kind==='result'){
         const results=[message];
         if(batchResults&&independent.includes(message.task_id)){
-          const sibling=()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
-            .find(m=>m.kind==='result'&&independent.includes(m.task_id)&&m.message_id!==message.message_id);
-          await wait(()=>sibling(),'second result queued while O handles first');
-          assert.ok(['pending','claimed','accepted'].includes(sibling().delivery),'SDK may already have accepted the second notification');
-          const other=await call('read_message',{message_id:sibling().message_id});
+          let sibling;
+          await wait(async()=>{
+            sibling=(await roster()).pending_incoming.find(m=>m.kind==='result'&&m.message_id!==message.message_id);
+            return !!sibling;
+          },'second result visible in the recipient inbox');
+          const other=await call('read_message',{message_id:sibling.message_id});
           results.push(other);handled.push(other.message_id);
           notifications.push({...other,sessionId:project.sessionId,directRead:true});
+        }else if(preplan){
+          for(const item of message.pending_incoming.filter(m=>m.kind==='result')){
+            const other=await call('read_message',{message_id:item.message_id});
+            results.push(other);handled.push(other.message_id);
+            notifications.push({...other,sessionId:project.sessionId,directRead:true});
+          }
         }
         for(const result of results){
           assert.equal(result.sender_role,'E');
@@ -736,11 +743,13 @@ export async function automaticDialogue(t,{owned=false,conversation=false,worker
     releaseWorkers();
     const results=()=>[...plugin.communication.runs.values()].flatMap(r=>r.messages)
       .filter(m=>m.kind==='result'&&independent.includes(m.task_id));
-    await wait(()=>results().length===2&&results().every(m=>m.delivery==='accepted'),'both SDK results accepted during original busy turn and active command');
+    await wait(()=>results().length===2&&results().some(m=>m.delivery==='accepted'),
+      'both results durable and one SDK wake accepted while O is busy');
     assert.ok(results().every(m=>!m.read),'host has not started queued processing');
-    assert.ok(results().every(m=>busyNotifications.some(n=>n.id===m.message_id)));
+    assert.equal(results().filter(m=>m.delivery==='accepted').length,1);
+    assert.equal(results().filter(m=>busyNotifications.some(n=>n.id===m.message_id)).length,1);
     await fs.writeFile(commandFile,JSON.stringify({...commandBarrier,state:'completed',exit_code:0}));
-    releaseChoice();await wait(()=>results().every(m=>m.read),'host processes its accepted queue after original turn');
+    releaseChoice();await wait(()=>results().every(m=>m.read),'one host wake drains both addressed results after original turn');
     const target=await plugin.participantTarget(origin.sessionId);
     scopedChoice=await plugin.communication.workflow.enqueue(target,{key:'scope-bound-ui-proof',kind:'user-choice',
       text:'Сохранённое решение для текущего плана',role:'orchestrator'});

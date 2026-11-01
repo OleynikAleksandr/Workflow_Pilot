@@ -5,7 +5,6 @@ import {reviewTurnEnded} from './review-continuation.mjs';
 import {currentSignal} from '@webpilot/workflow-kit/lib/signal-state';
 import {startupLaunch,startupAttempt,STARTUP_TRANSPORT} from '../../contracts/startup-view.mjs';
 import {normalizeChatUrl} from '../../contracts/browser.mjs';
-import {REOPEN_PANEL_COMMAND} from '../../contracts/context.mjs';
 import {communicationMessageComplete} from '../../contracts/plugin-communication.mjs';
 const startupFailure=(code,message)=>Object.assign(new Error(message),{code:'PLUGIN_COMMUNICATION_'+code});
 
@@ -72,9 +71,16 @@ export class DialogueDelivery {
   uses(project){return !!project&&this.route(project.parentWorkspace??project.workspace,project.parentScopeId??project.scopeId)==='plugin-v1';}
   owned(project){return !!project&&this.store.project(project.parentWorkspace??project.workspace)?.planExecution?.dialogue_version===1;}
   project(sessionId){const p=this.store.snapshot().projects.find(p=>p.sessions.some(s=>s.sessionId===sessionId));return p&&this.store.project(p.workspace,sessionId);}
+  physical(project,record=this.record(project)){
+    const tail=record?.pageState?.current?.state?.trailingWakeIds;
+    const communication=tail?.length && project && this.getPlugin()?.communication;
+    const target=communication?.enrollment?.resolveTarget?.(project.sessionId);
+    const handledWakeTail=!!target && communication.workflow.handledWakeTail(target,tail,record.pageState.current);
+    return {...executorPageState(record,{handledWakeTail}),handledWakeTail};
+  }
   observe(target){
     const project=this.project(target.local_session_id),record=this.record(project),page=record?.pageState?.current;
-    const physical=executorPageState(record);
+    const physical=this.physical(project,record);
     return {...physical,legacySendUnknown:physical.legacySendUnknown||!!this.legacyUnknown(project),startupLaunch:startupLaunch(project?.attempt,Date.now(),{
       chatUrl:project?.chatUrl,currentUrl:page?.documentId?page.state?.url:undefined}),draftPresent:!!page?.state?.draftPresent,documentId:page?.documentId??null,
       observationSeq:page?.seq??0,
@@ -95,15 +101,6 @@ export class DialogueDelivery {
   async attest(target){
     const record=this.record(this.project(target.local_session_id));
     return record?.browser?.attestPanelFrames?await record.browser.attestPanelFrames():null;
-  }
-  async reopen(target,documentId,allowed,onBeforeEnter){
-    const project=this.project(target.local_session_id),record=this.record(project),chatUrl=project?.chatUrl;
-    if(!chatUrl || normalizeChatUrl(chatUrl)!==chatUrl || !record?.composer?.reopenPanel
-        || !this.observe(target).canSend || !allowed())return {state:'not-sent'};
-    const activity=await readCommandActivity(project.workspace);
-    if(activity.commandActive||!allowed())return {state:'not-sent'};
-    return record.composer.reopenPanel({text:REOPEN_PANEL_COMMAND,chatUrl,documentId,onBeforeEnter,
-      canContinue:()=>allowed() && this.project(target.local_session_id)?.chatUrl===chatUrl && this.record(project)===record});
   }
   async reconcile(target){
     const project=this.project(target.local_session_id),record=this.record(project);

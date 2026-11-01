@@ -4,11 +4,11 @@ import { PlanMonitor } from './plan-monitor.mjs';
 import { ProjectInputWatch } from '../../execution/facade.mjs';
 import { ExecutorTimer } from '../sessions/agent-timer.mjs';
 
-export function executorPageState(record) {
+export function executorPageState(record,{handledWakeTail=false}={}) {
   const project=record?.project(),page=record?.pageState.current?.state;
   const observed=!!project&&!!project.chatUrl&&!project.archivedAt&&!project.sessionArchivedAt&&!record.disposed&&!record.loading&&record.ready
     &&(!project.attempt?.cancelState||project.attempt.cancelState==='none')
-    &&page?.url===project.chatUrl&&!page.busy&&!page.connectionError&&page.lastMessageRole==='assistant'
+    &&page?.url===project.chatUrl&&!page.busy&&!page.connectionError&&(page.lastMessageRole==='assistant'||handledWakeTail)
     &&page.login!=='signed-out';
   const stopped=observed&&!record.controller.pending&&!record.composer.inFlight;
   const blocked=(record?.primaryAutomation?.automation??record?.executor?.automation)?.blocked(project);

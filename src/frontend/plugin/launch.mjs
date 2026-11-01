@@ -1,3 +1,4 @@
+import {workflowWakeText} from '../../contracts/workflow-wake.mjs';
 import {mountPanel} from './panel.mjs';
 import {OBSERVER_DELIVERY_LABEL} from '../../contracts/dialogue-view.mjs';
 import {sdkDiagnostic} from '../../contracts/plugin-communication.mjs';
@@ -223,9 +224,8 @@ export function mountCommunication({document,callTool,getMessage,uuid=()=>crypto
       // These checks and the SDK invocation have no intervening await.
       record('sdk.invoked',correlation,current);
       const pending=getMessage().send({role:'user',content:[{type:'text',text:
-        (workflow?'Адресное сообщение Workflow Pilot. Вызови workflow_communication_read_message с аргументами ':'Для включённого пользователем опыта Workflow Pilot вызови workflow_communication_read_message с аргументами ')+
-        JSON.stringify(workflow?{message_id}:{run_id:current.run_id,participant_id:current.participant_id,message_id})+
-        '. Не открывай другую панель и не повторяй уведомление. Чтение сообщения — отдельная квитанция.'}],
+        workflow?workflowWakeText(message_id):'Для включённого пользователем опыта Workflow Pilot вызови workflow_communication_read_message с аргументами '+
+        JSON.stringify({run_id:current.run_id,participant_id:current.participant_id,message_id})+'. Не открывай другую панель и не повторяй уведомление. Чтение сообщения — отдельная квитанция.'}],
         _meta:{'openai/message':{target:'active',send:true}}},{timeout});
       stage='response';
       Promise.resolve(pending).then(response=>{if(settled)record(response?.isError?'sdk.late_rejected':'sdk.late_accepted',

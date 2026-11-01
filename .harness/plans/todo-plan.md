@@ -4,7 +4,7 @@
 ```json
 {
   "schema_version": 1,
-  "plan_revision": 1425,
+  "plan_revision": 1427,
   "project_id": "7411e192-943c-4529-bffb-3b081d9c242f",
   "project_name": "Workflow_Pilot",
   "scope_id": "panel-inbox-068",
@@ -119,8 +119,8 @@
   },
   "tasks": [
     {
-      "implementation_status": "TODO",
-      "commit_status": "PENDING",
+      "implementation_status": "DONE",
+      "commit_status": "DONE",
       "commit_ref": {
         "scope_id": "panel-inbox-068",
         "task_id": "CHANNEL",
@@ -205,7 +205,47 @@
       ],
       "expected_commit_message": "feat: Исправить доставку входящих и периодическое открытие панели",
       "task_brief": "Единый проверяемый цикл от открытия карточки до завершения плана\nДве совместимые работы одного адресата в очереди получают одно пробуждение и отдельное адресное чтение/подтверждение. При пополнении во время обработки следующее сообщение остаётся доступно, пропущенное чтение не считается доставкой.\nКонец одного хода проверяется совместно для покрытых им сообщений, по свежим наблюдениям одного документа и хода при завершённой генерации, пустом вводе и отсутствии команд. Точная служебная подсказка в хвосте не блокирует. Настоящий ввод пользователя, неизвестная страница и работающий агент сохраняют защиту.\nУ каждого O/E в рабочем режиме один вызов панели на четвёртом ходе с последнего открытия, включая стартовый ход; обычный bootstrap сохраняется. Старый автоматический обход по отсутствию iframe и CDP-команда открытия удалены. Повторы одного хода, параллельные участники, перезагрузка и перезапуск не создают дубли. Если агент уже спит, новый вызов требует нового хода; этот предел указывается явно.\nT002/T003, DOCS, финализация и очистка: при подтверждённых условиях итог в интерфейсе — ожидание пользовательской приёмки, старые таймеры не подменяют текущий этап. План не архивируется автоматически.\nВ CHANNEL сохранить WAL и адресацию 0.6.7, старые panel_reopen и события принимать как исторические без повторного исполнения. Сохранять назначения, активный план и подтверждения. Не начинать новый ход во время работы, ревью или ручного ввода. В уже начавшемся ходе периодическое открытие панели разрешено. Неизвестный SDK send не повторять для пробуждения группы.\nНумерацию своих ходов ведёт агент в текущем диалоге; сервер сохраняет на участнике последний разрешённый периодический вызов (4, затем через 4), повтор того же хода безопасен. Открытие панели не равно её отрисовке или факту прочтения. После обновления для новых чатов действие начинается с bootstrap; старое отсутствие iframe не инициирует CDP никаких действий.\nWorkflow Pilot 0.6.8, протокол связи 9 при совместимых адресных схемах; Kit 1.10.8 / роли 18. Сохранить реальный архив Kit 1.10.7 из sourceCommit 0.6.7 для upgrade-теста.\nПроверить адресное чтение накопившихся сообщений на участке result T002/T003 → DOCS → финализация. Отложенные по общему пробуждению ID возвращаются в доступную очередь при неуспехе / истечении ожидания; каждый ID требует собственной квитанции. При настоящей ручной реплике или несвежем документе не признавать работу завершённой.\nDOCS включает действующие контракты Pilot/Kit, удаление авто-CDP, ограничение для уже спящего агента и живую проверку пользователем. Перед тестами подготовить ресурс панели. Полные проверки через Kit, Python без кэша.",
-      "parallel_safe": false
+      "parallel_safe": false,
+      "actual_files": [
+        "package-lock.json",
+        "package.json",
+        "packages/workflow-kit/package.json",
+        "packages/workflow-kit/src/lib/common.mjs",
+        "packages/workflow-kit/src/lib/installer.mjs",
+        "packages/workflow-kit/src/lib/role-protocol.mjs",
+        "src/backend/desktop-model.mjs",
+        "src/contracts/backend.mjs",
+        "src/contracts/context.mjs",
+        "src/contracts/dialogue-view.mjs",
+        "src/contracts/workflow-wake.mjs",
+        "src/control/plugin/assignment-dialogue.mjs",
+        "src/control/plugin/communication.mjs",
+        "src/control/plugin/panel-recovery.mjs",
+        "src/control/plugin/service.mjs",
+        "src/control/plugin/workflow-channel.mjs",
+        "src/control/workflow/coordination.mjs",
+        "src/control/workflow/dialogue-delivery.mjs",
+        "src/control/workflow/executor-session.mjs",
+        "src/execution/browser/chatgpt-dom.mjs",
+        "src/execution/browser/chatgpt-page-observer.mjs",
+        "src/execution/browser/page-state.mjs",
+        "src/execution/browser/session-runtime.mjs",
+        "src/frontend/plugin/launch.mjs",
+        "tests/chatgpt-plugin.test.mjs",
+        "tests/conversation-freshness.test.mjs",
+        "tests/fixtures/automatic-agent-dialogue.mjs",
+        "tests/fixtures/panel-frame-host.mjs",
+        "tests/fixtures/released-kit/kit-1.10.7.tar.gz",
+        "tests/fixtures/released-kit/manifest.json",
+        "tests/page-state.test.mjs",
+        "tests/panel-dialogue-view.test.mjs",
+        "tests/panel-frame-attestation.test.mjs",
+        "tests/plugin-delivery-ownership.test.mjs",
+        "tests/role-protocol.test.mjs",
+        "tests/workflow-channel.test.mjs",
+        "tests/workflow-kit-upgrade.test.mjs",
+        "tools/codex-app-server-mcp/plugin.py"
+      ]
     },
     {
       "implementation_status": "TODO",
@@ -334,7 +374,7 @@ Execution Scope Status: ACTIVE
 Delivery Status: IN_PROGRESS
 Scope: panel-inbox-068
 Current Task: нет
-Revision: 1425
+Revision: 1427
 
 ## Цель
 
@@ -358,8 +398,8 @@ Revision: 1425
 Выполнение: sequential; разрешено: false; лимит: 1
 Причина: Общие контракты панели и очереди, реализация напрямую в текущем checkout, затем последовательный выпуск.
 
-- [TODO] CHANNEL: Исправить доставку входящих и периодическое открытие панели — Ожидает
-  - Git Commit: [PENDING] feat: Исправить доставку входящих и периодическое открытие панели
+- [DONE] CHANNEL: Исправить доставку входящих и периодическое открытие панели — Завершено
+  - Git Commit: [DONE] feat: Исправить доставку входящих и периодическое открытие панели
   - Reference: panel-inbox-068 / CHANNEL / implementation
   - Файлы: src/control/plugin/communication.mjs, src/control/plugin/workflow-channel.mjs, src/control/plugin/assignment-dialogue.mjs, src/control/plugin/conversation-freshness.mjs, src/control/plugin/panel-recovery.mjs, src/control/plugin/service.mjs, src/control/workflow/coordination.mjs, src/control/workflow/dialogue-delivery.mjs, src/backend/desktop-model.mjs, src/contracts/dialogue-view.mjs, src/contracts/backend.mjs, src/frontend/plugin/launch.mjs, src/execution/browser/session-runtime.mjs, src/execution/browser/chatgpt-dom.mjs, src/execution/browser/chatgpt-page-observer.mjs, src/execution/browser/page-state.mjs, packages/workflow-kit/src/lib/role-protocol.mjs, packages/workflow-kit/src/lib/common.mjs, packages/workflow-kit/package.json, package.json, package-lock.json, tools/codex-app-server-mcp/plugin.py, tests/plugin-delivery-ownership.test.mjs, tests/workflow-channel.test.mjs, tests/conversation-freshness.test.mjs, tests/role-protocol.test.mjs, tests/automatic-agent-dialogue.test.mjs, tests/chatgpt-plugin.test.mjs, src/contracts/context.mjs, src/contracts/workflow-wake.mjs, src/control/workflow/executor-session.mjs, tests/panel-frame-attestation.test.mjs, tests/fixtures/panel-frame-host.mjs, tests/codex-app-server-mcp.test.mjs, tests/fixtures/automatic-agent-dialogue.mjs, src/contracts/work-progress.mjs, src/contracts/workflow-view.mjs, src/frontend/plugin/panel.mjs, src/frontend/desktop/ui/sidebar.mjs, tests/panel-dialogue-view.test.mjs, tests/sidebar.test.mjs, src/control/plugin/startup-context.mjs, packages/workflow-kit/src/lib/installer.mjs, tests/workflow-kit-upgrade.test.mjs, tests/fixtures/released-kit/manifest.json, tests/fixtures/released-kit/kit-1.10.7.tar.gz, tests/plugin-communication-store.test.mjs, tests/shared-conversation-compat.test.mjs, tests/page-state.test.mjs, tests/dialogue-delivery.test.mjs, tests/work-progress-scenario.test.mjs, tests/work-progress.test.mjs
   - Параллельность: исключительное выполнение

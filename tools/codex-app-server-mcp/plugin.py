@@ -198,9 +198,9 @@ def register_plugin(mcp, state_root: Path):
         return await communication("content", ctx, message_id=message_id, context_ref=context_ref, part=part)
 
     @mcp.tool(name="workflow_panel_check", annotations=CONNECT, meta={"ui": {"visibility": ["model"]}})
-    async def panel_check(ctx: Context) -> CallToolResult:
-        """Check this participant's own backend Chat panel by host identity; no IDs. Only open_here=true reserves a single workflow_pilot_panel() call, without an invitation. Unknown includes reloads and inconclusive checks. Continue normal work, do not poll."""
-        return await communication("panelCheck", ctx)
+    async def panel_check(ctx: Context, turn_number: Annotated[int | None, Field(ge=1, le=1000000, description="Ordinal of your current response in this conversation, counting bootstrap as 1. Reuse it for all calls in the same response.")] = None) -> CallToolResult:
+        """Check the periodic panel refresh for your own Chat, once per turn. When open_here=true, call workflow_pilot_panel() once even if the panel is visible, then continue working. next_turn is the next ordinal due. Omitting the ordinal only reads the schedule. This does not inspect a browser or start a turn."""
+        return await communication("panelCheck", ctx, turn_number=turn_number)
 
     @mcp.tool(name="workflow_communication_participants", annotations=READ, meta={"ui": {"visibility": ["model"]}})
     async def participants(ctx: Context) -> CallToolResult:

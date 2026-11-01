@@ -91,6 +91,12 @@ export function planActivity({run={},execution={},channel,physical}={}) {
       'Чтобы передать следующие результаты, откройте его чат и продолжите работу.');
     return current('delivery','Передаём сообщение','Ожидаем подтверждение ChatGPT.');
   }
+  const tasks=execution.planView?.tasks??[],allDone=tasks.length>0&&tasks.every(t=>t.status==='done');
+  if(allDone && channel?.finalizationHandled && execution.assignments?.length
+      && execution.assignments.every(a=>a.status==='INTEGRATED'&&a.cleanup?.status==='DONE')
+      && (!incoming||incoming.handled)){
+    return stage('acceptance',tasks.length+' из '+tasks.length+' · ожидается ваша приёмка','','План');
+  }
   if(incoming){
     const preparation=incoming.kind==='ready'||incoming.kind==='recovery'&&['prepare',undefined].includes(incoming.service_action);
     const recipient=incoming.recipient_role??'O',to=recipient==='O'?'оркестратору':'исполнителю'+task;
@@ -122,7 +128,6 @@ export function planActivity({run={},execution={},channel,physical}={}) {
     if(incoming.kind==='question')return current('question','Обрабатывает вопрос исполнителя'+task);
     return current('processing','Обрабатывает сообщение'+task);
   }
-  const tasks=execution.planView?.tasks??[],allDone=tasks.length>0&&tasks.every(t=>t.status==='done');
   if(allDone){
     if(execution.assignments?.some(a=>a.cleanup?.status!=='DONE'))return stage('cleanup','План завершается',
       execution.finalizationReason??'Ожидаем последние квитанции и подтверждение очистки назначений.','Workflow Kit');

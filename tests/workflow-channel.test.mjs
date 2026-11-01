@@ -772,8 +772,10 @@ test('dialogue gate needs correlated yield and fresh physical completion, never 
   const recipient=(await f.c.roster({metadata:meta('o')})).assignments[0].recipient_ref;
   const send=(kind,key)=>f.c.assignmentSend({metadata:meta('o'),recipient,kind,body:key,attempt:1,idempotency_key:key});
   const first=await send('task','task'),second=await send('context','context');
-  await sdk(f,b,first.message_id);await f.c.readMessage({metadata:meta('e'),message_id:first.message_id});
-  page.assistantRevision++;await observe(f,'e');assert.equal(pending(f.c,b),second.message_id,'transport is independent of handling: read alone cannot release');
+  await sdk(f,b,first.message_id);
+  const fetched=await f.c.readMessage({metadata:meta('e'),message_id:first.message_id});
+  assert.ok(fetched.pending_incoming.some(m=>m.message_id===second.message_id),'one wake advertises both queued IDs');
+  page.assistantRevision++;await observe(f,'e');assert.equal(pending(f.c,b),null,'advertised context does not wake the same recipient twice');
   assert.equal(f.c.runs.get(b.run_id).messages.find(m=>m.message_id===first.message_id).reply_observed,false);
   await f.c.assignmentYield({metadata:meta('e'),message_ids:[first.message_id],reason:'awaiting_reply'});
   page.stale=true;await observe(f,'e');f.advance(1000);await observe(f,'e');
@@ -1119,5 +1121,34 @@ test('an obsolete SDK policy notification never blocks the current version or fa
     await observe(f,'o');f.advance(600);await observe(f,'o');
     assert.equal(pending(f.c,b),off.message_id,outcome);
     assert.equal(f.c.runs.get(b.run_id).events.filter(e=>e.event_type==='send.intent').length,1);
+  }
+});
+
+test('one SDK wake covers two original results with separate reads, yield and replay safety',async t=>{
+  const f=await fixture(t,undefined,dialogueKitFixture());await f.c.workflow.grant(f.o);
+  const b=await f.bind(f.c,f.o);
+  for(const id of ['e1','e2'])await f.bind(f.c,f.target(id));
+  const result=async id=>(await f.c.assignmentSend({metadata:meta(id),recipient:'orchestrator',attempt:1,
+    kind:'result',body:'Work '+id,idempotency_key:'result-'+id})).message_id;
+  const a=await result('e1'),z=await result('e2');
+  await sdk(f,b,a);
+  assert.equal(pending(f.c,b),null);
+  const read=id=>f.c.readMessage({metadata:meta('o'),message_id:id});
+  assert.deepEqual((await read(a)).pending_incoming.map(m=>m.message_id),[z]);
+  assert.equal(pending(f.c,b),null);
+  await read(z);
+  const active=()=>f.c.runs.get(b.run_id);
+  assert.equal(active().messages.find(m=>m.message_id===z).notification_attempts?.length??0,0);
+  f.pages.get('o').busy=true;
+  await f.c.assignmentYield({metadata:meta('o'),message_ids:[a,z],reason:'handled'});
+  assert.equal(f.c.workflow.handledWakeTail(f.o,[a]),true);
+  assert.equal(f.c.workflow.handledWakeTail(f.o,[z]),false);
+  assert.equal(f.c.workflow.handledWakeTail(f.o,[randomUUID()]),false);
+  assert.equal(f.c.workflow.turnProbes.size,1);
+  Object.assign(f.pages.get('o'),{busy:false,stopped:true,canSend:true,handledWakeTail:true,lastMessageRole:'user'});
+  await observe(f,'o');f.advance(600);await observe(f,'o');
+  for(const id of [a,z]){
+    assert.equal(active().messages.find(m=>m.message_id===id).reply_observed,true);
+    assert.equal((await read(id)).already_handled,true);
   }
 });

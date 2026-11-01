@@ -1,3 +1,4 @@
+import {workflowWakeText} from '../../contracts/workflow-wake.mjs';
 // Shared, DOM-only compatibility contract. No account APIs or page internals.
 export const CHATGPT_SELECTORS = Object.freeze({
   editor: '#prompt-textarea,textarea[data-testid="prompt-textarea"],[data-testid="composer-text-input"],[contenteditable="true"][role="textbox"]',
@@ -16,7 +17,7 @@ export const CHATGPT_SELECTORS = Object.freeze({
   finishedAction: 'button[data-testid="copy-turn-action-button"],button[data-testid="good-response-turn-action-button"],button[data-testid="bad-response-turn-action-button"]',
 });
 
-export function createChatGPTDOM(selectors) {
+export function createChatGPTDOM(selectors, wakeText) {
   const visible = e => !!e && !e.hidden && e.getAttribute('aria-hidden') !== 'true'
     && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' && e.getClientRects().length > 0;
   const first = s => [...document.querySelectorAll(s)].find(visible);
@@ -89,6 +90,6 @@ export function createChatGPTDOM(selectors) {
       && !e.closest(selectors.user + ',' + selectors.assistant + ',pre,code'));
     return switches.length || counter ? 'multiple' : 'single';
   };
-  return { selectors, visible, first, messages, connectionError, editor, account, sendButton, turnVariant, busy: () => !!first(selectors.stop) };
+  return { selectors, visible, first, messages, wakeText, connectionError, editor, account, sendButton, turnVariant, busy: () => !!first(selectors.stop) };
 }
-export const chatGPTDOMScript = () => `(${createChatGPTDOM.toString()})(${JSON.stringify(CHATGPT_SELECTORS)})`;
+export const chatGPTDOMScript = () => `(${createChatGPTDOM.toString()})(${JSON.stringify(CHATGPT_SELECTORS)},${workflowWakeText.toString()})`;

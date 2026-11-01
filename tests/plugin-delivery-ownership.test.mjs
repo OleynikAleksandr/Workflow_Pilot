@@ -10,12 +10,12 @@ import {openCommunicationStore} from '../src/execution/plugin/communication-stor
 const meta=id=>({'openai/session':id});
 const OBSERVER='PLUGIN_COMMUNICATION_DELIVERY_OBSERVER';
 // The backend page of each participant hosts only the frames listed in `hosted`.
-async function fixture(t,{reopen=null}={}){
+async function fixture(t){
   const directory=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'delivery-ownership-')));
   const targets=new Map(),pages=new Map(),hosted=new Map(),instances=[];let now=100000,attestCalls=0;
   const create=async()=>{const c=new PluginCommunication({store:await openCommunicationStore(directory),now:()=>now,waitMs:5,
     resolveTarget:id=>targets.get(id),verifyTarget:async id=>targets.get(id),observe:target=>pages.get(target.local_session_id),
-    reconcile:async target=>structuredClone(pages.get(target.local_session_id)),admit:async()=>true,reopen,
+    reconcile:async target=>structuredClone(pages.get(target.local_session_id)),admit:async()=>true,
     attest:async target=>{attestCalls++;const page=pages.get(target.local_session_id);
       return {browserSessionId:target.local_session_id,incarnation:page.incarnation,documentId:page.documentId,stale:false,
         presence:page.probe??(hosted.get(target.local_session_id)?.size?'present':'absent'),
@@ -44,63 +44,29 @@ const pending=(c,b)=>c.waitResult({...b,after_seq:c.runs.get(b.run_id).events.le
 const attempts=(c,b)=>c.runs.get(b.run_id).messages.flatMap(m=>m.notification_attempts??[]).length;
 const queue=(c,o,key='start')=>c.workflow.enqueue(o,{key,kind:'assignment-start',text:'Начни задачу'});
 
-test('without messages a stable missing panel is reopened once per loss in O and E; loading, draft and busy wait',async t=>{
-  const sent=[];
-  const f=await fixture(t,{reopen:async(target,document,allowed,before)=>{
-    if(!allowed()||!await before())return {state:'not-sent'};
-    sent.push([target.role,document]);return {state:'submitted'};
-  }});
-  await f.c.workflow.grant(f.o);const b=await f.panel(f.c,{inPage:true});
-  const e=f.target('e'),invite=await f.c.reserve(e);await f.c.enroll(invite.enrollment_ticket,meta('e'));
-  const o=f.pages.get('o'),page=f.pages.get('e');
-  o.documentId='after-reload';o.sdkDocumentReady=false;f.hosted.clear();page.probe='unknown';
-  const tick=()=>f.c.panelRecovery.tick();
-  await tick();f.advance(20000);await tick();assert.deepEqual(sent,[]);
-  o.sdkDocumentReady=true;o.draftPresent=true;page.probe='absent';page.busy=true;
-  await tick();f.advance(11000);await tick();assert.deepEqual(sent,[]);
-  page.busy=false;o.draftPresent=false;await tick();await tick();
-  assert.deepEqual(sent.sort(),[['E','doc-e-1'],['O','after-reload']]);
+test('each working Chat requests an inline panel on turns four and eight, independent of visibility or queue',async t=>{
+  const f=await fixture(t);await f.c.workflow.grant(f.o);
+  const b=await f.panel(f.c,{inPage:true});
+  const worker=f.target('e'),invite=await f.c.reserve(worker);
+  await f.c.enroll(invite.enrollment_ticket,meta('e'));
+  const check=(id,turn)=>f.c.panelCheck({metadata:meta(id),turn_number:turn});
+  for(const id of ['o','e']){
+    for(const turn of [1,2,3])assert.equal((await check(id,turn)).open_here,false);
+    const same=await Promise.all([check(id,4),check(id,4)]);
+    assert.deepEqual(same.map(r=>r.open_here),[true,false]);
+    assert.equal(same[0].next_turn,8);
+  }
+  f.hosted.clear();f.pages.get('o').documentId='reloaded';
+  for(const turn of [4,5,6,7])assert.equal((await check('o',turn)).open_here,false);
+  assert.equal((await check('o',8)).open_here,true);
   assert.equal(f.c.runs.get(b.run_id).messages.length,0);
-  const connected=await f.panel(f.c,{inPage:true});await tick();
-  assert.equal(connected.synced.channel_ready,true);assert.equal(f.c.runs.get(b.run_id).members[b.participant_id].panel_reopen,undefined);
-  f.hosted.clear();o.documentId='next-doc';await tick();f.advance(11000);await tick();
-  assert.equal(sent.filter(([role])=>role==='O').length,2);
-});
-
-test('agent checks its own panel; a granted open is not echoed by backend or another check',async t=>{
-  const sent=[];
-  const f=await fixture(t,{reopen:async(target,doc,allowed,before)=>{
-    if(allowed()&&await before())sent.push(target.local_session_id);
-    return {state:'submitted'};
-  }});
-  await f.c.workflow.grant(f.o);await f.panel(f.c,{inPage:true});
-  const check=()=>f.c.panelCheck({metadata:meta('o')});
-  assert.equal((await check()).presence,'present');
-  await assert.rejects(f.c.panelCheck({metadata:meta('stranger')}),{code:'PLUGIN_COMMUNICATION_BINDING'});
-  f.hosted.clear();f.pages.get('o').documentId='doc-reloaded';
-  assert.equal((await check()).presence,'unknown');f.advance(11000);
-  assert.deepEqual(await check(),{presence:'absent',open_here:true});
-  await f.c.panelRecovery.tick();
-  assert.deepEqual(await check(),{presence:'absent',open_here:false});assert.deepEqual(sent,[]);
-  await f.panel(f.c);f.advance(61000);await f.c.panelRecovery.tick();await f.c.panelRecovery.tick();
-  assert.deepEqual(sent,['o']);
-});
-
-test('a remount before Enter wins, uncertain Enter is not replayed, and Stop suppresses recovery',async t=>{
-  let action='remount',enters=0;
-  const f=await fixture(t,{reopen:async(target,doc,allowed,before)=>{
-    if(action==='remount')f.hosted.set('o',new Set([randomUUID()]));
-    if(!allowed()||!await before())return {state:'not-sent'};
-    enters++;throw Error('Enter outcome unknown');
-  }});
-  await f.c.workflow.grant(f.o);await f.panel(f.c,{inPage:true});
-  const page=f.pages.get('o');page.documentId='new';f.hosted.clear();
-  await f.c.panelRecovery.tick();f.advance(11000);await f.c.panelRecovery.tick();assert.equal(enters,0);
-  action='unknown';f.hosted.clear();
-  await f.c.panelRecovery.tick();f.advance(11000);await f.c.panelRecovery.tick();
-  assert.equal(enters,1);f.advance(120000);await f.c.panelRecovery.tick();assert.equal(enters,1);
-  await f.c.workflow.grant(f.o,'paused');page.documentId='paused-doc';
-  await f.c.panelRecovery.tick();f.advance(120000);await f.c.panelRecovery.tick();assert.equal(enters,1);
+  await f.c.workflow.grant(f.o,'paused');assert.equal((await check('e',8)).open_here,false);
+  await f.c.workflow.grant(f.o);assert.equal((await check('e',8)).open_here,true);
+  assert.equal((await check('e',undefined)).open_here,false);
+  f.c.dispose();await f.c.tail;await f.create();
+  await f.c.workflow.grant(f.o);
+  assert.equal((await check('o',8)).open_here,false,'restart cannot renew the same turn');
+  assert.equal((await check('o',12)).open_here,true);
 });
 
 test('only the attested backend panel delivers; another client of the same identity observes without attempts',async t=>{
